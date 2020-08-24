@@ -153,21 +153,21 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
 // Return 1 iff the instruction had a quantifiable effect
 uint64_t apply_effects(uint64_t *state) {
   uint64_t *registers;
-  uint64_t ret;
-  ret = 0;
+  uint64_t tracked_change;
+  tracked_change = 0;
 
   registers = get_reg_values(state);
 
   if (is == ADDI) {
     if (!is_reg_unknown(state, rs1)) { // if the register's contents are not unknown
       set_reg(state, rd, *(registers + rs1) + imm); // do the addi
-      ret = 1;
+      tracked_change = 1;
     } else { // else rd is now unknown too
       set_reg_unknown(state, rd);
     }
   } else if (is == LUI) {
     set_reg(state, rd, left_shift(imm, 12));
-    ret = 1;
+    tracked_change = 1;
   }
 
   // handle "weird" instructions
@@ -209,11 +209,11 @@ uint64_t apply_effects(uint64_t *state) {
         else
           set_reg(state, rd, 0);
       }
-      ret = 1;
+      tracked_change = 1;
     }
   }
 
-  return ret;
+  return tracked_change;
 }
 
 uint64_t depth = 0;
@@ -339,6 +339,10 @@ void selfie_traverse() {
   traverse_recursive(0, (uint64_t) -1, (uint64_t) -1);
 }
 
+void insert_nop(uint64_t position) {
+  store_instruction(position, encode_i_format(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM));
+}
+
 void print_state(uint64_t* machine_state) {
   uint64_t i;
 
@@ -360,7 +364,7 @@ void print_states() {
 
   i = 0;
   while (i < code_length / INSTRUCTIONSIZE) {
-    printf2("%d (at %p)\n", (char *) (i * INSTRUCTIONSIZE), (char *) *(machine_states + i));
+    printf1("%x\n", (char *) (i * INSTRUCTIONSIZE));
     print_state((uint64_t *) *(machine_states + i));
     i = i + 1;
   }
@@ -381,17 +385,11 @@ uint64_t find_next_enop(uint64_t from_pc) {
       ir = load_instruction(i);
       decode();
 
-      //print("before\n");
-      //print_state(get_state(i));
-      //print("after\n");
       if (apply_effects(state) == 1) {
         if (test_states_equal(get_state(i), state)) {
-          //print_state(state);
           return i;
-        }
+        } //else {print_state(get_state(i));print("->\n");print_state(state);print("\n");}
       }
-      //print_state(state);
-      //print("---\n");
     }
 
     i = i + INSTRUCTIONSIZE;
@@ -400,15 +398,31 @@ uint64_t find_next_enop(uint64_t from_pc) {
   return -1;
 }
 
+uint64_t found_enops = 0;
+
 void print_enops() {
   uint64_t last_enop;
   last_enop = find_next_enop(0);
+  found_enops = 0;
 
   while (last_enop != -1) {
+    found_enops = found_enops + 1;
     printf1("enop at: %x\n", (char*) last_enop);
     print_state(get_state(last_enop));
     print_instruction();
     print("\n\n");
+    last_enop = find_next_enop(last_enop);
+  }
+}
+
+void patch_enops() {
+  uint64_t last_enop;
+  last_enop = find_next_enop(0);
+  found_enops = 0;
+
+  while (last_enop != -1) {
+    found_enops = found_enops + 1;
+    insert_nop(last_enop);
     last_enop = find_next_enop(last_enop);
   }
 }
@@ -449,11 +463,18 @@ int main(int argc, char **argv) {
   // printf1("110==114: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 114)));
   // printf1("110==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 110)));
 
-  print_enops();
+  //print_states();
+  //print_enops();
+
+  patch_enops();
+
+  printf1("found %d enops\n", (char*) found_enops);
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  // selfie_output(binary_name);
+  binary_name = replace_extension(binary_name, "opt");
+  selfie_output(binary_name);
+  selfie_disassemble(1);
 
   return EXITCODE_NOERROR;
 }

@@ -1,0 +1,18517 @@
+./wipopt: 154624 bytes with 34840 instructions and 11168 bytes of data loaded from selfie.rv
+enop at: 0x28
+	zero:	0
+	gp:	216064
+	a7:	214
+addi a7,zero,214
+
+enop at: 0x220
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x224
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+	a7:	214
+addi t1,zero,1
+
+enop at: 0x234
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+	a7:	214
+addi t1,zero,1
+
+enop at: 0x254
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x27C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x298
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x2B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x32C
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x37C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x39C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x3BC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x3DC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x3FC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x41C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x43C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x45C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x47C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x49C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x4BC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x4DC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x4FC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x51C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x53C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x55C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x57C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x59C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x5BC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x5DC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x5FC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x61C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x63C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x65C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x67C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x69C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x6BC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x6DC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x6FC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x71C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x784
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x790
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x798
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x7F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8C0
+	zero:	0
+	gp:	216064
+	t1:	2
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x9A4
+	zero:	0
+	gp:	216064
+	t1:	5
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xCCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCEC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD40
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD50
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD64
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDE0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE00
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE20
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE40
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE60
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE80
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xEA0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xEC0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xEE0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xF00
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xF20
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xF40
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xF60
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xF80
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xFA0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xFC0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xFE0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1000
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1020
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1040
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1060
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1080
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x10A0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x10C0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x10E0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1100
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1120
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1140
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1160
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1180
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x11A0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x11EC
+	zero:	0
+	gp:	216064
+	t1:	4096
+	a0:	0
+addi t1,t1,0
+
+enop at: 0x11FC
+	zero:	0
+	gp:	216064
+	t0:	4096
+	t1:	4096
+	a0:	0
+addi t0,t0,0
+
+enop at: 0x1274
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1310
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x136C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13A0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13D4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1408
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x143C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1470
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14A4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14D8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x150C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1540
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1598
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+addi t0,zero,0
+
+enop at: 0x15A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+addi t0,zero,0
+
+enop at: 0x15B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+addi t0,zero,0
+
+enop at: 0x15C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+addi t0,zero,0
+
+enop at: 0x15D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+addi t0,zero,0
+
+enop at: 0x163C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x164C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x165C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x166C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x167C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x168C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x169C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x16AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x16BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x16CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x16DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x16EC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x176C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x177C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x17C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1804
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1848
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1920
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1944
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1968
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1978
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1988
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1998
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x19A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x19F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A04
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A24
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A74
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A7C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A84
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A8C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A94
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x2230
+	zero:	0
+	gp:	216064
+	t1:	6
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x22C8
+	zero:	0
+	gp:	216064
+	t1:	8
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x2C54
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x2C8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+	a7:	214
+addi t0,zero,0
+
+enop at: 0x2CE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x2CE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2DA4
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x2F04
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3058
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x305C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x30CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x30D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x32B0
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x334C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x3350
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x336C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3394
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x358C
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3638
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x363C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x377C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x37BC
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x3810
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+	t3:	8
+addi t2,a0,0
+
+enop at: 0x3814
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x3874
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3878
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x3950
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x396C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3974
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x39CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x39DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x39E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x3A1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3AB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3AF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3B08
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3B34
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3B4C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x3BF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3BFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x3C0C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi t0,zero,1
+
+enop at: 0x3C4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3C80
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3C98
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x3CAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x3CF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x3D18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3D8C
+	zero:	0
+	gp:	216064
+	t1:	9
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3DA8
+	zero:	0
+	gp:	216064
+	t1:	9
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3DE8
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi t2,zero,10
+
+enop at: 0x3E08
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi t2,zero,10
+
+enop at: 0x3E74
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3E90
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3ED0
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3EEC
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3F20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	10
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x3F70
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x3FB8
+	zero:	0
+	gp:	216064
+	t0:	48
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4090
+	zero:	0
+	gp:	216064
+	t1:	65
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x40D0
+	zero:	0
+	gp:	216064
+	t1:	48
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4140
+	zero:	0
+	gp:	216064
+	t0:	45
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4148
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x418C
+	zero:	0
+	gp:	216064
+	t0:	32
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x41E0
+	zero:	0
+	gp:	216064
+	t0:	48
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4238
+	zero:	0
+	gp:	216064
+	t0:	111
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x424C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x426C
+	zero:	0
+	gp:	216064
+	t0:	48
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x42C4
+	zero:	0
+	gp:	216064
+	t0:	120
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x42D8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x42F8
+	zero:	0
+	gp:	216064
+	t0:	48
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4334
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4348
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x43DC
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4424
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x442C
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	0
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x4460
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	0
+	a0:	0
+addi t1,a0,0
+
+enop at: 0x4464
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x44A8
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x44AC
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x453C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4620
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x4630
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x4644
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x4658
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x46A8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x46C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x46E4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x47AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x47BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4810
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4850
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4884
+	zero:	0
+	gp:	216064
+	t0:	212064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x48BC
+	zero:	0
+	gp:	216064
+	t0:	212048
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x48F4
+	zero:	0
+	gp:	216064
+	t0:	212032
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x492C
+	zero:	0
+	gp:	216064
+	t0:	212016
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4944
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4958
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4A20
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x4A30
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x4A34
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4A44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4AB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x4AB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4AC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4C00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4C10
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4C84
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4C94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4D18
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4D64
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x4D90
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4D98
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x4D9C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,zero,t0
+
+enop at: 0x4DC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4DF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	37
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4E08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	37
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4E48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4E70
+	zero:	0
+	gp:	216064
+	t0:	37
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4EA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4EB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4F88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4FBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	37
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x4FCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	37
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x500C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5034
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x50A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x510C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5178
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x51FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5244
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	3
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5284
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5298
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x52C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	3
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5308
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x531C
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x53A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x53B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x53E0
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x53FC
+	zero:	0
+	gp:	216064
+	t0:	46
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5404
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x5420
+	zero:	0
+	gp:	216064
+	t0:	48
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5448
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5494
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x54BC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x54D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5508
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5580
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x55F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5670
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x56DC
+	zero:	0
+	gp:	216064
+	t0:	37
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5714
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5724
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x57BC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5850
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x58E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5900
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5920
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5930
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x59DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x59FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5A1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5A2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5AC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5AE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5B04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5B24
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5B44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5B54
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5BF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5C18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5C38
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5C58
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5C78
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5C98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5CA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5D58
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5D78
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5D98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5DB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5DD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5DF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5E18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x5E28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x60F8
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x610C
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x615C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6194
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x62C4
+	zero:	0
+	gp:	216064
+	t0:	-4096
+	t1:	1
+addi t0,t0,0
+
+enop at: 0x643C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6470
+	zero:	0
+	gp:	216064
+	t0:	211952
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x649C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x64B0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x65AC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6600
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6614
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6630
+	zero:	0
+	gp:	216064
+	t0:	211864
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6644
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6660
+	zero:	0
+	gp:	216064
+	t0:	211856
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6780
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x6788
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x67A4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x6810
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x682C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6980
+	zero:	0
+	gp:	216064
+	t0:	0
+addi t0,zero,0
+
+enop at: 0x69E0
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x6A1C
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x6A78
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x6AD4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6ADC
+	zero:	0
+	gp:	216064
+	t1:	1
+addi t1,zero,1
+
+enop at: 0x6B20
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x6B30
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x6B40
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6B64
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6BAC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6BF8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6CF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x6DB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x6DBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6E70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x6E84
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x6E8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x6E90
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x6EB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x6F7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7170
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x718C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7194
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x71A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x71A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x71DC
+	zero:	0
+	gp:	216064
+	t0:	211704
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x71F8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7224
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x722C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x723C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x726C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x728C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x72A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x72B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x72BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x72C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7300
+	zero:	0
+	gp:	216064
+	t0:	211672
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7320
+	zero:	0
+	gp:	216064
+	t0:	211648
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x733C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7368
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7370
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x7380
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x73B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x73C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7400
+	zero:	0
+	gp:	216064
+	t0:	211616
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x741C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7448
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7484
+	zero:	0
+	gp:	216064
+	t0:	211560
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x74A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x74B4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x74D4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7504
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7520
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7538
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7564
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x757C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7584
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x75CC
+	zero:	0
+	gp:	216064
+	t0:	211544
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x75E8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7608
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7634
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x763C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x764C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7670
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7688
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x76A4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x76D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x76FC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7728
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7754
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7780
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x77AC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x77D8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7804
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7830
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x785C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7888
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x78B4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x78D4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x790C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x792C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7944
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7970
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7990
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x79C8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x79E8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7A28
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7A44
+	zero:	0
+	gp:	216064
+	t0:	211496
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7A58
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7A60
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7A7C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7AC0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x7AD0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7BE8
+	zero:	0
+	gp:	216064
+	t0:	211464
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7C04
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7CE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7D0C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7D2C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7D4C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7D6C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7D8C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7DAC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7DE4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7E44
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7E70
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x7E9C
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x7EC8
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x7F0C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7F2C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7F58
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x7F78
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8018
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x808C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x80E8
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x80F0
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+mul t1,t1,t2
+
+enop at: 0x8124
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8128
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x81A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x81F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8240
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8244
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x82A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x82D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x82F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8318
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8338
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x833C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x8340
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x8350
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	t2:	8
+	a0:	0
+addi t0,zero,1
+
+enop at: 0x8388
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8398
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x839C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x83FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x8404
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x8460
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x84A8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x84D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x84E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x84FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8570
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8598
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8A30
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8A58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8A80
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8AA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8AD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8AF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8B20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8B48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8BA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8BD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8BF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8C20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8C48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8C70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8CD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8CF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8D20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x8DBC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8E78
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8EEC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x8F34
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x8FA8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x8FF0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9064
+	zero:	0
+	gp:	216064
+	t0:	211296
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9080
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x90F4
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9114
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x9118
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9128
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x913C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9184
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9190
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x91B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x91EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9244
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9258
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9274
+	zero:	0
+	gp:	216064
+	t0:	211264
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9288
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x92A4
+	zero:	0
+	gp:	216064
+	t0:	211256
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9314
+	zero:	0
+	gp:	216064
+	t0:	211216
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9328
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9344
+	zero:	0
+	gp:	216064
+	t0:	211208
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x93A4
+	zero:	0
+	gp:	216064
+	t0:	211192
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x93DC
+	zero:	0
+	gp:	216064
+	t0:	211176
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9414
+	zero:	0
+	gp:	216064
+	t0:	211168
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9434
+	zero:	0
+	gp:	216064
+	t0:	211160
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9488
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x94A4
+	zero:	0
+	gp:	216064
+	t0:	211136
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x94B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x94D4
+	zero:	0
+	gp:	216064
+	t0:	211120
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x94E8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9504
+	zero:	0
+	gp:	216064
+	t0:	211112
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9570
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9574
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x95A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x95E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x960C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9628
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x967C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9688
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x96A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x96C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x96F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9720
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9738
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x9748
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9754
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9780
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9790
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x979C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x97BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x97CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x97D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x97E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9850
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9878
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9884
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x988C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x9890
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x98B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x98CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x98E4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x98F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9900
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x9904
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x993C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x995C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x996C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9984
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9988
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x99EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x99F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9A20
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9A48
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9A7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9AB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9ABC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9AE8
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9B00
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x9B14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9B40
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9B50
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9B7C
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9B98
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9BB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9BC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9BD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C04
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x9C20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C30
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x9C34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C60
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9C98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9D2C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9D4C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9D98
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x9DE0
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9E48
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9E60
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9E6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9E8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9E9C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9F50
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9F70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9FA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x9FB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x9FE4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA004
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA020
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA030
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xA034
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA044
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xA048
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA080
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA090
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA0C8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA0F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA110
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA180
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA1AC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA1E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA210
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA23C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA274
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA2A8
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA2C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA2E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA2F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA30C
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA364
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA390
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA3C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA3F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA42C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA458
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA4AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA4C0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA4CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA4D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA510
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA530
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xA534
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA544
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA558
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA578
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA580
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA5B8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA5D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xA5DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA5EC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA600
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA624
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA648
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA664
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA690
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA6B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA6D0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA6EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA750
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA784
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA790
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA7B4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA7E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA804
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA81C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA82C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA850
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA868
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA8A4
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+addi t0,zero,1
+
+enop at: 0xA940
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA964
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA970
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA998
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA9C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xA9EC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAA28
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAA60
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAA88
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAA90
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAAD0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAB08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAB2C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAB44
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAB94
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xABA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xABB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xABB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xABC0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xABD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAC14
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAC28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAC48
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAC58
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xACC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xACDC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xACE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAD20
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAD44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAD54
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAD58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAD68
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAD6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAD7C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xADA4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xADB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xADB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xADC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xADCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xADDC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAE04
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAE14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAE18
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAE28
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAE2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAE3C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAE50
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAEAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAEC0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAECC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAF24
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAF40
+	zero:	0
+	gp:	216064
+	t0:	3
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAF60
+	zero:	0
+	gp:	216064
+	t0:	211040
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAF88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAFA4
+	zero:	0
+	gp:	216064
+	t0:	3
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAFB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAFC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAFCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAFDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xAFE0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xAFF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB048
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB064
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB070
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB080
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB084
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB094
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB098
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB0CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB0E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB0F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB0FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB124
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB130
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB140
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB144
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB154
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB158
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB168
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB1A8
+	zero:	0
+	gp:	216064
+	t0:	211000
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB1B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB1C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB1CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB1DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB1E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB1F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB204
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB260
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB274
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB280
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB2B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB2E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB2F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB2F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB308
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB30C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB31C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB324
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB328
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB350
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB35C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB36C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB370
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB380
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB384
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB394
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB3A8
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB3D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB3E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB3E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB3F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB3F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB408
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB41C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB428
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB448
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB458
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB480
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB490
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB494
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB4A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB4A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB4B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB4CC
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB4F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB504
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB508
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB518
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB51C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB52C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB540
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB568
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB578
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB57C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB58C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB590
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB5A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB5A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB5AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB5D4
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB5E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB5F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB5F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB604
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB608
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB618
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB62C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB654
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB664
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB668
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB678
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB67C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB68C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB698
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB6C0
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB6CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB6DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB6E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB6F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xB6F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB704
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB718
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB78C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB7AC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB7B4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB7D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB7F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB80C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB82C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB84C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB858
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB864
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB888
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB8A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB8BC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB8C8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB8E0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB8F8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB910
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB940
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB968
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB9C8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB9E8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xB9F0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA48
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA68
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA88
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBA94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBAA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBAC4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBADC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBAF8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB04
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB24
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB54
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB68
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB88
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBB94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBBA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBBC4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBBDC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBBF8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC04
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC2C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC44
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC5C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC74
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBC8C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBCEC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBD04
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBD5C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBD74
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBD80
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xBD90
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBDA4
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBDDC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBDFC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBE74
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBEA8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBEB4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBED8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBF14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBF4C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBF54
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBF74
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBF80
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBFB8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBFC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBFD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xBFE0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xBFE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xBFF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC008
+	zero:	0
+	gp:	216064
+	t0:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC030
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC044
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC064
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC07C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC0A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC0AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC0E4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC104
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC124
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC130
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC168
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC174
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC180
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xC190
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xC194
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC1A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC1B8
+	zero:	0
+	gp:	216064
+	t0:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC1E0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC1F4
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC214
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC22C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC244
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC25C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC288
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC2A8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC2BC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC2E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC308
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC320
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC360
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC37C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC388
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC390
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xC394
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC3CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC3E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC40C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC428
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC448
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC458
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC46C
+	zero:	0
+	gp:	216064
+	t0:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC484
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC490
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC4C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC4E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC4F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xC4FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC50C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC520
+	zero:	0
+	gp:	216064
+	t0:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC550
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC568
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC574
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC598
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC5BC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC5E0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC600
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC618
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC670
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC698
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC6B4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC6FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC774
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC77C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC794
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC7F8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC834
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xC858
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC880
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC88C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC8B0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC8C8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC8F0
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC91C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC928
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC934
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC954
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC96C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC984
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC9C0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xC9F8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCA64
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCA8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCAB4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCAC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCAD0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0xCB44
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCB6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCB94
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCBAC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCBB8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCBD0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCBF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCC74
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xCC84
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCCA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCCC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCCE4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCCEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCD84
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCDA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCDA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0xCDAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,zero,t0
+
+enop at: 0xCDC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCDD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xCDDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCDEC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xCDF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCE1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCE40
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCE74
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCE8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCEB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCED0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCEF0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCF18
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCF44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCF94
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCFBC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xCFC4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD014
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD034
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD04C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD064
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD08C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD0B8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD0D0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD0EC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD114
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD140
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD14C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD1B0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD1E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD1F0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD214
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD234
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD270
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD290
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD2A8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD2E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD31C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD348
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD394
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD428
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD454
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD47C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD494
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD4CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD500
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD50C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD534
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD540
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD560
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD570
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD594
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD5A4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD5B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD5F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD61C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD62C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD650
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD660
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD694
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD6B0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD760
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD7C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD7F4
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD82C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD84C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD86C
+	zero:	0
+	gp:	216064
+	t0:	210832
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD888
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD8A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD8AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xD8BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD8D0
+	zero:	0
+	gp:	216064
+	t0:	1
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD8FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD930
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD938
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD958
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD98C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD994
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD9B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD9D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xD9F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA10
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA2C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA60
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA68
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDA6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDA9C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDAD4
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDAF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDAF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDB08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDB1C
+	zero:	0
+	gp:	216064
+	t0:	1
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDB3C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDBC0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDBEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDCBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDCCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDCDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDD20
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD64
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD78
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD80
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD88
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD90
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDD98
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDA0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDA8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDB0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDB8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDDF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDE20
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDE30
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDE44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDE4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0xDE78
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDE7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDE88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDE98
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDE9C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDEB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xDEC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDEC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDED4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0xDF18
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDF44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDF48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDF70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDF94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0xDF98
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDFD8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDFF4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xDFFC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE004
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE00C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE060
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE0D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE0F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE110
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE164
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE1D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE21C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE224
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE22C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE260
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE2D4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE360
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE368
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE408
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE64C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xE6D0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0xE710
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE72C
+	zero:	0
+	gp:	216064
+	t0:	210232
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE740
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE748
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE770
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE778
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xE86C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE88C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE8DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE8E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0xE918
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE940
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0xE958
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE95C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+sub t0,zero,t0
+
+enop at: 0xE96C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0xE984
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE988
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0xE9A4
+	zero:	0
+	gp:	216064
+	t0:	-8
+	t1:	8
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xE9C0
+	zero:	0
+	gp:	216064
+	t1:	8
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEA10
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEA38
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEA60
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEA88
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEAB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEB1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEB20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xEB80
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEB84
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xEBE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEBE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xEC48
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEC4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xECAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xECB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xED10
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xED14
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xED64
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xED90
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEDBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEDE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEE14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEE24
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0xEE7C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEEA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEEC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEEF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEF18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEF40
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEFAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEFCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xEFD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xF040
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF06C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF098
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF0C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF120
+	zero:	0
+	gp:	216064
+	t0:	12
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF144
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF178
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF1AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF1D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF1FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF224
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF24C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF274
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF2E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF318
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF340
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF368
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF36C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xF3CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF3F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF424
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF460
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF4BC
+	zero:	0
+	gp:	216064
+	t0:	13
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF4E0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF514
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF548
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF57C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF5B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF5D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF600
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF628
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF650
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF678
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF6A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF6C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF738
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF76C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF7A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF7D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF7FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF824
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF84C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF874
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF894
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF898
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xF8F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF924
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF950
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF98C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xF9E8
+	zero:	0
+	gp:	216064
+	t0:	21
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFA0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFA40
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFA74
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFAA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFADC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFB04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFB2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFB54
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFB7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFBA4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFC14
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFC48
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFC7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFCB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFCD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFD00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFD28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFD50
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFD70
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFD74
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0xFE04
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFE30
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFE88
+	zero:	0
+	gp:	216064
+	t0:	20
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFEAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFED4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFEFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFF68
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFF88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0xFF8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x1001C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10048
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10094
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x100F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10104
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10114
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10124
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10134
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10144
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x10154
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x102A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1039C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x103BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x103C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x1044C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1046C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1047C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x104D4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10528
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10548
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10558
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10594
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x105C8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10618
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10634
+	zero:	0
+	gp:	216064
+	t0:	210120
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10684
+	zero:	0
+	gp:	216064
+	t0:	210112
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1068C
+	zero:	0
+	gp:	216064
+	t0:	210112
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x106BC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1070C
+	zero:	0
+	gp:	216064
+	t0:	210088
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10728
+	zero:	0
+	gp:	216064
+	t0:	210080
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10778
+	zero:	0
+	gp:	216064
+	t0:	210072
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10780
+	zero:	0
+	gp:	216064
+	t0:	210072
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x107B0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10800
+	zero:	0
+	gp:	216064
+	t0:	210048
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1081C
+	zero:	0
+	gp:	216064
+	t0:	210040
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1086C
+	zero:	0
+	gp:	216064
+	t0:	210032
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10888
+	zero:	0
+	gp:	216064
+	t0:	210024
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x108D8
+	zero:	0
+	gp:	216064
+	t0:	210016
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x108E0
+	zero:	0
+	gp:	216064
+	t0:	210016
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10910
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10960
+	zero:	0
+	gp:	216064
+	t0:	209992
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1097C
+	zero:	0
+	gp:	216064
+	t0:	209984
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x109CC
+	zero:	0
+	gp:	216064
+	t0:	209976
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x109D4
+	zero:	0
+	gp:	216064
+	t0:	209976
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10A04
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10A54
+	zero:	0
+	gp:	216064
+	t0:	209952
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10A5C
+	zero:	0
+	gp:	216064
+	t0:	209952
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10A8C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10ADC
+	zero:	0
+	gp:	216064
+	t0:	209928
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10AF8
+	zero:	0
+	gp:	216064
+	t0:	209920
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10B48
+	zero:	0
+	gp:	216064
+	t0:	209912
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10B64
+	zero:	0
+	gp:	216064
+	t0:	209904
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10BB4
+	zero:	0
+	gp:	216064
+	t0:	209896
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10BBC
+	zero:	0
+	gp:	216064
+	t0:	209896
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10BEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10C28
+	zero:	0
+	gp:	216064
+	t0:	209872
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10C30
+	zero:	0
+	gp:	216064
+	t0:	209872
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10CC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10CCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x10D18
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10D1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x10D8C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10DA8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10E1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10E44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10E80
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10EA8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10FC0
+	zero:	0
+	gp:	216064
+	t0:	209808
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x10FDC
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11064
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x111C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x111D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11264
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x112F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11308
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x113B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x113C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11468
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11478
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11520
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11530
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x115D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x115E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x116A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11748
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11758
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11768
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x117EC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x117FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x118A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11944
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x119D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11A64
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11A74
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11B10
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11B20
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11B88
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11BCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11BEC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11C0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11C2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11C3C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x11C40
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11C50
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11C98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11CD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11CF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11D04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x11D08
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11D18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11D74
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11D84
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x11D88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11DAC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11E14
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11EB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11EBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x11ED8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11EDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x11F08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11F44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11F6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11F7C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x11F88
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12060
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1208C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x120AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x120CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x120DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x120F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12144
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12164
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12174
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12190
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x121B8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x121D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12240
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12268
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1226C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x122AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x122C0
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+mul t1,t1,t2
+
+enop at: 0x1230C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12350
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x12354
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12398
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x1239C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x123E0
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x123E4
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12428
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x1242C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12470
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x12474
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x124A4
+	zero:	0
+	gp:	216064
+	t1:	2
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x124F4
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12538
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi t2,a0,0
+
+enop at: 0x1253C
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12574
+	zero:	0
+	gp:	216064
+	t1:	4
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x125B4
+	zero:	0
+	gp:	216064
+	t1:	6
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x125F8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12644
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12674
+	zero:	0
+	gp:	216064
+	t1:	8
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x126C4
+	zero:	0
+	gp:	216064
+	t2:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x126FC
+	zero:	0
+	gp:	216064
+	t1:	10
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12720
+	zero:	0
+	gp:	216064
+	t1:	11
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1273C
+	zero:	0
+	gp:	216064
+	t1:	12
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12758
+	zero:	0
+	gp:	216064
+	t1:	13
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12774
+	zero:	0
+	gp:	216064
+	t1:	14
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12798
+	zero:	0
+	gp:	216064
+	t1:	15
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1280C
+	zero:	0
+	gp:	216064
+	t1:	12
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12828
+	zero:	0
+	gp:	216064
+	t1:	15
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x12868
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	104
+	a0:	0
+	t3:	8
+addi a0,t0,0
+
+enop at: 0x128A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	t3:	8
+addi a0,t0,0
+
+enop at: 0x1293C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	t3:	8
+addi a0,t0,0
+
+enop at: 0x12A00
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12A28
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12A60
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12A88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12AAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x12AB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12AE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12B0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12BC0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12BE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12C08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x12C0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12C54
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12C70
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12CB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12D0C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12D28
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12D68
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12DC4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12DE0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12E90
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x12FFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x13000
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13040
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x13044
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1306C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13090
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x13094
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x130DC
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x130F8
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13118
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13140
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13150
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x13160
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x13170
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x13180
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x13190
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x131A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x131A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x132A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x132CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x132D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x132F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13328
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13330
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x133EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13434
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13450
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x134E8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13514
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13548
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1357C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13584
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x135E0
+	zero:	0
+	gp:	216064
+	t0:	209344
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x135F4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13610
+	zero:	0
+	gp:	216064
+	t0:	209336
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13628
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13630
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13678
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13688
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x136C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x136E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13710
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13730
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13758
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13790
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x137A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13838
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13864
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13898
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x138C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x138F8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13924
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13958
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1398C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13994
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x139C0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A1C
+	zero:	0
+	gp:	216064
+	t0:	209248
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A30
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A4C
+	zero:	0
+	gp:	216064
+	t0:	209240
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A60
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A7C
+	zero:	0
+	gp:	216064
+	t0:	209232
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13A90
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13AAC
+	zero:	0
+	gp:	216064
+	t0:	209224
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13AC0
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13AD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13AE0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13B08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13B10
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13B38
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13B40
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13BB4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13C0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13C34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13C50
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13C70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13C8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13CAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13D08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13D8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13DF8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13E48
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13E98
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13EBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13EC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13F0C
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13F2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13F34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x13F68
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13F88
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x13FE0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1400C
+	zero:	0
+	gp:	216064
+	t0:	208800
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14020
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14028
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x140C0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x140EC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14120
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1414C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14180
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x141AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x141E0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14214
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1421C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14248
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x142A4
+	zero:	0
+	gp:	216064
+	t0:	208776
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x142B8
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x142D4
+	zero:	0
+	gp:	216064
+	t0:	208768
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x142E8
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14304
+	zero:	0
+	gp:	216064
+	t0:	208760
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14318
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14334
+	zero:	0
+	gp:	216064
+	t0:	208752
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14348
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14360
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14368
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14390
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14398
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x143C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x143C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1443C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14494
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x144BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x144D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x144F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14514
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14534
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14590
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14614
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14680
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x146D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14720
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14744
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14794
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x147B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x147F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14810
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14868
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14894
+	zero:	0
+	gp:	216064
+	t0:	208328
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x148A8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x148B0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14948
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14974
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x149A8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x149D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14A08
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14A34
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14A68
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14A9C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14AD0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14AD8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14B04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14B6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14B94
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14BB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14BD0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14C08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14C30
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14C74
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14C7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x14C84
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x14CCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14CD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x14CE4
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	1
+	t2:	8
+	a0:	0
+addi t0,zero,1
+
+enop at: 0x14CF4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+addi t1,zero,1
+
+enop at: 0x14D68
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x14DAC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14DB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x14DF8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14E00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x14E60
+	zero:	0
+	gp:	216064
+	t0:	207992
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14E74
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14E90
+	zero:	0
+	gp:	216064
+	t0:	207984
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14EA4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14EC0
+	zero:	0
+	gp:	216064
+	t0:	207976
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14ED4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14EF0
+	zero:	0
+	gp:	216064
+	t0:	207968
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F04
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F20
+	zero:	0
+	gp:	216064
+	t0:	207960
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F34
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F54
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14F7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14F84
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14FAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x14FB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x14FF4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15088
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x150A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1512C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15148
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15198
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x151C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x151E0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x151F8
+	zero:	0
+	gp:	216064
+	t0:	-8192
+	t2:	8
+	a0:	0
+addi t0,t0,0
+
+enop at: 0x1520C
+	zero:	0
+	gp:	216064
+	t0:	207872
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15220
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15228
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x152C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15330
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x153C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x153F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15414
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15420
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1542C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15454
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15488
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15494
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x154B0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x154B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x154C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15514
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1552C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15540
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15550
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15584
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1558C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x155A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x155D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1560C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15624
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15650
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1567C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x156B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x156D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x156F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1570C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15724
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15730
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x15740
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15754
+	zero:	0
+	gp:	216064
+	t0:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15780
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x157DC
+	zero:	0
+	gp:	216064
+	t0:	207832
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x157F0
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15808
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15810
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x15838
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15840
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x15888
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15900
+	zero:	0
+	gp:	216064
+	t0:	207824
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1594C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1596C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x159C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x159F0
+	zero:	0
+	gp:	216064
+	t0:	207728
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15A04
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15A1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15A60
+	zero:	0
+	gp:	216064
+	t0:	207720
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15A74
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15A7C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15AA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15AC0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15B58
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15B84
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15BB8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15BE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15C18
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15C4C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15C54
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15C80
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15CAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15CEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15D04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15D28
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15D4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15D70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15DCC
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15E60
+	zero:	0
+	gp:	216064
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15EB4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15EBC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F24
+	zero:	0
+	gp:	216064
+	t0:	207608
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F38
+	zero:	0
+	gp:	216064
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F54
+	zero:	0
+	gp:	216064
+	t0:	207600
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F68
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F84
+	zero:	0
+	gp:	216064
+	t0:	207592
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15F98
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x15FAC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x15FD0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x15FFC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16088
+	zero:	0
+	gp:	216064
+	t0:	207584
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1609C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x160A4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16108
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1611C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16138
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x162B8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1639C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x163C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x163F4
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x163F8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x163FC
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+mul t1,t1,t2
+
+enop at: 0x164DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x16578
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16580
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x16584
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,zero,t0
+
+enop at: 0x166C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x166D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x166D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x166D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x16724
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x167F8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x168C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x168DC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16980
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x169F8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16A20
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16A54
+	zero:	0
+	gp:	216064
+	t0:	207488
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16A90
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16AB8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16AD4
+	zero:	0
+	gp:	216064
+	t0:	207472
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16B10
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16B30
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16B60
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16BA8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16BDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16C10
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16C20
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16C68
+	zero:	0
+	gp:	216064
+	t0:	207432
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16C84
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16CCC
+	zero:	0
+	gp:	216064
+	t0:	207424
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16CE8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16D4C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16D84
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16DCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x16E24
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x16F0C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x16F98
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17014
+	zero:	0
+	gp:	216064
+	t0:	207416
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1704C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17074
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17098
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x170E0
+	zero:	0
+	gp:	216064
+	t0:	207392
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x170FC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17118
+	zero:	0
+	gp:	216064
+	t0:	207384
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17134
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1717C
+	zero:	0
+	gp:	216064
+	t0:	207376
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17198
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x171D0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17244
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1727C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x17364
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x173A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x173CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x173F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17404
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1744C
+	zero:	0
+	gp:	216064
+	t0:	207352
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17468
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17484
+	zero:	0
+	gp:	216064
+	t0:	207344
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x174A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x174BC
+	zero:	0
+	gp:	216064
+	t0:	207336
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x174D8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17510
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x175D8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x176B0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17778
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x17850
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17918
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x17A28
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17A60
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x17AF0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x17BC4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17C34
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17C6C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x17CFC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x17DD0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17E08
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x17EE4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi t2,zero,8
+
+enop at: 0x17FCC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18000
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1803C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1804C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x180D4
+	zero:	0
+	gp:	216064
+	t0:	207312
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x180F0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18108
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18138
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1815C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x181AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x181BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1820C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1821C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18238
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18258
+	zero:	0
+	gp:	216064
+	t0:	207272
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1829C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x182CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x182EC
+	zero:	0
+	gp:	216064
+	t0:	207264
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18308
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18330
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x183B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x183E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18404
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x18420
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x184A4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x184C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x184F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x184FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18544
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18564
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1859C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x18680
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x186E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x186F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18720
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1874C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x187A0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x187D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18810
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18820
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x188A8
+	zero:	0
+	gp:	216064
+	t0:	207224
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x188C4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x188DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1890C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1892C
+	zero:	0
+	gp:	216064
+	t0:	207216
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18948
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18968
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x189B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x189C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18A18
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18A28
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18A48
+	zero:	0
+	gp:	216064
+	t0:	207176
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18A8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18ABC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18AE8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18B04
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18B88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18BB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18BE8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18BF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18C7C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18C98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18CC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18CD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18D00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18D8C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x18E58
+	zero:	0
+	gp:	216064
+	a0:	0
+	t3:	8
+addi t3,zero,8
+
+enop at: 0x18EA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18EB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18EDC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18F08
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x18F60
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x18FE8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19030
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19064
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1908C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x190C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x190D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19128
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19170
+	zero:	0
+	gp:	216064
+	t0:	207128
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1918C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x191A8
+	zero:	0
+	gp:	216064
+	t0:	207120
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x191C4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x191F4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19250
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19290
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x192C4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19400
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19434
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19470
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19480
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x194D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19518
+	zero:	0
+	gp:	216064
+	t0:	207056
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19550
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1956C
+	zero:	0
+	gp:	216064
+	t0:	207048
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1959C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x195D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19608
+	zero:	0
+	gp:	216064
+	t0:	207032
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19624
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1965C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x197A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x197AC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x198D4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x1994C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19980
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x199E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x199F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19A3C
+	zero:	0
+	gp:	216064
+	t0:	207008
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19A58
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19A74
+	zero:	0
+	gp:	216064
+	t0:	207000
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19AAC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19AC8
+	zero:	0
+	gp:	216064
+	t0:	206992
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19AF8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19B30
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19B88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19BA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19C0C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x19CEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19D08
+	zero:	0
+	gp:	216064
+	t0:	206976
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19D64
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19E20
+	zero:	0
+	gp:	216064
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x19EC8
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19EE4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19F28
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19F44
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19F78
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x19FA4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x19FC0
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A004
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1A028
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1A15C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A1B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A1D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A1EC
+	zero:	0
+	gp:	216064
+	t0:	206832
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A214
+	zero:	0
+	gp:	216064
+	t1:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A230
+	zero:	0
+	gp:	216064
+	t0:	206824
+	t1:	2
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A250
+	zero:	0
+	gp:	216064
+	t0:	206816
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A2A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A2C8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A324
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A358
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A38C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A3D4
+	zero:	0
+	gp:	216064
+	t0:	206792
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A41C
+	zero:	0
+	gp:	216064
+	t0:	206784
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A464
+	zero:	0
+	gp:	216064
+	t0:	206776
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A4AC
+	zero:	0
+	gp:	216064
+	t0:	206768
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A4F4
+	zero:	0
+	gp:	216064
+	t0:	206760
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A53C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A570
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A5A4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A5D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A60C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A640
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A67C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A6EC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A710
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A744
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1A748
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A790
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A7AC
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A7D4
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A7DC
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A83C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A850
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A858
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A860
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A8CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A8E4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A8EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1A92C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1A9D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ABA4
+	zero:	0
+	gp:	216064
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ABAC
+	zero:	0
+	gp:	216064
+	t1:	211968
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ABB4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ABF8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AC00
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AC08
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ACB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ACEC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AD44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AD60
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1AD7C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ADD8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AE08
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AE4C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1AE68
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AEC4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AF0C
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AF58
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AFA4
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1AFF0
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B03C
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B088
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B0C8
+	zero:	0
+	gp:	216064
+	t0:	206440
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B0DC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B128
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B160
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B1B4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B1D4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B1F0
+	zero:	0
+	gp:	216064
+	t0:	206360
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B210
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B238
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B248
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B250
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B26C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B294
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B2BC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B320
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B340
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B348
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B3A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B410
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B420
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1B424
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B478
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B488
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1B48C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B4E4
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B530
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B540
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1B574
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B5D8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B63C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B6A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B8E0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B944
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B988
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1B9EC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BA30
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BAC8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BB18
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BB34
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BB88
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BB94
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BBC8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BBFC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BC30
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BC64
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BC98
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BCCC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BD00
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BD34
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BD68
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BD9C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BDD0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BE04
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BE38
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BE6C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BEC8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BED0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF04
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF0C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF40
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF48
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF7C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BF84
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BFB8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BFC0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BFF4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1BFFC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C030
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C038
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C06C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C074
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C0A8
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C0B0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C0E4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C0EC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C120
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C128
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C15C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C164
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C198
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C1A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C1D4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C1DC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C238
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C29C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C2A8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C2DC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C30C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C314
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C31C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C350
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C36C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C3A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C3BC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C3F0
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C3F8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C400
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C434
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C43C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C444
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C478
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C480
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C488
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C4BC
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C4C4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C4CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C500
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C508
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C510
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C544
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C54C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C554
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C588
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C590
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C598
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C5CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C5D4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C5DC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C610
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C618
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C620
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C654
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C65C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C664
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C698
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C6A4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C754
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C798
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C7DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1C810
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C818
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C820
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C828
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C830
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1C888
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1CA88
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CAA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CAC4
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CAE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CB18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x1CB90
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CBF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CC00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1CC04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CC14
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CC1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CC68
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x1CD1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CD2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CD70
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CDC8
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1CDE4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CE44
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CE9C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CEB0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CF08
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CF38
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1CF98
+	zero:	0
+	gp:	216064
+	a0:	0
+	t3:	8
+addi t3,zero,8
+
+enop at: 0x1CFC8
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x1D034
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D08C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D0BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D11C
+	zero:	0
+	gp:	216064
+	a0:	0
+	t3:	8
+addi t3,zero,8
+
+enop at: 0x1D14C
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x1D1B8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D1E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D248
+	zero:	0
+	gp:	216064
+	a0:	0
+	t3:	8
+addi t3,zero,8
+
+enop at: 0x1D278
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+	t3:	8
+addi a0,zero,0
+
+enop at: 0x1D2E4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D358
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D3A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D3C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D3E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D408
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D418
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D420
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1D424
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D42C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,t1,t0
+
+enop at: 0x1D438
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D448
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x1D484
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D4B8
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D4FC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D540
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D584
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D5C8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D5D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D62C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D664
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D698
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D6B8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D6FC
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D778
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D788
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D7F4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D804
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D864
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D874
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D894
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D8C8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D914
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D948
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D9CC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1D9F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DA24
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DA34
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DA58
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DA8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DA9C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DABC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DAE8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DB08
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DB30
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DB50
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DB70
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DBDC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DC08
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DC50
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x1DCA8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DD00
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi t1,zero,0
+
+enop at: 0x1DD24
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DD44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DD54
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DD94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DDB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DDC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DDE4
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DE18
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DE90
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DEF0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DF58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1DFA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E008
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E020
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E050
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E060
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E064
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E0D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E0F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E134
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E17C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1E198
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E1F0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E200
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E244
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E254
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E298
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E2A8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E2FC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E344
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E3A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E3E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E3F4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1E430
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E434
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1E438
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+mul t1,t1,t2
+
+enop at: 0x1E494
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E4D0
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E4F8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E550
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E580
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E5A8
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E600
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E640
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E660
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E694
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E72C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E76C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E77C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E780
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E7C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E7D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E7D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E7E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E840
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E870
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E880
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E884
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E8A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E8D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E8E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E8E8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E8F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E8FC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1E918
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E940
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E950
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1E954
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1E99C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1E9C0
+	zero:	0
+	gp:	216064
+	t1:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA08
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1EA1C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA5C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1EA70
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EA80
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EAB0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EAC0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1EAC4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EAD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EB04
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EB14
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x1EB18
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EB28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EB60
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EB9C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EBD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EC20
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EC44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EC60
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EC98
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ECD4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ED1C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ED40
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1ED5C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EE90
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1EECC
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F02C
+	zero:	0
+	gp:	216064
+	t1:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F09C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F184
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F2DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F4BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F5D8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F614
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F6D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F6F4
+	zero:	0
+	gp:	216064
+	t0:	205568
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F710
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F82C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F84C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F854
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x1F884
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F8A8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F8C0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F8E8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F940
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F96C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F97C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F9A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F9B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1F9D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FA10
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FA48
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FA7C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FAEC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FB30
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FB78
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FBA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FC0C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FC18
+	zero:	0
+	gp:	216064
+	t1:	1
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1FCAC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FCB4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x1FD1C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1FD84
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FDC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FE40
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FE88
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FED0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FED8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t2:	8
+	a0:	0
+addi t2,zero,8
+
+enop at: 0x1FF40
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FF58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FFA4
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x1FFDC
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20014
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2004C
+	zero:	0
+	gp:	216064
+	t2:	8
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20084
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20100
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x201A0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x201B0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x201B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x201C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2026C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20274
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2029C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x202D0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x202F8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20520
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20554
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2055C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20584
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x205E4
+	zero:	0
+	gp:	216064
+	t0:	205408
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20620
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2063C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2066C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2069C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x206D0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x206D4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x20744
+	zero:	0
+	gp:	216064
+	t0:	205392
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20778
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20794
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x207C8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x207CC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x2084C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x208CC
+	zero:	0
+	gp:	216064
+	t2:	10
+	a0:	0
+addi t2,zero,10
+
+enop at: 0x209DC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20A40
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20A44
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x20B2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20B48
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20B78
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20BA8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C04
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C14
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C2C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C5C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20C64
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20CC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20CCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x20D34
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20D50
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20D70
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20D7C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x20D94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20DBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20DCC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20DD4
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi t1,zero,1
+
+enop at: 0x20E28
+	zero:	0
+	gp:	216064
+	t0:	205288
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20E3C
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20E54
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20E58
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x20EA4
+	zero:	0
+	gp:	216064
+	t0:	205272
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20EBC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x20EC0
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,t0,0
+
+enop at: 0x21180
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2119C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x211B4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x211D8
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21258
+	zero:	0
+	gp:	216064
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2127C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21284
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21298
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x2129C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x212C0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21314
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2137C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x213B0
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	211968
+	a0:	0
+addi t0,zero,1
+
+enop at: 0x213F4
+	zero:	0
+	gp:	216064
+	t0:	1
+	t1:	211968
+	a0:	0
+addi t0,zero,1
+
+enop at: 0x21408
+	zero:	0
+	gp:	216064
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2149C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x214E4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2152C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21574
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x215BC
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21604
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	1
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21638
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21640
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x21650
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x21660
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x21670
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x216C4
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x216F8
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21708
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2172C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21874
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x21878
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x2188C
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi t0,a0,0
+
+enop at: 0x21890
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	211968
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21898
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,t1,t0
+
+enop at: 0x219A0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A14
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A1C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A30
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sltu t0,t1,t0
+
+enop at: 0x21A70
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A7C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A8C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21A94
+	zero:	0
+	gp:	216064
+	t0:	0
+	t1:	0
+	a0:	0
+sub t0,t1,t0
+
+enop at: 0x21AFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21B0C
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21B44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21B4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi t0,zero,0
+
+enop at: 0x21B5C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21B94
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21BAC
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21BE4
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21BF0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21C28
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21C4C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21C5C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21C94
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21CB8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21CC8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21D00
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21D24
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21D34
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21D6C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21D90
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21DA0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21DD8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21DFC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21E0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21E44
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21E78
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x21EEC
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi t0,a0,0
+
+enop at: 0x21EF0
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x21EF8
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi t0,zero,0
+
+enop at: 0x21F08
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi t0,a0,0
+
+enop at: 0x21F0C
+	zero:	0
+	gp:	216064
+	t0:	0
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x21FB0
+	zero:	0
+	gp:	216064
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x21FB8
+	zero:	0
+	gp:	216064
+	a0:	0
+	a7:	214
+addi a0,zero,0
+
+enop at: 0x21FC0
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+
+enop at: 0x22008
+	zero:	0
+	gp:	216064
+	a0:	0
+addi a0,zero,0
+

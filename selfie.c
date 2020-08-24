@@ -2475,6 +2475,17 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4) {
   output_cursor = 0;
 }
 
+void print_current_state() {
+  uint64_t i;
+  i = 0;
+  printf1("%x\n", (char*) (pc - get_code_entry(current_context)));
+  while (i < NUMBEROFREGISTERS) {
+    if (i != REG_A6)
+      printf2("\t%s\t%x\n", get_register_name(i), (char*) *(registers + i));
+    i = i + 1;
+  }
+}
+
 uint64_t round_up(uint64_t n, uint64_t m) {
   if (n % m == 0)
     return n;
@@ -7989,6 +8000,7 @@ void run_until_exception() {
     fetch();
     decode();
     execute();
+    print_current_state(); // TODO DEBUGGING
 
     interrupt();
   }
