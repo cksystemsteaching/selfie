@@ -351,17 +351,21 @@ void implement_syscall_write(struct context* context) {
 }
 
 void implement_syscall_openat(struct context* context) {
+  char path[PATH_MAX_LEN];
+
   int dirfd = context->saved_regs.a0;
-  UNUSED_VAR(dirfd);
-  // TODO: Unsafe directly used userspace string
-  // Use strncpy instead
-  // TODO: Check if path is a valid vaddr (!nullptr)
-  const char* path = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
+  uint64_t path_vaddr = context->saved_regs.a1;
   int flags = context->saved_regs.a2;
   uint64_t mode = context->saved_regs.a3;
+  UNUSED_VAR(dirfd);
   UNUSED_VAR(mode);
-  int fd = kopen(path, flags, context->open_files, NUM_FDS);
-  context->saved_regs.a0 = fd;
+
+  if (kstrlcpy_from_vspace(path, path_vaddr, PATH_MAX_LEN, context->pt)) {
+    int fd = kopen(path, flags, context->open_files, NUM_FDS);
+    context->saved_regs.a0 = fd;
+  } else {
+    context->saved_regs.a0 = -1;
+  }
 }
 
 void implement_syscall_brk(struct context* context) {
