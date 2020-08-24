@@ -280,7 +280,7 @@ void init_library() {
   uint64_t i;
 
   // Save original program break (used by garbage collector library)
-  gc_library_program_break = (uint64_t)smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
+  gc_library_program_break = (uint64_t) smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
 
   SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
 
@@ -2663,7 +2663,7 @@ uint64_t* smalloc_implementation(uint64_t size, uint64_t allocator) {
   // if no memory can be allocated
   uint64_t* memory;
 
-  memory = (uint64_t*)0; // to avoid gcc warning
+  memory = (uint64_t*) 0; // to avoid gcc warning
 
   if (allocator == ALLOCATORSYSTEM)
     memory = malloc(size);
@@ -7053,37 +7053,37 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
-  if (get_metadata_prev(entry) != (uint64_t*)0)
+  if (get_metadata_prev(entry) != (uint64_t*) 0)
     set_metadata_next(get_metadata_prev(entry), get_metadata_next(entry));
 
-  if (get_metadata_next(entry) != (uint64_t*)0)
+  if (get_metadata_next(entry) != (uint64_t*) 0)
     set_metadata_prev(get_metadata_next(entry), get_metadata_prev(entry));
 
-  if (new_list_head == (uint64_t*)0) {
-    set_metadata_prev(entry, (uint64_t*)0);
-    set_metadata_next(entry, (uint64_t*)0);
+  if (new_list_head == (uint64_t*) 0) {
+    set_metadata_prev(entry, (uint64_t*) 0);
+    set_metadata_next(entry, (uint64_t*) 0);
   } else {
     set_metadata_prev(new_list_head, entry);
     set_metadata_next(entry, new_list_head);
-    set_metadata_prev(entry, (uint64_t*)0);
+    set_metadata_prev(entry, (uint64_t*) 0);
   }
 }
 
 uint64_t* free_list_extract(uint64_t* free_list_head_pointer, uint64_t* used_list_head_pointer, uint64_t size) {
   uint64_t* node;
 
-  if (free_list_head_pointer == (uint64_t*)0)
-    return (uint64_t*)0;
+  if (free_list_head_pointer == (uint64_t*) 0)
+    return (uint64_t*) 0;
 
-  node = (uint64_t*)*free_list_head_pointer;
-  while (node != (uint64_t*)0) {
+  node = (uint64_t*) *free_list_head_pointer;
+  while (node != (uint64_t*) 0) {
     if (get_metadata_size(node) == size) {
-      if (node == (uint64_t*)*free_list_head_pointer)
-        *free_list_head_pointer = (uint64_t)get_metadata_next(node);
+      if (node == (uint64_t*) *free_list_head_pointer)
+        *free_list_head_pointer = (uint64_t) get_metadata_next(node);
 
-      relink_metadata(node, (uint64_t*)*used_list_head_pointer);
+      relink_metadata(node, (uint64_t*) *used_list_head_pointer);
 
-      *used_list_head_pointer = (uint64_t)node;
+      *used_list_head_pointer = (uint64_t) node;
 
       return node;
     }
@@ -7091,7 +7091,7 @@ uint64_t* free_list_extract(uint64_t* free_list_head_pointer, uint64_t* used_lis
     node = get_metadata_next(node);
   }
 
-  return (uint64_t*)0;
+  return (uint64_t*) 0;
 }
 
 uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address) {
@@ -7099,8 +7099,8 @@ uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address) {
   uint64_t metadata_pointer_address;
 
   node = used_list_head;
-  while (node != (uint64_t*)0) {
-    metadata_pointer_address = (uint64_t)get_metadata_memory(node);
+  while (node != (uint64_t*) 0) {
+    metadata_pointer_address = (uint64_t) get_metadata_memory(node);
     if (address >= metadata_pointer_address)
       if (address < (metadata_pointer_address + get_metadata_size(node)))
         return node;
@@ -7108,7 +7108,7 @@ uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address) {
     node = get_metadata_next(node);
   }
 
-  return (uint64_t*)0;
+  return (uint64_t*) 0;
 }
 
 uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_start, uint64_t heap_end) {
@@ -7127,7 +7127,7 @@ uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_
     return 0;
 
   pointer_of_address = get_pointer_of_address(used_list_head, address);
-  if (pointer_of_address == (uint64_t*)0)
+  if (pointer_of_address == (uint64_t*) 0)
     return 0;
 
   return 1;
@@ -7137,7 +7137,7 @@ void prepare_mark(uint64_t* used_list_head) {
   uint64_t* node;
 
   node = used_list_head;
-  while (node != (uint64_t*)0) {
+  while (node != (uint64_t*) 0) {
     set_metadata_markbit(node, 0);
 
     node = get_metadata_next(node);
@@ -7152,7 +7152,7 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
 }
 
 uint64_t gc_load_memory(uint64_t address, uint64_t* pt) {
-  if (pt == (uint64_t*)0)
+  if (pt == (uint64_t*) 0)
     return *((uint64_t*)address);
   else
     return load_virtual_memory(pt, address);
@@ -7213,11 +7213,11 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t* ret;
 
   // Bootstrap non_gc_alloc_memory to machine's malloc when using syscall
-  if (context != (uint64_t*)0)
+  if (context != (uint64_t*) 0)
     return zalloc(size);
   else {
     if (size == 0)
-      return (uint64_t*)0;
+      return (uint64_t*) 0;
 
     size = round_up(size, SIZEOFUINT64);
 
@@ -7245,7 +7245,7 @@ uint64_t* get_free_list_head_gc(uint64_t* context) {
 
 uint64_t* get_pt_gc(uint64_t* context) {
   if (gc_is_library_or_syscall(context))
-    return (uint64_t*)0;
+    return (uint64_t*) 0;
   else
     return get_pt(context);
 }
@@ -7356,8 +7356,8 @@ void mark(uint64_t* context) {
   ds_start = get_ds_start(context);
   ds_end = get_ds_end(context);
 
-  if (used_list_head != (uint64_t*)0)
-    used_list_head = (uint64_t*)*(used_list_head);
+  if (used_list_head != (uint64_t*) 0)
+    used_list_head = (uint64_t*) *(used_list_head);
   else
     return; // no used memory -> skip collection
 
@@ -7391,7 +7391,7 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   }
 
   // 2. Move entry from used to free list
-  relink_metadata(metadata_entry, (uint64_t*)*free_list_head_pointer);
+  relink_metadata(metadata_entry, (uint64_t*) *free_list_head_pointer);
 
   *free_list_head_pointer = (uint64_t)metadata_entry;
 }
@@ -7400,17 +7400,17 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
   uint64_t* node;
   uint64_t* next_node;
 
-  if (used_list_head_pointer == (uint64_t*)0)
+  if (used_list_head_pointer == (uint64_t*) 0)
     return;
 
-  node = (uint64_t*)*used_list_head_pointer;
-  while (node != (uint64_t*)0) {
+  node = (uint64_t*) *used_list_head_pointer;
+  while (node != (uint64_t*) 0) {
     next_node = get_next_entry(node);
 
     if (get_metadata_markbit(node) == 0) {
       // Check if current node is head of list
-      if (node == (uint64_t*)*used_list_head_pointer)
-        *used_list_head_pointer = (uint64_t)get_metadata_next(node);
+      if (node == (uint64_t*) *used_list_head_pointer)
+        *used_list_head_pointer = (uint64_t) get_metadata_next(node);
 
       free_and_zero_object(node, free_list_head_pointer, context);
     }
@@ -7462,7 +7462,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   else
     ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
 
-  if (ret != (uint64_t*)0)
+  if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
   // Try collecting and recheck
@@ -7474,7 +7474,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   else
     ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
 
-  if (ret != (uint64_t*)0)
+  if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
   // No reusable memory -> allocate new memory
@@ -7488,7 +7488,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   set_metadata_next(metadata, (uint64_t*)*used_list_head_ptr);
   *used_list_head_ptr = (uint64_t)metadata;
 
-  set_metadata_prev(metadata, (uint64_t*)0);
+  set_metadata_prev(metadata, (uint64_t*) 0);
   set_metadata_size(metadata, size);
   set_metadata_memory(metadata, ret);
   set_metadata_markbit(metadata, 0);
@@ -8929,8 +8929,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_virtual_context(context, vctxt);
 
   // Garbage collector
-  set_used_list_head(context, (uint64_t*)0);
-  set_free_list_head(context, (uint64_t*)0);
+  set_used_list_head(context, (uint64_t*) 0);
+  set_free_list_head(context, (uint64_t*) 0);
   set_heap_start(context, 0);
   set_heap_end(context, 0);
   set_gc_enabled(context, 0);
