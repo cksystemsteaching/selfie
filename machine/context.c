@@ -110,7 +110,7 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   uint64_t argv_strings[MAX_ARGV_LENGTH];
 
   for (uint64_t i = 0; i < argc; i++) {
-    uint64_t string_size = round_up(strlen(argv[i]) + 1, 8); // 64bit-aligned
+    uint64_t string_size = round_up(strlen(argv[i]) + 1, sizeof(uint64_t)); // 64bit-aligned
 
     // Reserve space on the stack
     context->saved_regs.sp -= string_size;
@@ -121,15 +121,15 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   }
 
   // At the end of argv, put nullptr
-  context->saved_regs.sp -= 8;
+  context->saved_regs.sp -= sizeof(uint64_t);
   *((uint64_t*)vaddr_to_paddr(context->pt, context->saved_regs.sp)) = 0;
 
   // copy argv pointer array to stack
-  context->saved_regs.sp -= 8*argc;
-  memcpy((void*)vaddr_to_paddr(context->pt, context->saved_regs.sp), argv_strings, 8*argc);
+  context->saved_regs.sp -= sizeof(uint64_t) * argc;
+  memcpy((void*)vaddr_to_paddr(context->pt, context->saved_regs.sp), argv_strings, sizeof(uint64_t) * argc);
 
   // Copy argc to stack
-  context->saved_regs.sp -= 8;
+  context->saved_regs.sp -= sizeof(uint64_t);
   *((uint64_t*)vaddr_to_paddr(context->pt, context->saved_regs.sp)) = argc;
 }
 
