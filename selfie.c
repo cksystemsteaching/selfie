@@ -1160,7 +1160,7 @@ void set_metadata_markbit(uint64_t* entry, uint64_t markbit)  { *(entry + 4) = m
 
 void relink_metadata(uint64_t* entry, uint64_t* new_list_head);
 
-uint64_t* free_list_extract(uint64_t* free_list_head_pointer, uint64_t* used_list_head_pointer, uint64_t size);
+uint64_t* free_list_extract(uint64_t* context, uint64_t size);
 
 uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address);
 
@@ -7073,8 +7073,18 @@ void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
   }
 }
 
-uint64_t* free_list_extract(uint64_t* free_list_head_pointer, uint64_t* used_list_head_pointer, uint64_t size) {
+uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
   uint64_t* node;
+  uint64_t* free_list_head_pointer;
+  uint64_t* used_list_head_pointer;
+
+  if (gc_is_library_or_syscall(context)) {
+    free_list_head_pointer = gc_free_list;
+    used_list_head_pointer = gc_used_list;
+  } else {
+    free_list_head_pointer = get_free_list_head(context);
+    used_list_head_pointer = get_used_list_head(context);
+  }
 
   if (free_list_head_pointer == (uint64_t*) 0)
     return (uint64_t*) 0;
@@ -7428,6 +7438,7 @@ void gc_init(uint64_t* context) {
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
   
+  // Difference between syscall and library: library uses two heaps
   if (gc_is_library_or_syscall(context)) {
     non_gc_heap_start = (uint64_t) smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
     zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
@@ -7457,11 +7468,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     gc_init(context);
 
   // Check if memory is in free list
-  if (gc_is_library_or_syscall(context))
-    ret = free_list_extract(gc_free_list, gc_used_list, size);
-  else
-    ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
-
+  ret = free_list_extract(context, size);
+  
   if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
@@ -7469,11 +7477,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   gc_collect(context);
 
   // Check if memory is in free list
-  if (gc_is_library_or_syscall(context))
-    ret = free_list_extract(gc_free_list, gc_used_list, size);
-  else
-    ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
-
+  ret = free_list_extract(context, size);
+  
   if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
