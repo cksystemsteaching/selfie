@@ -1014,9 +1014,7 @@ void     implement_openat(uint64_t* context);
 
 void emit_malloc();
 void implement_brk(uint64_t* context);
-
-void emit_gc_malloc();
-void implement_gc_malloc(uint64_t* context);
+void implement_gc_brk(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1030,11 +1028,6 @@ uint64_t SYSCALL_READ   = 63;
 uint64_t SYSCALL_WRITE  = 64;
 uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
-
-// garbage collector syscalls
-uint64_t SYSCALL_MALLOC  = 249;
-uint64_t SYSCALL_FREE    = 250;
-uint64_t SYSCALL_COLLECT = 251;
 
 /* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
    is passed as first argument of the openat system call
@@ -1220,8 +1213,7 @@ uint64_t NONGCHEAPSIZE = 65536000; // 1000 * 2^16 bytes of non-garbage collected
 
 // Garbage Collector modes
 uint64_t GCDISABLED = 0;
-uint64_t GCSYSCALL  = 1;
-uint64_t GCLIBRARY  = 2;
+uint64_t GCLIBRARY  = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2660,7 +2652,7 @@ uint64_t round_up(uint64_t n, uint64_t m) {
 }
 
 uint64_t* smalloc(uint64_t size) {
-  if (use_garbage_collector == GCLIBRARY)
+  if (use_garbage_collector)
     return smalloc_implementation(size, ALLOCATORGC);
   else
     return smalloc_implementation(size, ALLOCATORSYSTEM);
@@ -5089,14 +5081,12 @@ void emit_bootstrapping() {
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
     emit_ecall();
 
-    if (use_garbage_collector != GCSYSCALL) {
-      // look up global variable _bump for storing malloc's bump pointer
-      // copy "_bump" string into zeroed double word to obtain unique hash
-      entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
+    // look up global variable _bump for storing malloc's bump pointer
+    // copy "_bump" string into zeroed double word to obtain unique hash
+    entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
-      // store aligned program break in _bump
-      emit_sd(get_scope(entry), get_address(entry), REG_A0);
-    }
+    // store aligned program break in _bump
+    emit_sd(get_scope(entry), get_address(entry), REG_A0);
 
     // reset return register to initial return value
     emit_addi(REG_A0, REG_ZR, 0);
@@ -5233,10 +5223,7 @@ void selfie_compile() {
   emit_write();
   emit_open();
 
-  if (use_garbage_collector == GCSYSCALL)
-    emit_gc_malloc();
-  else
-    emit_malloc();
+  emit_malloc();
 
   emit_fetch_stack_pointer();
   entry = emit_fetch_data_segment_size();
@@ -6824,25 +6811,7 @@ void implement_brk(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
-void emit_gc_malloc() {
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
-
-  // on boot levels higher than zero, zalloc falls back to malloc
-  // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
-
-  emit_ld(REG_A0, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
-
-  emit_addi(REG_A7, REG_ZR, SYSCALL_MALLOC);
-
-  emit_ecall();
-
-  // jump back to caller, return value is in REG_A0
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void implement_gc_malloc(uint64_t* context) {
+void implement_gc_brk(uint64_t* context) {
   uint64_t size;
 
   if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
@@ -9484,7 +9453,7 @@ uint64_t handle_system_call(uint64_t* context) {
 
   if (a7 == SYSCALL_BRK) {
     if (garbage_collector)
-      implement_gc_malloc(context);
+      implement_gc_brk(context);
     else
       implement_brk(context);
   } else if (a7 == SYSCALL_READ)
@@ -9493,8 +9462,6 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_write(context);
   else if (a7 == SYSCALL_OPENAT)
     implement_openat(context);
-  else if (a7 == SYSCALL_MALLOC)
-    implement_gc_malloc(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
@@ -9908,7 +9875,7 @@ void set_argument(char* argv) {
 }
 
 void print_synopsis(char* extras) {
-  printf2("synopsis: %s { ( -c | -gc ) { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
+  printf2("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 uint64_t selfie() {
@@ -9924,11 +9891,7 @@ uint64_t selfie() {
 
       if (string_compare(argument, "-c"))
         selfie_compile();
-      else if (string_compare(argument, "-gc")) {
-        use_garbage_collector = GCSYSCALL;
-
-        selfie_compile();
-      } else if (number_of_remaining_arguments() == 0)
+      else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
       else if (string_compare(argument, "-o"))
@@ -10002,7 +9965,7 @@ int main(int argc, char** argv) {
   exit_code = selfie();
 
   if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" [ ( -m | -d | -r | -y ) 0-4096 ... ]");
+    print_synopsis(" [ ( -m | -d | -r | -y | -mgc ) 0-4096 ... ]");
 
   if (exit_code == EXITCODE_NOARGUMENTS)
     exit_code = EXITCODE_NOERROR;
