@@ -4,6 +4,7 @@
 #include "context.h"
 #include "tinycstd.h"
 #include "trap.h"
+#include "numeric-utils.h"
 
 // Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
 // invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
@@ -316,6 +317,41 @@ void kinit_page_pool() {
 
   // Reset the used pages counter
   used_pages = 0;
+}
+
+uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, struct pt_entry* table) {
+  // Copy the string word-wise, similar to how selfie does in down_load_string.
+  // It would be possible and more efficient to check page boundaries and load the string
+  // page-wise, but the implementation is not as straight-forward
+
+  uint64_t read = 0;
+
+  while (read < (n-1)) {
+    // Read enough bytes to align to the next word
+    // However, do not read more than requested
+    // E.g. src_vaddr = 8:  8 - ( 8 % 8) = 8 - 0 = 8 ->  8+8 % 8 = 0
+    //      src_vaddr = 10: 8 - (10 % 8) = 8 - 2 = 6 -> 10+6 % 8 = 16 % 8 = 0
+    uint64_t readSize = 8 - (src_vaddr % 8);
+    readSize = MIN(readSize, n - 1 - read);
+    uint64_t src_kaddr = vaddr_to_paddr(table, src_vaddr);
+
+    // Perform the actual copy (1..8 bytes)
+    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, readSize+1); // +1 due to \0
+    read += copied;
+
+    // Advancing the dest and src pointers by copied
+    // Mix-up of integer and pointer arithmentics is irrelevant here because
+    // sizeof(char) == 1
+    dest_kaddr += copied;
+    src_vaddr += copied;
+
+    // If we copied less than anticipated, we probably hit a string terminator
+    if (copied != readSize)
+      break;
+  }
+  *dest_kaddr = '\0';
+
+  return read;
 }
 
 // kfree_page_table is intentionally not a recursive function

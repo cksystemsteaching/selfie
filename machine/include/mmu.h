@@ -102,6 +102,7 @@ void kswitch_active_pt(struct pt_entry* table, uint16_t asid);
 
 void kinit_page_pool();
 
+uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, struct pt_entry* table);
 
 void kfree_page_table(struct pt_entry* root);
 
