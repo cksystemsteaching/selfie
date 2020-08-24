@@ -34,8 +34,8 @@ void kernel_environ_init() {
   uint64_t kern_start = paddr_to_ppn(&_payload_start);
   uint64_t kern_end = paddr_to_ppn(&_payload_end);
   uint64_t stack_end_ppn = paddr_to_ppn(initial_stack_start());
-  uint64_t trapoline_ppn = paddr_to_ppn((void*)TRAMPOLINE_VADDR);
-  setup_kernel_context(kern_start, kern_end, stack_end_ppn, stack_end_ppn, trapoline_ppn,trapoline_ppn);
+  uint64_t trampoline_ppn = paddr_to_ppn((void*)TRAMPOLINE_VADDR);
+  setup_kernel_context(kern_start, kern_end, stack_end_ppn, stack_end_ppn, trampoline_ppn, trampoline_ppn);
   setup_kernel_pt();
 
   puts("Setting up trap handlers...");
