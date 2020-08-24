@@ -1018,12 +1018,6 @@ void implement_brk(uint64_t* context);
 void emit_gc_malloc();
 void implement_gc_malloc(uint64_t* context);
 
-void emit_gc_free();
-void implement_gc_free(uint64_t* context);
-
-void emit_gc_collect();
-void implement_gc_collect(uint64_t* context);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -1208,25 +1202,16 @@ void mark(uint64_t* context);
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context);
 void sweep(uint64_t* used_list_head, uint64_t* free_list_head, uint64_t* pt);
 
+void gc_init(uint64_t* context); 
+void gc_collect(uint64_t* context);
+
 // Shared implementation of library and syscall variant (context == 0 -> library)
-void      gc_init_implementation(uint64_t* context); 
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
-void      gc_collect_implementation(uint64_t* context);
 
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
-void gc_init() {
-    gc_init_implementation((uint64_t*)0);
-}
-
 uint64_t* gc_malloc(uint64_t size) {
-    return gc_malloc_implementation(size, (uint64_t*)0);
-}
-
-void gc_free(uint64_t* pointer);
-
-void gc_collect() {
-    gc_collect_implementation((uint64_t*)0);
+    return gc_malloc_implementation(size, (uint64_t*) 0);
 }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1451,6 +1436,8 @@ uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 uint64_t symbolic = 0; // flag for symbolically executing code
 uint64_t model    = 0; // flag for modeling code
+
+uint64_t garbage_collector = 0; // flag indicating whether or not to use garbage collected malloc
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -1755,6 +1742,10 @@ void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context
 void set_heap_end(uint64_t* context, uint64_t heap_end)              { *(context + 22) = heap_end; }
 void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 23) = gc_enabled; }
 
+uint64_t get_bump_pointer(uint64_t* context) { return load_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64); }
+
+void set_bump_pointer(uint64_t* context, uint64_t bump) { store_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64, bump); }
+
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
@@ -1876,6 +1867,8 @@ uint64_t HYPSTER = 4;
 
 uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
+
+uint64_t GIBSTER = 7;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -5240,11 +5233,9 @@ void selfie_compile() {
   emit_write();
   emit_open();
 
-  if (use_garbage_collector == GCSYSCALL) {
+  if (use_garbage_collector == GCSYSCALL)
     emit_gc_malloc();
-    emit_gc_free();
-    emit_gc_collect();
-  } else
+  else
     emit_malloc();
 
   emit_fetch_stack_pointer();
@@ -6852,79 +6843,20 @@ void emit_gc_malloc() {
 }
 
 void implement_gc_malloc(uint64_t* context) {
-  // Parameters
   uint64_t size;
 
-  // Local variables
-  uint64_t* ret;
+  if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
+    size = *(get_regs(context) + REG_A0) - get_program_break(context);
 
-  size = *(get_regs(context) + REG_A0);
-  size = round_up(size, SIZEOFUINT64);
+    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
 
-  if ((get_program_break(context) + size) < *(get_regs(context) + REG_SP)) {
-    if (size != 0) {
-      ret = gc_malloc_implementation(size, context);
+    set_bump_pointer(context, get_program_break(context));
 
-      *(get_regs(context) + REG_A0) = (uint64_t)ret;
-    } else
-      *(get_regs(context) + REG_A0) = 0;
-  } else
-    *(get_regs(context) + REG_A0) = 0;
-
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-}
-
-void emit_gc_free() {
-  create_symbol_table_entry(LIBRARY_TABLE, "free", 0, PROCEDURE, VOID_T, 0, binary_length);
-
-  emit_ld(REG_A0, REG_SP, 0); // *ptr
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
-
-  emit_addi(REG_A7, REG_ZR, SYSCALL_FREE);
-
-  emit_ecall();
-
-  // jump back to caller, return value is in REG_A0
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void implement_gc_free(uint64_t* context) {
-  // Parameters
-  uint64_t ptr;
-
-  // Variables
-  uint64_t* metadata_of_pointer;
-  uint64_t* used_list_head;
-
-  ptr = *(get_regs(context) + REG_A0);
-
-  used_list_head = (uint64_t*)*(get_used_list_head(context));
-  metadata_of_pointer = get_pointer_of_address(used_list_head, ptr);
-
-  if (metadata_of_pointer == used_list_head)
-    *(get_used_list_head(context)) = (uint64_t)get_metadata_next(metadata_of_pointer);
-
-  if (is_valid_gc_pointer(used_list_head, ptr, get_heap_start(context), get_heap_end(context)))
-    free_and_zero_object(metadata_of_pointer, get_free_list_head(context), context);
-
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-}
-
-void emit_gc_collect() {
-  create_symbol_table_entry(LIBRARY_TABLE, "collect", 0, PROCEDURE, VOID_T, 0, binary_length);
-
-  emit_addi(REG_A7, REG_ZR, SYSCALL_COLLECT);
-
-  emit_ecall();
-
-  // jump back to caller, return value is in REG_A0
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void implement_gc_collect(uint64_t* context) {
-  gc_collect_implementation(context);
-
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+    // Skip last instructions of malloc (sanity check performed by gc_malloc_impl)
+    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
+  } else {
+    implement_brk(context);
+  }
 }
 
 // -----------------------------------------------------------------
@@ -7262,15 +7194,13 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t saved_a0;
 
   if (gc_is_library_or_syscall(context)) {
-    bump = (uint64_t)smalloc_implementation(size, ALLOCATORSYSTEM);
+    bump = (uint64_t) smalloc_implementation(size, ALLOCATORSYSTEM);
 
     if (bump != 0)
       gc_heap_end = bump + size; 
 
-    return (uint64_t*)bump;
+    return (uint64_t*) bump;
   } else {
-    size = round_up(size, SIZEOFUINT64);
-
     bump = get_program_break(context);
 
     saved_a0 = *(get_regs(context) + REG_A0);
@@ -7367,9 +7297,9 @@ uint64_t get_ds_start(uint64_t* context) {
 
 uint64_t get_ds_end(uint64_t* context) {
   if (gc_is_library_or_syscall(context))
-    return gc_library_program_break - SIZEOFUINT64;
+    return gc_library_program_break - 2 * SIZEOFUINT64;
   else
-    return get_data_segment(context) - SIZEOFUINT64;
+    return get_data_segment(context) - 2 * SIZEOFUINT64; // _dslen is located just below _bump
 }
 
 uint64_t get_heap_start_gc(uint64_t* context) {
@@ -7520,7 +7450,7 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
   }
 }
 
-void gc_init_implementation(uint64_t* context) {
+void gc_init(uint64_t* context) {
   uint64_t program_break;
 
   set_used_list_head_gc(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
@@ -7551,9 +7481,11 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   uint64_t* metadata;
   uint64_t* used_list_head_ptr;
 
+  size = round_up(size, SIZEOFUINT64);
+
   // Allocator automatically checks if it has been initialised
   if(get_gc_enabled_gc(context) == 0)
-    gc_init_implementation(context);
+    gc_init(context);
 
   // Check if memory is in free list
   if (gc_is_library_or_syscall(context))
@@ -7565,7 +7497,13 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_memory(ret);
 
   // Try collecting and recheck
-  gc_collect_implementation(context);
+  gc_collect(context);
+
+  // Check if memory is in free list
+  if (gc_is_library_or_syscall(context))
+    ret = free_list_extract(gc_free_list, gc_used_list, size);
+  else
+    ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
 
   if (ret != (uint64_t*)0)
     return get_metadata_memory(ret);
@@ -7589,23 +7527,9 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   return ret;
 }
 
-void gc_collect_implementation(uint64_t* context) {
+void gc_collect(uint64_t* context) {
   mark(context);
   sweep(get_used_list_head_gc(context), get_free_list_head_gc(context), context);
-}
-
-void gc_free(uint64_t* pointer) {
-  uint64_t* metadata_of_pointer;
-  uint64_t* used_list_head;
-
-  used_list_head = (uint64_t*)*gc_used_list;
-  metadata_of_pointer = get_pointer_of_address(used_list_head, (uint64_t)pointer);
-
-  if (metadata_of_pointer == used_list_head)
-    *gc_used_list = (uint64_t)get_metadata_next(metadata_of_pointer);
-
-  if (is_valid_gc_pointer(used_list_head, (uint64_t)pointer, gc_heap_start, gc_heap_end))
-    free_and_zero_object(metadata_of_pointer, gc_free_list, (uint64_t*)0);
 }
 
 // -----------------------------------------------------------------
@@ -9558,9 +9482,12 @@ uint64_t handle_system_call(uint64_t* context) {
 
   a7 = *(get_regs(context) + REG_A7);
 
-  if (a7 == SYSCALL_BRK)
-    implement_brk(context);
-  else if (a7 == SYSCALL_READ)
+  if (a7 == SYSCALL_BRK) {
+    if (garbage_collector)
+      implement_gc_malloc(context);
+    else
+      implement_brk(context);
+  } else if (a7 == SYSCALL_READ)
     implement_read(context);
   else if (a7 == SYSCALL_WRITE)
     implement_write(context);
@@ -9568,10 +9495,6 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_openat(context);
   else if (a7 == SYSCALL_MALLOC)
     implement_gc_malloc(context);
-  else if (a7 == SYSCALL_FREE)
-    implement_gc_free(context);
-  else if (a7 == SYSCALL_COLLECT)
-    implement_gc_collect(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
@@ -9906,10 +9829,12 @@ uint64_t selfie_run(uint64_t machine) {
     record = 1;
 
     init_replay_engine();
-  } else if (machine == HYPSTER)
+  } else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
       machine = MIPSTER;
+  } else if (machine == GIBSTER)
+    garbage_collector = 1;
 
   run = 1;
 
@@ -9925,6 +9850,8 @@ uint64_t selfie_run(uint64_t machine) {
     exit_code = mobster(current_context);
   else if (machine == HYPSTER)
     exit_code = hypster(current_context);
+  else if (machine == GIBSTER)
+    exit_code = mipster(current_context);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
@@ -10014,6 +9941,8 @@ uint64_t selfie() {
         selfie_load();
       else if (string_compare(argument, "-m"))
         exit(selfie_run(MIPSTER));
+      else if (string_compare(argument, "-mgc"))
+        exit(selfie_run(GIBSTER));
       else if (string_compare(argument, "-d"))
         exit(selfie_run(DIPSTER));
       else if (string_compare(argument, "-r"))
