@@ -224,7 +224,7 @@ void kdump_pt(struct pt_entry* table) {
     struct pt_entry* mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
     uint64_t mid_vaddr = (vpn_2 << 30);
     uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
-    printf("|-Gigapage (VPN %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
+    printf("|-root level (VPN_2 %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
 
     if (mid_pt == NULL) {
       printf("  <invalid>\n");
@@ -236,7 +236,7 @@ void kdump_pt(struct pt_entry* table) {
         struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
         uint64_t leaf_vaddr = mid_vaddr + (vpn_1 << 21);
         uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1+1) << 21);
-        printf("| |-Megapage (VPN %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
+        printf("| |-mid level (VPN_1 %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
 
         if (leaf_pt == NULL) {
           printf("    <invalid>\n");
@@ -249,7 +249,7 @@ void kdump_pt(struct pt_entry* table) {
             uint64_t vaddr_end = leaf_vaddr + ((vpn_0+1) << 12);
             uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
 
-            printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
+            printf("| | |-leaf level (VPN_0 %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
           }
         }
       }

@@ -122,7 +122,9 @@ void setup_kernel_pt() {
 
   kinit_page_pool();
 
+#ifdef DEBUG
   kdump_pt(kernel_pt);
+#endif /* DEBUG */
 }
 void setup_trap_handler() {
   setup_smode_trap_handler((trap_handler_t)TRAMPOLINE_VADDR);
