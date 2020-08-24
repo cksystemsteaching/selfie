@@ -6,4 +6,7 @@
 // If (value AND bitmask) is zero, the value is aligned
 #define IS_ALIGNED(value, pad) ((value & ((1 << pad)-1)) == 0)
 
+#define MIN(first, second) ((first) < (second) ? (first) : (second))
+#define MAX(first, second) ((first) > (second) ? (first) : (second))
+
 #endif /* KERN_NUMERIC_UTILS */
