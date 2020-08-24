@@ -78,6 +78,20 @@ const char* strchr(const char* str, int c) {
     else
         return NULL;
 }
+size_t strlcpy(char* dest, const char* src, size_t n) {
+  size_t copied = 0;
+
+  while (copied < (n-1)) {
+    if (src[copied] == '\0')
+      break;
+
+    dest[copied] = src[copied];
+    copied++;
+  }
+  dest[copied] = '\0';
+
+  return copied;
+}
 
 char* itoa_ext(uintmax_t value, uint8_t base, uint8_t bits, bool sign);
 int printf(const char* format, ...) {

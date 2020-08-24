@@ -17,6 +17,7 @@ void* memset(void* ptr, int value, size_t num);
 uint64_t strlen(const char* str);
 ssize_t strncmp(const char* first, const char* second, size_t n);
 const char* strchr(const char* str, int c);
+size_t strlcpy(char* dest, const char* src, size_t n);
 
 // <stdio.h> I/O functions
 int printf(const char* format, ...);
