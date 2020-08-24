@@ -12,6 +12,7 @@
 #define SATP_ASID_POS 44
 
 #define SV39_PAGE_COUNT (1ULL << (40 - 12))
+#define SV39_MAX_VPN 0xFFFFFFFFFFFFF
 
 struct __attribute__((packed)) pt_entry {
   uint64_t v        : 1; // valid flag

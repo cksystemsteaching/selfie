@@ -314,7 +314,7 @@ void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel
       actually_read_or_written = kernel_func(fd, buffer, bytes_to_read_or_write, context->open_files, NUM_FDS);
 
       // Despite both of them having a different signedness, it is ok to compare
-      // the two variables since bytes_to_read always is sizeof(uint64_t) or less.
+      // the two variables since bytes_to_read_or_write always is sizeof(uint64_t) or less.
       if ((size_t) actually_read_or_written == bytes_to_read_or_write) {
         read_or_written_total += actually_read_or_written;
 
@@ -436,11 +436,11 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 }
 
 char is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
-    return (stval < program_break && lowest_lo_page <= stval >> 12);
+    return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
 }
 
 char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
-    return (sp <= stval && stval >> 12 <= lowest_mid_page);
+    return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
 }
 
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
@@ -480,10 +480,10 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
 
   if (!map_successful) {
     printf("could not map free page into user vspace: out-of-memory!\n");
-    printf("  lowest  lo page : %x\n", context->legal_memory_boundaries.lowest_lo_page);
-    printf("  highest lo page : %x\n", context->legal_memory_boundaries.highest_lo_page);
-    printf("  lowest  mid page: %x\n", context->legal_memory_boundaries.lowest_mid_page);
-    printf("  highest mid page: %x\n", context->legal_memory_boundaries.highest_mid_page);
+    printf("  lowest  lo page : 0x%x\n", context->legal_memory_boundaries.lowest_lo_page);
+    printf("  highest lo page : 0x%x\n", context->legal_memory_boundaries.highest_lo_page);
+    printf("  lowest  mid page: 0x%x\n", context->legal_memory_boundaries.lowest_mid_page);
+    printf("  highest mid page: 0x%x\n", context->legal_memory_boundaries.highest_mid_page);
     kill_context(context->id, KILL_CONTEXT_REASON_OOM);
   }
 }
