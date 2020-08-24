@@ -116,7 +116,7 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     uint64_t page_delta = segment_mem_pages - segment_file_pages;
 
     for (uint64_t page = 0; page < page_delta; page++) {
-      uint64_t vaddr = pheader[i].vaddr + (page+segment_file_pages)*PAGESIZE;
+      uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages)*PAGESIZE;
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));

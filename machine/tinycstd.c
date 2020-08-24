@@ -81,7 +81,7 @@ const char* strchr(const char* str, int c) {
 size_t strlcpy(char* dest, const char* src, size_t n) {
   size_t copied = 0;
 
-  while (copied < (n-1)) {
+  while (copied < (n - 1)) {
     if (src[copied] == '\0')
       break;
 
@@ -119,7 +119,7 @@ int va_printf(const char* format, va_list args) {
       // Found format specifier - print everything before it and handle specifier
       console_puts(format, fmt_pos - format);
       written += (fmt_pos - format);
-      format = fmt_pos+1;
+      format = fmt_pos + 1;
       switch (*format) {
         case '%':
           putc('%');
@@ -138,7 +138,7 @@ int va_printf(const char* format, va_list args) {
         case 'i':
         {
           int i = va_arg(args, int);
-          char* buf = itoa_ext(i, 10, sizeof(int)*8, true);
+          char* buf = itoa_ext(i, 10, sizeof(int) * 8, true);
           puts(buf);
           written += strlen(buf);
           format++;
@@ -147,7 +147,7 @@ int va_printf(const char* format, va_list args) {
         case 'u':
         {
           uintmax_t i = va_arg(args, uintmax_t);
-          char* buf = itoa_ext(i, 10, sizeof(uintmax_t)*8, false);
+          char* buf = itoa_ext(i, 10, sizeof(uintmax_t) * 8, false);
           puts(buf);
           written += strlen(buf);
           format++;
@@ -157,7 +157,7 @@ int va_printf(const char* format, va_list args) {
         case 'X':
         {
           uintmax_t i = va_arg(args, uintmax_t);
-          char* buf = itoa_ext(i, 16, sizeof(uintmax_t)*8, false);
+          char* buf = itoa_ext(i, 16, sizeof(uintmax_t) * 8, false);
           puts(buf);
           written += strlen(buf);
           format++;
@@ -166,10 +166,10 @@ int va_printf(const char* format, va_list args) {
         case 'p':
         {
           void* i = va_arg(args, void*);
-          char* buf = itoa_ext((uintmax_t)i, 16, sizeof(void*)*8, false);
+          char* buf = itoa_ext((uintmax_t)i, 16, sizeof(void*) * 8, false);
           // Fill missing bytes with zeros
           // One hex number is a nibble (4 bits) -> two represent one byte
-          size_t filldiff = (sizeof(void*)*2) - strlen(buf);
+          size_t filldiff = (sizeof(void*) * 2) - strlen(buf);
           while (filldiff != 0) {
             putc('0');
             filldiff--;
@@ -209,17 +209,17 @@ void putc(char c) {
 // TODO: Not thread-safe
 char* itoa_ext(uintmax_t value, uint8_t base, uint8_t bits, bool sign) {
   const char* conv = "0123456789ABCDEF";
-  static char buf[2 + sizeof(uintmax_t)*8]; // maximum integer bits + minus sign + null
+  static char buf[2 + sizeof(uintmax_t) * 8]; // maximum integer bits + minus sign + null
 
   char* pos = buf + sizeof(buf) - 1;
   bool negative = false;
 
   // If sign bit is set, convert to positive number (two's complement)
-  if (sign && (value & (1 << (bits-1)))) {
+  if (sign && (value & (1 << (bits - 1)))) {
     negative = true;
 
     value = ~value + 1;
-    if (bits < sizeof(uintmax_t)*8) {
+    if (bits < sizeof(uintmax_t) * 8) {
       // Cut off irrelevant bits
       value = value & ((1ULL << bits) - 1);
     }

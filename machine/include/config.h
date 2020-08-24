@@ -42,7 +42,7 @@
 #define INIT_FILE_PATH "selfie.m"
 
 // The maximum length of "file system" paths
-#define PATH_MAX_LEN (512+1)
+#define PATH_MAX_LEN (512 + 1)
 
 // The time delta that will be set at the end of the trap handler before jumping back into
 // the trap handler's wrapper code. This value doesn't have a fixed unit since the execution

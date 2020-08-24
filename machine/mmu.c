@@ -223,7 +223,7 @@ void kdump_pt(struct pt_entry* table) {
 
     struct pt_entry* mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
     uint64_t mid_vaddr = (vpn_2 << 30);
-    uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
+    uint64_t mid_vaddr_end = ((vpn_2 + 1) << 30);
     printf("|-root level (VPN_2 %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
 
     if (mid_pt == NULL) {
@@ -235,7 +235,7 @@ void kdump_pt(struct pt_entry* table) {
 
         struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
         uint64_t leaf_vaddr = mid_vaddr + (vpn_1 << 21);
-        uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1+1) << 21);
+        uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1 + 1) << 21);
         printf("| |-mid level (VPN_1 %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
 
         if (leaf_pt == NULL) {
@@ -246,7 +246,7 @@ void kdump_pt(struct pt_entry* table) {
               continue;
 
             uint64_t vaddr = leaf_vaddr + (vpn_0 << 12);
-            uint64_t vaddr_end = leaf_vaddr + ((vpn_0+1) << 12);
+            uint64_t vaddr_end = leaf_vaddr + ((vpn_0 + 1) << 12);
             uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
 
             printf("| | |-leaf level (VPN_0 %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
@@ -326,7 +326,7 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
 
   uint64_t read = 0;
 
-  while (read < (n-1)) {
+  while (read < (n - 1)) {
     // If the userspace source buffer is either not valid or not mapped, we cannot continue
     // As we cannot complete the copying process, return 0
     if (!(is_valid_sv39_vaddr(src_vaddr) && is_vaddr_mapped(table, src_vaddr)))
@@ -334,14 +334,14 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
 
     // Read enough bytes to align to the next word
     // However, do not read more than requested
-    // E.g. src_vaddr = 8:  8 - ( 8 % 8) = 8 - 0 = 8 ->  8+8 % 8 = 0
-    //      src_vaddr = 10: 8 - (10 % 8) = 8 - 2 = 6 -> 10+6 % 8 = 16 % 8 = 0
+    // E.g. src_vaddr = 8:  8 - ( 8 % 8) = 8 - 0 = 8 ->  (8 + 8) % 8 = 0
+    //      src_vaddr = 10: 8 - (10 % 8) = 8 - 2 = 6 -> (10 + 6) % 8 = 16 % 8 = 0
     uint64_t read_size = 8 - (src_vaddr % 8);
     read_size = MIN(read_size, n - 1 - read);
     uint64_t src_kaddr = vaddr_to_paddr(table, src_vaddr);
 
     // Perform the actual copy (1..8 bytes)
-    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, read_size+1); // +1 due to \0
+    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, read_size + 1); // +1 due to \0
     read += copied;
 
     // Advancing the dest and src pointers by copied
