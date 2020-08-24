@@ -327,6 +327,11 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
   uint64_t read = 0;
 
   while (read < (n-1)) {
+    // If the userspace source buffer is either not valid or not mapped, we cannot continue
+    // As we cannot complete the copying process, return 0
+    if (!(is_valid_sv39_vaddr(src_vaddr) && is_vaddr_mapped(table, src_vaddr)))
+      return 0;
+
     // Read enough bytes to align to the next word
     // However, do not read more than requested
     // E.g. src_vaddr = 8:  8 - ( 8 % 8) = 8 - 0 = 8 ->  8+8 % 8 = 0
