@@ -56,6 +56,34 @@ $(foreach board,$(ALL_BOARDS),$(foreach profile,$(ALL_PROFILES),$(call add-targe
 endef
 
 
+###############################################################################
+# $(eval $(call add-all-targets))
+#
+define add-all-target-aliases
+
+$(foreach board,$(ALL_BOARDS),
+.PHONY: selfie-$(board).elf
+selfie-$(board).elf: $(foreach profile,$(ALL_PROFILES),selfie-$(board)-$(profile).elf)
+
+.PHONY: selfie-$(board).bin
+selfie-$(board).bin: $(foreach profile,$(ALL_PROFILES),selfie-$(board)-$(profile).bin)
+
+.PHONY: selfie-opensbi-$(board).elf
+selfie-opensbi-$(board).elf: $(foreach profile,$(ALL_PROFILES),selfie-opensbi-$(board)-$(profile).elf)
+)
+
+.PHONY: all-selfie-elf
+all-selfie-elf: $(foreach board,$(ALL_BOARDS),selfie-$(board).elf)
+
+.PHONY: all-selfie-bin
+all-selfie-bin: $(foreach board,$(ALL_BOARDS),selfie-$(board).bin)
+
+.PHONY: all-selfie-opensbi-elf
+all-selfie-opensbi-elf: $(foreach board,$(ALL_BOARDS),selfie-opensbi-$(board).elf)
+
+endef
+
+
 
 ###############################################################################
 # $(call generate-target-vars,board,profile)
@@ -127,6 +155,12 @@ $$(TARGET_$(1)_$(2)_DIR)/selfie.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.
 $$(TARGET_$(1)_$(2)_DIR)/selfie.bin: $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
 	$$(OBJCOPY) -S -O binary $$< $$@
 
+.PHONY: selfie-$(1)-$(2).elf
+selfie-$(1)-$(2).elf: $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
+
+.PHONY: selfie-$(1)-$(2).bin
+selfie-$(1)-$(2).bin: $$(TARGET_$(1)_$(2)_DIR)/selfie.bin
+
 ALL_ELF_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
 ALL_BIN_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie.bin
 
@@ -144,6 +178,9 @@ define generate-target-sbi-elf
 $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie.bin | opensbi
 	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$$(BOARD_$(1)_SBI_NAME) O=build/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$$(BOARD_$(1)_PAYLOAD_START) FW_PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET)
 	mv opensbi/build/platform/$$(BOARD_$(1)_SBI_NAME)/firmware/fw_payload.elf $$@
+
+.PHONY: selfie-opensbi-$(1)-$(2).elf
+selfie-opensbi-$(1)-$(2).elf: $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf
 
 ALL_OPENSBI_ELF_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf
 

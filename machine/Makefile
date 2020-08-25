@@ -41,9 +41,10 @@ $(eval $(call add-build-profile,kernel,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_
 $(eval $(call add-build-profile,library,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_LIBRARY),KERN_TYPE=library))
 
 $(eval $(call add-all-targets))
+$(eval $(call add-all-target-aliases))
 
 .PHONY: all
-all: $(ALL_OPENSBI_ELF_TARGETS)
+all: all-selfie-elf all-selfie-opensbi-elf
 
 files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	@printf "#include \"filesystem.h\"\n\n" >$@
