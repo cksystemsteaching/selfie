@@ -2,7 +2,7 @@
 #define KERN_CONTEXT
 
 #include "config.h"
-#include "sbi_files.h"
+#include "filesystem.h"
 #include <stdint.h>
 
 struct __attribute__((packed)) registers {

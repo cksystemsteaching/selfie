@@ -1,7 +1,7 @@
 #ifndef KERN_SYSCALL
 #define KERN_SYSCALL
 
-#include "sbi_files.h"
+#include "filesystem.h"
 #include "tinycstd.h"
 
 ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_fds);

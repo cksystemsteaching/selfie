@@ -1,5 +1,5 @@
 #include "config.h"
-#include "sbi_files.h"
+#include "filesystem.h"
 #include "syscall.h"
 #include <stdint.h>
 

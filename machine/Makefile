@@ -18,7 +18,7 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c sbi_files.c files_package.c syscalls.c asm/crt.S diag.c
+SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_package.c syscalls.c asm/crt.S diag.c
 SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 
@@ -78,7 +78,7 @@ $(BUILD_DIR)/selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
-	@printf "#include \"sbi_files.h\"\n\n" >$@
+	@printf "#include \"filesystem.h\"\n\n" >$@
 
 	@# Package all files as a byte array using xxd
 	@for file in $^ ;\

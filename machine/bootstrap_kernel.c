@@ -4,6 +4,7 @@
 #include "context.h"
 #include "diag.h"
 #include "elf.h"
+#include "filesystem.h"
 #include "linker-syms.h"
 #include "mmu.h"
 #include "numeric-utils.h"
