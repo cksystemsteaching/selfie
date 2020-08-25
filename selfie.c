@@ -624,6 +624,7 @@ void syntax_error_unexpected();
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
 
+void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
 uint64_t* get_variable_or_big_int(char* variable, uint64_t class);
 void      load_upper_base_address(uint64_t* entry);
 uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
@@ -3630,6 +3631,43 @@ void type_warning(uint64_t expected, uint64_t found) {
   print(" found\n");
 }
 
+void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
+  uint64_t lower;
+  uint64_t upper;
+
+  // assert: -2^31 <= value < 2^31
+
+  if (is_signed_integer(value, 12)) {
+    // integers with -2^11 <= value < 2^11
+    // are loaded with one addi into a register
+
+    emit_addi(reg, REG_ZR, value);
+  } else {
+    // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
+    // are loaded with one lui and one addi into a register plus
+    // an additional sub to cancel sign extension if necessary
+
+    lower = get_bits(value,  0, 12);
+    upper = get_bits(value, 12, 20);
+
+    if (lower >= two_to_the_power_of(11)) {
+      // add 1 which is effectively 2^12 to cancel sign extension of lower
+      upper = upper + 1;
+
+      // assert: 0 < upper <= 2^(32-12)
+      emit_lui(reg, sign_extend(upper, 20));
+
+      if (upper == two_to_the_power_of(19))
+        // upper overflowed, cancel sign extension
+        emit_sub(reg, REG_ZR, reg);
+    } else
+      // assert: 0 < upper < 2^(32-12)
+      emit_lui(reg, sign_extend(upper, 20));
+
+    emit_addi(reg, reg, sign_extend(lower, 12));
+  }
+}
+
 uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   uint64_t* entry;
 
@@ -3697,48 +3735,17 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
 }
 
 void load_integer(uint64_t value) {
-  uint64_t lower;
-  uint64_t upper;
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  if (is_signed_integer(value, 12)) {
-    // integers greater than or equal to -2^11 and less than 2^11
-    // are loaded with one addi into a register
-
+  if (is_signed_integer(value, 32)) {
+    // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
-    emit_addi(current_temporary(), REG_ZR, value);
-
-  } else if (is_signed_integer(value, 32)) {
-    // integers greater than or equal to -2^31 and less than 2^31
-    // are loaded with one lui and one addi into a register plus
-    // an additional sub to cancel sign extension if necessary
-
-    lower = get_bits(value,  0, 12);
-    upper = get_bits(value, 12, 20);
-
-    talloc();
-
-    if (lower >= two_to_the_power_of(11)) {
-      // add 1 which is effectively 2^12 to cancel sign extension of lower
-      upper = upper + 1;
-
-      // assert: 0 < upper <= 2^(32-12)
-      emit_lui(current_temporary(), sign_extend(upper, 20));
-
-      if (upper == two_to_the_power_of(19))
-        // upper overflowed, cancel sign extension
-        emit_sub(current_temporary(), REG_ZR, current_temporary());
-    } else
-      // assert: 0 < upper < 2^(32-12)
-      emit_lui(current_temporary(), sign_extend(upper, 20));
-
-    emit_addi(current_temporary(), current_temporary(), sign_extend(lower, 12));
-
+    load_small_and_medium_integer(current_temporary(), value);
   } else {
-    // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
+    // integers with value < -2^31 or value >= 2^31 are stored in data segment
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
@@ -5204,7 +5211,7 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = zalloc(MAX_BINARY_LENGTH);
+  binary        = zalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
