@@ -25,7 +25,7 @@ SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/t
 SBI_WRAPPER_SRCS = $(SBI_WRAPPER_SRCS_COMMON)
 SBI_WRAPPER_OBJS = $(patsubst %.o,$(BUILD_DIR)/%.o,$(patsubst %.S,%.o,$(SBI_WRAPPER_SRCS:.c=.o)))
 SBI_WRAPPER_DEPS = $(SBI_WRAPPER_OBJS:.o=.d)
-BUILD_DIR_TREE = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(dir $(SBI_WRAPPER_SRCS)))
+BUILD_DIR_TREE = $(sort $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(dir $(SBI_WRAPPER_SRCS))))
 KERN_TYPE = unknown
 
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
