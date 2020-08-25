@@ -64,7 +64,7 @@ $(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
 
 selfie.o: $(SELFIE_PATH)/selfie.c
-	$(CC) $(CFLAGS) -D'uint64_t = unsigned long long int' -c $^ -o $@
+	$(CC) $(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $^ -o $@
 
 selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
