@@ -91,11 +91,13 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        qemu-user-static \
+       qemu-system-misc \
   && rm -rf /var/lib/apt/lists/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
-  && cp /usr/bin/qemu-riscv64-static $RISCV/bin
+  && cp /usr/bin/qemu-riscv64-static $RISCV/bin \
+  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin
 
 ########################################
 # Boolector (SMT solver) builder image #
@@ -223,10 +225,8 @@ WORKDIR /opt/selfie
 # build selfie
 RUN make selfie
 
-# build machine files (but keep only kernel version)
-RUN make --directory machine/ KERN_TYPE=library
-RUN make --directory machine/ clean
-RUN make --directory machine/ KERN_TYPE=kernel
+# build machine files
+RUN make --directory machine/
 
 # default command
 CMD /bin/bash
