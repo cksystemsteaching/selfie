@@ -16,7 +16,7 @@ ALL_OPENSBI_ELF_TARGETS=
 define add-build-profile
 ALL_PROFILES += $(1)
 PROFILE_$(1)_SRCS = $(2)
-PROFILE_$(1)_DEFINES = $(2)
+PROFILE_$(1)_DEFINES = $(foreach def,$(3),-D$(def))
 endef
 
 ###############################################################################
@@ -87,9 +87,9 @@ $$(TARGET_$(1)_$(2)_OUT_TREE):
 $$(TARGET_$(1)_$(2)_OBJS): %.o: | include/asm_offsets.h
 
 $$(TARGET_$(1)_$(2)_DIR)/%.o: %.c | $$(TARGET_$(1)_$(2)_OUT_TREE)
-	$$(CC) -c $$(CFLAGS) $$< -o $$@
+	$$(CC) -c $$(CFLAGS) $$(PROFILE_$(2)_DEFINES) $$< -o $$@
 $$(TARGET_$(1)_$(2)_DIR)/%.o: %.S | $$(TARGET_$(1)_$(2)_OUT_TREE)
-	$$(AS) -c $$(ASFLAGS) $$< -o $$@
+	$$(AS) -c $$(ASFLAGS) $$(PROFILE_$(2)_DEFINES) $$< -o $$@
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie.o: $$(SELFIE_PATH)/selfie.c
 	$$(CC) $$(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $$^ -o $$@

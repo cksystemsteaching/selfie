@@ -7,7 +7,7 @@ AS=$(CC)
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra -MMD -MP -DKERN_TYPE=$(KERN_TYPE)
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra -MMD -MP
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
@@ -37,15 +37,13 @@ $(eval $(call add-board,qemu,0x80000000,0x200000,qemu/virt))
 $(eval $(call add-board,fu540,0x80000000,0x200000,sifive/fu540))
 $(eval $(call add-board,k210,0x80000000,0x1A000,kendryte/k210))
 
-$(eval $(call add-build-profile,kernel,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_KERNEL)))
-$(eval $(call add-build-profile,library,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_LIBRARY)))
+$(eval $(call add-build-profile,kernel,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_KERNEL),KERN_TYPE=kernel))
+$(eval $(call add-build-profile,library,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_LIBRARY),KERN_TYPE=library))
 
 $(eval $(call add-all-targets))
 
 .PHONY: all
 all: $(ALL_OPENSBI_ELF_TARGETS)
-	echo $(ALL_OPENSBI_ELF_TARGETS)
-
 
 files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	@printf "#include \"filesystem.h\"\n\n" >$@
