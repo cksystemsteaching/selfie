@@ -22,60 +22,30 @@ SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_pa
 SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 
-SBI_WRAPPER_SRCS = $(SBI_WRAPPER_SRCS_COMMON)
-SBI_WRAPPER_OBJS = $(patsubst %.o,$(BUILD_DIR)/%.o,$(patsubst %.S,%.o,$(SBI_WRAPPER_SRCS:.c=.o)))
-SBI_WRAPPER_DEPS = $(SBI_WRAPPER_OBJS:.o=.d)
-BUILD_DIR_TREE = $(sort $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(filter-out ./,$(dir $(SBI_WRAPPER_SRCS)))))
-KERN_TYPE = unknown
-
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
 ASM_STRUCT_HEADERS = include/context.h
 
 include defines.mk
 
-ifeq ($(KERN_TYPE), library)
-$(eval SBI_WRAPPER_SRCS += $(SBI_WRAPPER_SRCS_LIBRARY))
-else ifeq ($(KERN_TYPE), kernel)
-$(eval SBI_WRAPPER_SRCS += $(SBI_WRAPPER_SRCS_KERNEL))
-else
-ifeq ($(MAKECMDGOALS),clean)
-else ifeq ($(MAKECMDGOALS),distclean)
-else
-$(error No build type specified! Please specify either KERN_TYPE=kernel or KERN_TYPE=library when invoking make)
-endif
-endif
-
 # ==============================================================================
 
-all: selfie-qemu selfie-fu540 selfie-k210
-
-.PHONY: selfie-qemu selfie-fu540 selfie-k210
-selfie-qemu: selfie-qemu.elf
-selfie-fu540: selfie-fu540.elf
-selfie-k210: selfie-k210.bin
-
-selfie-k210.bin: selfie-k210.elf
-	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $^ $@
+#selfie-k210.bin: selfie-k210.elf
+#	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $^ $@
 
 
-$(eval $(call generate_payload_rules,qemu,0x80000000,0x200000))
-$(eval $(call generate_payload_rules,fu540,0x80000000,0x200000))
-$(eval $(call generate_payload_rules,k210,0x80000000,0x1A000))
+$(eval $(call add-board,qemu,0x80000000,0x200000,qemu/virt))
+$(eval $(call add-board,fu540,0x80000000,0x200000,sifive/fu540))
+$(eval $(call add-board,k210,0x80000000,0x1A000,kendryte/k210))
 
-$(eval $(call generate_selfie_sbi_rule,qemu,qemu/virt,0x80000000,0x200000))
-$(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
-$(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
+$(eval $(call add-build-profile,kernel,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_KERNEL)))
+$(eval $(call add-build-profile,library,$(SBI_WRAPPER_SRCS_COMMON) $(SBI_WRAPPER_SRCS_LIBRARY)))
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR_TREE)
-	$(CC) -c $(CFLAGS) $< -o $@
-$(BUILD_DIR)/%.o: %.S | $(BUILD_DIR_TREE)
-	$(AS) -c $(ASFLAGS) $< -o $@
+$(eval $(call add-all-targets))
 
-$(BUILD_DIR)/selfie.o: $(SELFIE_PATH)/selfie.c
-	$(CC) $(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $^ -o $@
+.PHONY: all
+all: $(ALL_OPENSBI_ELF_TARGETS)
+	echo $(ALL_OPENSBI_ELF_TARGETS)
 
-$(BUILD_DIR)/selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
-	$(LD) $(LDFLAGS) $^ -o $@
 
 files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	@printf "#include \"filesystem.h\"\n\n" >$@
@@ -108,9 +78,6 @@ include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
 	$(HOSTCC) -I. tools/asm_struct_macro_generator.c -o tools/asm_struct_macro_generator
 	tools/asm_struct_macro_generator > "$@"
 
-# Make requires a static pattern rule to add prerequisites
-# https://stackoverflow.com/a/46946731
-$(SBI_WRAPPER_OBJS): %.o: | include/asm_offsets.h
 
 
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
@@ -120,8 +87,6 @@ $(SELFIE_PATH)/hello-world.m: $(SELFIE_PATH)/examples/hello-world.c
 	$(MAKE) -C$(SELFIE_PATH)
 	$(SELFIE_PATH)/selfie -c $^ -o $@
 
-$(BUILD_DIR_TREE):
-	mkdir -p $(BUILD_DIR_TREE)
 
 # Clean-up
 .PHONY: clean
@@ -135,7 +100,6 @@ clean:
 	rm -f *.bin
 	rm -f files_package.c
 	rm -f include/asm_offsets.h
-	rm -f $(SBI_WRAPPER_DEPS)
 .PHONY: distclean
 distclean: clean
 	rm -rf opensbi
@@ -157,4 +121,4 @@ debug:
 	$(eval CFLAGS += -DDEBUG)
 	@echo "Enabled debug macro"
 
--include $(SBI_WRAPPER_DEPS)
+.DEFAULT_GOAL := all

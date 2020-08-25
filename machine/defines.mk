@@ -1,35 +1,160 @@
+ALL_PROFILES=
+ALL_BOARDS=
+ALL_TARGETS=
+
+ALL_ELF_TARGETS=
+ALL_BIN_TARGETS=
+ALL_OPENSBI_ELF_TARGETS=
+
 ###############################################################################
-# $(call generate_ldscript,path,sbi_start,payload_offset)
+# $(eval $(call add-build-profile,profile-name,srcs,defines))
 #
-# Generates a rule for a given target that
-# requires the following parameters:
-# - path          : The path where the linker script shall be emitted
+# - profile-name  : The name of the build profile, without spaces
+# - srcs          : The position where the PC jumps, i.e. where the supervisor binary will be loaded to.
+# - defines       : The offset of the payload in the OpenSBI binary
+#
+define add-build-profile
+ALL_PROFILES += $(1)
+PROFILE_$(1)_SRCS = $(2)
+PROFILE_$(1)_DEFINES = $(2)
+endef
+
+###############################################################################
+# $(eval $(call add-board,sbi_start,payload_offset,path))
+#
 # - sbi_start     : The position where the PC jumps, i.e. where the supervisor binary will be loaded to.
 # - payload_offset: The offset of the payload in the OpenSBI binary
+# - path          : The path where the linker script shall be emitted
 #
-define generate_payload_ldscript
-	SBI_START=$(2) PAYLOAD_OFFSET=$(3) envsubst '$$SBI_START$$PAYLOAD_OFFSET' <payload_template.ld >$(1)
+define add-board
+ALL_BOARDS += $(1)
+BOARD_$(1)_PAYLOAD_START = $(2)
+BOARD_$(1)_PAYLOAD_OFFSET = $(3)
+BOARD_$(1)_SBI_NAME = $(4)
+endef
+
+
+###############################################################################
+# $(eval $(call add-target,board,profile))
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define add-target
+$(call generate-target-vars,$(1),$(2))
+$(call generate-target-obj-rules,$(1),$(2))
+$(call generate-target-combine-rule,$(1),$(2))
+$(call generate-target-elf-bin,$(1),$(2))
+$(call generate-target-sbi-elf,$(1),$(2))
 endef
 
 ###############################################################################
-# $(eval $(call generate_payload_rules,board,sbi_start,payload_offset))
+# $(eval $(call add-all-targets))
 #
-# Generates rules for a board to build both an ELF image as well as a plain binary
-# using the board-agnostic selfie_bare_metal.o object file.
-#
-define generate_payload_rules
-payload-$(1).elf: $$(BUILD_DIR)/selfie_bare_metal.o
-	$$(call generate_payload_ldscript,payload-$(1).ld,$(2),$(3))
-	$$(CC) $$(CFLAGS) -static-libgcc -lgcc $$^ -o $$@ -T payload-$(1).ld
-
-payload-$(1).bin: payload-$(1).elf
-	$$(OBJCOPY) -S -O binary $$< $$@
+define add-all-targets
+$(foreach board,$(ALL_BOARDS),$(foreach profile,$(ALL_PROFILES),$(call add-target,$(board),$(profile))))
 endef
 
-# $(eval $(call generate_selfie_sbi_rules,board,sbi_plat,sbi_start,offset)
+
+
+###############################################################################
+# $(call generate-target-vars,board,profile)
 #
-define generate_selfie_sbi_rule
-selfie-$(1).elf: payload-$(1).bin opensbi
-	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$(2) O=build/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$(3) FW_PAYLOAD_OFFSET=$(4)
-	mv opensbi/build/platform/$(2)/firmware/fw_payload.elf $$@
+# - board         : The board
+# - profile       : The build profile
+#
+define generate-target-vars
+TARGET_$(1)_$(2)_DIR  = $(call target-build-dir,$(1),$(2))
+TARGET_$(1)_$(2)_OUT_TREE = $$(sort $$(TARGET_$(1)_$(2)_DIR) $$(addprefix $$(TARGET_$(1)_$(2)_DIR)/,$$(filter-out ./,$$(dir $$(PROFILE_$(2)_SRCS)))))
+TARGET_$(1)_$(2)_OBJS = $$(patsubst %.o,$$(TARGET_$(1)_$(2)_DIR)/%.o,$$(patsubst %.S,%.o,$$(PROFILE_$(2)_SRCS:.c=.o)))
+TARGET_$(1)_$(2)_DEPS = $$(TARGET_$(1)_$(2)_OBJS:.o=.d)
+ALL_TARGETS += $(1)_$(2)
+endef
+
+###############################################################################
+# $(call generate-target-obj-rules,board,profile)
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define generate-target-obj-rules
+
+$$(TARGET_$(1)_$(2)_OUT_TREE):
+	mkdir -p $$@
+
+# Make requires a static pattern rule to add prerequisites
+# https://stackoverflow.com/a/46946731
+$$(TARGET_$(1)_$(2)_OBJS): %.o: | include/asm_offsets.h
+
+$$(TARGET_$(1)_$(2)_DIR)/%.o: %.c | $$(TARGET_$(1)_$(2)_OUT_TREE)
+	$$(CC) -c $$(CFLAGS) $$< -o $$@
+$$(TARGET_$(1)_$(2)_DIR)/%.o: %.S | $$(TARGET_$(1)_$(2)_OUT_TREE)
+	$$(AS) -c $$(ASFLAGS) $$< -o $$@
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie.o: $$(SELFIE_PATH)/selfie.c
+	$$(CC) $$(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $$^ -o $$@
+
+endef
+
+###############################################################################
+# $(call generate-target-combine-rule,board,profile)
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define generate-target-combine-rule
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o: $$(TARGET_$(1)_$(2)_OBJS)
+	$$(LD) $$(LDFLAGS) $$^ -o $$@
+
+endef
+
+###############################################################################
+# $(call generate-target-elf-bin,board,profile)
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define generate-target-elf-bin
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie.ld:
+	SBI_START=$$(BOARD_$(1)_PAYLOAD_START) PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET) envsubst '$$$$SBI_START$$$$PAYLOAD_OFFSET' <payload_template.ld >$$@
+
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o | $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
+	$$(CC) $$(CFLAGS) -static-libgcc -lgcc $$^ -o $$@ -T $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie.bin: $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
+	$$(OBJCOPY) -S -O binary $$< $$@
+
+ALL_ELF_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
+ALL_BIN_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie.bin
+
+endef
+
+
+###############################################################################
+# $(call generate-target-sbi-elf,board,profile)
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define generate-target-sbi-elf
+
+$$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie.bin | opensbi
+	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$$(BOARD_$(1)_SBI_NAME) O=build/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$$(BOARD_$(1)_PAYLOAD_START) FW_PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET)
+	mv opensbi/build/platform/$$(BOARD_$(1)_SBI_NAME)/firmware/fw_payload.elf $$@
+
+ALL_OPENSBI_ELF_TARGETS += $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf
+
+endef
+
+###############################################################################
+# $(call target-build-dir,board,profile)
+#
+# - board         : The board
+# - profile       : The build profile
+#
+define target-build-dir
+$$(BUILD_DIR)/$(1)/$(2)
 endef
