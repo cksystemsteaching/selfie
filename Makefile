@@ -18,7 +18,7 @@ selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86 garbage-collector all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
+.PHONY: compile quine escape debug replay os vm min mob gib gclib sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -80,6 +80,14 @@ mon: monster selfie.h selfie
 	./monster
 	./selfie -c selfie.h tools/monster.c -m 1
 
+# Self-compile with conservative garbage collector in mipster
+gib: selfie
+	./selfie -c selfie.c -gc 2 -c selfie.c
+
+# Run selfie with conservative garbage collector as library
+gclib: selfie selfie.h
+	./selfie -c selfie.h tools/gc.c -m 1
+
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
 
@@ -130,11 +138,8 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 	diff -q selfie.x86 selfie1.x86
 
-garbage-collector: selfie selfie.h
-	./selfie -c selfie.h tools/gcd_selfie.c -m 128 -c selfie.h tools/gcd_selfie.c
-
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86
+all: compile quine debug replay os vm min mob gib gclib sat mon smt mod btor2 selfie-2-x86
 
 # Test autograder
 grader: selfie
@@ -203,7 +208,7 @@ clean:
 	rm -f *.btor2
 	rm -f *.x86
 	rm -f selfie selfie.h selfie.exe
-	rm -f babysat monster modeler riscv-2-x86
+	rm -f babysat gc monster modeler riscv-2-x86
 	rm -f examples/*.m
 	rm -f examples/*.s
 	rm -f symbolic/*.smt
