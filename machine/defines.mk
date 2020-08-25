@@ -18,7 +18,7 @@ endef
 # using the board-agnostic selfie_bare_metal.o object file.
 #
 define generate_payload_rules
-payload-$(1).elf: selfie_bare_metal.o
+payload-$(1).elf: $$(BUILD_DIR)/selfie_bare_metal.o
 	$$(call generate_payload_ldscript,payload-$(1).ld,$(2),$(3))
 	$$(CC) $$(CFLAGS) -static-libgcc -lgcc $$^ -o $$@ -T payload-$(1).ld
 

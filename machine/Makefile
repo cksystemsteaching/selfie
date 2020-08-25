@@ -71,10 +71,10 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR_TREE)
 $(BUILD_DIR)/%.o: %.S | $(BUILD_DIR_TREE)
 	$(AS) -c $(ASFLAGS) $< -o $@
 
-build/selfie.o: $(SELFIE_PATH)/selfie.c
+$(BUILD_DIR)/selfie.o: $(SELFIE_PATH)/selfie.c
 	$(CC) $(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $^ -o $@
 
-selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
+$(BUILD_DIR)/selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
