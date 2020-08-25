@@ -2,7 +2,7 @@
 #include "diag.h"
 #include "trap.h"
 #include "config.h"
-#include "syscall.h"
+#include "syscalls.h"
 #include "tinycstd.h"
 #include "mmu.h"
 #include <stdint.h>

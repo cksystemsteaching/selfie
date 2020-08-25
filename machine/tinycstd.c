@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include "console.h"
-#include "syscall.h"
+#include "syscalls.h"
 
 // Function required by libgcc for a freestanding environment
 

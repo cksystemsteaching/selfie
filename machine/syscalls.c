@@ -1,5 +1,5 @@
 #include "filesystem.h"
-#include "syscall.h"
+#include "syscalls.h"
 #include "console.h"
 #include "tinycstd.h"
 

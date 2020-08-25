@@ -1,6 +1,6 @@
 #include "config.h"
 #include "filesystem.h"
-#include "syscall.h"
+#include "syscalls.h"
 #include <stdint.h>
 
 #include "compiler-utils.h"
