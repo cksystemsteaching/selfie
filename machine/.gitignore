@@ -12,12 +12,11 @@ tools/asm_struct_macro_generator
 *.ld
 !payload_template.ld
 
-# Generated assembler struct offset header
-include/asm_offsets.h
-
-
 # Allow machine specific .h-files
 !*.h
+
+# Generated assembler struct offset header
+include/asm_offsets.h
 
 # LSP
 .clangd
