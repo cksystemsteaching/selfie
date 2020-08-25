@@ -3,6 +3,7 @@ HOSTCC:=$(CC)
 PREFIX=riscv64-linux-gnu-
 CC=$(PREFIX)gcc
 LD=$(PREFIX)ld
+AS=$(CC)
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
@@ -11,6 +12,7 @@ ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
 SELFIE_PATH = ..
+BUILD_DIR = build
 
 OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).tar.gz
 OPENSBI_RELEASE=v0.7
@@ -21,8 +23,9 @@ SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 
 SBI_WRAPPER_SRCS = $(SBI_WRAPPER_SRCS_COMMON)
-SBI_WRAPPER_OBJS = $(patsubst %.S,%.o,$(SBI_WRAPPER_SRCS:.c=.o))
+SBI_WRAPPER_OBJS = $(patsubst %.o,$(BUILD_DIR)/%.o,$(patsubst %.S,%.o,$(SBI_WRAPPER_SRCS:.c=.o)))
 SBI_WRAPPER_DEPS = $(SBI_WRAPPER_OBJS:.o=.d)
+BUILD_DIR_TREE = $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(dir $(SBI_WRAPPER_SRCS)))
 KERN_TYPE = unknown
 
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
@@ -62,6 +65,11 @@ $(eval $(call generate_payload_rules,k210,0x80000000,0x1A000))
 $(eval $(call generate_selfie_sbi_rule,qemu,qemu/virt,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
+
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR_TREE)
+	$(CC) -c $(CFLAGS) $< -o $@
+$(BUILD_DIR)/%.o: %.S | $(BUILD_DIR_TREE)
+	$(AS) -c $(ASFLAGS) $< -o $@
 
 selfie.o: $(SELFIE_PATH)/selfie.c
 	$(CC) $(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $^ -o $@
@@ -112,6 +120,8 @@ $(SELFIE_PATH)/hello-world.m: $(SELFIE_PATH)/examples/hello-world.c
 	$(MAKE) -C$(SELFIE_PATH)
 	$(SELFIE_PATH)/selfie -c $^ -o $@
 
+$(BUILD_DIR_TREE):
+	mkdir -p $(BUILD_DIR_TREE)
 
 # Clean-up
 .PHONY: clean
