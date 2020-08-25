@@ -126,7 +126,7 @@ $(BUILD_DIR_TREE):
 # Clean-up
 .PHONY: clean
 clean:
-	case "`realpath $(BUILD_DIR)`" in \
+	@case "`realpath $(BUILD_DIR)`" in \
 		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR);;\
 		*) echo "WARNING: Build directory '$(BUILD_DIR)' has not been removed as it is not a descending directory";;\
 	esac
