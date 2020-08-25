@@ -126,7 +126,11 @@ $(BUILD_DIR_TREE):
 # Clean-up
 .PHONY: clean
 clean:
-	rm -f *.o asm/*.o
+	case "`realpath $(BUILD_DIR)`" in \
+		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR);;\
+		*) echo "WARNING: Build directory '$(BUILD_DIR)' has not been removed as it is not a descending directory";;\
+	esac
+
 	rm -f *.elf
 	rm -f *.bin
 	rm -f files_package.c
