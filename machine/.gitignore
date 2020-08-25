@@ -3,6 +3,7 @@ opensbi
 
 # Build artifacts
 *.o
+*.d
 *.bin
 *.elf
 files_package.c

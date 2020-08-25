@@ -6,7 +6,7 @@ LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra -DKERN_TYPE=$(KERN_TYPE)
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra -MMD -MP -DKERN_TYPE=$(KERN_TYPE)
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
@@ -21,6 +21,7 @@ SBI_WRAPPER_OBJS_LIBRARY = bootstrap_library.o selfie.o glue_libraryos.o
 SBI_WRAPPER_OBJS_KERNEL =  bootstrap_kernel.o mmu.o context.o trap.o elf.o asm/trap.o
 
 SBI_WRAPPER_OBJS = $(SBI_WRAPPER_OBJS_COMMON)
+SBI_WRAPPER_DEPS = $(SBI_WRAPPER_OBJS:.o=.d)
 KERN_TYPE = unknown
 
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
@@ -119,6 +120,7 @@ clean:
 	rm -f *.bin
 	rm -f files_package.c
 	rm -f include/asm_offsets.h
+	rm -f $(SBI_WRAPPER_DEPS)
 .PHONY: distclean
 distclean: clean
 	rm -rf opensbi
@@ -139,3 +141,5 @@ opensbi:
 debug:
 	$(eval CFLAGS += -DDEBUG)
 	@echo "Enabled debug macro"
+
+-include $(SBI_WRAPPER_DEPS)
