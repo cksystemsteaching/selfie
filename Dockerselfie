@@ -195,6 +195,7 @@ RUN apt-get update \
        build-essential \
        ca-certificates \
        gcc-riscv64-linux-gnu \
+       binutils-riscv64-linux-gnu \
        libc-dev-riscv64-cross \
        make \
        device-tree-compiler \
