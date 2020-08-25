@@ -87,4 +87,44 @@ debug:
 	$(eval CFLAGS += -DDEBUG)
 	@echo "Enabled debug macro"
 
+
+.PHONY: list-targets
+list-targets:
+	@echo "List of targets:"
+	@echo "===================================================="
+	@echo "The build artifacts are placed in directory $(BUILD_DIR)."
+	@echo "It contains a subdirectory for each supported board and these"
+	@echo "subdirectories themselves contain subdirectories for each profile."
+	@echo "There are three main artifacts:"
+	@echo " -selfie.elf: The freestanding selfie.elf executable. Requires a bootloader that loads OpenSBI as runtime, e.g. U-Boot"
+	@echo " -selfie.bin: Similar to selfie.elf, but not as ELF, but as a flat binary (required by some bootloaders)"
+	@echo " -selfie-opensbi.elf: selfie.bin linked with OpenSBI (FW_PAYLOAD). Required if OpenSBI is not loaded by the bootloader"
+
+	@echo "===================================================="
+	@echo "all                   : Builds everything"
+	@echo "all-selfie-elf        : Builds selfie.elf for each board and each profile"
+	@echo "all-selfie-bin        : Builds selfie.bin for each board and each profile"
+	@echo "all-selfie-opensbi-elf: Builds selfie-opensbi.elf for each board and each profile"
+	@echo "----------------------------------------------------"
+	@for board in $(ALL_BOARDS);\
+	 do\
+		echo "selfie-$$board.elf        : Builds selfie.elf for $$board and each profile";\
+		echo "selfie-$$board.bin        : Builds selfie.bin for $$board and each profile";\
+		echo "selfie-opensbi-$$board.elf: Builds selfie-opensbi.elf for $$board and each profile";\
+		echo "----------------------------------------------------";\
+	 done;
+
+	@for board in $(ALL_BOARDS);\
+	 do\
+		for profile in $(ALL_PROFILES);\
+		do\
+			echo "selfie-$$board-$$profile.elf        : Builds selfie.elf for $$board and $$profile";\
+			echo "selfie-$$board-$$profile.bin        : Builds selfie.bin for $$board and $$profile";\
+			echo "selfie-opensbi-$$board-$$profile.elf: Builds selfie-opensbi.elf for $$board and $$profile";\
+			echo "....................................................";\
+		done;\
+		echo "----------------------------------------------------";\
+	 done;
+
+
 .DEFAULT_GOAL := all
