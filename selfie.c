@@ -1193,7 +1193,7 @@ void mark(uint64_t* context);
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context);
 void sweep(uint64_t* used_list_head, uint64_t* free_list_head, uint64_t* pt);
 
-void gc_init(uint64_t* context); 
+void gc_init(uint64_t* context);
 void gc_collect(uint64_t* context);
 
 // Shared implementation of library and syscall variant (context == 0 -> library)
@@ -7180,7 +7180,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     bump = (uint64_t) smalloc_implementation(size, ALLOCATORSYSTEM);
 
     if (bump != 0)
-      gc_heap_end = bump + size; 
+      gc_heap_end = bump + size;
 
     return (uint64_t*) bump;
   } else {
@@ -7437,7 +7437,7 @@ void gc_init(uint64_t* context) {
   set_used_and_free_list_head(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM), smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
-  
+
   // Difference between syscall and library: library uses two heaps
   if (gc_is_library_or_syscall(context)) {
     non_gc_heap_start = (uint64_t) smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
@@ -7469,7 +7469,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   // Check if memory is in free list
   ret = free_list_extract(context, size);
-  
+
   if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
@@ -7478,7 +7478,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   // Check if memory is in free list
   ret = free_list_extract(context, size);
-  
+
   if (ret != (uint64_t*) 0)
     return get_metadata_memory(ret);
 
@@ -9544,7 +9544,14 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  print("mipster\n");
+  print("mipster");
+  if (record)
+    print(" with replay");
+  else if (debug)
+    print(" with debugger");
+  else if (garbage_collector)
+    print(" with garbage collector");
+  println();
 
   timeout = TIMESLICE;
 
@@ -9801,12 +9808,13 @@ uint64_t selfie_run(uint64_t machine) {
     record = 1;
 
     init_replay_engine();
-  } else if (machine == HYPSTER) {
+  } else if (machine == GIBSTER)
+    garbage_collector = 1;
+  else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
       machine = MIPSTER;
-  } else if (machine == GIBSTER)
-    garbage_collector = 1;
+  }
 
   run = 1;
 
@@ -9816,14 +9824,14 @@ uint64_t selfie_run(uint64_t machine) {
     exit_code = mipster(current_context);
   else if (machine == RIPSTER)
     exit_code = mipster(current_context);
+  else if (machine == GIBSTER)
+    exit_code = mipster(current_context);
   else if (machine == MINSTER)
     exit_code = minster(current_context);
   else if (machine == MOBSTER)
     exit_code = mobster(current_context);
   else if (machine == HYPSTER)
     exit_code = hypster(current_context);
-  else if (machine == GIBSTER)
-    exit_code = mipster(current_context);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
@@ -9909,8 +9917,6 @@ uint64_t selfie() {
         selfie_load();
       else if (string_compare(argument, "-m"))
         exit(selfie_run(MIPSTER));
-      else if (string_compare(argument, "-mgc"))
-        exit(selfie_run(GIBSTER));
       else if (string_compare(argument, "-d"))
         exit(selfie_run(DIPSTER));
       else if (string_compare(argument, "-r"))
@@ -9921,6 +9927,8 @@ uint64_t selfie() {
         exit(selfie_run(MINSTER));
       else if (string_compare(argument, "-mob"))
         exit(selfie_run(MOBSTER));
+      else if (string_compare(argument, "-gc"))
+        exit(selfie_run(GIBSTER));
       else
         return EXITCODE_BADARGUMENTS;
     }
@@ -9970,7 +9978,7 @@ int main(int argc, char** argv) {
   exit_code = selfie();
 
   if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" [ ( -m | -d | -r | -y | -mgc ) 0-4096 ... ]");
+    print_synopsis(" [ ( -m | -d | -r | -y ) 0-4096 ... ]");
 
   if (exit_code == EXITCODE_NOARGUMENTS)
     exit_code = EXITCODE_NOERROR;
