@@ -1,4 +1,5 @@
 #include "bootstrap.h"
+#include "config.h"
 #include "console.h"
 #include "tinycstd.h"
 
@@ -13,7 +14,7 @@ void bootstrap() {
   kernel_environ_init();
 
   char* args[] = {
-    "./selfie",
+    "./" INIT_FILE_PATH,
     "-c",
     "selfie.c",
     "-m",
@@ -28,7 +29,7 @@ void bootstrap() {
   };
   int argc = 0;
 
-  puts("Booting selfie with args: \n");
+  puts("Booting " INIT_FILE_PATH " with args: \n");
 
   while (args[argc] != (char *)0) {
     printf("    %s\n", args[argc]);
