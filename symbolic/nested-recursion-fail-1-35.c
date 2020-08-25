@@ -8,11 +8,18 @@ performs division by zero or invalid/unsafe memory accesses.
 Input == #b00110001 (== 49 == '1')
 */
 
-uint64_t factorial(uint64_t n) {
-  if (n <= 1)
+uint64_t factorial_upwards(uint64_t n) {
+  if (n >= 10)
     return n;
   else
-    return n * factorial(n - 1);
+    return n * factorial_upwards(n + 1);
+}
+
+uint64_t modified_factorial(uint64_t n) {
+  if (n > 1)
+    return n * modified_factorial(n - 1);
+  else
+    return factorial_upwards(1);
 }
 
 uint64_t main() {
@@ -21,13 +28,14 @@ uint64_t main() {
 
   x = malloc(8);
 
-  read(1, x, 1);
+  read(0, x, 1);
 
-  *x = *x - 39;
+  *x = *x - 35;
 
-  a = factorial(*x);
+  a = modified_factorial(*x);
 
-  if (a == 3628800)
+  //           10! * 14!
+  if (a == 3628800 * 87178291200)
     return 1;
   else
     return 0;

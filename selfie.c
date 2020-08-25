@@ -17,7 +17,7 @@ virtual machine monitors. The common theme is to identify and
 resolve self-reference in systems code which is seen as the key
 challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 8-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 9-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -164,6 +164,7 @@ void printf3(char* s, char* a1, char* a2, char* a3);
 void printf4(char* s, char* a1, char* a2, char* a3, char* a4);
 void printf5(char* s, char* a1, char* a2, char* a3, char* a4, char* a5);
 void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6);
+void printf7(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6, char* a7);
 
 void sprintf1(char* b, char* s, char* a1);
 void sprintf2(char* b, char* s, char* a1, char* a2);
@@ -498,7 +499,7 @@ uint64_t report_undefined_procedures();
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP, REG_FP
+// |  7 | scope   | REG_GP, REG_S0
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
@@ -687,6 +688,16 @@ void init_register();
 char* get_register_name(uint64_t reg);
 void  print_register_name(uint64_t reg);
 
+uint64_t is_stack_register(uint64_t reg);
+uint64_t is_system_register(uint64_t reg);
+uint64_t is_argument_register(uint64_t reg);
+uint64_t is_temporary_register(uint64_t reg);
+
+uint64_t read_register(uint64_t reg);
+void     write_register(uint64_t reg);
+
+void update_register_counters();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t NUMBEROFREGISTERS   = 32;
@@ -700,7 +711,7 @@ uint64_t REG_TP  = 4;
 uint64_t REG_T0  = 5;
 uint64_t REG_T1  = 6;
 uint64_t REG_T2  = 7;
-uint64_t REG_FP  = 8;
+uint64_t REG_S0  = 8;
 uint64_t REG_S1  = 9;
 uint64_t REG_A0  = 10;
 uint64_t REG_A1  = 11;
@@ -740,7 +751,7 @@ void init_register() {
   *(REGISTERS + REG_T0)  = (uint64_t) "t0";
   *(REGISTERS + REG_T1)  = (uint64_t) "t1";
   *(REGISTERS + REG_T2)  = (uint64_t) "t2";
-  *(REGISTERS + REG_FP)  = (uint64_t) "s0"; // used to be fp
+  *(REGISTERS + REG_S0)  = (uint64_t) "s0"; // used to be fp
   *(REGISTERS + REG_S1)  = (uint64_t) "s1";
   *(REGISTERS + REG_A0)  = (uint64_t) "a0";
   *(REGISTERS + REG_A1)  = (uint64_t) "a1";
@@ -872,7 +883,8 @@ void     store_data(uint64_t baddr, uint64_t data);
 
 void emit_instruction(uint64_t instruction);
 
-void emit_nop();
+uint64_t encode_nop();
+void     emit_nop();
 
 void emit_lui(uint64_t rd, uint64_t immediate);
 void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate);
@@ -974,7 +986,7 @@ void emit_write();
 void implement_write(uint64_t* context);
 
 void     emit_open();
-uint64_t down_load_string(uint64_t* table, uint64_t vstring, char* s);
+uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
 void emit_malloc();
@@ -1151,7 +1163,7 @@ void print_data(uint64_t data);
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
-void translate_to_assembler();
+void print_instruction();
 
 void selfie_disassemble(uint64_t verbose);
 
@@ -1198,13 +1210,12 @@ void reset_interpreter();
 void reset_nop_counters();
 void reset_profiler();
 
-void     print_register_hexadecimal(uint64_t reg);
-void     print_register_octal(uint64_t reg);
-uint64_t is_system_register(uint64_t reg);
-void     print_register_value(uint64_t reg);
+void print_register_hexadecimal(uint64_t reg);
+void print_register_octal(uint64_t reg);
+void print_register_value(uint64_t reg);
 
-void print_exception(uint64_t exception, uint64_t faulting_page);
-void throw_exception(uint64_t exception, uint64_t faulting_page);
+void print_exception(uint64_t exception, uint64_t fault);
+void throw_exception(uint64_t exception, uint64_t fault);
 
 void fetch();
 void decode();
@@ -1221,6 +1232,11 @@ void run_until_exception();
 uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
 void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
+
+void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t writes);
+void print_per_register_profile(uint64_t reg);
+
+void print_register_memory_profile();
 
 void print_profile();
 
@@ -1245,15 +1261,17 @@ uint64_t ECALL = 14;
 
 // exceptions
 
-uint64_t EXCEPTION_NOEXCEPTION        = 0;
-uint64_t EXCEPTION_PAGEFAULT          = 1;
-uint64_t EXCEPTION_SYSCALL            = 2;
-uint64_t EXCEPTION_TIMER              = 3;
-uint64_t EXCEPTION_INVALIDADDRESS     = 4;
-uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_SYMBOLICMERGE      = 7; // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICRECURSION  = 8; // for symbolic execution
+uint64_t EXCEPTION_NOEXCEPTION           = 0;
+uint64_t EXCEPTION_PAGEFAULT             = 1;
+uint64_t EXCEPTION_SEGMENTATIONFAULT     = 2;
+uint64_t EXCEPTION_SYSCALL               = 3;
+uint64_t EXCEPTION_TIMER                 = 4;
+uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
+uint64_t EXCEPTION_INVALIDADDRESS        = 6;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
+uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
+uint64_t EXCEPTION_SYMBOLICMERGE         = 9;  // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICRECURSION     = 10; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1325,20 +1343,47 @@ uint64_t* iterations_per_loop = (uint64_t*) 0; // number of executed iterations 
 uint64_t* loads_per_instruction  = (uint64_t*) 0; // number of executed loads per load instruction
 uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores per store instruction
 
+// register access counters
+
+uint64_t* reads_per_register  = (uint64_t*) 0;
+uint64_t* writes_per_register = (uint64_t*) 0;
+
+uint64_t stack_register_reads  = 0;
+uint64_t stack_register_writes = 0;
+
+uint64_t argument_register_reads  = 0;
+uint64_t argument_register_writes = 0;
+
+uint64_t temporary_register_reads  = 0;
+uint64_t temporary_register_writes = 0;
+
+// segments access counters
+
+uint64_t data_reads  = 0;
+uint64_t data_writes = 0;
+
+uint64_t stack_reads  = 0;
+uint64_t stack_writes = 0;
+
+uint64_t heap_reads  = 0;
+uint64_t heap_writes = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
   EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICRECURSION + 1) * SIZEOFUINT64STAR);
 
-  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
-  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
-  *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (uint64_t) "syscall";
-  *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint64_t) "timer interrupt";
-  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
-  *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)      = (uint64_t) "symbolic merge";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)  = (uint64_t) "symbolic recursion";
+  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
+  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
+  *(EXCEPTIONS + EXCEPTION_SEGMENTATIONFAULT)     = (uint64_t) "segmentation fault";
+  *(EXCEPTIONS + EXCEPTION_SYSCALL)               = (uint64_t) "syscall";
+  *(EXCEPTIONS + EXCEPTION_TIMER)                 = (uint64_t) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)        = (uint64_t) "division by zero";
+  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
+  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)         = (uint64_t) "symbolic merge";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)     = (uint64_t) "symbolic recursion";
 }
 
 void reset_interpreter() {
@@ -1371,10 +1416,7 @@ void reset_nop_counters() {
   nopc_jalr = 0;
 }
 
-void reset_profiler() {
-  reset_instruction_counters();
-  reset_nop_counters();
-
+void reset_source_profile() {
   calls               = 0;
   calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
@@ -1383,6 +1425,42 @@ void reset_profiler() {
 
   loads_per_instruction  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
   stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+}
+
+void reset_register_access_counters() {
+  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  // stack and frame pointer registers are initialized by boot loader
+  *(writes_per_register + REG_SP) = 1;
+  *(writes_per_register + REG_S0) = 1;
+
+  // a6 register is written to by the kernel
+  *(writes_per_register + REG_A6) = 1;
+
+  stack_register_reads      = 0;
+  stack_register_writes     = 0;
+  argument_register_reads   = 0;
+  argument_register_writes  = 0;
+  temporary_register_reads  = 0;
+  temporary_register_writes = 0;
+}
+
+void reset_segments_access_counters() {
+  data_reads   = 0;
+  data_writes  = 0;
+  stack_reads  = 0;
+  stack_writes = 0;
+  heap_reads   = 0;
+  heap_writes  = 0;
+}
+
+void reset_profiler() {
+  reset_instruction_counters();
+  reset_nop_counters();
+  reset_source_profile();
+  reset_register_access_counters();
+  reset_segments_access_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1415,20 +1493,22 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  6 | highest lo page | highest low unmapped page (code, data, heap)
 // |  7 | lowest hi page  | lowest high unmapped page (stack)
 // |  8 | highest hi page | highest high unmapped page (stack)
-// |  9 | original break  | original end of data segment
-// | 10 | program break   | end of data segment
-// | 11 | exception       | exception ID
-// | 12 | faulting page   | faulting page
-// | 13 | exit code       | exit code
-// | 14 | parent          | context that created this context
-// | 15 | virtual context | virtual context address
-// | 16 | name            | binary name loaded into context
+// |  9 | code entry      | start of code segment
+// | 10 | code segment    | end of code segment, start of data segment
+// | 11 | data segment    | end of data segment, original program break
+// | 12 | program break   | current program break
+// | 13 | exception       | exception ID
+// | 14 | faulting page   | faulting page
+// | 15 | exit code       | exit code
+// | 16 | parent          | context that created this context
+// | 17 | virtual context | virtual context address
+// | 18 | name            | binary name loaded into context
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1440,14 +1520,16 @@ uint64_t lowest_lo_page(uint64_t* context)  { return (uint64_t) (context + 5); }
 uint64_t highest_lo_page(uint64_t* context) { return (uint64_t) (context + 6); }
 uint64_t lowest_hi_page(uint64_t* context)  { return (uint64_t) (context + 7); }
 uint64_t highest_hi_page(uint64_t* context) { return (uint64_t) (context + 8); }
-uint64_t original_break(uint64_t* context)  { return (uint64_t) (context + 9); }
-uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 10); }
-uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 11); }
-uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 12); }
-uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 13); }
-uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 14); }
-uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 15); }
-uint64_t name(uint64_t* context)            { return (uint64_t) (context + 16); }
+uint64_t code_entry(uint64_t* context)      { return (uint64_t) (context + 9); }
+uint64_t code_segment(uint64_t* context)    { return (uint64_t) (context + 10); }
+uint64_t data_segment(uint64_t* context)    { return (uint64_t) (context + 11); }
+uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 12); }
+uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 13); }
+uint64_t fault(uint64_t* context)           { return (uint64_t) (context + 14); }
+uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 15); }
+uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); }
+uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
+uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1458,14 +1540,16 @@ uint64_t  get_lowest_lo_page(uint64_t* context)  { return             *(context 
 uint64_t  get_highest_lo_page(uint64_t* context) { return             *(context + 6); }
 uint64_t  get_lowest_hi_page(uint64_t* context)  { return             *(context + 7); }
 uint64_t  get_highest_hi_page(uint64_t* context) { return             *(context + 8); }
-uint64_t  get_original_break(uint64_t* context)  { return             *(context + 9); }
-uint64_t  get_program_break(uint64_t* context)   { return             *(context + 10); }
-uint64_t  get_exception(uint64_t* context)       { return             *(context + 11); }
-uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 12); }
-uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 13); }
-uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 14); }
-uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 15); }
-char*     get_name(uint64_t* context)            { return (char*)     *(context + 16); }
+uint64_t  get_code_entry(uint64_t* context)      { return             *(context + 9); }
+uint64_t  get_code_segment(uint64_t* context)    { return             *(context + 10); }
+uint64_t  get_data_segment(uint64_t* context)    { return             *(context + 11); }
+uint64_t  get_program_break(uint64_t* context)   { return             *(context + 12); }
+uint64_t  get_exception(uint64_t* context)       { return             *(context + 13); }
+uint64_t  get_fault(uint64_t* context)           { return             *(context + 14); }
+uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 15); }
+uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 16); }
+uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 18); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1476,14 +1560,16 @@ void set_lowest_lo_page(uint64_t* context, uint64_t page)     { *(context + 5)  
 void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  = page; }
 void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
 void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
-void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
-void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 10) = brk; }
-void set_exception(uint64_t* context, uint64_t exception)     { *(context + 11) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 12) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 13) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 14) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 15) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 16) = (uint64_t) name; }
+void set_code_entry(uint64_t* context, uint64_t start)        { *(context + 9)  = start; }
+void set_code_segment(uint64_t* context, uint64_t end)        { *(context + 10) = end; }
+void set_data_segment(uint64_t* context, uint64_t end)        { *(context + 11) = end; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 12) = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 13) = exception; }
+void set_fault(uint64_t* context, uint64_t page)              { *(context + 14) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 15) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 16) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 17) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 18) = (uint64_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1498,6 +1584,15 @@ void save_context(uint64_t* context);
 void map_page(uint64_t* context, uint64_t page, uint64_t frame);
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 void restore_context(uint64_t* context);
+
+uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
+
+uint64_t is_valid_segment_read(uint64_t vaddr);
+uint64_t is_valid_segment_write(uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1556,8 +1651,7 @@ uint64_t mobster(uint64_t* to_context);
 
 char* replace_extension(char* filename, char* extension);
 
-uint64_t is_boot_level_zero();
-void     boot_loader(uint64_t* context);
+void boot_loader(uint64_t* context);
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -1610,8 +1704,6 @@ uint64_t free_page_frame_memory      = 0;
 // ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
 
-void init_selfie(uint64_t argc, uint64_t* argv);
-
 uint64_t  number_of_remaining_arguments();
 uint64_t* remaining_arguments();
 
@@ -1629,7 +1721,23 @@ uint64_t* selfie_argv = (uint64_t*) 0;
 
 char* argument = (char*) 0;
 
-char* selfie_name = (char*) 0;
+// -----------------------------------------------------------------
+// ----------------------------- SELFIE ----------------------------
+// -----------------------------------------------------------------
+
+void init_selfie(uint64_t argc, uint64_t* argv);
+
+void init_system();
+
+uint64_t is_boot_level_zero();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+char* selfie_name = (char*) 0; // name of running selfie executable
+
+uint64_t BOOTLEVELZERO = 0; // flag for indicating boot level
+
+uint64_t WINDOWS = 0; // indicates if we are likely running on Windows
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1638,6 +1746,17 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
   selfie_argv = argv;
 
   selfie_name = get_argument();
+}
+
+void init_system() {
+  if (is_boot_level_zero()) {
+    BOOTLEVELZERO = 1;
+
+    // Caution: the name of the executable must not have an extension to make this work
+    // try opening executable with zeroed flags which likely fails but just on Windows
+    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
+      WINDOWS = 1;
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2061,7 +2180,7 @@ void put_character(uint64_t c) {
     store_character(output_buffer, output_cursor, c);
 
     output_cursor = output_cursor + 1;
-  } else {
+  } else if (character_buffer) {
     *character_buffer = c;
 
     // assert: character_buffer is mapped
@@ -2085,7 +2204,9 @@ void put_character(uint64_t c) {
 
       exit(EXITCODE_IOERROR);
     }
-  }
+  } else
+    // character_buffer has not been successfully allocated yet
+    exit(EXITCODE_IOERROR);
 }
 
 void print(char* s) {
@@ -2310,6 +2431,10 @@ void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6));
 }
 
+void printf7(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6, char* a7) {
+  print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6), a7));
+}
+
 void sprintf1(char* b, char* s, char* a1) {
   output_buffer = b;
   output_cursor = 0;
@@ -2368,7 +2493,9 @@ uint64_t* smalloc(uint64_t size) {
     // any address including null
     return memory;
   else if (memory == (uint64_t*) 0) {
-    printf1("%s: malloc out of memory\n", selfie_name);
+    if (character_buffer)
+      // can only print error message if character_buffer has been successfully allocated
+      printf1("%s: malloc out of memory\n", selfie_name);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2502,39 +2629,35 @@ uint64_t find_next_character() {
   // that is not whitespace and does not occur in a comment, or the file ends
   while (1) {
     if (in_single_line_comment) {
-      get_character();
-
       if (is_character_new_line())
         // single-line comments end with new line
         in_single_line_comment = 0;
       else if (character == CHAR_EOF)
         // or end of file
         return character;
-      else
+      else {
         // count the characters in comments as ignored characters
         number_of_ignored_characters = number_of_ignored_characters + 1;
 
-    } else if (in_multi_line_comment) {
-      get_character();
+        get_character();
+      }
 
-      if (character == CHAR_ASTERISK) {
-        // look for '*/' and here count '*' as ignored character
+    } else if (in_multi_line_comment) {
+      while (character == CHAR_ASTERISK) {
+        // look for "*/" by looping over consecutive '*' counting them as ignored characters
         number_of_ignored_characters = number_of_ignored_characters + 1;
 
         get_character();
 
-        if (character == CHAR_SLASH) {
+        if (character == CHAR_SLASH)
           // multi-line comments end with "*/"
           in_multi_line_comment = 0;
-
-          get_character();
-        }
       }
 
       if (in_multi_line_comment) {
         // keep track of line numbers for error reporting and code annotation
         if (character == CHAR_LF)
-          // only line feeds count, not carriage returns
+          // only line feeds count towards line numbers, not carriage returns
           line_number = line_number + 1;
         else if (character == CHAR_EOF) {
           // multi-line comment is not terminated
@@ -2544,11 +2667,15 @@ uint64_t find_next_character() {
         }
       }
 
-      // count the characters in comments as ignored characters including '/' in '*/'
+      // count the characters in comments as ignored characters including '/' in "*/"
       number_of_ignored_characters = number_of_ignored_characters + 1;
 
+      get_character();
+
     } else if (is_character_whitespace()) {
+      // keep track of line numbers for error reporting and code annotation
       if (character == CHAR_LF)
+        // only line feeds count towards line numbers, not carriage returns
         line_number = line_number + 1;
 
       // also count line feed and carriage return as ignored characters
@@ -2567,6 +2694,9 @@ uint64_t find_next_character() {
         number_of_ignored_characters = number_of_ignored_characters + 2;
 
         number_of_comments = number_of_comments + 1;
+
+        get_character();
+
       } else if (character == CHAR_ASTERISK) {
         // "/*" begins a multi-line comment
         in_multi_line_comment = 1;
@@ -2575,6 +2705,9 @@ uint64_t find_next_character() {
         number_of_ignored_characters = number_of_ignored_characters + 2;
 
         number_of_comments = number_of_comments + 1;
+
+        get_character();
+
       } else {
         // while looking for "//" and "/*" we actually found '/'
         symbol = SYM_DIVISION;
@@ -2970,7 +3103,7 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
     else if (class == STRING)
       number_of_strings = number_of_strings + 1;
   } else if (which_table == LOCAL_TABLE) {
-    set_scope(new_entry, REG_FP);
+    set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
     local_symbol_table = new_entry;
   } else {
@@ -3500,10 +3633,10 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
 
   // save caller's frame pointer
-  emit_sd(REG_SP, 0, REG_FP);
+  emit_sd(REG_SP, 0, REG_S0);
 
   // set callee's frame pointer
-  emit_addi(REG_FP, REG_SP, 0);
+  emit_addi(REG_S0, REG_SP, 0);
 
   // allocate memory for callee's local variables
   if (number_of_local_variable_bytes > 0) {
@@ -3521,10 +3654,10 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
 
 void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // deallocate memory for callee's frame pointer and local variables
-  emit_addi(REG_SP, REG_FP, 0);
+  emit_addi(REG_SP, REG_S0, 0);
 
   // restore caller's frame pointer
-  emit_ld(REG_FP, REG_SP, 0);
+  emit_ld(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -4712,9 +4845,6 @@ void emit_bootstrapping() {
   uint64_t padding;
   uint64_t* entry;
 
-  // TODO: clarify: this is needed for the binary translator
-  // emit_nop();
-
   // calculate the global pointer value
   gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
@@ -4961,6 +5091,74 @@ void print_register_name(uint64_t reg) {
   print(get_register_name(reg));
 }
 
+uint64_t is_stack_register(uint64_t reg) {
+  if (reg == REG_SP)
+    return 1;
+  else if (reg == REG_S0)
+    return 1;
+  else if (reg == REG_RA)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_system_register(uint64_t reg) {
+  if (reg == REG_GP)
+    return 1;
+  else
+    return is_stack_register(reg);
+}
+
+uint64_t is_argument_register(uint64_t reg) {
+  if (reg >= REG_A0)
+    if (reg <= REG_A7)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_temporary_register(uint64_t reg) {
+  if (reg >= REG_T0)
+    if (reg <= REG_T2)
+      return 1;
+    else if (reg >= REG_T3)
+      return 1;
+    else
+      return 0;
+  else
+    return 0;
+}
+
+uint64_t read_register(uint64_t reg) {
+  if (reg != REG_ZR) {
+    if (*(writes_per_register + reg) > 0)
+      // register has been written to before
+      *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
+    else {
+      print_instruction();
+      print(": reading from uninitialized register ");
+      print_register_name(reg);
+      println();
+
+      throw_exception(EXCEPTION_UNINITIALIZEDREGISTER, reg);
+
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+void write_register(uint64_t reg) {
+  *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
+}
+
+void update_register_counters() {
+  if (read_register(rs1))
+    if (read_register(rs2))
+      write_register(rd);
+}
+
 // -----------------------------------------------------------------
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
@@ -5059,7 +5257,7 @@ uint64_t get_immediate_i_format(uint64_t instruction) {
 
 void decode_i_format() {
   funct7 = 0;
-  rs2    = 0;
+  rs2    = REG_ZR;
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
   rd     = get_rd(ir);
@@ -5109,7 +5307,7 @@ void decode_s_format() {
   rs2    = get_rs2(ir);
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
-  rd     = 0;
+  rd     = REG_ZR;
   imm    = get_immediate_s_format(ir);
 }
 
@@ -5166,7 +5364,7 @@ void decode_b_format() {
   rs2    = get_rs2(ir);
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
-  rd     = 0;
+  rd     = REG_ZR;
   imm    = get_immediate_b_format(ir);
 }
 
@@ -5218,8 +5416,8 @@ uint64_t get_immediate_j_format(uint64_t instruction) {
 
 void decode_j_format() {
   funct7 = 0;
-  rs2    = 0;
-  rs1    = 0;
+  rs2    = REG_ZR;
+  rs1    = REG_ZR;
   funct3 = 0;
   rd     = get_rd(ir);
   imm    = get_immediate_j_format(ir);
@@ -5252,8 +5450,8 @@ uint64_t get_immediate_u_format(uint64_t instruction) {
 
 void decode_u_format() {
   funct7 = 0;
-  rs2    = 0;
-  rs1    = 0;
+  rs2    = REG_ZR;
+  rs1    = REG_ZR;
   funct3 = 0;
   rd     = get_rd(ir);
   imm    = get_immediate_u_format(ir);
@@ -5403,8 +5601,12 @@ void emit_instruction(uint64_t instruction) {
   binary_length = binary_length + INSTRUCTIONSIZE;
 }
 
+uint64_t encode_nop() {
+  return encode_i_format(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM);
+}
+
 void emit_nop() {
-  emit_instruction(encode_i_format(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM));
+  emit_instruction(encode_nop());
 
   ic_addi = ic_addi + 1;
 }
@@ -5681,15 +5883,15 @@ uint64_t open_write_only(char* name) {
   // not always work and require intervention
   uint64_t fd;
 
-  // try Windows flags
-  fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-
-  if (signed_less_than(fd, 0)) {
-    // try Mac flags
+  if (WINDOWS)
+    // use Windows flags
+    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+  else {
+    // try Mac flags first as default
     fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
     if (signed_less_than(fd, 0))
-      // try Linux flags
+      // then try Linux flags
       fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   }
 
@@ -5793,9 +5995,9 @@ void selfie_load() {
   // make sure binary is mapped for reading into it
   binary = touch(smalloc(MAX_BINARY_LENGTH), MAX_BINARY_LENGTH);
 
+  entry_point   = 0;
   binary_length = 0;
   code_length   = 0;
-  entry_point   = 0;
 
   // no source line numbers in binaries
   code_line_number = (uint64_t*) 0;
@@ -5873,7 +6075,7 @@ void implement_exit(uint64_t* context) {
   printf4("%s: %s exiting with exit code %d and %.2uMB mallocated memory\n", selfie_name,
     get_name(context),
     (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
-    (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
+    (char*) fixed_point_ratio(get_program_break(context) - get_data_segment(context), MEGABYTE, 2));
 }
 
 void emit_read() {
@@ -5940,42 +6142,46 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          buffer = tlb(get_pt(context), vbuffer);
 
-        actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+          actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
 
-        if (actually_read == bytes_to_read) {
-          read_total = read_total + actually_read;
-
-          size = size - actually_read;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_read))
+          if (actually_read == bytes_to_read) {
             read_total = read_total + actually_read;
 
+            size = size - actually_read;
+
+            if (size > 0)
+              vbuffer = vbuffer + SIZEOFUINT64;
+          } else {
+            if (signed_less_than(0, actually_read))
+              read_total = read_total + actually_read;
+
+            size = 0;
+          }
+        } else {
+          failed = 1;
+
           size = 0;
+
+          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
         }
-      } else {
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_read)
-          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_read)
-        printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -5987,9 +6193,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name,
-      (char*) read_total,
-      (char*) fd);
+    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name, (char*) read_total, (char*) fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6061,42 +6265,46 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          buffer = tlb(get_pt(context), vbuffer);
 
-        actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+          actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
-        if (actually_written == bytes_to_write) {
-          written_total = written_total + actually_written;
-
-          size = size - actually_written;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_written))
+          if (actually_written == bytes_to_write) {
             written_total = written_total + actually_written;
 
+            size = size - actually_written;
+
+            if (size > 0)
+              vbuffer = vbuffer + SIZEOFUINT64;
+          } else {
+            if (signed_less_than(0, actually_written))
+              written_total = written_total + actually_written;
+
+            size = 0;
+          }
+        } else {
+          failed = 1;
+
           size = 0;
+
+          printf2("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
         }
-      } else {
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_write)
-          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_write)
-        printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -6108,9 +6316,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name,
-      (char*) written_total,
-      (char*) fd);
+    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name, (char*) written_total, (char*) fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6141,47 +6347,51 @@ void emit_open() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_load_string(uint64_t* table, uint64_t vaddr, char* s) {
+uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
   uint64_t i;
   uint64_t j;
 
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr)) {
-      if (is_virtual_address_mapped(table, vaddr))
-        *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
-      else {
-        if (debug_open)
-          printf2("%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vaddr);
+    if (is_valid_virtual_address(vaddr))
+      if (is_valid_data_stack_heap_address(context, vaddr)) {
+        if (is_virtual_address_mapped(get_pt(context), vaddr))
+          *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
+        else {
+          printf2("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (char*) vaddr);
+
+          return 0;
+        }
+
+        j = 0;
+
+        // check if string ends in the current machine word
+        while (j < SIZEOFUINT64) {
+          if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+            return 1;
+
+          j = j + 1;
+        }
+
+        // advance to the next machine word in virtual memory
+        vaddr = vaddr + SIZEOFUINT64;
+
+        // advance to the next machine word in our memory
+        i = i + 1;
+      } else {
+        printf2("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
 
         return 0;
       }
-
-      j = 0;
-
-      // check if string ends in the current machine word
-      while (j < SIZEOFUINT64) {
-        if (load_character((char*) ((uint64_t*) s + i), j) == 0)
-          return 1;
-
-        j = j + 1;
-      }
-
-      // advance to the next machine word in virtual memory
-      vaddr = vaddr + SIZEOFUINT64;
-
-      // advance to the next machine word in our memory
-      i = i + 1;
-    } else {
-      if (debug_open)
-        printf2("%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vaddr);
+    else {
+      printf2("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (char*) vaddr);
 
       return 0;
     }
   }
+
+  printf2("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (char*) vaddr);
 
   return 0;
 }
@@ -6218,8 +6428,12 @@ void implement_openat(uint64_t* context) {
   flags     = *(get_regs(context) + REG_A2);
   mode      = *(get_regs(context) + REG_A3);
 
-  if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+  if (down_load_string(context, vfilename, filename_buffer)) {
+    if (flags == MAC_O_CREAT_TRUNC_WRONLY)
+      // default for opening write-only files
+      fd = open_write_only(filename_buffer);
+    else
+      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
@@ -6229,13 +6443,8 @@ void implement_openat(uint64_t* context) {
         (char*) flags,
         (char*) mode,
         (char*) fd);
-  } else {
+  } else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-    if (debug_open)
-      printf2("%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name,
-        (char*) vfilename);
-  }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
@@ -6641,6 +6850,8 @@ void do_lui() {
 
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of lui
     next_rd_value = left_shift(imm, 12);
@@ -6649,7 +6860,8 @@ void do_lui() {
       *(registers + rd) = next_rd_value;
     else
       nopc_lui = nopc_lui + 1;
-  }
+  } else
+    nopc_lui = nopc_lui + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6691,6 +6903,8 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of addi
     next_rd_value = *(registers + rs1) + imm;
@@ -6699,7 +6913,8 @@ void do_addi() {
       *(registers + rd) = next_rd_value;
     else
       nopc_addi = nopc_addi + 1;
-  }
+  } else
+    nopc_addi = nopc_addi + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6723,6 +6938,8 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 void do_add() {
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of add
     next_rd_value = *(registers + rs1) + *(registers + rs2);
@@ -6731,7 +6948,8 @@ void do_add() {
       *(registers + rd) = next_rd_value;
     else
       nopc_add = nopc_add + 1;
-  }
+  } else
+    nopc_add = nopc_add + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6741,6 +6959,8 @@ void do_add() {
 void do_sub() {
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of sub
     next_rd_value = *(registers + rs1) - *(registers + rs2);
@@ -6749,7 +6969,8 @@ void do_sub() {
       *(registers + rd) = next_rd_value;
     else
       nopc_sub = nopc_sub + 1;
-  }
+  } else
+    nopc_sub = nopc_sub + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6758,6 +6979,8 @@ void do_sub() {
 
 void do_mul() {
   uint64_t next_rd_value;
+
+  update_register_counters();
 
   if (rd != REG_ZR) {
     // semantics of mul
@@ -6769,7 +6992,8 @@ void do_mul() {
       *(registers + rd) = next_rd_value;
     else
       nopc_mul = nopc_mul + 1;
-  }
+  } else
+    nopc_mul = nopc_mul + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6782,6 +7006,8 @@ void do_divu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
+    update_register_counters();
+
     if (rd != REG_ZR) {
       // semantics of divu
       next_rd_value = *(registers + rs1) / *(registers + rs2);
@@ -6790,13 +7016,14 @@ void do_divu() {
         *(registers + rd) = next_rd_value;
       else
         nopc_divu = nopc_divu + 1;
-    }
+    } else
+      nopc_divu = nopc_divu + 1;
 
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
   } else
-    throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
+    throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
 }
 
 void do_remu() {
@@ -6805,6 +7032,8 @@ void do_remu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
+    update_register_counters();
+
     if (rd != REG_ZR) {
       // semantics of remu
       next_rd_value = *(registers + rs1) % *(registers + rs2);
@@ -6813,19 +7042,22 @@ void do_remu() {
         *(registers + rd) = next_rd_value;
       else
         nopc_remu = nopc_remu + 1;
-    }
+    } else
+      nopc_remu = nopc_remu + 1;
 
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
   } else
-    throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
+    throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
 }
 
 void do_sltu() {
   // set on less than unsigned
 
   uint64_t next_rd_value;
+
+  update_register_counters();
 
   if (rd != REG_ZR) {
     // semantics of sltu
@@ -6838,7 +7070,8 @@ void do_sltu() {
       *(registers + rd) = next_rd_value;
     else
       nopc_sltu = nopc_sltu + 1;
-  }
+  } else
+    nopc_sltu = nopc_sltu + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6901,29 +7134,35 @@ uint64_t do_ld() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_valid_virtual_address(vaddr)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
-        // semantics of ld
-        next_rd_value = load_virtual_memory(pt, vaddr);
+    if (is_valid_segment_read(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        update_register_counters();
 
-        if (*(registers + rd) != next_rd_value)
-          *(registers + rd) = next_rd_value;
-        else
+        if (rd != REG_ZR) {
+          // semantics of ld
+          next_rd_value = load_virtual_memory(pt, vaddr);
+
+          if (*(registers + rd) != next_rd_value)
+            *(registers + rd) = next_rd_value;
+          else
+            nopc_ld = nopc_ld + 1;
+        } else
           nopc_ld = nopc_ld + 1;
-      }
 
-      // keep track of instruction address for profiling loads
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling loads
+        a = (pc - entry_point) / INSTRUCTIONSIZE;
 
-      pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-      // keep track of number of loads in total
-      ic_ld = ic_ld + 1;
+        // keep track of number of loads in total
+        ic_ld = ic_ld + 1;
 
-      // and individually
-      *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+        // and individually
+        *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
     } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
@@ -6985,25 +7224,30 @@ uint64_t do_sd() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_valid_virtual_address(vaddr)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      // semantics of sd
-      if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
-        store_virtual_memory(pt, vaddr, *(registers + rs2));
-      else
-        nopc_sd = nopc_sd + 1;
+    if (is_valid_segment_write(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        update_register_counters();
 
-      // keep track of instruction address for profiling stores
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+        // semantics of sd
+        if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
+          store_virtual_memory(pt, vaddr, *(registers + rs2));
+        else
+          nopc_sd = nopc_sd + 1;
 
-      pc = pc + INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling stores
+        a = (pc - entry_point) / INSTRUCTIONSIZE;
 
-      // keep track of number of stores in total
-      ic_sd = ic_sd + 1;
+        pc = pc + INSTRUCTIONSIZE;
 
-      // and individually
-      *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+        // keep track of number of stores in total
+        ic_sd = ic_sd + 1;
+
+        // and individually
+        *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
     } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
@@ -7043,6 +7287,8 @@ void record_beq() {
 
 void do_beq() {
   // branch on equal
+
+  update_register_counters();
 
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
@@ -7085,6 +7331,8 @@ void do_jal() {
 
   // jump and link
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // first link
     *(registers + rd) = pc + INSTRUCTIONSIZE;
@@ -7116,7 +7364,8 @@ void do_jal() {
     // just jump forward
     pc = pc + imm;
 
-    nopc_jal = nopc_jal + 1;
+    if (imm == INSTRUCTIONSIZE)
+      nopc_jal = nopc_jal + 1;
   }
 
   ic_jal = ic_jal + 1;
@@ -7142,6 +7391,8 @@ void do_jalr() {
   uint64_t next_pc;
 
   // jump and link register
+
+  update_register_counters();
 
   // prepare jump rs1-relative with LSB reset
   next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
@@ -7202,7 +7453,7 @@ void do_ecall() {
     }
   else
     // all system calls other than switch are handled by exception
-    throw_exception(EXCEPTION_SYSCALL, 0);
+    throw_exception(EXCEPTION_SYSCALL, *(registers + REG_A7));
 }
 
 void undo_ecall() {
@@ -7244,7 +7495,7 @@ void print_data(uint64_t data) {
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
-void translate_to_assembler() {
+void print_instruction() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     print_addi();
@@ -7311,7 +7562,7 @@ void selfie_disassemble(uint64_t verbose) {
     ir = load_instruction(pc);
 
     decode();
-    translate_to_assembler();
+    print_instruction();
     println();
 
     pc = pc + INSTRUCTIONSIZE;
@@ -7407,19 +7658,6 @@ void print_register_octal(uint64_t reg) {
   printf2("%s=%o", get_register_name(reg), (char*) *(registers + reg));
 }
 
-uint64_t is_system_register(uint64_t reg) {
-  if (reg == REG_GP)
-    return 1;
-  else if (reg == REG_FP)
-    return 1;
-  else if (reg == REG_RA)
-    return 1;
-  else if (reg == REG_SP)
-    return 1;
-  else
-    return 0;
-}
-
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
@@ -7427,45 +7665,63 @@ void print_register_value(uint64_t reg) {
     printf3("%s=%d(%x)", get_register_name(reg), (char*) *(registers + reg), (char*) *(registers + reg));
 }
 
-void print_exception(uint64_t exception, uint64_t faulting_page) {
+void print_exception(uint64_t exception, uint64_t fault) {
   print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    printf1(" at %p", (char*) faulting_page);
+    printf1(" at page %p", (char*) fault);
+  else if (exception == EXCEPTION_SEGMENTATIONFAULT)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_SYSCALL)
+    printf1(" ID %u", (char*) fault);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_INVALIDADDRESS)
+    printf1(" %p", (char*) fault);
+  else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
+    print(" ");print_register_name(fault);
+  }
 }
 
-void throw_exception(uint64_t exception, uint64_t faulting_page) {
+void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf2("%s: context %p throws ", selfie_name, (char*) current_context);
-      print_exception(exception, faulting_page);
-      print(" exception in presence of ");
-      print_exception(get_exception(current_context), get_faulting_page(current_context));
-      print(" exception\n");
+      printf2("%s: context %p throws exception: ", selfie_name, (char*) current_context);
+      print_exception(exception, fault);
+      print(" in presence of existing exception: ");
+      print_exception(get_exception(current_context), get_fault(current_context));
+      println();
 
       exit(EXITCODE_MULTIPLEEXCEPTIONERROR);
     }
 
   set_exception(current_context, exception);
-  set_faulting_page(current_context, faulting_page);
+  set_fault(current_context, fault);
 
   trap = 1;
 
   if (debug_exception) {
-    printf2("%s: context %p throws ", selfie_name, (char*) current_context);
-    print_exception(exception, faulting_page);
-    print(" exception\n");
+    printf2("%s: context %p throws exception: ", selfie_name, (char*) current_context);
+    print_exception(exception, fault);
+    println();
   }
 }
 
 void fetch() {
-  // assert: is_valid_virtual_address(pc) == 1
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
-  if (pc % REGISTERSIZE == 0)
-    ir = get_low_word(load_virtual_memory(pt, pc));
-  else
-    ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+  if (is_valid_code_address(current_context, pc))
+    if (pc % REGISTERSIZE == 0)
+      ir = get_low_word(load_virtual_memory(pt, pc));
+    else
+      ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+  else {
+    ir = encode_nop();
+
+    throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
+  }
 }
 
 void decode() {
@@ -7535,7 +7791,7 @@ void decode() {
 
   if (is == 0) {
     if (run)
-      throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+      throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, pc);
     else {
       //report the error on the console
       output_fd = 1;
@@ -7649,7 +7905,7 @@ void execute_undo() {
 }
 
 void execute_debug() {
-  translate_to_assembler();
+  print_instruction();
 
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI){
@@ -7796,9 +8052,81 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  printf3("%s%s%u", selfie_name, message, (char*) total);
+  printf3("%s: %s%u", selfie_name, message, (char*) total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
+}
+
+void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t writes) {
+  if (reads + writes > 0) {
+    if (writes == 0)
+      // may happen in read-only memory segments
+      writes = 1;
+
+    printf7("%s: %s%s%d,%d,%d[%.2u]\n", selfie_name, message, padding,
+      (char*) (reads + writes), (char*) reads, (char*) writes, (char*) fixed_point_ratio(reads, writes, 2));
+  }
+}
+
+void print_per_register_profile(uint64_t reg) {
+  print_access_profile(get_register_name(reg), " register:   ", *(reads_per_register + reg), *(writes_per_register + reg));
+}
+
+void print_register_memory_profile() {
+  uint64_t reg;
+
+  printf1("%s: CPU+memory:    reads+writes,reads,writes[reads/writes]\n", selfie_name);
+
+  print_access_profile("heap segment:  ", "", heap_reads, heap_writes);
+
+  print_per_register_profile(REG_GP);
+  print_access_profile("data segment:  ", "", data_reads, data_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_stack_register(reg)) {
+      stack_register_reads  = stack_register_reads + *(reads_per_register + reg);
+      stack_register_writes = stack_register_writes + *(writes_per_register + reg);
+
+      print_per_register_profile(reg);
+    }
+
+    reg = reg + 1;
+  }
+
+  print_access_profile("stack total:   ", "", stack_register_reads, stack_register_writes);
+  print_access_profile("stack segment: ", "", stack_reads, stack_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_argument_register(reg)) {
+      argument_register_reads  = argument_register_reads + *(reads_per_register + reg);
+      argument_register_writes = argument_register_writes + *(writes_per_register + reg);
+
+      print_per_register_profile(reg);
+    }
+
+    reg = reg + 1;
+  }
+
+  print_access_profile("args total:    ", "", argument_register_reads, argument_register_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_temporary_register(reg)) {
+      temporary_register_reads  = temporary_register_reads + *(reads_per_register + reg);
+      temporary_register_writes = temporary_register_writes + *(writes_per_register + reg);
+
+      print_per_register_profile(reg);
+    }
+
+    reg = reg + 1;
+  }
+
+  print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
 void print_profile() {
@@ -7816,10 +8144,12 @@ void print_profile() {
     else
       printf1("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
 
-    print_per_instruction_profile(": calls:   ", calls, calls_per_procedure);
-    print_per_instruction_profile(": loops:   ", iterations, iterations_per_loop);
-    print_per_instruction_profile(": loads:   ", ic_ld, loads_per_instruction);
-    print_per_instruction_profile(": stores:  ", ic_sd, stores_per_instruction);
+    print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
+    print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
+    print_per_instruction_profile("loads:   ", ic_ld, loads_per_instruction);
+    print_per_instruction_profile("stores:  ", ic_sd, stores_per_instruction);
+
+    print_register_memory_profile();
   }
 }
 
@@ -7856,7 +8186,7 @@ uint64_t* new_context() {
 }
 
 void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
-  set_pc(context, 0);
+  // some fields are set in boot loader or when context switching
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
@@ -7869,21 +8199,28 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   else
     set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
-  // determine range of recently mapped pages
+  // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
   set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-  set_faulting_page(context, 0);
+  if (parent != MY_CONTEXT) {
+    set_code_entry(context, load_virtual_memory(get_pt(parent), code_entry(vctxt)));
+    set_code_segment(context, load_virtual_memory(get_pt(parent), code_segment(vctxt)));
+    set_data_segment(context, load_virtual_memory(get_pt(parent), data_segment(vctxt)));
 
-  set_exit_code(context, EXITCODE_NOERROR);
+    // TODO: cache name
+    set_name(context, (char*) 0);
+  } else {
+    set_exception(context, EXCEPTION_NOEXCEPTION);
+    set_fault(context, 0);
+
+    set_exit_code(context, EXITCODE_NOERROR);
+  }
 
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
-
-  set_name(context, 0);
 }
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
@@ -7986,7 +8323,7 @@ void save_context(uint64_t* context) {
     store_virtual_memory(parent_table, program_break(vctxt), get_program_break(context));
 
     store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
-    store_virtual_memory(parent_table, faulting_page(vctxt), get_faulting_page(context));
+    store_virtual_memory(parent_table, fault(vctxt), get_fault(context));
     store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
   }
 }
@@ -8081,7 +8418,8 @@ void restore_context(uint64_t* context) {
     set_program_break(context, load_virtual_memory(parent_table, program_break(vctxt)));
 
     set_exception(context, load_virtual_memory(parent_table, exception(vctxt)));
-    set_faulting_page(context, load_virtual_memory(parent_table, faulting_page(vctxt)));
+    set_fault(context, load_virtual_memory(parent_table, fault(vctxt)));
+
     set_exit_code(context, load_virtual_memory(parent_table, exit_code(vctxt)));
 
     table = (uint64_t*) load_virtual_memory(parent_table, page_table(vctxt));
@@ -8102,6 +8440,92 @@ void restore_context(uint64_t* context) {
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
   }
+}
+
+uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
+  // is address in code segment?
+  if (vaddr >= get_code_entry(context))
+    if (vaddr < get_code_segment(context))
+      // code must be single-word-addressed
+      if (vaddr % INSTRUCTIONSIZE == 0)
+        return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
+  // is address in data segment?
+  if (vaddr >= get_code_segment(context))
+    if (vaddr < get_data_segment(context))
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
+  // is address in the stack?
+  if (vaddr >= *(get_regs(context) + REG_SP))
+    if (vaddr < VIRTUALMEMORYSIZE)
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
+  // is address in the heap?
+  if (vaddr >= get_data_segment(context))
+    if (vaddr < get_program_break(context))
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
+  if (is_valid_data_address(context, vaddr))
+    return 1;
+  else if (is_valid_stack_address(context, vaddr))
+    return 1;
+  else if (is_valid_heap_address(context, vaddr))
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_valid_segment_read(uint64_t vaddr) {
+  if (is_valid_data_address(current_context, vaddr)) {
+    data_reads = data_reads + 1;
+
+    return 1;
+  } else if (is_valid_stack_address(current_context, vaddr)) {
+    stack_reads = stack_reads + 1;
+
+    return 1;
+  } else if (is_valid_heap_address(current_context, vaddr)) {
+    heap_reads = heap_reads + 1;
+
+    return 1;
+  } else
+    return 0;
+}
+
+uint64_t is_valid_segment_write(uint64_t vaddr) {
+  if (is_valid_data_address(current_context, vaddr)) {
+    data_writes = data_writes + 1;
+
+    return 1;
+  } else if (is_valid_stack_address(current_context, vaddr)) {
+    stack_writes = stack_writes + 1;
+
+    return 1;
+  } else if (is_valid_heap_address(current_context, vaddr)) {
+    heap_writes = heap_writes + 1;
+
+    return 1;
+  } else
+    return 0;
 }
 
 // -----------------------------------------------------------------
@@ -8191,10 +8615,18 @@ void up_load_binary(uint64_t* context) {
   // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
 
   set_pc(context, entry_point);
+
+  // setting up page table cache
+
   set_lowest_lo_page(context, get_page_of_virtual_address(entry_point));
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_original_break(context, entry_point + binary_length);
-  set_program_break(context, get_original_break(context));
+
+  // setting up memory segments
+
+  set_code_entry(context, entry_point);
+  set_code_segment(context, entry_point + code_length);
+  set_data_segment(context, entry_point + binary_length);
+  set_program_break(context, get_data_segment(context));
 
   baddr = 0;
 
@@ -8294,6 +8726,9 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(get_regs(context) + REG_SP) = SP;
+
+  // initialize frame pointer register for completeness (redundant)
+  *(get_regs(context) + REG_S0) = 0;
 }
 
 uint64_t handle_system_call(uint64_t* context) {
@@ -8331,7 +8766,7 @@ uint64_t handle_page_fault(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   // TODO: use this table to unmap and reuse frames
-  map_page(context, get_faulting_page(context), (uint64_t) palloc());
+  map_page(context, get_fault(context), (uint64_t) palloc());
 
   return DONOTEXIT;
 }
@@ -8374,8 +8809,8 @@ uint64_t handle_exception(uint64_t* context) {
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
   else {
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
+    printf2("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
+    print_exception(exception, get_fault(context));
     println();
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
@@ -8503,8 +8938,8 @@ uint64_t minmob(uint64_t* to_context) {
     } else {
       // minster and mobster do not handle page faults
       if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
-        printf2("%s: context %s throws uncaught ", selfie_name, get_name(from_context));
-        print_exception(get_exception(from_context), get_faulting_page(from_context));
+        printf2("%s: context %s threw uncaught exception: ", selfie_name, get_name(from_context));
+        print_exception(get_exception(from_context), get_fault(from_context));
         println();
 
         return EXITCODE_UNCAUGHTEXCEPTION;
@@ -8603,26 +9038,6 @@ char* replace_extension(char* filename, char* extension) {
   return s;
 }
 
-uint64_t is_boot_level_zero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer.
-  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand,
-  // returns the same not null address, if malloc(0) is called consecutively.
-  uint64_t first_malloc;
-  uint64_t second_malloc;
-
-  first_malloc = (uint64_t) malloc(0);
-  second_malloc = (uint64_t) malloc(0);
-
-  if (first_malloc == 0)
-    return 1;
-  if (first_malloc != second_malloc)
-    return 1;
-
-  // it is selfie's malloc, so it can not be boot level zero.
-  return 0;
-}
-
 void boot_loader(uint64_t* context) {
   up_load_binary(context);
 
@@ -8645,16 +9060,6 @@ uint64_t selfie_run(uint64_t machine) {
   reset_profiler();
   reset_microkernel();
 
-  if (machine == DIPSTER) {
-    debug          = 1;
-    debug_syscalls = 1;
-  } else if (machine == RIPSTER) {
-    debug  = 1;
-    record = 1;
-
-    init_replay_engine();
-  }
-
   init_memory(atoi(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
@@ -8666,6 +9071,19 @@ uint64_t selfie_run(uint64_t machine) {
   printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
+
+  if (machine == DIPSTER) {
+    debug          = 1;
+    debug_syscalls = 1;
+  } else if (machine == RIPSTER) {
+    debug  = 1;
+    record = 1;
+
+    init_replay_engine();
+  } else if (machine == HYPSTER)
+    if (BOOTLEVELZERO)
+      // no hypster on boot level zero
+      machine = MIPSTER;
 
   run = 1;
 
@@ -8680,20 +9098,10 @@ uint64_t selfie_run(uint64_t machine) {
   else if (machine == MOBSTER)
     exit_code = mobster(current_context);
   else if (machine == HYPSTER)
-    if (is_boot_level_zero())
-      // no hypster on boot level zero
-      exit_code = mipster(current_context);
-    else
-      exit_code = hypster(current_context);
+    exit_code = hypster(current_context);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
-
-  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
-    get_name(current_context),
-    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
-
-  print_profile();
 
   run = 0;
 
@@ -8701,6 +9109,13 @@ uint64_t selfie_run(uint64_t machine) {
 
   debug_syscalls = 0;
   debug          = 0;
+
+  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
+    get_name(current_context),
+    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  if (machine != HYPSTER)
+    print_profile();
 
   return exit_code;
 }
@@ -8788,6 +9203,30 @@ uint64_t selfie() {
 }
 
 // -----------------------------------------------------------------
+// ----------------------------- SELFIE ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_boot_level_zero() {
+  // in C99 malloc(0) returns either a null pointer or a unique pointer.
+  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
+  // selfie's malloc implementation, on the other hand,
+  // returns the same not null address, if malloc(0) is called consecutively.
+  uint64_t first_malloc;
+  uint64_t second_malloc;
+
+  first_malloc = (uint64_t) malloc(0);
+  second_malloc = (uint64_t) malloc(0);
+
+  if (first_malloc == 0)
+    return 1;
+  if (first_malloc != second_malloc)
+    return 1;
+
+  // it is selfie's malloc, so it can not be boot level zero.
+  return 0;
+}
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -8798,6 +9237,8 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
+
+  init_system();
 
   exit_code = selfie();
 
