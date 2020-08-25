@@ -1,7 +1,6 @@
 #include "diag.h"
+#include "sbi_ecall.h"
 #include "tinycstd.h"
-
-extern void _start_hang();
 
 void panic(const char* diagnostic_message, ...) {
   va_list args;
@@ -14,8 +13,12 @@ void panic(const char* diagnostic_message, ...) {
   
   va_printf(diagnostic_message, args);
   printf("\n\n");
-  printf("starting to hang...");
+  printf("shutting down...\n");
 
   va_end(args);
-  _start_hang();
+  shutdown();
+}
+
+void shutdown() {
+  sbi_ecall_sbi_shutdown();
 }

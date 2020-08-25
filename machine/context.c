@@ -133,8 +133,6 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   *((uint64_t*) vaddr_to_paddr(context->pt, context->saved_regs.sp)) = argc;
 }
 
-extern void _start_hang();
-
 void kfree_context(uint64_t context_id) {
   struct context_manager* context_manager = &all_contexts[context_id - 1];
 

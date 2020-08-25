@@ -18,7 +18,7 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_package.c syscalls.c asm/crt.S diag.c
+SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_package.c syscalls.c asm/crt.S diag.c sbi_ecall.c
 SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 

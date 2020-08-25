@@ -1,5 +1,7 @@
 #include "config.h"
+#include "diag.h"
 #include "filesystem.h"
+#include "sbi_ecall.h"
 #include "syscalls.h"
 #include <stdint.h>
 
@@ -36,8 +38,7 @@ void* malloc(unsigned long long size) {
   return return_ptr;
 }
 
-extern void _start_hang();
 void exit(int status) {
   printf(">EXIT called with exit code %x<\n", status);
-  _start_hang();
+  shutdown();
 }

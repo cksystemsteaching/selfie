@@ -5,6 +5,7 @@
 #include "syscalls.h"
 #include "tinycstd.h"
 #include "mmu.h"
+#include "sbi_ecall.h"
 #include <stdint.h>
 
 #define SCAUSE_INTERRUPT_BIT_MASK (1ULL << 63)
@@ -161,22 +162,9 @@ bool set_timer_interrupt_delta(uint64_t delta) {
 }
 
 bool set_timer_interrupt(uint64_t interrupt_at) {
-  long error;
-
   // call into the SBI to set the timer since
   // mtimecmp can only be modified from M-mode
-  asm volatile(
-    "li a7, 0x54494D45;"
-    "li a6, 0;"
-    "mv a0, %[interrupt_at];"
-    "ecall;"
-    "mv %[error], a1"
-    : [error] "=r" (error)
-    : [interrupt_at] "r" (interrupt_at)
-    : "a7", "a6", "a1", "a0" // a1 because the SBI returns an error code in there
-  );
-
-  return (error == 0);
+  return sbi_ecall_sbi_set_timer(interrupt_at);
 }
 
 uint64_t trap_handler(struct registers registers_buffer) {
