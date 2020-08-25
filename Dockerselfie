@@ -223,8 +223,10 @@ WORKDIR /opt/selfie
 # build selfie
 RUN make selfie
 
-# build machine files
-RUN make --directory machine/
+# build machine files (but keep only kernel version)
+RUN make --directory machine/ KERN_TYPE=library
+RUN make --directory machine/ clean
+RUN make --directory machine/ KERN_TYPE=kernel
 
 # default command
 CMD /bin/bash
