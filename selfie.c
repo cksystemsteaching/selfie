@@ -685,12 +685,16 @@ void reset_parser() {
 void emit_round_up(uint64_t reg, uint64_t m);
 void emit_left_shift_by(uint64_t reg, uint64_t b);
 void emit_program_entry();
-void emit_bootstrapping();
 
-// Garbage Collector Bounds Fetcher
-void     emit_fetch_stack_pointer();
-uint64_t emit_fetch_data_segment_size();
-void     fixup_fetch_data_segment_size(uint64_t location, uint64_t data_segment_size);
+// for garbage collector
+
+void emit_fetch_stack_pointer();
+void emit_fetch_data_segment_size_interface();
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
+
+// bootstrapping binary
+
+void emit_bootstrapping(uint64_t fetch_dss_code_location);
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -5024,13 +5028,47 @@ void emit_program_entry() {
   }
 }
 
-void emit_bootstrapping() {
+void emit_fetch_stack_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_add(REG_A0, REG_ZR, REG_SP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_interface() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  // up to three instructions needed to load data segment size but is not yet known
+
+  emit_nop();
+  emit_nop();
+  emit_nop();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  // set code emission to fetch_data_segment_size
+  binary_length = fetch_dss_code_location;
+
+  // assert: emitting no more than 3 instructions
+
+  // load data segment size into A0
+  load_small_and_medium_integer(REG_A0, allocated_memory);
+
+  // discount NOPs in profile that were generated for fetch_data_segment_size
+  ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+}
+
+void emit_bootstrapping(uint64_t fetch_dss_code_location) {
   /*
       1. initialize global pointer
       2. initialize malloc's _bump pointer
       3. push argv pointer onto stack
       4. call main procedure
       5. proceed to exit procedure
+      6. fix fetch_data_segment_size code
   */
   uint64_t gp;
   uint64_t padding;
@@ -5140,56 +5178,10 @@ void emit_bootstrapping() {
   // discount NOPs in profile that were generated for program entry
   ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
 
+  emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
+
   // restore original binary length
   binary_length = code_length;
-}
-
-void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
-
-  emit_add(REG_A0, REG_ZR, REG_SP);
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-uint64_t emit_fetch_data_segment_size() {
-  uint64_t ret;
-
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
-
-  ret = binary_length;
-
-  // We need to emit library function before code generation but we do not know the actual size of the data segment
-  // at that point. Therefore we emit two nops which are then fixed up later.
-  emit_nop();
-  emit_nop();
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-
-  return ret;
-}
-
-void fixup_fetch_data_segment_size(uint64_t location, uint64_t data_segment_size) {
-  uint64_t lower;
-  uint64_t upper;
-
-  if (is_signed_integer(data_segment_size, 12)) {
-    store_instruction(location + INSTRUCTIONSIZE, encode_i_format(data_segment_size, REG_ZR, F3_ADDI, REG_A0, OP_IMM));
-
-    ic_addi = ic_addi + 1;
-  } else {
-    lower = get_bits(data_segment_size, 0, 12);
-    upper = get_bits(data_segment_size, 12, 20);
-
-    if (lower >= two_to_the_power_of(11))
-      upper = upper + 1;
-
-    store_instruction(location, encode_u_format(upper, REG_A0, OP_LUI));
-    store_instruction(location + INSTRUCTIONSIZE, encode_i_format(sign_extend(lower, 12), REG_A0, F3_ADDI, REG_A0, OP_IMM));
-
-    ic_addi = ic_addi + 1;
-    ic_lui = ic_lui + 1;
-  }
 }
 
 // -----------------------------------------------------------------
@@ -5199,7 +5191,7 @@ void fixup_fetch_data_segment_size(uint64_t location, uint64_t data_segment_size
 void selfie_compile() {
   uint64_t link;
   uint64_t number_of_source_files;
-  uint64_t fetch_ds_loc;
+  uint64_t fetch_dss_code_location;
 
   // link until next console option
   link = 1;
@@ -5237,7 +5229,9 @@ void selfie_compile() {
 
   emit_fetch_stack_pointer();
 
-  fetch_ds_loc = emit_fetch_data_segment_size();
+  fetch_dss_code_location = binary_length;
+
+  emit_fetch_data_segment_size_interface();
 
   emit_switch();
 
@@ -5299,9 +5293,7 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  fixup_fetch_data_segment_size(fetch_ds_loc, allocated_memory);
-
-  emit_bootstrapping();
+  emit_bootstrapping(fetch_dss_code_location);
 
   emit_data_segment();
 
