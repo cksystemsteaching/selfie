@@ -33,7 +33,11 @@ $(eval SBI_WRAPPER_OBJS += $(SBI_WRAPPER_OBJS_LIBRARY))
 else ifeq ($(KERN_TYPE), kernel)
 $(eval SBI_WRAPPER_OBJS += $(SBI_WRAPPER_OBJS_KERNEL))
 else
+ifeq ($(MAKECMDGOALS),clean)
+else ifeq ($(MAKECMDGOALS),distclean)
+else
 $(error No build type specified! Please specify either KERN_TYPE=kernel or KERN_TYPE=library when invoking make)
+endif
 endif
 
 # ==============================================================================
