@@ -31,34 +31,34 @@ _bss_zero:
 
 _start_warm:
   /* Disable and clear all interrupts */
-  csrw	sie, zero
-  csrw	sip, zero
+  csrw sie, zero
+  csrw sip, zero
 
   /* Setup exception vectors */
-  la	a3, _start_hang
-  csrw	stvec, a3
+  la a3, _start_hang
+  csrw stvec, a3
 
   /* Setup stack */
   jal initial_stack_start
-  add	sp, zero, a0
+  add sp, zero, a0
 
   /* Jump to C main */
-  call	bootstrap
+  call bootstrap
 
   /* We don't expect to reach here hence just hang */
-  j	_start_hang
+  j _start_hang
 
   .section .entry, "ax", %progbits
   .align 3
   .globl _start_hang
 _start_hang:
   wfi
-  j	_start_hang
+  j _start_hang
 
 .globl initial_stack_start
 initial_stack_start:
-  la	t0, _payload_end
-  li	a0, NUM_STACK_PAGES
+  la t0, _payload_end
+  li a0, NUM_STACK_PAGES
   slli a0, a0, 12
 
   add a0, a0, t0
