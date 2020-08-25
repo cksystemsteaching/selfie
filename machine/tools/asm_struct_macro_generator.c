@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "include/context.h"
 
-#define PRINT_SIZE_DEF(prefix, name, stru) printf("#define %s%s %d\n", #prefix, #name, sizeof(stru))
-#define PRINT_OFFSET_DEF(prefix, name, stru, memb) printf("#define %s%s %d\n", #prefix, #name, offsetof(stru, memb))
+#define PRINT_SIZE_DEF(prefix, name, stru) printf("#define %s%s %lu\n", #prefix, #name, sizeof(stru))
+#define PRINT_OFFSET_DEF(prefix, name, stru, memb) printf("#define %s%s %lu\n", #prefix, #name, offsetof(stru, memb))
 
 int main() {
   PRINT_SIZE_DEF(SIZEOF_, REGISTERS_STRUCT, struct registers);
