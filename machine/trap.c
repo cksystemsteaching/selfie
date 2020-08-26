@@ -446,10 +446,10 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
 
   switch (memory_access_type) {
     case memory_access_type_lo:
-      map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+      map_successful = kmap_page(context->pt, stval, true);
       break;
     case memory_access_type_mid:
-      map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+      map_successful = kmap_page(context->pt, stval, true);
       break;
     case memory_access_type_hi:
 #ifdef DEBUG
@@ -461,11 +461,11 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
       break;
     case memory_access_type_unknown:
       if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
-        map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+        map_successful = kmap_page(context->pt, stval, true);
         context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
       } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
         // stack has grown but the page isnt mapped yet
-        map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+        map_successful = kmap_page(context->pt, stval, true);
         context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
       } else {
         printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);

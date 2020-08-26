@@ -131,17 +131,6 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
   return true;
 }
 
-bool kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr) {
-  uint64_t ppn;
-
-  ppn = kmap_page(table, vaddr, true);
-  if (ppn == 0)
-    return false;
-
-  kidentity_map_ppn(kernel_context.pt, ppn, false);
-  return true;
-}
-
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
   // RISC-V requires that for virtual addresses
   // bits 39 to 64 have the value of bit 38
