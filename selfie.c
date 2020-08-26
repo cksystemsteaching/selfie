@@ -7502,6 +7502,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   size = round_up(size, SIZEOFUINT64);
 
+  gc_live_memory = gc_live_memory + size;
+
   // Allocator automatically checks if it has been initialised
   if(get_gc_enabled_gc(context) == 0)
     gc_init(context);
@@ -7531,6 +7533,12 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   // No reusable memory -> allocate new memory
   ret = gc_alloc_memory(size, context);
+
+  // In case allocation failed -> discount memory from live memory counter
+  if (ret == (uint64_t*) 0)
+    if (size != 0)
+      gc_live_memory = gc_live_memory - size;
+
   metadata = allocate_metadata_entry(context);
 
   used_list_head_ptr = get_used_list_head_gc(context);
