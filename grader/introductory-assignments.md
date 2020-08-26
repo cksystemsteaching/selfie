@@ -1,4 +1,4 @@
-# Introduction to Operating Systems - Tutorial
+# Introduction to Operating Systems - Assignments
 
 ## Description
 
