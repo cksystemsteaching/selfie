@@ -3,8 +3,6 @@
 #include "config.h"
 
 .text
-  .global trap_handler_wrapper
-
 
 // trap_handler_wrapper expects the kernel stack to be set up
 // like this. The kernel's stack pointer is saved in sscratch.
@@ -15,7 +13,8 @@
 // |     kernel satp      | -8
 // |     [reserved]       |     <- kernel sp
 // +----------------------+
-.p2align 12
+  .p2align 12
+  .global trap_handler_wrapper
 trap_handler_wrapper:
 switch_to_kernel_stack:
   // at the moment sscratch stores the kernel's sp
@@ -158,7 +157,7 @@ return_to_umode:
 // |         ra           |     <- sp
 // +----------------------+
 // :                      :
-.globl perform_initial_ctxt_switch
+  .global perform_initial_ctxt_switch
 perform_initial_ctxt_switch:
   // Reserve space for kernel data
 

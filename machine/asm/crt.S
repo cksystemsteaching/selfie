@@ -9,9 +9,11 @@
 
 #include "config.h"
 
+.text
+
   .section .entry, "ax", %progbits
-  .align 3
-  .globl _start
+  .p2align 3
+  .global _start
 _start:
   /* Set up the Global Pointer */
   .option push
@@ -49,13 +51,13 @@ _start_warm:
   j _start_hang
 
   .section .entry, "ax", %progbits
-  .align 3
-  .globl _start_hang
+  .p2align 3
+  .global _start_hang
 _start_hang:
   wfi
   j _start_hang
 
-.globl initial_stack_start
+  .global initial_stack_start
 initial_stack_start:
   la t0, _payload_end
   li a0, NUM_STACK_PAGES
