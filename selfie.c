@@ -1216,6 +1216,8 @@ void gc_collect(uint64_t* context);
 // shared implementation of library and syscall variant (context == 0 -> library)
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
+void print_garbage_collector_summary();
+
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
@@ -1238,6 +1240,24 @@ uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end  = 0;
 
 uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialized yet
+
+uint64_t gc_num_malloc_new   = 0;
+uint64_t gc_num_malloc_reuse = 0;
+uint64_t gc_num_collects     = 0;
+uint64_t gc_mem_collected    = 0;
+uint64_t gc_live_memory      = 0;
+uint64_t gc_dead_memory      = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void reset_garbage_collector_summary() {
+  gc_num_malloc_new   = 0;
+  gc_num_malloc_reuse = 0;
+  gc_num_collects     = 0;
+  gc_mem_collected    = 0;
+  gc_live_memory      = 0;
+  gc_dead_memory      = 0;
+}
 
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
@@ -7402,11 +7422,14 @@ void mark(uint64_t* context) {
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context) {
   uint64_t object_beg;
   uint64_t object_size;
+  uint64_t object_end;
 
   // 1. Zero object memory
   object_beg = (uint64_t) get_metadata_memory(metadata_entry);
-  object_size = object_beg + get_metadata_size(metadata_entry);
-  while (object_beg < object_size) {
+  object_size = get_metadata_size(metadata_entry);
+  object_end = object_beg + object_size;
+  
+  while (object_beg < object_end) {
     gc_store_memory(object_beg, 0, context);
 
     object_beg = object_beg + SIZEOFUINT64;
@@ -7416,6 +7439,10 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   relink_metadata(metadata_entry, (uint64_t*) *free_list_head_pointer);
 
   *free_list_head_pointer = (uint64_t) metadata_entry;
+
+  gc_mem_collected = gc_mem_collected + object_size;
+  gc_dead_memory = gc_dead_memory + object_size;
+  gc_live_memory = gc_live_memory - object_size;
 }
 
 void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, uint64_t* context) {
@@ -7443,6 +7470,8 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
 
 void gc_init(uint64_t* context) {
   uint64_t program_break;
+
+  reset_garbage_collector_summary();
 
   set_used_and_free_list_head(context, smalloc_system(SIZEOFUINT64), smalloc_system(SIZEOFUINT64));
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
@@ -7480,8 +7509,11 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   // Check if memory is in free list
   ret = free_list_extract(context, size);
 
-  if (ret != (uint64_t*) 0)
+  if (ret != (uint64_t*) 0) {
+    gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
+
     return get_metadata_memory(ret);
+  }
 
   // Try collecting and recheck
   gc_collect(context);
@@ -7489,8 +7521,13 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   // Check if memory is in free list
   ret = free_list_extract(context, size);
 
-  if (ret != (uint64_t*) 0)
+  if (ret != (uint64_t*) 0) {
+    gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
+    
     return get_metadata_memory(ret);
+  }
+
+  gc_num_malloc_new = gc_num_malloc_new + 1;
 
   // No reusable memory -> allocate new memory
   ret = gc_alloc_memory(size, context);
@@ -7514,6 +7551,23 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 void gc_collect(uint64_t* context) {
   mark(context);
   sweep(get_used_list_head_gc(context), get_free_list_head_gc(context), context);
+  
+  gc_num_collects = gc_num_collects + 1;
+}
+
+void print_garbage_collector_summary() {
+  printf4("%s: garbage collector: malloc used %d times (%d reuses and %d new allocations)\n", 
+    selfie_name, 
+    (char*) (gc_num_malloc_new + gc_num_malloc_reuse), 
+    (char*) gc_num_malloc_reuse, 
+    (char*) gc_num_malloc_new);
+
+  printf3("%s: garbage collector: collected a total amount of %.2uMB with %d collect calls\n", 
+    selfie_name,
+    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
+    (char*) gc_num_collects);
+
+  
 }
 
 // -----------------------------------------------------------------
@@ -9853,9 +9907,14 @@ uint64_t selfie_run(uint64_t machine) {
   debug_syscalls = 0;
   debug          = 0;
 
+  gc = 0;
+
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  if (machine == GIBSTER)
+    print_garbage_collector_summary();
 
   if (machine != HYPSTER)
     print_profile();
