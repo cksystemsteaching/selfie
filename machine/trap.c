@@ -171,7 +171,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
   uint64_t sepc;  // pc where the exception occured
-  uint64_t interrupt_bit;
+  bool interrupt_bit;
   uint64_t exception_code;
   struct context* context = get_currently_active_context();
   struct context* next_context;
@@ -198,6 +198,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
         break;
       default:
         print_unhandled_trap(context, interrupt_bit, exception_code, stval, sepc);
+        kill_context(context->id, KILL_CONTEXT_REASON_UNHANDLED_TRAP);
     }
   else
     switch (exception_code) {
@@ -237,7 +238,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
   return assemble_satp_value(next_context->pt, 0);
 }
 
-void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc) {
+void print_unhandled_trap(struct context* context, bool interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc) {
   printf("unhandled trap (caused by context %u)\n", context->id);
   printf("  interrupt bit:  %d\n", interrupt_bit);
   printf("  exception code: %d\n", exception_code);

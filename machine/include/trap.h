@@ -38,7 +38,7 @@ bool set_timer_interrupt_delta(uint64_t delta);
 bool set_timer_interrupt(uint64_t interrupt_at);
 uint64_t trap_handler(struct registers registers_buffer);
 
-void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc);
+void print_unhandled_trap(struct context* context, bool interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc);
 
 void handle_ecall(struct context* context);
 void implement_syscall_exit(struct context* context);
