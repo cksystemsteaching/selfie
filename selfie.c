@@ -97,10 +97,6 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
 
-// Bootstrapped to actual functions during compilation, not available on bootlevel 0 - only for compilation
-uint64_t fetch_stack_pointer()     { return 0; }
-uint64_t fetch_data_segment_size() { return 0; }
-
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
@@ -178,7 +174,8 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
 uint64_t round_up(uint64_t n, uint64_t m);
 
 uint64_t* smalloc(uint64_t size);
-uint64_t* smalloc_implementation(uint64_t size, uint64_t allocator);
+uint64_t* smalloc_system(uint64_t size);
+
 uint64_t* zalloc(uint64_t size);
 
 void zero_memory(uint64_t* p, uint64_t size); // size in bytes, automatically round up to multiple of REGISTERSIZE
@@ -258,9 +255,14 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
-// Allocator Types
-uint64_t ALLOCATORSYSTEM = 0;
-uint64_t ALLOCATORGC     = 1;
+// garbage collector
+
+uint64_t GC_DISABLED = 0;
+uint64_t GC_LIBRARY  = 1;
+
+uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
+
+uint64_t GC_LIBRARY_PROGRAM_BREAK = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -272,21 +274,26 @@ uint64_t output_fd   = 1; // 1 is file descriptor of standard output
 char*    output_buffer = (char*) 0;
 uint64_t output_cursor = 0; // cursor for output buffer
 
-uint64_t gc_library_program_break = 0;
-
 // ------------------------- INITIALIZATION ------------------------
 
 void init_library() {
+  uint64_t gc;
   uint64_t i;
-
-  // Save original program break (used by garbage collector library)
-  gc_library_program_break = (uint64_t) smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
 
   SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
 
+  gc = USE_GC_LIBRARY;
+
+  if (USE_GC_LIBRARY) {
+    // temporarily disable garbage collector during initialization
+    USE_GC_LIBRARY = GC_DISABLED;
+
+    // save original program break (used by garbage collector library)
+    GC_LIBRARY_PROGRAM_BREAK = (uint64_t) smalloc(SIZEOFUINT64);
+  }
+
   // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
-  // GC dependent on shift opertions, pow2 table cannot be allocated using gc_malloc
-  power_of_two_table = smalloc_implementation(CPUBITWIDTH * SIZEOFUINT64, ALLOCATORSYSTEM);
+  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFUINT64);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -307,20 +314,21 @@ void init_library() {
   INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
+  character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
-  integer_buffer = (char*)smalloc_implementation((CPUBITWIDTH + 1), ALLOCATORSYSTEM);
-  zero_memory((uint64_t*) integer_buffer, (CPUBITWIDTH + 1));
+  integer_buffer = string_alloc(CPUBITWIDTH);
 
   // does not need to be mapped
-  filename_buffer = (char*)smalloc_implementation((MAX_FILENAME_LENGTH + 1), ALLOCATORSYSTEM);
-  zero_memory((uint64_t*) filename_buffer, (MAX_FILENAME_LENGTH + 1));
+  filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
+  binary_buffer  = smalloc(SIZEOFUINT64);
   *binary_buffer = 0;
+
+  // turn garbage collector back on if it was on before initialization
+  USE_GC_LIBRARY = gc;
 }
 
 void reset_library() {
@@ -686,12 +694,6 @@ void emit_round_up(uint64_t reg, uint64_t m);
 void emit_left_shift_by(uint64_t reg, uint64_t b);
 void emit_program_entry();
 
-// for garbage collector
-
-void emit_fetch_stack_pointer();
-void emit_fetch_data_segment_size_interface();
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
-
 // bootstrapping binary
 
 void emit_bootstrapping(uint64_t fetch_dss_code_location);
@@ -1020,6 +1022,7 @@ void     implement_openat(uint64_t* context);
 
 void emit_malloc();
 void implement_brk(uint64_t* context);
+
 void implement_gc_brk(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1126,12 +1129,21 @@ void init_memory(uint64_t megabytes) {
 // ---------------------- GARBAGE COLLECTOR ------------------------
 // -----------------------------------------------------------------
 
-// Bootstrap function which allocates memory either by emulating a malloc (emumlator point of view) or directly
+// bootstrap functions which allocate memory either by emulating a malloc (emulator point of view) or directly
 uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context);
 uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context);
 
-// Library ... 1, Syscall ... 0
-uint64_t gc_is_library_or_syscall(uint64_t* context) {
+// bootstrapped to actual functions during compilation ...
+uint64_t fetch_stack_pointer()     { return 0; }
+uint64_t fetch_data_segment_size() { return 0; }
+
+// ... here, not available on bootlevel 0 - only for compilation
+void emit_fetch_stack_pointer();
+void emit_fetch_data_segment_size_interface();
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
+
+// library ... 1, syscall ... 0
+uint64_t gc_is_library(uint64_t* context) {
   if(context == (uint64_t*) 0)
     return 1;
   else
@@ -1173,11 +1185,11 @@ uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_
 
 void prepare_mark(uint64_t* used_list_head);
 
-// Bootstrap functions which access memory either using paging (if pt is given) or directly
+// bootstrap functions which access memory either using paging (if pt is given) or directly
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 uint64_t gc_load_memory(uint64_t address, uint64_t* pt);
 
-// Get functions for properties with different access in lib/syscall
+// get functions for properties with different access in library/syscall
 uint64_t* get_used_list_head_gc(uint64_t* context);
 uint64_t* get_free_list_head_gc(uint64_t* context);
 uint64_t* get_pt_gc(uint64_t* context);
@@ -1194,14 +1206,14 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
 void mark(uint64_t* context);
 
-// Note: assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free list entry
+// note: assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free list entry
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context);
 void sweep(uint64_t* used_list_head, uint64_t* free_list_head, uint64_t* pt);
 
 void gc_init(uint64_t* context);
 void gc_collect(uint64_t* context);
 
-// Shared implementation of library and syscall variant (context == 0 -> library)
+// shared implementation of library and syscall variant (context == 0 -> library)
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
 // ----------------------- LIBRARY FUNCTIONS -----------------------
@@ -1212,11 +1224,7 @@ uint64_t* gc_malloc(uint64_t size) {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t NONGCHEAPSIZE = 65536000; // 1000 * 2^16 bytes of non-garbage collected memory
-
-// Garbage Collector modes
-uint64_t GCDISABLED = 0;
-uint64_t GCLIBRARY  = 1;
+uint64_t NON_GC_HEAP_SIZE = 65536000; // 1000 * 2^16 bytes of non-garbage-collected memory
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1229,9 +1237,7 @@ uint64_t non_gc_heap_bump  = 0;
 uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end  = 0;
 
-uint64_t use_garbage_collector = 0; // which variant of gc is used
-
-uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialised yet
+uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialized yet
 
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
@@ -1432,7 +1438,7 @@ uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 uint64_t symbolic = 0; // flag for symbolically executing code
 uint64_t model    = 0; // flag for modeling code
 
-uint64_t garbage_collector = 0; // flag indicating whether or not to use garbage collected malloc
+uint64_t gc = 0; // flag indicating whether to use garbage-collected malloc or not
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -2655,23 +2661,14 @@ uint64_t round_up(uint64_t n, uint64_t m) {
 }
 
 uint64_t* smalloc(uint64_t size) {
-  if (use_garbage_collector)
-    return smalloc_implementation(size, ALLOCATORGC);
-  else
-    return smalloc_implementation(size, ALLOCATORSYSTEM);
-}
-
-uint64_t* smalloc_implementation(uint64_t size, uint64_t allocator) {
   // this procedure ensures a defined program exit,
   // if no memory can be allocated
   uint64_t* memory;
 
-  memory = (uint64_t*) 0; // to avoid gcc warning
-
-  if (allocator == ALLOCATORSYSTEM)
-    memory = malloc(size);
-  else if (allocator == ALLOCATORGC)
+  if (USE_GC_LIBRARY)
     memory = gc_malloc(size);
+  else
+    memory = malloc(size);
 
   if (size == 0)
     // any address including null
@@ -2683,6 +2680,21 @@ uint64_t* smalloc_implementation(uint64_t size, uint64_t allocator) {
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
+
+  return memory;
+}
+
+uint64_t* smalloc_system(uint64_t size) {
+  uint64_t gc;
+  uint64_t* memory;
+
+  gc = USE_GC_LIBRARY;
+
+  USE_GC_LIBRARY = GC_DISABLED;
+
+  memory = smalloc(size);
+
+  USE_GC_LIBRARY = gc;
 
   return memory;
 }
@@ -5028,39 +5040,6 @@ void emit_program_entry() {
   }
 }
 
-void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
-
-  emit_add(REG_A0, REG_ZR, REG_SP);
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
-
-  // up to three instructions needed to load data segment size but is not yet known
-
-  emit_nop();
-  emit_nop();
-  emit_nop();
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
-  // set code emission to fetch_data_segment_size
-  binary_length = fetch_dss_code_location;
-
-  // assert: emitting no more than 3 instructions
-
-  // load data segment size into A0
-  load_small_and_medium_integer(REG_A0, allocated_memory);
-
-  // discount NOPs in profile that were generated for fetch_data_segment_size
-  ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
-}
-
 void emit_bootstrapping(uint64_t fetch_dss_code_location) {
   /*
       1. initialize global pointer
@@ -7055,6 +7034,39 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ---------------------- GARBAGE COLLECTOR ------------------------
 // -----------------------------------------------------------------
 
+void emit_fetch_stack_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_add(REG_A0, REG_ZR, REG_SP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_interface() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  // up to three instructions needed to load data segment size but is not yet known
+
+  emit_nop();
+  emit_nop();
+  emit_nop();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  // set code emission to fetch_data_segment_size
+  binary_length = fetch_dss_code_location;
+
+  // assert: emitting no more than 3 instructions
+
+  // load data segment size into A0
+  load_small_and_medium_integer(REG_A0, allocated_memory);
+
+  // discount NOPs in profile that were generated for fetch_data_segment_size
+  ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+}
+
 void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
   if (get_metadata_prev(entry) != (uint64_t*) 0)
     set_metadata_next(get_metadata_prev(entry), get_metadata_next(entry));
@@ -7077,7 +7089,7 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
   uint64_t* free_list_head_pointer;
   uint64_t* used_list_head_pointer;
 
-  if (gc_is_library_or_syscall(context)) {
+  if (gc_is_library(context)) {
     free_list_head_pointer = gc_free_list;
     used_list_head_pointer = gc_used_list;
   } else {
@@ -7158,7 +7170,7 @@ void prepare_mark(uint64_t* used_list_head) {
 }
 
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     *((uint64_t*) address) = value;
   else
     store_virtual_memory(get_pt(context), address, value);
@@ -7175,8 +7187,8 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t bump;
   uint64_t saved_a0;
 
-  if (gc_is_library_or_syscall(context)) {
-    bump = (uint64_t) smalloc_implementation(size, ALLOCATORSYSTEM);
+  if (gc_is_library(context)) {
+    bump = (uint64_t) smalloc_system(size);
 
     if (bump != 0)
       gc_heap_end = bump + size;
@@ -7226,7 +7238,7 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t* ret;
 
   // Bootstrap non_gc_alloc_memory to machine's malloc when using syscall
-  if (gc_is_library_or_syscall(context)) {
+  if (gc_is_library(context)) {
     if (size == 0)
       return (uint64_t*) 0;
 
@@ -7237,76 +7249,75 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
     non_gc_heap_bump = non_gc_heap_bump + size;
 
     return ret;
-  } else {
+  } else
     return zalloc(size);
-  }
 }
 
 uint64_t* get_used_list_head_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return gc_used_list;
   else
     return get_used_list_head(context);
 }
 
 uint64_t* get_free_list_head_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return gc_free_list;
   else
     return get_free_list_head(context);
 }
 
 uint64_t* get_pt_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return (uint64_t*) 0;
   else
     return get_pt(context);
 }
 
 uint64_t get_stack_start(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return fetch_stack_pointer();
   else
     return *(get_regs(context) + REG_SP);
 }
 
 uint64_t get_ds_start(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
-    return gc_library_program_break - fetch_data_segment_size();
+  if (gc_is_library(context))
+    return GC_LIBRARY_PROGRAM_BREAK - fetch_data_segment_size();
   else
     return get_code_segment(context);
 }
 
 uint64_t get_ds_end(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
-    return gc_library_program_break - SIZEOFUINT64;
+  if (gc_is_library(context))
+    return GC_LIBRARY_PROGRAM_BREAK - SIZEOFUINT64;
   else
     return get_data_segment(context) - SIZEOFUINT64;
 }
 
 uint64_t get_heap_start_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return gc_heap_start;
   else
     return get_heap_start(context);
 }
 
 uint64_t get_heap_end_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return gc_heap_end;
   else
     return get_heap_end(context);
 }
 
 uint64_t get_gc_enabled_gc(uint64_t* context) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     return gc_library_enabled;
   else
     return get_gc_enabled(context);
 }
 
 void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head) {
-  if (gc_is_library_or_syscall(context)) {
+  if (gc_is_library(context)) {
     gc_used_list = used_list_head;
     gc_free_list = free_list_head;
   } else {
@@ -7316,20 +7327,20 @@ void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, ui
 }
 
 void set_heap_start_gc(uint64_t* context, uint64_t heap_start) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     gc_heap_start = heap_start;
   else
     set_heap_start(context, heap_start);
 }
 void set_heap_end_gc(uint64_t* context, uint64_t heap_end) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     gc_heap_end = heap_end;
   else
     set_heap_end(context, heap_end);
 }
 
 void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
-  if (gc_is_library_or_syscall(context))
+  if (gc_is_library(context))
     gc_library_enabled = gc_enabled;
   else
     set_gc_enabled(context, gc_enabled);
@@ -7433,18 +7444,18 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
 void gc_init(uint64_t* context) {
   uint64_t program_break;
 
-  set_used_and_free_list_head(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM), smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
+  set_used_and_free_list_head(context, smalloc_system(SIZEOFUINT64), smalloc_system(SIZEOFUINT64));
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
 
   // Difference between syscall and library: library uses two heaps
-  if (gc_is_library_or_syscall(context)) {
-    non_gc_heap_start = (uint64_t) smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
+  if (gc_is_library(context)) {
+    non_gc_heap_start = (uint64_t) smalloc_system(NON_GC_HEAP_SIZE);
     zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
 
     non_gc_heap_bump = non_gc_heap_start;
 
-    gc_heap_start = non_gc_heap_start + NONGCHEAPSIZE;
+    gc_heap_start = non_gc_heap_start + NON_GC_HEAP_SIZE;
     gc_heap_end = gc_heap_start;
   } else {
     program_break = get_program_break(context);
@@ -9456,7 +9467,7 @@ uint64_t handle_system_call(uint64_t* context) {
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
-    if (garbage_collector)
+    if (gc)
       implement_gc_brk(context);
     else
       implement_brk(context);
@@ -9548,7 +9559,7 @@ uint64_t mipster(uint64_t* to_context) {
     print(" with replay");
   else if (debug)
     print(" with debugger");
-  else if (garbage_collector)
+  else if (gc)
     print(" with garbage collector");
   println();
 
@@ -9808,7 +9819,7 @@ uint64_t selfie_run(uint64_t machine) {
 
     init_replay_engine();
   } else if (machine == GIBSTER)
-    garbage_collector = 1;
+    gc = 1;
   else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
