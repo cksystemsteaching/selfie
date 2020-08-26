@@ -3,7 +3,7 @@
 #include "sbi_ecall_ids.h"
 
 void sbi_ecall_sbi_putchar(int chr) {
-  asm volatile(
+  asm volatile (
     "li a6, " STRINGIFICATE(SBI_FUNCTION_ID_LEGACY_EXTENSION_SBI_CONSOLE_PUTCHAR) ";"
     "li a7, " STRINGIFICATE(SBI_EXTENSION_ID_LEGACY_EXTENSION_SBI_CONSOLE_PUTCHAR) ";"
     "mv a0, %[chr];"
@@ -17,7 +17,7 @@ void sbi_ecall_sbi_putchar(int chr) {
 bool sbi_ecall_sbi_set_timer(uint64_t interrupt_at) {
   long error;
 
-  asm volatile(
+  asm volatile (
     "li a6, " STRINGIFICATE(SBI_FUNCTION_ID_TIMER_EXTENSION_SBI_SET_TIMER) ";"
     "li a7, " STRINGIFICATE(SBI_EXTENSION_ID_TIMER_EXTENSION) ";"
     "mv a0, %[interrupt_at];"
@@ -32,7 +32,7 @@ bool sbi_ecall_sbi_set_timer(uint64_t interrupt_at) {
 }
 
 void sbi_ecall_sbi_shutdown() {
-  asm volatile(
+  asm volatile (
     "li a6, " STRINGIFICATE(SBI_FUNCTION_ID_LEGACY_EXTENSION_SBI_SHUTDOWN) ";"
     "li a7, " STRINGIFICATE(SBI_EXTENSION_ID_LEGACY_EXTENSION_SBI_SHUTDOWN) ";"
     "ecall"

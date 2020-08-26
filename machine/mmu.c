@@ -278,7 +278,7 @@ void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
   // Set the SATP and SSCRATCH value (for easier kernel pt switching)
   // Also, perform a cache flush by specifying the ASID
   // We do not use global mappings -> rs1 = x0
-  asm volatile(
+  asm volatile (
       "csrw satp, %[value];"
       "csrw sscratch, %[value];"
       "sfence.vma zero, %[asid]" // RISC-V Priviled

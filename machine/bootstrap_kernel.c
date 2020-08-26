@@ -142,9 +142,9 @@ void setup_trap_handler() {
 void move_sp_to_upper_half() {
   // Switch to the upper half stack but keep the offset alive
   asm volatile (
-    "jal initial_stack_start\n"
-    "sub a0, a0, sp\n"
-    "mv sp, %[stack_addr]\n"
+    "jal initial_stack_start;"
+    "sub a0, a0, sp;"
+    "mv sp, %[stack_addr];"
     "sub sp, sp, a0"
     :
     : [stack_addr] "r" (STACK_VADDR)

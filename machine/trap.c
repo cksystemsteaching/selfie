@@ -50,7 +50,7 @@ void enable_smode_interrupts_after_sret() {
   uint64_t enable_bitmask = (1 << CSR_STATUS_SPIE);
   uint64_t disable_bitmask = (1 << CSR_STATUS_SIE);
 
-  asm volatile(
+  asm volatile (
     "csrs sstatus, %[enable_bitmask];"
     "csrc sstatus, %[disable_bitmask]"
     :
@@ -59,7 +59,7 @@ void enable_smode_interrupts_after_sret() {
 }
 
 void enable_smode_interrupt_types(uint64_t bitmask) {
-  asm volatile(
+  asm volatile (
     "csrs sie, %[bitmask]"
     :
     : [bitmask] "r" (bitmask)
@@ -67,7 +67,7 @@ void enable_smode_interrupt_types(uint64_t bitmask) {
 }
 
 void disable_smode_interrupt_types(uint64_t bitmask) {
-  asm volatile(
+  asm volatile (
     "csrc sie, %[bitmask]"
     :
     : [bitmask] "r" (bitmask)
@@ -149,7 +149,7 @@ void load_saved_registers_from_context_into_buffer(struct context* context, stru
 uint64_t get_current_cpu_time() {
   uint64_t current_cpu_time;
 
-  asm volatile(
+  asm volatile (
     "rdtime %[current_cpu_time]"
     : [current_cpu_time] "=r" (current_cpu_time)
   );
@@ -177,7 +177,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
   struct context* next_context;
   bool timer_interrupt_success;
 
-  asm volatile(
+  asm volatile (
     "csrr %[scause], scause;"
     "csrr %[sepc], sepc;"
     "csrr %[stval], stval;"
