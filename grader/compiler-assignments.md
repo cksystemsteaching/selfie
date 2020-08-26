@@ -1,4 +1,4 @@
-# Compiler Construction Assignments
+# Compiler Assignments
 
 ## This information is shared via the course's slack channel.
 

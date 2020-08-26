@@ -1,9 +1,8 @@
-# Introduction to Operating Systems - Assignments
+# Introductory Assignments
 
 ## Description
 
 Creation of simple exercises for first semester students based on the Selfie System.
-
 
 ## Tasks
 
@@ -11,7 +10,6 @@ Creation of simple exercises for first semester students based on the Selfie Sys
 - [ ] Development of simple code examples
 - [ ] Development of assistance
 - [ ] Development of an evaluation scheme
-
 
 ## Resources
 
@@ -67,13 +65,11 @@ Show the states of the machine.
 
 - convert binary, octa, hexadecimal, decimal
 
-
 ## 3) Architecture 2
 
 ### Exercise 1:
 
 - search [cpubitwidth](../selfie.c#L209), [numberofregisters](../selfie.c#L703), [registersize](../selfie.c#L1074), [virtualmemorysize](../selfie.c#L1068), [wordsize](../selfie.c#L1070-L1071) etc in the selfie.c file. Then enter them in the C\* assignment file or describe it.
-
 
 ## 4) Tools
 
@@ -120,4 +116,3 @@ Show the states of the machine.
 
 - create virtual version of hardware
 - hypervisor
-
