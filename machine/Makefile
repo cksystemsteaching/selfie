@@ -141,4 +141,5 @@ test: selfie-opensbi-qemu.elf
 	$(QEMU) $(QEMUFLAGS) -kernel build/qemu/kernel/selfie-opensbi.elf
 
 
+-include $(ALL_DEPS)
 .DEFAULT_GOAL := all

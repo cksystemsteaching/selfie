@@ -1,6 +1,7 @@
 ALL_PROFILES=
 ALL_BOARDS=
 ALL_TARGETS=
+ALL_DEPS=
 
 ALL_ELF_TARGETS=
 ALL_BIN_TARGETS=
@@ -96,7 +97,9 @@ TARGET_$(1)_$(2)_DIR  = $(call target-build-dir,$(1),$(2))
 TARGET_$(1)_$(2)_OUT_TREE = $$(sort $$(TARGET_$(1)_$(2)_DIR) $$(addprefix $$(TARGET_$(1)_$(2)_DIR)/,$$(filter-out ./,$$(dir $$(PROFILE_$(2)_SRCS)))))
 TARGET_$(1)_$(2)_OBJS = $$(patsubst %.o,$$(TARGET_$(1)_$(2)_DIR)/%.o,$$(patsubst %.S,%.o,$$(PROFILE_$(2)_SRCS:.c=.o)))
 TARGET_$(1)_$(2)_DEPS = $$(TARGET_$(1)_$(2)_OBJS:.o=.d)
+
 ALL_TARGETS += $(1)_$(2)
+ALL_DEPS += $$(TARGET_$(1)_$(2)_DEPS)
 endef
 
 ###############################################################################
