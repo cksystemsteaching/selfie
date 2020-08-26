@@ -25,13 +25,13 @@ void bootstrap() {
     "16",
     "-c",
     "hello-world.c",
-    (char*)0,
+    (char*) 0,
   };
   int argc = 0;
 
   puts("Booting " INIT_FILE_PATH " with args: \n");
 
-  while (args[argc] != (char *)0) {
+  while (args[argc] != (char*) 0) {
     printf("    %s\n", args[argc]);
     argc++;
   }

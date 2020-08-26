@@ -106,6 +106,7 @@ uint64_t round_up(uint64_t addr, uint64_t align) {
 
   return addr;
 }
+
 void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   uint64_t argv_strings[MAX_ARGV_LENGTH];
 

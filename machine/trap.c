@@ -360,9 +360,8 @@ void implement_syscall_openat(struct context* context) {
   if (kstrlcpy_from_vspace(path, path_vaddr, PATH_MAX_LEN, context->pt)) {
     int fd = kopen(path, flags, context->open_files, NUM_FDS);
     context->saved_regs.a0 = fd;
-  } else {
+  } else
     context->saved_regs.a0 = -1;
-  }
 }
 
 void implement_syscall_brk(struct context* context) {

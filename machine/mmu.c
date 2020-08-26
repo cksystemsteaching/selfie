@@ -64,12 +64,14 @@ uint64_t kpalloc() {
   used_pages++;
   return ppn_bump++;
 }
+
 uint64_t kzalloc() {
     uint64_t ppn = kpalloc();
     if (ppn != 0)
       kzero_page(ppn);
     return ppn;
 }
+
 void kpfree(uint64_t ppn) {
   uint64_t* next = (uint64_t*) ppn_to_paddr(ppn);
   *next = free_list_head;
@@ -97,6 +99,7 @@ uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessibl
   else
     return 0;
 }
+
 bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
   uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
@@ -111,8 +114,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
 
     mid_pt = create_pt_entry(table, vpn_2, ppn, 1, 0);
     kzero_page(ppn);
-  }
-  else
+  } else
     mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt[vpn_1].v) {
@@ -122,8 +124,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
 
     leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
     kzero_page(ppn);
-  }
-  else
+  } else
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
   create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
@@ -146,6 +147,7 @@ uint64_t vaddr_to_vpn(uint64_t vaddr) {
   // bits 39 to 64 have the value of bit 38
   return ((vaddr & LOWEST_39_BITS) >> 12);
 }
+
 uint64_t vpn_to_vaddr(uint64_t vpn) {
   // Sv39 requires virtual addresses to sign-extend bit 38
   // The bitmask to OR to this is (2^64 - 1) - (2^39 - 1) = 0xFFFFFF8000000000
@@ -158,6 +160,7 @@ uint64_t vpn_to_vaddr(uint64_t vpn) {
 
   return vaddr;
 }
+
 uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
   uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
@@ -183,6 +186,7 @@ uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
 uint64_t paddr_to_ppn(const void* address) {
   return ((uint64_t) address) >> 12;
 }
+
 const void* ppn_to_paddr(uint64_t ppn) {
   return (const void*) (ppn << 12);
 }
@@ -226,9 +230,9 @@ void kdump_pt(struct pt_entry* table) {
     uint64_t mid_vaddr_end = ((vpn_2 + 1) << 30);
     printf("|-root level (VPN_2 %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
 
-    if (mid_pt == NULL) {
+    if (mid_pt == NULL)
       printf("  <invalid>\n");
-    } else {
+    else {
       for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
         if (!mid_pt[vpn_1].v)
           continue;
@@ -238,9 +242,9 @@ void kdump_pt(struct pt_entry* table) {
         uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1 + 1) << 21);
         printf("| |-mid level (VPN_1 %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
 
-        if (leaf_pt == NULL) {
+        if (leaf_pt == NULL)
           printf("    <invalid>\n");
-        } else {
+        else {
           for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
             if (!leaf_pt[vpn_0].v)
               continue;

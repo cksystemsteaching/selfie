@@ -49,22 +49,21 @@ void kernel_environ_init() {
 
   move_sp_to_upper_half();
 }
+
 // =============================================================================
 
 int start_init_process(uint64_t argc, const char** argv) {
   bool timer_interrupt_success;
   const KFILE* file = find_file(INIT_FILE_PATH);
 
-  if (!file) {
+  if (!file)
     panic("ERROR: Could not find init file: " INIT_FILE_PATH);
-  }
 
   struct context* init = kallocate_context();
   kinit_context(init);
   int err = load_elf(init, file->data, file->length);
-  if (err) {
+  if (err)
     panic("ERROR: Could not load init file: %s", elf_strerror(err));
-  }
   kupload_argv(init, argc, argv);
 
   timer_interrupt_success = set_timer_interrupt_delta(TIMESLICE);
@@ -132,12 +131,14 @@ void setup_kernel_pt() {
   kdump_pt(kernel_pt);
 #endif /* DEBUG */
 }
+
 void setup_trap_handler() {
   setup_smode_trap_handler((trap_handler_t) TRAMPOLINE_VADDR);
   enable_smode_interrupts_after_sret();
   enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                (1 << CSR_SIE_SOFTWARE_INTS));
 }
+
 void move_sp_to_upper_half() {
   // Switch to the upper half stack but keep the offset alive
   asm volatile (

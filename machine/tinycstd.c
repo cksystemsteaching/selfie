@@ -18,9 +18,11 @@ void* memmove(void* dest, const void* source, size_t num) {
 
   return dest;
 }
+
 void* memcpy (void* destination, const void* source, size_t num) {
   return memmove(destination, source, num);
 }
+
 void* memset(void* ptr, int value, size_t num) {
   uint8_t* char_ptr = (uint8_t*) ptr;
 
@@ -33,6 +35,7 @@ void* memset(void* ptr, int value, size_t num) {
 
   return ptr;
 }
+
 int memcmp(const void* ptr1, const void* ptr2, size_t num) {
   uint8_t* p1 = (uint8_t*) ptr1;
   uint8_t* p2 = (uint8_t*) ptr2;
@@ -55,6 +58,7 @@ uint64_t strlen(const char* str) {
 
   return len;
 }
+
 ssize_t strncmp(const char* first, const char* second, size_t n) {
   for (size_t i = 0; i < n; i++) {
     if (first[i] < second[i])
@@ -66,6 +70,7 @@ ssize_t strncmp(const char* first, const char* second, size_t n) {
   }
   return 0;
 }
+
 const char* strchr(const char* str, int c) {
   while (*str != '\0') {
     if (*str == ((char) c))
@@ -78,6 +83,7 @@ const char* strchr(const char* str, int c) {
   else
     return NULL;
 }
+
 size_t strlcpy(char* dest, const char* src, size_t n) {
   size_t copied = 0;
 
@@ -104,6 +110,7 @@ int printf(const char* format, ...) {
 
   return result;
 }
+
 int va_printf(const char* format, va_list args) {
   int written = 0;
   const char* fmt_pos;
@@ -126,8 +133,7 @@ int va_printf(const char* format, va_list args) {
           written++;
           format++;
           break;
-        case 'c':
-        {
+        case 'c': {
           char c = va_arg(args, int); // char is "promoted" to int by variable args
           putc(c);
           written++;
@@ -135,8 +141,7 @@ int va_printf(const char* format, va_list args) {
           break;
         }
         case 'd':
-        case 'i':
-        {
+        case 'i': {
           int i = va_arg(args, int);
           char* buf = itoa_ext(i, 10, sizeof(int) * 8, true);
           puts(buf);
@@ -144,8 +149,7 @@ int va_printf(const char* format, va_list args) {
           format++;
           break;
         }
-        case 'u':
-        {
+        case 'u': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 10, sizeof(uintmax_t) * 8, false);
           puts(buf);
@@ -154,8 +158,7 @@ int va_printf(const char* format, va_list args) {
           break;
         }
         case 'x':
-        case 'X':
-        {
+        case 'X': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 16, sizeof(uintmax_t) * 8, false);
           puts(buf);
@@ -163,8 +166,7 @@ int va_printf(const char* format, va_list args) {
           format++;
           break;
         }
-        case 'p':
-        {
+        case 'p': {
           void* i = va_arg(args, void*);
           char* buf = itoa_ext((uintmax_t)i, 16, sizeof(void*) * 8, false);
           // Fill missing bytes with zeros
@@ -180,8 +182,7 @@ int va_printf(const char* format, va_list args) {
           format++;
           break;
         }
-        case 's':
-        {
+        case 's': {
           const char* s = va_arg(args, const char*);
           puts(s);
           written += strlen(s);
@@ -198,9 +199,11 @@ int va_printf(const char* format, va_list args) {
     }
   }
 }
+
 void puts(const char* s) {
   console_puts(s, strlen(s));
 }
+
 void putc(char c) {
   console_putc(c);
 }
@@ -219,15 +222,14 @@ char* itoa_ext(uintmax_t value, uint8_t base, uint8_t bits, bool sign) {
     negative = true;
 
     value = ~value + 1;
-    if (bits < sizeof(uintmax_t) * 8) {
+    if (bits < sizeof(uintmax_t) * 8)
       // Cut off irrelevant bits
       value = value & ((1ULL << bits) - 1);
-    }
   }
 
   *pos = '\0';
 
-  if (value != 0) {
+  if (value != 0)
     while (value != 0) {
       uint8_t rem = value % base;
 
@@ -236,7 +238,7 @@ char* itoa_ext(uintmax_t value, uint8_t base, uint8_t bits, bool sign) {
 
       value = value / base;
     }
-  } else {
+  else {
     pos--;
     *pos = conv[0];
   }

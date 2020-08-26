@@ -5,9 +5,11 @@
 int console_init() {
   return 0;
 }
+
 void console_putc(int chr) {
   sbi_ecall_sbi_putchar(chr);
 }
+
 intmax_t console_puts(const char* str, size_t len) {
   size_t i = 0;
 
