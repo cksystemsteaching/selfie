@@ -432,11 +432,11 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 #endif /* DEBUG */
 }
 
-char is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
+bool is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
   return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
 }
 
-char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
+bool has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
   return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
 }
 

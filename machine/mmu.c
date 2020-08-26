@@ -17,7 +17,7 @@
 #define VPN_1_BITMASK 0x3FE00000
 #define VPN_0_BITMASK 0x1FF000
 
-struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, char is_pt_node, char u_mode_accessible) {
+struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, bool is_pt_node, bool u_mode_accessible) {
   struct pt_entry* entry = (table + index);
 
   entry->ppn = ppn;
@@ -89,7 +89,7 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
   return (struct pt_entry*) ppn_to_paddr((table + index)->ppn);
 }
 
-uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
+uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, bool u_mode_accessible) {
   uint64_t ppn = kzalloc();
   if (ppn == 0)
     return 0;
@@ -100,7 +100,7 @@ uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessibl
     return 0;
 }
 
-bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
+bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
   uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
   uint64_t vpn_0 = (vaddr & VPN_0_BITMASK) >> 12;
