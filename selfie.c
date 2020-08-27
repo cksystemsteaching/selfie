@@ -1245,7 +1245,7 @@ uint64_t gc_num_malloc_new   = 0;
 uint64_t gc_num_malloc_reuse = 0;
 uint64_t gc_num_collects     = 0;
 uint64_t gc_mem_collected    = 0;
-uint64_t gc_live_memory      = 0;
+uint64_t gc_reachable_memory = 0;
 uint64_t gc_dead_memory      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1255,7 +1255,7 @@ void reset_garbage_collector_summary() {
   gc_num_malloc_reuse = 0;
   gc_num_collects     = 0;
   gc_mem_collected    = 0;
-  gc_live_memory      = 0;
+  gc_reachable_memory = 0;
   gc_dead_memory      = 0;
 }
 
@@ -7218,13 +7218,15 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     bump = get_program_break(context);
 
     saved_a0 = *(get_regs(context) + REG_A0);
+
     *(get_regs(context) + REG_A0) = bump + size;
+
     implement_brk(context);
 
     // brk increases the program counter, but we do not want that to happen
     set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
 
-    // Allocation failed if pb is still bump and size != 0
+    // allocation failed if bump pointer is still bump and size != 0
     if (*(get_regs(context) + REG_A0) == bump) {
       if (size != 0)
         bump = 0;
@@ -7233,7 +7235,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     } else
       set_heap_end(context, get_heap_end(context) + size);
 
-    // Restore A0
+    // restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
 
     // Touch and zero memory. Note: This emulates selfie's behaviour of allocating pages and
@@ -7241,6 +7243,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     // the first address of each newly allocated page
     if (bump != 0) {
       // assert: previous page already touched
+
       saved_a0 = round_up(bump, PAGESIZE);
 
       while (saved_a0 < (bump + size)) {
@@ -7257,7 +7260,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
 uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t* ret;
 
-  // Bootstrap non_gc_alloc_memory to machine's malloc when using syscall
+  // bootstrap non_gc_alloc_memory to machine's malloc when using syscall
   if (gc_is_library(context)) {
     if (size == 0)
       return (uint64_t*) 0;
@@ -7381,41 +7384,44 @@ void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint
 
 void mark(uint64_t* context) {
   uint64_t* used_list_head;
-  uint64_t* pt;
   uint64_t stack_start;
   uint64_t stack_end;
   uint64_t heap_start;
   uint64_t heap_end;
   uint64_t ds_start;
   uint64_t ds_end;
+  uint64_t* pt;
 
   used_list_head = get_used_list_head_gc(context);
-  pt = get_pt_gc(context);
+
   stack_start = get_stack_start(context);
-  stack_end = VIRTUALMEMORYSIZE; // constant for now
-  heap_start = get_heap_start_gc(context);
-  heap_end = get_heap_end_gc(context);
-  ds_start = get_ds_start(context);
-  ds_end = get_ds_end(context);
+  stack_end   = VIRTUALMEMORYSIZE; // constant for now
+  heap_start  = get_heap_start_gc(context);
+  heap_end    = get_heap_end_gc(context);
+  ds_start    = get_ds_start(context);
+  ds_end      = get_ds_end(context);
 
   if (used_list_head != (uint64_t*) 0)
     used_list_head = (uint64_t*) *(used_list_head);
   else
-    return; // no used memory -> skip collection
+    return; // if there is no used memory skip collection
 
   prepare_mark(used_list_head);
 
-  // Traverse registers
-  // assert: temporary registers do not contain any reference to gc_heap memory
-  //         This can be assumed, since selfie saves all relevant temporary register on stack as a part of procedure_prologue().
+  pt = get_pt_gc(context);
 
-  // Traverse Call Stack
+  // not traversing registers
+
+  // assert: temporary registers do not contain any reference to gc_heap memory
+  // selfie saves all relevant temporary registers on stack, see procedure_prologue().
+
+  // traverse call stack
   mark_segment(stack_start, stack_end, pt, used_list_head, heap_start, heap_end);
 
-  // Traverse Heap
+  // traverse heap
   mark_segment(heap_start, heap_end, pt, used_list_head, heap_start, heap_end);
 
-  // Traverse Data Segment
+  // traverse data segment
   mark_segment(ds_start, ds_end, pt, used_list_head, heap_start, heap_end);
 }
 
@@ -7424,25 +7430,25 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   uint64_t object_size;
   uint64_t object_end;
 
-  // 1. Zero object memory
+  // 1. zero object memory
   object_beg = (uint64_t) get_metadata_memory(metadata_entry);
   object_size = get_metadata_size(metadata_entry);
   object_end = object_beg + object_size;
-  
+
   while (object_beg < object_end) {
     gc_store_memory(object_beg, 0, context);
 
     object_beg = object_beg + SIZEOFUINT64;
   }
 
-  // 2. Move entry from used to free list
+  // 2. move entry from used to free list
   relink_metadata(metadata_entry, (uint64_t*) *free_list_head_pointer);
 
   *free_list_head_pointer = (uint64_t) metadata_entry;
 
-  gc_mem_collected = gc_mem_collected + object_size;
-  gc_dead_memory = gc_dead_memory + object_size;
-  gc_live_memory = gc_live_memory - object_size;
+  gc_mem_collected    = gc_mem_collected + object_size;
+  gc_dead_memory      = gc_dead_memory + object_size;
+  gc_reachable_memory = gc_reachable_memory - object_size;
 }
 
 void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, uint64_t* context) {
@@ -7457,7 +7463,7 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
     next_node = get_next_entry(node);
 
     if (get_metadata_markbit(node) == 0) {
-      // Check if current node is head of list
+      // check if current node is head of list
       if (node == (uint64_t*) *used_list_head_pointer)
         *used_list_head_pointer = (uint64_t) get_metadata_next(node);
 
@@ -7477,7 +7483,7 @@ void gc_init(uint64_t* context) {
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
 
-  // Difference between syscall and library: library uses two heaps
+  // garbage collector library uses two heaps
   if (gc_is_library(context)) {
     non_gc_heap_start = (uint64_t) smalloc_system(NON_GC_HEAP_SIZE);
     zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
@@ -7502,13 +7508,13 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   size = round_up(size, SIZEOFUINT64);
 
-  gc_live_memory = gc_live_memory + size;
+  gc_reachable_memory = gc_reachable_memory + size;
 
-  // Allocator automatically checks if it has been initialised
+  // allocator automatically checks if it has been initialized
   if(get_gc_enabled_gc(context) == 0)
     gc_init(context);
 
-  // Check if memory is in free list
+  // check if memory is in free list
   ret = free_list_extract(context, size);
 
   if (ret != (uint64_t*) 0) {
@@ -7517,27 +7523,27 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_memory(ret);
   }
 
-  // Try collecting and recheck
+  // try collecting and recheck
   gc_collect(context);
 
-  // Check if memory is in free list
+  // check if memory is in free list
   ret = free_list_extract(context, size);
 
   if (ret != (uint64_t*) 0) {
     gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
-    
+
     return get_metadata_memory(ret);
   }
 
   gc_num_malloc_new = gc_num_malloc_new + 1;
 
-  // No reusable memory -> allocate new memory
+  // if there is no reusable memory allocate new memory
   ret = gc_alloc_memory(size, context);
 
-  // In case allocation failed -> discount memory from live memory counter
+  // if allocation failed discount memory from reachable memory counter
   if (ret == (uint64_t*) 0)
     if (size != 0)
-      gc_live_memory = gc_live_memory - size;
+      gc_reachable_memory = gc_reachable_memory - size;
 
   metadata = allocate_metadata_entry(context);
 
@@ -7559,23 +7565,21 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 void gc_collect(uint64_t* context) {
   mark(context);
   sweep(get_used_list_head_gc(context), get_free_list_head_gc(context), context);
-  
+
   gc_num_collects = gc_num_collects + 1;
 }
 
 void print_garbage_collector_summary() {
-  printf4("%s: garbage collector: malloc used %d times (%d reuses and %d new allocations)\n", 
-    selfie_name, 
-    (char*) (gc_num_malloc_new + gc_num_malloc_reuse), 
-    (char*) gc_num_malloc_reuse, 
+  printf4("%s: garbage collector: malloc used %u times (%u reuses and %u new allocations)\n",
+    selfie_name,
+    (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
+    (char*) gc_num_malloc_reuse,
     (char*) gc_num_malloc_new);
 
-  printf3("%s: garbage collector: collected a total amount of %.2uMB with %d collect calls\n", 
+  printf3("%s: garbage collector: collected a total amount of %.2uMB with %u collect calls\n",
     selfie_name,
     (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
     (char*) gc_num_collects);
-
-  
 }
 
 // -----------------------------------------------------------------
