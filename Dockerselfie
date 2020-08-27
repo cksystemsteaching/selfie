@@ -91,11 +91,13 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        qemu-user-static \
+       qemu-system-misc \
   && rm -rf /var/lib/apt/lists/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
-  && cp /usr/bin/qemu-riscv64-static $RISCV/bin
+  && cp /usr/bin/qemu-riscv64-static $RISCV/bin \
+  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin
 
 ########################################
 # Boolector (SMT solver) builder image #
@@ -139,6 +141,41 @@ RUN mkdir -p $RISCV \
   && make \
   && make install
 
+#########################
+# OpenOCD builder image #
+#########################
+FROM ubuntu:latest AS openocdbuilder
+
+ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+WORKDIR $TOP
+
+# install tools to build OpenOCD
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       gcc \
+       make \
+       automake \
+       pkg-config \
+       libtool \
+       libusb-dev \
+       git \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/riscv/riscv-openocd.git
+
+# use multiple cores to speed up compilation
+ENV MAKEFLAGS=-j4
+
+RUN mkdir -p $RISCV \
+  && cd riscv-openocd \
+  && ./bootstrap \
+  && ./configure \
+       --prefix=$RISCV \
+       --program-prefix=riscv64- \
+  && make \
+  && make install
+
 ##################################
 # Selfie interactive final image #
 ##################################
@@ -158,9 +195,16 @@ RUN apt-get update \
        build-essential \
        ca-certificates \
        gcc-riscv64-linux-gnu \
+       binutils-riscv64-linux-gnu \
        libc-dev-riscv64-cross \
        make \
        device-tree-compiler \
+       clang \
+       lld \
+       llvm \
+       lldb \
+       libusb-dev \
+       libhidapi-dev \
        git \
        python3.8 \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
@@ -171,6 +215,7 @@ COPY --from=pkbuilder $RISCV/ $RISCV/
 COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
 COPY --from=boolectorbuilder $RISCV/ $RISCV/
+COPY --from=openocdbuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
 COPY . /opt/selfie/
@@ -180,6 +225,9 @@ WORKDIR /opt/selfie
 
 # build selfie
 RUN make selfie
+
+# build machine files
+RUN make --directory machine/
 
 # default command
 CMD /bin/bash
