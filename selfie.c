@@ -1023,8 +1023,6 @@ void     implement_openat(uint64_t* context);
 void emit_malloc();
 void implement_brk(uint64_t* context);
 
-void implement_gc_brk(uint64_t* context);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -1142,6 +1140,8 @@ void emit_fetch_stack_pointer();
 void emit_fetch_data_segment_size_interface();
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
 
+void implement_gc_brk(uint64_t* context);
+
 // library ... 1, syscall ... 0
 uint64_t gc_is_library(uint64_t* context) {
   if(context == (uint64_t*) 0)
@@ -1206,7 +1206,7 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
 void mark(uint64_t* context);
 
-// note: assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free list entry
+// assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free-list entry
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context);
 void sweep(uint64_t* used_list_head, uint64_t* free_list_head, uint64_t* pt);
 
@@ -1230,8 +1230,8 @@ uint64_t NON_GC_HEAP_SIZE = 65536000; // 1000 * 2^16 bytes of non-garbage-collec
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* gc_used_list = (uint64_t*) 0; // pointer to pointer to used list head
-uint64_t* gc_free_list = (uint64_t*) 0; // pointer to pointer to free list head
+uint64_t* gc_used_list = (uint64_t*) 0; // pointer to pointer to used-list head
+uint64_t* gc_free_list = (uint64_t*) 0; // pointer to pointer to free-list head
 
 uint64_t non_gc_heap_start = 0;
 uint64_t non_gc_heap_bump  = 0;
@@ -1672,8 +1672,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 16 | parent          | context that created this context
 // | 17 | virtual context | virtual context address
 // | 18 | name            | binary name loaded into context
-// | 19 | used list head  | pointer to pointer to the head of the used list
-// | 20 | free list head  | pointer to pointer to the head of the free list
+// | 19 | used-list head  | pointer to pointer to the head of the used list
+// | 20 | free-list head  | pointer to pointer to the head of the free list
 // | 21 | heap start      | lower bound of gc managed heap
 // | 22 | heap end        | upper bound of gc managed heap
 // | 23 | gc enabled      | flag indicating whether to use gc or not
@@ -6813,23 +6813,6 @@ void implement_brk(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
-void implement_gc_brk(uint64_t* context) {
-  uint64_t size;
-
-  if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
-    size = *(get_regs(context) + REG_A0) - get_program_break(context);
-
-    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
-
-    set_bump_pointer(context, get_program_break(context));
-
-    // Skip last instructions of malloc (sanity check performed by gc_malloc_impl)
-    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
-  } else {
-    implement_brk(context);
-  }
-}
-
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -7085,6 +7068,23 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 
   // discount NOPs in profile that were generated for fetch_data_segment_size
   ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+}
+
+void implement_gc_brk(uint64_t* context) {
+  uint64_t size;
+
+  if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
+    size = *(get_regs(context) + REG_A0) - get_program_break(context);
+
+    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
+
+    set_bump_pointer(context, get_program_break(context));
+
+    // Skip last instructions of malloc (sanity check performed by gc_malloc_impl)
+    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
+  } else {
+    implement_brk(context);
+  }
 }
 
 void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
@@ -7430,7 +7430,7 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   uint64_t object_size;
   uint64_t object_end;
 
-  // 1. zero object memory
+  // zero object memory
   object_beg = (uint64_t) get_metadata_memory(metadata_entry);
   object_size = get_metadata_size(metadata_entry);
   object_end = object_beg + object_size;
@@ -7441,7 +7441,7 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
     object_beg = object_beg + SIZEOFUINT64;
   }
 
-  // 2. move entry from used to free list
+  // move entry from used to free list
   relink_metadata(metadata_entry, (uint64_t*) *free_list_head_pointer);
 
   *free_list_head_pointer = (uint64_t) metadata_entry;
