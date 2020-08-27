@@ -199,6 +199,9 @@ RUN apt-get update \
        libc-dev-riscv64-cross \
        make \
        device-tree-compiler \
+       xxd \
+       gettext \
+       curl \
        clang \
        lld \
        llvm \
