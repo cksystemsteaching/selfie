@@ -5594,8 +5594,9 @@ void store_data(uint64_t baddr, uint64_t data) {
 void emit_instruction(uint64_t instruction) {
   store_instruction(binary_length, instruction);
 
-  if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
-    *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
+  if (code_line_number != (uint64_t*) 0)
+    if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
+      *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
 
   binary_length = binary_length + INSTRUCTIONSIZE;
 }

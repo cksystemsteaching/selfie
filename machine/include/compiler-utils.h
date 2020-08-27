@@ -1,0 +1,9 @@
+#ifndef KERN_COMPILER_UTILS
+#define KERN_COMPILER_UTILS
+
+#define UNUSED_VAR(x) (void) (x)
+
+#define STRINGIFICATE(x) STRINGIFICATE_HELPER(x)
+#define STRINGIFICATE_HELPER(x) #x
+
+#endif /* KERN_COMPILER_UTILS */

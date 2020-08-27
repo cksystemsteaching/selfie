@@ -1,0 +1,25 @@
+opensbi.tar.gz
+opensbi
+
+# Build artifacts
+*.o
+*.d
+*.bin
+*.elf
+files_package.c
+tools/asm_struct_macro_generator
+build
+
+# Generated linker scripts (except for template script)
+*.ld
+!payload_template.ld
+
+# Allow machine specific .h-files
+!*.h
+
+# Generated assembler struct offset header
+include/asm_offsets.h
+
+# LSP
+.clangd
+compile_commands.json
