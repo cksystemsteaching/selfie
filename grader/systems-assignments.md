@@ -42,9 +42,9 @@ Implement support of concurrent machines (processes) in mipster and hypster.
 
 
 
-## Assignment `fork-wait`: 
+## Assignment `fork-wait`:
 
-Implement support of `fork` and `wait` (for now with an unused dummy status argument) in mipster and hypster. 
+Implement support of `fork` and `wait` (for now with an unused dummy status argument) in mipster and hypster.
 
 - Use the `fork-wait` target in the grader to determine your grade.
 
@@ -52,15 +52,15 @@ Implement support of `fork` and `wait` (for now with an unused dummy status argu
 
 ## Assignment `fork-wait-exit`:
 
-Implement support of `fork` and `wait` with proper support of the status and exit code parameters in mipster and hypster. 
+Implement support of `fork` and `wait` with proper support of the status and exit code parameters in mipster and hypster.
 
 - Use the `fork-wait-exit` target in the grader to determine your grade.
 
 
 
-## Assignment `lock`: 
+## Assignment `lock`:
 
-Implement support of locking (`lock()` and `unlock()`). 
+Implement support of locking (`lock()` and `unlock()`).
 
 - Use the `lock` target in the grader to determine your grade.
 
@@ -68,20 +68,22 @@ Implement support of locking (`lock()` and `unlock()`).
 
 ## Assignment `threads`:
 
-Implement support of threads (`phtread_create()`, `pthread_join()`, and `pthread_exit()`). 
+Implement support of threads (`phtread_create()`, `pthread_join()`, and `pthread_exit()`).
 
-- Use the `threads` target in the grader to determine your grade. 
+- Use the `threads` target in the grader to determine your grade.
 
 
 
 ## Assignment `treiber-stack`:
 
-TODO: Add description 
+Implement support of the Treiber stack (`init_stack()`, `push()`, and `pop()`). This requires implementing support of load-reserved and store-conditional routines as well (`lr()` and `sc()`).
+
+- Use the `treiber-stack` target in the grader to determine your grade.
 
 ## Assignment `assembler-parser`:
 
-TODO: Add description 
+TODO: Add description
 
 ## Assignment `self-assembler`:
 
-TODO: Add description 
+TODO: Add description
