@@ -201,7 +201,7 @@ def check_assembler_parser() -> List[Check]:
                         'assembly file with a missing literal is not parseable', success_criteria=False)
 
 
-def check_self_assemblation() -> List[Check]:
+def check_self_assembler() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s ',
                            'selfie can assemble its own binary file') + \
         check_execution('diff -q selfie1.s selfie2.s',
@@ -299,7 +299,7 @@ assignments: Set[Assignment] = {
                'struct', check_struct_execution),
     Assignment('assembler-parser', 'OS', 'assembler',
                check_assembler_parser),
-    Assignment('self-assembler', 'OS', 'assembler', check_self_assemblation),
+    Assignment('self-assembler', 'OS', 'assembler', check_self_assembler),
     Assignment('processes', 'OS',
                'processes', check_processes),
     Assignment('fork-wait', 'OS', 'fork-wait', check_fork_and_wait),

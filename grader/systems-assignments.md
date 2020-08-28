@@ -34,6 +34,22 @@ So instead of printing:
 
 
 
+## Assignment `assembler-parser`:
+
+Implement the parser of a RISC-U assembler invoked by option `-a` in selfie.
+
+- Use the `assembler-parser` target in the grader to determine your grade.
+
+
+
+## Assignment `self-assembler`:
+
+Complete the implementation of a RISC-U assembler (option `-a` in selfie) with support of code generation.
+
+- Use the `self-assembler` target in the grader to determine your grade.
+
+
+
 ## Assignment `processes`:
 
 Implement support of concurrent machines (processes) in mipster and hypster.
@@ -80,10 +96,4 @@ Implement support of the Treiber stack (`init_stack()`, `push()`, and `pop()`). 
 
 - Use the `treiber-stack` target in the grader to determine your grade.
 
-## Assignment `assembler-parser`:
 
-TODO: Add description
-
-## Assignment `self-assembler`:
-
-TODO: Add description
