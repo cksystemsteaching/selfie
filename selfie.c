@@ -6316,7 +6316,8 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  printf3("\n%s: %s exiting with exit code %d\n", selfie_name,
+  printf1("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
+  printf3("%s: %s exiting with exit code %d\n", selfie_name,
     get_name(context),
     (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
 }
@@ -8926,7 +8927,7 @@ void print_register_memory_profile() {
 }
 
 void print_profile() {
-  print("----------------------------------------------------------------------\n");
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
     (char*) get_total_number_of_instructions(),
     (char*) get_total_percentage_of_nops());
@@ -8939,7 +8940,7 @@ void print_profile() {
     (char*) (page_frame_memory / MEGABYTE));
 
   if (get_total_number_of_instructions() > 0) {
-    print("----------------------------------------------------------------------\n");
+    printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
@@ -8955,7 +8956,7 @@ void print_profile() {
     print_register_memory_profile();
   }
 
-  print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -9645,7 +9646,8 @@ uint64_t mipster(uint64_t* to_context) {
     print(" with debugger");
   else if (gc)
     print(" with garbage collector");
-  println();println();
+  println();
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   timeout = TIMESLICE;
 
@@ -9671,7 +9673,8 @@ uint64_t mipster(uint64_t* to_context) {
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
-  print("hypster\n\n");
+  print("hypster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   while (1) {
     from_context = hypster_switch(to_context, TIMESLICE);
@@ -9690,7 +9693,8 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf2("mixter (%u%% mipster/%u%% hypster)\n\n", (char*) mix, (char*) (100 - mix));
+  printf2("mixter (%u%% mipster/%u%% hypster)\n", (char*) mix, (char*) (100 - mix));
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   mslice = TIMESLICE;
 
@@ -9794,7 +9798,8 @@ void map_unmapped_pages(uint64_t* context) {
 }
 
 uint64_t minster(uint64_t* to_context) {
-  print("minster\n\n");
+  print("minster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -9806,7 +9811,8 @@ uint64_t minster(uint64_t* to_context) {
 }
 
 uint64_t mobster(uint64_t* to_context) {
-  print("mobster\n\n");
+  print("mobster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
@@ -9890,7 +9896,6 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-  print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
   printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
