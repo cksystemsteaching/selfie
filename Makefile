@@ -82,11 +82,11 @@ mon: monster selfie.h selfie
 
 # Self-compile with conservative garbage collector in mipster
 gib: selfie
-	./selfie -c selfie.c -gc 2 -c selfie.c
+	./selfie -c selfie.c -mgc 2 -c selfie.c
 
 # Run selfie with conservative garbage collector as library
 gclib: selfie selfie.h
-	./selfie -c selfie.h tools/gc.c -m 1
+	./selfie -gc selfie.h tools/gc.c -m 1
 
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster

@@ -702,7 +702,7 @@ void emit_bootstrapping(uint64_t fetch_dss_code_location);
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile();
+void selfie_compile(uint64_t generate_gc_library);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5192,7 +5192,8 @@ void emit_bootstrapping(uint64_t fetch_dss_code_location) {
   // discount NOPs in profile that were generated for program entry
   ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
 
-  emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
+  if (fetch_dss_code_location)
+    emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
 
   // restore original binary length
   binary_length = code_length;
@@ -5202,10 +5203,9 @@ void emit_bootstrapping(uint64_t fetch_dss_code_location) {
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile() {
+void selfie_compile(uint64_t generate_gc_library) {
   uint64_t link;
   uint64_t number_of_source_files;
-  uint64_t fetch_dss_code_location;
 
   // link until next console option
   link = 1;
@@ -5241,13 +5241,16 @@ void selfie_compile() {
 
   emit_malloc();
 
-  emit_fetch_stack_pointer();
-
-  fetch_dss_code_location = binary_length;
-
-  emit_fetch_data_segment_size_interface();
-
   emit_switch();
+
+  if (generate_gc_library) {
+    emit_fetch_stack_pointer();
+
+    // save code location of eventual fetch_data_segment_size implementation
+    generate_gc_library = binary_length;
+
+    emit_fetch_data_segment_size_interface();
+  }
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
@@ -5307,7 +5310,7 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  emit_bootstrapping(fetch_dss_code_location);
+  emit_bootstrapping(generate_gc_library);
 
   emit_data_segment();
 
@@ -10033,7 +10036,9 @@ uint64_t selfie() {
       get_argument();
 
       if (string_compare(argument, "-c"))
-        selfie_compile();
+        selfie_compile(0);
+      else if (string_compare(argument, "-gc"))
+        selfie_compile(1);
       else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
@@ -10057,7 +10062,7 @@ uint64_t selfie() {
         exit(selfie_run(MINSTER));
       else if (string_compare(argument, "-mob"))
         exit(selfie_run(MOBSTER));
-      else if (string_compare(argument, "-gc"))
+      else if (string_compare(argument, "-mgc"))
         exit(selfie_run(GIBSTER));
       else
         return EXITCODE_BADARGUMENTS;
