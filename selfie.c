@@ -1246,6 +1246,7 @@ uint64_t gc_num_malloc_reuse = 0;
 uint64_t gc_num_collects     = 0;
 uint64_t gc_mem_collected    = 0;
 uint64_t gc_reachable_memory = 0;
+uint64_t gc_max_reach_memory = 0;
 uint64_t gc_dead_memory      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1256,6 +1257,7 @@ void reset_garbage_collector_summary() {
   gc_num_collects     = 0;
   gc_mem_collected    = 0;
   gc_reachable_memory = 0;
+  gc_max_reach_memory = 0;
   gc_dead_memory      = 0;
 }
 
@@ -7510,6 +7512,9 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   gc_reachable_memory = gc_reachable_memory + size;
 
+  if (gc_reachable_memory > gc_max_reach_memory)
+    gc_max_reach_memory = gc_reachable_memory;
+
   // allocator automatically checks if it has been initialized
   if(get_gc_enabled_gc(context) == 0)
     gc_init(context);
@@ -7580,6 +7585,10 @@ void print_garbage_collector_summary() {
     selfie_name,
     (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
     (char*) gc_num_collects);
+
+  printf2("%s: garbage collector: maximum reachable memory %.2uMB at any time\n",
+    selfie_name,
+    (char*) fixed_point_ratio(gc_max_reach_memory, MEGABYTE, 2));
 }
 
 // -----------------------------------------------------------------
