@@ -6742,11 +6742,13 @@ void emit_malloc() {
   emit_ld(current_temporary(), get_scope(entry), get_address(entry));
 
   // call brk syscall to set new program break to _bump + size
-  // note: the brk syscall is redirected to the gc_brk syscall if mipster is executed with garbage collection.
-  // these semantics must be considered when modifying malloc. see implement_gc_brk
   emit_add(REG_A0, current_temporary(), previous_temporary());
   emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
   emit_ecall();
+
+  // caution: if mipster runs with garbage collection enabled,
+  // the brk syscall is redirected to the gc_brk syscall which
+  // skips the next seven instructions, see implement_gc_brk
 
   // return 0 if memory allocation failed, that is,
   // if new program break is still _bump and size != 0
@@ -7087,12 +7089,10 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 void implement_gc_brk(uint64_t* context) {
   uint64_t size;
 
-  // the malloc library function calls break with the new program break
-  // therefore the new pb is always larger than the old pb, if malloc is valid
-  // break may also be used in other ways (using the current pb or 0 for example)
-  // these calls are redirected to the default break implementation
+  // check if malloc actually asks for more memory
+  // if not, fall back to the default brk syscall
   if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
-    // calculate size by subtracting the old pb from the new pb
+    // calculate size by subtracting the old from the new program break
     size = *(get_regs(context) + REG_A0) - get_program_break(context);
 
     // gc_malloc yields the pointer to the newly/reused memory (or 0 if failed)
@@ -7101,15 +7101,13 @@ void implement_gc_brk(uint64_t* context) {
     // this sets the _bump pointer of the program (for consistency)
     set_bump_pointer(context, get_program_break(context));
 
-    // gc_malloc yields an actual address, since the pb is not always increased
-    // since the malloc library function uses a bump pointer allocator, which expects
-    // a program break (and successively checks this value for validity), we
-    // skip these last instructions of malloc. This sanity check is already performed
-    // by gc_malloc
+    // assert: gc_brk syscall is invoked by selfie's malloc
+
+    // skip next seven instructions of selfie's malloc
+    // to avoid using its bump pointer allocator
     set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
-  } else {
+  } else
     implement_brk(context);
-  }
 }
 
 void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
@@ -7251,7 +7249,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     // brk increases the program counter, but we do not want that to happen
     set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
 
-    // allocation failed if bump pointer is still bump and size != 0
+    // allocation failed if program break is still bump and size != 0
     if (*(get_regs(context) + REG_A0) == bump) {
       if (size != 0)
         bump = 0;
@@ -7263,8 +7261,8 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     // restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
 
-    // Touch and zero memory. Note: This emulates selfie's behaviour of allocating pages and
-    // setting their content to zero on bootlevel 1 and above. This can be done by map_and_store'ing
+    // touch and zero memory, emulating selfie's behavior of allocating and
+    // zeroing pages on bootlevel 1 and above, by map_and_store'ing
     // the first address of each newly allocated page
     if (bump != 0) {
       // assert: previous page already touched
