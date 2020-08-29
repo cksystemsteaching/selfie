@@ -7226,6 +7226,8 @@ uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
   if (gc_is_library(context))
     return *((uint64_t*) address);
   else
+    // assert: is_valid_virtual_address() == 1
+    // assert: is_virtual_address_mapped() == 1
     return load_virtual_memory(get_pt(context), address);
 }
 
@@ -7233,7 +7235,9 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
   if (gc_is_library(context))
     *((uint64_t*) address) = value;
   else
-    store_virtual_memory(get_pt(context), address, value);
+    // assert: is_valid_virtual_address() == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      store_virtual_memory(get_pt(context), address, value);
 }
 
 uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
@@ -7270,22 +7274,6 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
 
     // restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
-
-    // touch and zero memory by map_and_store'ing
-    // the first address of each newly allocated page
-    // emulating selfie's behavior of allocating and
-    // zeroing pages on bootlevel 1 and above
-    if (bump != 0) {
-      // assert: previous page already touched
-
-      saved_a0 = round_up(bump, PAGESIZE);
-
-      while (saved_a0 < (bump + size)) {
-        map_and_store(context, saved_a0, 0);
-
-        saved_a0 = saved_a0 + PAGESIZE;
-      }
-    }
 
     return (uint64_t*) bump;
   }
@@ -7405,9 +7393,20 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
 
 void mark_segment(uint64_t* context, uint64_t segment_beg, uint64_t segment_end, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end) {
   uint64_t current_word;
+  uint64_t valid_addr;
 
   while (segment_beg < segment_end) {
-    current_word = gc_load_memory(segment_beg, context);
+    valid_addr = 1;
+
+    if (gc_is_library(context) == 0)
+      if (is_valid_heap_address(context, segment_beg))
+        if (is_virtual_address_mapped(get_pt(context), segment_beg) == 0)
+          valid_addr = 0;
+
+    if (valid_addr)
+      current_word = gc_load_memory(segment_beg, context);
+    else
+      current_word = 0;
 
     if (is_valid_gc_pointer(used_list_head, current_word, heap_start, heap_end) == 1)
       set_metadata_markbit(get_pointer_of_address(used_list_head, current_word), 1);
