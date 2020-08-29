@@ -6743,7 +6743,7 @@ void emit_malloc() {
 
   // call brk syscall to set new program break to _bump + size
   // note: the brk syscall is redirected to the gc_brk syscall if mipster is executed with garbage collection.
-  // see implement_gc_brk
+  // these semantics must be considered when modifying malloc. see implement_gc_brk
   emit_add(REG_A0, current_temporary(), previous_temporary());
   emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
   emit_ecall();
