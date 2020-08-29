@@ -1241,6 +1241,8 @@ uint64_t* gc_malloc(uint64_t size) {
 
 uint64_t NON_GC_HEAP_SIZE = 65536000; // 1000 * 2^16 bytes of non-garbage-collected memory
 
+uint64_t GC_SKIPS_TILL_COLLECT = 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* gc_used_list = (uint64_t*) 0; // pointer to pointer to used-list head
@@ -1253,6 +1255,8 @@ uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end  = 0;
 
 uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialized yet
+
+uint64_t gc_skips_since_last_collect = 0;
 
 uint64_t gc_num_malloc_new   = 0;
 uint64_t gc_num_malloc_reuse = 0;
@@ -7556,17 +7560,22 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_memory(ret);
   }
 
-  // try collecting and recheck
-  gc_collect(context);
+  if (gc_skips_since_last_collect >= GC_SKIPS_TILL_COLLECT) {
+    // try collecting and recheck
+    gc_collect(context);
 
-  // check if memory is in free list
-  ret = free_list_extract(context, size);
+    gc_skips_since_last_collect = 0;
 
-  if (ret != (uint64_t*) 0) {
-    gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
+    // check if memory is in free list
+    ret = free_list_extract(context, size);
 
-    return get_metadata_memory(ret);
-  }
+    if (ret != (uint64_t*) 0) {
+      gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
+
+      return get_metadata_memory(ret);
+    }
+  } else
+    gc_skips_since_last_collect = gc_skips_since_last_collect + 1;
 
   gc_num_malloc_new = gc_num_malloc_new + 1;
 
@@ -9672,7 +9681,7 @@ uint64_t mipster(uint64_t* to_context) {
   else if (debug)
     print(" with debugger");
   else if (gc)
-    print(" with garbage collector");
+    printf1(" with garbage collector(using %d skip(s))", (char*) GC_SKIPS_TILL_COLLECT);
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
@@ -9914,6 +9923,12 @@ uint64_t selfie_run(uint64_t machine) {
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
+
+  if (string_compare(peek_argument(0), "--skips")) {
+    get_argument();
+
+    GC_SKIPS_TILL_COLLECT = atoi(get_argument());
+  }
 
   init_memory(atoi(peek_argument(0)));
 
