@@ -6742,6 +6742,8 @@ void emit_malloc() {
   emit_ld(current_temporary(), get_scope(entry), get_address(entry));
 
   // call brk syscall to set new program break to _bump + size
+  // note: the brk syscall is redirected to the gc_brk syscall if mipster is executed with garbage collection.
+  // see implement_gc_brk
   emit_add(REG_A0, current_temporary(), previous_temporary());
   emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
   emit_ecall();
@@ -7085,14 +7087,25 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 void implement_gc_brk(uint64_t* context) {
   uint64_t size;
 
+  // the malloc library function calls break with the new program break
+  // therefore the new pb is always larger than the old pb, if malloc is valid
+  // break may also be used in other ways (using the current pb or 0 for example)
+  // these calls are redirected to the default break implementation
   if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
+    // calculate size by subtracting the old pb from the new pb
     size = *(get_regs(context) + REG_A0) - get_program_break(context);
 
+    // gc_malloc yields the pointer to the newly/reused memory (or 0 if failed)
     *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
 
+    // this sets the _bump pointer of the program (for consistency)
     set_bump_pointer(context, get_program_break(context));
 
-    // Skip last instructions of malloc (sanity check performed by gc_malloc_impl)
+    // gc_malloc yields an actual address, since the pb is not always increased
+    // since the malloc library function uses a bump pointer allocator, which expects
+    // a program break (and successively checks this value for validity), we
+    // skip these last instructions of malloc. This sanity check is already performed
+    // by gc_malloc
     set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
   } else {
     implement_brk(context);
