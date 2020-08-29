@@ -7246,7 +7246,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
 
     implement_brk(context);
 
-    // brk increases the program counter, but we do not want that to happen
+    // brk increases the program counter but we do not want that to happen
     set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
 
     // allocation failed if program break is still bump and size != 0
@@ -7261,9 +7261,10 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
     // restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
 
-    // touch and zero memory, emulating selfie's behavior of allocating and
-    // zeroing pages on bootlevel 1 and above, by map_and_store'ing
+    // touch and zero memory by map_and_store'ing
     // the first address of each newly allocated page
+    // emulating selfie's behavior of allocating and
+    // zeroing pages on bootlevel 1 and above
     if (bump != 0) {
       // assert: previous page already touched
 
@@ -9048,7 +9049,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
 
-  // Garbage collector
+  // garbage collector
   set_used_list_head(context, (uint64_t*) 0);
   set_free_list_head(context, (uint64_t*) 0);
   set_heap_start(context, 0);
