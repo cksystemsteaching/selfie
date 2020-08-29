@@ -1192,8 +1192,8 @@ uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_
 void prepare_mark(uint64_t* used_list_head);
 
 // bootstrap functions which access memory either using paging (if pt is given) or directly
-void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
-uint64_t gc_load_memory(uint64_t address, uint64_t* pt);
+uint64_t gc_load_memory(uint64_t address, uint64_t* context);
+void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 
 // get functions for properties with different access in library/syscall
 uint64_t* get_used_list_head_gc(uint64_t* context);
@@ -1209,7 +1209,7 @@ uint64_t  get_gc_enabled_gc(uint64_t* context);
 void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head);
 void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 
-void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
+void mark_segment(uint64_t* context, uint64_t segment_beg, uint64_t segment_end, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
 void mark(uint64_t* context);
 
 // assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free-list entry
@@ -7212,18 +7212,18 @@ void prepare_mark(uint64_t* used_list_head) {
   }
 }
 
+uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
+  if (gc_is_library(context))
+    return *((uint64_t*) address);
+  else
+    return load_virtual_memory(get_pt(context), address);
+}
+
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
   if (gc_is_library(context))
     *((uint64_t*) address) = value;
   else
     store_virtual_memory(get_pt(context), address, value);
-}
-
-uint64_t gc_load_memory(uint64_t address, uint64_t* pt) {
-  if (pt == (uint64_t*) 0)
-    return *((uint64_t*) address);
-  else
-    return load_virtual_memory(pt, address);
 }
 
 uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
@@ -7393,11 +7393,11 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
     set_gc_enabled(context, gc_enabled);
 }
 
-void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end) {
+void mark_segment(uint64_t* context, uint64_t segment_beg, uint64_t segment_end, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end) {
   uint64_t current_word;
 
   while (segment_beg < segment_end) {
-    current_word = gc_load_memory(segment_beg, pt);
+    current_word = gc_load_memory(segment_beg, context);
 
     if (is_valid_gc_pointer(used_list_head, current_word, heap_start, heap_end) == 1)
       set_metadata_markbit(get_pointer_of_address(used_list_head, current_word), 1);
@@ -7414,7 +7414,6 @@ void mark(uint64_t* context) {
   uint64_t heap_end;
   uint64_t ds_start;
   uint64_t ds_end;
-  uint64_t* pt;
 
   used_list_head = get_used_list_head_gc(context);
 
@@ -7432,21 +7431,19 @@ void mark(uint64_t* context) {
 
   prepare_mark(used_list_head);
 
-  pt = get_pt_gc(context);
-
   // not traversing registers
 
   // assert: temporary registers do not contain any reference to gc_heap memory
   // selfie saves all relevant temporary registers on stack, see procedure_prologue().
 
   // traverse call stack
-  mark_segment(stack_start, stack_end, pt, used_list_head, heap_start, heap_end);
+  mark_segment(context, stack_start, stack_end, used_list_head, heap_start, heap_end);
 
   // traverse heap
-  mark_segment(heap_start, heap_end, pt, used_list_head, heap_start, heap_end);
+  mark_segment(context, heap_start, heap_end, used_list_head, heap_start, heap_end);
 
   // traverse data segment
-  mark_segment(ds_start, ds_end, pt, used_list_head, heap_start, heap_end);
+  mark_segment(context, ds_start, ds_end, used_list_head, heap_start, heap_end);
 }
 
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context) {
