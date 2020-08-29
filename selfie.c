@@ -1138,7 +1138,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context);
 uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context);
 
 // bootstrapped to actual functions during compilation ...
-uint64_t fetch_stack_pointer()     { return 0; }
+uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
 uint64_t fetch_data_segment_size() { return 0; }
 
 // ... here, not available on bootlevel 0 - only for compilation
@@ -1147,6 +1147,13 @@ void emit_fetch_data_segment_size_interface();
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
 
 void implement_gc_brk(uint64_t* context);
+
+void gc_turn_on_library() {
+  if (fetch_stack_pointer() != 0)
+    USE_GC_LIBRARY = GC_LIBRARY;
+  else
+    USE_GC_LIBRARY = GC_DISABLED;
+}
 
 // library ... 1, syscall ... 0
 uint64_t gc_is_library(uint64_t* context) {
