@@ -7127,7 +7127,7 @@ uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context) {
 
     size = round_up(size, SIZEOFUINT64);
 
-    if (non_gc_heap_bump + size > non_gc_heap_start + NON_GC_HEAP_SIZE) {
+    if (non_gc_heap_bump + size <= non_gc_heap_start + NON_GC_HEAP_SIZE) {
       non_gc_object = (uint64_t*) non_gc_heap_bump;
 
       non_gc_heap_bump = non_gc_heap_bump + size;
