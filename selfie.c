@@ -1229,8 +1229,6 @@ void gc_collect(uint64_t* context);
 // shared implementation of library and syscall variant (context == 0 -> library)
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
-void print_garbage_collector_summary();
-
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
@@ -1261,10 +1259,10 @@ uint64_t gc_skips_since_last_collect = 0;
 uint64_t gc_num_malloc_new   = 0;
 uint64_t gc_num_malloc_reuse = 0;
 uint64_t gc_num_collects     = 0;
-uint64_t gc_mem_collected    = 0;
-uint64_t gc_reachable_memory = 0;
-uint64_t gc_max_reach_memory = 0;
-uint64_t gc_dead_memory      = 0;
+uint64_t gc_mallocated_total = 0;
+uint64_t gc_allocated_total  = 0;
+uint64_t gc_free_memory      = 0;
+uint64_t gc_collected_total  = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1272,10 +1270,10 @@ void reset_garbage_collector_summary() {
   gc_num_malloc_new   = 0;
   gc_num_malloc_reuse = 0;
   gc_num_collects     = 0;
-  gc_mem_collected    = 0;
-  gc_reachable_memory = 0;
-  gc_max_reach_memory = 0;
-  gc_dead_memory      = 0;
+  gc_mallocated_total = 0;
+  gc_allocated_total  = 0;
+  gc_free_memory      = 0;
+  gc_collected_total  = 0;
 }
 
 // -----------------------------------------------------------------
@@ -7158,6 +7156,7 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
     return (uint64_t*) 0;
 
   node = (uint64_t*) *free_list_head_pointer;
+
   while (node != (uint64_t*) 0) {
     if (get_metadata_size(node) == size) {
       if (node == (uint64_t*) *free_list_head_pointer)
@@ -7166,6 +7165,8 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
       relink_metadata(node, (uint64_t*) *used_list_head_pointer);
 
       *used_list_head_pointer = (uint64_t) node;
+
+      gc_free_memory = gc_free_memory - size;
 
       return node;
     }
@@ -7258,6 +7259,8 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
   } else {
     bump = get_program_break(context);
 
+    gc_allocated_total = gc_allocated_total + size;
+
     saved_a0 = *(get_regs(context) + REG_A0);
 
     *(get_regs(context) + REG_A0) = bump + size;
@@ -7269,9 +7272,12 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
 
     // allocation failed if program break is still bump and size != 0
     if (*(get_regs(context) + REG_A0) == bump) {
-      if (size != 0)
+      if (size != 0) {
         bump = 0;
-      else
+
+        // if allocation failed discount memory from allocated total
+        gc_allocated_total = gc_allocated_total - size;
+      } else
         set_heap_end(context, get_heap_end(context) + size);
     } else
       set_heap_end(context, get_heap_end(context) + size);
@@ -7465,9 +7471,9 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   uint64_t object_end;
 
   // zero object memory
-  object_beg = (uint64_t) get_metadata_memory(metadata_entry);
+  object_beg  = (uint64_t) get_metadata_memory(metadata_entry);
   object_size = get_metadata_size(metadata_entry);
-  object_end = object_beg + object_size;
+  object_end  = object_beg + object_size;
 
   while (object_beg < object_end) {
     gc_store_memory(object_beg, 0, context);
@@ -7480,9 +7486,8 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
 
   *free_list_head_pointer = (uint64_t) metadata_entry;
 
-  gc_mem_collected    = gc_mem_collected + object_size;
-  gc_dead_memory      = gc_dead_memory + object_size;
-  gc_reachable_memory = gc_reachable_memory - object_size;
+  gc_free_memory   = gc_free_memory + object_size;
+  gc_collected_total = gc_collected_total + object_size;
 }
 
 void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, uint64_t* context) {
@@ -7493,6 +7498,7 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
     return;
 
   node = (uint64_t*) *used_list_head_pointer;
+
   while (node != (uint64_t*) 0) {
     next_node = get_next_entry(node);
 
@@ -7514,20 +7520,25 @@ void gc_init(uint64_t* context) {
   reset_garbage_collector_summary();
 
   set_used_and_free_list_head(context, smalloc_system(SIZEOFUINT64), smalloc_system(SIZEOFUINT64));
+
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
 
-  // garbage collector library uses two heaps
   if (gc_is_library(context)) {
+    // garbage collector library uses two heaps
+
     non_gc_heap_start = (uint64_t) smalloc_system(NON_GC_HEAP_SIZE);
+
+    // TODO: this is done above, no?
     zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
 
     non_gc_heap_bump = non_gc_heap_start;
 
     gc_heap_start = non_gc_heap_start + NON_GC_HEAP_SIZE;
-    gc_heap_end = gc_heap_start;
+    gc_heap_end   = gc_heap_start;
   } else {
     program_break = get_program_break(context);
+
     set_heap_start(context, program_break);
     set_heap_end(context, program_break);
   }
@@ -7542,10 +7553,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   size = round_up(size, SIZEOFUINT64);
 
-  gc_reachable_memory = gc_reachable_memory + size;
-
-  if (gc_reachable_memory > gc_max_reach_memory)
-    gc_max_reach_memory = gc_reachable_memory;
+  gc_mallocated_total = gc_mallocated_total + size;
 
   // allocator automatically checks if it has been initialized
   if(get_gc_enabled_gc(context) == 0)
@@ -7582,10 +7590,9 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   // if there is no reusable memory allocate new memory
   ret = gc_alloc_memory(size, context);
 
-  // if allocation failed discount memory from reachable memory counter
+  // if allocation failed discount memory from mallocated total
   if (ret == (uint64_t*) 0)
-    if (size != 0)
-      gc_reachable_memory = gc_reachable_memory - size;
+    gc_mallocated_total = gc_mallocated_total - size;
 
   metadata = allocate_metadata_entry(context);
 
@@ -7609,23 +7616,6 @@ void gc_collect(uint64_t* context) {
   sweep(get_used_list_head_gc(context), get_free_list_head_gc(context), context);
 
   gc_num_collects = gc_num_collects + 1;
-}
-
-void print_garbage_collector_summary() {
-  printf4("%s: garbage collector: malloc used %u times (%u reuses and %u new allocations)\n",
-    selfie_name,
-    (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
-    (char*) gc_num_malloc_reuse,
-    (char*) gc_num_malloc_new);
-
-  printf3("%s: garbage collector: collected a total amount of %.2uMB with %u collect calls\n",
-    selfie_name,
-    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
-    (char*) gc_num_collects);
-
-  printf2("%s: garbage collector: maximum reachable memory %.2uMB at any time\n",
-    selfie_name,
-    (char*) fixed_point_ratio(gc_max_reach_memory, MEGABYTE, 2));
 }
 
 // -----------------------------------------------------------------
@@ -8967,13 +8957,26 @@ void print_profile() {
   printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
     (char*) get_total_number_of_instructions(),
     (char*) get_total_percentage_of_nops());
-  printf3("%s:          %.2uMB allocated in %u malloc calls\n", selfie_name,
+  printf3("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
     (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2),
     (char*) sc_brk);
-  printf4("%s:          %.2uMB(%.2u%%) out of %uMB accessed\n", selfie_name,
+  printf3("%s:          %.2uMB(%.2u%%) actually accessed\n", selfie_name,
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4),
-    (char*) (page_frame_memory / MEGABYTE));
+    (char*) fixed_point_percentage(fixed_point_ratio(mc_brk, pused(), 4), 4));
+
+  if (gc) {
+    printf4("%s:          %.2uMB requested in %u gc'd mallocs [%u reuses]\n", selfie_name,
+      (char*) fixed_point_ratio(gc_mallocated_total, MEGABYTE, 2),
+      (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
+      (char*) gc_num_malloc_reuse);
+    printf4("%s:          %.2uMB(%.2u%%) actually allocated in %u gc'd mallocs\n", selfie_name,
+      (char*) fixed_point_ratio(gc_allocated_total, MEGABYTE, 2),
+      (char*) fixed_point_percentage(fixed_point_ratio(gc_mallocated_total, gc_allocated_total, 4), 4),
+      (char*) gc_num_malloc_new);
+    printf3("%s:          %.2uMB collected in %u gc runs\n", selfie_name,
+      (char*) fixed_point_ratio(gc_collected_total, MEGABYTE, 2),
+      (char*) gc_num_collects);
+  }
 
   if (get_total_number_of_instructions() > 0) {
     printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
@@ -9985,17 +9988,14 @@ uint64_t selfie_run(uint64_t machine) {
   debug_syscalls = 0;
   debug          = 0;
 
-  gc = 0;
-
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
-  if (machine == GIBSTER)
-    print_garbage_collector_summary();
-
   if (machine != HYPSTER)
     print_profile();
+
+  gc = 0;
 
   return exit_code;
 }
