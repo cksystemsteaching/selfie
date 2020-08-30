@@ -1218,6 +1218,8 @@ void sweep(uint64_t* used_list_head, uint64_t* free_list_head, uint64_t* pt);
 
 void gc_collect(uint64_t* context);
 
+void print_gc_profile(char* padding);
+
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
@@ -7605,6 +7607,20 @@ void gc_collect(uint64_t* context) {
   gc_num_collects = gc_num_collects + 1;
 }
 
+void print_gc_profile(char* padding) {
+  printf5("%s:%s%.2uMB requested in %u gc'd mallocs [%u reuses]\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_mallocated_total, MEGABYTE, 2),
+    (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
+    (char*) gc_num_malloc_reuse);
+  printf5("%s:%s%.2uMB(%.2u%%) actually allocated in %u gc'd mallocs\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_allocated_total, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mallocated_total, gc_allocated_total, 4), 4),
+    (char*) gc_num_malloc_new);
+  printf4("%s:%s%.2uMB collected in %u gc runs\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_collected_total, MEGABYTE, 2),
+    (char*) gc_num_collects);
+}
+
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
@@ -8951,19 +8967,8 @@ void print_profile() {
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(mc_brk, pused(), 4), 4));
 
-  if (gc) {
-    printf4("%s:          %.2uMB requested in %u gc'd mallocs [%u reuses]\n", selfie_name,
-      (char*) fixed_point_ratio(gc_mallocated_total, MEGABYTE, 2),
-      (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
-      (char*) gc_num_malloc_reuse);
-    printf4("%s:          %.2uMB(%.2u%%) actually allocated in %u gc'd mallocs\n", selfie_name,
-      (char*) fixed_point_ratio(gc_allocated_total, MEGABYTE, 2),
-      (char*) fixed_point_percentage(fixed_point_ratio(gc_mallocated_total, gc_allocated_total, 4), 4),
-      (char*) gc_num_malloc_new);
-    printf3("%s:          %.2uMB collected in %u gc runs\n", selfie_name,
-      (char*) fixed_point_ratio(gc_collected_total, MEGABYTE, 2),
-      (char*) gc_num_collects);
-  }
+  if (gc)
+    print_gc_profile("          ");
 
   if (get_total_number_of_instructions() > 0) {
     printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);

@@ -1,5 +1,11 @@
 int main(int argc, char** argv) {
+  uint64_t exit_code;
+
   turn_on_gc_library(); // use library variant of gc
 
-  return selfie_main(argc, argv);
+  exit_code = selfie_main(argc, argv);
+
+  print_gc_profile(" ");
+
+  return exit_code;
 }
