@@ -1241,7 +1241,7 @@ uint64_t* gc_malloc(uint64_t size) {
 
 uint64_t NON_GC_HEAP_SIZE = 65536000; // 1000 * 2^16 bytes of non-garbage-collected memory
 
-uint64_t GC_SKIPS_TILL_COLLECT = 0;
+uint64_t GC_SKIPS_TILL_COLLECT = 100; // gc every so often
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -9681,7 +9681,7 @@ uint64_t mipster(uint64_t* to_context) {
   else if (debug)
     print(" with debugger");
   else if (gc)
-    printf1(" with garbage collector(using %d skip(s))", (char*) GC_SKIPS_TILL_COLLECT);
+    printf1(" with garbage collector (%d skip(s))", (char*) GC_SKIPS_TILL_COLLECT);
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
