@@ -7524,9 +7524,6 @@ void gc_init(uint64_t* context) {
 
     non_gc_heap_start = (uint64_t) smalloc_system(NON_GC_HEAP_SIZE);
 
-    // TODO: this is done above, no?
-    zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
-
     non_gc_heap_bump = non_gc_heap_start;
 
     gc_heap_start = non_gc_heap_start + NON_GC_HEAP_SIZE;
