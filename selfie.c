@@ -7196,8 +7196,7 @@ uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address) {
 uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_start, uint64_t heap_end) {
   uint64_t* pointer_of_address;
 
-  // only a multiple of 8 is a valid address
-  if ((address % 8) != 0)
+  if (is_valid_virtual_address(address) == 0)
     return 0;
 
   // pointer below bounds
@@ -7209,6 +7208,7 @@ uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_
     return 0;
 
   pointer_of_address = get_pointer_of_address(used_list_head, address);
+
   if (pointer_of_address == (uint64_t*) 0)
     return 0;
 
@@ -7230,8 +7230,8 @@ uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
   if (gc_is_library(context))
     return *((uint64_t*) address);
   else
-    // assert: is_valid_virtual_address() == 1
-    // assert: is_virtual_address_mapped() == 1
+    // assert: is_valid_virtual_address(address) == 1
+    // assert: is_virtual_address_mapped(address) == 1
     return load_virtual_memory(get_pt(context), address);
 }
 
@@ -7239,7 +7239,7 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
   if (gc_is_library(context))
     *((uint64_t*) address) = value;
   else
-    // assert: is_valid_virtual_address() == 1
+    // assert: is_valid_virtual_address(address) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       store_virtual_memory(get_pt(context), address, value);
 }
@@ -7412,7 +7412,7 @@ void mark_segment(uint64_t* context, uint64_t segment_beg, uint64_t segment_end,
     else
       current_word = 0;
 
-    if (is_valid_gc_pointer(used_list_head, current_word, heap_start, heap_end) == 1)
+    if (is_valid_gc_pointer(used_list_head, current_word, heap_start, heap_end))
       set_metadata_markbit(get_pointer_of_address(used_list_head, current_word), 1);
 
     segment_beg = segment_beg + SIZEOFUINT64;
