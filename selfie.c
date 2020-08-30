@@ -7313,17 +7313,20 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
   uint64_t bump;
   uint64_t saved_a0;
 
+  gc_allocated_total = gc_allocated_total + size;
+
   if (is_gc_library(context)) {
     bump = (uint64_t) smalloc_system(size);
 
     if (bump != 0)
       gc_heap_end = bump + size;
+    else
+      // if allocation failed discount memory from allocated total
+      gc_allocated_total = gc_allocated_total - size;
 
     return (uint64_t*) bump;
   } else {
     bump = get_program_break(context);
-
-    gc_allocated_total = gc_allocated_total + size;
 
     saved_a0 = *(get_regs(context) + REG_A0);
 
@@ -7383,7 +7386,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_memory(metadata);
   }
 
-  // if there is no reusable memory allocate new object memory
+  // allocate new object memory if there is no reusable memory
   object = allocate_gcd_memory(size, context);
 
   if (object != (uint64_t*) 0) {
@@ -7407,7 +7410,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     } else
       return (uint64_t*) 0;
   } else
-    // if allocation failed discount memory from mallocated total
+    // if object allocation failed discount memory from mallocated total
     gc_mallocated_total = gc_mallocated_total - size;
 
   return object;
