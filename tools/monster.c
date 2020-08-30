@@ -1150,26 +1150,6 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
     return SCHEDULE;
 }
 
-uint64_t handle_symbolic_merge(uint64_t* context) {
-  //TODO: do wee need this at all?//add_mergeable_context(current_context);
-
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  return MERGE;
-}
-
-uint64_t handle_symbolic_recursion(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  return RECURSION;
-}
-
-uint64_t handle_symbolic_schedule(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  return SCHEDULE;
-}
-
 uint64_t handle_symbolic_exception(uint64_t* context) {
   uint64_t exception;
 
@@ -1182,12 +1162,6 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return handle_symbolic_division_by_zero(context);
   else if (exception == EXCEPTION_TIMER)
     return handle_symbolic_timer(context);
-  else if (exception == EXCEPTION_SYMBOLICMERGE)
-    return handle_symbolic_merge(context);
-  else if (exception == EXCEPTION_SYMBOLICRECURSION)
-    return handle_symbolic_recursion(context);
-  else if (exception == EXCEPTION_SYMBOLICSCHEDULE)
-    return handle_symbolic_schedule(context);
   else if (exception == EXCEPTION_INVALIDADDRESS) {
     // check if this invalid memory access is reachable
     print("(push 1)\n");

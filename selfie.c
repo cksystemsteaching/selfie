@@ -1270,9 +1270,7 @@ uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
 uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
-uint64_t EXCEPTION_SYMBOLICMERGE         = 9;  // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICRECURSION     = 10; // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 11; // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 9; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1383,8 +1381,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)         = (uint64_t) "symbolic merge";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)     = (uint64_t) "symbolic recursion";
   *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
 }
 
@@ -1663,9 +1659,7 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
-uint64_t MERGE     = 2; // for symbolic execution
-uint64_t RECURSION = 3; // for symbolic execution
-uint64_t SCHEDULE  = 4; // for symbolic execution
+uint64_t SCHEDULE  = 2; // for symbolic execution
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 1;
