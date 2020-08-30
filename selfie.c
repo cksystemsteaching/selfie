@@ -7523,7 +7523,6 @@ void gc_init(uint64_t* context) {
     // garbage collector library uses two heaps
 
     non_gc_heap_start = (uint64_t) smalloc_system(NON_GC_HEAP_SIZE);
-
     non_gc_heap_bump = non_gc_heap_start;
 
     gc_heap_start = non_gc_heap_start + NON_GC_HEAP_SIZE;
