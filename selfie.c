@@ -1261,7 +1261,6 @@ uint64_t gc_num_malloc_reuse = 0;
 uint64_t gc_num_collects     = 0;
 uint64_t gc_mallocated_total = 0;
 uint64_t gc_allocated_total  = 0;
-uint64_t gc_free_memory      = 0;
 uint64_t gc_collected_total  = 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1272,7 +1271,6 @@ void reset_garbage_collector_summary() {
   gc_num_collects     = 0;
   gc_mallocated_total = 0;
   gc_allocated_total  = 0;
-  gc_free_memory      = 0;
   gc_collected_total  = 0;
 }
 
@@ -7166,8 +7164,6 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
 
       *used_list_head_pointer = (uint64_t) node;
 
-      gc_free_memory = gc_free_memory - size;
-
       return node;
     }
 
@@ -7486,7 +7482,6 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
 
   *free_list_head_pointer = (uint64_t) metadata_entry;
 
-  gc_free_memory   = gc_free_memory + object_size;
   gc_collected_total = gc_collected_total + object_size;
 }
 
