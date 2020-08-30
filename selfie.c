@@ -1164,7 +1164,7 @@ uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context);
 // |  4 | markbit | markbit indicating reachability of pointer
 // +----+---------+
 
-uint64_t* allocate_metadata_entry(uint64_t* context) {
+uint64_t* allocate_metadata(uint64_t* context) {
     return allocate_non_gcd_memory(SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3, context);
 }
 
@@ -7362,11 +7362,19 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   gc_mallocated_total = gc_mallocated_total + size;
 
-  // allocator automatically checks if it has been initialized
+  // initialize garbage collector if it is uninitialized
   if(get_gc_enabled_gc(context) == 0)
     gc_init(context);
 
-  // check if memory is in free list
+  // garbage collect
+  if (gc_skips_since_last_collect >= GC_SKIPS_TILL_COLLECT) {
+    gc_collect(context);
+
+    gc_skips_since_last_collect = 0;
+  } else
+    gc_skips_since_last_collect = gc_skips_since_last_collect + 1;
+
+  // check if reusable memory is available in free list
   metadata = free_list_extract(context, size);
 
   if (metadata != (uint64_t*) 0) {
@@ -7375,30 +7383,12 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_memory(metadata);
   }
 
-  if (gc_skips_since_last_collect >= GC_SKIPS_TILL_COLLECT) {
-    // try collecting and recheck
-    gc_collect(context);
-
-    gc_skips_since_last_collect = 0;
-
-    // check if memory is in free list
-    metadata = free_list_extract(context, size);
-
-    if (metadata != (uint64_t*) 0) {
-      gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
-
-      return get_metadata_memory(metadata);
-    }
-  } else
-    gc_skips_since_last_collect = gc_skips_since_last_collect + 1;
-
-  gc_num_malloc_new = gc_num_malloc_new + 1;
-
   // if there is no reusable memory allocate new object memory
   object = allocate_gcd_memory(size, context);
 
   if (object != (uint64_t*) 0) {
-    metadata = allocate_metadata_entry(context);
+    // allocate metadata
+    metadata = allocate_metadata(context);
 
     if (metadata != (uint64_t*) 0) {
       used_list_head_ptr = get_used_list_head_gc(context);
@@ -7412,6 +7402,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
       set_metadata_size(metadata, size);
       set_metadata_memory(metadata, object);
       set_metadata_markbit(metadata, 0);
+
+      gc_num_malloc_new = gc_num_malloc_new + 1;
     } else
       return (uint64_t*) 0;
   } else
