@@ -1,52 +1,63 @@
-language:
-- c
+language: c
+
 os:
-- osx
-- linux
+  - linux
+  - osx
+
+dist: bionic
+
 compiler:
-- clang
-- gcc
+  - clang
+  - gcc
+
 script: travis_wait 60 make all
+
 stages:
   - test
-  - docker
+  - make-grade
+  - docker-all
+  - docker-extras
   - name: deploy
-    if: branch = master AND type = push AND fork = false
+    # disabling deploy, see github docker workflow
+    if: false AND branch = master AND type = push AND fork = false
   - name: run
-    if: branch = master AND type = push AND fork = false
+    # disabling deploy, see github docker workflow
+    if: false AND branch = master AND type = push AND fork = false
+
 jobs:
   include:
-    - stage: docker
-      sudo: required
+    - stage: make-grade
+      language: python
+      python:
+        - "3.7"
+      os: linux
+      dist: bionic
+      script: make grade
+    - stage: docker-all
       services: docker
       os: linux
       script:
-        - docker build -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make assemble
-        - docker run cksystemsteaching/selfie make spike
-        - docker run cksystemsteaching/selfie make qemu
-        - docker run cksystemsteaching/selfie make boolector
-        - docker run cksystemsteaching/selfie make btormc
-        - docker run cksystemsteaching/selfie make grader
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make all
+    - stage: docker-extras
+      services: docker
+      os: linux
+      script:
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make extras
     - stage: deploy
-      sudo: required
       services: docker
       os: linux
       script:
-        - docker build -t cksystemsteaching/selfie .
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         - docker push cksystemsteaching/selfie
     - stage: run
-      sudo: required
       services: docker
       os: linux
       script:
-        - docker run cksystemsteaching/selfie make assemble
-        - docker run cksystemsteaching/selfie make spike
-        - docker run cksystemsteaching/selfie make qemu
-        - docker run cksystemsteaching/selfie make boolector
-        - docker run cksystemsteaching/selfie make btormc
-        - docker run cksystemsteaching/selfie make grader
+        - docker run cksystemsteaching/selfie make everything
+
 notifications:
   email: false
   slack:

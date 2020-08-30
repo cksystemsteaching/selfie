@@ -9,8 +9,8 @@ from tests.utils import (CaptureOutput, assemble_for_selfie,
                          for_all_test_results, list_files)
 
 import self as grader
-from lib.runner import execute
-from self import assignments, main, name
+from lib.checks import execute
+from self import assignments, main
 
 
 class TestRiscvInstruction(unittest.TestCase):
@@ -42,13 +42,13 @@ class TestRiscvInstruction(unittest.TestCase):
             self.assertTrue(
                 result, 'following format test passed "' + msg + '"')
 
-    @patch('lib.runner.execute')
+    @patch('lib.checks.execute')
     def test_instruction(self, mock):
         mock.side_effect = self.execute_mock
 
         with CaptureOutput() as capture:
             for assignment in assignments:
-                grader.main([sys.argv[0], name(assignment)])
+                grader.main([sys.argv[0], assignment.name])
 
         for_all_test_results(capture.get_output(), self.check_encoding_results)
 

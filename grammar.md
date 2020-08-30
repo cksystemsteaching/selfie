@@ -1,4 +1,4 @@
-Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
+Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
 
 Selfie is a project of the Computational Systems Group at the Department of Computer Sciences of the University of Salzburg in Austria. For further information and code please refer to:
 
@@ -10,18 +10,18 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
+C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
 
 with:
 
 ```
-integer    = digit { digit } .
+integer_literal   = digit { digit } .
 
-character  = "'" printable_character "'" .
+character_literal = "'" printable_character "'" .
 
-string     = """ { printable_character } """ .
+string_literal    = """ { printable_character } """ .
 
-identifier = letter { letter | digit | "_" } .
+identifier        = letter { letter | digit | "_" } .
 ```
 
 and:
@@ -35,45 +35,42 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
-                   ( "void" | type ) identifier procedure } .
+cstar             = { type identifier
+                      [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
+                    ( "void" | type ) identifier procedure } .
 
-type             = "uint64_t" [ "*" ] .
+type              = "uint64_t" [ "*" ] .
 
-cast             = "(" type ")" .
+cast              = "(" type ")" .
 
-literal          = integer | character .
+procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
+                    "{" { variable ";" } { statement } "}" ) .
 
-procedure        = "(" [ variable { "," variable } ] ")"
-                    ( ";" | "{" { variable ";" } { statement } "}" ) .
+variable          = type identifier .
 
-variable         = type identifier .
+statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
+                    call ";" | while | if | return ";" .
 
-statement        = call ";" | while | if | return ";" |
-                   ( [ "*" ] identifier | "*" "(" expression ")" )
-                     "=" expression ";" .
+call              = identifier "(" [ expression { "," expression } ] ")" .
 
-call             = identifier "(" [ expression { "," expression } ] ")" .
+expression        = simple_expression
+                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
 
-expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
+simple_expression = term { ( "+" | "-" ) term } .
 
-simpleExpression = term { ( "+" | "-" ) term } .
+term              = factor { ( "*" | "/" | "%" ) factor } .
 
-term             = factor { ( "*" | "/" | "%" ) factor } .
+factor            = [ cast ] [ "-" ] [ "*" ]
+                    ( integer_literal | character_literal | string_literal |
+                      identifier | call | "(" expression ")" ) .
 
-factor           = [ cast ] [ "-" ] [ "*" ]
-                    ( identifier | call | literal | string | "(" expression ")" ) .
+while             = "while" "(" expression ")"
+                      ( statement | "{" { statement } "}" ) .
 
-while            = "while" "(" expression ")"
-                             ( statement |
-                               "{" { statement } "}" ) .
+if                = "if" "(" expression ")"
+                      ( statement | "{" { statement } "}" )
+                    [ "else"
+                      ( statement | "{" { statement } "}" ) ] .
 
-if               = "if" "(" expression ")"
-                             ( statement |
-                               "{" { statement } "}" )
-                         [ "else"
-                             ( statement |
-                               "{" { statement } "}" ) ] .
-
-return           = "return" [ expression ] .
+return            = "return" [ expression ] .
 ```

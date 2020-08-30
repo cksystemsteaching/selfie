@@ -1,0 +1,65 @@
+name: Make Everything Selfie
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
+  schedule:
+    # trigger fridays at 12am
+    - cron: '0 0 * * 5'
+
+jobs:
+  make-all-of-selfie-on-linux-and-macos:
+    name: Make all of selfie
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
+      run: make all
+    - name: Use Python 3.7.x
+      uses: actions/setup-python@v1
+      with:
+        python-version: "3.7.x"
+    - name: Run autograder baseline
+      run: make grade
+
+  make-all-of-selfie-on-windows:
+    name: Make all of selfie on windows
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
+      env:
+        CC: gcc
+      run: make all
+    # python3 does not work
+
+  make-everything-of-selfie-on-docker:
+    name: Make everything on docker
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make everything
+      uses: cksystemsteaching/selfie@master

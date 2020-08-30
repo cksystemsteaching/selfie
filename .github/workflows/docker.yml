@@ -1,0 +1,30 @@
+name: Build Docker Selfie
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+  schedule:
+    # trigger fridays at 12am
+    - cron: '0 0 * * 5'
+
+jobs:
+  selfie-on-docker:
+    name: Build, test, and deploy selfie on docker
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Build docker image
+      run: docker build -f Dockerselfie -t cksystemsteaching/selfie .
+    - name: Test selfie in docker image
+      run: docker run cksystemsteaching/selfie make everything
+    # requires secrets named DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in the github repository's Settings -> Secrets
+    - name: Deploy docker image
+      run: |
+        echo '${{ secrets.DOCKERHUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+        docker push cksystemsteaching/selfie

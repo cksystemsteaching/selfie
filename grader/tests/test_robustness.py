@@ -4,7 +4,7 @@ from shutil import copytree, rmtree
 from unittest.mock import patch
 
 from self import main as grader_main
-from lib.runner import execute
+from lib.checks import execute
 from lib.system import EXITCODE_IOERROR
 from tests.utils import CaptureOutput
 
@@ -26,7 +26,7 @@ class TestRobustness(TestCase):
     def insert_assignment_path(self, command):
         return command.replace("<assignment>", "grader/assignments/hex-literal/")
 
-    @patch('lib.runner.execute')
+    @patch('lib.checks.execute')
     def test_path_name_with_whitespaces(self, mock):
         mock.side_effect = self.execute_mock
 
@@ -36,7 +36,7 @@ class TestRobustness(TestCase):
 
         chdir(dst)
 
-        with CaptureOutput(), patch('lib.runner.insert_assignment_path') as assignment_path_mock:
+        with CaptureOutput(), patch('lib.checks.insert_assignment_path') as assignment_path_mock:
             assignment_path_mock.side_effect = self.insert_assignment_path
 
             grader_main([getcwd(), 'hex-literal'])
