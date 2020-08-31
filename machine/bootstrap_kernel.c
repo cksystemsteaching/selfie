@@ -110,15 +110,20 @@ void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
 
 void setup_kernel_pt() {
   void* stack_end = initial_stack_start();
+  uint64_t old_ppn = ppn_bump;
+
   // No need to clear the page table - the BSS section is cleared automagically
+  // Map kernel
   kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
+  // Map kernel stack
   kidentity_map_range(kernel_pt, &_payload_end, stack_end);
 
   // Map kernel upper half to its own vspace
   kmap_kernel_upper_half(kernel_pt);
 
-  uint64_t old_ppn = ppn_bump;
-  kidentity_map_range(kernel_pt, &_payload_end, (void*) ppn_to_paddr(ppn_bump));
+  // Map kernel's page allocator "heap"
+  kidentity_map_range(kernel_pt, stack_end, (void*) ppn_to_paddr(ppn_bump));
+  // Keep on mapping mid and leaf page-tables until all of them have been mapped
   while (old_ppn != ppn_bump) {
     uint64_t initial = old_ppn;
     old_ppn = ppn_bump;
