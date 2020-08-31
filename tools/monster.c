@@ -155,13 +155,12 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 // | 21 | symbolic memory | pointer to symbolic memory
 // | 22 | symbolic regs   | pointer to symbolic registers
 // | 23 | beq counter     | number of executed symbolic beq instructions
-// | 24 | merge location  | program location at which the context can possibly be merged (later)
-// | 25 | merge partner   | pointer to the context from which this context was created
-// | 26 | call stack      | pointer to the corresponding node in the call stack tree
+// | 24 | merge partner   | pointer to the context from which this context was created
+// | 25 | call stack      | pointer to the corresponding node in the call stack tree
 // +----+-----------------+
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 19); }
@@ -169,7 +168,6 @@ char*     get_path_condition(uint64_t* context)  { return (char*)     *(context 
 uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 21); }
 uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 22); }
 uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 23); }
-uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 24); }
 uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 25); }
 uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 26); }
 
@@ -178,7 +176,6 @@ void set_path_condition(uint64_t* context, char* path)        { *(context + 20) 
 void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 21) = (uint64_t) memory; }
 void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 22) = (uint64_t) regs; }
 void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 23) =            counter; }
-void set_merge_location(uint64_t* context, uint64_t location) { *(context + 24) =            location; }
 void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 25) = (uint64_t) partner; }
 void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 26) = (uint64_t) stack; }
 
@@ -265,7 +262,7 @@ uint64_t DELETED                         = -1; // indicates that a symbolic memo
 uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
 uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the beginning of the shared symbolic memory space
 
-uint64_t beq_limit = 35; // limit of symbolic beq instructions on each part of the path between two merge locations
+uint64_t beq_limit = 35; // limit of symbolic beq instructions on each path
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -994,7 +991,6 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_execution_depth(context, get_execution_depth(original));
   set_path_condition(context, condition);
   set_beq_counter(context, get_beq_counter(original));
-  set_merge_location(context, get_merge_location(original));
 
   begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
 
@@ -1057,7 +1053,6 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_symbolic_memory(context, (uint64_t*) 0);
   set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
   set_beq_counter(context, 0);
-  set_merge_location(context, -1);
   set_merge_partner(context, (uint64_t*) 0);
   set_call_stack(context, call_stack_tree);
 
@@ -1836,9 +1831,8 @@ void monster(uint64_t* to_context) {
 
     if (debug_merge)
       if (from_context != (uint64_t*) 0)
-        printf4("; switching from context %u to context %u (merge locations: %x, %x)\n",
-          (char*) from_context, (char*) to_context,
-          (char*) get_merge_location(from_context), (char*) get_merge_location(to_context));
+        printf2("; switching from context %u to context %u\n",
+          (char*) from_context, (char*) to_context);
 
     from_context = mipster_symbolic_switch(to_context, timeout);
 
