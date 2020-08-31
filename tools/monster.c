@@ -233,7 +233,7 @@ void      step_out_of_call(uint64_t* context);
 void use_stdout();
 void use_file();
 
-uint64_t monster(uint64_t* to_context);
+void monster(uint64_t* to_context);
 
 uint64_t selfie_run_symbolically();
 
@@ -538,7 +538,7 @@ void implement_symbolic_openat(uint64_t* context) {
 }
 
 // -----------------------------------------------------------------
-// ------------------------ HYPSTER SYSCALL ------------------------
+// ------------------------ MIPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
@@ -1311,7 +1311,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   print_code_context_for_instruction(location);
 
   if (debug_merge)
-    printf2(" -> active context: %d, mergeable context: %d", (char*) active_context, (char*) mergeable_context);
+    printf2(" -> active context: %u, mergeable context: %u", (char*) active_context, (char*) mergeable_context);
 
   println();
 
@@ -1808,7 +1808,7 @@ void use_file() {
   output_fd   = smt_fd;
 }
 
-uint64_t monster(uint64_t* to_context) {
+void monster(uint64_t* to_context) {
   uint64_t  timeout;
   uint64_t* from_context;
   uint64_t  exception;
@@ -1836,7 +1836,7 @@ uint64_t monster(uint64_t* to_context) {
 
     if (debug_merge)
       if (from_context != (uint64_t*) 0)
-        printf4("; switching from context %d to context %d (merge locations: %x, %x)\n",
+        printf4("; switching from context %u to context %u (merge locations: %x, %x)\n",
           (char*) from_context, (char*) to_context,
           (char*) get_merge_location(from_context), (char*) get_merge_location(to_context));
 
@@ -1875,7 +1875,7 @@ uint64_t monster(uint64_t* to_context) {
             (char*) number_of_written_characters,
             smt_name);
 
-          return EXITCODE_NOERROR;
+          return;
         }
       } else if (exception == SCHEDULE) {
         // check if contexts can be merged
