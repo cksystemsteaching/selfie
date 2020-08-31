@@ -168,16 +168,16 @@ char*     get_path_condition(uint64_t* context)  { return (char*)     *(context 
 uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 21); }
 uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 22); }
 uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 23); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 25); }
-uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 26); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 24); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 25); }
 
 void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 19) =            depth; }
 void set_path_condition(uint64_t* context, char* path)        { *(context + 20) = (uint64_t) path; }
 void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 21) = (uint64_t) memory; }
 void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 22) = (uint64_t) regs; }
 void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 23) =            counter; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 25) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 26) = (uint64_t) stack; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 24) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 25) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
