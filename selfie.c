@@ -1075,6 +1075,8 @@ uint64_t debug_switch = 0;
 
 void init_memory(uint64_t megabytes);
 
+void reset_memory_counters();
+
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
@@ -1256,7 +1258,7 @@ uint64_t gc_collected_total  = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void reset_garbage_collector_summary() {
+void reset_garbage_collector_counters() {
   gc_num_malloc_new   = 0;
   gc_num_malloc_reuse = 0;
   gc_num_collects     = 0;
@@ -1633,9 +1635,11 @@ void reset_segments_access_counters() {
 void reset_profiler() {
   reset_instruction_counters();
   reset_nop_counters();
+  reset_memory_counters();
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
+  reset_garbage_collector_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6938,6 +6942,11 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
+void reset_memory_counters() {
+  mc_brk = 0;
+  sc_brk = 0;
+}
+
 uint64_t load_physical_memory(uint64_t* paddr) {
   return *paddr;
 }
@@ -7235,7 +7244,8 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
 void gc_init(uint64_t* context) {
   uint64_t program_break;
 
-  reset_garbage_collector_summary();
+  reset_memory_counters();
+  reset_garbage_collector_counters();
 
   set_used_and_free_list_head(context, smalloc_system(SIZEOFUINT64), smalloc_system(SIZEOFUINT64));
 
@@ -7325,8 +7335,6 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
     else
       // if allocation failed discount memory from allocated total
       gc_allocated_total = gc_allocated_total - size;
-
-    return (uint64_t*) bump;
   } else {
     bump = get_program_break(context);
 
@@ -7353,9 +7361,9 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
 
     // restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
-
-    return (uint64_t*) bump;
   }
+
+  return (uint64_t*) bump;
 }
 
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
@@ -7368,7 +7376,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   gc_mallocated_total = gc_mallocated_total + size;
 
   // initialize garbage collector if it is uninitialized
-  if(get_gc_enabled_gc(context) == 0)
+  if (get_gc_enabled_gc(context) == 0)
     gc_init(context);
 
   // garbage collect
