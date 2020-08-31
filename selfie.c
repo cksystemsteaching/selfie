@@ -176,9 +176,10 @@ uint64_t round_up(uint64_t n, uint64_t m);
 uint64_t* smalloc(uint64_t size);
 uint64_t* smalloc_system(uint64_t size);
 
-uint64_t* zalloc(uint64_t size);
+void zero_memory(uint64_t* memory, uint64_t size);
 
-void zero_memory(uint64_t* p, uint64_t size); // size in bytes, automatically round up to multiple of REGISTERSIZE
+uint64_t* zalloc(uint64_t size);
+uint64_t* zmalloc(uint64_t size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -589,7 +590,7 @@ uint64_t total_search_time  = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_symbol_tables() {
-  global_symbol_table  = (uint64_t*) zalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
+  global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
 
@@ -1139,7 +1140,7 @@ void init_memory(uint64_t megabytes) {
 uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
 uint64_t fetch_data_segment_size() { return 0; }
 
-// ... here, not available on bootlevel 0 - only for compilation
+// ... here, not available on boot level 0 - only for compilation
 void emit_fetch_stack_pointer();
 void emit_fetch_data_segment_size_interface();
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
@@ -1155,7 +1156,7 @@ void turn_on_gc_library() {
 
 uint64_t is_gc_library(uint64_t* context);
 
-uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context);
+uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context);
 
 // metadata entry:
 // +----+---------+
@@ -1167,7 +1168,7 @@ uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context);
 // +----+---------+
 
 uint64_t* allocate_metadata(uint64_t* context) {
-    return allocate_non_gcd_memory(SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3, context);
+    return allocate_non_library_gcd_memory(SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3, context);
 }
 
 uint64_t* get_metadata_next(uint64_t* entry)    { return (uint64_t*) *entry; }
@@ -1371,8 +1372,8 @@ uint64_t* values = (uint64_t*) 0; // trace of values
 // ------------------------- INITIALIZATION ------------------------
 
 void init_replay_engine() {
-  pcs    = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
-  values = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  pcs    = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  values = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
 }
 
 // -----------------------------------------------------------------
@@ -1595,18 +1596,18 @@ void reset_nop_counters() {
 
 void reset_source_profile() {
   calls               = 0;
-  calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  calls_per_procedure = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   iterations          = 0;
-  iterations_per_loop = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  iterations_per_loop = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  loads_per_instruction  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  loads_per_instruction  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  stores_per_instruction = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
 void reset_register_access_counters() {
-  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reads_per_register  = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  writes_per_register = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   // stack and frame pointer registers are initialized by boot loader
   *(writes_per_register + REG_SP) = 1;
@@ -2109,7 +2110,7 @@ uint64_t load_character(char* s, uint64_t i) {
   // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // CAUTION: at boot levels higher than zero, s is only accessible
+  // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at machine word granularity, not individual characters
 
   // return i-th 8-bit character in s
@@ -2124,7 +2125,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // CAUTION: at boot levels higher than zero, s is only accessible
+  // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at machine word granularity, not individual characters
 
   // subtract the to-be-overwritten character to reset its bits in s
@@ -2137,7 +2138,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
 char* string_alloc(uint64_t l) {
   // allocates zeroed memory for a string of l characters
   // plus a null terminator aligned to machine word size
-  return (char*) zalloc(l + 1);
+  return (char*) zmalloc(l + 1);
 }
 
 uint64_t string_length(char* s) {
@@ -2729,8 +2730,23 @@ uint64_t* smalloc_system(uint64_t size) {
   return memory;
 }
 
+void zero_memory(uint64_t* memory, uint64_t size) {
+  uint64_t i;
+
+  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
+
+  i = 0;
+
+  while (i < size) {
+    // erase memory by setting it to 0
+    *(memory + i) = 0;
+
+    i = i + 1;
+  }
+}
+
 uint64_t* zalloc(uint64_t size) {
-  // this procedure is only executed at boot level zero
+  // this procedure is only executed at boot level 0
   // zalloc allocates size bytes rounded up to word size
   // and then zeroes that memory, similar to calloc, but
   // called zalloc to avoid redeclaring calloc
@@ -2745,19 +2761,12 @@ uint64_t* zalloc(uint64_t size) {
   return memory;
 }
 
-void zero_memory(uint64_t* memory, uint64_t size) {
-  uint64_t i;
-
-  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
-
-  i = 0;
-
-  while (i < size) {
-    // erase memory by setting it to 0
-    *(memory + i) = 0;
-
-    i = i + 1;
-  }
+uint64_t* zmalloc(uint64_t size) {
+  if (USE_GC_LIBRARY)
+    // assert: on boot level 1 or above where mallocated memory is zeroed
+    return gc_malloc(size);
+  else
+    return zalloc(size);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5212,15 +5221,15 @@ void selfie_compile(uint64_t generate_gc_library) {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary        = zalloc(MAX_BINARY_LENGTH);
+  binary        = zmalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
   code_length = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  code_line_number = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
+  code_line_number = zmalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -6003,7 +6012,7 @@ void emit_string_data(uint64_t* entry) {
   l = round_up(string_length(s) + 1, REGISTERSIZE);
 
   while (i < l) {
-    // CAUTION: at boot levels higher than zero, s is only accessible
+    // CAUTION: at boot levels higher than 0, s is only accessible
     // in C* at machine word granularity, not individual characters
     emit_data_word(*((uint64_t*) s), get_address(entry) + i, get_line_number(entry));
 
@@ -6045,7 +6054,7 @@ void emit_data_segment() {
 uint64_t* allocate_elf_header() {
   // allocate and map (on all boot levels) zeroed memory for ELF header preparing
   // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
-  return touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  return touch(zmalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 }
 
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
@@ -6711,7 +6720,7 @@ void emit_malloc() {
 
   create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
-  // on boot levels higher than zero, zalloc falls back to malloc
+  // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
   create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
@@ -7127,7 +7136,7 @@ uint64_t is_gc_library(uint64_t* context) {
     return 0;
 }
 
-uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context) {
+uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context) {
   uint64_t* non_gc_object;
 
   if (is_gc_library(context)) {
@@ -7145,7 +7154,7 @@ uint64_t* allocate_non_gcd_memory(uint64_t size, uint64_t* context) {
     } else
       return (uint64_t*) 0;
   } else
-    return zalloc(size);
+    return smalloc(size);
 }
 
 uint64_t* get_used_list_head_gc(uint64_t* context) {
@@ -9035,14 +9044,14 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_regs(context, zmalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   if (PAGE_TABLE_TREE == 0)
-    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
   else
-    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
   // reset page table cache
   set_lowest_lo_page(context, 0);
@@ -9419,7 +9428,7 @@ uint64_t* palloc() {
       free_page_frame_memory = MEGABYTE;
 
       // on boot level zero allocate zeroed memory
-      block = (uint64_t) zalloc(free_page_frame_memory);
+      block = (uint64_t) zmalloc(free_page_frame_memory);
 
       allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
 
@@ -9443,7 +9452,7 @@ uint64_t* palloc() {
 
   free_page_frame_memory = free_page_frame_memory - PAGESIZE;
 
-  // strictly, touching is only necessary on boot levels higher than zero
+  // strictly, touching is only necessary on boot levels higher than 0
   return touch((uint64_t*) frame, PAGESIZE);
 }
 
@@ -9503,7 +9512,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   i = 0;
 
   while (i < bytes) {
-    // CAUTION: at boot levels higher than zero, s is only accessible
+    // CAUTION: at boot levels higher than 0, s is only accessible
     // in C* at machine word granularity, not individual characters
     map_and_store(context, SP + i, *((uint64_t*) s));
 
