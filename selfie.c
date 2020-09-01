@@ -6795,9 +6795,9 @@ uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
         if (debug_brk)
           printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
 
-        set_program_break(context, new_program_break);
-
         mc_brk = mc_brk + (new_program_break - current_program_break);
+
+        set_program_break(context, new_program_break);
 
         return new_program_break;
       }
@@ -6805,38 +6805,46 @@ uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
   // error returns current program break
 
   if (debug_brk)
-    printf2("%s: retrieving current program break %p\n", selfie_name, (char*) new_program_break);
+    printf2("%s: retrieving current program break %p\n", selfie_name, (char*) current_program_break);
 
   return current_program_break;
 }
 
 void implement_brk(uint64_t* context) {
   // parameter
-  uint64_t program_break;
+  uint64_t new_program_break;
 
-  program_break = *(get_regs(context) + REG_A0);
+  // local variable
+  uint64_t previous_program_break;
+
+  new_program_break = *(get_regs(context) + REG_A0);
+
+  previous_program_break = get_program_break(context);
+
+  // attempt to update program break
+
+  new_program_break = help_brk(context, new_program_break);
 
   if (debug_syscalls) {
     print("(brk): ");
     print_register_hexadecimal(REG_A0);
-  }
-
-  program_break = help_brk(context, program_break);
-
-  if (debug_syscalls) {
     print(" |- ");
     print_register_hexadecimal(REG_A0);
   }
 
-  *(get_regs(context) + REG_A0) = program_break;
+  if (new_program_break == *(get_regs(context) + REG_A0)) {
+    if (*(get_regs(context) + REG_A0) != previous_program_break)
+      // account for brk syscall if program break actually changed
+      sc_brk = sc_brk + 1;
+  } else
+    // error case of help_brk
+    *(get_regs(context) + REG_A0) = new_program_break;
 
   if (debug_syscalls) {
     print(" -> ");
     print_register_hexadecimal(REG_A0);
     println();
   }
-
-  sc_brk = sc_brk + 1;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
