@@ -1021,8 +1021,9 @@ void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
-void emit_malloc();
-void implement_brk(uint64_t* context);
+void     emit_malloc();
+uint64_t help_brk(uint64_t* context, uint64_t program_break);
+void     implement_brk(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2702,7 +2703,7 @@ uint64_t* smalloc(uint64_t size) {
     memory = malloc(size);
 
   if (size == 0)
-    // any address including null
+    // any address including 0
     return memory;
   else if (memory == (uint64_t*) 0) {
     if (character_buffer)
@@ -6783,64 +6784,61 @@ void emit_malloc() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
+  uint64_t current_program_break;
+
+  current_program_break = get_program_break(context);
+
+  if (is_valid_virtual_address(new_program_break))
+    if (new_program_break >= current_program_break)
+      if (new_program_break < *(get_regs(context) + REG_SP)) {
+        if (debug_brk)
+          printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
+
+        set_program_break(context, new_program_break);
+
+        mc_brk = mc_brk + (new_program_break - current_program_break);
+
+        return new_program_break;
+      }
+
+  // error returns current program break
+
+  if (debug_brk)
+    printf2("%s: retrieving current program break %p\n", selfie_name, (char*) new_program_break);
+
+  return current_program_break;
+}
+
 void implement_brk(uint64_t* context) {
   // parameter
   uint64_t program_break;
 
-  // local variables
-  uint64_t previous_program_break;
-  uint64_t valid;
+  program_break = *(get_regs(context) + REG_A0);
 
   if (debug_syscalls) {
     print("(brk): ");
     print_register_hexadecimal(REG_A0);
   }
 
-  program_break = *(get_regs(context) + REG_A0);
+  program_break = help_brk(context, program_break);
 
-  previous_program_break = get_program_break(context);
-
-  valid = 0;
-
-  if (program_break >= previous_program_break)
-    if (program_break < *(get_regs(context) + REG_SP))
-      if (program_break % SIZEOFUINT64 == 0)
-        valid = 1;
-
-  if (valid) {
-    if (debug_syscalls)
-      print(" |- ->\n");
-
-    if (debug_brk)
-      printf2("%s: setting program break to %p\n", selfie_name, (char*) program_break);
-
-    mc_brk = mc_brk + (program_break - previous_program_break);
-
-    set_program_break(context, program_break);
-  } else {
-    // error returns current program break
-    program_break = previous_program_break;
-
-    if (debug_brk)
-      printf2("%s: retrieving current program break %p\n", selfie_name, (char*) program_break);
-
-    if (debug_syscalls) {
-      print(" |- ");
-      print_register_hexadecimal(REG_A0);
-    }
-
-    *(get_regs(context) + REG_A0) = program_break;
-
-    if (debug_syscalls) {
-      print(" -> ");
-      print_register_hexadecimal(REG_A0);
-      println();
-    }
+  if (debug_syscalls) {
+    print(" |- ");
+    print_register_hexadecimal(REG_A0);
   }
 
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+  *(get_regs(context) + REG_A0) = program_break;
+
+  if (debug_syscalls) {
+    print(" -> ");
+    print_register_hexadecimal(REG_A0);
+    println();
+  }
 
   sc_brk = sc_brk + 1;
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -7106,19 +7104,43 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 }
 
 void implement_gc_brk(uint64_t* context) {
+  // parameter
+  uint64_t program_break;
+
+  // local variable
   uint64_t size;
+
+  program_break = *(get_regs(context) + REG_A0);
 
   // check if malloc actually asks for more memory
   // if not, fall back to the default brk syscall
-  if (*(get_regs(context) + REG_A0) > get_program_break(context)) {
-    // calculate size by subtracting the old from the new program break
-    size = *(get_regs(context) + REG_A0) - get_program_break(context);
+  if (program_break > get_program_break(context)) {
+    if (debug_syscalls) {
+      print("(gc_brk): ");
+      print_register_hexadecimal(REG_A0);
+    }
 
-    // gc_malloc yields the pointer to the newly/reused memory (or 0 if failed)
+    // calculate size by subtracting the current from the new program break
+    size = program_break - get_program_break(context);
+
+    if (debug_syscalls) {
+      print(" |- ");
+      print_register_hexadecimal(REG_A0);
+    }
+
+    // yields the pointer to the newly/reused memory (or 0 if failed)
     *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
+
+    if (debug_syscalls) {
+      print(" -> ");
+      print_register_hexadecimal(REG_A0);
+      println();
+    }
 
     // this sets the _bump pointer of the program (for consistency)
     set_bump_pointer(context, get_program_break(context));
+
+    sc_brk = sc_brk + 1;
 
     // assert: gc_brk syscall is invoked by selfie's malloc
 
@@ -7331,48 +7353,37 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
 }
 
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
-  uint64_t bump;
-  uint64_t saved_a0;
-
-  gc_allocated_total = gc_allocated_total + size;
+  uint64_t object;
+  uint64_t new_program_break;
 
   if (is_gc_library(context)) {
-    bump = (uint64_t) smalloc_system(size);
+    object = (uint64_t) smalloc_system(size);
 
-    if (bump != 0)
-      gc_heap_end = bump + size;
-    else
-      // if allocation failed discount memory from allocated total
-      gc_allocated_total = gc_allocated_total - size;
+    if (object == gc_heap_end) {
+      // assert: smalloc_system is a bump pointer allocator
+      gc_heap_end = gc_heap_end + size;
+
+      gc_allocated_total = gc_allocated_total + size;
+
+      return (uint64_t*) object;
+    }
   } else {
-    bump = get_program_break(context);
+    object = get_program_break(context);
 
-    saved_a0 = *(get_regs(context) + REG_A0);
+    if (object == get_heap_end(context)) {
+      new_program_break = help_brk(context, object + size);
 
-    *(get_regs(context) + REG_A0) = bump + size;
-
-    implement_brk(context);
-
-    // brk increases the program counter but we do not want that to happen
-    set_pc(context, get_pc(context) - INSTRUCTIONSIZE);
-
-    // allocation failed if program break is still bump and size != 0
-    if (*(get_regs(context) + REG_A0) == bump) {
-      if (size != 0) {
-        bump = 0;
-
-        // if allocation failed discount memory from allocated total
-        gc_allocated_total = gc_allocated_total - size;
-      } else
+      if (new_program_break == object + size) {
         set_heap_end(context, get_heap_end(context) + size);
-    } else
-      set_heap_end(context, get_heap_end(context) + size);
 
-    // restore A0
-    *(get_regs(context) + REG_A0) = saved_a0;
+        gc_allocated_total = gc_allocated_total + size;
+
+        return (uint64_t*) object;
+      }
+    }
   }
 
-  return (uint64_t*) bump;
+  return (uint64_t*) 0;
 }
 
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
