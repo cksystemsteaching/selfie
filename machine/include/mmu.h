@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "context.h"
 
 #define PAGESIZE 4096
 
@@ -95,7 +96,7 @@ void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessi
 
 void kdump_pt(struct pt_entry* table);
 
-void kmap_kernel_upper_half(struct pt_entry* table);
+void kmap_kernel_upper_half(struct context* context);
 
 uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid);
 void kswitch_active_pt(struct pt_entry* table, uint16_t asid);

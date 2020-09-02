@@ -119,7 +119,7 @@ void setup_kernel_pt() {
   kidentity_map_range(kernel_pt, &_payload_end, stack_end);
 
   // Map kernel upper half to its own vspace
-  kmap_kernel_upper_half(kernel_pt);
+  kmap_kernel_upper_half(&kernel_context);
 
   // Map kernel's page allocator "heap"
   kidentity_map_range(kernel_pt, stack_end, (void*) ppn_to_paddr(ppn_bump));

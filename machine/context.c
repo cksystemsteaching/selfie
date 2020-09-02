@@ -87,16 +87,14 @@ void kinit_context(struct context* context) {
 
   context->legal_memory_boundaries.lowest_lo_page = 0;
   context->legal_memory_boundaries.highest_lo_page = 0;
-  context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(USERSPACE_STACK_START) - 1;
-  context->legal_memory_boundaries.highest_mid_page = vaddr_to_vpn(USERSPACE_STACK_START) - 1;
-  context->legal_memory_boundaries.lowest_hi_page = SV39_PAGE_COUNT - 1;
-  context->legal_memory_boundaries.highest_hi_page = SV39_PAGE_COUNT - 1;
 
   context->program_break = 0;
 
   kmap_page(context->pt, USERSPACE_STACK_START - PAGESIZE, true);
+  context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(USERSPACE_STACK_START) - 1;
+  context->legal_memory_boundaries.highest_mid_page = vaddr_to_vpn(USERSPACE_STACK_START) - 1;
 
-  kmap_kernel_upper_half(context->pt);
+  kmap_kernel_upper_half(context); // hi region is set in here
 }
 
 uint64_t round_up(uint64_t addr, uint64_t align) {

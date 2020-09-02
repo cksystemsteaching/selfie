@@ -250,20 +250,23 @@ void kdump_pt(struct pt_entry* table) {
   }
 }
 
-void kmap_kernel_upper_half(struct pt_entry* table) {
+void kmap_kernel_upper_half(struct context* context) {
   // Map upper-half vspace pages
   // These pages are present in both user and kernel vspace
   // Trap handler trampoline
-  kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+  kmap_page_by_ppn(context->pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+  uint64_t trampoline_vpn = vaddr_to_vpn(TRAMPOLINE_VADDR);
+  context->legal_memory_boundaries.highest_hi_page = trampoline_vpn;
   // Kernel stack
   uint64_t vaddr = STACK_VADDR - PAGESIZE;
   uint64_t ppn = paddr_to_ppn(initial_stack_start() - 1); // -1 due to full stack semantics + pointer arithmetics
   for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
-    kmap_page_by_ppn(table, vaddr, ppn, false);
+    kmap_page_by_ppn(context->pt, vaddr, ppn, false);
 
     vaddr -= PAGESIZE;
     ppn--;
   }
+  context->legal_memory_boundaries.lowest_hi_page = trampoline_vpn - NUM_STACK_PAGES;
 }
 
 uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid) {
