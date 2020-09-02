@@ -1235,7 +1235,7 @@ uint64_t* gc_malloc(uint64_t size) {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t NON_GC_HEAP_SIZE = 65536000; // 1000 * 2^16 bytes of non-garbage-collected memory
+uint64_t NON_GC_HEAP_SIZE = 65536; // 1000 * 2^16 bytes of non-garbage-collected memory
 
 uint64_t GC_SKIPS_TILL_COLLECT = 100; // gc every so often
 
@@ -7406,10 +7406,6 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   uint64_t* metadata;
   uint64_t* used_list_head_ptr;
 
-  size = round_up(size, SIZEOFUINT64);
-
-  gc_mallocated_total = gc_mallocated_total + size;
-
   // initialize garbage collector if it is uninitialized
   if (get_gc_enabled_gc(context) == 0)
     gc_init(context);
@@ -7421,6 +7417,10 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     gc_skips_since_last_collect = 0;
   } else
     gc_skips_since_last_collect = gc_skips_since_last_collect + 1;
+
+  size = round_up(size, SIZEOFUINT64);
+
+  gc_mallocated_total = gc_mallocated_total + size;
 
   // check if reusable memory is available in free list
   metadata = free_list_extract(context, size);
