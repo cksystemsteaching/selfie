@@ -409,7 +409,7 @@ enum memory_access_type determine_memory_access_type(struct memory_boundaries* l
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
 
-  if (memory_access_type) {
+  if (memory_access_type != memory_access_type_unknown) {
     // TODO: handling faults like that is probably necessary for native hypster support
 #ifdef DEBUG
     // this should never happen since we map the binary when loading it
