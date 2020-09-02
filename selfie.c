@@ -1091,6 +1091,7 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
 uint64_t is_valid_virtual_address(uint64_t vaddr);
 uint64_t get_page_of_virtual_address(uint64_t vaddr);
+uint64_t get_virtual_address_of_page_start(uint64_t page);
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr);
 
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
@@ -1120,9 +1121,11 @@ uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t page_frame_memory = 0; // size of memory for frames
+uint64_t total_page_frame_memory = 0; // total amount of memory available for frames
 
 uint64_t mc_brk = 0; // memory counter for brk syscall
+
+uint64_t mc_mapped_heap = 0; // memory counter for mapped heap
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1130,7 +1133,7 @@ void init_memory(uint64_t megabytes) {
   if (megabytes > 4096)
     megabytes = 4096;
 
-  page_frame_memory = megabytes * MEGABYTE;
+  total_page_frame_memory = megabytes * MEGABYTE;
 }
 
 // -----------------------------------------------------------------
@@ -6956,6 +6959,8 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 void reset_memory_counters() {
   mc_brk = 0;
   sc_brk = 0;
+
+  mc_mapped_heap = 0;
 }
 
 uint64_t load_physical_memory(uint64_t* paddr) {
@@ -7023,6 +7028,10 @@ uint64_t is_valid_virtual_address(uint64_t vaddr) {
 
 uint64_t get_page_of_virtual_address(uint64_t vaddr) {
   return vaddr / PAGESIZE;
+}
+
+uint64_t get_virtual_address_of_page_start(uint64_t page) {
+  return page * PAGESIZE;
 }
 
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
@@ -8998,8 +9007,8 @@ void print_profile() {
     (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2),
     (char*) sc_brk);
   printf3("%s:          %.2uMB(%.2u%%) actually accessed\n", selfie_name,
-    (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(mc_brk, pused(), 4), 4));
+    (char*) fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4));
 
   if (gc)
     print_gc_profile("          ");
@@ -9231,6 +9240,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
     *(leaf_pte + leaf_PTE(page)) = frame;
   }
 
+  if (is_valid_heap_address(context, get_virtual_address_of_page_start(page)))
+    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
+
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
     if (page < get_lowest_lo_page(context))
@@ -9413,7 +9425,7 @@ uint64_t is_valid_segment_write(uint64_t vaddr) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= total_page_frame_memory)
     return 1;
   else
     return 0;
@@ -9422,7 +9434,7 @@ uint64_t pavailable() {
 uint64_t pexcess() {
   if (pavailable())
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= 2 * page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= 2 * total_page_frame_memory)
     // tolerate twice as much memory mapped on demand than physically available
     return 1;
   else
@@ -9437,7 +9449,7 @@ uint64_t* palloc() {
   uint64_t block;
   uint64_t frame;
 
-  // assert: page_frame_memory is equal to or a multiple of MEGABYTE
+  // assert: total_page_frame_memory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
@@ -9969,7 +9981,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
-    (char*) (page_frame_memory / MEGABYTE));
+    (char*) (total_page_frame_memory / MEGABYTE));
 
   if (machine == DIPSTER) {
     debug          = 1;
