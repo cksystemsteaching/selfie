@@ -1775,10 +1775,6 @@ void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context
 void set_heap_end(uint64_t* context, uint64_t heap_end)              { *(context + 22) = heap_end; }
 void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 23) = gc_enabled; }
 
-uint64_t get_bump_pointer(uint64_t* context) { return load_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64); }
-
-void set_bump_pointer(uint64_t* context, uint64_t bump) { store_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64, bump); }
-
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
@@ -7145,8 +7141,10 @@ void implement_gc_brk(uint64_t* context) {
       println();
     }
 
-    // this sets the _bump pointer of the program (for consistency)
-    set_bump_pointer(context, get_program_break(context));
+    // assert: _bump pointer is last entry in data segment
+
+    // updating the _bump pointer of the program (for consistency)
+    store_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64, get_program_break(context));
 
     sc_brk = sc_brk + 1;
 
