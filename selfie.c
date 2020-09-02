@@ -1235,9 +1235,9 @@ uint64_t* gc_malloc(uint64_t size) {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t NON_GC_HEAP_SIZE = 65536; // 1000 * 2^16 bytes of non-garbage-collected memory
+uint64_t NON_GC_HEAP_SIZE = 1048576; // 1MB of non-garbage-collected memory for metadata
 
-uint64_t GC_SKIPS_TILL_COLLECT = 100; // gc every so often
+uint64_t GC_SKIPS_TILL_COLLECT = 1000; // gc every so often
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
