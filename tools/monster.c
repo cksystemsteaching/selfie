@@ -2069,7 +2069,7 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
 void use_stdout() {
   output_name = (char*) 0;
   output_fd   = 1;
-} 
+}
 
 void use_file() {
   output_name = smt_name;
@@ -2233,7 +2233,7 @@ uint64_t selfie_run_symbolically() {
 
       printf3("%s: monster symbolically executing %s with %uMB physical memory\n", selfie_name,
         binary_name,
-        (char*) (page_frame_memory / MEGABYTE));
+        (char*) (total_page_frame_memory / MEGABYTE));
 
       use_file();
 
