@@ -67,7 +67,7 @@ uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, bool u_mode_accessibl
 bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool u_mode_accessible);
 
 uint64_t vaddr_to_vpn(uint64_t vaddr);
-uint64_t vpn_to_vaddr(uint64_t vaddr);
+uint64_t vpn_to_vaddr(uint64_t vpn);
 uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr);
 uint64_t paddr_to_ppn(const void* address);
 const void* ppn_to_paddr(uint64_t ppn);
