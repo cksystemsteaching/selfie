@@ -1992,18 +1992,10 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  printf2("%u %u\n", (char*) BOOTLEVELZERO, (char*) WINDOWS);
+  exit_code = selfie(1);
 
-  exit_code = selfie();
-
-  if (exit_code != EXITCODE_NOARGUMENTS)
+  if (exit_code == EXITCODE_MOREARGUMENTS)
     exit_code = selfie_run_symbolically();
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" - maximum-execution-depth [ branching-limit ] [ --merge-enabled | --debug-merge ] ...");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " - maximum-execution-depth [ branching-limit ] [ --merge-enabled | --debug-merge ] ...");
 }
