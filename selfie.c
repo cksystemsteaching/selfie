@@ -1025,6 +1025,8 @@ void     emit_malloc();
 uint64_t help_brk(uint64_t* context, uint64_t program_break);
 void     implement_brk(uint64_t* context);
 
+uint64_t is_boot_level_zero();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -1453,8 +1455,7 @@ uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
 uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
-uint64_t EXCEPTION_SYMBOLICMERGE         = 9;  // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICRECURSION     = 10; // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 9; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1556,7 +1557,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICRECURSION + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICSCHEDULE + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -1567,8 +1568,7 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)         = (uint64_t) "symbolic merge";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)     = (uint64_t) "symbolic recursion";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
 }
 
 void reset_interpreter() {
@@ -1871,26 +1871,26 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
-uint64_t MERGE     = 2; // for symbolic execution
-uint64_t RECURSION = 3; // for symbolic execution
+uint64_t SCHEDULE  = 2; // for symbolic execution
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 1;
 uint64_t EXITCODE_BADARGUMENTS           = 2;
-uint64_t EXITCODE_IOERROR                = 3;
-uint64_t EXITCODE_SCANNERERROR           = 4;
-uint64_t EXITCODE_PARSERERROR            = 5;
-uint64_t EXITCODE_COMPILERERROR          = 6;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 7;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 8;
-uint64_t EXITCODE_DIVISIONBYZERO         = 9;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
-uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 12;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 13;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 14; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 15; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 16;
+uint64_t EXITCODE_MOREARGUMENTS          = 3;
+uint64_t EXITCODE_IOERROR                = 4;
+uint64_t EXITCODE_SCANNERERROR           = 5;
+uint64_t EXITCODE_PARSERERROR            = 6;
+uint64_t EXITCODE_COMPILERERROR          = 7;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 8;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 9;
+uint64_t EXITCODE_DIVISIONBYZERO         = 10;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 11;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 12;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 13;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 14;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 15; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 16; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 17;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1924,6 +1924,8 @@ char* peek_argument(uint64_t lookahead);
 char* get_argument();
 void  set_argument(char* argv);
 
+uint64_t no_or_bad_or_more_arguments(uint64_t exit_code);
+
 void print_synopsis(char* extras);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -1940,8 +1942,6 @@ char* argument = (char*) 0;
 void init_selfie(uint64_t argc, uint64_t* argv);
 
 void init_system();
-
-uint64_t is_boot_level_zero();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2238,7 +2238,7 @@ uint64_t atoi(char* s) {
     if (c > 9) {
       printf2("%s: cannot convert non-decimal number %s\n", selfie_name, s);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_SCANNERERROR);
     }
 
     // assert: s contains a decimal number
@@ -2253,13 +2253,13 @@ uint64_t atoi(char* s) {
         // s contains a decimal number larger than UINT64_MAX
         printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
-        exit(EXITCODE_BADARGUMENTS);
+        exit(EXITCODE_SCANNERERROR);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
       printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_SCANNERERROR);
     }
 
     // go to the next digit
@@ -5858,8 +5858,9 @@ void store_data(uint64_t baddr, uint64_t data) {
 void emit_instruction(uint64_t instruction) {
   store_instruction(binary_length, instruction);
 
-  if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
-    *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
+  if (code_line_number != (uint64_t*) 0)
+    if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
+      *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
 
   binary_length = binary_length + INSTRUCTIONSIZE;
 }
@@ -6849,6 +6850,26 @@ void implement_brk(uint64_t* context) {
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+uint64_t is_boot_level_zero() {
+  // C99 malloc(0) returns either a null pointer or a unique pointer,
+  // see http://pubs.opengroup.org/onlinepubs/9699919799
+  // in contrast, selfie's malloc(0) returns the same not null address,
+  // if malloc(0) is called consecutively.
+  uint64_t first_malloc;
+  uint64_t second_malloc;
+
+  first_malloc = (uint64_t) malloc(0);
+  second_malloc = (uint64_t) malloc(0);
+
+  if (first_malloc == 0)
+    return 1;
+  if (first_malloc != second_malloc)
+    return 1;
+
+  // it is selfie's malloc, so it cannot be boot level zero.
+  return 0;
 }
 
 // -----------------------------------------------------------------
@@ -10086,11 +10107,26 @@ void set_argument(char* argv) {
   *selfie_argv = (uint64_t) argv;
 }
 
+uint64_t no_or_bad_or_more_arguments(uint64_t exit_code) {
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    return 1;
+  else if (exit_code == EXITCODE_BADARGUMENTS)
+    return 1;
+  else if (exit_code == EXITCODE_MOREARGUMENTS)
+    return 1;
+  else
+    return 0;
+}
+
 void print_synopsis(char* extras) {
   printf2("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
-uint64_t selfie() {
+// -----------------------------------------------------------------
+// ----------------------------- SELFIE ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
@@ -10116,50 +10152,39 @@ uint64_t selfie() {
         selfie_disassemble(1);
       else if (string_compare(argument, "-l"))
         selfie_load();
-      else if (string_compare(argument, "-m"))
-        exit(selfie_run(MIPSTER));
-      else if (string_compare(argument, "-d"))
-        exit(selfie_run(DIPSTER));
-      else if (string_compare(argument, "-r"))
-        exit(selfie_run(RIPSTER));
-      else if (string_compare(argument, "-y"))
-        exit(selfie_run(HYPSTER));
-      else if (string_compare(argument, "-min"))
-        exit(selfie_run(MINSTER));
-      else if (string_compare(argument, "-mob"))
-        exit(selfie_run(MOBSTER));
-      else if (string_compare(argument, "-mgc"))
-        exit(selfie_run(GIBSTER));
-      else
-        return EXITCODE_BADARGUMENTS;
+      else if (extras == 0) {
+        if (string_compare(argument, "-m"))
+          return selfie_run(MIPSTER);
+        else if (string_compare(argument, "-d"))
+          return selfie_run(DIPSTER);
+        else if (string_compare(argument, "-r"))
+          return selfie_run(RIPSTER);
+        else if (string_compare(argument, "-y"))
+          return selfie_run(HYPSTER);
+        else if (string_compare(argument, "-min"))
+          return selfie_run(MINSTER);
+        else if (string_compare(argument, "-mob"))
+          return selfie_run(MOBSTER);
+        else
+          return EXITCODE_BADARGUMENTS;
+      } else
+        return EXITCODE_MOREARGUMENTS;
     }
 
     return EXITCODE_NOERROR;
   }
 }
 
-// -----------------------------------------------------------------
-// ----------------------------- SELFIE ----------------------------
-// -----------------------------------------------------------------
+uint64_t exit_selfie(uint64_t exit_code, char* extras) {
+  if (no_or_bad_or_more_arguments(exit_code))
+    print_synopsis(extras);
 
-uint64_t is_boot_level_zero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer.
-  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand,
-  // returns the same not null address, if malloc(0) is called consecutively.
-  uint64_t first_malloc;
-  uint64_t second_malloc;
-
-  first_malloc = (uint64_t) malloc(0);
-  second_malloc = (uint64_t) malloc(0);
-
-  if (first_malloc == 0)
-    return 1;
-  if (first_malloc != second_malloc)
-    return 1;
-
-  // it is selfie's malloc, so it can not be boot level zero.
-  return 0;
+  if (exit_code == EXITCODE_MOREARGUMENTS)
+    return EXITCODE_BADARGUMENTS;
+  else if (exit_code == EXITCODE_NOARGUMENTS)
+    return EXITCODE_NOERROR;
+  else
+    return exit_code;
 }
 
 // -----------------------------------------------------------------
@@ -10176,13 +10201,7 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  exit_code = selfie();
+  exit_code = selfie(0);
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" [ ( -m | -d | -r | -y ) 0-4096 ... ]");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " [ ( -m | -d | -r | -y ) 0-4096 ... ]");
 }
