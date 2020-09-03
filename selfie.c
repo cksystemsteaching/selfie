@@ -7406,6 +7406,14 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   uint64_t* metadata;
   uint64_t* used_list_head_ptr;
 
+  // stack is not zeroed! using two successive gc_malloc calls (library variant)
+  // leads to having the same variables as with the previous call and therefore
+  // we might have a reachable pointer which is not actually reachable. to fix
+  // this, we set these variables to 0.
+  object             = (uint64_t*) 0;
+  metadata           = (uint64_t*) 0;
+  used_list_head_ptr = (uint64_t*) 0;
+
   // initialize garbage collector if it is uninitialized
   if (get_gc_enabled_gc(context) == 0)
     gc_init(context);
