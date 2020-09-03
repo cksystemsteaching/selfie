@@ -86,7 +86,7 @@ gib: selfie
 
 # Run selfie with conservative garbage collector as library
 gclib: selfie selfie.h
-	./selfie -gc selfie.h tools/gc.c -m 1
+	./selfie -gc selfie.h tools/gc.c -m 8 -gc selfie.h examples/garbage_collector_library.c -m 1
 
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
