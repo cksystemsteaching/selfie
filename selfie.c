@@ -1199,12 +1199,18 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 void gc_init(uint64_t* context);
 
 void      relink_metadata(uint64_t* entry, uint64_t* new_list_head);
+
+// note - space complexity: This function is not optimal in terms of fragmentation and space complexity, since it uses first fit allocation. 
+// A better approach would be Boehm's Chunk allocator (see below) or even compact fit (https://github.com/cksystemsgroup/compact-fit)
 uint64_t* free_list_extract(uint64_t* context, uint64_t size);
 
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
+// note - time complexity: This function performs a list search and therefore takes O(n). The runtime can be improved by using different data
+// structures like Boehm's chunk allocator (see: https://www.hboehm.info/spe_gc_paper/preprint.pdf and https://www.hboehm.info/gc/gcdescr.html)
 uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address);
+
 uint64_t  is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_start, uint64_t heap_end);
 
 void prepare_mark(uint64_t* used_list_head);
@@ -1213,6 +1219,9 @@ uint64_t gc_load_memory(uint64_t address, uint64_t* context);
 void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
+
+// note - time complexity: This function scans three roots: datasegment, heap and stack. Furthermore, the whole segment is scanned leading to
+// O(n^2) (since we also need to check if all values are a pointer -> O(n)). This could be improved by using a different search algorithm (see above).
 void mark(uint64_t* context);
 
 void zero_and_free_object(uint64_t* metadata, uint64_t* free_list_head_pointer, uint64_t* context);
