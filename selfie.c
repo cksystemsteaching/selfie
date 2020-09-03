@@ -9020,6 +9020,9 @@ void print_profile() {
   printf3("%s:          %.2uMB(%.2u%%) actually accessed\n", selfie_name,
     (char*) fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4));
+  printf3("%s:          %.2uMB(%.2u%%) mapped memory\n", selfie_name,
+    (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4));
 
   if (gc)
     print_gc_profile("          ");
