@@ -8,7 +8,7 @@
 
 struct context_manager {
   struct context context;
-  char is_used;
+  bool is_used;
   struct context_manager* prev_scheduled;
   struct context_manager* next_scheduled;
 };
@@ -32,7 +32,7 @@ struct context* kallocate_context() {
     context_manager = &all_contexts[i];
 
     if (!context_manager->is_used) {
-      context_manager->is_used = 1;
+      context_manager->is_used = true;
       ++num_of_used_contexts;
       context_manager->context.id = i + 1; // id 0 is reserved for the kernel context
       
@@ -135,7 +135,7 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
 void kfree_context(uint64_t context_id) {
   struct context_manager* context_manager = &all_contexts[context_id - 1];
 
-  context_manager->is_used = 0;
+  context_manager->is_used = false;
   --num_of_used_contexts;
 
   kfree_page_table(context_manager->context.pt);
