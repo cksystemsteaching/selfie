@@ -60,7 +60,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vstring, char* s)
 void     implement_symbolic_openat(uint64_t* context);
 
 // -----------------------------------------------------------------
-// ------------------------ HYPSTER SYSCALL ------------------------
+// ------------------------- MONSTER SWITCH ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout);
@@ -535,7 +535,7 @@ void implement_symbolic_openat(uint64_t* context) {
 }
 
 // -----------------------------------------------------------------
-// ------------------------ MIPSTER SYSCALL ------------------------
+// ------------------------- MONSTER SWITCH ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
@@ -1796,7 +1796,7 @@ void step_out_of_call(uint64_t* context) {
 void use_stdout() {
   output_name = (char*) 0;
   output_fd   = 1;
-} 
+}
 
 void use_file() {
   output_name = smt_name;
