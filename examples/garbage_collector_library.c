@@ -44,6 +44,8 @@ int main(int argc, char** argv) {
 
   // assert: no memory has been allocated within the gc heap, therefore the first gc_malloc call
   // yields the heap start of gc heap.
+
+  // note: the first address cannot be collected, since it's referenced by gc_heap_start (see selfie.c)
   heap_start = (uint64_t) gc_malloc(8);
 
   // test cases
