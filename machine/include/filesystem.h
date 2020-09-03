@@ -6,14 +6,14 @@
 #include <stddef.h>
 
 typedef struct KFILE {
-    const char name[PATH_MAX_LEN];
-    const char* data;
-    size_t length;
+  const char name[PATH_MAX_LEN];
+  const char* data;
+  size_t length;
 } KFILE;
 
 typedef struct FILEDESC {
-    const KFILE* file;
-    size_t pos;
+  const KFILE* file;
+  size_t pos;
 } FILEDESC;
 
 extern const KFILE* files;

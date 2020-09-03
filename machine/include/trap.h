@@ -49,10 +49,10 @@ void implement_syscall_openat(struct context* context);
 void implement_syscall_brk(struct context* context);
 
 enum memory_access_type {
-    memory_access_type_unknown,
-    memory_access_type_lo,
-    memory_access_type_mid,
-    memory_access_type_hi
+  memory_access_type_unknown,
+  memory_access_type_lo,
+  memory_access_type_mid,
+  memory_access_type_hi
 };
 enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t vaddr);
 

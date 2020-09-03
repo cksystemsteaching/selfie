@@ -43,15 +43,15 @@ struct __attribute__((packed)) registers {
 };
 
 struct memory_boundaries {
-    // code, data and heap
-    uint64_t lowest_lo_page;
-    uint64_t highest_lo_page;
-    // stack
-    uint64_t lowest_mid_page;
-    uint64_t highest_mid_page;
-    // trap handler code
-    uint64_t lowest_hi_page;
-    uint64_t highest_hi_page;
+  // code, data and heap
+  uint64_t lowest_lo_page;
+  uint64_t highest_lo_page;
+  // stack
+  uint64_t lowest_mid_page;
+  uint64_t highest_mid_page;
+  // trap handler code
+  uint64_t lowest_hi_page;
+  uint64_t highest_hi_page;
 };
 
 struct context {
