@@ -9244,7 +9244,9 @@ uint64_t exit_selfie(uint64_t exit_code, char* extras) {
   if (no_or_bad_or_more_arguments(exit_code))
     print_synopsis(extras);
 
-  if (exit_code == EXITCODE_NOARGUMENTS)
+  if (exit_code == EXITCODE_MOREARGUMENTS)
+    return EXITCODE_BADARGUMENTS;
+  else if (exit_code == EXITCODE_NOARGUMENTS)
     return EXITCODE_NOERROR;
   else
     return exit_code;

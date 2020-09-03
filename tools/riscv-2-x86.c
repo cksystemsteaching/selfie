@@ -1247,8 +1247,6 @@ int main(int argc, char** argv) {
 
   if (exit_code == EXITCODE_NOERROR)
     selfie_translate();
-  else if (exit_code == EXITCODE_MOREARGUMENTS)
-    exit_code = EXITCODE_BADARGUMENTS;
 
   return exit_selfie(exit_code, "");
 }
