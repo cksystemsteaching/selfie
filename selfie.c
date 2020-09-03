@@ -1151,13 +1151,6 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 
 void implement_gc_brk(uint64_t* context);
 
-void turn_on_gc_library() {
-  if (fetch_stack_pointer() != 0)
-    USE_GC_LIBRARY = GC_LIBRARY;
-  else
-    USE_GC_LIBRARY = GC_DISABLED;
-}
-
 uint64_t is_gc_library(uint64_t* context);
 
 uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context);
@@ -1270,6 +1263,16 @@ void reset_garbage_collector_counters() {
   gc_mallocated_total = 0;
   gc_allocated_total  = 0;
   gc_collected_total  = 0;
+}
+
+void turn_on_gc_library(uint64_t skips) {
+  if (fetch_stack_pointer() != 0) {
+    GC_SKIPS_TILL_COLLECT = skips;
+
+    USE_GC_LIBRARY = GC_LIBRARY;
+  }
+  else
+    USE_GC_LIBRARY = GC_DISABLED;
 }
 
 // -----------------------------------------------------------------
@@ -9730,7 +9733,7 @@ uint64_t mipster(uint64_t* to_context) {
   else if (debug)
     print(" with debugger");
   else if (gc)
-    printf1(" with garbage collector (%d skip(s))", (char*) GC_SKIPS_TILL_COLLECT);
+    printf1(" with garbage collector (%d skips)", (char*) GC_SKIPS_TILL_COLLECT);
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
