@@ -1673,10 +1673,10 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  2 | program counter | program counter
 // |  3 | registers       | pointer to general purpose registers
 // |  4 | page table      | pointer to page table
-// |  5 | lowest lo page  | lowest low unmapped page (code, data, heap)
-// |  6 | highest lo page | highest low unmapped page (code, data, heap)
-// |  7 | lowest hi page  | lowest high unmapped page (stack)
-// |  8 | highest hi page | highest high unmapped page (stack)
+// |  5 | lowest lo page  | lowest low uncached page (code, data, heap)
+// |  6 | highest lo page | highest low uncached page (code, data, heap)
+// |  7 | lowest hi page  | lowest high uncached page (stack)
+// |  8 | highest hi page | highest high uncached page (stack)
 // |  9 | code entry      | start of code segment
 // | 10 | code segment    | end of code segment, start of data segment
 // | 11 | data segment    | end of data segment, original program break
@@ -1689,8 +1689,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 18 | name            | binary name loaded into context
 // | 19 | used-list head  | pointer to pointer to the head of the used list
 // | 20 | free-list head  | pointer to pointer to the head of the free list
-// | 21 | heap start      | lower bound of gc managed heap
-// | 22 | heap end        | upper bound of gc managed heap
+// | 21 | heap start      | start of gc managed heap
+// | 22 | heap end        | end of gc managed heap
 // | 23 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
