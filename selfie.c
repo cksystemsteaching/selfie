@@ -1581,7 +1581,11 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t* cache_context(uint64_t* vctxt);
 
 void save_context(uint64_t* context);
-void map_page(uint64_t* context, uint64_t page, uint64_t frame);
+
+uint64_t lowest_page(uint64_t page, uint64_t lo);
+uint64_t highest_page(uint64_t page, uint64_t hi);
+void     map_page(uint64_t* context, uint64_t page, uint64_t frame);
+
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 void restore_context(uint64_t* context);
 
@@ -6712,11 +6716,11 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
 }
 
 uint64_t root_PTE(uint64_t page) {
-  return (page / NUMBER_OF_LEAF_PTES);
+  return page / NUMBER_OF_LEAF_PTES;
 }
 
 uint64_t leaf_PTE(uint64_t page) {
-  return (page - root_PTE(page) * NUMBER_OF_LEAF_PTES);
+  return page - root_PTE(page) * NUMBER_OF_LEAF_PTES;
 }
 
 uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
@@ -8348,6 +8352,21 @@ void save_context(uint64_t* context) {
   }
 }
 
+uint64_t lowest_page(uint64_t page, uint64_t lo) {
+  if (page < lo)
+    return page;
+  else
+    return lo;
+}
+
+uint64_t highest_page(uint64_t page, uint64_t hi) {
+  if (page >= hi)
+    // only lo <= page < hi will be cached
+    return page + 1;
+  else
+    return hi;
+}
+
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
   uint64_t* leaf_pte;
@@ -8375,15 +8394,11 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
-    if (page < get_lowest_lo_page(context))
-      set_lowest_lo_page(context, page);
-    else if (page > get_highest_lo_page(context))
-      set_highest_lo_page(context, page);
+    set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
+    set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
   } else {
-    if (page < get_lowest_hi_page(context))
-      set_lowest_hi_page(context, page);
-    else if (page > get_highest_hi_page(context))
-      set_highest_hi_page(context, page);
+    set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
+    set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
   }
 
   if (debug_map) {
@@ -8396,7 +8411,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
   uint64_t frame;
 
-  while (lo <= hi) {
+  while (lo < hi) {
     if (is_virtual_address_mapped(parent_table, frame_for_page(parent_table, table, lo))) {
       frame = load_virtual_memory(parent_table, frame_for_page(parent_table, table, lo));
 
