@@ -9724,10 +9724,17 @@ uint64_t handle_system_call(uint64_t* context) {
 }
 
 uint64_t handle_page_fault(uint64_t* context) {
+  uint64_t page;
+
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  // TODO: use this table to unmap and reuse frames
-  map_page(context, get_fault(context), (uint64_t) palloc());
+  page = get_fault(context);
+
+  // TODO: reuse frames
+  map_page(context, page, (uint64_t) palloc());
+
+  if (is_valid_heap_address(context, get_virtual_address_of_page_start(page)))
+    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
 
   return DONOTEXIT;
 }
