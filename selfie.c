@@ -10175,6 +10175,8 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(MINSTER);
         else if (string_compare(argument, "-mob"))
           return selfie_run(MOBSTER);
+        else if (string_compare(argument, "-mgc"))
+          return selfie_run(GIBSTER);
         else
           return EXITCODE_BADARGUMENTS;
       } else
