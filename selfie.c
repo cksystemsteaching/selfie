@@ -1087,8 +1087,10 @@ void     store_physical_memory(uint64_t* paddr, uint64_t data);
 uint64_t root_PTE(uint64_t page);
 uint64_t leaf_PTE(uint64_t page);
 
-uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
-uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
+uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
+uint64_t  get_frame_for_page(uint64_t* table, uint64_t page);
+void      set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame);
+
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
 uint64_t is_valid_virtual_address(uint64_t vaddr);
@@ -7017,34 +7019,58 @@ uint64_t leaf_PTE(uint64_t page) {
   return page - root_PTE(page) * NUMBER_OF_LEAF_PTES;
 }
 
-uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
+uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+
   if (PAGE_TABLE_TREE == 0)
-    return (uint64_t) (table + page);
+    return table + page;
   else {
-    leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+    if (parent_table == (uint64_t*) 0)
+      leaf_pte = (uint64_t*) *(table + root_PTE(page));
+    else
+      // table is in address space of parent_table
+      leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
 
     if (leaf_pte == (uint64_t*) 0)
-      return 0;
+      return (uint64_t*) 0;
     else
-      return (uint64_t) (leaf_pte + leaf_PTE(page));
+      return leaf_pte + leaf_PTE(page);
   }
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
+  uint64_t* frame_address;
+
+  frame_address = get_frame_address_for_page(0, table, page);
+
+  if (frame_address == (uint64_t*) 0)
+    return 0;
+  else
+    return (uint64_t) *frame_address;
+}
+
+void set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
+  uint64_t  root_pte;
   uint64_t* leaf_pte;
 
-  if (PAGE_TABLE_TREE == 0)
-    return *(table + page);
-  else {
-    leaf_pte = (uint64_t*) *(table + root_PTE(page));
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-    if (leaf_pte == (uint64_t*) 0)
-      // page is unmapped if leaf PTE is unmapped
-      return 0;
-    else
-      return *(leaf_pte + leaf_PTE(page));
+  if (PAGE_TABLE_TREE == 0)
+    *(table + page) = frame;
+  else {
+    root_pte = root_PTE(page);
+
+    leaf_pte = (uint64_t*) *(table + root_pte);
+
+    if (leaf_pte == (uint64_t*) 0) {
+      leaf_pte = palloc();
+
+      *(table + root_pte) = (uint64_t) leaf_pte;
+    }
+
+    *(leaf_pte + leaf_PTE(page)) = frame;
   }
 }
 
@@ -9281,39 +9307,22 @@ uint64_t highest_page(uint64_t page, uint64_t hi) {
 
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
-  uint64_t* leaf_pte;
-  uint64_t  root_pte;
 
-  table = get_pt(context);
+  if (frame != 0) {
+    table = get_pt(context);
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+    if (get_frame_for_page(table, page) == 0) {
+      set_frame_for_page(table, page, frame);
 
-  if (PAGE_TABLE_TREE == 0)
-    *(table + page) = frame;
-  else {
-    root_pte = root_PTE(page);
-
-    leaf_pte = (uint64_t*) *(table + root_pte);
-
-    if (leaf_pte == (uint64_t*) 0) {
-      leaf_pte = palloc();
-
-      *(table + root_pte) = (uint64_t) leaf_pte;
-    }
-
-    *(leaf_pte + leaf_PTE(page)) = frame;
-  }
-
-  if (is_valid_heap_address(context, get_virtual_address_of_page_start(page)))
-    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
-
-  // exploit spatial locality in page table caching
-  if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
-    set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
-    set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
-  } else {
-    set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
-    set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
+      // exploit spatial locality in page table caching
+      if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
+        set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
+        set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
+      } else {
+        set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
+        set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
+      }
+    } // else assert: frame == get_frame_for_page(table, page)
   }
 
   if (debug_map) {
@@ -9327,8 +9336,8 @@ void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, 
   uint64_t frame;
 
   while (lo < hi) {
-    if (is_virtual_address_mapped(parent_table, frame_for_page(parent_table, table, lo))) {
-      frame = load_virtual_memory(parent_table, frame_for_page(parent_table, table, lo));
+    if (is_virtual_address_mapped(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo))) {
+      frame = load_virtual_memory(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }
@@ -9528,8 +9537,7 @@ uint64_t* palloc() {
         // losing one page frame to fragmentation
         free_page_frame_memory = free_page_frame_memory - PAGESIZE;
     } else {
-      print(selfie_name);
-      print(": palloc out of physical memory\n");
+      printf1("%s: palloc out of physical memory\n", selfie_name);
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
