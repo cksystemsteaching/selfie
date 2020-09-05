@@ -26,7 +26,9 @@ int main(int argc, char** argv) {
   uint64_t* w;
   uint64_t t;
 
-  turn_on_gc_library();
+  // this example should demonstrate the capabilities of the garbage collector. considering skips would
+  // only make it more complicated and therefore we disable skipping (i.e collect before every gc_malloc)
+  turn_on_gc_library(0);
 
   // exit with error code 1 if gc is not available
   if (USE_GC_LIBRARY != GC_LIBRARY)
@@ -37,10 +39,6 @@ int main(int argc, char** argv) {
 
   // initialise library (gc, power_of_2_table, etc.)
   init_library();
-
-  // since this is a demonstration and a very small program, we turn of gc skipping (i.e. we try to collect
-  // before allocating new memory during every gc_malloc)
-  GC_SKIPS_TILL_COLLECT = 0;
 
   // assert: no memory has been allocated within the gc heap, therefore the first gc_malloc call
   // yields the heap start of gc heap.
