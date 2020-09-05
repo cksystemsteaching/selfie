@@ -512,7 +512,7 @@ void setup_smode_trap_handler(trap_handler_t handler) {
     return;
   }
 
-  // mtvec has both the base address and the vectoring mode (2 bits)
+  // stvec has both the base address and the vectoring mode (2 bits)
   // Use direct mode (0x00)
   uint64_t stvec = (((uint64_t) handler) & ~(0x03ULL));
   asm volatile (
