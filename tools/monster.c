@@ -60,7 +60,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vstring, char* s)
 void     implement_symbolic_openat(uint64_t* context);
 
 // -----------------------------------------------------------------
-// ------------------------ HYPSTER SYSCALL ------------------------
+// ------------------------- MONSTER SWITCH ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout);
@@ -535,7 +535,7 @@ void implement_symbolic_openat(uint64_t* context) {
 }
 
 // -----------------------------------------------------------------
-// ------------------------ MIPSTER SYSCALL ------------------------
+// ------------------------- MONSTER SWITCH ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
@@ -1796,7 +1796,7 @@ void step_out_of_call(uint64_t* context) {
 void use_stdout() {
   output_name = (char*) 0;
   output_fd   = 1;
-} 
+}
 
 void use_file() {
   output_name = smt_name;
@@ -1992,18 +1992,10 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  printf2("%u %u\n", (char*) BOOTLEVELZERO, (char*) WINDOWS);
+  exit_code = selfie(1);
 
-  exit_code = selfie();
-
-  if (exit_code != EXITCODE_NOARGUMENTS)
+  if (exit_code == EXITCODE_MOREARGUMENTS)
     exit_code = selfie_run_symbolically();
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" - maximum-execution-depth [ branching-limit ] [ --merge-enabled | --debug-merge ] ...");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " - maximum-execution-depth [ branching-limit ] [ --merge-enabled | --debug-merge ] ...");
 }

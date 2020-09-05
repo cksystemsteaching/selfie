@@ -992,6 +992,8 @@ void     implement_openat(uint64_t* context);
 void emit_malloc();
 void implement_brk(uint64_t* context);
 
+uint64_t is_boot_level_zero();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -1046,8 +1048,10 @@ void     store_physical_memory(uint64_t* paddr, uint64_t data);
 uint64_t root_PTE(uint64_t page);
 uint64_t leaf_PTE(uint64_t page);
 
-uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
-uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
+uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
+uint64_t  get_frame_for_page(uint64_t* table, uint64_t page);
+void      set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame);
+
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
 uint64_t is_valid_virtual_address(uint64_t vaddr);
@@ -1579,7 +1583,11 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t* cache_context(uint64_t* vctxt);
 
 void save_context(uint64_t* context);
-void map_page(uint64_t* context, uint64_t page, uint64_t frame);
+
+uint64_t lowest_page(uint64_t page, uint64_t lo);
+uint64_t highest_page(uint64_t page, uint64_t hi);
+void     map_page(uint64_t* context, uint64_t page, uint64_t frame);
+
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 void restore_context(uint64_t* context);
 
@@ -1664,20 +1672,21 @@ uint64_t SCHEDULE  = 2; // for symbolic execution
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 1;
 uint64_t EXITCODE_BADARGUMENTS           = 2;
-uint64_t EXITCODE_IOERROR                = 3;
-uint64_t EXITCODE_SCANNERERROR           = 4;
-uint64_t EXITCODE_PARSERERROR            = 5;
-uint64_t EXITCODE_COMPILERERROR          = 6;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 7;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 8;
-uint64_t EXITCODE_DIVISIONBYZERO         = 9;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
-uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 12;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 13;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 14; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 15; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 16;
+uint64_t EXITCODE_MOREARGUMENTS          = 3;
+uint64_t EXITCODE_IOERROR                = 4;
+uint64_t EXITCODE_SCANNERERROR           = 5;
+uint64_t EXITCODE_PARSERERROR            = 6;
+uint64_t EXITCODE_COMPILERERROR          = 7;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 8;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 9;
+uint64_t EXITCODE_DIVISIONBYZERO         = 10;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 11;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 12;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 13;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 14;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 15; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 16; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 17;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1709,6 +1718,8 @@ char* peek_argument(uint64_t lookahead);
 char* get_argument();
 void  set_argument(char* argv);
 
+uint64_t no_or_bad_or_more_arguments(uint64_t exit_code);
+
 void print_synopsis(char* extras);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -1725,8 +1736,6 @@ char* argument = (char*) 0;
 void init_selfie(uint64_t argc, uint64_t* argv);
 
 void init_system();
-
-uint64_t is_boot_level_zero();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2023,7 +2032,7 @@ uint64_t atoi(char* s) {
     if (c > 9) {
       printf2("%s: cannot convert non-decimal number %s\n", selfie_name, s);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_SCANNERERROR);
     }
 
     // assert: s contains a decimal number
@@ -2038,13 +2047,13 @@ uint64_t atoi(char* s) {
         // s contains a decimal number larger than UINT64_MAX
         printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
-        exit(EXITCODE_BADARGUMENTS);
+        exit(EXITCODE_SCANNERERROR);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
       printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_SCANNERERROR);
     }
 
     // go to the next digit
@@ -6572,6 +6581,26 @@ void implement_brk(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
+uint64_t is_boot_level_zero() {
+  // C99 malloc(0) returns either a null pointer or a unique pointer,
+  // see http://pubs.opengroup.org/onlinepubs/9699919799
+  // in contrast, selfie's malloc(0) returns the same not null address,
+  // if malloc(0) is called consecutively.
+  uint64_t first_malloc;
+  uint64_t second_malloc;
+
+  first_malloc = (uint64_t) malloc(0);
+  second_malloc = (uint64_t) malloc(0);
+
+  if (first_malloc == 0)
+    return 1;
+  if (first_malloc != second_malloc)
+    return 1;
+
+  // it is selfie's malloc, so it cannot be boot level zero.
+  return 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -6689,41 +6718,65 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
 }
 
 uint64_t root_PTE(uint64_t page) {
-  return (page / NUMBER_OF_LEAF_PTES);
+  return page / NUMBER_OF_LEAF_PTES;
 }
 
 uint64_t leaf_PTE(uint64_t page) {
-  return (page - root_PTE(page) * NUMBER_OF_LEAF_PTES);
+  return page - root_PTE(page) * NUMBER_OF_LEAF_PTES;
 }
 
-uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
+uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+
   if (PAGE_TABLE_TREE == 0)
-    return (uint64_t) (table + page);
+    return table + page;
   else {
-    leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+    if (parent_table == (uint64_t*) 0)
+      leaf_pte = (uint64_t*) *(table + root_PTE(page));
+    else
+      // table is in address space of parent_table
+      leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
 
     if (leaf_pte == (uint64_t*) 0)
-      return 0;
+      return (uint64_t*) 0;
     else
-      return (uint64_t) (leaf_pte + leaf_PTE(page));
+      return leaf_pte + leaf_PTE(page);
   }
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
+  uint64_t* frame_address;
+
+  frame_address = get_frame_address_for_page(0, table, page);
+
+  if (frame_address == (uint64_t*) 0)
+    return 0;
+  else
+    return (uint64_t) *frame_address;
+}
+
+void set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
+  uint64_t  root_pte;
   uint64_t* leaf_pte;
 
-  if (PAGE_TABLE_TREE == 0)
-    return *(table + page);
-  else {
-    leaf_pte = (uint64_t*) *(table + root_PTE(page));
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-    if (leaf_pte == (uint64_t*) 0)
-      // page is unmapped if leaf PTE is unmapped
-      return 0;
-    else
-      return *(leaf_pte + leaf_PTE(page));
+  if (PAGE_TABLE_TREE == 0)
+    *(table + page) = frame;
+  else {
+    root_pte = root_PTE(page);
+
+    leaf_pte = (uint64_t*) *(table + root_pte);
+
+    if (leaf_pte == (uint64_t*) 0) {
+      leaf_pte = palloc();
+
+      *(table + root_pte) = (uint64_t) leaf_pte;
+    }
+
+    *(leaf_pte + leaf_PTE(page)) = frame;
   }
 }
 
@@ -8325,42 +8378,39 @@ void save_context(uint64_t* context) {
   }
 }
 
+uint64_t lowest_page(uint64_t page, uint64_t lo) {
+  if (page < lo)
+    return page;
+  else
+    return lo;
+}
+
+uint64_t highest_page(uint64_t page, uint64_t hi) {
+  if (page >= hi)
+    // only lo <= page < hi will be cached
+    return page + 1;
+  else
+    return hi;
+}
+
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
-  uint64_t* leaf_pte;
-  uint64_t  root_pte;
 
-  table = get_pt(context);
+  if (frame != 0) {
+    table = get_pt(context);
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+    if (get_frame_for_page(table, page) == 0) {
+      set_frame_for_page(table, page, frame);
 
-  if (PAGE_TABLE_TREE == 0)
-    *(table + page) = frame;
-  else {
-    root_pte = root_PTE(page);
-
-    leaf_pte = (uint64_t*) *(table + root_pte);
-
-    if (leaf_pte == (uint64_t*) 0) {
-      leaf_pte = palloc();
-
-      *(table + root_pte) = (uint64_t) leaf_pte;
-    }
-
-    *(leaf_pte + leaf_PTE(page)) = frame;
-  }
-
-  // exploit spatial locality in page table caching
-  if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
-    if (page < get_lowest_lo_page(context))
-      set_lowest_lo_page(context, page);
-    else if (page > get_highest_lo_page(context))
-      set_highest_lo_page(context, page);
-  } else {
-    if (page < get_lowest_hi_page(context))
-      set_lowest_hi_page(context, page);
-    else if (page > get_highest_hi_page(context))
-      set_highest_hi_page(context, page);
+      // exploit spatial locality in page table caching
+      if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
+        set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
+        set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
+      } else {
+        set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
+        set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
+      }
+    } // else assert: frame == get_frame_for_page(table, page)
   }
 
   if (debug_map) {
@@ -8373,9 +8423,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
   uint64_t frame;
 
-  while (lo <= hi) {
-    if (is_virtual_address_mapped(parent_table, frame_for_page(parent_table, table, lo))) {
-      frame = load_virtual_memory(parent_table, frame_for_page(parent_table, table, lo));
+  while (lo < hi) {
+    if (is_virtual_address_mapped(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo))) {
+      frame = load_virtual_memory(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }
@@ -8575,8 +8625,7 @@ uint64_t* palloc() {
         // losing one page frame to fragmentation
         free_page_frame_memory = free_page_frame_memory - PAGESIZE;
     } else {
-      print(selfie_name);
-      print(": palloc out of physical memory\n");
+      printf1("%s: palloc out of physical memory\n", selfie_name);
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
@@ -9151,11 +9200,26 @@ void set_argument(char* argv) {
   *selfie_argv = (uint64_t) argv;
 }
 
+uint64_t no_or_bad_or_more_arguments(uint64_t exit_code) {
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    return 1;
+  else if (exit_code == EXITCODE_BADARGUMENTS)
+    return 1;
+  else if (exit_code == EXITCODE_MOREARGUMENTS)
+    return 1;
+  else
+    return 0;
+}
+
 void print_synopsis(char* extras) {
   printf2("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
-uint64_t selfie() {
+// -----------------------------------------------------------------
+// ----------------------------- SELFIE ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
@@ -9179,48 +9243,39 @@ uint64_t selfie() {
         selfie_disassemble(1);
       else if (string_compare(argument, "-l"))
         selfie_load();
-      else if (string_compare(argument, "-m"))
-        exit(selfie_run(MIPSTER));
-      else if (string_compare(argument, "-d"))
-        exit(selfie_run(DIPSTER));
-      else if (string_compare(argument, "-r"))
-        exit(selfie_run(RIPSTER));
-      else if (string_compare(argument, "-y"))
-        exit(selfie_run(HYPSTER));
-      else if (string_compare(argument, "-min"))
-        exit(selfie_run(MINSTER));
-      else if (string_compare(argument, "-mob"))
-        exit(selfie_run(MOBSTER));
-      else
-        return EXITCODE_BADARGUMENTS;
+      else if (extras == 0) {
+        if (string_compare(argument, "-m"))
+          return selfie_run(MIPSTER);
+        else if (string_compare(argument, "-d"))
+          return selfie_run(DIPSTER);
+        else if (string_compare(argument, "-r"))
+          return selfie_run(RIPSTER);
+        else if (string_compare(argument, "-y"))
+          return selfie_run(HYPSTER);
+        else if (string_compare(argument, "-min"))
+          return selfie_run(MINSTER);
+        else if (string_compare(argument, "-mob"))
+          return selfie_run(MOBSTER);
+        else
+          return EXITCODE_BADARGUMENTS;
+      } else
+        return EXITCODE_MOREARGUMENTS;
     }
 
     return EXITCODE_NOERROR;
   }
 }
 
-// -----------------------------------------------------------------
-// ----------------------------- SELFIE ----------------------------
-// -----------------------------------------------------------------
+uint64_t exit_selfie(uint64_t exit_code, char* extras) {
+  if (no_or_bad_or_more_arguments(exit_code))
+    print_synopsis(extras);
 
-uint64_t is_boot_level_zero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer.
-  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand,
-  // returns the same not null address, if malloc(0) is called consecutively.
-  uint64_t first_malloc;
-  uint64_t second_malloc;
-
-  first_malloc = (uint64_t) malloc(0);
-  second_malloc = (uint64_t) malloc(0);
-
-  if (first_malloc == 0)
-    return 1;
-  if (first_malloc != second_malloc)
-    return 1;
-
-  // it is selfie's malloc, so it can not be boot level zero.
-  return 0;
+  if (exit_code == EXITCODE_MOREARGUMENTS)
+    return EXITCODE_BADARGUMENTS;
+  else if (exit_code == EXITCODE_NOARGUMENTS)
+    return EXITCODE_NOERROR;
+  else
+    return exit_code;
 }
 
 // -----------------------------------------------------------------
@@ -9237,13 +9292,7 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  exit_code = selfie();
+  exit_code = selfie(0);
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" [ ( -m | -d | -r | -y ) 0-4096 ... ]");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " [ ( -m | -d | -r | -y ) 0-4096 ... ]");
 }
