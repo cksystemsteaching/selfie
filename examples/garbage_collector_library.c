@@ -1,4 +1,5 @@
-// note: garbage collector compilation (Selfie flag "-gc" and compilation with selfie.c) mandatory!
+// note: garbage collector compilation (Selfie flag "-gc" and compilation with selfie.h;
+// e.g. ./selfie -gc selfie.h examples/garbage_collector_library.c -m 1) mandatory!
 
 // note: since Selfie uses a conservative garbage collection algorithm, we cannot simply store a pointer
 // as integer (we need this for validation), therfore we add an offset when storing and subtract this
