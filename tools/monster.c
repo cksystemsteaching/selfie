@@ -192,8 +192,6 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t handle_symbolic_system_call(uint64_t* context);
 uint64_t handle_symbolic_division_by_zero(uint64_t* context);
 uint64_t handle_symbolic_timer(uint64_t* context);
-uint64_t handle_symbolic_merge(uint64_t* context);
-uint64_t handle_symbolic_recursion(uint64_t* context);
 
 uint64_t handle_symbolic_exception(uint64_t* context);
 
@@ -1686,7 +1684,7 @@ uint64_t* schedule_next_symbolic_context() {
 
   // find the currently highest call stack
   while (context) {
-    if (get_call_stack(context) != 0)
+    if (get_call_stack(context) != (uint64_t*) 0)
       if (get_depth(get_call_stack(context)) > max_call_stack_size) {
         max_call_stack_size = get_depth(get_call_stack(context));
         max_call_stack = get_call_stack(context);
