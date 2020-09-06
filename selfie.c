@@ -30,9 +30,12 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 5. a tiny C* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity.
-There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-and a debugger with replay as well as minimal operating system support in
-the form of RISC-V system calls built into the emulator and hypervisor.
+There is also a simple in-memory linker, a RISC-U disassembler, a garbage
+collector, a profiler, and a debugger with replay as well as minimal
+operating system support in the form of RISC-V system calls built into
+the emulator and hypervisor. The garbage collector is conservative and
+may operate as library in the same address space as the mutator and
+as part of the emulator in the address space of the kernel.
 
 C* is a tiny Turing-complete subset of C that includes dereferencing
 (the * operator) but excludes composite data types, bitwise and Boolean
@@ -72,7 +75,8 @@ The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe.
+Jochen Liedtke from University of Karlsruhe. The garbage collector
+is inspired by the conservative garbage collector of Hans Boehm.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
