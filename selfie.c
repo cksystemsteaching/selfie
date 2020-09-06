@@ -9078,12 +9078,14 @@ void print_profile() {
   printf3("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
     (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2),
     (char*) sc_brk);
-  printf3("%s:          %.2uMB(%.2u%%) actually accessed\n", selfie_name,
+  printf4("%s:          %.2uMB(%.2u%% of %.2uMB) actually accessed\n", selfie_name,
     (char*) fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4));
-  printf3("%s:          %.2uMB(%.2u%%) mapped memory\n", selfie_name,
+    (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4),
+    (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2));
+  printf4("%s:          %.2uMB(%.2u%% of %uMB) mapped memory\n", selfie_name,
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4));
+    (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
+    (char*) (total_page_frame_memory / MEGABYTE));
 
   if (gc)
     print_gc_profile("          ");
