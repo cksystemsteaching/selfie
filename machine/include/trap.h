@@ -12,7 +12,7 @@
 #define CSR_STATUS_SIE 1
 #define CSR_STATUS_SPIE 5
 
-#define CSR_SIE_TIMER_INTS      5
+#define CSR_SIE_TIMER_INTS 5
 
 typedef void (*trap_handler_t)();
 
