@@ -2183,16 +2183,10 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  exit_code = selfie();
+  exit_code = selfie(1);
 
-  if (exit_code != EXITCODE_NOARGUMENTS)
+  if (exit_code == EXITCODE_MOREARGUMENTS)
     exit_code = selfie_model();
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" - exit-code [ --check-block-access ] ...");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " - exit-code [ --check-block-access ] ...");
 }

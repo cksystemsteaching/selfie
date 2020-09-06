@@ -142,9 +142,9 @@ void fetch_translator() {
 
 void x86SaveAddress() {
   uint64_t offset;
-  
+
   offset = binary_length * SIZEOFUINT64 + x86ByteCount;
-  
+
   *(x86_address_fixup_table + ((pc_translator - ELF_ENTRY_POINT) / INSTRUCTIONSIZE)) = offset;
 }
 
@@ -164,13 +164,13 @@ void x86AdressFix() {
   x86ByteCount_backup = x86ByteCount;
 
   while(pc_translator < code_length + ELF_ENTRY_POINT) {
-    
+
     pc_translator = pc_translator + INSTRUCTIONSIZE;
 
     x86_current_instruction_address = *(x86_address_fixup_table + x86_offset);
     binary_length = x86_current_instruction_address / SIZEOFUINT64;
     x86ByteCount = x86_current_instruction_address % SIZEOFUINT64;
-    
+
     opcode = x86NextByte();
 
     if (opcode == TWO_BYTE_INSTRUCTION) {
@@ -1224,6 +1224,10 @@ void selfie_translate() {
   *(ELF_header + 39) = 3314777386191695360; //0.text0.
   *(ELF_header + 40) = 7089075323386685555; //shstrtab
   *(ELF_header + 41) = 0;
+
+  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  selfie_output(binary_name);
 }
 
 // -----------------------------------------------------------------
@@ -1239,21 +1243,10 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  exit_code = selfie();
+  exit_code = selfie(1);
 
-  if (exit_code != EXITCODE_NOARGUMENTS) {
+  if (exit_code == EXITCODE_NOERROR)
     selfie_translate();
 
-    // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-    selfie_output(binary_name);
-  }
-
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis("");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, "");
 }
