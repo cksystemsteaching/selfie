@@ -1205,7 +1205,8 @@ void set_metadata_memory_gc(uint64_t* context, uint64_t* entry, uint64_t* memory
 
 void gc_init(uint64_t* context);
 
-void relink_metadata(uint64_t* entry, uint64_t* new_list_head);
+void relink_metadata(uint64_t* entry);
+void relink_metadata_with_head(uint64_t* entry, uint64_t* new_list_head);
 
 // this function performs first-fit reuse of free memory in O(n) where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
@@ -1248,6 +1249,8 @@ uint64_t* gc_malloc(uint64_t size) {
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t GC_SKIPS_TILL_COLLECT = 1000; // gc every so often
+
+uint64_t GC_NO_REUSE = 0; // reuse memory with freelist by default
 
 uint64_t GC_METADATA_SIZE = 40; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3
 
@@ -7375,12 +7378,16 @@ void gc_init(uint64_t* context) {
   set_gc_enabled_gc(context, 1);
 }
 
-void relink_metadata(uint64_t* entry, uint64_t* new_list_head) {
+void relink_metadata(uint64_t* entry) {
   if (get_metadata_prev(entry) != (uint64_t*) 0)
     set_metadata_next(get_metadata_prev(entry), get_metadata_next(entry));
 
   if (get_metadata_next(entry) != (uint64_t*) 0)
     set_metadata_prev(get_metadata_next(entry), get_metadata_prev(entry));
+}
+
+void relink_metadata_with_head(uint64_t* entry, uint64_t* new_list_head) {
+  relink_metadata(entry);
 
   if (new_list_head == (uint64_t*) 0) {
     set_metadata_prev(entry, (uint64_t*) 0);
@@ -7415,7 +7422,7 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
       if (node == (uint64_t*) *free_list_head_pointer)
         *free_list_head_pointer = (uint64_t) get_metadata_next(node);
 
-      relink_metadata(node, (uint64_t*) *used_list_head_pointer);
+      relink_metadata_with_head(node, (uint64_t*) *used_list_head_pointer);
 
       *used_list_head_pointer = (uint64_t) node;
 
@@ -7685,10 +7692,16 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* free_list_head_pointer, 
     object_start = object_start + SIZEOFUINT64;
   }
 
-  // move entry from used list to head of free list
-  relink_metadata(metadata, (uint64_t*) *free_list_head_pointer);
+  if (GC_NO_REUSE) {
+    relink_metadata(metadata);
 
-  *free_list_head_pointer = (uint64_t) metadata;
+    zero_memory(metadata, GC_METADATA_SIZE);
+  } else {
+    // move entry from used list to head of free list
+    relink_metadata_with_head(metadata, (uint64_t*) *free_list_head_pointer);
+
+    *free_list_head_pointer = (uint64_t) metadata;
+  }
 
   gc_collected_total = gc_collected_total + object_size;
 }
@@ -9800,8 +9813,14 @@ uint64_t mipster(uint64_t* to_context) {
     print(" with replay");
   else if (debug)
     print(" with debugger");
-  else if (gc)
-    printf1(" with garbage collector (%d skips)", (char*) GC_SKIPS_TILL_COLLECT);
+  else if (gc) {
+    printf1(" with garbage collector (%d skips, memory reuse ", (char*) GC_SKIPS_TILL_COLLECT);
+
+    if (GC_NO_REUSE)
+      print("disabled)");
+    else
+      print("enabled)");
+  }
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
@@ -10033,6 +10052,7 @@ void boot_loader(uint64_t* context) {
 
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
+  uint64_t extra_arguments;
 
   if (binary_length == 0) {
     printf1("%s: nothing to run, debug, or host\n", selfie_name);
@@ -10044,10 +10064,30 @@ uint64_t selfie_run(uint64_t machine) {
   reset_profiler();
   reset_microkernel();
 
-  if (string_compare(peek_argument(0), "--skips")) {
-    get_argument();
+  extra_arguments = 0;
 
-    GC_SKIPS_TILL_COLLECT = atoi(get_argument());
+  if (string_compare(peek_argument(0), "--skips"))
+    extra_arguments = 1;
+  else if (string_compare(peek_argument(0), "--no-reuse"))
+    extra_arguments = 1;
+
+  while (extra_arguments) {
+    if (string_compare(peek_argument(0), "--skips")) {
+      get_argument();
+
+      GC_SKIPS_TILL_COLLECT = atoi(get_argument());
+    } else if (string_compare(peek_argument(0), "--no-reuse")) {
+      get_argument();
+
+      GC_NO_REUSE = 1;
+    }
+
+    extra_arguments = 0;
+
+    if (string_compare(peek_argument(0), "--skips"))
+      extra_arguments = 1;
+    else if (string_compare(peek_argument(0), "--no-reuse"))
+      extra_arguments = 1;
   }
 
   init_memory(atoi(peek_argument(0)));
