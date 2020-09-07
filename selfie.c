@@ -1256,9 +1256,6 @@ uint64_t GC_METADATA_SIZE = 40; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3
 uint64_t* gc_used_list = (uint64_t*) 0; // pointer to pointer to used-list head
 uint64_t* gc_free_list = (uint64_t*) 0; // pointer to pointer to free-list head
 
-uint64_t non_gc_heap_start = 0;
-uint64_t non_gc_heap_bump  = 0;
-
 uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end   = 0;
 
@@ -7374,6 +7371,10 @@ void gc_init(uint64_t* context) {
     program_break = get_program_break(context);
 
   set_heap_start_and_end_gc(context, program_break);
+
+  // the library variant also needs to include used/free list heads
+  if (is_gc_library(context))
+    gc_heap_start = gc_heap_start - 24;
 
   set_gc_enabled_gc(context, 1);
 }
