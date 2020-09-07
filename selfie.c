@@ -7372,10 +7372,6 @@ void gc_init(uint64_t* context) {
 
   set_heap_start_and_end_gc(context, program_break);
 
-  // the library variant also needs to include used/free list heads
-  if (is_gc_library(context))
-    gc_heap_start = gc_heap_start - 24;
-
   set_gc_enabled_gc(context, 1);
 }
 
