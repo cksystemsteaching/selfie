@@ -35,9 +35,6 @@ int main(int argc, char** argv) {
   if (USE_GC_LIBRARY != GC_LIBRARY)
     exit(1);
 
-  // if we wanted to modify the size of the non gcd heap, we'd have to do it BEFORE initialising the gc
-  NON_GC_HEAP_SIZE = 4096;
-
   // initialise library (gc, power_of_2_table, etc.)
   init_library();
 
@@ -62,10 +59,8 @@ int main(int argc, char** argv) {
   validation_address_3 = (uint64_t) y + check_offset;
   y = (uint64_t*) 0;
   y = gc_malloc(8);
-  if (((uint64_t) y) != (validation_address_3 - check_offset)) {
-    printf2("%d - %d\n", (char*)((uint64_t)y), (char*)(validation_address_3 - check_offset));
+  if (((uint64_t) y) != (validation_address_3 - check_offset))
     print("test case 3: memory is not reused! make sure skip count is set to 0!\n");
-  }
   
   // 4 -> allocate memory and assign ptr to local variable (stack, local scope)
   do_stuff();
@@ -77,7 +72,7 @@ int main(int argc, char** argv) {
   // 5 -> allocate memory of size not in free list (should result in a new alloc)
   z = (uint64_t*) 0;
   z = gc_malloc(16);
-  if (((uint64_t) z) != (validation_address_4 + 8 - check_offset))
+  if (((uint64_t) z) != (validation_address_4 + 8 + GC_METADATA_SIZE  - check_offset))
     print("test case 5: expected and actual address do not match! make sure skip count is set to 0!\n");
 
   // 6 -> unassign global variable (whose memory contains pointer to other heap address)
