@@ -1196,12 +1196,10 @@ uint64_t  get_ds_end(uint64_t* context);
 uint64_t  get_heap_start_gc(uint64_t* context); // ..._gc name subject to be changed
 uint64_t  get_heap_end_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
-uint64_t* get_metadata_memory_gc(uint64_t* context, uint64_t* entry);
 
 void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head);
 void set_heap_start_and_end_gc(uint64_t* context, uint64_t heap_start_and_end);
 void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
-void set_metadata_memory_gc(uint64_t* context, uint64_t* entry, uint64_t* memory);
 
 void gc_init(uint64_t* context);
 
@@ -1219,6 +1217,10 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 // this function performs an O(n) list search where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
 uint64_t* get_pointer_of_address(uint64_t* context, uint64_t address);
+// this function performs an O(n) list search where n is memory size
+// furthermore, this is only necessary if metadata is in the same memory space as the memory
+// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t  is_address_of_metadata_memory(uint64_t* context, uint64_t address);
 uint64_t  is_valid_gc_pointer(uint64_t* context, uint64_t address, uint64_t heap_start, uint64_t heap_end);
 
 void prepare_mark(uint64_t* used_list_head);
@@ -7250,7 +7252,7 @@ uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context) {
 }
 
 uint64_t* allocate_metadata(uint64_t* context) {
-    return allocate_non_library_gcd_memory(GC_METADATA_SIZE, context);
+  return allocate_non_library_gcd_memory(GC_METADATA_SIZE, context);
 }
 
 uint64_t* get_used_list_head_gc(uint64_t* context) {
@@ -7316,13 +7318,6 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
     return get_gc_enabled(context);
 }
 
-uint64_t* get_metadata_memory_gc(uint64_t* context, uint64_t* entry) {
-  if (is_gc_library(context))
-    return (uint64_t*) ((uint64_t) get_metadata_memory(entry) - VIRTUALMEMORYSIZE);
-  else
-    return get_metadata_memory(entry);
-}
-
 void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head) {
   if (is_gc_library(context)) {
     gc_used_list = used_list_head;
@@ -7348,13 +7343,6 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
     gc_library_enabled = gc_enabled;
   else
     set_gc_enabled(context, gc_enabled);
-}
-
-void set_metadata_memory_gc(uint64_t* context, uint64_t* entry, uint64_t* memory) {
-  if (is_gc_library(context))
-    set_metadata_memory(entry, (uint64_t*) ((uint64_t) memory + VIRTUALMEMORYSIZE));
-  else
-    set_metadata_memory(entry, memory);
 }
 
 void gc_init(uint64_t* context) {
@@ -7505,7 +7493,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   if (metadata != (uint64_t*) 0) {
     gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
 
-    return get_metadata_memory_gc(context, metadata);
+    return get_metadata_memory(metadata);
   }
 
   // allocate new object memory if there is no reusable memory
@@ -7525,7 +7513,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
       set_metadata_prev(metadata, (uint64_t*) 0);
       set_metadata_size(metadata, size);
-      set_metadata_memory_gc(context, metadata, object);
+      set_metadata_memory(metadata, object);
       set_metadata_markbit(metadata, 0);
 
       gc_num_malloc_new = gc_num_malloc_new + 1;
@@ -7550,7 +7538,7 @@ uint64_t* get_pointer_of_address(uint64_t* context, uint64_t address) {
     return (uint64_t*) 0;
 
   while (node != (uint64_t*) 0) {
-    metadata_pointer_address = (uint64_t) get_metadata_memory_gc(context, node);
+    metadata_pointer_address = (uint64_t) get_metadata_memory(node);
 
     if (address >= metadata_pointer_address)
       if (address < metadata_pointer_address + get_metadata_size(node))
@@ -7560,6 +7548,51 @@ uint64_t* get_pointer_of_address(uint64_t* context, uint64_t address) {
   }
 
   return (uint64_t*) 0;
+}
+
+uint64_t  is_address_of_metadata_memory(uint64_t* context, uint64_t address) {
+  uint64_t* node;
+
+  // only the library stores metadata in the same address space as allocated memory
+  if (is_gc_library(context) == 0)
+    return 0;
+
+  // list checking is costly, determine if address is even in gc heap bounds
+  if (address < gc_heap_start)
+    return 0;
+
+  if (address >= gc_heap_end)
+    return 0;
+
+  // check if address is in one of used list's entries
+
+  node = get_used_list_head_gc(context);
+  if (node != (uint64_t*) 0)
+    node = (uint64_t*) *node;
+
+  while (node != (uint64_t*) 0) {
+    if (address >= (uint64_t) node)
+      if (address < ((uint64_t) node + GC_METADATA_SIZE))
+        return 1;
+
+    node = get_metadata_next(node);
+  }
+
+  // check if address is in one of free list's entries
+
+  node = get_free_list_head_gc(context);
+  if (node != (uint64_t*) 0)
+    node = (uint64_t*) *node;
+
+  while (node != (uint64_t*) 0) {
+    if (address >= (uint64_t) node)
+      if (address < ((uint64_t) node + GC_METADATA_SIZE))
+        return 1;
+
+    node = get_metadata_next(node);
+  }
+
+  return 0;
 }
 
 uint64_t is_valid_gc_pointer(uint64_t* context, uint64_t address, uint64_t heap_start, uint64_t heap_end) {
@@ -7620,10 +7653,16 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
   while (segment_start < segment_end) {
     valid_addr = 1;
 
-    if (is_gc_library(context) == 0)
+    if (is_gc_library(context) == 0) {
       if (is_valid_heap_address(context, segment_start))
         if (is_virtual_address_mapped(get_pt(context), segment_start) == 0)
           valid_addr = 0;
+    } else {
+      // only perform this check, if segment to mark is heap
+      if (heap_end == segment_end)
+        if (is_address_of_metadata_memory(context, segment_start))
+          valid_addr = 0;
+    }
 
     if (valid_addr)
       current_word = gc_load_memory(segment_start, context);
@@ -7683,7 +7722,7 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* free_list_head_pointer, 
   uint64_t object_end;
 
   // zero object memory
-  object_start = (uint64_t) get_metadata_memory_gc(context, metadata);
+  object_start = (uint64_t) get_metadata_memory(metadata);
   object_size  = get_metadata_size(metadata);
   object_end   = object_start + object_size;
 
@@ -7717,7 +7756,7 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
   node = (uint64_t*) *used_list_head_pointer;
 
   while (node != (uint64_t*) 0) {
-    next_node = get_next_entry(node);
+    next_node = get_metadata_next(node);
 
     if (get_metadata_markbit(node) == 0) {
       // check if current node is head of list
