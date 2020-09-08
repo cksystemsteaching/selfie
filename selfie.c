@@ -7369,6 +7369,7 @@ void gc_init(uint64_t* context) {
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
 
   if (is_gc_library(context))
+    // gc library: actual start of gc heap (since the gc depends on heap memory which is allocated before gc_init and therefore not gcd)
     program_break = (uint64_t) smalloc_system(8) + 8;
   else
     program_break = get_program_break(context);
