@@ -1166,25 +1166,22 @@ uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context);
 // metadata entry:
 // +----+---------+
 // |  0 | next    | pointer to next entry
-// |  1 | prev    | pointer to previous entry
-// |  2 | memory  | pointer to allocated memory
-// |  3 | size    | size of allocated memory (in bytes!)
-// |  4 | markbit | markbit indicating reachability of pointer
+// |  1 | memory  | pointer to allocated memory
+// |  2 | size    | size of allocated memory (in bytes!)
+// |  3 | markbit | markbit indicating reachability of pointer
 // +----+---------+
 
 uint64_t* allocate_metadata(uint64_t* context);
 
 uint64_t* get_metadata_next(uint64_t* entry)    { return (uint64_t*) *entry; }
-uint64_t* get_metadata_prev(uint64_t* entry)    { return (uint64_t*) *(entry + 1); }
-uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 2); }
-uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 3); }
-uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 4); }
+uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 1); }
+uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 2); }
+uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 3); }
 
 void set_metadata_next(uint64_t* entry, uint64_t* next)       { *entry       = (uint64_t) next; }
-void set_metadata_prev(uint64_t* entry, uint64_t* prev)       { *(entry + 1) = (uint64_t) prev; }
-void set_metadata_memory(uint64_t* entry, uint64_t* memory)   { *(entry + 2) = (uint64_t) memory; }
-void set_metadata_size(uint64_t* entry, uint64_t size)        { *(entry + 3) = size; }
-void set_metadata_markbit(uint64_t* entry, uint64_t markbit)  { *(entry + 4) = markbit; }
+void set_metadata_memory(uint64_t* entry, uint64_t* memory)   { *(entry + 1) = (uint64_t) memory; }
+void set_metadata_size(uint64_t* entry, uint64_t size)        { *(entry + 2) = size; }
+void set_metadata_markbit(uint64_t* entry, uint64_t markbit)  { *(entry + 3) = markbit; }
 
 // get functions for properties with different access in library/syscall
 uint64_t* get_used_list_head_gc(uint64_t* context);
@@ -1203,9 +1200,6 @@ void set_heap_start_and_end_gc(uint64_t* context, uint64_t heap_start_and_end);
 void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 
 void gc_init(uint64_t* context);
-
-void relink_metadata(uint64_t* entry);
-void relink_metadata_with_head(uint64_t* entry, uint64_t* new_list_head);
 
 // this function performs first-fit reuse of free memory in O(n) where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
@@ -1236,7 +1230,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 // TODO: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
-void zero_and_free_object(uint64_t* metadata, uint64_t* context);
+void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context);
 void sweep(uint64_t* context);
 
 void gc_collect(uint64_t* context);
@@ -1255,7 +1249,7 @@ uint64_t GC_SKIPS_TILL_COLLECT = 1000; // gc every so often
 
 uint64_t GC_NO_REUSE = 0; // reuse memory with freelist by default
 
-uint64_t GC_METADATA_SIZE = 40; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 3
+uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -7370,33 +7364,14 @@ void gc_init(uint64_t* context) {
   set_gc_enabled_gc(context, 1);
 }
 
-void relink_metadata(uint64_t* entry) {
-  if (get_metadata_prev(entry) != (uint64_t*) 0)
-    set_metadata_next(get_metadata_prev(entry), get_metadata_next(entry));
-
-  if (get_metadata_next(entry) != (uint64_t*) 0)
-    set_metadata_prev(get_metadata_next(entry), get_metadata_prev(entry));
-}
-
-void relink_metadata_with_head(uint64_t* entry, uint64_t* new_list_head) {
-  relink_metadata(entry);
-
-  if (new_list_head == (uint64_t*) 0) {
-    set_metadata_prev(entry, (uint64_t*) 0);
-    set_metadata_next(entry, (uint64_t*) 0);
-  } else {
-    set_metadata_prev(new_list_head, entry);
-    set_metadata_next(entry, new_list_head);
-    set_metadata_prev(entry, (uint64_t*) 0);
-  }
-}
-
 uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
   uint64_t* node;
+  uint64_t* prev_node;
 
   if (get_free_list_head_gc(context) == (uint64_t*) 0)
     return (uint64_t*) 0;
 
+  prev_node = (uint64_t*) 0;
   node = get_free_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
@@ -7404,13 +7379,17 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
       if (node == get_free_list_head_gc(context))
         set_free_list_head_gc(context, get_metadata_next(node));
 
-      relink_metadata_with_head(node, get_used_list_head_gc(context));
+      if (prev_node != (uint64_t*) 0)
+        set_metadata_next(prev_node, get_metadata_next(node));
+
+      set_metadata_next(node, get_used_list_head_gc(context));
 
       set_used_list_head_gc(context, node);
 
       return node;
     }
 
+    prev_node = node;
     node = get_metadata_next(node);
   }
 
@@ -7495,12 +7474,9 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     metadata = allocate_metadata(context);
 
     if (metadata != (uint64_t*) 0) {
-      if (get_used_list_head_gc(context) != (uint64_t*) 0)
-        set_metadata_prev(get_used_list_head_gc(context), metadata);
       set_metadata_next(metadata, get_used_list_head_gc(context));
       set_used_list_head_gc(context, metadata);
 
-      set_metadata_prev(metadata, (uint64_t*) 0);
       set_metadata_size(metadata, size);
       set_metadata_memory(metadata, object);
       set_metadata_markbit(metadata, 0);
@@ -7694,7 +7670,7 @@ void mark(uint64_t* context) {
   mark_segment(context, ds_start, ds_end, heap_start, heap_end);
 }
 
-void zero_and_free_object(uint64_t* metadata, uint64_t* context) {
+void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
   uint64_t object_start;
   uint64_t object_size;
   uint64_t object_end;
@@ -7710,13 +7686,13 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* context) {
     object_start = object_start + SIZEOFUINT64;
   }
 
-  if (GC_NO_REUSE) {
-    relink_metadata(metadata);
+  if (prev_metadata != (uint64_t*) 0)
+    set_metadata_next(prev_metadata, get_metadata_next(metadata));
 
+  if (GC_NO_REUSE)
     zero_memory(metadata, GC_METADATA_SIZE);
-  } else {
-    // move entry from used list to head of free list
-    relink_metadata_with_head(metadata, get_free_list_head_gc(context));
+  else {
+    set_metadata_next(metadata, get_free_list_head_gc(context));
 
     set_free_list_head_gc(context, metadata);
   }
@@ -7726,11 +7702,13 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* context) {
 
 void sweep(uint64_t* context) {
   uint64_t* node;
+  uint64_t* prev_node;
   uint64_t* next_node;
 
   if (get_used_list_head_gc(context) == (uint64_t*) 0)
     return;
 
+  prev_node = (uint64_t*) 0;
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
@@ -7741,8 +7719,9 @@ void sweep(uint64_t* context) {
       if (node == get_used_list_head_gc(context))
         set_used_list_head_gc(context, get_metadata_next(node));
 
-      zero_and_free_object(node, context);
-    }
+      zero_and_free_object(node, prev_node, context);
+    } else
+      prev_node = node;
 
     node = next_node;
   }
