@@ -7668,7 +7668,9 @@ void zero_object(uint64_t* metadata, uint64_t* context) {
 }
 
 void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
-  if (prev_metadata != (uint64_t*) 0)
+  if (prev_metadata == (uint64_t*) 0)
+    set_used_list_head_gc(context, get_metadata_next(metadata));
+  else
     set_metadata_next(prev_metadata, get_metadata_next(metadata));
 
   if (GC_NO_REUSE == 0) {
@@ -7680,30 +7682,25 @@ void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context)
   gc_collected_total = gc_collected_total + get_metadata_size(metadata);
 }
 
-
 void sweep(uint64_t* context) {
-  uint64_t* node;
   uint64_t* prev_node;
-  uint64_t* next_node;
+  uint64_t* node;
 
   prev_node = (uint64_t*) 0;
+
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
-    next_node = get_metadata_next(node);
-
-    if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE) {
-      // check if current node is head of list
-      if (node == get_used_list_head_gc(context))
-        set_used_list_head_gc(context, get_metadata_next(node));
-
+    if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
       free_object(node, prev_node, context);
-    } else
+    else {
+      // clear mark bit for next marking
+      set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
+
       prev_node = node;
+    }
 
-    set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
-
-    node = next_node;
+    node = get_metadata_next(node);
   }
 }
 
