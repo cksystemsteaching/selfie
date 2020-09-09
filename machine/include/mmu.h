@@ -9,11 +9,10 @@
 
 #define SATP_MODE_SV39 (8ULL << 60)
 #define SATP_MODE_SV48 (9ULL << 60)
-#define SATP_PPN_BITMASK 0x00000FFFFFFFFFFF
+#define SATP_PPN_BITMASK 0x00000FFFFFFFFFFFULL
 #define SATP_ASID_POS 44
 
-#define SV39_PAGE_COUNT (1ULL << (40 - 12))
-#define SV39_MAX_VPN 0xFFFFFFFFFFFFF
+#define SV39_MAX_VPN 0xFFFFFFFFFFFFFULL
 
 struct __attribute__((packed)) pt_entry {
   uint64_t v        : 1; // valid flag
