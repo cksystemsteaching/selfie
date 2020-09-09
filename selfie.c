@@ -1186,11 +1186,10 @@ void set_metadata_markbit(uint64_t* entry, uint64_t markbit)  { *(entry + 3) = m
 // get functions for properties with different access in library/syscall
 uint64_t* get_used_list_head_gc(uint64_t* context);
 uint64_t* get_free_list_head_gc(uint64_t* context);
-uint64_t* get_pt_gc(uint64_t* context);
 uint64_t  get_stack_start(uint64_t* context);
 uint64_t  get_ds_start(uint64_t* context);
 uint64_t  get_ds_end(uint64_t* context);
-uint64_t  get_heap_start_gc(uint64_t* context); // ..._gc name subject to be changed
+uint64_t  get_heap_start_gc(uint64_t* context);
 uint64_t  get_heap_end_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
 
@@ -1211,7 +1210,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
 // this function performs an O(n) list search where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* get_pointer_of_address(uint64_t* context, uint64_t address);
+uint64_t* get_metadata_of_memory(uint64_t* context, uint64_t address);
 uint64_t  is_valid_gc_pointer(uint64_t* context, uint64_t address);
 
 uint64_t gc_load_memory(uint64_t address, uint64_t* context);
@@ -7264,13 +7263,6 @@ uint64_t* get_free_list_head_gc(uint64_t* context) {
     return get_free_list_head(context);
 }
 
-uint64_t* get_pt_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return (uint64_t*) 0;
-  else
-    return get_pt(context);
-}
-
 uint64_t get_stack_start(uint64_t* context) {
   if (is_gc_library(context))
     return fetch_stack_pointer();
@@ -7345,7 +7337,7 @@ void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
 }
 
 void gc_init(uint64_t* context) {
-  uint64_t program_break;
+  uint64_t gcd_heap_start;
 
   reset_memory_counters();
   reset_garbage_collector_counters();
@@ -7354,12 +7346,12 @@ void gc_init(uint64_t* context) {
   set_free_list_head_gc(context, (uint64_t*) 0);
 
   if (is_gc_library(context))
-    // gc library: actual start of gc heap (since the gc depends on heap memory which is allocated before gc_init and therefore not gcd)
-    program_break = (uint64_t) smalloc_system(8) + 8;
+    // gc library: all memory allocated before initialising the gc is not gcd and must therefore be excluded from the gc heap bounds
+    gcd_heap_start = (uint64_t) smalloc_system(8) + 8;
   else
-    program_break = get_program_break(context);
+    gcd_heap_start = get_program_break(context);
 
-  set_heap_start_and_end_gc(context, program_break);
+  set_heap_start_and_end_gc(context, gcd_heap_start);
 
   set_gc_enabled_gc(context, 1);
 }
@@ -7367,9 +7359,6 @@ void gc_init(uint64_t* context) {
 uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
   uint64_t* node;
   uint64_t* prev_node;
-
-  if (get_free_list_head_gc(context) == (uint64_t*) 0)
-    return (uint64_t*) 0;
 
   prev_node = (uint64_t*) 0;
   node = get_free_list_head_gc(context);
@@ -7438,8 +7427,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   // leads to having the same variables as with the previous call and therefore
   // we might have a reachable pointer which is not actually reachable. to fix
   // this, we set these variables to 0.
-  object             = (uint64_t*) 0;
-  metadata           = (uint64_t*) 0;
+  object   = (uint64_t*) 0;
+  metadata = (uint64_t*) 0;
 
   // initialize garbage collector if it is uninitialized
   if (get_gc_enabled_gc(context) == 0)
@@ -7494,20 +7483,17 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   return object;
 }
 
-uint64_t* get_pointer_of_address(uint64_t* context, uint64_t address) {
+uint64_t* get_metadata_of_memory(uint64_t* context, uint64_t address) {
   uint64_t* node;
-  uint64_t metadata_pointer_address;
+  uint64_t  metadata_memory;
 
   node = get_used_list_head_gc(context);
 
-  if(node == (uint64_t*) 0)
-    return (uint64_t*) 0;
-
   while (node != (uint64_t*) 0) {
-    metadata_pointer_address = (uint64_t) get_metadata_memory(node);
+    metadata_memory = (uint64_t) get_metadata_memory(node);
 
-    if (address >= metadata_pointer_address)
-      if (address < metadata_pointer_address + get_metadata_size(node))
+    if (address >= metadata_memory)
+      if (address < metadata_memory + get_metadata_size(node))
         return node;
 
     node = get_metadata_next(node);
@@ -7535,7 +7521,7 @@ uint64_t is_valid_gc_pointer(uint64_t* context, uint64_t address) {
   if (address >= heap_end)
     return 0;
 
-  pointer_of_address = get_pointer_of_address(context, address);
+  pointer_of_address = get_metadata_of_memory(context, address);
 
   if (pointer_of_address == (uint64_t*) 0)
     return 0;
@@ -7570,7 +7556,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
     current_word = gc_load_memory(segment_start, context);
 
     if (is_valid_gc_pointer(context, current_word))
-      set_metadata_markbit(get_pointer_of_address(context, current_word), GC_MARKBIT_ROOT);
+      set_metadata_markbit(get_metadata_of_memory(context, current_word), GC_MARKBIT_ROOT);
 
     segment_start = segment_start + SIZEOFUINT64;
   }
@@ -7580,11 +7566,13 @@ void mark_object(uint64_t* context, uint64_t* metadata) {
   uint64_t object_start;
   uint64_t object_size;
   uint64_t object_end;
-  uint64_t valid_address;
+  uint64_t is_valid_address;
   uint64_t current_word;
   uint64_t* metadata_of_address;
 
-  // avoid infinite loops (when recursively checking self-referencing objects)
+  // avoid infinite loops (when recursively checking self-referencing objects), by marking them beforehand
+  // assert: object of metadata is fully traversed before returning
+
   if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
     set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
 
@@ -7593,21 +7581,23 @@ void mark_object(uint64_t* context, uint64_t* metadata) {
   object_end   = object_start + object_size;
 
   while (object_start < object_end) {
-    valid_address = 1;
+    is_valid_address = 1;
 
-    // do not scan unmapped memory
+    // do not scan unmapped memory (gc syscall)
     if (is_gc_library(context) == 0)
       if (is_valid_heap_address(context, object_start))
         if (is_virtual_address_mapped(get_pt(context), object_start) == 0)
-          valid_address = 0;
+          is_valid_address = 0;
 
-    if (valid_address)
+    if (is_valid_address)
       current_word = gc_load_memory(object_start, context);
     else
       current_word = 0;
 
     if (is_valid_gc_pointer(context, current_word)) {
-      metadata_of_address = get_pointer_of_address(context, current_word);
+      // assert: current_word is a pointer to a valid gc object
+
+      metadata_of_address = get_metadata_of_memory(context, current_word);
 
       if (get_metadata_markbit(metadata_of_address) == GC_MARKBIT_UNREACHABLE)
         mark_object(context, metadata_of_address);
@@ -7637,6 +7627,8 @@ void mark(uint64_t* context) {
 
   // assert: temporary registers do not contain any reference to gc_heap memory
   // selfie saves all relevant temporary registers on stack, see procedure_prologue().
+
+  // root segments: call stack and data segment
 
   // traverse call stack
   mark_segment(context, stack_start, stack_end);
@@ -7674,9 +7666,7 @@ void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context)
   if (prev_metadata != (uint64_t*) 0)
     set_metadata_next(prev_metadata, get_metadata_next(metadata));
 
-  if (GC_NO_REUSE)
-    zero_memory(metadata, GC_METADATA_SIZE);
-  else {
+  if (GC_NO_REUSE == 0) {
     set_metadata_next(metadata, get_free_list_head_gc(context));
 
     set_free_list_head_gc(context, metadata);
@@ -7690,9 +7680,6 @@ void sweep(uint64_t* context) {
   uint64_t* node;
   uint64_t* prev_node;
   uint64_t* next_node;
-
-  if (get_used_list_head_gc(context) == (uint64_t*) 0)
-    return;
 
   prev_node = (uint64_t*) 0;
   node = get_used_list_head_gc(context);
