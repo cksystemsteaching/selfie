@@ -7490,6 +7490,11 @@ uint64_t* get_metadata_of_memory(uint64_t* context, uint64_t address) {
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
+    // small optimisation: if address points to metadata, it is not a valid gc object. thus we cannot fetch its metadata
+    if (address >= (uint64_t) node)
+      if (address < ((uint64_t) node + GC_METADATA_SIZE))
+        return (uint64_t*) 0;
+
     metadata_memory = (uint64_t) get_metadata_memory(node);
 
     if (address >= metadata_memory)
