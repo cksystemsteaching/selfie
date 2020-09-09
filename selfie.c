@@ -1161,8 +1161,6 @@ void implement_gc_brk(uint64_t* context);
 
 uint64_t is_gc_library(uint64_t* context);
 
-uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context);
-
 // metadata entry:
 // +----+---------+
 // |  0 | next    | pointer to next entry
@@ -1205,6 +1203,8 @@ void gc_init(uint64_t* context);
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* free_list_extract(uint64_t* context, uint64_t size);
 
+void zero_object(uint64_t* metadata, uint64_t* context);
+
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
@@ -1224,7 +1224,6 @@ void mark_object(uint64_t* context, uint64_t* metadata);
 // TODO: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
-void zero_object(uint64_t* metadata, uint64_t* context);
 void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context);
 void sweep(uint64_t* context);
 
@@ -7238,15 +7237,11 @@ uint64_t is_gc_library(uint64_t* context) {
     return 0;
 }
 
-uint64_t* allocate_non_library_gcd_memory(uint64_t size, uint64_t* context) {
-  if (is_gc_library(context))
-    return allocate_gcd_memory(size, context);
-  else
-    return smalloc(size);
-}
-
 uint64_t* allocate_metadata(uint64_t* context) {
-  return allocate_non_library_gcd_memory(GC_METADATA_SIZE, context);
+  if (is_gc_library(context))
+    return allocate_gcd_memory(GC_METADATA_SIZE, context);
+  else
+    return smalloc(GC_METADATA_SIZE);
 }
 
 uint64_t* get_used_list_head_gc(uint64_t* context) {
@@ -7357,18 +7352,18 @@ void gc_init(uint64_t* context) {
 }
 
 uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
-  uint64_t* node;
   uint64_t* prev_node;
+  uint64_t* node;
 
   prev_node = (uint64_t*) 0;
+
   node = get_free_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
     if (get_metadata_size(node) == size) {
-      if (node == get_free_list_head_gc(context))
+      if (prev_node == (uint64_t*) 0)
         set_free_list_head_gc(context, get_metadata_next(node));
-
-      if (prev_node != (uint64_t*) 0)
+      else
         set_metadata_next(prev_node, get_metadata_next(node));
 
       set_metadata_next(node, get_used_list_head_gc(context));
@@ -7379,10 +7374,28 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
     }
 
     prev_node = node;
+
     node = get_metadata_next(node);
   }
 
   return (uint64_t*) 0;
+}
+
+void zero_object(uint64_t* metadata, uint64_t* context) {
+  uint64_t object_start;
+  uint64_t object_size;
+  uint64_t object_end;
+
+  // zero object memory
+  object_start = (uint64_t) get_metadata_memory(metadata);
+  object_size  = get_metadata_size(metadata);
+  object_end   = object_start + object_size;
+
+  while (object_start < object_end) {
+    gc_store_memory(object_start, 0, context);
+
+    object_start = object_start + SIZEOFUINT64;
+  }
 }
 
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
@@ -7647,23 +7660,6 @@ void mark(uint64_t* context) {
       mark_object(context, node);
 
     node = get_metadata_next(node);
-  }
-}
-
-void zero_object(uint64_t* metadata, uint64_t* context) {
-  uint64_t object_start;
-  uint64_t object_size;
-  uint64_t object_end;
-
-  // zero object memory
-  object_start = (uint64_t) get_metadata_memory(metadata);
-  object_size  = get_metadata_size(metadata);
-  object_end   = object_start + object_size;
-
-  while (object_start < object_end) {
-    gc_store_memory(object_start, 0, context);
-
-    object_start = object_start + SIZEOFUINT64;
   }
 }
 
