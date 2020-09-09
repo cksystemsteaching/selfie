@@ -353,8 +353,8 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
   return read;
 }
 
-// kfree_page_table is intentionally not a recursive function
-void kfree_page_table(struct pt_entry* root) {
+// kfree_page_table_and_pages is intentionally not a recursive function
+void kfree_page_table_and_pages(struct pt_entry* root) {
   assert(root != kernel_pt);
   assert(root != NULL);
 

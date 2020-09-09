@@ -138,7 +138,7 @@ void kfree_context(uint64_t context_id) {
   context_manager->is_used = false;
   --num_of_used_contexts;
 
-  kfree_page_table(context_manager->context.pt);
+  kfree_page_table_and_pages(context_manager->context.pt);
   context_manager->context.pt = NULL;
 
 #ifdef DEBUG
