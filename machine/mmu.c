@@ -108,22 +108,20 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
   struct pt_entry* leaf_pt;
 
   if (!table[vpn_2].v) {
-    uint64_t ppn = kpalloc();
+    uint64_t ppn = kzalloc();
     if (ppn == 0)
       return false;
 
     mid_pt = create_pt_entry(table, vpn_2, ppn, 1, 0);
-    kzero_page(ppn);
   } else
     mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt[vpn_1].v) {
-    uint64_t ppn = kpalloc();
+    uint64_t ppn = kzalloc();
     if (ppn == 0)
       return false;
 
     leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
-    kzero_page(ppn);
   } else
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
