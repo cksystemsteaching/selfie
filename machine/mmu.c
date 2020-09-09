@@ -7,9 +7,9 @@
 #include "numeric-utils.h"
 
 // Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
-// invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
+// invalid if 2^38 <= vaddr <= 2^64 - 2^38 - 1 = UINT64_MAX - 2^38.
 #define SV39_MIN_INVALID_VADDR (1ULL << 38)
-#define SV39_MAX_INVALID_VADDR (UINT64_MAX - (1ULL << 39))
+#define SV39_MAX_INVALID_VADDR (UINT64_MAX - (1ULL << 38))
 
 #define LOWEST_39_BITS 0x7FFFFFFFFFULL
 
