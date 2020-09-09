@@ -68,6 +68,7 @@ extern struct context kernel_context;
 
 struct context* kallocate_context(); // returns NULL if there are no free slots left atm
 void kinit_context(struct context* context);
+// assert: references to the context with this ID will not be used in the future
 void kfree_context(uint64_t context_id);
 
 void kupload_argv(struct context* context, uint64_t argc, const char** argv);
