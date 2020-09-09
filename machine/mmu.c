@@ -208,7 +208,7 @@ void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessi
 void kdump_pt(struct pt_entry* table) {
   printf("Page Table:\n");
 
-  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+  for (uint64_t vpn_2 = 0; vpn_2 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_2++) {
     if (!table[vpn_2].v)
       continue;
 
@@ -220,7 +220,7 @@ void kdump_pt(struct pt_entry* table) {
     if (mid_pt == NULL)
       printf("  <invalid>\n");
     else {
-      for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+      for (uint64_t vpn_1 = 0; vpn_1 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_1++) {
         if (!mid_pt[vpn_1].v)
           continue;
 
@@ -232,7 +232,7 @@ void kdump_pt(struct pt_entry* table) {
         if (leaf_pt == NULL)
           printf("    <invalid>\n");
         else {
-          for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+          for (uint64_t vpn_0 = 0; vpn_0 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_0++) {
             if (!leaf_pt[vpn_0].v)
               continue;
 
@@ -359,19 +359,19 @@ void kfree_page_table(struct pt_entry* root) {
   assert(root != NULL);
 
   // Free attached pages and tree nodes
-  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+  for (uint64_t vpn_2 = 0; vpn_2 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_2++) {
     if (!root[vpn_2].v)
       continue;
 
     struct pt_entry* mid_pt = retrieve_pt_entry_from_table(root, vpn_2);
 
-    for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+    for (uint64_t vpn_1 = 0; vpn_1 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_1++) {
       if (!mid_pt[vpn_1].v)
         continue;
 
       struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
-      for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+      for (uint64_t vpn_0 = 0; vpn_0 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_0++) {
         if (!leaf_pt[vpn_0].v)
           continue;
 
@@ -389,4 +389,4 @@ void kfree_page_table(struct pt_entry* root) {
 }
 
 __attribute__((aligned(4096)))
-struct pt_entry kernel_pt[512];
+struct pt_entry kernel_pt[NUM_PT_ENTRIES_PER_PAGE_TABLE];

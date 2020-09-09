@@ -6,6 +6,7 @@
 #include "context.h"
 
 #define PAGESIZE 4096
+#define NUM_PT_ENTRIES_PER_PAGE_TABLE 512
 
 #define SATP_MODE_SV39 (8ULL << 60)
 #define SATP_MODE_SV48 (9ULL << 60)
@@ -28,7 +29,7 @@ struct __attribute__((packed)) pt_entry {
   uint64_t reserved :10; // reserved for future use
 };
 
-extern struct pt_entry kernel_pt[512];
+extern struct pt_entry kernel_pt[NUM_PT_ENTRIES_PER_PAGE_TABLE];
 
 extern void* initial_stack_start();
 
