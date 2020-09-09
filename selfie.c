@@ -7582,21 +7582,17 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 
 void mark_object(uint64_t* context, uint64_t* metadata) {
   uint64_t object_start;
-  uint64_t object_size;
   uint64_t object_end;
   uint64_t is_valid_address;
   uint64_t current_word;
-  uint64_t* metadata_of_address;
-
-  // avoid infinite loops (when recursively checking self-referencing objects), by marking them beforehand
-  // assert: object of metadata is fully traversed before returning
 
   if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
     set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
+  else
+    return;
 
   object_start = (uint64_t) get_metadata_memory(metadata);
-  object_size  = get_metadata_size(metadata);
-  object_end   = object_start + object_size;
+  object_end   = object_start + get_metadata_size(metadata);
 
   while (object_start < object_end) {
     is_valid_address = 1;
@@ -7607,18 +7603,11 @@ void mark_object(uint64_t* context, uint64_t* metadata) {
         if (is_virtual_address_mapped(get_pt(context), object_start) == 0)
           is_valid_address = 0;
 
-    if (is_valid_address)
+    if (is_valid_address) {
       current_word = gc_load_memory(object_start, context);
-    else
-      current_word = 0;
 
-    if (is_valid_gc_pointer(context, current_word)) {
-      // assert: current_word is a pointer to a valid gc object
-
-      metadata_of_address = get_metadata_of_memory(context, current_word);
-
-      if (get_metadata_markbit(metadata_of_address) == GC_MARKBIT_UNREACHABLE)
-        mark_object(context, metadata_of_address);
+      if (is_valid_gc_pointer(context, current_word))
+        mark_object(context, get_metadata_of_memory(context, current_word));
     }
 
     object_start = object_start + SIZEOFUINT64;
