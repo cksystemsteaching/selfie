@@ -1230,7 +1230,8 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 // TODO: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
-void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context);
+void zero_object(uint64_t* metadata, uint64_t* context);
+void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context);
 void sweep(uint64_t* context);
 
 void gc_collect(uint64_t* context);
@@ -7670,7 +7671,7 @@ void mark(uint64_t* context) {
   mark_segment(context, ds_start, ds_end, heap_start, heap_end);
 }
 
-void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
+void zero_object(uint64_t* metadata, uint64_t* context) {
   uint64_t object_start;
   uint64_t object_size;
   uint64_t object_end;
@@ -7685,7 +7686,9 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t*
 
     object_start = object_start + SIZEOFUINT64;
   }
+}
 
+void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
   if (prev_metadata != (uint64_t*) 0)
     set_metadata_next(prev_metadata, get_metadata_next(metadata));
 
@@ -7697,8 +7700,9 @@ void zero_and_free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t*
     set_free_list_head_gc(context, metadata);
   }
 
-  gc_collected_total = gc_collected_total + object_size;
+  gc_collected_total = gc_collected_total + get_metadata_size(metadata);
 }
+
 
 void sweep(uint64_t* context) {
   uint64_t* node;
@@ -7719,9 +7723,13 @@ void sweep(uint64_t* context) {
       if (node == get_used_list_head_gc(context))
         set_used_list_head_gc(context, get_metadata_next(node));
 
-      zero_and_free_object(node, prev_node, context);
+      zero_object(node, context);
+      free_object(node, prev_node, context);
     } else
       prev_node = node;
+
+    // clear mark bit for next mark
+    //set_metadata_markbit(node, 0);
 
     node = next_node;
   }
