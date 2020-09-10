@@ -1208,16 +1208,15 @@ void zero_object(uint64_t* metadata, uint64_t* context);
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
-// this function performs an O(n) list search where n is memory size
-// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* get_metadata_of_memory(uint64_t* context, uint64_t address);
-uint64_t  is_valid_gc_pointer(uint64_t* context, uint64_t address);
-
 uint64_t gc_load_memory(uint64_t address, uint64_t* context);
 void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 
+// this function performs an O(n) list search where n is memory size
+// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address);
+
+void mark_object(uint64_t* context, uint64_t address);
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
-void mark_object(uint64_t* context, uint64_t* metadata);
 
 // this function scans the heap from two roots (data segment and stack) in O(n^2)
 // where n is memory size; checking if a value is a pointer takes O(n), see above
@@ -7382,13 +7381,11 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
 
 void zero_object(uint64_t* metadata, uint64_t* context) {
   uint64_t object_start;
-  uint64_t object_size;
   uint64_t object_end;
 
   // zero object memory
   object_start = (uint64_t) get_metadata_memory(metadata);
-  object_size  = get_metadata_size(metadata);
-  object_end   = object_start + object_size;
+  object_end   = object_start + get_metadata_size(metadata);
 
   while (object_start < object_end) {
     gc_store_memory(object_start, 0, context);
@@ -7495,64 +7492,15 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   return object;
 }
 
-uint64_t* get_metadata_of_memory(uint64_t* context, uint64_t address) {
-  uint64_t* node;
-  uint64_t  metadata_memory;
-
-  node = get_used_list_head_gc(context);
-
-  while (node != (uint64_t*) 0) {
-    // small optimisation: if address points to metadata, it is not a valid gc object. thus we cannot fetch its metadata
-    if (address >= (uint64_t) node)
-      if (address < ((uint64_t) node + GC_METADATA_SIZE))
-        return (uint64_t*) 0;
-
-    metadata_memory = (uint64_t) get_metadata_memory(node);
-
-    if (address >= metadata_memory)
-      if (address < metadata_memory + get_metadata_size(node))
-        return node;
-
-    node = get_metadata_next(node);
-  }
-
-  return (uint64_t*) 0;
-}
-
-uint64_t is_valid_gc_pointer(uint64_t* context, uint64_t address) {
-  uint64_t heap_start;
-  uint64_t heap_end;
-  uint64_t* pointer_of_address;
-
-  if (is_valid_virtual_address(address) == 0)
-    return 0;
-
-  heap_start = get_heap_start_gc(context);
-  heap_end   = get_heap_end_gc(context);
-
-  // pointer below gc'd heap
-  if (address < heap_start)
-    return 0;
-
-  // pointer above gc'd heap
-  if (address >= heap_end)
-    return 0;
-
-  pointer_of_address = get_metadata_of_memory(context, address);
-
-  if (pointer_of_address == (uint64_t*) 0)
-    return 0;
-
-  return 1;
-}
-
 uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
     // assert: is_valid_virtual_address(address) == 1
-    // assert: is_virtual_address_mapped(address) == 1
-    return load_virtual_memory(get_pt(context), address);
+    if (is_virtual_address_mapped(get_pt(context), address))
+      return load_virtual_memory(get_pt(context), address);
+    else
+      return 0;
 }
 
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
@@ -7564,50 +7512,78 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
       store_virtual_memory(get_pt(context), address, value);
 }
 
-void mark_object(uint64_t* context, uint64_t* metadata) {
+uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) {
+  uint64_t* node;
+  uint64_t  object;
+
+  // get word at address and check if it may be a pointer
+  address = gc_load_memory(address, context);
+
+  if (is_valid_virtual_address(address) == 0)
+    return (uint64_t*) 0;
+
+  // pointer below gced heap
+  if (address < get_heap_start_gc(context))
+    return (uint64_t*) 0;
+
+  // pointer above gced heap
+  if (address >= get_heap_end_gc(context))
+    return (uint64_t*) 0;
+
+  node = get_used_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    if (address >= (uint64_t) node)
+      if (address < ((uint64_t) node + GC_METADATA_SIZE))
+        // address points to metadata
+        return (uint64_t*) 0;
+
+    object = (uint64_t) get_metadata_memory(node);
+
+    if (address >= object)
+      if (address < object + get_metadata_size(node))
+        // address points into a gced object
+        return node;
+
+    node = get_metadata_next(node);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void mark_object(uint64_t* context, uint64_t address) {
+  uint64_t* metadata;
   uint64_t object_start;
   uint64_t object_end;
-  uint64_t is_valid_address;
-  uint64_t current_word;
 
-  if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
+  metadata = find_metadata_of_word_at_address(context, address);
+
+  if (metadata == (uint64_t*) 0)
+    // address is not a pointer to a gced object
+    return;
+  else if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
     set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
   else
+    // object has already been marked as reachable
     return;
 
   object_start = (uint64_t) get_metadata_memory(metadata);
   object_end   = object_start + get_metadata_size(metadata);
 
   while (object_start < object_end) {
-    is_valid_address = 1;
-
-    // do not scan unmapped memory (gc syscall)
-    if (is_gc_library(context) == 0)
-      if (is_valid_heap_address(context, object_start))
-        if (is_virtual_address_mapped(get_pt(context), object_start) == 0)
-          is_valid_address = 0;
-
-    if (is_valid_address) {
-      current_word = gc_load_memory(object_start, context);
-
-      if (is_valid_gc_pointer(context, current_word))
-        mark_object(context, get_metadata_of_memory(context, current_word));
-    }
+    mark_object(context, object_start);
 
     object_start = object_start + SIZEOFUINT64;
   }
 }
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  uint64_t current_word;
-
-  // assert: processed segment is not heap
+  // assert: segment is not heap
 
   while (segment_start < segment_end) {
-    current_word = gc_load_memory(segment_start, context);
-
-    if (is_valid_gc_pointer(context, current_word))
-      mark_object(context, get_metadata_of_memory(context, current_word));
+    // assert: is_valid_virtual_address(segment_start) == 1
+    // assert: is_virtual_address_mapped(segment_start) == 1
+    mark_object(context, segment_start);
 
     segment_start = segment_start + SIZEOFUINT64;
   }
@@ -7690,11 +7666,11 @@ void gc_collect(uint64_t* context) {
 }
 
 void print_gc_profile(char* padding) {
-  printf5("%s:%s%.2uMB requested in %u gc'd mallocs [%u reuses]\n", selfie_name, padding,
+  printf5("%s:%s%.2uMB requested in %u gced mallocs [%u reuses]\n", selfie_name, padding,
     (char*) fixed_point_ratio(gc_mallocated_total, MEGABYTE, 2),
     (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
     (char*) gc_num_malloc_reuse);
-  printf5("%s:%s%.2uMB(%.2u%%) actually allocated in %u gc'd mallocs\n", selfie_name, padding,
+  printf5("%s:%s%.2uMB(%.2u%%) actually allocated in %u gced mallocs\n", selfie_name, padding,
     (char*) fixed_point_ratio(gc_allocated_total, MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(gc_mallocated_total, gc_allocated_total, 4), 4),
     (char*) gc_num_malloc_new);
