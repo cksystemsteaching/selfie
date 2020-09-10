@@ -1245,9 +1245,8 @@ uint64_t GC_NO_REUSE = 0; // reuse memory with freelist by default
 
 uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
 
-uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating, that an object is not reachable
-uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating, that an object is reachable by root or other reachable object
-uint64_t GC_MARKBIT_ROOT        = 2; // indicating, that an object is reachable by a root (root ... global/local variable or register)
+uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
+uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -7565,21 +7564,6 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
       store_virtual_memory(get_pt(context), address, value);
 }
 
-void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  uint64_t current_word;
-
-  // assert: processed segment is not heap
-
-  while (segment_start < segment_end) {
-    current_word = gc_load_memory(segment_start, context);
-
-    if (is_valid_gc_pointer(context, current_word))
-      set_metadata_markbit(get_metadata_of_memory(context, current_word), GC_MARKBIT_ROOT);
-
-    segment_start = segment_start + SIZEOFUINT64;
-  }
-}
-
 void mark_object(uint64_t* context, uint64_t* metadata) {
   uint64_t object_start;
   uint64_t object_end;
@@ -7614,20 +7598,33 @@ void mark_object(uint64_t* context, uint64_t* metadata) {
   }
 }
 
+void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
+  uint64_t current_word;
+
+  // assert: processed segment is not heap
+
+  while (segment_start < segment_end) {
+    current_word = gc_load_memory(segment_start, context);
+
+    if (is_valid_gc_pointer(context, current_word))
+      mark_object(context, get_metadata_of_memory(context, current_word));
+
+    segment_start = segment_start + SIZEOFUINT64;
+  }
+}
+
 void mark(uint64_t* context) {
   uint64_t stack_start;
   uint64_t stack_end;
   uint64_t ds_start;
   uint64_t ds_end;
-  uint64_t* node;
 
   stack_start = get_stack_start(context);
   stack_end   = VIRTUALMEMORYSIZE; // constant for now
   ds_start    = get_ds_start(context);
   ds_end      = get_ds_end(context);
-  node        = get_used_list_head_gc(context);
 
-  if (node == (uint64_t*) 0)
+  if (get_used_list_head_gc(context) == (uint64_t*) 0)
     return; // if there is no used memory skip collection
 
   // not traversing registers
@@ -7642,14 +7639,6 @@ void mark(uint64_t* context) {
 
   // traverse data segment
   mark_segment(context, ds_start, ds_end);
-
-  // recursively traverse root objects
-  while (node != (uint64_t*) 0) {
-    if (get_metadata_markbit(node) == GC_MARKBIT_ROOT)
-      mark_object(context, node);
-
-    node = get_metadata_next(node);
-  }
 }
 
 void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
