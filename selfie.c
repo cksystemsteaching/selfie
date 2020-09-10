@@ -7401,11 +7401,14 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
   if (is_gc_library(context)) {
     object = (uint64_t) smalloc_system(size);
 
-    if (object == gc_heap_end) {
-      // assert: smalloc_system is a bump pointer allocator
-      gc_heap_end = gc_heap_end + size;
+    // assert: smalloc_system is a bump pointer allocator that may reuse memory
 
-      gc_allocated_total = gc_allocated_total + size;
+    if (object >= gc_heap_start) {
+      if (object == gc_heap_end) {
+        gc_heap_end = gc_heap_end + size;
+
+        gc_allocated_total = gc_allocated_total + size;
+      }
 
       return (uint64_t*) object;
     }
