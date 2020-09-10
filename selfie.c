@@ -7670,12 +7670,16 @@ void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context)
 void sweep(uint64_t* context) {
   uint64_t* prev_node;
   uint64_t* node;
+  uint64_t* next_node;
 
   prev_node = (uint64_t*) 0;
 
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
+    // next node changes when object is reused
+    next_node = get_metadata_next(node);
+
     if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
       free_object(node, prev_node, context);
     else {
@@ -7685,7 +7689,7 @@ void sweep(uint64_t* context) {
       prev_node = node;
     }
 
-    node = get_metadata_next(node);
+    node = next_node;
   }
 }
 
