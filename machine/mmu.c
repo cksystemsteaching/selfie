@@ -66,10 +66,10 @@ uint64_t kpalloc() {
 }
 
 uint64_t kzalloc() {
-    uint64_t ppn = kpalloc();
-    if (ppn != 0)
-      kzero_page(ppn);
-    return ppn;
+  uint64_t ppn = kpalloc();
+  if (ppn != 0)
+    kzero_page(ppn);
+  return ppn;
 }
 
 void kpfree(uint64_t ppn) {
