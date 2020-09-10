@@ -1203,13 +1203,13 @@ void gc_init(uint64_t* context);
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* free_list_extract(uint64_t* context, uint64_t size);
 
+uint64_t gc_load_memory(uint64_t address, uint64_t* context);
+void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
+
 void zero_object(uint64_t* metadata, uint64_t* context);
 
 uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
-
-uint64_t gc_load_memory(uint64_t address, uint64_t* context);
-void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 
 // this function performs an O(n) list search where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
@@ -7379,6 +7379,26 @@ uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
   return (uint64_t*) 0;
 }
 
+uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
+  if (is_gc_library(context))
+    return *((uint64_t*) address);
+  else
+    // assert: is_valid_virtual_address(address) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      return load_virtual_memory(get_pt(context), address);
+    else
+      return 0;
+}
+
+void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
+  if (is_gc_library(context))
+    *((uint64_t*) address) = value;
+  else
+    // assert: is_valid_virtual_address(address) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      store_virtual_memory(get_pt(context), address, value);
+}
+
 void zero_object(uint64_t* metadata, uint64_t* context) {
   uint64_t object_start;
   uint64_t object_end;
@@ -7493,26 +7513,6 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     gc_mallocated_total = gc_mallocated_total - size;
 
   return object;
-}
-
-uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
-  if (is_gc_library(context))
-    return *((uint64_t*) address);
-  else
-    // assert: is_valid_virtual_address(address) == 1
-    if (is_virtual_address_mapped(get_pt(context), address))
-      return load_virtual_memory(get_pt(context), address);
-    else
-      return 0;
-}
-
-void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
-  if (is_gc_library(context))
-    *((uint64_t*) address) = value;
-  else
-    // assert: is_valid_virtual_address(address) == 1
-    if (is_virtual_address_mapped(get_pt(context), address))
-      store_virtual_memory(get_pt(context), address, value);
 }
 
 uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) {
