@@ -112,7 +112,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
     if (ppn == 0)
       return false;
 
-    mid_pt = create_pt_entry(table, vpn_2, ppn, 1, 0);
+    mid_pt = create_pt_entry(table, vpn_2, ppn, true, false);
   } else
     mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
@@ -121,11 +121,11 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
     if (ppn == 0)
       return false;
 
-    leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
+    leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, true, false);
   } else
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
-  create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
+  create_pt_entry(leaf_pt, vpn_0, ppn, false, u_mode_accessible);
   return true;
 }
 
