@@ -1160,10 +1160,10 @@ uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 1
 uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 2); }
 uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 3); }
 
-void set_metadata_next(uint64_t* entry, uint64_t* next)       { *entry       = (uint64_t) next; }
-void set_metadata_memory(uint64_t* entry, uint64_t* memory)   { *(entry + 1) = (uint64_t) memory; }
-void set_metadata_size(uint64_t* entry, uint64_t size)        { *(entry + 2) = size; }
-void set_metadata_markbit(uint64_t* entry, uint64_t markbit)  { *(entry + 3) = markbit; }
+void set_metadata_next(uint64_t* entry, uint64_t* next)      { *entry       = (uint64_t) next; }
+void set_metadata_memory(uint64_t* entry, uint64_t* memory)  { *(entry + 1) = (uint64_t) memory; }
+void set_metadata_size(uint64_t* entry, uint64_t size)       { *(entry + 2) = size; }
+void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = markbit; }
 
 // get functions for properties with different access in library/syscall
 uint64_t* get_used_list_head_gc(uint64_t* context);
@@ -1187,14 +1187,14 @@ void gc_init(uint64_t* context);
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
-uint64_t gc_load_memory(uint64_t address, uint64_t* context);
-void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
+uint64_t gc_load_memory(uint64_t* context, uint64_t address);
+void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
 
-void zero_object(uint64_t* metadata, uint64_t* context);
+void zero_object(uint64_t* context, uint64_t* metadata);
 
-uint64_t* allocate_memory(uint64_t size, uint64_t* context);
-uint64_t* reuse_memory(uint64_t size, uint64_t* context);
-uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
+uint64_t* allocate_memory(uint64_t* context, uint64_t size);
+uint64_t* reuse_memory(uint64_t* context, uint64_t size);
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
 
 // this function performs an O(n) list search where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
@@ -1208,7 +1208,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 // TODO: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
-void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context);
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
 void sweep(uint64_t* context);
 
 void gc_collect(uint64_t* context);
@@ -1218,7 +1218,7 @@ void print_gc_profile(uint64_t* context);
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
-    return gc_malloc_implementation(size, (uint64_t*) 0);
+    return gc_malloc_implementation((uint64_t*) 0, size);
 }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -7194,7 +7194,7 @@ void implement_gc_brk(uint64_t* context) {
     }
 
     // yields the pointer to the newly/reused memory (or 0 if failed)
-    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(size, context);
+    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
 
     if (debug_syscalls) {
       print(" -> ");
@@ -7227,7 +7227,7 @@ uint64_t is_gc_library(uint64_t* context) {
 
 uint64_t* allocate_metadata(uint64_t* context) {
   if (is_gc_library(context))
-    return allocate_memory(GC_METADATA_SIZE, context);
+    return allocate_memory(context, GC_METADATA_SIZE);
   else
     return smalloc(GC_METADATA_SIZE);
 }
@@ -7362,7 +7362,7 @@ uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size) {
   return (uint64_t*) 0;
 }
 
-uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
+uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
@@ -7373,7 +7373,7 @@ uint64_t gc_load_memory(uint64_t address, uint64_t* context) {
       return 0;
 }
 
-void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
+void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
   if (is_gc_library(context))
     *((uint64_t*) address) = value;
   else
@@ -7382,7 +7382,7 @@ void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
       store_virtual_memory(get_pt(context), address, value);
 }
 
-void zero_object(uint64_t* metadata, uint64_t* context) {
+void zero_object(uint64_t* context, uint64_t* metadata) {
   uint64_t object_start;
   uint64_t object_end;
 
@@ -7391,13 +7391,13 @@ void zero_object(uint64_t* metadata, uint64_t* context) {
   object_end   = object_start + get_metadata_size(metadata);
 
   while (object_start < object_end) {
-    gc_store_memory(object_start, 0, context);
+    gc_store_memory(context, object_start, 0);
 
     object_start = object_start + SIZEOFUINT64;
   }
 }
 
-uint64_t* allocate_memory(uint64_t size, uint64_t* context) {
+uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
   uint64_t object;
   uint64_t new_program_break;
 
@@ -7429,7 +7429,7 @@ uint64_t* allocate_memory(uint64_t size, uint64_t* context) {
   return (uint64_t*) 0;
 }
 
-uint64_t* reuse_memory(uint64_t size, uint64_t* context) {
+uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
   uint64_t* metadata;
 
   // check if reusable memory is available in free list
@@ -7437,7 +7437,7 @@ uint64_t* reuse_memory(uint64_t size, uint64_t* context) {
 
   if (metadata != (uint64_t*) 0) {
     // zeroing reused memory is optional!
-    zero_object(metadata, context);
+    zero_object(context, metadata);
 
     return get_metadata_memory(metadata);
   }
@@ -7445,7 +7445,7 @@ uint64_t* reuse_memory(uint64_t size, uint64_t* context) {
   return (uint64_t*) 0;
 }
 
-uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   uint64_t* object;
   uint64_t* metadata;
 
@@ -7470,7 +7470,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   gc_mem_mallocated = gc_mem_mallocated + size;
 
   // try reusing memory first
-  object = reuse_memory(size, context);
+  object = reuse_memory(context, size);
 
   if (object != (uint64_t*) 0) {
     gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
@@ -7480,7 +7480,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   }
 
   // allocate new object memory if there is no reusable memory
-  object = allocate_memory(size, context);
+  object = allocate_memory(context, size);
 
   if (object != (uint64_t*) 0) {
     // allocate metadata for managing object
@@ -7513,7 +7513,7 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
   uint64_t  object;
 
   // get word at address and check if it may be a pointer
-  address = gc_load_memory(address, context);
+  address = gc_load_memory(context, address);
 
   if (is_valid_virtual_address(address) == 0)
     return (uint64_t*) 0;
@@ -7613,7 +7613,7 @@ void mark(uint64_t* context) {
   mark_segment(context, ds_start, ds_end);
 }
 
-void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context) {
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
   if (prev_metadata == (uint64_t*) 0)
     set_used_list_head_gc(context, get_metadata_next(metadata));
   else
@@ -7642,7 +7642,7 @@ void sweep(uint64_t* context) {
     next_node = get_metadata_next(node);
 
     if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
-      free_object(node, prev_node, context);
+      free_object(context, node, prev_node);
     else {
       // clear mark bit for next marking
       set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
