@@ -1182,10 +1182,10 @@ void set_gc_enabled_gc(uint64_t* context);
 
 void gc_init(uint64_t* context);
 
-// this function performs first-fit reuse of free memory in O(n) where n is memory size
+// this function performs first-fit retrieval of free memory in O(n) where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
 // see https://github.com/cksystemsgroup/compact-fit
-uint64_t* free_list_extract(uint64_t* context, uint64_t size);
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
 uint64_t gc_load_memory(uint64_t address, uint64_t* context);
 void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
@@ -1193,6 +1193,7 @@ void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 void zero_object(uint64_t* metadata, uint64_t* context);
 
 uint64_t* allocate_memory(uint64_t size, uint64_t* context);
+uint64_t* reuse_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
 // this function performs an O(n) list search where n is memory size
@@ -1222,7 +1223,7 @@ uint64_t* gc_malloc(uint64_t size) {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t GC_SKIPS_TILL_COLLECT = 1000; // gc every so often
+uint64_t GC_PERIOD = 1000; // gc every so often
 
 uint64_t GC_REUSE = 1; // reuse memory with freelist by default
 
@@ -1233,13 +1234,13 @@ uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable b
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* gc_used_list = (uint64_t*) 0; // pointer to pointer to used-list head
-uint64_t* gc_free_list = (uint64_t*) 0; // pointer to pointer to free-list head
+uint64_t* gc_used_list = (uint64_t*) 0; // pointer to used-list head
+uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
 
 uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end   = 0;
 
-uint64_t gc_skips_since_last_collect = 0; // TODO: add to context
+uint64_t gc_collects_since_last = 0; // TODO: add to context
 
 uint64_t gc_num_mallocated     = 0;
 uint64_t gc_num_gced_mallocs   = 0;
@@ -1255,7 +1256,7 @@ uint64_t gc_mem_collected      = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_garbage_collector_counters() {
-  gc_skips_since_last_collect = 0;
+  gc_collects_since_last = 0;
 
   gc_num_mallocated     = 0;
   gc_num_gced_mallocs   = 0;
@@ -1269,11 +1270,11 @@ void reset_garbage_collector_counters() {
   gc_mem_collected      = 0;
 }
 
-void turn_on_gc_library(uint64_t skips) {
+void turn_on_gc_library(uint64_t period) {
   if (fetch_stack_pointer() != 0) {
     gc_init((uint64_t*) 0);
 
-    GC_SKIPS_TILL_COLLECT = skips;
+    GC_PERIOD = period;
   } else
     USE_GC_LIBRARY = GC_DISABLED;
 }
@@ -7331,7 +7332,7 @@ void gc_init(uint64_t* context) {
   set_gc_enabled_gc(context);
 }
 
-uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size) {
   uint64_t* prev_node;
   uint64_t* node;
 
@@ -7428,6 +7429,22 @@ uint64_t* allocate_memory(uint64_t size, uint64_t* context) {
   return (uint64_t*) 0;
 }
 
+uint64_t* reuse_memory(uint64_t size, uint64_t* context) {
+  uint64_t* metadata;
+
+  // check if reusable memory is available in free list
+  metadata = retrieve_from_free_list(context, size);
+
+  if (metadata != (uint64_t*) 0) {
+    // zeroing reused memory is optional!
+    zero_object(metadata, context);
+
+    return get_metadata_memory(metadata);
+  }
+
+  return (uint64_t*) 0;
+}
+
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   uint64_t* object;
   uint64_t* metadata;
@@ -7440,36 +7457,33 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   metadata = (uint64_t*) 0;
 
   // garbage collect
-  if (gc_skips_since_last_collect >= GC_SKIPS_TILL_COLLECT) {
+  if (gc_collects_since_last >= GC_PERIOD) {
     gc_collect(context);
 
-    gc_skips_since_last_collect = 0;
+    gc_collects_since_last = 0;
   } else
-    gc_skips_since_last_collect = gc_skips_since_last_collect + 1;
+    gc_collects_since_last = gc_collects_since_last + 1;
 
   size = round_up(size, SIZEOFUINT64);
 
   gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
 
-  // check if reusable memory is available in free list
-  metadata = free_list_extract(context, size);
+  // try reusing memory first
+  object = reuse_memory(size, context);
 
-  if (metadata != (uint64_t*) 0) {
+  if (object != (uint64_t*) 0) {
     gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
     gc_mem_reused         = gc_mem_reused + size;
 
-    // zeroing reused memory is optional!
-    zero_object(metadata, context);
-
-    return get_metadata_memory(metadata);
+    return object;
   }
 
   // allocate new object memory if there is no reusable memory
   object = allocate_memory(size, context);
 
   if (object != (uint64_t*) 0) {
-    // allocate metadata
+    // allocate metadata for managing object
     metadata = allocate_metadata(context);
 
     if (metadata != (uint64_t*) 0) {
@@ -9741,12 +9755,12 @@ uint64_t mipster(uint64_t* to_context) {
   else if (debug)
     print(" with debugger");
   else if (get_gc_enabled_gc(to_context)) {
-    printf1(" with garbage collector (%d skips, memory reuse ", (char*) GC_SKIPS_TILL_COLLECT);
+    printf1(" (gcing every %d mallocs ", (char*) GC_PERIOD);
 
     if (GC_REUSE)
-      print("enabled)");
+      print("and reusing memory)");
     else
-      print("disabled)");
+      print("but not reusing memory)");
   }
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
