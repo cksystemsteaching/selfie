@@ -1173,11 +1173,13 @@ uint64_t  get_ds_start(uint64_t* context);
 uint64_t  get_ds_end(uint64_t* context);
 uint64_t  get_heap_start_gc(uint64_t* context);
 uint64_t  get_heap_end_gc(uint64_t* context);
+uint64_t  get_gcs_in_period_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
 
 void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
 void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
 void set_heap_start_end_gc(uint64_t* context);
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
 void set_gc_enabled_gc(uint64_t* context);
 
 void gc_init(uint64_t* context);
@@ -1240,7 +1242,7 @@ uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
 uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end   = 0;
 
-uint64_t gc_collects_since_last = 0; // TODO: add to context
+uint64_t gc_num_gcs_in_period = 0;
 
 uint64_t gc_num_mallocated     = 0;
 uint64_t gc_num_gced_mallocs   = 0;
@@ -1255,9 +1257,7 @@ uint64_t gc_mem_collected      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void reset_garbage_collector_counters() {
-  gc_collects_since_last = 0;
-
+void reset_gc_counters() {
   gc_num_mallocated     = 0;
   gc_num_gced_mallocs   = 0;
   gc_num_ungced_mallocs = 0;
@@ -1647,7 +1647,6 @@ void reset_profiler() {
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
-  reset_garbage_collector_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1690,17 +1689,18 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 16 | parent          | context that created this context
 // | 17 | virtual context | virtual context address
 // | 18 | name            | binary name loaded into context
-// | 19 | used-list head  | pointer to pointer to the head of the used list
-// | 20 | free-list head  | pointer to pointer to the head of the free list
+// | 19 | used-list head  | pointer to head of used list
+// | 20 | free-list head  | pointer to head of free list
 // | 21 | heap start      | start of gc managed heap
 // | 22 | heap end        | end of gc managed heap
-// | 23 | gc enabled      | flag indicating whether to use gc or not
+// | 23 | gcs counter     | number of gc runs in gc period
+// | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 15 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1723,11 +1723,12 @@ uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); 
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
 uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); }
 
-uint64_t used_list_head(uint64_t* context)  { return (uint64_t) (context + 19); }
-uint64_t free_list_head(uint64_t* context)  { return (uint64_t) (context + 20); }
-uint64_t heap_start(uint64_t* context)      { return (uint64_t) (context + 21); }
-uint64_t heap_end(uint64_t* context)        { return (uint64_t) (context + 22); }
-uint64_t gc_enabled(uint64_t* context)      { return (uint64_t) (context + 23); }
+uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 19); }
+uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 20); }
+uint64_t heap_start(uint64_t* context)       { return (uint64_t) (context + 21); }
+uint64_t heap_end(uint64_t* context)         { return (uint64_t) (context + 22); }
+uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 23); }
+uint64_t gc_enabled(uint64_t* context)       { return (uint64_t) (context + 24); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1749,11 +1750,12 @@ uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context 
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
 char*     get_name(uint64_t* context)            { return (char*)     *(context + 18); }
 
-uint64_t* get_used_list_head(uint64_t* context)  { return (uint64_t*) *(context + 19); }
-uint64_t* get_free_list_head(uint64_t* context)  { return (uint64_t*) *(context + 20); }
-uint64_t  get_heap_start(uint64_t* context)      { return             *(context + 21); }
-uint64_t  get_heap_end(uint64_t* context)        { return             *(context + 22); }
-uint64_t  get_gc_enabled(uint64_t* context)      { return             *(context + 23); }
+uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 19); }
+uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 20); }
+uint64_t  get_heap_start(uint64_t* context)       { return             *(context + 21); }
+uint64_t  get_heap_end(uint64_t* context)         { return             *(context + 22); }
+uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 23); }
+uint64_t  get_gc_enabled(uint64_t* context)       { return             *(context + 24); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1779,7 +1781,8 @@ void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context
 void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t) free_list_head; }
 void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context + 21) = heap_start; }
 void set_heap_end(uint64_t* context, uint64_t heap_end)              { *(context + 22) = heap_end; }
-void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 23) = gc_enabled; }
+void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 23) = gcs; }
+void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 24) = gc_enabled; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -7281,6 +7284,13 @@ uint64_t get_heap_end_gc(uint64_t* context) {
     return get_heap_end(context);
 }
 
+uint64_t get_gcs_in_period_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_num_gcs_in_period;
+  else
+    return get_gcs_in_period(context);
+}
+
 uint64_t get_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
     return USE_GC_LIBRARY;
@@ -7313,6 +7323,13 @@ void set_heap_start_end_gc(uint64_t* context) {
   }
 }
 
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs) {
+  if (is_gc_library(context))
+    gc_num_gcs_in_period = gcs;
+  else
+    set_gcs_in_period(context, gcs);
+}
+
 void set_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
     USE_GC_LIBRARY = GC_ENABLED;
@@ -7322,12 +7339,14 @@ void set_gc_enabled_gc(uint64_t* context) {
 
 void gc_init(uint64_t* context) {
   reset_memory_counters();
-  reset_garbage_collector_counters();
+  reset_gc_counters();
 
   set_used_list_head_gc(context, (uint64_t*) 0);
   set_free_list_head_gc(context, (uint64_t*) 0);
 
   set_heap_start_end_gc(context);
+
+  set_gcs_in_period_gc(context, 0);
 
   set_gc_enabled_gc(context);
 }
@@ -7457,12 +7476,12 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   metadata = (uint64_t*) 0;
 
   // garbage collect
-  if (gc_collects_since_last >= GC_PERIOD) {
+  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
     gc_collect(context);
 
-    gc_collects_since_last = 0;
+    set_gcs_in_period_gc(context, 0);
   } else
-    gc_collects_since_last = gc_collects_since_last + 1;
+    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
 
   size = round_up(size, SIZEOFUINT64);
 
