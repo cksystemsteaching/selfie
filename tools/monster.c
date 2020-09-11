@@ -1964,7 +1964,7 @@ uint64_t selfie_run_symbolically() {
 
       printf2("%s: monster terminating %s\n", selfie_name, get_name(current_context));
 
-      print_profile();
+      print_profile(current_context);
 
       printf3("%s: %u characters of SMT-LIB formulae written into %s\n", selfie_name,
         (char*) number_of_written_characters,
