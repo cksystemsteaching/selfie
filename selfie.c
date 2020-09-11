@@ -263,11 +263,9 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 // garbage collector
 
 uint64_t GC_DISABLED = 0;
-uint64_t GC_LIBRARY  = 1;
+uint64_t GC_ENABLED  = 1;
 
 uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
-
-uint64_t GC_LIBRARY_PROGRAM_BREAK = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -282,20 +280,9 @@ uint64_t output_cursor = 0; // cursor for output buffer
 // ------------------------- INITIALIZATION ------------------------
 
 void init_library() {
-  uint64_t gc;
   uint64_t i;
 
   SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
-
-  gc = USE_GC_LIBRARY;
-
-  if (USE_GC_LIBRARY) {
-    // temporarily disable garbage collector during initialization
-    USE_GC_LIBRARY = GC_DISABLED;
-
-    // save original program break (used by garbage collector library)
-    GC_LIBRARY_PROGRAM_BREAK = (uint64_t) smalloc(SIZEOFUINT64);
-  }
 
   // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
   power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFUINT64);
@@ -331,9 +318,6 @@ void init_library() {
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
   *binary_buffer = 0;
-
-  // turn garbage collector back on if it was on before initialization
-  USE_GC_LIBRARY = gc;
 }
 
 void reset_library() {
@@ -1193,8 +1177,8 @@ uint64_t  get_gc_enabled_gc(uint64_t* context);
 
 void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
 void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
-void set_heap_start_and_end_gc(uint64_t* context, uint64_t heap_start_and_end);
-void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
+void set_heap_start_end_gc(uint64_t* context);
+void set_gc_enabled_gc(uint64_t* context);
 
 void gc_init(uint64_t* context);
 
@@ -1255,9 +1239,7 @@ uint64_t* gc_free_list = (uint64_t*) 0; // pointer to pointer to free-list head
 uint64_t gc_heap_start = 0;
 uint64_t gc_heap_end   = 0;
 
-uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialized yet
-
-uint64_t gc_skips_since_last_collect = 0;
+uint64_t gc_skips_since_last_collect = 0; // TODO: add to context
 
 uint64_t gc_num_malloc_new   = 0;
 uint64_t gc_num_malloc_reuse = 0;
@@ -1269,6 +1251,8 @@ uint64_t gc_collected_total  = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_garbage_collector_counters() {
+  gc_skips_since_last_collect = 0;
+
   gc_num_malloc_new   = 0;
   gc_num_malloc_reuse = 0;
   gc_num_collects     = 0;
@@ -1279,11 +1263,10 @@ void reset_garbage_collector_counters() {
 
 void turn_on_gc_library(uint64_t skips) {
   if (fetch_stack_pointer() != 0) {
-    GC_SKIPS_TILL_COLLECT = skips;
+    gc_init((uint64_t*) 0);
 
-    USE_GC_LIBRARY = GC_LIBRARY;
-  }
-  else
+    GC_SKIPS_TILL_COLLECT = skips;
+  } else
     USE_GC_LIBRARY = GC_DISABLED;
 }
 
@@ -1433,7 +1416,7 @@ void print_per_register_profile(uint64_t reg);
 
 void print_register_memory_profile();
 
-void print_profile();
+void print_profile(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1484,8 +1467,6 @@ uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 uint64_t symbolic = 0; // flag for symbolically executing code
 uint64_t model    = 0; // flag for modeling code
-
-uint64_t gc = 0; // flag indicating whether to use garbage-collected malloc or not
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -7265,14 +7246,14 @@ uint64_t get_stack_start(uint64_t* context) {
 
 uint64_t get_ds_start(uint64_t* context) {
   if (is_gc_library(context))
-    return GC_LIBRARY_PROGRAM_BREAK - fetch_data_segment_size();
+    return gc_heap_start - fetch_data_segment_size();
   else
     return get_code_segment(context);
 }
 
 uint64_t get_ds_end(uint64_t* context) {
   if (is_gc_library(context))
-    return GC_LIBRARY_PROGRAM_BREAK - SIZEOFUINT64;
+    return gc_heap_start - SIZEOFUINT64;
   else
     return get_data_segment(context) - SIZEOFUINT64;
 }
@@ -7293,7 +7274,7 @@ uint64_t get_heap_end_gc(uint64_t* context) {
 
 uint64_t get_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
-    return gc_library_enabled;
+    return USE_GC_LIBRARY;
   else
     return get_gc_enabled(context);
 }
@@ -7312,41 +7293,34 @@ void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
     set_free_list_head(context, free_list_head);
 }
 
-void set_heap_start_and_end_gc(uint64_t* context, uint64_t heap_start_and_end) {
+void set_heap_start_end_gc(uint64_t* context) {
   if (is_gc_library(context)) {
-    gc_heap_start = heap_start_and_end;
-    gc_heap_end = heap_start_and_end;
+    // assert: smalloc_system(0) returns program break
+    gc_heap_start = (uint64_t) smalloc_system(0);
+    gc_heap_end   = gc_heap_start;
   } else {
-    set_heap_start(context, heap_start_and_end);
-    set_heap_end(context, heap_start_and_end);
+    set_heap_start(context, get_program_break(context));
+    set_heap_end(context, get_heap_start_gc(context));
   }
 }
 
-void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
+void set_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
-    gc_library_enabled = gc_enabled;
+    USE_GC_LIBRARY = GC_ENABLED;
   else
-    set_gc_enabled(context, gc_enabled);
+    set_gc_enabled(context, GC_ENABLED);
 }
 
 void gc_init(uint64_t* context) {
-  uint64_t gcd_heap_start;
-
   reset_memory_counters();
   reset_garbage_collector_counters();
 
   set_used_list_head_gc(context, (uint64_t*) 0);
   set_free_list_head_gc(context, (uint64_t*) 0);
 
-  if (is_gc_library(context))
-    // gc library: all memory allocated before initialising the gc is not gcd and must therefore be excluded from the gc heap bounds
-    gcd_heap_start = (uint64_t) smalloc_system(8) + 8;
-  else
-    gcd_heap_start = get_program_break(context);
+  set_heap_start_end_gc(context);
 
-  set_heap_start_and_end_gc(context, gcd_heap_start);
-
-  set_gc_enabled_gc(context, 1);
+  set_gc_enabled_gc(context);
 }
 
 uint64_t* free_list_extract(uint64_t* context, uint64_t size) {
@@ -7462,10 +7436,6 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   object   = (uint64_t*) 0;
   metadata = (uint64_t*) 0;
 
-  // initialize garbage collector if it is uninitialized
-  if (get_gc_enabled_gc(context) == 0)
-    gc_init(context);
-
   // garbage collect
   if (gc_skips_since_last_collect >= GC_SKIPS_TILL_COLLECT) {
     gc_collect(context);
@@ -7501,8 +7471,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
       set_metadata_next(metadata, get_used_list_head_gc(context));
       set_used_list_head_gc(context, metadata);
 
-      set_metadata_size(metadata, size);
       set_metadata_memory(metadata, object);
+      set_metadata_size(metadata, size);
       set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
 
       gc_num_malloc_new = gc_num_malloc_new + 1;
@@ -9016,7 +8986,7 @@ void print_register_memory_profile() {
   print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
-void print_profile() {
+void print_profile(uint64_t* context) {
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
     (char*) get_total_number_of_instructions(),
@@ -9033,7 +9003,7 @@ void print_profile() {
     (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
     (char*) (total_page_frame_memory / MEGABYTE));
 
-  if (gc)
+  if (get_gc_enabled_gc(context))
     print_gc_profile("          ");
 
   if (get_total_number_of_instructions() > 0) {
@@ -9645,7 +9615,7 @@ uint64_t handle_system_call(uint64_t* context) {
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
-    if (gc)
+    if (get_gc_enabled_gc(context))
       implement_gc_brk(context);
     else
       implement_brk(context);
@@ -9744,7 +9714,7 @@ uint64_t mipster(uint64_t* to_context) {
     print(" with replay");
   else if (debug)
     print(" with debugger");
-  else if (gc) {
+  else if (get_gc_enabled_gc(to_context)) {
     printf1(" with garbage collector (%d skips, memory reuse ", (char*) GC_SKIPS_TILL_COLLECT);
 
     if (GC_NO_REUSE)
@@ -10042,7 +10012,7 @@ uint64_t selfie_run(uint64_t machine) {
 
     init_replay_engine();
   } else if (machine == GIBSTER)
-    gc = 1;
+    gc_init(current_context);
   else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
@@ -10081,9 +10051,7 @@ uint64_t selfie_run(uint64_t machine) {
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   if (machine != HYPSTER)
-    print_profile();
-
-  gc = 0;
+    print_profile(current_context);
 
   return exit_code;
 }
