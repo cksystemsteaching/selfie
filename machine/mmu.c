@@ -18,6 +18,8 @@
 #define VPN_0_BITMASK 0x1FF000
 
 struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, bool is_pt_node, bool u_mode_accessible) {
+  assert(!(is_pt_node && u_mode_accessible));
+
   struct pt_entry* entry = (table + index);
 
   entry->ppn = ppn;
