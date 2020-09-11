@@ -88,7 +88,7 @@ gib: selfie selfie.m selfie.s
 
 # Self-compile with conservative garbage collector as library
 gclib: selfie selfie.h selfie.m selfie.s
-	./selfie -gc selfie.h tools/gc.c -m 4 -c selfie.c -o selfie6.m -s selfie6.s
+	./selfie -gc selfie.h tools/gc.c -m 3 -c selfie.c -o selfie6.m -s selfie6.s
 	diff -q selfie.m selfie6.m
 	diff -q selfie.s selfie6.s
 

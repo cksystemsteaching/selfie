@@ -5,7 +5,7 @@ int main(int argc, char** argv) {
 
   exit_code = selfie_main(argc, argv);
 
-  print_gc_profile(" gc:      ");
+  print_gc_profile((uint64_t*) 0);
 
   return exit_code;
 }

@@ -1212,7 +1212,7 @@ void sweep(uint64_t* context);
 
 void gc_collect(uint64_t* context);
 
-void print_gc_profile(char* padding);
+void print_gc_profile(uint64_t* context);
 
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
@@ -1241,6 +1241,7 @@ uint64_t gc_heap_end   = 0;
 
 uint64_t gc_skips_since_last_collect = 0; // TODO: add to context
 
+uint64_t gc_num_mallocated     = 0;
 uint64_t gc_num_gced_mallocs   = 0;
 uint64_t gc_num_ungced_mallocs = 0;
 uint64_t gc_num_reused_mallocs = 0;
@@ -1256,6 +1257,7 @@ uint64_t gc_mem_collected      = 0;
 void reset_garbage_collector_counters() {
   gc_skips_since_last_collect = 0;
 
+  gc_num_mallocated     = 0;
   gc_num_gced_mallocs   = 0;
   gc_num_ungced_mallocs = 0;
   gc_num_reused_mallocs = 0;
@@ -7447,6 +7449,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   size = round_up(size, SIZEOFUINT64);
 
+  gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
 
   // check if reusable memory is available in free list
@@ -7644,28 +7647,35 @@ void gc_collect(uint64_t* context) {
   gc_num_collects = gc_num_collects + 1;
 }
 
-void print_gc_profile(char* padding) {
-  printf7("%s:%s%.2uMB requested in %u mallocs (%u gced, %u reuses, %u ungced)\n", selfie_name, padding,
+void print_gc_profile(uint64_t* context) {
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf5("%s: gc:      %.2uMB requested in %u mallocs (%u gced, %u reuses)\n", selfie_name,
     (char*) fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
-    (char*) (gc_num_gced_mallocs + gc_num_reused_mallocs + gc_num_ungced_mallocs),
+    (char*) gc_num_mallocated,
     (char*) gc_num_gced_mallocs,
-    (char*) gc_num_reused_mallocs,
-    (char*) gc_num_ungced_mallocs);
-  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name, padding,
-    (char*) fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
-    (char*) gc_num_gced_mallocs);
-  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u reused mallocs\n", selfie_name, padding,
+    (char*) gc_num_reused_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) reused in %u reused mallocs\n", selfie_name,
     (char*) fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
     (char*) gc_num_reused_mallocs);
-  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u ungced mallocs\n", selfie_name, padding,
+  printf3("%s: gc:      %.2uMB collected in %u gc runs\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
+    (char*) gc_num_collects);
+  printf6("%s: gc:      %.2uMB(%.2u%%) allocated in %u mallocs (%u gced, %u ungced)\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_objects + gc_mem_metadata, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata, 4), 4),
+    (char*) (gc_num_gced_mallocs + gc_num_ungced_mallocs),
+    (char*) gc_num_gced_mallocs,
+    (char*) gc_num_ungced_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
+    (char*) gc_num_gced_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u ungced mallocs", selfie_name,
     (char*) fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
     (char*) gc_num_ungced_mallocs);
-  printf4("%s:%s%.2uMB collected in %u gc runs\n", selfie_name, padding,
-    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
-    (char*) gc_num_collects);
+  if (is_gc_library(context) == 0) print(" (external)"); println();
 }
 
 // -----------------------------------------------------------------
@@ -9020,7 +9030,7 @@ void print_profile(uint64_t* context) {
     (char*) (total_page_frame_memory / MEGABYTE));
 
   if (get_gc_enabled_gc(context))
-    print_gc_profile("          ");
+    print_gc_profile(context);
 
   if (get_total_number_of_instructions() > 0) {
     printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
