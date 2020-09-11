@@ -26,7 +26,7 @@ struct __attribute__((packed)) pt_entry {
   uint64_t d        : 1; // dirty flag
   uint64_t rsw      : 2; // bits can be used freely by a supervisor
   uint64_t ppn      :44; // physical page number
-  uint64_t reserved :10; // reserved for future use
+  uint64_t reserved :10; // reserved for future use (must be 0)
 };
 
 extern struct pt_entry kernel_pt[NUM_PT_ENTRIES_PER_PAGE_TABLE];
