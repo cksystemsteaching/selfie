@@ -20,6 +20,8 @@
 // if interrupt bit is 1
 #define SCAUSE_EXCEPTION_CODE_SUPERVISOR_TIMER_INTERRUPT 5
 
+#define SSTATUS_SPP_BITMASK (1ULL << 8)
+
 #define SYSCALL_EXIT   93
 #define SYSCALL_READ   63
 #define SYSCALL_WRITE  64
@@ -171,6 +173,8 @@ uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
   uint64_t sepc;  // pc where the exception occured
+  uint64_t sstatus;
+  bool spp_bit; // indicates if the trap comes from S-mode
   bool interrupt_bit;
   uint64_t exception_code;
   struct context* context = get_currently_active_context();
@@ -181,8 +185,14 @@ uint64_t trap_handler(struct registers registers_buffer) {
     "csrr %[scause], scause;"
     "csrr %[sepc], sepc;"
     "csrr %[stval], stval;"
-    : [scause] "=r" (scause), [sepc] "=r" (sepc), [stval] "=r" (stval)
+    "csrr %[sstatus], sstatus;"
+    : [scause] "=r" (scause), [sepc] "=r" (sepc), [stval] "=r" (stval), [sstatus] "=r" (sstatus)
   );
+
+  spp_bit = sstatus & SSTATUS_SPP_BITMASK;
+
+  if (spp_bit)
+    panic("kernel caused a trap");
 
   interrupt_bit = scause & SCAUSE_INTERRUPT_BIT_MASK;
   exception_code = scause & SCAUSE_EXCEPTION_CODE_MASK;
