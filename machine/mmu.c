@@ -21,10 +21,11 @@ struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_
   struct pt_entry* entry = (table + index);
 
   entry->ppn = ppn;
-  entry->d = 1;
-  entry->a = 1;
 
   if (!is_pt_node) {
+    entry->d = 1;
+    entry->a = 1;
+
     entry->x = 1;
     entry->w = 1;
     entry->r = 1;
