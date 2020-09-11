@@ -11,7 +11,7 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C* library called libcstar utilized by selfie.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a garbage collector, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator and hypervisor. The garbage collector is conservative and may operate as library in the same address space as the mutator and as part of the emulator in the address space of the kernel.
+Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a garbage collector, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator and hypervisor. The garbage collector is conservative and even self-collecting. It may operate as library in the same address space as the mutator and/or as part of the emulator in the address space of the kernel.
 
 Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
