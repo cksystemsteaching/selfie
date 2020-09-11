@@ -1192,7 +1192,7 @@ void     gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 
 void zero_object(uint64_t* metadata, uint64_t* context);
 
-uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context);
+uint64_t* allocate_memory(uint64_t size, uint64_t* context);
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context);
 
 // this function performs an O(n) list search where n is memory size
@@ -1241,24 +1241,30 @@ uint64_t gc_heap_end   = 0;
 
 uint64_t gc_skips_since_last_collect = 0; // TODO: add to context
 
-uint64_t gc_num_malloc_new   = 0;
-uint64_t gc_num_malloc_reuse = 0;
-uint64_t gc_num_collects     = 0;
-uint64_t gc_mallocated_total = 0;
-uint64_t gc_allocated_total  = 0;
-uint64_t gc_collected_total  = 0;
+uint64_t gc_num_gced_mallocs   = 0;
+uint64_t gc_num_ungced_mallocs = 0;
+uint64_t gc_num_reused_mallocs = 0;
+uint64_t gc_num_collects       = 0;
+uint64_t gc_mem_mallocated     = 0;
+uint64_t gc_mem_objects        = 0;
+uint64_t gc_mem_metadata       = 0;
+uint64_t gc_mem_reused         = 0;
+uint64_t gc_mem_collected      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_garbage_collector_counters() {
   gc_skips_since_last_collect = 0;
 
-  gc_num_malloc_new   = 0;
-  gc_num_malloc_reuse = 0;
-  gc_num_collects     = 0;
-  gc_mallocated_total = 0;
-  gc_allocated_total  = 0;
-  gc_collected_total  = 0;
+  gc_num_gced_mallocs   = 0;
+  gc_num_ungced_mallocs = 0;
+  gc_num_reused_mallocs = 0;
+  gc_num_collects       = 0;
+  gc_mem_mallocated     = 0;
+  gc_mem_objects        = 0;
+  gc_mem_metadata       = 0;
+  gc_mem_reused         = 0;
+  gc_mem_collected      = 0;
 }
 
 void turn_on_gc_library(uint64_t skips) {
@@ -7218,7 +7224,7 @@ uint64_t is_gc_library(uint64_t* context) {
 
 uint64_t* allocate_metadata(uint64_t* context) {
   if (is_gc_library(context))
-    return allocate_gcd_memory(GC_METADATA_SIZE, context);
+    return allocate_memory(GC_METADATA_SIZE, context);
   else
     return smalloc(GC_METADATA_SIZE);
 }
@@ -7388,7 +7394,7 @@ void zero_object(uint64_t* metadata, uint64_t* context) {
   }
 }
 
-uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
+uint64_t* allocate_memory(uint64_t size, uint64_t* context) {
   uint64_t object;
   uint64_t new_program_break;
 
@@ -7398,11 +7404,8 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
     // assert: smalloc_system is a bump pointer allocator that may reuse memory
 
     if (object >= gc_heap_start) {
-      if (object == gc_heap_end) {
+      if (object == gc_heap_end)
         gc_heap_end = gc_heap_end + size;
-
-        gc_allocated_total = gc_allocated_total + size;
-      }
 
       return (uint64_t*) object;
     }
@@ -7414,8 +7417,6 @@ uint64_t* allocate_gcd_memory(uint64_t size, uint64_t* context) {
 
       if (new_program_break == object + size) {
         set_heap_end(context, get_heap_end(context) + size);
-
-        gc_allocated_total = gc_allocated_total + size;
 
         return (uint64_t*) object;
       }
@@ -7446,13 +7447,14 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 
   size = round_up(size, SIZEOFUINT64);
 
-  gc_mallocated_total = gc_mallocated_total + size;
+  gc_mem_mallocated = gc_mem_mallocated + size;
 
   // check if reusable memory is available in free list
   metadata = free_list_extract(context, size);
 
   if (metadata != (uint64_t*) 0) {
-    gc_num_malloc_reuse = gc_num_malloc_reuse + 1;
+    gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
+    gc_mem_reused         = gc_mem_reused + size;
 
     // zeroing reused memory is optional!
     zero_object(metadata, context);
@@ -7461,7 +7463,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   }
 
   // allocate new object memory if there is no reusable memory
-  object = allocate_gcd_memory(size, context);
+  object = allocate_memory(size, context);
 
   if (object != (uint64_t*) 0) {
     // allocate metadata
@@ -7475,12 +7477,16 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
       set_metadata_size(metadata, size);
       set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
 
-      gc_num_malloc_new = gc_num_malloc_new + 1;
+      gc_num_gced_mallocs   = gc_num_gced_mallocs + 1;
+      gc_num_ungced_mallocs = gc_num_ungced_mallocs + 1;
+
+      gc_mem_objects  = gc_mem_objects + size;
+      gc_mem_metadata = gc_mem_metadata + GC_METADATA_SIZE;
     } else
       return (uint64_t*) 0;
   } else
     // if object allocation failed discount memory from mallocated total
-    gc_mallocated_total = gc_mallocated_total - size;
+    gc_mem_mallocated = gc_mem_mallocated - size;
 
   return object;
 }
@@ -7602,7 +7608,7 @@ void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context)
     set_free_list_head_gc(context, metadata);
   }
 
-  gc_collected_total = gc_collected_total + get_metadata_size(metadata);
+  gc_mem_collected = gc_mem_collected + get_metadata_size(metadata);
 }
 
 void sweep(uint64_t* context) {
@@ -7639,16 +7645,26 @@ void gc_collect(uint64_t* context) {
 }
 
 void print_gc_profile(char* padding) {
-  printf5("%s:%s%.2uMB requested in %u gced mallocs [%u reuses]\n", selfie_name, padding,
-    (char*) fixed_point_ratio(gc_mallocated_total, MEGABYTE, 2),
-    (char*) (gc_num_malloc_new + gc_num_malloc_reuse),
-    (char*) gc_num_malloc_reuse);
-  printf5("%s:%s%.2uMB(%.2u%%) actually allocated in %u gced mallocs\n", selfie_name, padding,
-    (char*) fixed_point_ratio(gc_allocated_total, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mallocated_total, gc_allocated_total, 4), 4),
-    (char*) gc_num_malloc_new);
+  printf7("%s:%s%.2uMB requested in %u mallocs (%u gced, %u reuses, %u ungced)\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
+    (char*) (gc_num_gced_mallocs + gc_num_reused_mallocs + gc_num_ungced_mallocs),
+    (char*) gc_num_gced_mallocs,
+    (char*) gc_num_reused_mallocs,
+    (char*) gc_num_ungced_mallocs);
+  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
+    (char*) gc_num_gced_mallocs);
+  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u reused mallocs\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
+    (char*) gc_num_reused_mallocs);
+  printf5("%s:%s%.2uMB(%.2u%%) allocated in %u ungced mallocs\n", selfie_name, padding,
+    (char*) fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
+    (char*) gc_num_ungced_mallocs);
   printf4("%s:%s%.2uMB collected in %u gc runs\n", selfie_name, padding,
-    (char*) fixed_point_ratio(gc_collected_total, MEGABYTE, 2),
+    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
     (char*) gc_num_collects);
 }
 
