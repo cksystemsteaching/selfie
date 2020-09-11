@@ -1224,7 +1224,7 @@ uint64_t* gc_malloc(uint64_t size) {
 
 uint64_t GC_SKIPS_TILL_COLLECT = 1000; // gc every so often
 
-uint64_t GC_NO_REUSE = 0; // reuse memory with freelist by default
+uint64_t GC_REUSE = 1; // reuse memory with freelist by default
 
 uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
 
@@ -7605,7 +7605,7 @@ void free_object(uint64_t* metadata, uint64_t* prev_metadata, uint64_t* context)
   else
     set_metadata_next(prev_metadata, get_metadata_next(metadata));
 
-  if (GC_NO_REUSE == 0) {
+  if (GC_REUSE) {
     set_metadata_next(metadata, get_free_list_head_gc(context));
 
     set_free_list_head_gc(context, metadata);
@@ -9743,10 +9743,10 @@ uint64_t mipster(uint64_t* to_context) {
   else if (get_gc_enabled_gc(to_context)) {
     printf1(" with garbage collector (%d skips, memory reuse ", (char*) GC_SKIPS_TILL_COLLECT);
 
-    if (GC_NO_REUSE)
-      print("disabled)");
-    else
+    if (GC_REUSE)
       print("enabled)");
+    else
+      print("disabled)");
   }
   println();
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
@@ -9979,7 +9979,6 @@ void boot_loader(uint64_t* context) {
 
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
-  uint64_t extra_arguments;
 
   if (binary_length == 0) {
     printf1("%s: nothing to run, debug, or host\n", selfie_name);
@@ -9990,32 +9989,6 @@ uint64_t selfie_run(uint64_t machine) {
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
-
-  extra_arguments = 0;
-
-  if (string_compare(peek_argument(0), "--skips"))
-    extra_arguments = 1;
-  else if (string_compare(peek_argument(0), "--no-reuse"))
-    extra_arguments = 1;
-
-  while (extra_arguments) {
-    if (string_compare(peek_argument(0), "--skips")) {
-      get_argument();
-
-      GC_SKIPS_TILL_COLLECT = atoi(get_argument());
-    } else if (string_compare(peek_argument(0), "--no-reuse")) {
-      get_argument();
-
-      GC_NO_REUSE = 1;
-    }
-
-    extra_arguments = 0;
-
-    if (string_compare(peek_argument(0), "--skips"))
-      extra_arguments = 1;
-    else if (string_compare(peek_argument(0), "--no-reuse"))
-      extra_arguments = 1;
-  }
 
   init_memory(atoi(peek_argument(0)));
 
@@ -10150,6 +10123,8 @@ uint64_t selfie(uint64_t extras) {
         selfie_compile(0);
       else if (string_compare(argument, "-gc"))
         selfie_compile(1);
+      else if (string_compare(argument, "--nr"))
+        GC_REUSE = 0;
       else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
