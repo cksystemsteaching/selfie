@@ -1,8 +1,10 @@
-// note: garbage collector compilation (Selfie flag "-gc" and compilation with selfie.h;
-// e.g. ./selfie -gc selfie.h examples/garbage_collector_library.c -m 1) mandatory!
+// testing selfie's garbage collector
 
-// note: since Selfie uses a conservative garbage collection algorithm, we cannot simply store a pointer as an
-// integer (we need to do this for validation though). therefore, we add an offset to values used for comparison
+// to compile the garbage collector as library use flag "-gc" with selfie.h
+// e.g. ./selfie -gc selfie.h examples/garbage_collector_test.c -m 1
+
+// since selfie implements a conservative garbage collector
+// we disguise pointers for validation as integers with an offset
 uint64_t check_offset = 4096;
 uint64_t heap_start = 0;
 
@@ -22,7 +24,7 @@ void do_stuff() {
   uint64_t* z;
 
   z = gc_malloc(8); // object 5
-  if (((uint64_t) z) != (validation_address_4 - check_offset)) {
+  if (((uint64_t) z) != validation_address_4 - check_offset) {
     print("test 4 failed (local variable inside function)!\n");
     exit(1);
   }
@@ -35,25 +37,24 @@ int main(int argc, char** argv) {
   uint64_t* z;
   uint64_t* w;
 
-  // this example should demonstrate the capabilities of the garbage collector. considering skips would
-  // only make it more complicated and therefore we disable skipping (i.e collect before every gc_malloc)
+  // this example should demonstrate the capabilities of the garbage collector.
+  // for simplicity we configure it to collect before every gc_malloc.
   turn_on_gc_library(0);
 
   // exit with error code 1 if gc is not available
   if (USE_GC_LIBRARY != GC_ENABLED)
     exit(1);
 
-  // initialise library (gc, power_of_2_table, etc.)
+  // initialize library (power_of_2 table, etc.)
   init_library();
 
-  // Determine heap start to calculate all expected addresses
+  // determine heap start to calculate all expected addresses
 
   // assert: gc_malloc(0) fetches the current program break
   heap_start = (uint64_t) gc_malloc(0) + check_offset;
 
   // note: the gc library stores metadata and object in the same heap (order: metadata -> object)
-  // therefore, we need to consider both object and metadata size when calculating the expected
-  // addresses
+  // therefore, we need to consider both object and metadata size when calculating the expected addresses
 
   // test case 1: allocate object and assign ptr to global variable (-> data segment)
   validation_address_1 = heap_start + GC_METADATA_SIZE;
@@ -94,22 +95,22 @@ int main(int argc, char** argv) {
 
   // --- test 1 ---
   x = gc_malloc(8); // object 1
-  if (((uint64_t) x) != (validation_address_1 - check_offset)) {
-    printf2("%d - %d\n", (char*)((uint64_t)x), (char*)(validation_address_1 - check_offset));
+  if (((uint64_t) x) != validation_address_1 - check_offset) {
+    printf2("%d - %d\n", (char*) ((uint64_t) x), (char*) (validation_address_1 - check_offset));
     print("test 1 failed!\n");
     exit(1);
   }
 
   // --- test 2 ---
   *x = (uint64_t) gc_malloc(8); // object 2
-  if (*x != (validation_address_2 - check_offset)) {
+  if (*x != validation_address_2 - check_offset) {
     print("test 2 failed!\n");
     exit(1);
   }
 
   // --- test 3 ---
   y = gc_malloc(8); // object 3
-  if (((uint64_t) y) != (validation_address_3 - check_offset)) {
+  if (((uint64_t) y) != validation_address_3 - check_offset) {
     print("test 3 failed (first allocation)!\n");
     exit(1);
   }
@@ -117,25 +118,25 @@ int main(int argc, char** argv) {
   y = (uint64_t*) 0; // = free(object 3)
 
   y = gc_malloc(8); // object 4
-  if (((uint64_t) y) != (validation_address_3 - check_offset)) {
-    print("test 3 failed (reuse)! make sure skip count is set to 0!\n");
+  if (((uint64_t) y) != validation_address_3 - check_offset) {
+    print("test 3 failed (reuse)! make sure gc period is set to 0!\n");
     exit(1);
   }
-  
+
   // --- test 4 ---
   do_stuff(); // object 5 (inside function)
 
   z = gc_malloc(8); // object 6
-  if (((uint64_t) z) != (validation_address_4 - check_offset)) {
-    print("test 4 failed (local variable)! make sure skip count is set to 0!\n");
+  if (((uint64_t) z) != validation_address_4 - check_offset) {
+    print("test 4 failed (local variable)! make sure gc period is set to 0!\n");
     exit(1);
   }
-  
+
   // --- test 5 ---
   z = (uint64_t*) 0; // = free(object 6)
 
   z = gc_malloc(16); // object 7
-  if (((uint64_t) z) != (validation_address_5 - check_offset)) {
+  if (((uint64_t) z) != validation_address_5 - check_offset) {
     print("test 5 failed!\n");
     exit(1);
   }
@@ -144,15 +145,16 @@ int main(int argc, char** argv) {
   x = (uint64_t*) 0; // = free(object 1), free(object 2)
 
   w = gc_malloc(8); // object 8
-  if (((uint64_t) w) != (validation_address_1 - check_offset)) {
-    print("test 6 failed! make sure skip count is set to 0!\n");
+  if (((uint64_t) w) != validation_address_1 - check_offset) {
+    print("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);
   }
 
   x = gc_malloc(8); // object 9
-  if (((uint64_t) x) != (validation_address_2 - check_offset)) {
-    print("test 6 failed! make sure skip count is set to 0!\n");
+  if (((uint64_t) x) != validation_address_2 - check_offset) {
+    print("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);
   }
 
+  print_gc_profile((uint64_t*) 0);
 }
