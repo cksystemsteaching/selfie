@@ -24,6 +24,10 @@
 #define ELF_PH_TYPE_NULL 0x00 // Unused
 #define ELF_PH_TYPE_LOAD 0x01 // Loadable segment
 
+#define ELF_PH_FLAG_EXECUTABLE 1
+#define ELF_PH_FLAG_WRITABLE   2
+#define ELF_PH_FLAG_READABLE   4
+
 #define ENOELF          1   // No valid ELF file
 #define EOOB            2   // Out of Bounds
 #define EINVMACHINE     3   // Executable is not RISC-V

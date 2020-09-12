@@ -88,6 +88,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     if (pheader[i].type != ELF_PH_TYPE_LOAD)
       return EUNSUPPORTED;
 
+    if (pheader[i].flags != (ELF_PH_FLAG_READABLE | ELF_PH_FLAG_WRITABLE | ELF_PH_FLAG_EXECUTABLE))
+      return EUNSUPPORTED;
+
     uint64_t segment_end = pheader[i].offset + pheader[i].file_size;
     if (segment_end > len)
       return EOOB;
