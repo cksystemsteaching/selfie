@@ -17,7 +17,7 @@ virtual machine monitors. The common theme is to identify and
 resolve self-reference in systems code which is seen as the key
 challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 9-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -30,9 +30,12 @@ Selfie is a self-contained 64-bit, 9-KLOC C implementation of:
 5. a tiny C* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity.
-There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-and a debugger with replay as well as minimal operating system support in
-the form of RISC-V system calls built into the emulator and hypervisor.
+There is also a simple in-memory linker, a RISC-U disassembler, a garbage
+collector, a profiler, and a debugger with replay as well as minimal
+operating system support in the form of RISC-V system calls built into
+the emulator and hypervisor. The garbage collector is conservative and
+may operate as library in the same address space as the mutator and
+as part of the emulator in the address space of the kernel.
 
 C* is a tiny Turing-complete subset of C that includes dereferencing
 (the * operator) but excludes composite data types, bitwise and Boolean
@@ -72,7 +75,8 @@ The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe.
+Jochen Liedtke from University of Karlsruhe. The garbage collector
+is inspired by the conservative garbage collector of Hans Boehm.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -174,7 +178,12 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
 uint64_t round_up(uint64_t n, uint64_t m);
 
 uint64_t* smalloc(uint64_t size);
+uint64_t* smalloc_system(uint64_t size);
+
+void zero_memory(uint64_t* memory, uint64_t size);
+
 uint64_t* zalloc(uint64_t size);
+uint64_t* zmalloc(uint64_t size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -250,6 +259,13 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+
+// garbage collector
+
+uint64_t GC_DISABLED = 0;
+uint64_t GC_ENABLED  = 1;
+
+uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -562,7 +578,7 @@ uint64_t total_search_time  = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_symbol_tables() {
-  global_symbol_table  = (uint64_t*) zalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
+  global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
 
@@ -605,6 +621,7 @@ void syntax_error_unexpected();
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
 
+void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
 uint64_t* get_variable_or_big_int(char* variable, uint64_t class);
 void      load_upper_base_address(uint64_t* entry);
 uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
@@ -665,13 +682,16 @@ void reset_parser() {
 void emit_round_up(uint64_t reg, uint64_t m);
 void emit_left_shift_by(uint64_t reg, uint64_t b);
 void emit_program_entry();
-void emit_bootstrapping();
+
+// bootstrapping binary
+
+void emit_bootstrapping(uint64_t fetch_dss_code_location);
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile();
+void selfie_compile(uint64_t generate_gc_library);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -989,8 +1009,9 @@ void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
-void emit_malloc();
-void implement_brk(uint64_t* context);
+void     emit_malloc();
+uint64_t help_brk(uint64_t* context, uint64_t program_break);
+void     implement_brk(uint64_t* context);
 
 uint64_t is_boot_level_zero();
 
@@ -1012,6 +1033,10 @@ uint64_t SYSCALL_BRK    = 214;
    emulating the (in Linux) deprecated open system call. */
 
 uint64_t DIRFD_AT_FDCWD = -100;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t sc_brk = 0; // syscall counter
 
 // -----------------------------------------------------------------
 // ------------------------ HYPSTER SYSCALL ------------------------
@@ -1042,6 +1067,8 @@ uint64_t debug_switch = 0;
 
 void init_memory(uint64_t megabytes);
 
+void reset_memory_counters();
+
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
@@ -1056,6 +1083,7 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
 uint64_t is_valid_virtual_address(uint64_t vaddr);
 uint64_t get_page_of_virtual_address(uint64_t vaddr);
+uint64_t get_virtual_address_of_page_start(uint64_t page);
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr);
 
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
@@ -1085,7 +1113,11 @@ uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t page_frame_memory = 0; // size of memory for frames
+uint64_t total_page_frame_memory = 0; // total amount of memory available for frames
+
+uint64_t mc_brk = 0; // memory counter for brk syscall
+
+uint64_t mc_mapped_heap = 0; // memory counter for mapped heap
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1093,7 +1125,158 @@ void init_memory(uint64_t megabytes) {
   if (megabytes > 4096)
     megabytes = 4096;
 
-  page_frame_memory = megabytes * MEGABYTE;
+  total_page_frame_memory = megabytes * MEGABYTE;
+}
+
+// -----------------------------------------------------------------
+// ---------------------- GARBAGE COLLECTOR ------------------------
+// -----------------------------------------------------------------
+
+// bootstrapped to actual functions during compilation ...
+uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
+uint64_t fetch_data_segment_size() { return 0; }
+
+// ... here, not available on boot level 0 - only for compilation
+void emit_fetch_stack_pointer();
+void emit_fetch_data_segment_size_interface();
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
+
+void implement_gc_brk(uint64_t* context);
+
+uint64_t is_gc_library(uint64_t* context);
+
+// metadata entry:
+// +----+---------+
+// |  0 | next    | pointer to next entry
+// |  1 | memory  | pointer to allocated memory
+// |  2 | size    | size of allocated memory (in bytes!)
+// |  3 | markbit | markbit indicating reachability of pointer
+// +----+---------+
+
+uint64_t* allocate_metadata(uint64_t* context);
+
+uint64_t* get_metadata_next(uint64_t* entry)    { return (uint64_t*) *entry; }
+uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 1); }
+uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 2); }
+uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 3); }
+
+void set_metadata_next(uint64_t* entry, uint64_t* next)      { *entry       = (uint64_t) next; }
+void set_metadata_memory(uint64_t* entry, uint64_t* memory)  { *(entry + 1) = (uint64_t) memory; }
+void set_metadata_size(uint64_t* entry, uint64_t size)       { *(entry + 2) = size; }
+void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = markbit; }
+
+// get functions for properties with different access in library/syscall
+uint64_t* get_used_list_head_gc(uint64_t* context);
+uint64_t* get_free_list_head_gc(uint64_t* context);
+uint64_t  get_stack_start(uint64_t* context);
+uint64_t  get_ds_start(uint64_t* context);
+uint64_t  get_ds_end(uint64_t* context);
+uint64_t  get_heap_start_gc(uint64_t* context);
+uint64_t  get_heap_end_gc(uint64_t* context);
+uint64_t  get_gcs_in_period_gc(uint64_t* context);
+uint64_t  get_gc_enabled_gc(uint64_t* context);
+
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
+void set_heap_start_end_gc(uint64_t* context);
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
+void set_gc_enabled_gc(uint64_t* context);
+
+void gc_init(uint64_t* context);
+
+// this function performs first-fit retrieval of free memory in O(n) where n is memory size
+// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
+// see https://github.com/cksystemsgroup/compact-fit
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
+
+uint64_t gc_load_memory(uint64_t* context, uint64_t address);
+void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
+
+void zero_object(uint64_t* context, uint64_t* metadata);
+
+uint64_t* allocate_memory(uint64_t* context, uint64_t size);
+uint64_t* reuse_memory(uint64_t* context, uint64_t size);
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
+
+// this function performs an O(n) list search where n is memory size
+// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address);
+
+void mark_object(uint64_t* context, uint64_t address);
+void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
+
+// this function scans the heap from two roots (data segment and stack) in O(n^2)
+// where n is memory size; checking if a value is a pointer takes O(n), see above
+// TODO: push O(n^2) down to O(n)
+void mark(uint64_t* context);
+
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
+void sweep(uint64_t* context);
+
+void gc_collect(uint64_t* context);
+
+void print_gc_profile(uint64_t* context);
+
+// ----------------------- LIBRARY FUNCTIONS -----------------------
+
+uint64_t* gc_malloc(uint64_t size) {
+    return gc_malloc_implementation((uint64_t*) 0, size);
+}
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t GC_PERIOD = 1000; // gc every so often
+
+uint64_t GC_REUSE = 1; // reuse memory with freelist by default
+
+uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
+
+uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
+uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* gc_used_list = (uint64_t*) 0; // pointer to used-list head
+uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
+
+uint64_t gc_heap_start = 0;
+uint64_t gc_heap_end   = 0;
+
+uint64_t gc_num_gcs_in_period = 0;
+
+uint64_t gc_num_mallocated     = 0;
+uint64_t gc_num_gced_mallocs   = 0;
+uint64_t gc_num_ungced_mallocs = 0;
+uint64_t gc_num_reused_mallocs = 0;
+uint64_t gc_num_collects       = 0;
+uint64_t gc_mem_mallocated     = 0;
+uint64_t gc_mem_objects        = 0;
+uint64_t gc_mem_metadata       = 0;
+uint64_t gc_mem_reused         = 0;
+uint64_t gc_mem_collected      = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void reset_gc_counters() {
+  gc_num_mallocated     = 0;
+  gc_num_gced_mallocs   = 0;
+  gc_num_ungced_mallocs = 0;
+  gc_num_reused_mallocs = 0;
+  gc_num_collects       = 0;
+  gc_mem_mallocated     = 0;
+  gc_mem_objects        = 0;
+  gc_mem_metadata       = 0;
+  gc_mem_reused         = 0;
+  gc_mem_collected      = 0;
+}
+
+void turn_on_gc_library(uint64_t period) {
+  if (fetch_stack_pointer() != 0) {
+    gc_init((uint64_t*) 0);
+
+    GC_PERIOD = period;
+  } else
+    USE_GC_LIBRARY = GC_DISABLED;
 }
 
 // -----------------------------------------------------------------
@@ -1200,8 +1383,8 @@ uint64_t* values = (uint64_t*) 0; // trace of values
 // ------------------------- INITIALIZATION ------------------------
 
 void init_replay_engine() {
-  pcs    = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
-  values = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  pcs    = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  values = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
 }
 
 // -----------------------------------------------------------------
@@ -1242,7 +1425,7 @@ void print_per_register_profile(uint64_t reg);
 
 void print_register_memory_profile();
 
-void print_profile();
+void print_profile(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1420,18 +1603,18 @@ void reset_nop_counters() {
 
 void reset_source_profile() {
   calls               = 0;
-  calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  calls_per_procedure = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   iterations          = 0;
-  iterations_per_loop = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  iterations_per_loop = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  loads_per_instruction  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  loads_per_instruction  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  stores_per_instruction = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
 void reset_register_access_counters() {
-  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reads_per_register  = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  writes_per_register = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   // stack and frame pointer registers are initialized by boot loader
   *(writes_per_register + REG_SP) = 1;
@@ -1460,6 +1643,7 @@ void reset_segments_access_counters() {
 void reset_profiler() {
   reset_instruction_counters();
   reset_nop_counters();
+  reset_memory_counters();
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
@@ -1491,10 +1675,10 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  2 | program counter | program counter
 // |  3 | registers       | pointer to general purpose registers
 // |  4 | page table      | pointer to page table
-// |  5 | lowest lo page  | lowest low unmapped page (code, data, heap)
-// |  6 | highest lo page | highest low unmapped page (code, data, heap)
-// |  7 | lowest hi page  | lowest high unmapped page (stack)
-// |  8 | highest hi page | highest high unmapped page (stack)
+// |  5 | lowest lo page  | lowest low uncached page (code, data, heap)
+// |  6 | highest lo page | highest low uncached page (code, data, heap)
+// |  7 | lowest hi page  | lowest high uncached page (stack)
+// |  8 | highest hi page | highest high uncached page (stack)
 // |  9 | code entry      | start of code segment
 // | 10 | code segment    | end of code segment, start of data segment
 // | 11 | data segment    | end of data segment, original program break
@@ -1505,12 +1689,18 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 16 | parent          | context that created this context
 // | 17 | virtual context | virtual context address
 // | 18 | name            | binary name loaded into context
+// | 19 | used-list head  | pointer to head of used list
+// | 20 | free-list head  | pointer to head of free list
+// | 21 | heap start      | start of gc managed heap
+// | 22 | heap end        | end of gc managed heap
+// | 23 | gcs counter     | number of gc runs in gc period
+// | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1533,6 +1723,13 @@ uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); 
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
 uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); }
 
+uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 19); }
+uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 20); }
+uint64_t heap_start(uint64_t* context)       { return (uint64_t) (context + 21); }
+uint64_t heap_end(uint64_t* context)         { return (uint64_t) (context + 22); }
+uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 23); }
+uint64_t gc_enabled(uint64_t* context)       { return (uint64_t) (context + 24); }
+
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
 uint64_t  get_pc(uint64_t* context)              { return             *(context + 2); }
@@ -1553,6 +1750,13 @@ uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context 
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
 char*     get_name(uint64_t* context)            { return (char*)     *(context + 18); }
 
+uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 19); }
+uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 20); }
+uint64_t  get_heap_start(uint64_t* context)       { return             *(context + 21); }
+uint64_t  get_heap_end(uint64_t* context)         { return             *(context + 22); }
+uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 23); }
+uint64_t  get_gc_enabled(uint64_t* context)       { return             *(context + 24); }
+
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
 void set_pc(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
@@ -1572,6 +1776,13 @@ void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 15) 
 void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 16) = (uint64_t) parent; }
 void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 17) = (uint64_t) vctxt; }
 void set_name(uint64_t* context, char* name)                  { *(context + 18) = (uint64_t) name; }
+
+void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 19) = (uint64_t) used_list_head; }
+void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t) free_list_head; }
+void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context + 21) = heap_start; }
+void set_heap_end(uint64_t* context, uint64_t heap_end)              { *(context + 22) = heap_end; }
+void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 23) = gcs; }
+void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 24) = gc_enabled; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1698,6 +1909,8 @@ uint64_t HYPSTER = 4;
 
 uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
+
+uint64_t GIBSTER = 7;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1907,7 +2120,7 @@ uint64_t load_character(char* s, uint64_t i) {
   // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // CAUTION: at boot levels higher than zero, s is only accessible
+  // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at machine word granularity, not individual characters
 
   // return i-th 8-bit character in s
@@ -1922,7 +2135,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // CAUTION: at boot levels higher than zero, s is only accessible
+  // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at machine word granularity, not individual characters
 
   // subtract the to-be-overwritten character to reset its bits in s
@@ -1935,7 +2148,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
 char* string_alloc(uint64_t l) {
   // allocates zeroed memory for a string of l characters
   // plus a null terminator aligned to machine word size
-  return (char*) zalloc(l + 1);
+  return (char*) zmalloc(l + 1);
 }
 
 uint64_t string_length(char* s) {
@@ -2493,10 +2706,13 @@ uint64_t* smalloc(uint64_t size) {
   // if no memory can be allocated
   uint64_t* memory;
 
-  memory = malloc(size);
+  if (USE_GC_LIBRARY)
+    memory = gc_malloc(size);
+  else
+    memory = malloc(size);
 
   if (size == 0)
-    // any address including null
+    // any address including 0
     return memory;
   else if (memory == (uint64_t*) 0) {
     if (character_buffer)
@@ -2509,19 +2725,25 @@ uint64_t* smalloc(uint64_t size) {
   return memory;
 }
 
-uint64_t* zalloc(uint64_t size) {
-  // this procedure is only executed at boot level zero
-  // zalloc allocates size bytes rounded up to word size
-  // and then zeroes that memory, similar to calloc, but
-  // called zalloc to avoid redeclaring calloc
+uint64_t* smalloc_system(uint64_t size) {
+  uint64_t gc;
   uint64_t* memory;
-  uint64_t  i;
 
-  size = round_up(size, REGISTERSIZE);
+  gc = USE_GC_LIBRARY;
+
+  USE_GC_LIBRARY = GC_DISABLED;
 
   memory = smalloc(size);
 
-  size = size / REGISTERSIZE;
+  USE_GC_LIBRARY = gc;
+
+  return memory;
+}
+
+void zero_memory(uint64_t* memory, uint64_t size) {
+  uint64_t i;
+
+  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
 
   i = 0;
 
@@ -2531,8 +2753,30 @@ uint64_t* zalloc(uint64_t size) {
 
     i = i + 1;
   }
+}
+
+uint64_t* zalloc(uint64_t size) {
+  // this procedure is only executed at boot level 0
+  // zalloc allocates size bytes rounded up to word size
+  // and then zeroes that memory, similar to calloc, but
+  // called zalloc to avoid redeclaring calloc
+  uint64_t* memory;
+
+  size = round_up(size, REGISTERSIZE);
+
+  memory = smalloc(size);
+
+  zero_memory(memory, size);
 
   return memory;
+}
+
+uint64_t* zmalloc(uint64_t size) {
+  if (USE_GC_LIBRARY)
+    // assert: on boot level 1 or above where mallocated memory is zeroed
+    return gc_malloc(size);
+  else
+    return zalloc(size);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -3452,6 +3696,43 @@ void type_warning(uint64_t expected, uint64_t found) {
   print(" found\n");
 }
 
+void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
+  uint64_t lower;
+  uint64_t upper;
+
+  // assert: -2^31 <= value < 2^31
+
+  if (is_signed_integer(value, 12)) {
+    // integers with -2^11 <= value < 2^11
+    // are loaded with one addi into a register
+
+    emit_addi(reg, REG_ZR, value);
+  } else {
+    // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
+    // are loaded with one lui and one addi into a register plus
+    // an additional sub to cancel sign extension if necessary
+
+    lower = get_bits(value,  0, 12);
+    upper = get_bits(value, 12, 20);
+
+    if (lower >= two_to_the_power_of(11)) {
+      // add 1 which is effectively 2^12 to cancel sign extension of lower
+      upper = upper + 1;
+
+      // assert: 0 < upper <= 2^(32-12)
+      emit_lui(reg, sign_extend(upper, 20));
+
+      if (upper == two_to_the_power_of(19))
+        // upper overflowed, cancel sign extension
+        emit_sub(reg, REG_ZR, reg);
+    } else
+      // assert: 0 < upper < 2^(32-12)
+      emit_lui(reg, sign_extend(upper, 20));
+
+    emit_addi(reg, reg, sign_extend(lower, 12));
+  }
+}
+
 uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   uint64_t* entry;
 
@@ -3519,48 +3800,17 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
 }
 
 void load_integer(uint64_t value) {
-  uint64_t lower;
-  uint64_t upper;
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  if (is_signed_integer(value, 12)) {
-    // integers greater than or equal to -2^11 and less than 2^11
-    // are loaded with one addi into a register
-
+  if (is_signed_integer(value, 32)) {
+    // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
-    emit_addi(current_temporary(), REG_ZR, value);
-
-  } else if (is_signed_integer(value, 32)) {
-    // integers greater than or equal to -2^31 and less than 2^31
-    // are loaded with one lui and one addi into a register plus
-    // an additional sub to cancel sign extension if necessary
-
-    lower = get_bits(value,  0, 12);
-    upper = get_bits(value, 12, 20);
-
-    talloc();
-
-    if (lower >= two_to_the_power_of(11)) {
-      // add 1 which is effectively 2^12 to cancel sign extension of lower
-      upper = upper + 1;
-
-      // assert: 0 < upper <= 2^(32-12)
-      emit_lui(current_temporary(), sign_extend(upper, 20));
-
-      if (upper == two_to_the_power_of(19))
-        // upper overflowed, cancel sign extension
-        emit_sub(current_temporary(), REG_ZR, current_temporary());
-    } else
-      // assert: 0 < upper < 2^(32-12)
-      emit_lui(current_temporary(), sign_extend(upper, 20));
-
-    emit_addi(current_temporary(), current_temporary(), sign_extend(lower, 12));
-
+    load_small_and_medium_integer(current_temporary(), value);
   } else {
-    // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
+    // integers with value < -2^31 or value >= 2^31 are stored in data segment
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
@@ -4839,13 +5089,14 @@ void emit_program_entry() {
   }
 }
 
-void emit_bootstrapping() {
+void emit_bootstrapping(uint64_t fetch_dss_code_location) {
   /*
       1. initialize global pointer
       2. initialize malloc's _bump pointer
       3. push argv pointer onto stack
       4. call main procedure
       5. proceed to exit procedure
+      6. fix fetch_data_segment_size code
   */
   uint64_t gp;
   uint64_t padding;
@@ -4955,6 +5206,9 @@ void emit_bootstrapping() {
   // discount NOPs in profile that were generated for program entry
   ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
 
+  if (fetch_dss_code_location)
+    emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
+
   // restore original binary length
   binary_length = code_length;
 }
@@ -4963,7 +5217,7 @@ void emit_bootstrapping() {
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile() {
+void selfie_compile(uint64_t generate_gc_library) {
   uint64_t link;
   uint64_t number_of_source_files;
 
@@ -4977,15 +5231,15 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = zalloc(MAX_BINARY_LENGTH);
+  binary        = zmalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
   code_length = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  code_line_number = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
+  code_line_number = zmalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -4998,8 +5252,19 @@ void selfie_compile() {
   emit_read();
   emit_write();
   emit_open();
+
   emit_malloc();
+
   emit_switch();
+
+  if (generate_gc_library) {
+    emit_fetch_stack_pointer();
+
+    // save code location of eventual fetch_data_segment_size implementation
+    generate_gc_library = binary_length;
+
+    emit_fetch_data_segment_size_interface();
+  }
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
@@ -5059,7 +5324,7 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  emit_bootstrapping();
+  emit_bootstrapping(generate_gc_library);
 
   emit_data_segment();
 
@@ -5758,7 +6023,7 @@ void emit_string_data(uint64_t* entry) {
   l = round_up(string_length(s) + 1, REGISTERSIZE);
 
   while (i < l) {
-    // CAUTION: at boot levels higher than zero, s is only accessible
+    // CAUTION: at boot levels higher than 0, s is only accessible
     // in C* at machine word granularity, not individual characters
     emit_data_word(*((uint64_t*) s), get_address(entry) + i, get_line_number(entry));
 
@@ -5800,7 +6065,7 @@ void emit_data_segment() {
 uint64_t* allocate_elf_header() {
   // allocate and map (on all boot levels) zeroed memory for ELF header preparing
   // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
-  return touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  return touch(zmalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 }
 
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
@@ -6078,10 +6343,10 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  printf4("%s: %s exiting with exit code %d and %.2uMB mallocated memory\n", selfie_name,
+  printf1("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
+  printf3("%s: %s exiting with exit code %d\n", selfie_name,
     get_name(context),
-    (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
-    (char*) fixed_point_ratio(get_program_break(context) - get_data_segment(context), MEGABYTE, 2));
+    (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
 }
 
 void emit_read() {
@@ -6466,7 +6731,7 @@ void emit_malloc() {
 
   create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
-  // on boot levels higher than zero, zalloc falls back to malloc
+  // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
   create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
@@ -6506,6 +6771,10 @@ void emit_malloc() {
   emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
   emit_ecall();
 
+  // caution: if mipster runs with garbage collection enabled,
+  // the brk syscall is redirected to the gc_brk syscall which
+  // skips the next seven instructions, see implement_gc_brk
+
   // return 0 if memory allocation failed, that is,
   // if new program break is still _bump and size != 0
   emit_beq(REG_A0, current_temporary(), 2 * INSTRUCTIONSIZE);
@@ -6525,57 +6794,66 @@ void emit_malloc() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
+  uint64_t current_program_break;
+
+  current_program_break = get_program_break(context);
+
+  if (is_valid_virtual_address(new_program_break))
+    if (new_program_break >= current_program_break)
+      if (new_program_break < *(get_regs(context) + REG_SP)) {
+        if (debug_brk)
+          printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
+
+        mc_brk = mc_brk + (new_program_break - current_program_break);
+
+        set_program_break(context, new_program_break);
+
+        return new_program_break;
+      }
+
+  // error returns current program break
+
+  if (debug_brk)
+    printf2("%s: retrieving current program break %p\n", selfie_name, (char*) current_program_break);
+
+  return current_program_break;
+}
+
 void implement_brk(uint64_t* context) {
   // parameter
-  uint64_t program_break;
+  uint64_t new_program_break;
 
-  // local variables
+  // local variable
   uint64_t previous_program_break;
-  uint64_t valid;
+
+  new_program_break = *(get_regs(context) + REG_A0);
+
+  previous_program_break = get_program_break(context);
+
+  // attempt to update program break
+
+  new_program_break = help_brk(context, new_program_break);
 
   if (debug_syscalls) {
     print("(brk): ");
     print_register_hexadecimal(REG_A0);
+    print(" |- ");
+    print_register_hexadecimal(REG_A0);
   }
 
-  program_break = *(get_regs(context) + REG_A0);
+  if (new_program_break == *(get_regs(context) + REG_A0)) {
+    if (*(get_regs(context) + REG_A0) != previous_program_break)
+      // account for brk syscall if program break actually changed
+      sc_brk = sc_brk + 1;
+  } else
+    // error case of help_brk
+    *(get_regs(context) + REG_A0) = new_program_break;
 
-  previous_program_break = get_program_break(context);
-
-  valid = 0;
-
-  if (program_break >= previous_program_break)
-    if (program_break < *(get_regs(context) + REG_SP))
-      if (program_break % SIZEOFUINT64 == 0)
-        valid = 1;
-
-  if (valid) {
-    if (debug_syscalls)
-      print(" |- ->\n");
-
-    if (debug_brk)
-      printf2("%s: setting program break to %p\n", selfie_name, (char*) program_break);
-
-    set_program_break(context, program_break);
-  } else {
-    // error returns current program break
-    program_break = previous_program_break;
-
-    if (debug_brk)
-      printf2("%s: retrieving current program break %p\n", selfie_name, (char*) program_break);
-
-    if (debug_syscalls) {
-      print(" |- ");
-      print_register_hexadecimal(REG_A0);
-    }
-
-    *(get_regs(context) + REG_A0) = program_break;
-
-    if (debug_syscalls) {
-      print(" -> ");
-      print_register_hexadecimal(REG_A0);
-      println();
-    }
+  if (debug_syscalls) {
+    print(" -> ");
+    print_register_hexadecimal(REG_A0);
+    println();
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -6709,6 +6987,13 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
+void reset_memory_counters() {
+  mc_brk = 0;
+  sc_brk = 0;
+
+  mc_mapped_heap = 0;
+}
+
 uint64_t load_physical_memory(uint64_t* paddr) {
   return *paddr;
 }
@@ -6800,6 +7085,10 @@ uint64_t get_page_of_virtual_address(uint64_t vaddr) {
   return vaddr / PAGESIZE;
 }
 
+uint64_t get_virtual_address_of_page_start(uint64_t page) {
+  return page * PAGESIZE;
+}
+
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
   // assert: is_valid_virtual_address(vaddr) == 1
 
@@ -6843,6 +7132,583 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
+}
+
+// -----------------------------------------------------------------
+// ---------------------- GARBAGE COLLECTOR ------------------------
+// -----------------------------------------------------------------
+
+void emit_fetch_stack_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_add(REG_A0, REG_ZR, REG_SP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_interface() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  // up to three instructions needed to load data segment size but is not yet known
+
+  emit_nop();
+  emit_nop();
+  emit_nop();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  // set code emission to fetch_data_segment_size
+  binary_length = fetch_dss_code_location;
+
+  // assert: emitting no more than 3 instructions
+
+  // load data segment size into A0
+  load_small_and_medium_integer(REG_A0, allocated_memory);
+
+  // discount NOPs in profile that were generated for fetch_data_segment_size
+  ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+}
+
+void implement_gc_brk(uint64_t* context) {
+  // parameter
+  uint64_t program_break;
+
+  // local variable
+  uint64_t size;
+
+  program_break = *(get_regs(context) + REG_A0);
+
+  // check if malloc actually asks for more memory
+  // if not, fall back to the default brk syscall
+  if (program_break > get_program_break(context)) {
+    if (debug_syscalls) {
+      print("(gc_brk): ");
+      print_register_hexadecimal(REG_A0);
+    }
+
+    // calculate size by subtracting the current from the new program break
+    size = program_break - get_program_break(context);
+
+    if (debug_syscalls) {
+      print(" |- ");
+      print_register_hexadecimal(REG_A0);
+    }
+
+    // yields the pointer to the newly/reused memory (or 0 if failed)
+    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
+
+    if (debug_syscalls) {
+      print(" -> ");
+      print_register_hexadecimal(REG_A0);
+      println();
+    }
+
+    // assert: _bump pointer is last entry in data segment
+
+    // updating the _bump pointer of the program (for consistency)
+    store_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64, get_program_break(context));
+
+    sc_brk = sc_brk + 1;
+
+    // assert: gc_brk syscall is invoked by selfie's malloc
+
+    // skip next seven instructions of selfie's malloc
+    // to avoid using its bump pointer allocator
+    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
+  } else
+    implement_brk(context);
+}
+
+uint64_t is_gc_library(uint64_t* context) {
+  if (context == (uint64_t*) 0)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t* allocate_metadata(uint64_t* context) {
+  if (is_gc_library(context))
+    return allocate_memory(context, GC_METADATA_SIZE);
+  else
+    return smalloc(GC_METADATA_SIZE);
+}
+
+uint64_t* get_used_list_head_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_used_list;
+  else
+    return get_used_list_head(context);
+}
+
+uint64_t* get_free_list_head_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_free_list;
+  else
+    return get_free_list_head(context);
+}
+
+uint64_t get_stack_start(uint64_t* context) {
+  if (is_gc_library(context))
+    return fetch_stack_pointer();
+  else
+    return *(get_regs(context) + REG_SP);
+}
+
+uint64_t get_ds_start(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_start - fetch_data_segment_size();
+  else
+    return get_code_segment(context);
+}
+
+uint64_t get_ds_end(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_start - SIZEOFUINT64;
+  else
+    return get_data_segment(context) - SIZEOFUINT64;
+}
+
+uint64_t get_heap_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_start;
+  else
+    return get_heap_start(context);
+}
+
+uint64_t get_heap_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_end;
+  else
+    return get_heap_end(context);
+}
+
+uint64_t get_gcs_in_period_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_num_gcs_in_period;
+  else
+    return get_gcs_in_period(context);
+}
+
+uint64_t get_gc_enabled_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return USE_GC_LIBRARY;
+  else
+    return get_gc_enabled(context);
+}
+
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head){
+  if (is_gc_library(context))
+    gc_used_list = used_list_head;
+  else
+    set_used_list_head(context, used_list_head);
+}
+
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
+  if (is_gc_library(context))
+    gc_free_list = free_list_head;
+  else
+    set_free_list_head(context, free_list_head);
+}
+
+void set_heap_start_end_gc(uint64_t* context) {
+  if (is_gc_library(context)) {
+    // assert: smalloc_system(0) returns program break
+    gc_heap_start = (uint64_t) smalloc_system(0);
+    gc_heap_end   = gc_heap_start;
+  } else {
+    set_heap_start(context, get_program_break(context));
+    set_heap_end(context, get_heap_start_gc(context));
+  }
+}
+
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs) {
+  if (is_gc_library(context))
+    gc_num_gcs_in_period = gcs;
+  else
+    set_gcs_in_period(context, gcs);
+}
+
+void set_gc_enabled_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    USE_GC_LIBRARY = GC_ENABLED;
+  else
+    set_gc_enabled(context, GC_ENABLED);
+}
+
+void gc_init(uint64_t* context) {
+  reset_memory_counters();
+  reset_gc_counters();
+
+  set_used_list_head_gc(context, (uint64_t*) 0);
+  set_free_list_head_gc(context, (uint64_t*) 0);
+
+  set_heap_start_end_gc(context);
+
+  set_gcs_in_period_gc(context, 0);
+
+  set_gc_enabled_gc(context);
+}
+
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size) {
+  uint64_t* prev_node;
+  uint64_t* node;
+
+  prev_node = (uint64_t*) 0;
+
+  node = get_free_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    if (get_metadata_size(node) == size) {
+      if (prev_node == (uint64_t*) 0)
+        set_free_list_head_gc(context, get_metadata_next(node));
+      else
+        set_metadata_next(prev_node, get_metadata_next(node));
+
+      set_metadata_next(node, get_used_list_head_gc(context));
+
+      set_used_list_head_gc(context, node);
+
+      return node;
+    }
+
+    prev_node = node;
+
+    node = get_metadata_next(node);
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
+  if (is_gc_library(context))
+    return *((uint64_t*) address);
+  else
+    // assert: is_valid_virtual_address(address) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      return load_virtual_memory(get_pt(context), address);
+    else
+      return 0;
+}
+
+void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
+  if (is_gc_library(context))
+    *((uint64_t*) address) = value;
+  else
+    // assert: is_valid_virtual_address(address) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      store_virtual_memory(get_pt(context), address, value);
+}
+
+void zero_object(uint64_t* context, uint64_t* metadata) {
+  uint64_t object_start;
+  uint64_t object_end;
+
+  // zero object memory
+  object_start = (uint64_t) get_metadata_memory(metadata);
+  object_end   = object_start + get_metadata_size(metadata);
+
+  while (object_start < object_end) {
+    gc_store_memory(context, object_start, 0);
+
+    object_start = object_start + SIZEOFUINT64;
+  }
+}
+
+uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+  uint64_t object;
+  uint64_t new_program_break;
+
+  if (is_gc_library(context)) {
+    object = (uint64_t) smalloc_system(size);
+
+    // assert: smalloc_system is a bump pointer allocator that may reuse memory
+
+    if (object >= gc_heap_start) {
+      if (object == gc_heap_end)
+        gc_heap_end = gc_heap_end + size;
+
+      return (uint64_t*) object;
+    }
+  } else {
+    object = get_program_break(context);
+
+    if (object == get_heap_end(context)) {
+      new_program_break = help_brk(context, object + size);
+
+      if (new_program_break == object + size) {
+        set_heap_end(context, get_heap_end(context) + size);
+
+        return (uint64_t*) object;
+      }
+    }
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
+  uint64_t* metadata;
+
+  // check if reusable memory is available in free list
+  metadata = retrieve_from_free_list(context, size);
+
+  if (metadata != (uint64_t*) 0) {
+    // zeroing reused memory is optional!
+    zero_object(context, metadata);
+
+    return get_metadata_memory(metadata);
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+  uint64_t* object;
+  uint64_t* metadata;
+
+  // stack is not zeroed! using two successive gc_malloc calls (library variant)
+  // leads to having the same variables as with the previous call and therefore
+  // we might have a reachable pointer which is not actually reachable. to fix
+  // this, we set these variables to 0.
+  object   = (uint64_t*) 0;
+  metadata = (uint64_t*) 0;
+
+  // garbage collect
+  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
+    gc_collect(context);
+
+    set_gcs_in_period_gc(context, 0);
+  } else
+    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
+
+  size = round_up(size, SIZEOFUINT64);
+
+  gc_num_mallocated = gc_num_mallocated + 1;
+  gc_mem_mallocated = gc_mem_mallocated + size;
+
+  // try reusing memory first
+  object = reuse_memory(context, size);
+
+  if (object != (uint64_t*) 0) {
+    gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
+    gc_mem_reused         = gc_mem_reused + size;
+
+    return object;
+  }
+
+  // allocate new object memory if there is no reusable memory
+  object = allocate_memory(context, size);
+
+  if (object != (uint64_t*) 0) {
+    // allocate metadata for managing object
+    metadata = allocate_metadata(context);
+
+    if (metadata != (uint64_t*) 0) {
+      set_metadata_next(metadata, get_used_list_head_gc(context));
+      set_used_list_head_gc(context, metadata);
+
+      set_metadata_memory(metadata, object);
+      set_metadata_size(metadata, size);
+      set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
+
+      gc_num_gced_mallocs   = gc_num_gced_mallocs + 1;
+      gc_num_ungced_mallocs = gc_num_ungced_mallocs + 1;
+
+      gc_mem_objects  = gc_mem_objects + size;
+      gc_mem_metadata = gc_mem_metadata + GC_METADATA_SIZE;
+    } else
+      return (uint64_t*) 0;
+  } else
+    // if object allocation failed discount memory from mallocated total
+    gc_mem_mallocated = gc_mem_mallocated - size;
+
+  return object;
+}
+
+uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) {
+  uint64_t* node;
+  uint64_t  object;
+
+  // get word at address and check if it may be a pointer
+  address = gc_load_memory(context, address);
+
+  if (is_valid_virtual_address(address) == 0)
+    return (uint64_t*) 0;
+
+  // pointer below gced heap
+  if (address < get_heap_start_gc(context))
+    return (uint64_t*) 0;
+
+  // pointer above gced heap
+  if (address >= get_heap_end_gc(context))
+    return (uint64_t*) 0;
+
+  node = get_used_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    if (address >= (uint64_t) node)
+      if (address < ((uint64_t) node + GC_METADATA_SIZE))
+        // address points to metadata
+        return (uint64_t*) 0;
+
+    object = (uint64_t) get_metadata_memory(node);
+
+    if (address >= object)
+      if (address < object + get_metadata_size(node))
+        // address points into a gced object
+        return node;
+
+    node = get_metadata_next(node);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void mark_object(uint64_t* context, uint64_t address) {
+  uint64_t* metadata;
+  uint64_t object_start;
+  uint64_t object_end;
+
+  metadata = find_metadata_of_word_at_address(context, address);
+
+  if (metadata == (uint64_t*) 0)
+    // address is not a pointer to a gced object
+    return;
+  else if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
+    set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
+  else
+    // object has already been marked as reachable
+    return;
+
+  object_start = (uint64_t) get_metadata_memory(metadata);
+  object_end   = object_start + get_metadata_size(metadata);
+
+  while (object_start < object_end) {
+    mark_object(context, object_start);
+
+    object_start = object_start + SIZEOFUINT64;
+  }
+}
+
+void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
+  // assert: segment is not heap
+
+  while (segment_start < segment_end) {
+    // assert: is_valid_virtual_address(segment_start) == 1
+    // assert: is_virtual_address_mapped(segment_start) == 1
+    mark_object(context, segment_start);
+
+    segment_start = segment_start + SIZEOFUINT64;
+  }
+}
+
+void mark(uint64_t* context) {
+  uint64_t stack_start;
+  uint64_t stack_end;
+  uint64_t ds_start;
+  uint64_t ds_end;
+
+  stack_start = get_stack_start(context);
+  stack_end   = VIRTUALMEMORYSIZE; // constant for now
+  ds_start    = get_ds_start(context);
+  ds_end      = get_ds_end(context);
+
+  if (get_used_list_head_gc(context) == (uint64_t*) 0)
+    return; // if there is no used memory skip collection
+
+  // not traversing registers
+
+  // assert: temporary registers do not contain any reference to gc_heap memory
+  // selfie saves all relevant temporary registers on stack, see procedure_prologue().
+
+  // root segments: call stack and data segment
+
+  // traverse call stack
+  mark_segment(context, stack_start, stack_end);
+
+  // traverse data segment
+  mark_segment(context, ds_start, ds_end);
+}
+
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
+  if (prev_metadata == (uint64_t*) 0)
+    set_used_list_head_gc(context, get_metadata_next(metadata));
+  else
+    set_metadata_next(prev_metadata, get_metadata_next(metadata));
+
+  if (GC_REUSE) {
+    set_metadata_next(metadata, get_free_list_head_gc(context));
+
+    set_free_list_head_gc(context, metadata);
+  }
+
+  gc_mem_collected = gc_mem_collected + get_metadata_size(metadata);
+}
+
+void sweep(uint64_t* context) {
+  uint64_t* prev_node;
+  uint64_t* node;
+  uint64_t* next_node;
+
+  prev_node = (uint64_t*) 0;
+
+  node = get_used_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    // next node changes when object is reused
+    next_node = get_metadata_next(node);
+
+    if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
+      free_object(context, node, prev_node);
+    else {
+      // clear mark bit for next marking
+      set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
+
+      prev_node = node;
+    }
+
+    node = next_node;
+  }
+}
+
+void gc_collect(uint64_t* context) {
+  mark(context);
+  sweep(context);
+
+  gc_num_collects = gc_num_collects + 1;
+}
+
+void print_gc_profile(uint64_t* context) {
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf5("%s: gc:      %.2uMB requested in %u mallocs (%u gced, %u reuses)\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
+    (char*) gc_num_mallocated,
+    (char*) gc_num_gced_mallocs,
+    (char*) gc_num_reused_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) reused in %u reused mallocs\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
+    (char*) gc_num_reused_mallocs);
+  printf3("%s: gc:      %.2uMB collected in %u gc runs\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
+    (char*) gc_num_collects);
+  printf6("%s: gc:      %.2uMB(%.2u%%) allocated in %u mallocs (%u gced, %u ungced)\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_objects + gc_mem_metadata, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata, 4), 4),
+    (char*) (gc_num_gced_mallocs + gc_num_ungced_mallocs),
+    (char*) gc_num_gced_mallocs,
+    (char*) gc_num_ungced_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
+    (char*) gc_num_gced_mallocs);
+  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u ungced mallocs", selfie_name,
+    (char*) fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
+    (char*) gc_num_ungced_mallocs);
+  if (is_gc_library(context) == 0) print(" (external)"); println();
 }
 
 // -----------------------------------------------------------------
@@ -7958,7 +8824,7 @@ void execute_debug() {
   print_instruction();
 
   // assert: 1 <= is <= number of RISC-U instructions
-  if (is == ADDI){
+  if (is == ADDI) {
     print_addi_before();
     do_addi();
     print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -8179,14 +9045,28 @@ void print_register_memory_profile() {
   print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
-void print_profile() {
-  printf5("%s: summary: %u executed instructions [%.2u%% nops] and %.2uMB(%.2u%%) mapped memory\n", selfie_name,
+void print_profile(uint64_t* context) {
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
     (char*) get_total_number_of_instructions(),
-    (char*) get_total_percentage_of_nops(),
+    (char*) get_total_percentage_of_nops());
+  printf3("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
+    (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2),
+    (char*) sc_brk);
+  printf4("%s:          %.2uMB(%.2u%% of %.2uMB) actually accessed\n", selfie_name,
+    (char*) fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4),
+    (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2));
+  printf4("%s:          %.2uMB(%.2u%% of %uMB) mapped memory\n", selfie_name,
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
+    (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
+    (char*) (total_page_frame_memory / MEGABYTE));
+
+  if (get_gc_enabled_gc(context))
+    print_gc_profile(context);
 
   if (get_total_number_of_instructions() > 0) {
+    printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
@@ -8201,6 +9081,8 @@ void print_profile() {
 
     print_register_memory_profile();
   }
+
+  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -8240,14 +9122,14 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_regs(context, zmalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   if (PAGE_TABLE_TREE == 0)
-    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
   else
-    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
   // reset page table cache
   set_lowest_lo_page(context, 0);
@@ -8271,6 +9153,13 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
+
+  // garbage collector
+  set_used_list_head(context, (uint64_t*) 0);
+  set_free_list_head(context, (uint64_t*) 0);
+  set_heap_start(context, 0);
+  set_heap_end(context, 0);
+  set_gc_enabled(context, 0);
 }
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
@@ -8582,7 +9471,7 @@ uint64_t is_valid_segment_write(uint64_t vaddr) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= total_page_frame_memory)
     return 1;
   else
     return 0;
@@ -8591,7 +9480,7 @@ uint64_t pavailable() {
 uint64_t pexcess() {
   if (pavailable())
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= 2 * page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= 2 * total_page_frame_memory)
     // tolerate twice as much memory mapped on demand than physically available
     return 1;
   else
@@ -8606,7 +9495,7 @@ uint64_t* palloc() {
   uint64_t block;
   uint64_t frame;
 
-  // assert: page_frame_memory is equal to or a multiple of MEGABYTE
+  // assert: total_page_frame_memory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
@@ -8614,7 +9503,7 @@ uint64_t* palloc() {
       free_page_frame_memory = MEGABYTE;
 
       // on boot level zero allocate zeroed memory
-      block = (uint64_t) zalloc(free_page_frame_memory);
+      block = (uint64_t) zmalloc(free_page_frame_memory);
 
       allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
 
@@ -8637,7 +9526,7 @@ uint64_t* palloc() {
 
   free_page_frame_memory = free_page_frame_memory - PAGESIZE;
 
-  // strictly, touching is only necessary on boot levels higher than zero
+  // strictly, touching is only necessary on boot levels higher than 0
   return touch((uint64_t*) frame, PAGESIZE);
 }
 
@@ -8697,7 +9586,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   i = 0;
 
   while (i < bytes) {
-    // CAUTION: at boot levels higher than zero, s is only accessible
+    // CAUTION: at boot levels higher than 0, s is only accessible
     // in C* at machine word granularity, not individual characters
     map_and_store(context, SP + i, *((uint64_t*) s));
 
@@ -8784,9 +9673,12 @@ uint64_t handle_system_call(uint64_t* context) {
 
   a7 = *(get_regs(context) + REG_A7);
 
-  if (a7 == SYSCALL_BRK)
-    implement_brk(context);
-  else if (a7 == SYSCALL_READ)
+  if (a7 == SYSCALL_BRK) {
+    if (get_gc_enabled_gc(context))
+      implement_gc_brk(context);
+    else
+      implement_brk(context);
+  } else if (a7 == SYSCALL_READ)
     implement_read(context);
   else if (a7 == SYSCALL_WRITE)
     implement_write(context);
@@ -8809,10 +9701,17 @@ uint64_t handle_system_call(uint64_t* context) {
 }
 
 uint64_t handle_page_fault(uint64_t* context) {
+  uint64_t page;
+
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  // TODO: use this table to unmap and reuse frames
-  map_page(context, get_fault(context), (uint64_t) palloc());
+  page = get_fault(context);
+
+  // TODO: reuse frames
+  map_page(context, page, (uint64_t) palloc());
+
+  if (is_valid_heap_address(context, get_virtual_address_of_page_start(page)))
+    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
 
   return DONOTEXIT;
 }
@@ -8869,7 +9768,21 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  print("mipster\n");
+  print("mipster");
+  if (record)
+    print(" with replay");
+  else if (debug)
+    print(" with debugger");
+  else if (get_gc_enabled_gc(to_context)) {
+    printf1(" (gcing every %d mallocs ", (char*) GC_PERIOD);
+
+    if (GC_REUSE)
+      print("and reusing memory)");
+    else
+      print("but not reusing memory)");
+  }
+  println();
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   timeout = TIMESLICE;
 
@@ -8896,6 +9809,7 @@ uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
   print("hypster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   while (1) {
     from_context = hypster_switch(to_context, TIMESLICE);
@@ -8915,6 +9829,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t* from_context;
 
   printf2("mixter (%u%% mipster/%u%% hypster)\n", (char*) mix, (char*) (100 - mix));
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   mslice = TIMESLICE;
 
@@ -9019,6 +9934,7 @@ void map_unmapped_pages(uint64_t* context) {
 
 uint64_t minster(uint64_t* to_context) {
   print("minster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -9031,6 +9947,7 @@ uint64_t minster(uint64_t* to_context) {
 
 uint64_t mobster(uint64_t* to_context) {
   print("mobster\n");
+  printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
@@ -9116,7 +10033,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
-    (char*) (page_frame_memory / MEGABYTE));
+    (char*) (total_page_frame_memory / MEGABYTE));
 
   if (machine == DIPSTER) {
     debug          = 1;
@@ -9126,10 +10043,13 @@ uint64_t selfie_run(uint64_t machine) {
     record = 1;
 
     init_replay_engine();
-  } else if (machine == HYPSTER)
+  } else if (machine == GIBSTER)
+    gc_init(current_context);
+  else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
       machine = MIPSTER;
+  }
 
   run = 1;
 
@@ -9138,6 +10058,8 @@ uint64_t selfie_run(uint64_t machine) {
   else if (machine == DIPSTER)
     exit_code = mipster(current_context);
   else if (machine == RIPSTER)
+    exit_code = mipster(current_context);
+  else if (machine == GIBSTER)
     exit_code = mipster(current_context);
   else if (machine == MINSTER)
     exit_code = minster(current_context);
@@ -9161,7 +10083,7 @@ uint64_t selfie_run(uint64_t machine) {
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   if (machine != HYPSTER)
-    print_profile();
+    print_profile(current_context);
 
   return exit_code;
 }
@@ -9231,7 +10153,11 @@ uint64_t selfie(uint64_t extras) {
       get_argument();
 
       if (string_compare(argument, "-c"))
-        selfie_compile();
+        selfie_compile(0);
+      else if (string_compare(argument, "-gc"))
+        selfie_compile(1);
+      else if (string_compare(argument, "--nr"))
+        GC_REUSE = 0;
       else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
@@ -9256,6 +10182,8 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(MINSTER);
         else if (string_compare(argument, "-mob"))
           return selfie_run(MOBSTER);
+        else if (string_compare(argument, "-mgc"))
+          return selfie_run(GIBSTER);
         else
           return EXITCODE_BADARGUMENTS;
       } else
