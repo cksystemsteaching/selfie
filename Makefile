@@ -98,6 +98,10 @@ giblib: selfie selfie.h selfie.m selfie.s
 	diff -q selfie.m selfie7.m
 	diff -q selfie.s selfie7.s
 
+# Run garbage collector library example (which also serves as unit tests)
+gclibtest: selfie selfie.h examples/garbage_collector_library.c
+	./selfie -gc selfie.h examples/garbage_collector_library.c -m 1
+
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
 
