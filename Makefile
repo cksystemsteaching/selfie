@@ -153,7 +153,7 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	diff -q selfie.x86 selfie1.x86
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob gib gclib giblib sat mon smt mod btor2 selfie-2-x86
+all: compile quine debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86
 
 # Test autograder
 grader: selfie
