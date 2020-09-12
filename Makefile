@@ -18,7 +18,7 @@ selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob gib gclib sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
+.PHONY: compile quine escape debug replay os vm min mob gib gclib giblib sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -149,7 +149,7 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	diff -q selfie.x86 selfie1.x86
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob gib gclib sat mon smt mod btor2 selfie-2-x86
+all: compile quine debug replay os vm min mob gib gclib giblib sat mon smt mod btor2 selfie-2-x86
 
 # Test autograder
 grader: selfie
