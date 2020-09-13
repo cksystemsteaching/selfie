@@ -1026,7 +1026,8 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
     r = r + 1;
   }
 
-  // symbolic contexts are in a singly-linked list, we insert in the front
+  // symbolic contexts are stored in a list, we insert in the front
+  set_prev_context(symbolic_contexts, context); // for deletion to work
   set_next_context(context, symbolic_contexts);
 
   symbolic_contexts = context;
