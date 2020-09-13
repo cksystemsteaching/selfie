@@ -678,7 +678,7 @@ void emit_program_entry();
 
 // bootstrapping binary
 
-void emit_bootstrapping(uint64_t fetch_dss_code_location);
+void emit_bootstrapping();
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -1126,13 +1126,13 @@ void init_memory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 // bootstrapped to actual functions during compilation ...
-uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
-uint64_t fetch_data_segment_size() { return 0; }
+uint64_t fetch_stack_pointer()      { return 0; } // indicate that gc is unavailable
+uint64_t fetch_data_segment_start() { return 0; }
 
 // ... here, not available on boot level 0 - only for compilation
 void emit_fetch_stack_pointer();
-void emit_fetch_data_segment_size_interface();
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
+void emit_fetch_data_segment_start_interface();
+void emit_fetch_data_segment_start_implementation(uint64_t fetch_dss_code_location);
 
 void implement_gc_brk(uint64_t* context);
 
@@ -1158,20 +1158,21 @@ void set_metadata_memory(uint64_t* entry, uint64_t* memory)  { *(entry + 1) = (u
 void set_metadata_size(uint64_t* entry, uint64_t size)       { *(entry + 2) = size; }
 void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = markbit; }
 
-// get functions for properties with different access in library/syscall
+// getters and setters with different access in library/kernel
+
+uint64_t  get_stack_start_gc(uint64_t* context);
+uint64_t  get_data_seg_start_gc(uint64_t* context);
+uint64_t  get_heap_seg_start_gc(uint64_t* context);
+uint64_t  get_heap_seg_end_gc(uint64_t* context);
 uint64_t* get_used_list_head_gc(uint64_t* context);
 uint64_t* get_free_list_head_gc(uint64_t* context);
-uint64_t  get_stack_start(uint64_t* context);
-uint64_t  get_ds_start(uint64_t* context);
-uint64_t  get_ds_end(uint64_t* context);
-uint64_t  get_heap_start_gc(uint64_t* context);
-uint64_t  get_heap_end_gc(uint64_t* context);
 uint64_t  get_gcs_in_period_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
 
+void set_data_seg_start_gc(uint64_t* context);
+void set_heap_seg_start_end_gc(uint64_t* context);
 void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
 void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
-void set_heap_start_end_gc(uint64_t* context);
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
 void set_gc_enabled_gc(uint64_t* context);
 
@@ -1234,11 +1235,12 @@ uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable b
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t gc_data_seg_start = 0;
+uint64_t gc_heap_seg_start = 0;
+uint64_t gc_heap_seg_end   = 0;
+
 uint64_t* gc_used_list = (uint64_t*) 0; // pointer to used-list head
 uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
-
-uint64_t gc_heap_start = 0;
-uint64_t gc_heap_end   = 0;
 
 uint64_t gc_num_gcs_in_period = 0;
 
@@ -1668,9 +1670,9 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  6 | highest lo page | highest low uncached page (code, data, heap)
 // |  7 | lowest hi page  | lowest high uncached page (stack)
 // |  8 | highest hi page | highest high uncached page (stack)
-// |  9 | code entry      | start of code segment
-// | 10 | code segment    | end of code segment, start of data segment
-// | 11 | data segment    | end of data segment, original program break
+// |  9 | code segment    | start of code segment
+// | 10 | data segment    | end of code segment, start of data segment
+// | 11 | heap segment    | end of data segment, start of heap segment
 // | 12 | program break   | current program break
 // | 13 | exception       | exception ID
 // | 14 | faulting page   | faulting page
@@ -1678,18 +1680,17 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 16 | parent          | context that created this context
 // | 17 | virtual context | virtual context address
 // | 18 | name            | binary name loaded into context
+// +----+-----------------+
 // | 19 | used-list head  | pointer to head of used list
 // | 20 | free-list head  | pointer to head of free list
-// | 21 | heap start      | start of gc managed heap
-// | 22 | heap end        | end of gc managed heap
-// | 23 | gcs counter     | number of gc runs in gc period
-// | 24 | gc enabled      | flag indicating whether to use gc or not
+// | 21 | gcs counter     | number of gc runs in gc period
+// | 22 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 14 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1701,9 +1702,9 @@ uint64_t lowest_lo_page(uint64_t* context)  { return (uint64_t) (context + 5); }
 uint64_t highest_lo_page(uint64_t* context) { return (uint64_t) (context + 6); }
 uint64_t lowest_hi_page(uint64_t* context)  { return (uint64_t) (context + 7); }
 uint64_t highest_hi_page(uint64_t* context) { return (uint64_t) (context + 8); }
-uint64_t code_entry(uint64_t* context)      { return (uint64_t) (context + 9); }
-uint64_t code_segment(uint64_t* context)    { return (uint64_t) (context + 10); }
-uint64_t data_segment(uint64_t* context)    { return (uint64_t) (context + 11); }
+uint64_t code_seg_start(uint64_t* context)  { return (uint64_t) (context + 9); }
+uint64_t data_seg_start(uint64_t* context)  { return (uint64_t) (context + 10); }
+uint64_t heap_seg_start(uint64_t* context)  { return (uint64_t) (context + 11); }
 uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 12); }
 uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 13); }
 uint64_t fault(uint64_t* context)           { return (uint64_t) (context + 14); }
@@ -1714,10 +1715,8 @@ uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); 
 
 uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 19); }
 uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 20); }
-uint64_t heap_start(uint64_t* context)       { return (uint64_t) (context + 21); }
-uint64_t heap_end(uint64_t* context)         { return (uint64_t) (context + 22); }
-uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 23); }
-uint64_t gc_enabled(uint64_t* context)       { return (uint64_t) (context + 24); }
+uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 21); }
+uint64_t gc_enabled(uint64_t* context)       { return (uint64_t) (context + 22); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1728,9 +1727,9 @@ uint64_t  get_lowest_lo_page(uint64_t* context)  { return             *(context 
 uint64_t  get_highest_lo_page(uint64_t* context) { return             *(context + 6); }
 uint64_t  get_lowest_hi_page(uint64_t* context)  { return             *(context + 7); }
 uint64_t  get_highest_hi_page(uint64_t* context) { return             *(context + 8); }
-uint64_t  get_code_entry(uint64_t* context)      { return             *(context + 9); }
-uint64_t  get_code_segment(uint64_t* context)    { return             *(context + 10); }
-uint64_t  get_data_segment(uint64_t* context)    { return             *(context + 11); }
+uint64_t  get_code_seg_start(uint64_t* context)  { return             *(context + 9); }
+uint64_t  get_data_seg_start(uint64_t* context)  { return             *(context + 10); }
+uint64_t  get_heap_seg_start(uint64_t* context)  { return             *(context + 11); }
 uint64_t  get_program_break(uint64_t* context)   { return             *(context + 12); }
 uint64_t  get_exception(uint64_t* context)       { return             *(context + 13); }
 uint64_t  get_fault(uint64_t* context)           { return             *(context + 14); }
@@ -1741,10 +1740,8 @@ char*     get_name(uint64_t* context)            { return (char*)     *(context 
 
 uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 19); }
 uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 20); }
-uint64_t  get_heap_start(uint64_t* context)       { return             *(context + 21); }
-uint64_t  get_heap_end(uint64_t* context)         { return             *(context + 22); }
-uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 23); }
-uint64_t  get_gc_enabled(uint64_t* context)       { return             *(context + 24); }
+uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 21); }
+uint64_t  get_gc_enabled(uint64_t* context)       { return             *(context + 22); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1755,9 +1752,9 @@ void set_lowest_lo_page(uint64_t* context, uint64_t page)     { *(context + 5)  
 void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  = page; }
 void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
 void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
-void set_code_entry(uint64_t* context, uint64_t start)        { *(context + 9)  = start; }
-void set_code_segment(uint64_t* context, uint64_t end)        { *(context + 10) = end; }
-void set_data_segment(uint64_t* context, uint64_t end)        { *(context + 11) = end; }
+void set_code_seg_start(uint64_t* context, uint64_t start)    { *(context + 9)  = start; }
+void set_data_seg_start(uint64_t* context, uint64_t start)    { *(context + 10) = start; }
+void set_heap_seg_start(uint64_t* context, uint64_t start)    { *(context + 11) = start; }
 void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 12) = brk; }
 void set_exception(uint64_t* context, uint64_t exception)     { *(context + 13) = exception; }
 void set_fault(uint64_t* context, uint64_t page)              { *(context + 14) = page; }
@@ -1768,10 +1765,8 @@ void set_name(uint64_t* context, char* name)                  { *(context + 18) 
 
 void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 19) = (uint64_t) used_list_head; }
 void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t) free_list_head; }
-void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context + 21) = heap_start; }
-void set_heap_end(uint64_t* context, uint64_t heap_end)              { *(context + 22) = heap_end; }
-void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 23) = gcs; }
-void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 24) = gc_enabled; }
+void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 21) = gcs; }
+void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 22) = gc_enabled; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -5091,14 +5086,13 @@ void emit_program_entry() {
   }
 }
 
-void emit_bootstrapping(uint64_t fetch_dss_code_location) {
+void emit_bootstrapping() {
   /*
       1. initialize global pointer
       2. initialize malloc's _bump pointer
       3. push argv pointer onto stack
       4. call main procedure
       5. proceed to exit procedure
-      6. fix fetch_data_segment_size code
   */
   uint64_t gp;
   uint64_t padding;
@@ -5203,13 +5197,10 @@ void emit_bootstrapping(uint64_t fetch_dss_code_location) {
   emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
   emit_sd(REG_SP, 0, REG_A0);
 
-  // wrapper code for exit must follow here
-
   // discount NOPs in profile that were generated for program entry
   ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
 
-  if (fetch_dss_code_location)
-    emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
+  // wrapper code for exit must follow here
 
   // restore original binary length
   binary_length = code_length;
@@ -5262,10 +5253,10 @@ void selfie_compile(uint64_t generate_gc_library) {
   if (generate_gc_library) {
     emit_fetch_stack_pointer();
 
-    // save code location of eventual fetch_data_segment_size implementation
+    // save code location of eventual fetch_data_segment_start implementation
     generate_gc_library = binary_length;
 
-    emit_fetch_data_segment_size_interface();
+    emit_fetch_data_segment_start_interface();
   }
 
   // implicitly declare main procedure in global symbol table
@@ -5326,7 +5317,10 @@ void selfie_compile(uint64_t generate_gc_library) {
   if (number_of_source_files == 0)
     printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  emit_bootstrapping(generate_gc_library);
+  emit_bootstrapping();
+
+  if (generate_gc_library)
+    emit_fetch_data_segment_start_implementation(generate_gc_library);
 
   emit_data_segment();
 
@@ -7148,10 +7142,10 @@ void emit_fetch_stack_pointer() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+void emit_fetch_data_segment_start_interface() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_start", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  // up to three instructions needed to load data segment size but is not yet known
+  // up to three instructions needed to load data segment start but is not yet known
 
   emit_nop();
   emit_nop();
@@ -7160,17 +7154,20 @@ void emit_fetch_data_segment_size_interface() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
-  // set code emission to fetch_data_segment_size
+void emit_fetch_data_segment_start_implementation(uint64_t fetch_dss_code_location) {
+  // set code emission to fetch_data_segment_start
   binary_length = fetch_dss_code_location;
 
   // assert: emitting no more than 3 instructions
 
-  // load data segment size into A0
-  load_small_and_medium_integer(REG_A0, allocated_memory);
+  // load data segment start into A0
+  load_small_and_medium_integer(REG_A0, code_length);
 
-  // discount NOPs in profile that were generated for fetch_data_segment_size
+  // discount NOPs in profile that were generated for fetch_data_segment_start
   ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+
+  // restore original binary length
+  binary_length = code_length;
 }
 
 void implement_gc_brk(uint64_t* context) {
@@ -7210,7 +7207,7 @@ void implement_gc_brk(uint64_t* context) {
     // assert: _bump pointer is last entry in data segment
 
     // updating the _bump pointer of the program (for consistency)
-    store_virtual_memory(get_pt(context), get_data_segment(context) - SIZEOFUINT64, get_program_break(context));
+    store_virtual_memory(get_pt(context), get_heap_seg_start(context) - SIZEOFUINT64, get_program_break(context));
 
     sc_brk = sc_brk + 1;
 
@@ -7237,6 +7234,34 @@ uint64_t* allocate_metadata(uint64_t* context) {
     return smalloc(GC_METADATA_SIZE);
 }
 
+uint64_t get_stack_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return fetch_stack_pointer();
+  else
+    return *(get_regs(context) + REG_SP);
+}
+
+uint64_t get_data_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_data_seg_start;
+  else
+    return get_data_seg_start(context);
+}
+
+uint64_t get_heap_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_seg_start;
+  else
+    return get_heap_seg_start(context);
+}
+
+uint64_t get_heap_seg_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_seg_end;
+  else
+    return get_program_break(context);
+}
+
 uint64_t* get_used_list_head_gc(uint64_t* context) {
   if (is_gc_library(context))
     return gc_used_list;
@@ -7249,41 +7274,6 @@ uint64_t* get_free_list_head_gc(uint64_t* context) {
     return gc_free_list;
   else
     return get_free_list_head(context);
-}
-
-uint64_t get_stack_start(uint64_t* context) {
-  if (is_gc_library(context))
-    return fetch_stack_pointer();
-  else
-    return *(get_regs(context) + REG_SP);
-}
-
-uint64_t get_ds_start(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_start - fetch_data_segment_size();
-  else
-    return get_code_segment(context);
-}
-
-uint64_t get_ds_end(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_start - SIZEOFUINT64;
-  else
-    return get_data_segment(context) - SIZEOFUINT64;
-}
-
-uint64_t get_heap_start_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_start;
-  else
-    return get_heap_start(context);
-}
-
-uint64_t get_heap_end_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_end;
-  else
-    return get_heap_end(context);
 }
 
 uint64_t get_gcs_in_period_gc(uint64_t* context) {
@@ -7300,6 +7290,19 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
     return get_gc_enabled(context);
 }
 
+void set_data_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    gc_data_seg_start = fetch_data_segment_start();
+}
+
+void set_heap_seg_start_end_gc(uint64_t* context) {
+  if (is_gc_library(context)) {
+    // assert: smalloc_system(0) returns program break
+    gc_heap_seg_start = (uint64_t) smalloc_system(0);
+    gc_heap_seg_end   = gc_heap_seg_start;
+  }
+}
+
 void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head){
   if (is_gc_library(context))
     gc_used_list = used_list_head;
@@ -7312,17 +7315,6 @@ void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
     gc_free_list = free_list_head;
   else
     set_free_list_head(context, free_list_head);
-}
-
-void set_heap_start_end_gc(uint64_t* context) {
-  if (is_gc_library(context)) {
-    // assert: smalloc_system(0) returns program break
-    gc_heap_start = (uint64_t) smalloc_system(0);
-    gc_heap_end   = gc_heap_start;
-  } else {
-    set_heap_start(context, get_program_break(context));
-    set_heap_end(context, get_heap_start_gc(context));
-  }
 }
 
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs) {
@@ -7343,13 +7335,12 @@ void gc_init(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
 
+  set_data_seg_start_gc(context);
+  set_heap_seg_start_end_gc(context);
+
   set_used_list_head_gc(context, (uint64_t*) 0);
   set_free_list_head_gc(context, (uint64_t*) 0);
-
-  set_heap_start_end_gc(context);
-
   set_gcs_in_period_gc(context, 0);
-
   set_gc_enabled_gc(context);
 }
 
@@ -7427,24 +7418,17 @@ uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
 
     // assert: smalloc_system is a bump pointer allocator that may reuse memory
 
-    if (object >= gc_heap_start) {
-      if (object == gc_heap_end)
-        gc_heap_end = gc_heap_end + size;
+    if (object + size > gc_heap_seg_end)
+      gc_heap_seg_end = object + size;
 
-      return (uint64_t*) object;
-    }
+    return (uint64_t*) object;
   } else {
     object = get_program_break(context);
 
-    if (object == get_heap_end(context)) {
-      new_program_break = help_brk(context, object + size);
+    new_program_break = help_brk(context, object + size);
 
-      if (new_program_break == object + size) {
-        set_heap_end(context, get_heap_end(context) + size);
-
-        return (uint64_t*) object;
-      }
-    }
+    if (new_program_break == object + size)
+      return (uint64_t*) object;
   }
 
   return (uint64_t*) 0;
@@ -7540,11 +7524,11 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
     return (uint64_t*) 0;
 
   // pointer below gced heap
-  if (address < get_heap_start_gc(context))
+  if (address < get_heap_seg_start_gc(context))
     return (uint64_t*) 0;
 
   // pointer above gced heap
-  if (address >= get_heap_end_gc(context))
+  if (address >= get_heap_seg_end_gc(context))
     return (uint64_t*) 0;
 
   node = get_used_list_head_gc(context);
@@ -7607,16 +7591,6 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 }
 
 void mark(uint64_t* context) {
-  uint64_t stack_start;
-  uint64_t stack_end;
-  uint64_t ds_start;
-  uint64_t ds_end;
-
-  stack_start = get_stack_start(context);
-  stack_end   = VIRTUALMEMORYSIZE; // constant for now
-  ds_start    = get_ds_start(context);
-  ds_end      = get_ds_end(context);
-
   if (get_used_list_head_gc(context) == (uint64_t*) 0)
     return; // if there is no used memory skip collection
 
@@ -7628,10 +7602,10 @@ void mark(uint64_t* context) {
   // root segments: call stack and data segment
 
   // traverse call stack
-  mark_segment(context, stack_start, stack_end);
+  mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE);
 
   // traverse data segment
-  mark_segment(context, ds_start, ds_end);
+  mark_segment(context, get_data_seg_start_gc(context), get_heap_seg_start_gc(context));
 }
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
@@ -9140,9 +9114,9 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
-    set_code_entry(context, load_virtual_memory(get_pt(parent), code_entry(vctxt)));
-    set_code_segment(context, load_virtual_memory(get_pt(parent), code_segment(vctxt)));
-    set_data_segment(context, load_virtual_memory(get_pt(parent), data_segment(vctxt)));
+    set_code_seg_start(context, load_virtual_memory(get_pt(parent), code_seg_start(vctxt)));
+    set_data_seg_start(context, load_virtual_memory(get_pt(parent), data_seg_start(vctxt)));
+    set_heap_seg_start(context, load_virtual_memory(get_pt(parent), heap_seg_start(vctxt)));
 
     // TODO: cache name
     set_name(context, (char*) 0);
@@ -9159,8 +9133,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // garbage collector
   set_used_list_head(context, (uint64_t*) 0);
   set_free_list_head(context, (uint64_t*) 0);
-  set_heap_start(context, 0);
-  set_heap_end(context, 0);
+  set_gcs_in_period(context, 0);
   set_gc_enabled(context, 0);
 }
 
@@ -9382,8 +9355,8 @@ void restore_context(uint64_t* context) {
 
 uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
   // is address in code segment?
-  if (vaddr >= get_code_entry(context))
-    if (vaddr < get_code_segment(context))
+  if (vaddr >= get_code_seg_start(context))
+    if (vaddr < get_data_seg_start(context))
       // code must be single-word-addressed
       if (vaddr % INSTRUCTIONSIZE == 0)
         return 1;
@@ -9393,8 +9366,8 @@ uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
 
 uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
   // is address in data segment?
-  if (vaddr >= get_code_segment(context))
-    if (vaddr < get_data_segment(context))
+  if (vaddr >= get_data_seg_start(context))
+    if (vaddr < get_heap_seg_start(context))
       // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
@@ -9413,7 +9386,7 @@ uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
 
 uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
   // is address in the heap?
-  if (vaddr >= get_data_segment(context))
+  if (vaddr >= get_heap_seg_start(context))
     if (vaddr < get_program_break(context))
       // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
@@ -9560,10 +9533,10 @@ void up_load_binary(uint64_t* context) {
 
   // setting up memory segments
 
-  set_code_entry(context, entry_point);
-  set_code_segment(context, entry_point + code_length);
-  set_data_segment(context, entry_point + binary_length);
-  set_program_break(context, get_data_segment(context));
+  set_code_seg_start(context, entry_point);
+  set_data_seg_start(context, entry_point + code_length);
+  set_heap_seg_start(context, entry_point + binary_length);
+  set_program_break(context, get_heap_seg_start(context));
 
   baddr = 0;
 

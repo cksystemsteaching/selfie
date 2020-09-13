@@ -150,34 +150,34 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
 // symbolic context extension:
 // +----+-----------------+
-// | 25 | execution depth | number of executed instructions
-// | 26 | path condition  | pointer to path condition
-// | 27 | symbolic memory | pointer to symbolic memory
-// | 28 | symbolic regs   | pointer to symbolic registers
-// | 29 | beq counter     | number of executed symbolic beq instructions
-// | 30 | merge partner   | pointer to the context from which this context was created
-// | 31 | call stack      | pointer to the corresponding node in the call stack tree
+// | 23 | execution depth | number of executed instructions
+// | 24 | path condition  | pointer to path condition
+// | 25 | symbolic memory | pointer to symbolic memory
+// | 26 | symbolic regs   | pointer to symbolic registers
+// | 27 | beq counter     | number of executed symbolic beq instructions
+// | 28 | merge partner   | pointer to the context from which this context was created
+// | 29 | call stack      | pointer to the corresponding node in the call stack tree
 // +----+-----------------+
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 14 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 }
 
-uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 25); }
-char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 26); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 27); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 28); }
-uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 29); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 30); }
-uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 31); }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 23); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 24); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 25); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 26); }
+uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 27); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 28); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 29); }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 25) =            depth; }
-void set_path_condition(uint64_t* context, char* path)        { *(context + 26) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 27) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 28) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 29) =            counter; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 30) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 31) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 23) =            depth; }
+void set_path_condition(uint64_t* context, char* path)        { *(context + 24) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 25) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 26) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 27) =            counter; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 28) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 29) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -957,6 +957,8 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   context = new_symbolic_context();
 
+  // next context is set below
+
   set_pc(context, location);
 
   set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
@@ -975,9 +977,9 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_highest_lo_page(context, get_highest_lo_page(original));
   set_lowest_hi_page(context, get_lowest_hi_page(original));
   set_highest_hi_page(context, get_highest_hi_page(original));
-  set_code_entry(context, get_code_entry(original));
-  set_code_segment(context, get_code_segment(original));
-  set_data_segment(context, get_data_segment(original));
+  set_code_seg_start(context, get_code_seg_start(original));
+  set_data_seg_start(context, get_data_seg_start(original));
+  set_heap_seg_start(context, get_heap_seg_start(original));
   set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
   set_fault(context, get_fault(original));
@@ -1024,10 +1026,8 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
     r = r + 1;
   }
 
-  // contexts in a linked list, we insert in the front
-  set_prev_context(symbolic_contexts, context);
+  // symbolic contexts are in a singly-linked list, we insert in the front
   set_next_context(context, symbolic_contexts);
-  set_prev_context(context, (uint64_t*) 0);
 
   symbolic_contexts = context;
 
