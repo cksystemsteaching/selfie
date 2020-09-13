@@ -260,13 +260,6 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
-// garbage collector
-
-uint64_t GC_DISABLED = 0;
-uint64_t GC_ENABLED  = 1;
-
-uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
@@ -1224,6 +1217,11 @@ uint64_t* gc_malloc(uint64_t size) {
 }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t GC_DISABLED = 0;
+uint64_t GC_ENABLED  = 1;
+
+uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
 
 uint64_t GC_PERIOD = 1000; // gc every so often
 
