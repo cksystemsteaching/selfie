@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
   // this example should demonstrate the capabilities of the garbage collector.
   // for simplicity we configure it to collect before every gc_malloc.
-  turn_on_gc_library(0);
+  turn_on_gc_library(0, " gc-test");
 
   // exit with error code 1 if gc is not available
   if (USE_GC_LIBRARY != GC_ENABLED)

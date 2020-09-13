@@ -1268,15 +1268,6 @@ void reset_gc_counters() {
   gc_mem_collected      = 0;
 }
 
-void turn_on_gc_library(uint64_t period) {
-  if (fetch_stack_pointer() != 0) {
-    gc_init((uint64_t*) 0);
-
-    GC_PERIOD = period;
-  } else
-    USE_GC_LIBRARY = GC_DISABLED;
-}
-
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
@@ -1948,6 +1939,8 @@ void init_selfie(uint64_t argc, uint64_t* argv);
 
 void init_system();
 
+void turn_on_gc_library(uint64_t period, char* name);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 char* selfie_name = (char*) 0; // name of running selfie executable
@@ -1974,6 +1967,17 @@ void init_system() {
     if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
       WINDOWS = 1;
   }
+}
+
+void turn_on_gc_library(uint64_t period, char* name) {
+  if (fetch_stack_pointer() != 0) {
+    gc_init((uint64_t*) 0);
+
+    GC_PERIOD = period;
+
+    selfie_name = name;
+  } else
+    USE_GC_LIBRARY = GC_DISABLED;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
