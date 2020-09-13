@@ -1126,13 +1126,13 @@ void init_memory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 // bootstrapped to actual functions during compilation ...
-uint64_t fetch_stack_pointer()      { return 0; } // indicate that gc is unavailable
-uint64_t fetch_data_segment_start() { return 0; }
+uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
+uint64_t fetch_data_segment_size() { return 0; }
 
 // ... here, not available on boot level 0 - only for compilation
 void emit_fetch_stack_pointer();
-void emit_fetch_data_segment_start_interface();
-void emit_fetch_data_segment_start_implementation(uint64_t fetch_dss_code_location);
+void emit_fetch_data_segment_size_interface();
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
 
 void implement_gc_brk(uint64_t* context);
 
@@ -1169,8 +1169,7 @@ uint64_t* get_free_list_head_gc(uint64_t* context);
 uint64_t  get_gcs_in_period_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
 
-void set_data_seg_start_gc(uint64_t* context);
-void set_heap_seg_start_end_gc(uint64_t* context);
+void set_data_and_heap_segments_gc(uint64_t* context);
 void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
 void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
@@ -5253,10 +5252,10 @@ void selfie_compile(uint64_t generate_gc_library) {
   if (generate_gc_library) {
     emit_fetch_stack_pointer();
 
-    // save code location of eventual fetch_data_segment_start implementation
+    // save code location of eventual fetch_data_segment_size implementation
     generate_gc_library = binary_length;
 
-    emit_fetch_data_segment_start_interface();
+    emit_fetch_data_segment_size_interface();
   }
 
   // implicitly declare main procedure in global symbol table
@@ -5320,7 +5319,7 @@ void selfie_compile(uint64_t generate_gc_library) {
   emit_bootstrapping();
 
   if (generate_gc_library)
-    emit_fetch_data_segment_start_implementation(generate_gc_library);
+    emit_fetch_data_segment_size_implementation(generate_gc_library);
 
   emit_data_segment();
 
@@ -7142,10 +7141,10 @@ void emit_fetch_stack_pointer() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void emit_fetch_data_segment_start_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_start", 0, PROCEDURE, UINT64_T, 0, binary_length);
+void emit_fetch_data_segment_size_interface() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  // up to three instructions needed to load data segment start but is not yet known
+  // up to three instructions needed to load data segment size but is not yet known
 
   emit_nop();
   emit_nop();
@@ -7154,16 +7153,16 @@ void emit_fetch_data_segment_start_interface() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void emit_fetch_data_segment_start_implementation(uint64_t fetch_dss_code_location) {
-  // set code emission to fetch_data_segment_start
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  // set code emission to fetch_data_segment_size
   binary_length = fetch_dss_code_location;
 
   // assert: emitting no more than 3 instructions
 
-  // load data segment start into A0
-  load_small_and_medium_integer(REG_A0, code_length);
+  // load data segment size into A0 (size is independent of entry point)
+  load_small_and_medium_integer(REG_A0, allocated_memory);
 
-  // discount NOPs in profile that were generated for fetch_data_segment_start
+  // discount NOPs in profile that were generated for fetch_data_segment_size
   ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
 
   // restore original binary length
@@ -7290,16 +7289,13 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
     return get_gc_enabled(context);
 }
 
-void set_data_seg_start_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    gc_data_seg_start = fetch_data_segment_start();
-}
-
-void set_heap_seg_start_end_gc(uint64_t* context) {
+void set_data_and_heap_segments_gc(uint64_t* context) {
   if (is_gc_library(context)) {
     // assert: smalloc_system(0) returns program break
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
     gc_heap_seg_end   = gc_heap_seg_start;
+
+    gc_data_seg_start = gc_heap_seg_start - fetch_data_segment_size();
   }
 }
 
@@ -7335,8 +7331,7 @@ void gc_init(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
 
-  set_data_seg_start_gc(context);
-  set_heap_seg_start_end_gc(context);
+  set_data_and_heap_segments_gc(context);
 
   set_used_list_head_gc(context, (uint64_t*) 0);
   set_free_list_head_gc(context, (uint64_t*) 0);
