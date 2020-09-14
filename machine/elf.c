@@ -12,9 +12,9 @@ struct elf_header {
     uint8_t class;
     uint8_t endianness;
     uint8_t version;
+    uint8_t os_abi;
     uint8_t abi_version;
     char pad[7];
-    uint8_t size;
   } __attribute__((packed)) ident;
   uint16_t type;
   uint16_t machine;
