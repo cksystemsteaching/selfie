@@ -9255,6 +9255,13 @@ void save_context(uint64_t* context) {
     store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
     store_virtual_memory(parent_table, fault(vctxt), get_fault(context));
     store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
+
+    // garbage collector state (only necessary if context is gced by different gcs)
+
+    store_virtual_memory(parent_table, used_list_head(vctxt), (uint64_t) get_used_list_head(context));
+    store_virtual_memory(parent_table, free_list_head(vctxt), (uint64_t) get_free_list_head(context));
+    store_virtual_memory(parent_table, gcs_in_period(vctxt), get_gcs_in_period(context));
+    store_virtual_memory(parent_table, use_gc_kernel(vctxt), get_use_gc_kernel(context));
   }
 }
 
@@ -9366,6 +9373,13 @@ void restore_context(uint64_t* context) {
     restore_region(context, table, parent_table, lo, hi);
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
+
+    // garbage collector state (only necessary if context is gced by different gcs)
+
+    set_used_list_head(context, (uint64_t*) load_virtual_memory(parent_table, used_list_head(vctxt)));
+    set_free_list_head(context, (uint64_t*) load_virtual_memory(parent_table, free_list_head(vctxt)));
+    set_gcs_in_period(context, load_virtual_memory(parent_table, gcs_in_period(vctxt)));
+    set_use_gc_kernel(context, load_virtual_memory(parent_table, use_gc_kernel(vctxt)));
   }
 }
 
