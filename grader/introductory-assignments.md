@@ -29,6 +29,12 @@ Creation of simple exercises for first semester students based on the Selfie Sys
 
 ## 1) Introduction
 
+Readings:
+
+- [Introduction](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/introduction.md)
+- [Semantics](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/semantics.md#2-semantics-semantics)
+- TODO: slide links
+
 ### Exercise 1:
 
 TODO: detailed description of the exercise
@@ -57,13 +63,31 @@ Show the states of the machine.
 
 ## 2) Architecture
 
+Readings:
+
+- [Von Neumann Architecture](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/state.md#von-neumann-machine)
+- TODO: slide links
+
 ### Exercise 1:
 
-- binary arithmetics, calculate by hand and put the result into the exercise file, see output and grade, unsigned, only positive values? decimal to binary by hand and solution into file
+Convert the binary value into a hexadecimal representation:
+
+- Binary: $1100$ $1001$ $0001$ $1111$
+- Hexadecimal: 
 
 ### Exercise 2:
 
+Convert the hexadecimal value into binary and the ASCII representation:
+
+- Hexadecimal: $64B1D$
+- Binary:
+- ASCII:
+
+### TODO
+
+- binary arithmetics, calculate by hand and put the result into the exercise file, see output and grade, unsigned, only positive values? decimal to binary by hand and solution into file
 - convert binary, octa, hexadecimal, decimal
+
 
 ## 3) Architecture 2
 
