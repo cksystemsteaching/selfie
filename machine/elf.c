@@ -112,7 +112,6 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
 
-      kidentity_map_ppn(kernel_pt, ppn, false);
       memcpy((void *) ppn_to_paddr(ppn), (void *) (elf + faddr), PAGESIZE);
     }
 
@@ -121,12 +120,11 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
     for (uint64_t page = 0; page < page_delta; page++) {
       uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages) * PAGESIZE;
-      uint64_t ppn = kmap_page(context->pt, vaddr, true);
+
+      kmap_page(context->pt, vaddr, true);
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
-
-      kidentity_map_ppn(kernel_pt, ppn, false);
     }
 
     if (context->program_break < pheader[i].vaddr + pheader[i].mem_size)
