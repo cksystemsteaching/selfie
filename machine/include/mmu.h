@@ -92,7 +92,6 @@ bool is_vaddr_mapped(struct pt_entry* table, uint64_t vaddr);
  * @param to The end of the memory range to attach (exclusive).
  */
 void kidentity_map_range(struct pt_entry* table, const void* from, const void* to);
-void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible);
 
 void kdump_pt(struct pt_entry* table);
 

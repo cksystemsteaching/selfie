@@ -204,9 +204,6 @@ void kidentity_map_range(struct pt_entry* table, const void* from, const void* t
     ppn++;
   };
 }
-void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
-  kmap_page_by_ppn(table, (uint64_t) ppn_to_paddr(ppn), ppn, u_mode_accessible);
-}
 
 void kdump_pt(struct pt_entry* table) {
   printf("Page Table:\n");
