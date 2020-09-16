@@ -7305,11 +7305,13 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
 
 void set_data_and_heap_segments_gc(uint64_t* context) {
   if (is_gc_library(context)) {
+    // we use fetch_global_pointer rather than smalloc_system(0)
+    // to be accurate even if smalloc has been called before
+    gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
+
     // assert: smalloc_system(0) returns program break
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
     gc_heap_seg_end   = gc_heap_seg_start;
-
-    gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
   }
 }
 
