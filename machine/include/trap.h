@@ -24,7 +24,7 @@ void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
 extern void trap_handler_wrapper();
-void store_saved_registers_from_buffer_into_context_in_context(struct context* context, struct registers* registers_buffer);
+void store_saved_registers_from_buffer_into_context(struct context* context, struct registers* registers_buffer);
 void load_saved_registers_from_context_into_buffer(struct context* context, struct registers* registers_buffer);
 uint64_t get_current_cpu_time();
 bool set_timer_interrupt_delta(uint64_t delta);
