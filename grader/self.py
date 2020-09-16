@@ -318,7 +318,7 @@ assignments: Set[Assignment] = {
                check_assembler_parser),
     Assignment('self-assembler', 'OS', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-self-assembler',
-               check_self_assembler),
+               check_self_assemblation),
     Assignment('processes', 'OS', 'processes',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-processes',
                check_processes),
