@@ -1127,10 +1127,12 @@ void init_memory(uint64_t megabytes) {
 
 // bootstrapped to actual functions during compilation ...
 uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
+uint64_t fetch_global_pointer()    { return 0; }
 uint64_t fetch_data_segment_size() { return 0; }
 
 // ... here, not available on boot level 0 - only for compilation
 void emit_fetch_stack_pointer();
+void emit_fetch_global_pointer();
 void emit_fetch_data_segment_size_interface();
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
 
@@ -5254,6 +5256,7 @@ void selfie_compile() {
 
   if (GC_ON) {
     emit_fetch_stack_pointer();
+    emit_fetch_global_pointer();
 
     // save code location of eventual fetch_data_segment_size implementation
     fetch_dss_code_location = binary_length;
@@ -7144,6 +7147,14 @@ void emit_fetch_stack_pointer() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+void emit_fetch_global_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_add(REG_A0, REG_ZR, REG_GP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
 void emit_fetch_data_segment_size_interface() {
   create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
@@ -7298,7 +7309,7 @@ void set_data_and_heap_segments_gc(uint64_t* context) {
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
     gc_heap_seg_end   = gc_heap_seg_start;
 
-    gc_data_seg_start = gc_heap_seg_start - fetch_data_segment_size();
+    gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
   }
 }
 
