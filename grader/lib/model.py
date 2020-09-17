@@ -21,6 +21,7 @@ class Assignment:
     name: str
     lecture: str
     category: str
+    description: str
     create_checks: Callable[[], List[Check]]
 
     def __hash__(self):
