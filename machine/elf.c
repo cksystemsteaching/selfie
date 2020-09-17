@@ -109,6 +109,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
       uint64_t faddr = pheader[i].offset + (PAGESIZE * page);
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
 
+      if (ppn == 0x00)
+        return EOOM;
+
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
 
@@ -121,7 +124,10 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     for (uint64_t page = 0; page < page_delta; page++) {
       uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages) * PAGESIZE;
 
-      kmap_page(context->pt, vaddr, true);
+      bool map_successful = kmap_page(context->pt, vaddr, true);
+
+      if (!map_successful)
+        return EOOM;
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
@@ -155,6 +161,8 @@ const char* elf_strerror(int errno) {
       return "ELF file is not an executable";
     case EUNSUPPORTED:
       return "ELF file contains features unsupported by the loader";
+    case EOOM:
+      return "ELF file could not be mapped entirely because the kernel is out-of-memory";
     default:
       return "Unknown error";
   }
