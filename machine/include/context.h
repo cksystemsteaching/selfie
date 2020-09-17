@@ -5,6 +5,10 @@
 #include "filesystem.h"
 #include <stdint.h>
 
+#define PRINT_MEMORY_REGION_LO_MASK  (1 << 0)
+#define PRINT_MEMORY_REGION_MID_MASK (1 << 1)
+#define PRINT_MEMORY_REGION_HI_MASK  (1 << 2)
+
 struct __attribute__((packed)) registers {
   // obviously no need to save the zero register
   uint64_t ra;
@@ -76,13 +80,15 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv);
 struct context* get_currently_active_context();
 struct context* schedule_next_context();
 
+void print_memory_boundaries(struct context* context, char* indentation, uint8_t print_mask);
 enum KILL_CONTEXT_REASON {
-    KILL_CONTEXT_REASON_EXIT,
-    KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS,
-    KILL_CONTEXT_REASON_UNKNOWN_SYSCALL,
-    KILL_CONTEXT_REASON_UNHANDLED_TRAP,
-    KILL_CONTEXT_REASON_OOM,
-    // always add appropriate message to KILL_CONTEXT_MSG in context.c!
+  KILL_CONTEXT_REASON_EXIT,
+  KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS,
+  KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS,
+  KILL_CONTEXT_REASON_UNKNOWN_SYSCALL,
+  KILL_CONTEXT_REASON_UNHANDLED_TRAP,
+  KILL_CONTEXT_REASON_OOM,
+  // always add appropriate message to KILL_CONTEXT_MSG in context.c!
 };
 extern const char* KILL_CONTEXT_MSG[];
 void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason);

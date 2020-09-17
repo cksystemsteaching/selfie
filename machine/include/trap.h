@@ -49,6 +49,8 @@ enum memory_access_type {
 };
 enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t vaddr);
 
+void signal_oom(struct context* context);
+void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval);
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval);
 void handle_load_page_fault(struct context* context, uint64_t stval);
 void handle_store_amo_page_fault(struct context* context, uint64_t stval);

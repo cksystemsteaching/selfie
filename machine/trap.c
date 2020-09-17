@@ -423,27 +423,31 @@ enum memory_access_type determine_memory_access_type(struct memory_boundaries* l
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
 
-  if (memory_access_type != memory_access_type_unknown) {
-    // TODO: handling faults like that is probably necessary for native hypster support
-#ifdef DEBUG
-    // this should never happen since we map the binary when loading it
-    printf("context %u raised an instruction page fault for a legally accessible page\n");
-    printf("  sepc:  0x%x\n", sepc);
-    printf("  stval: 0x%x\n", stval);
-#endif /* DEBUG */
-    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
-  } else {
-    // at the moment we raise a segfault here since we map the entire code
-    // segment when loading a binary
-    printf("segmentation fault: context %u tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
-    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
-  }
+  printf("context %u raised an instruction page fault\n", context->id);
+  printf("  sepc:  0x%x\n", sepc);
+  printf("  stval: 0x%x\n", stval);
 
-#ifdef DEBUG
-  printf("received instruction page fault caused by context %u\n", context->id);
-  printf("  address of instruction:         0x%x\n", sepc);
-  printf("  address that caused page fault: 0x%x\n", stval);
-#endif /* DEBUG */
+  switch (memory_access_type) {
+    case memory_access_type_unknown:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK & PRINT_MEMORY_REGION_MID_MASK & PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_lo:
+      // a lo access could indicate
+      // a) a bug within the ELF loader (a segment hasn't been fully mapped)
+      // b) a bug within the user program
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_mid:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_MID_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_hi:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS);
+      break;
+  }
 }
 
 bool is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
@@ -454,6 +458,12 @@ bool has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
   return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
 }
 
+void signal_oom(struct context* context) {
+    printf("could not map free page into user vspace: out-of-memory!\n");
+    print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK & PRINT_MEMORY_REGION_MID_MASK);
+    kill_context(context->id, KILL_CONTEXT_REASON_OOM);
+}
+
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
 
@@ -462,40 +472,38 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
   switch (memory_access_type) {
     case memory_access_type_lo:
       map_successful = kmap_page(context->pt, stval, true);
+      if (!map_successful)
+        signal_oom(context);
       break;
     case memory_access_type_mid:
       map_successful = kmap_page(context->pt, stval, true);
+      if (!map_successful)
+        signal_oom(context);
       break;
     case memory_access_type_hi:
-#ifdef DEBUG
-      // that'd be a bug
-      printf("context %u raised a page fault in its hi part\n", context->id);
-      printf("  lowest hi page:  %x\n", context->legal_memory_boundaries.lowest_hi_page);
-      printf("  highest hi page: %x\n", context->legal_memory_boundaries.highest_hi_page);
-#endif /* DEBUG */
+      // user tried to access the trampoline/kernel stack
+      printf("context %u raised a page fault in its hi region\n", context->id);
+      printf("  stval: 0x%x\n", stval);
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS);
       break;
     case memory_access_type_unknown:
       if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
         map_successful = kmap_page(context->pt, stval, true);
+        if (!map_successful)
+          signal_oom(context);
         context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
       } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
         // stack has grown but the page isnt mapped yet
         map_successful = kmap_page(context->pt, stval, true);
+        if (!map_successful)
+          signal_oom(context);
         context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
       } else {
         printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
         kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
       }
       break;
-  }
-
-  if (!map_successful) {
-    printf("could not map free page into user vspace: out-of-memory!\n");
-    printf("  lowest  lo page : 0x%x\n", context->legal_memory_boundaries.lowest_lo_page);
-    printf("  highest lo page : 0x%x\n", context->legal_memory_boundaries.highest_lo_page);
-    printf("  lowest  mid page: 0x%x\n", context->legal_memory_boundaries.lowest_mid_page);
-    printf("  highest mid page: 0x%x\n", context->legal_memory_boundaries.highest_mid_page);
-    kill_context(context->id, KILL_CONTEXT_REASON_OOM);
   }
 }
 

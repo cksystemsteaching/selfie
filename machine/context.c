@@ -162,7 +162,29 @@ struct context* schedule_next_context() {
   return &currently_active_context->context;
 }
 
-const char* KILL_CONTEXT_MSG[] = {"context exited", "segfault", "unknown syscall", "unhandled trap", "out of memory"};
+void print_memory_boundaries(struct context* context, char* indentation, uint8_t print_mask) {
+  if (print_mask & PRINT_MEMORY_REGION_LO_MASK) {
+    printf("%slowest lo page:   0x%x\n", indentation, context->legal_memory_boundaries.lowest_lo_page);
+    printf("%shighest lo page:  0x%x\n", indentation, context->legal_memory_boundaries.highest_lo_page);
+  }
+  if (print_mask & PRINT_MEMORY_REGION_MID_MASK) {
+    printf("%slowest mid page:  0x%x\n", indentation, context->legal_memory_boundaries.lowest_mid_page);
+    printf("%shighest mid page: 0x%x\n", indentation, context->legal_memory_boundaries.highest_mid_page);
+  }
+  if (print_mask & PRINT_MEMORY_REGION_HI_MASK) {
+    printf("%slowest hi page:   0x%x\n", indentation, context->legal_memory_boundaries.lowest_hi_page);
+    printf("%shighest hi page:  0x%x\n", indentation, context->legal_memory_boundaries.highest_hi_page);
+  }
+}
+
+const char* KILL_CONTEXT_MSG[] = {
+  "context exited",
+  "segfault",
+  "segfault: kernel memory access",
+  "unknown syscall",
+  "unhandled trap",
+  "out of memory",
+};
 void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason) {
   UNUSED_VAR(kill_context_reason);
 
