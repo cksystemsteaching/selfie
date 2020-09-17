@@ -11,8 +11,6 @@
 #define SV39_MIN_INVALID_VADDR (1ULL << 38)
 #define SV39_MAX_INVALID_VADDR (UINT64_MAX - (1ULL << 38))
 
-#define LOWEST_39_BITS 0x7FFFFFFFFFULL
-
 #define VPN_2_BITMASK 0x7FC0000000ULL
 #define VPN_1_BITMASK 0x3FE00000
 #define VPN_0_BITMASK 0x1FF000
@@ -133,9 +131,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
-  // RISC-V requires that for virtual addresses
-  // bits 39 to 64 have the value of bit 38
-  return ((vaddr & LOWEST_39_BITS) >> 12);
+  return (vaddr >> 12);
 }
 
 uint64_t vpn_to_vaddr(uint64_t vpn) {
