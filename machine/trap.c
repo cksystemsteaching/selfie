@@ -12,7 +12,7 @@
 #define SCAUSE_EXCEPTION_CODE_MASK (UINT64_MAX ^ SCAUSE_INTERRUPT_BIT_MASK)
 
 // if interrupt bit is 0
-#define SCAUSE_EXCEPTION_CODE_ECALL 8
+#define SCAUSE_EXCEPTION_CODE_USER_ECALL 8
 #define SCAUSE_EXCEPTION_CODE_INSTRUCTION_PAGE_FAULT 12
 #define SCAUSE_EXCEPTION_CODE_LOAD_PAGE_FAULT 13
 #define SCAUSE_EXCEPTION_CODE_STORE_AMO_PAGE_FAULT 15
@@ -216,7 +216,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
     }
   else
     switch (exception_code) {
-      case SCAUSE_EXCEPTION_CODE_ECALL:
+      case SCAUSE_EXCEPTION_CODE_USER_ECALL:
         handle_ecall(context);
         break;
       case SCAUSE_EXCEPTION_CODE_INSTRUCTION_PAGE_FAULT:
