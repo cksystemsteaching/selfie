@@ -34,6 +34,7 @@
 #define EINVCLASS       4   // Executable is not 64 bits
 #define EINVTYPE        5   // ELF file is not an executable
 #define EUNSUPPORTED    6   // ELF file contains unsupported features
+#define EOOM            7   // File couldn't be mapped entirely
 
 int load_elf(struct context* context, const char* elf, uint64_t len);
 
