@@ -28,6 +28,8 @@ from lib.system import (AND_INSTRUCTION, LR_INSTRUCTION, NOT_INSTRUCTION,
                         OR_INSTRUCTION, SC_INSTRUCTION, SLL_INSTRUCTION,
                         SRL_INSTRUCTION)
 
+REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/master/'
+
 
 def check_self_compilation(mandatory=False) -> List[Check]:
     return check_execution('make clean selfie', 'cc compiles selfie.c', mandatory=mandatory) + \
@@ -201,7 +203,7 @@ def check_assembler_parser() -> List[Check]:
                         'assembly file with a missing literal is not parseable', success_criteria=False)
 
 
-def check_self_assembler() -> List[Check]:
+def check_self_assemblation() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s ',
                            'selfie can assemble its own binary file') + \
         check_execution('diff -q selfie1.s selfie2.s',
@@ -277,37 +279,64 @@ def check_treiber_stack() -> List[Check]:
 
 
 baseline_assignment = Assignment(
-    'self-compile', 'General', '', check_self_compilation)
+    'self-compile', 'General', '', '', check_self_compilation)
 
 assignments: Set[Assignment] = {
     baseline_assignment,
-    Assignment('print-your-name', 'General', '', check_print_your_name),
-    Assignment('hex-literal', 'Compiler', 'hex-literal', check_hex_literal),
-    Assignment('bitwise-shift-compilation', 'Compiler',
-               'bitwise-shift', check_bitwise_shift_compilation),
-    Assignment('bitwise-shift-execution', 'Compiler',
-               'bitwise-shift', check_bitwise_shift_execution),
-    Assignment('bitwise-and-or-not', 'Compiler',
-               'bitwise-logic', check_bitwise_and_or_not),
-    Assignment('for-loop', 'Compiler', 'for-loop', check_for_loop),
-    Assignment('array', 'Compiler', 'array', check_array),
-    Assignment('array-multidimensional', 'Compiler',
-               'array', check_multidimensional_array),
-    Assignment('struct-declaration', 'Compiler',
-               'struct', check_struct_declaration),
-    Assignment('struct-execution', 'Compiler',
-               'struct', check_struct_execution),
+    Assignment('print-your-name', 'General', '',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-print-your-name',
+               check_print_your_name),
+    Assignment('hex-literal', 'Compiler', 'hex-literal',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-hex-literal',
+               check_hex_literal),
+    Assignment('bitwise-shift-compilation', 'Compiler', 'bitwise-shift',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-shift-compilation',
+               check_bitwise_shift_compilation),
+    Assignment('bitwise-shift-execution', 'Compiler', 'bitwise-shift',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-shift-execution',
+               check_bitwise_shift_execution),
+    Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logic',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-and-or-not',
+               check_bitwise_and_or_not),
+    Assignment('for-loop', 'Compiler', 'for-loop',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
+               check_for_loop),
+    Assignment('array', 'Compiler', 'array',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
+               check_array),
+    Assignment('array-multidimensional', 'Compiler', 'array',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
+               check_multidimensional_array),
+    Assignment('struct-declaration', 'Compiler', 'struct',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-declaration',
+               check_struct_declaration),
+    Assignment('struct-execution', 'Compiler', 'struct',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
+               check_struct_execution),
     Assignment('assembler-parser', 'OS', 'assembler',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
                check_assembler_parser),
-    Assignment('self-assembler', 'OS', 'assembler', check_self_assembler),
-    Assignment('processes', 'OS',
-               'processes', check_processes),
-    Assignment('fork-wait', 'OS', 'fork-wait', check_fork_and_wait),
-    Assignment('fork-wait-exit', 'OS',
-               'fork-wait', check_fork_wait_exit),
-    Assignment('lock', 'OS', 'lock', check_lock),
-    Assignment('threads', 'OS', 'threads', check_threads),
-    Assignment('treiber-stack', 'OS', 'treiber-stack', check_treiber_stack)
+    Assignment('self-assembler', 'OS', 'assembler',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-self-assembler',
+               check_self_assemblation),
+    Assignment('processes', 'OS', 'processes',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-processes',
+               check_processes),
+    Assignment('fork-wait', 'OS', 'fork-wait',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait',
+               check_fork_and_wait),
+    Assignment('fork-wait-exit', 'OS', 'fork-wait',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait-exit',
+               check_fork_wait_exit),
+    Assignment('lock', 'OS', 'lock',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-lock',
+               check_lock),
+    Assignment('threads', 'OS', 'threads',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threads',
+               check_threads),
+    Assignment('treiber-stack', 'OS', 'treiber-stack',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
+               check_treiber_stack)
 }
 
 

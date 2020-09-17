@@ -684,7 +684,7 @@ void emit_bootstrapping();
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile(uint64_t generate_gc_library);
+void selfie_compile();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1127,10 +1127,12 @@ void init_memory(uint64_t megabytes) {
 
 // bootstrapped to actual functions during compilation ...
 uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
+uint64_t fetch_global_pointer()    { return 0; }
 uint64_t fetch_data_segment_size() { return 0; }
 
 // ... here, not available on boot level 0 - only for compilation
 void emit_fetch_stack_pointer();
+void emit_fetch_global_pointer();
 void emit_fetch_data_segment_size_interface();
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
 
@@ -1210,6 +1212,8 @@ void gc_collect(uint64_t* context);
 
 void print_gc_profile(uint64_t* context);
 
+void gc_arguments();
+
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
@@ -1220,6 +1224,8 @@ uint64_t* gc_malloc(uint64_t size) {
 
 uint64_t GC_DISABLED = 0;
 uint64_t GC_ENABLED  = 1;
+
+uint64_t GC_ON = 0; // turn on kernel variant of gc, generate gc library code
 
 uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
 
@@ -1715,7 +1721,7 @@ uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); 
 uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 19); }
 uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 20); }
 uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 21); }
-uint64_t gc_enabled(uint64_t* context)       { return (uint64_t) (context + 22); }
+uint64_t use_gc_kernel(uint64_t* context)    { return (uint64_t) (context + 22); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1740,7 +1746,7 @@ char*     get_name(uint64_t* context)            { return (char*)     *(context 
 uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 19); }
 uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 20); }
 uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 21); }
-uint64_t  get_gc_enabled(uint64_t* context)       { return             *(context + 22); }
+uint64_t  get_use_gc_kernel(uint64_t* context)    { return             *(context + 22); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1765,7 +1771,7 @@ void set_name(uint64_t* context, char* name)                  { *(context + 18) 
 void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 19) = (uint64_t) used_list_head; }
 void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t) free_list_head; }
 void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 21) = gcs; }
-void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 22) = gc_enabled; }
+void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 22) = use; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1892,8 +1898,6 @@ uint64_t HYPSTER = 4;
 
 uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
-
-uint64_t GIBSTER = 7;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -5209,9 +5213,10 @@ void emit_bootstrapping() {
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile(uint64_t generate_gc_library) {
+void selfie_compile() {
   uint64_t link;
   uint64_t number_of_source_files;
+  uint64_t fetch_dss_code_location;
 
   // link until next console option
   link = 1;
@@ -5249,11 +5254,12 @@ void selfie_compile(uint64_t generate_gc_library) {
 
   emit_switch();
 
-  if (generate_gc_library) {
+  if (GC_ON) {
     emit_fetch_stack_pointer();
+    emit_fetch_global_pointer();
 
     // save code location of eventual fetch_data_segment_size implementation
-    generate_gc_library = binary_length;
+    fetch_dss_code_location = binary_length;
 
     emit_fetch_data_segment_size_interface();
   }
@@ -5318,8 +5324,8 @@ void selfie_compile(uint64_t generate_gc_library) {
 
   emit_bootstrapping();
 
-  if (generate_gc_library)
-    emit_fetch_data_segment_size_implementation(generate_gc_library);
+  if (GC_ON)
+    emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
 
   emit_data_segment();
 
@@ -7141,6 +7147,14 @@ void emit_fetch_stack_pointer() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+void emit_fetch_global_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_add(REG_A0, REG_ZR, REG_GP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
 void emit_fetch_data_segment_size_interface() {
   create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
@@ -7286,16 +7300,18 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
     return USE_GC_LIBRARY;
   else
-    return get_gc_enabled(context);
+    return get_use_gc_kernel(context);
 }
 
 void set_data_and_heap_segments_gc(uint64_t* context) {
   if (is_gc_library(context)) {
+    // we use fetch_global_pointer rather than smalloc_system(0)
+    // to be accurate even if smalloc has been called before
+    gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
+
     // assert: smalloc_system(0) returns program break
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
     gc_heap_seg_end   = gc_heap_seg_start;
-
-    gc_data_seg_start = gc_heap_seg_start - fetch_data_segment_size();
   }
 }
 
@@ -7324,7 +7340,7 @@ void set_gc_enabled_gc(uint64_t* context) {
   if (is_gc_library(context))
     USE_GC_LIBRARY = GC_ENABLED;
   else
-    set_gc_enabled(context, GC_ENABLED);
+    set_use_gc_kernel(context, GC_ENABLED);
 }
 
 void gc_init(uint64_t* context) {
@@ -7680,6 +7696,24 @@ void print_gc_profile(uint64_t* context) {
     (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
     (char*) gc_num_ungced_mallocs);
   if (is_gc_library(context) == 0) print(" (external)"); println();
+}
+
+void gc_arguments() {
+  if (string_compare(argument, "-gc")) {
+    GC_ON = GC_ENABLED;
+
+    get_argument();
+  } else if (string_compare(argument, "-nrgc")) {
+    GC_ON    = GC_ENABLED;
+    GC_REUSE = GC_DISABLED;
+
+    get_argument();
+  } else if (string_compare(argument, "-nr")) {
+    GC_REUSE = GC_DISABLED;
+
+    get_argument();
+  } else
+    GC_ON = GC_DISABLED;
 }
 
 // -----------------------------------------------------------------
@@ -9033,7 +9067,7 @@ void print_profile(uint64_t* context) {
     (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
     (char*) (total_page_frame_memory / MEGABYTE));
 
-  if (get_gc_enabled_gc(context))
+  if (GC_ON)
     print_gc_profile(context);
 
   if (get_total_number_of_instructions() > 0) {
@@ -9129,7 +9163,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_used_list_head(context, (uint64_t*) 0);
   set_free_list_head(context, (uint64_t*) 0);
   set_gcs_in_period(context, 0);
-  set_gc_enabled(context, 0);
+  set_use_gc_kernel(context, GC_DISABLED);
 }
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
@@ -9234,6 +9268,13 @@ void save_context(uint64_t* context) {
     store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
     store_virtual_memory(parent_table, fault(vctxt), get_fault(context));
     store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
+
+    // garbage collector state (only necessary if context is gced by different gcs)
+
+    store_virtual_memory(parent_table, used_list_head(vctxt), (uint64_t) get_used_list_head(context));
+    store_virtual_memory(parent_table, free_list_head(vctxt), (uint64_t) get_free_list_head(context));
+    store_virtual_memory(parent_table, gcs_in_period(vctxt), get_gcs_in_period(context));
+    store_virtual_memory(parent_table, use_gc_kernel(vctxt), get_use_gc_kernel(context));
   }
 }
 
@@ -9345,6 +9386,13 @@ void restore_context(uint64_t* context) {
     restore_region(context, table, parent_table, lo, hi);
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
+
+    // garbage collector state (only necessary if context is gced by different gcs)
+
+    set_used_list_head(context, (uint64_t*) load_virtual_memory(parent_table, used_list_head(vctxt)));
+    set_free_list_head(context, (uint64_t*) load_virtual_memory(parent_table, free_list_head(vctxt)));
+    set_gcs_in_period(context, load_virtual_memory(parent_table, gcs_in_period(vctxt)));
+    set_use_gc_kernel(context, load_virtual_memory(parent_table, use_gc_kernel(vctxt)));
   }
 }
 
@@ -9738,20 +9786,7 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  print("mipster");
-  if (record)
-    print(" with replay");
-  else if (debug)
-    print(" with debugger");
-  else if (get_gc_enabled_gc(to_context)) {
-    printf1(" (gcing every %d mallocs ", (char*) GC_PERIOD);
-
-    if (GC_REUSE)
-      print("and reusing memory)");
-    else
-      print("but not reusing memory)");
-  }
-  println();
+  print("mipster\n");
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   timeout = TIMESLICE;
@@ -10001,25 +10036,33 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-  printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
+  printf3("%s: selfie executing %s with %uMB physical memory", selfie_name,
     binary_name,
     (char*) (total_page_frame_memory / MEGABYTE));
+
+  if (GC_ON) {
+    gc_init(current_context);
+
+    printf1(", gcing every %d mallocs, ", (char*) GC_PERIOD);
+    if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
+  }
 
   if (machine == DIPSTER) {
     debug          = 1;
     debug_syscalls = 1;
+    print(", debugger");
   } else if (machine == RIPSTER) {
     debug  = 1;
     record = 1;
-
     init_replay_engine();
-  } else if (machine == GIBSTER)
-    gc_init(current_context);
-  else if (machine == HYPSTER) {
+    print(", replay");
+  } else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
       machine = MIPSTER;
   }
+
+  print(" on ");
 
   run = 1;
 
@@ -10028,8 +10071,6 @@ uint64_t selfie_run(uint64_t machine) {
   else if (machine == DIPSTER)
     exit_code = mipster(current_context);
   else if (machine == RIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == GIBSTER)
     exit_code = mipster(current_context);
   else if (machine == MINSTER)
     exit_code = minster(current_context);
@@ -10054,6 +10095,8 @@ uint64_t selfie_run(uint64_t machine) {
 
   if (machine != HYPSTER)
     print_profile(current_context);
+  else if (GC_ON)
+    print_gc_profile(current_context);
 
   return exit_code;
 }
@@ -10122,12 +10165,10 @@ uint64_t selfie(uint64_t extras) {
     while (number_of_remaining_arguments() > 0) {
       get_argument();
 
+      gc_arguments();
+
       if (string_compare(argument, "-c"))
-        selfie_compile(0);
-      else if (string_compare(argument, "-gc"))
-        selfie_compile(1);
-      else if (string_compare(argument, "--nr"))
-        GC_REUSE = 0;
+        selfie_compile();
       else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
@@ -10152,8 +10193,6 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(MINSTER);
         else if (string_compare(argument, "-mob"))
           return selfie_run(MOBSTER);
-        else if (string_compare(argument, "-mgc"))
-          return selfie_run(GIBSTER);
         else
           return EXITCODE_BADARGUMENTS;
       } else
