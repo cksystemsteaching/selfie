@@ -29,11 +29,11 @@ Creation of simple exercises for first semester students based on the Selfie Sys
 
 ## 1) Introduction
 
-Readings:
+### Recommended readings:
 
 - [Introduction](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/introduction.md)
 - [Semantics](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/semantics.md#2-semantics-semantics)
-- TODO: slide links
+- TODO: book & slide links
 
 ### Exercise 1:
 
@@ -63,30 +63,51 @@ Show the states of the machine.
 
 ## 2) Architecture
 
-Readings:
+### Recommended readings:
 
 - [Von Neumann Architecture](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/state.md#von-neumann-machine)
-- TODO: slide links
+- [Two's complement - Wikipedia](https://en.wikipedia.org/wiki/Two%27s_complement)
+- TODO: book & slide links
 
 ### Exercise 1:
 
-Convert the binary value into a hexadecimal representation:
-
-- Binary: $1100$ $1001$ $0001$ $1111$
-- Hexadecimal: 
+Convert the *binary* value $1100$ $1001$ $0001$ $1111$ into the *hexadecimal* representation.
 
 ### Exercise 2:
 
-Convert the hexadecimal value into binary and the ASCII representation:
+Convert the *hexadecimal* value $64B1D$ into the *binary* and the *ASCII* representation.
 
-- Hexadecimal: $64B1D$
-- Binary:
-- ASCII:
+### Exercise 3:
 
-### TODO
+How many states can we represent with $32$ and $64$ bit as unsigned integer?
 
-- binary arithmetics, calculate by hand and put the result into the exercise file, see output and grade, unsigned, only positive values? decimal to binary by hand and solution into file
-- convert binary, octa, hexadecimal, decimal
+**Examples for $8$ and $16$ bit**:
+
+| Bits | Base 2       | Range           |
+| ---- | ------------ | --------------- |
+| 8    | $2^8 - 1$    | $0$ to $255$    |
+| 16   | $2^{16} - 1$ | $0$ to $65,536$ |
+
+### Exercise 4:
+
+How many states can we represent with $32$ and $64$ bit in two's complement?
+
+**Examples for $8$ and $16$ bit**:
+
+| Bits | Base 2                      | Range                 |
+| ---- | --------------------------- | --------------------- |
+| 8    | $-2^{8-1}$ to $2^{8-1}-1$   | $-128$ to $127$       |
+| 16   | $-2^{16-1}$ to $2^{16-1}-1$ | $-32,768$ to $32,767$ |
+
+### Exercise 5:
+
+How can we represent the value $-41$ and $-1$ as **simple sign bit** and as **two's complement**?
+
+TODO: readings
+
+### Exercise 6: 
+
+TODO: binary arithmetics
 
 
 ## 3) Architecture 2
