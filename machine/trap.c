@@ -192,7 +192,11 @@ uint64_t trap_handler(struct registers registers_buffer) {
   spp_bit = sstatus & SSTATUS_SPP_BITMASK;
 
   if (spp_bit)
-    panic("kernel caused a trap");
+    panic("kernel caused a trap\n"
+          "  sstatus: 0x%x\n"
+          "  scause:  0x%x\n"
+          "  sepc:    0x%x\n"
+          "  stval:   0x%x", sstatus, scause, sepc, stval);
 
   interrupt_bit = scause & SCAUSE_INTERRUPT_BIT_MASK;
   exception_code = scause & SCAUSE_EXCEPTION_CODE_MASK;
