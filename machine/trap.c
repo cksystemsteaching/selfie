@@ -450,8 +450,8 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
   }
 }
 
-bool is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
-  return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
+bool is_legal_heap_growth(uint64_t program_break, uint64_t highest_lo_page, uint64_t stval) {
+  return (stval < program_break && highest_lo_page <= vaddr_to_vpn(stval));
 }
 
 bool has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
@@ -488,7 +488,7 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
       kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS);
       break;
     case memory_access_type_unknown:
-      if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
+      if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.highest_lo_page, stval)) {
         map_successful = kmap_page(context->pt, stval, true);
         if (!map_successful)
           signal_oom(context);
