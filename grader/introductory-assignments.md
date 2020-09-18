@@ -15,36 +15,16 @@
 
 ---
 
-## 1) Introduction Version 1
-
-### Recommended readings:
-
-- [Semantics - Read the first part up to the heading "Compiler"](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/semantics.md#2-semantics-semantics)
-- [Encoding - Integers](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/encoding.md#integers)
-
-### After you have read through all the material mentioned, work out the following tasks:
-
-- How many bits does a byte have?
-- How do we create semantics on a machine?
-- What is the decimal number 7 in binary?
-- What is a binary number?
-
-TODO: more tasks from encoding - integers
-
----
-
-## 1) Introduction Version 2
-
-### Recommended readings:
+## 1) Introduction
 
 Read the first part up to the heading "Compiler" in the [Semantics](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/semantics.md#2-semantics-semantics) file, and answer the following questions.
 
 - How many bits does a byte have?
-- How do we create semantics on a machine?
+- How many characters can we encode with the 7-bit ASCII scheme?
 - What is the decimal number 7 in binary?
 - What is a binary number?
 
 Start reading from the header "Integers" in the [Encoding](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/encoding.md#integers) file, and answer the following questions.
 
-- q1
+- How many bits do we need to encode the decimal number 85 in binary?
 - q2
