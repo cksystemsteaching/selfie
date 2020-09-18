@@ -385,17 +385,15 @@ void implement_syscall_brk(struct context* context) {
   // syscall parameter
   uint64_t program_break;
 
-  // local variables
+  // local variable
   uint64_t previous_program_break;
-  bool valid = false;
 
   program_break = context->saved_regs.a0;
 
   previous_program_break = context->program_break;
 
-  valid = (program_break >= previous_program_break && program_break < context->saved_regs.sp); // selfie also checks here if the new program break is 64bit-aligned but we're more independent of selfie if we don't do this
-
-  if (valid)
+  if (program_break >= previous_program_break && program_break < context->saved_regs.sp && program_break % sizeof(uint64_t) == 0)
+    // new program break is valid
     context->program_break = program_break;
   else
     program_break = previous_program_break;
