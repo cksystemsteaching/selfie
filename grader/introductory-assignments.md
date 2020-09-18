@@ -15,7 +15,7 @@
 
 ---
 
-## 1) Introduction 
+## 1) Introduction Version 1
 
 ### Recommended readings:
 
@@ -30,3 +30,21 @@
 - What is a binary number?
 
 TODO: more tasks from encoding - integers
+
+---
+
+## 1) Introduction Version 2
+
+### Recommended readings:
+
+Read the first part up to the heading "Compiler" in the [Semantics](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/semantics.md#2-semantics-semantics) file, and answer the following questions.
+
+- How many bits does a byte have?
+- How do we create semantics on a machine?
+- What is the decimal number 7 in binary?
+- What is a binary number?
+
+Start reading from the header "Integers" in the [Encoding](https://github.com/cksystemsteaching/selfie/blob/book/manuscript/encoding.md#integers) file, and answer the following questions.
+
+- q1
+- q2
