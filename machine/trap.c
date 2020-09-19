@@ -401,7 +401,7 @@ void implement_syscall_brk(struct context* context) {
   context->saved_regs.a0 = program_break;
 
 #ifdef DEBUG
-  printf("context %u changed program break from %x to %x\n", context->id, previous_program_break, program_break);
+  printf("context %u changed program break from 0x%x to 0x%x\n", context->id, previous_program_break, program_break);
 #endif /* DEBUG */
 }
 
