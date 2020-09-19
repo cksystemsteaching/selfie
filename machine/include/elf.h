@@ -35,6 +35,7 @@
 #define EINVTYPE        5   // ELF file is not an executable
 #define EUNSUPPORTED    6   // ELF file contains unsupported features
 #define EOOM            7   // File couldn't be mapped entirely
+#define EINVVADDR       8   // Virtual address is invalid or in upper half
 
 int load_elf(struct context* context, const char* elf, uint64_t len);
 

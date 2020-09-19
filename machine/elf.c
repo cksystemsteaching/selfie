@@ -107,6 +107,10 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     for (uint64_t page = 0; page < segment_file_pages; page++) {
       uint64_t vaddr = pheader[i].vaddr + (PAGESIZE * page);
       uint64_t faddr = pheader[i].offset + (PAGESIZE * page);
+
+      if (vaddr_to_vpn(vaddr) >= vaddr_to_vpn(SV39_MIN_INVALID_VADDR))
+        return EINVVADDR;
+
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
 
       if (ppn == 0x00)
@@ -123,6 +127,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
     for (uint64_t page = 0; page < page_delta; page++) {
       uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages) * PAGESIZE;
+
+      if (vaddr_to_vpn(vaddr) >= vaddr_to_vpn(SV39_MIN_INVALID_VADDR))
+        return EINVVADDR;
 
       bool map_successful = kmap_page(context->pt, vaddr, true);
 
