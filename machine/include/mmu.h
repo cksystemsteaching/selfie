@@ -80,6 +80,9 @@ const void* ppn_to_paddr(uint64_t ppn);
 
 bool is_valid_sv39_vaddr(uint64_t vaddr);
 
+// true if address lies in lower half
+bool is_user_vaddr(uint64_t vaddr);
+
 bool is_vaddr_mapped(struct pt_entry* table, uint64_t vaddr);
 
 /**

@@ -176,6 +176,10 @@ bool is_valid_sv39_vaddr(uint64_t vaddr) {
   return !(SV39_MIN_INVALID_VADDR <= vaddr && vaddr <= SV39_MAX_INVALID_VADDR);
 }
 
+bool is_user_vaddr(uint64_t vaddr) {
+  return (vaddr < SV39_MIN_INVALID_VADDR);
+}
+
 bool is_vaddr_mapped(struct pt_entry* table, uint64_t vaddr) {
   return (vaddr_to_paddr(table, vaddr) != 0x00);
 }

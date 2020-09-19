@@ -320,7 +320,7 @@ void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel
     if (size < bytes_to_read_or_write)
       bytes_to_read_or_write = size;
 
-    if (is_valid_sv39_vaddr(vbuffer) && is_vaddr_mapped(context->pt, vbuffer)) {
+    if (is_user_vaddr(vbuffer) && is_vaddr_mapped(context->pt, vbuffer)) {
       buffer = (char*) vaddr_to_paddr(context->pt, vbuffer);
 
       actually_read_or_written = kernel_func(fd, buffer, bytes_to_read_or_write, context->open_files, NUM_FDS);
