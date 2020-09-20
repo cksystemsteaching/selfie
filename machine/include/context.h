@@ -4,6 +4,7 @@
 #include "config.h"
 #include "filesystem.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 #define PRINT_MEMORY_REGION_LO_MASK  (1 << 0)
 #define PRINT_MEMORY_REGION_MID_MASK (1 << 1)
@@ -75,7 +76,7 @@ void kinit_context(struct context* context);
 // assert: references to the context with this ID will not be used in the future
 void kfree_context(uint64_t context_id);
 
-void kupload_argv(struct context* context, uint64_t argc, const char** argv);
+bool kupload_argv(struct context* context, uint64_t argc, const char** argv);
 
 struct context* get_currently_active_context();
 struct context* schedule_next_context();

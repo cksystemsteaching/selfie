@@ -5,6 +5,7 @@
 #include "trap.h"
 #include "diag.h"
 #include "compiler-utils.h"
+#include "config.h"
 
 struct context_manager {
   struct context context;
@@ -105,8 +106,24 @@ uint64_t round_up(uint64_t addr, uint64_t align) {
   return addr;
 }
 
-void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
+bool kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   uint64_t argv_strings[MAX_ARGV_LENGTH];
+  uint64_t bytes_to_allocate = 0;
+  uint64_t pages_to_allocate;
+
+  for (uint64_t i = 0; i < argc; ++i)
+    bytes_to_allocate += round_up(strlen(argv[i]) + 1, sizeof(uint64_t));
+  bytes_to_allocate += 3 * sizeof(uint64_t); // nullptr at end of argv, argv ptr, and argc
+  pages_to_allocate = round_up(bytes_to_allocate, PAGESIZE) / PAGESIZE;
+
+  for (uint64_t i = 0; i < pages_to_allocate; ++i) {
+    // +1 due to full stack semantics (USERSPACE_STACK_START is the exact beginning of the next page)
+    uint64_t vaddr_to_map = USERSPACE_STACK_START - (NUM_STACK_PAGES + 1 + i) * PAGESIZE;
+    bool map_successful = kmap_page(context->pt, vaddr_to_map, true);
+
+    if (!map_successful)
+      return false;
+  }
 
   for (uint64_t i = 0; i < argc; i++) {
     uint64_t string_size = round_up(strlen(argv[i]) + 1, sizeof(uint64_t)); // 64bit-aligned
@@ -130,6 +147,8 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   // Copy argc to stack
   context->saved_regs.sp -= sizeof(uint64_t);
   *((uint64_t*) vaddr_to_paddr(context->pt, context->saved_regs.sp)) = argc;
+
+  return true;
 }
 
 void kfree_context(uint64_t context_id) {

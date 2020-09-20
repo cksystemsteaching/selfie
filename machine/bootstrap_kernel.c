@@ -64,7 +64,10 @@ int start_init_process(uint64_t argc, const char** argv) {
   int err = load_elf(init, file->data, file->length);
   if (err)
     panic("ERROR: Could not load init file: %s", elf_strerror(err));
-  kupload_argv(init, argc, argv);
+
+  bool argv_upload_successful = kupload_argv(init, argc, argv);
+  if (!argv_upload_successful)
+    panic("could not upload arguments to init");
 
   timer_interrupt_success = set_timer_interrupt_delta(TIMESLICE);
   if (!timer_interrupt_success)
