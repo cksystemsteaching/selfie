@@ -142,7 +142,6 @@ void setup_kernel_pt() {
 
 void setup_trap_handler() {
   setup_smode_trap_handler((trap_handler_t) TRAMPOLINE_VADDR);
-  enable_smode_interrupts_after_sret();
   enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS));
 }
 

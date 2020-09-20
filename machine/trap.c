@@ -48,18 +48,6 @@ void enable_smode_interrupts() {
   );
 }
 
-void enable_smode_interrupts_after_sret() {
-  uint64_t enable_bitmask = (1 << CSR_STATUS_SPIE);
-  uint64_t disable_bitmask = (1 << CSR_STATUS_SIE);
-
-  asm volatile (
-    "csrs sstatus, %[enable_bitmask];"
-    "csrc sstatus, %[disable_bitmask]"
-    :
-    : [enable_bitmask] "r" (enable_bitmask), [disable_bitmask] "r" (disable_bitmask)
-  );
-}
-
 void enable_smode_interrupt_types(uint64_t bitmask) {
   asm volatile (
     "csrs sie, %[bitmask]"

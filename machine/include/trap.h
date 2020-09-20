@@ -18,7 +18,6 @@ typedef void (*trap_handler_t)();
 
 void disable_smode_interrupts();
 void enable_smode_interrupts();
-void enable_smode_interrupts_after_sret();
 
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
