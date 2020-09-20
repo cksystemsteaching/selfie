@@ -1164,6 +1164,7 @@ void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = ma
 
 uint64_t  get_stack_start_gc(uint64_t* context);
 uint64_t  get_data_seg_start_gc(uint64_t* context);
+uint64_t  get_data_seg_end_gc(uint64_t* context);
 uint64_t  get_heap_seg_start_gc(uint64_t* context);
 uint64_t  get_heap_seg_end_gc(uint64_t* context);
 uint64_t* get_used_list_head_gc(uint64_t* context);
@@ -1241,6 +1242,7 @@ uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable b
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t gc_data_seg_start = 0;
+uint64_t gc_data_seg_end   = 0;
 uint64_t gc_heap_seg_start = 0;
 uint64_t gc_heap_seg_end   = 0;
 
@@ -7261,6 +7263,13 @@ uint64_t get_data_seg_start_gc(uint64_t* context) {
     return get_data_seg_start(context);
 }
 
+uint64_t get_data_seg_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_data_seg_end;
+  else
+    return get_heap_seg_start(context);
+}
+
 uint64_t get_heap_seg_start_gc(uint64_t* context) {
   if (is_gc_library(context))
     return gc_heap_seg_start;
@@ -7308,6 +7317,7 @@ void set_data_and_heap_segments_gc(uint64_t* context) {
     // we use fetch_global_pointer rather than smalloc_system(0)
     // to be accurate even if smalloc has been called before
     gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
+    gc_data_seg_end   = fetch_global_pointer();
 
     // assert: smalloc_system(0) returns program break
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
@@ -7616,7 +7626,7 @@ void mark(uint64_t* context) {
   mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE);
 
   // traverse data segment
-  mark_segment(context, get_data_seg_start_gc(context), get_heap_seg_start_gc(context));
+  mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
 }
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
