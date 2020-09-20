@@ -117,8 +117,9 @@ bool kupload_argv(struct context* context, uint64_t argc, const char** argv) {
   pages_to_allocate = round_up(bytes_to_allocate, PAGESIZE) / PAGESIZE;
 
   for (uint64_t i = 0; i < pages_to_allocate; ++i) {
-    // +1 due to full stack semantics (USERSPACE_STACK_START is the exact beginning of the next page)
-    uint64_t vaddr_to_map = USERSPACE_STACK_START - (NUM_STACK_PAGES + 1 + i) * PAGESIZE;
+    // 2 because one page is already mapped and the other one needs to be subtracted
+    // due to full stack semantics (USERSPACE_STACK_START is the exact beginning of the next page)
+    uint64_t vaddr_to_map = USERSPACE_STACK_START - (2 + i) * PAGESIZE;
     bool map_successful = kmap_page(context->pt, vaddr_to_map, true);
 
     if (!map_successful)
