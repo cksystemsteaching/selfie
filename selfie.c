@@ -1071,9 +1071,10 @@ void     store_physical_memory(uint64_t* paddr, uint64_t data);
 uint64_t get_root_PDE_offset(uint64_t page);
 uint64_t get_leaf_PTE_offset(uint64_t page);
 
-uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
+uint64_t* get_PTE_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
 uint64_t  get_frame_for_page(uint64_t* table, uint64_t page);
-void      set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame);
+
+void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame);
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
@@ -7015,7 +7016,7 @@ uint64_t get_leaf_PTE_offset(uint64_t page) {
   return page - get_root_PDE_offset(page) * NUMBER_OF_LEAF_PTES; // extract the 9 LSBs
 }
 
-uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
+uint64_t* get_PTE_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pt;
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
@@ -7040,17 +7041,17 @@ uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, ui
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
-  uint64_t* frame_address;
+  uint64_t* PTE_address;
 
-  frame_address = get_frame_address_for_page(0, table, page);
+  PTE_address = get_PTE_address_for_page(0, table, page);
 
-  if (frame_address == (uint64_t*) 0)
+  if (PTE_address == (uint64_t*) 0)
     return 0;
   else
-    return (uint64_t) *frame_address;
+    return (uint64_t) *PTE_address;
 }
 
-void set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
+void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
   uint64_t  root_PDE_offset;
   uint64_t* leaf_pt;
 
@@ -9316,7 +9317,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
     table = get_pt(context);
 
     if (get_frame_for_page(table, page) == 0) {
-      set_frame_for_page(table, page, frame);
+      set_PTE_for_page(table, page, frame);
 
       // exploit spatial locality in page table caching
       if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
@@ -9340,8 +9341,8 @@ void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, 
   uint64_t frame;
 
   while (lo < hi) {
-    if (is_virtual_address_mapped(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo))) {
-      frame = load_virtual_memory(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo));
+    if (is_virtual_address_mapped(parent_table, (uint64_t) get_PTE_address_for_page(parent_table, table, lo))) {
+      frame = load_virtual_memory(parent_table, (uint64_t) get_PTE_address_for_page(parent_table, table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }
