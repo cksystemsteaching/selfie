@@ -1068,8 +1068,8 @@ void reset_memory_counters();
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
-uint64_t root_PTE(uint64_t page);
-uint64_t leaf_PTE(uint64_t page);
+uint64_t get_root_PDE_offset(uint64_t page);
+uint64_t get_leaf_PTE_offset(uint64_t page);
 
 uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
 uint64_t  get_frame_for_page(uint64_t* table, uint64_t page);
@@ -7002,37 +7002,40 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
-uint64_t root_PTE(uint64_t page) {
+uint64_t get_root_PDE_offset(uint64_t page) {
   // with 4GB virtual memory there are 2^20 (2^32 / 2^12) 4KB pages;
   // in a two-level page table with 4KB (2^12) pages as leaf nodes and
   // 64-bit pointers, each leaf node accommodates 2^9 (2^12 / 2^3) PTEs;
-  // thus bits 9 through 19 encode the root PTE
+  // thus bits 9 through 19 encode the root PDE (page directory entry) offset
   return page / NUMBER_OF_LEAF_PTES; // right shift by 9 bits
 }
 
-uint64_t leaf_PTE(uint64_t page) {
-  // bits 0 through 8 encode the leaf PTE
-  return page - root_PTE(page) * NUMBER_OF_LEAF_PTES; // extract the 9 LSBs
+uint64_t get_leaf_PTE_offset(uint64_t page) {
+  // bits 0 through 8 encode the leaf PTE (page table entry) offset
+  return page - get_root_PDE_offset(page) * NUMBER_OF_LEAF_PTES; // extract the 9 LSBs
 }
 
 uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
-  uint64_t* leaf_pte;
+  uint64_t* leaf_pt;
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
   if (PAGE_TABLE_TREE == 0)
+    // just pointer arithmetic, no access!
     return table + page;
   else {
+    // to get leaf page table, root page directory access is required!
     if (parent_table == (uint64_t*) 0)
-      leaf_pte = (uint64_t*) *(table + root_PTE(page));
+      leaf_pt = (uint64_t*) *(table + get_root_PDE_offset(page));
     else
       // table is in address space of parent_table
-      leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+      leaf_pt = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + get_root_PDE_offset(page)));
 
-    if (leaf_pte == (uint64_t*) 0)
+    if (leaf_pt == (uint64_t*) 0)
       return (uint64_t*) 0;
     else
-      return leaf_pte + leaf_PTE(page);
+      // again, just pointer arithmetic, no access!
+      return leaf_pt + get_leaf_PTE_offset(page);
   }
 }
 
@@ -7048,25 +7051,25 @@ uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
 }
 
 void set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
-  uint64_t  root_pte;
-  uint64_t* leaf_pte;
+  uint64_t  root_PDE_offset;
+  uint64_t* leaf_pt;
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
   if (PAGE_TABLE_TREE == 0)
     *(table + page) = frame;
   else {
-    root_pte = root_PTE(page);
+    root_PDE_offset = get_root_PDE_offset(page);
 
-    leaf_pte = (uint64_t*) *(table + root_pte);
+    leaf_pt = (uint64_t*) *(table + root_PDE_offset);
 
-    if (leaf_pte == (uint64_t*) 0) {
-      leaf_pte = palloc();
+    if (leaf_pt == (uint64_t*) 0) {
+      leaf_pt = palloc(); // 4KB leaf page table
 
-      *(table + root_pte) = (uint64_t) leaf_pte;
+      *(table + root_PDE_offset) = (uint64_t) leaf_pt;
     }
 
-    *(leaf_pte + leaf_PTE(page)) = frame;
+    *(leaf_pt + get_leaf_PTE_offset(page)) = frame;
   }
 }
 
@@ -9136,10 +9139,17 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   if (PAGE_TABLE_TREE == 0)
-    // allocate 8MB = 2^23 (2^32 / 2^12 * 2^3) bytes to accommodate 2^20 (2^32 / 2^12) PTEs
+    // for a 4GB-virtual-memory page table with
+    // 4KB pages and 64-bit pointers, allocate
+    // 8MB = 2^23 (2^32 / 2^12 * 2^3) bytes to
+    // accommodate 2^20 (2^32 / 2^12) PTEs
     set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
   else
-    // for the root node, allocate 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to accommodate 2^11 (2^32 / 2^12 / 2^9) root PTEs
+    // for the root node (page directory), allocate
+    // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
+    // accommodate 2^11 (2^32 / 2^12 / 2^9) root PDEs
+    // pointing to 4KB leaf nodes (page tables) that
+    // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
     set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
   // reset page table cache
