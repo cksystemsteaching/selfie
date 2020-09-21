@@ -177,13 +177,10 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
-uint64_t* smalloc(uint64_t size);
-uint64_t* smalloc_system(uint64_t size);
-
 void zero_memory(uint64_t* memory, uint64_t size);
 
-uint64_t* zalloc(uint64_t size);
-uint64_t* zmalloc(uint64_t size);
+uint64_t* smalloc(uint64_t size); // use this to allocate memory, not malloc
+uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -215,7 +212,8 @@ uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 
-uint64_t CPUBITWIDTH = 64;
+uint64_t CPUBITWIDTH    = 64; // double word
+uint64_t WORDSIZEINBITS = 32; // single word
 
 uint64_t SIZEOFUINT64     = 8; // must be the same as REGISTERSIZE
 uint64_t SIZEOFUINT64STAR = 8; // must be the same as REGISTERSIZE
@@ -508,7 +506,7 @@ uint64_t report_undefined_procedures();
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP, REG_S0
+// |  7 | scope   | REG_GP (global), REG_S0 (local)
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
@@ -712,6 +710,8 @@ void     write_register(uint64_t reg);
 void update_register_counters();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t REGISTERSIZE = 8; // in bytes, must be twice of INSTRUCTIONSIZE
 
 uint64_t NUMBEROFREGISTERS   = 32;
 uint64_t NUMBEROFTEMPORARIES = 7;
@@ -1065,12 +1065,13 @@ void reset_memory_counters();
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
-uint64_t root_PTE(uint64_t page);
-uint64_t leaf_PTE(uint64_t page);
+uint64_t get_root_PDE_offset(uint64_t page);
+uint64_t get_leaf_PTE_offset(uint64_t page);
 
-uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
+uint64_t* get_PTE_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
 uint64_t  get_frame_for_page(uint64_t* table, uint64_t page);
-void      set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame);
+
+void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame);
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
@@ -1092,17 +1093,11 @@ uint64_t MEGABYTE = 1048576; // 1MB
 
 uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
-uint64_t WORDSIZE       = 4; // in bytes
-uint64_t WORDSIZEINBITS = 32;
+uint64_t PAGESIZE = 4096; // 4KB virtual pages
 
-uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
-uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
+uint64_t NUMBER_OF_LEAF_PTES = 512; // number of leaf page table entries == PAGESIZE / REGISTERSIZE
 
-uint64_t NUMBER_OF_LEAF_PTES = 512; // == PAGESIZE / REGISTERSIZE
-
-uint64_t PAGESIZE = 4096; // we use standard 4KB pages
-
-uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
+uint64_t PAGE_TABLE_TREE = 1; // two-level page table is default
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1164,6 +1159,7 @@ void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = ma
 
 uint64_t  get_stack_start_gc(uint64_t* context);
 uint64_t  get_data_seg_start_gc(uint64_t* context);
+uint64_t  get_data_seg_end_gc(uint64_t* context);
 uint64_t  get_heap_seg_start_gc(uint64_t* context);
 uint64_t  get_heap_seg_end_gc(uint64_t* context);
 uint64_t* get_used_list_head_gc(uint64_t* context);
@@ -1241,6 +1237,7 @@ uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable b
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t gc_data_seg_start = 0;
+uint64_t gc_data_seg_end   = 0;
 uint64_t gc_heap_seg_start = 0;
 uint64_t gc_heap_seg_end   = 0;
 
@@ -1424,6 +1421,8 @@ void print_register_memory_profile();
 void print_profile(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t INSTRUCTIONSIZE = 4; // in bytes, must be half of REGISTERSIZE
 
 // RISC-U instructions
 
@@ -2701,8 +2700,23 @@ uint64_t round_up(uint64_t n, uint64_t m) {
     return n - n % m + m;
 }
 
+void zero_memory(uint64_t* memory, uint64_t size) {
+  uint64_t i;
+
+  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
+
+  i = 0;
+
+  while (i < size) {
+    // erase memory by setting it to 0
+    *(memory + i) = 0;
+
+    i = i + 1;
+  }
+}
+
 uint64_t* smalloc(uint64_t size) {
-  // this procedure ensures a defined program exit,
+  // this procedure ensures a defined program exit
   // if no memory can be allocated
   uint64_t* memory;
 
@@ -2726,6 +2740,8 @@ uint64_t* smalloc(uint64_t size) {
 }
 
 uint64_t* smalloc_system(uint64_t size) {
+  // internal use only!
+
   uint64_t gc;
   uint64_t* memory;
 
@@ -2740,22 +2756,9 @@ uint64_t* smalloc_system(uint64_t size) {
   return memory;
 }
 
-void zero_memory(uint64_t* memory, uint64_t size) {
-  uint64_t i;
-
-  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
-
-  i = 0;
-
-  while (i < size) {
-    // erase memory by setting it to 0
-    *(memory + i) = 0;
-
-    i = i + 1;
-  }
-}
-
 uint64_t* zalloc(uint64_t size) {
+  // internal use only!
+
   // this procedure is only executed at boot level 0
   // zalloc allocates size bytes rounded up to word size
   // and then zeroes that memory, similar to calloc, but
@@ -5829,7 +5832,7 @@ uint64_t load_instruction(uint64_t baddr) {
 }
 
 void store_instruction(uint64_t baddr, uint64_t instruction) {
-  uint64_t temp;
+  uint64_t doubleword;
 
   if (baddr >= MAX_CODE_LENGTH) {
     syntax_error_message("maximum code length exceeded");
@@ -5837,16 +5840,16 @@ void store_instruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  temp = *(binary + baddr / REGISTERSIZE);
+  doubleword = *(binary + baddr / REGISTERSIZE);
 
   if (baddr % REGISTERSIZE == 0)
     // replace low word
-    temp = left_shift(get_high_word(temp), WORDSIZEINBITS) + instruction;
+    doubleword = left_shift(get_high_word(doubleword), WORDSIZEINBITS) + instruction;
   else
     // replace high word
-    temp = left_shift(instruction, WORDSIZEINBITS) + get_low_word(temp);
+    doubleword = left_shift(instruction, WORDSIZEINBITS) + get_low_word(doubleword);
 
-  *(binary + baddr / REGISTERSIZE) = temp;
+  *(binary + baddr / REGISTERSIZE) = doubleword;
 }
 
 uint64_t load_data(uint64_t baddr) {
@@ -7003,66 +7006,74 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
-uint64_t root_PTE(uint64_t page) {
-  return page / NUMBER_OF_LEAF_PTES;
+uint64_t get_root_PDE_offset(uint64_t page) {
+  // with 4GB (2^32B) virtual memory there are 2^(32-12) 4KB (2^12B) pages;
+  // in a two-level page table with 4KB (2^12B) pages as leaf nodes and
+  // 64-bit pointers (2^3B), each leaf node accommodates 2^(12-3) PTEs;
+  // thus bits 9 through 19 encode the root PDE (page directory entry) offset
+  return page / NUMBER_OF_LEAF_PTES; // right shift by 9 bits
 }
 
-uint64_t leaf_PTE(uint64_t page) {
-  return page - root_PTE(page) * NUMBER_OF_LEAF_PTES;
+uint64_t get_leaf_PTE_offset(uint64_t page) {
+  // bits 0 through 8 encode the leaf PTE (page table entry) offset
+  return page - get_root_PDE_offset(page) * NUMBER_OF_LEAF_PTES; // extract the 9 LSBs
 }
 
-uint64_t* get_frame_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
-  uint64_t* leaf_pte;
+uint64_t* get_PTE_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
+  uint64_t* leaf_pt;
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
   if (PAGE_TABLE_TREE == 0)
+    // just pointer arithmetic, no access!
     return table + page;
   else {
+    // to get leaf page table, root page directory access is required!
     if (parent_table == (uint64_t*) 0)
-      leaf_pte = (uint64_t*) *(table + root_PTE(page));
+      leaf_pt = (uint64_t*) *(table + get_root_PDE_offset(page));
     else
       // table is in address space of parent_table
-      leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+      leaf_pt = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + get_root_PDE_offset(page)));
 
-    if (leaf_pte == (uint64_t*) 0)
+    if (leaf_pt == (uint64_t*) 0)
       return (uint64_t*) 0;
     else
-      return leaf_pte + leaf_PTE(page);
+      // again, just pointer arithmetic, no access!
+      return leaf_pt + get_leaf_PTE_offset(page);
   }
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
-  uint64_t* frame_address;
+  uint64_t* PTE_address;
 
-  frame_address = get_frame_address_for_page(0, table, page);
+  PTE_address = get_PTE_address_for_page(0, table, page);
 
-  if (frame_address == (uint64_t*) 0)
+  if (PTE_address == (uint64_t*) 0)
     return 0;
   else
-    return (uint64_t) *frame_address;
+    return (uint64_t) *PTE_address;
 }
 
-void set_frame_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
-  uint64_t  root_pte;
-  uint64_t* leaf_pte;
+void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
+  uint64_t  root_PDE_offset;
+  uint64_t* leaf_pt;
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
   if (PAGE_TABLE_TREE == 0)
     *(table + page) = frame;
   else {
-    root_pte = root_PTE(page);
+    root_PDE_offset = get_root_PDE_offset(page);
 
-    leaf_pte = (uint64_t*) *(table + root_pte);
+    leaf_pt = (uint64_t*) *(table + root_PDE_offset);
 
-    if (leaf_pte == (uint64_t*) 0) {
-      leaf_pte = palloc();
+    if (leaf_pt == (uint64_t*) 0) {
+      leaf_pt = palloc(); // 4KB leaf page table
 
-      *(table + root_pte) = (uint64_t) leaf_pte;
+      *(table + root_PDE_offset) = (uint64_t) leaf_pt;
     }
 
-    *(leaf_pte + leaf_PTE(page)) = frame;
+    *(leaf_pt + get_leaf_PTE_offset(page)) = frame;
   }
 }
 
@@ -7261,6 +7272,14 @@ uint64_t get_data_seg_start_gc(uint64_t* context) {
     return get_data_seg_start(context);
 }
 
+uint64_t get_data_seg_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_data_seg_end;
+  else
+    // data segment end is here equal to heap segment start
+    return get_heap_seg_start(context);
+}
+
 uint64_t get_heap_seg_start_gc(uint64_t* context) {
   if (is_gc_library(context))
     return gc_heap_seg_start;
@@ -7307,7 +7326,8 @@ void set_data_and_heap_segments_gc(uint64_t* context) {
   if (is_gc_library(context)) {
     // we use fetch_global_pointer rather than smalloc_system(0)
     // to be accurate even if smalloc has been called before
-    gc_data_seg_start = fetch_global_pointer() - fetch_data_segment_size();
+    gc_data_seg_end   = fetch_global_pointer();
+    gc_data_seg_start = gc_data_seg_end - fetch_data_segment_size();
 
     // assert: smalloc_system(0) returns program break
     gc_heap_seg_start = (uint64_t) smalloc_system(0);
@@ -7616,7 +7636,7 @@ void mark(uint64_t* context) {
   mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE);
 
   // traverse data segment
-  mark_segment(context, get_data_seg_start_gc(context), get_heap_seg_start_gc(context));
+  mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
 }
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
@@ -9132,8 +9152,17 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   if (PAGE_TABLE_TREE == 0)
+    // for a 4GB-virtual-memory page table with
+    // 4KB pages and 64-bit pointers, allocate
+    // 8MB = 2^23 (2^32 / 2^12 * 2^3) bytes to
+    // accommodate 2^20 (2^32 / 2^12) PTEs
     set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
   else
+    // for the root node (page directory), allocate
+    // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
+    // accommodate 2^11 (2^32 / 2^12 / 2^9) root PDEs
+    // pointing to 4KB leaf nodes (page tables) that
+    // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
     set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
   // reset page table cache
@@ -9300,7 +9329,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
     table = get_pt(context);
 
     if (get_frame_for_page(table, page) == 0) {
-      set_frame_for_page(table, page, frame);
+      set_PTE_for_page(table, page, frame);
 
       // exploit spatial locality in page table caching
       if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
@@ -9324,8 +9353,8 @@ void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, 
   uint64_t frame;
 
   while (lo < hi) {
-    if (is_virtual_address_mapped(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo))) {
-      frame = load_virtual_memory(parent_table, (uint64_t) get_frame_address_for_page(parent_table, table, lo));
+    if (is_virtual_address_mapped(parent_table, (uint64_t) get_PTE_address_for_page(parent_table, table, lo))) {
+      frame = load_virtual_memory(parent_table, (uint64_t) get_PTE_address_for_page(parent_table, table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }

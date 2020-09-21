@@ -1149,7 +1149,7 @@ void selfie_translate() {
 
   size = 30;
   pc_translator = ELF_ENTRY_POINT;
-  instr_bytes = malloc(size * SIZEOFUINT64);
+  instr_bytes = smalloc(size * SIZEOFUINT64);
   x86_address_fixup_table = smalloc(MAX_BINARY_LENGTH);
 
   while(pc_translator < code_length + ELF_ENTRY_POINT) {
