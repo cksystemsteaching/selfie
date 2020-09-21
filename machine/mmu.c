@@ -125,6 +125,82 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
   return true;
 }
 
+bool map_and_store_in_user_vaddr_space(struct pt_entry* table, uint64_t vaddr, uint64_t data) {
+  if (!is_vaddr_mapped(table, vaddr)) {
+    bool map_successful = kmap_page(table, vaddr, true);
+    if (!map_successful)
+      return false;
+  }
+
+  *((uint64_t*) vaddr_to_paddr(table, vaddr)) = data;
+
+  return true;
+}
+
+uint64_t upload_string_to_stack(struct pt_entry* table, const char* str, uint64_t sp) {
+  uint64_t bytes_to_upload = ROUND_UP(strlen(str) + 1, sizeof(uint64_t));
+  uint64_t str_vaddr = sp - bytes_to_upload;
+
+  for (uint64_t i = 0; i < bytes_to_upload; i += sizeof(uint64_t)) {
+    bool map_successful = map_and_store_in_user_vaddr_space(table, str_vaddr + i, *((uint64_t*) str));
+    if (!map_successful)
+      return sp;
+
+    str = (char*) ((uint64_t*) str + 1);
+  }
+
+  return str_vaddr;
+}
+
+bool kupload_argv(struct context* context, uint64_t argc, const char** argv) {
+  // basically an adapted version of selfie's algorithm
+
+  uint64_t sp;
+  uint64_t argv_strings[MAX_ARGV_LENGTH];
+
+  sp = context->saved_regs.sp;
+
+  for (uint64_t i = 0; i < argc; ++i) {
+    uint64_t new_sp = upload_string_to_stack(context->pt, argv[i], sp);
+    if (new_sp == sp)
+      return false;
+    sp = new_sp;
+
+    argv_strings[i] = sp;
+  }
+
+  // push null terminator of env table
+  sp -= sizeof(uint64_t);
+  bool map_successful = map_and_store_in_user_vaddr_space(context->pt, sp - sizeof(uint64_t), 0);
+  if (!map_successful)
+    return false;
+
+  // push null terminator for argv table
+  sp -= sizeof(uint64_t);
+  map_successful = map_and_store_in_user_vaddr_space(context->pt, sp - sizeof(uint64_t), 0);
+  if (!map_successful)
+    return false;
+
+  // push argv pointers
+  for (uint64_t i = argc; i > 0;) {
+    sp -= sizeof(uint64_t);
+    i -= 1;
+    map_successful = map_and_store_in_user_vaddr_space(context->pt, sp, argv_strings[i]);
+    if (!map_successful)
+      return false;
+  }
+
+  // push argc
+  sp -= sizeof(uint64_t);
+  map_successful = map_and_store_in_user_vaddr_space(context->pt, sp, argc);
+  if (!map_successful)
+    return false;
+
+  context->saved_regs.sp = sp;
+
+  return true;
+}
+
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
   return (vaddr >> 12);
 }

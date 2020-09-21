@@ -76,8 +76,6 @@ void kinit_context(struct context* context);
 // assert: references to the context with this ID will not be used in the future
 void kfree_context(uint64_t context_id);
 
-bool kupload_argv(struct context* context, uint64_t argc, const char** argv);
-
 struct context* get_currently_active_context();
 struct context* schedule_next_context();
 

@@ -72,6 +72,10 @@ struct pt_entry* create_pt_entry(struct pt_entry* table, uint64_t index, uint64_
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, bool u_mode_accessible);
 bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool u_mode_accessible);
 
+bool map_and_store_in_user_vaddr_space(struct pt_entry* table, uint64_t vaddr, uint64_t data);
+uint64_t upload_string_to_stack(struct pt_entry* table, const char* str, uint64_t sp);
+bool kupload_argv(struct context* context, uint64_t argc, const char** argv);
+
 uint64_t vaddr_to_vpn(uint64_t vaddr);
 uint64_t vpn_to_vaddr(uint64_t vpn);
 uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr);
