@@ -1856,8 +1856,8 @@ void modeler() {
 
   code_nid = pcs_nid * 3;
 
-  control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   current_callee   = entry_point;
   estimated_return = entry_point;

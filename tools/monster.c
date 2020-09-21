@@ -1050,7 +1050,7 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_execution_depth(context, 0);
   set_path_condition(context, "true");
   set_symbolic_memory(context, (uint64_t*) 0);
-  set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_symbolic_regs(context, zmalloc(NUMBEROFREGISTERS * REGISTERSIZE));
   set_beq_counter(context, 0);
   set_merge_partner(context, (uint64_t*) 0);
   set_call_stack(context, call_stack_tree);
@@ -1280,7 +1280,7 @@ char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
 // +---+----------+
 
 uint64_t* allocate_node() {
-  return zalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return zmalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 }
 
 uint64_t* get_parent_node(uint64_t* node)  { return (uint64_t*) *(node + 0); }

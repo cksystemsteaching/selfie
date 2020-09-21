@@ -177,13 +177,10 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
-uint64_t* smalloc(uint64_t size);
-uint64_t* smalloc_system(uint64_t size);
-
 void zero_memory(uint64_t* memory, uint64_t size);
 
-uint64_t* zalloc(uint64_t size);
-uint64_t* zmalloc(uint64_t size);
+uint64_t* smalloc(uint64_t size); // use this to allocate memory, not malloc
+uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -509,7 +506,7 @@ uint64_t report_undefined_procedures();
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP, REG_S0
+// |  7 | scope   | REG_GP (global), REG_S0 (local)
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
@@ -2703,8 +2700,23 @@ uint64_t round_up(uint64_t n, uint64_t m) {
     return n - n % m + m;
 }
 
+void zero_memory(uint64_t* memory, uint64_t size) {
+  uint64_t i;
+
+  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
+
+  i = 0;
+
+  while (i < size) {
+    // erase memory by setting it to 0
+    *(memory + i) = 0;
+
+    i = i + 1;
+  }
+}
+
 uint64_t* smalloc(uint64_t size) {
-  // this procedure ensures a defined program exit,
+  // this procedure ensures a defined program exit
   // if no memory can be allocated
   uint64_t* memory;
 
@@ -2728,6 +2740,8 @@ uint64_t* smalloc(uint64_t size) {
 }
 
 uint64_t* smalloc_system(uint64_t size) {
+  // internal use only!
+
   uint64_t gc;
   uint64_t* memory;
 
@@ -2742,22 +2756,9 @@ uint64_t* smalloc_system(uint64_t size) {
   return memory;
 }
 
-void zero_memory(uint64_t* memory, uint64_t size) {
-  uint64_t i;
-
-  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
-
-  i = 0;
-
-  while (i < size) {
-    // erase memory by setting it to 0
-    *(memory + i) = 0;
-
-    i = i + 1;
-  }
-}
-
 uint64_t* zalloc(uint64_t size) {
+  // internal use only!
+
   // this procedure is only executed at boot level 0
   // zalloc allocates size bytes rounded up to word size
   // and then zeroes that memory, similar to calloc, but
@@ -7006,9 +7007,9 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
 }
 
 uint64_t get_root_PDE_offset(uint64_t page) {
-  // with 4GB virtual memory there are 2^20 (2^32 / 2^12) 4KB pages;
-  // in a two-level page table with 4KB (2^12) pages as leaf nodes and
-  // 64-bit pointers, each leaf node accommodates 2^9 (2^12 / 2^3) PTEs;
+  // with 4GB (2^32B) virtual memory there are 2^(32-12) 4KB (2^12B) pages;
+  // in a two-level page table with 4KB (2^12B) pages as leaf nodes and
+  // 64-bit pointers (2^3B), each leaf node accommodates 2^(12-3) PTEs;
   // thus bits 9 through 19 encode the root PDE (page directory entry) offset
   return page / NUMBER_OF_LEAF_PTES; // right shift by 9 bits
 }
