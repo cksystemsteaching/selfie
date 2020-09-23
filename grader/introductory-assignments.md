@@ -20,7 +20,7 @@ Welcome to the Introduction to Operating Systems supplementary material. This do
 
 ### Bit Representation
 
-First and foremost, as far as the computer is concerned, there is no way to move "past numbers" because, to the computer, everything is a number. A computer stores everything as a series of 0's and 1's. This representation is called a bit. A bit can only have one of two values, which are most commonly represented as either a 0 or 1. The value 1 means high voltage, and the value 0 means low voltage in computer systems. 
+First and foremost, as far as the computer is concerned, there is no way to move "past numbers" because, to the computer, everything is a number. A computer stores everything as a series of 0's and 1's. This representation is called a bit. A [bit](https://en.wikipedia.org/wiki/Bit) can only have one of two values, which are most commonly represented as either a 0 or 1. The value 1 means high voltage, and the value 0 means low voltage in computer systems. 
 
 **Example**:
 
@@ -53,7 +53,7 @@ For example, with a 4-digit sequence of 1011, the decimal (base 10) interpretati
 
 ### Binary Numbers
 
-A binary number is a number represented in base 2, in which there are only 2 possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored in a computer. Although it might be possible for a computer to store more than two voltage values and therefore support a base larger than 2, it would be challenging to support the 10 voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
+A [binary number](https://en.wikipedia.org/wiki/Binary_number) is a number represented in base 2, in which there are only 2 possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored in a computer. Although it might be possible for a computer to store more than two voltage values and therefore support a base larger than 2, it would be challenging to support the 10 voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
 
 Binary numbers interpreted that each bit (the name for a binary digit) holds the value 2 raised to an increasing exponent. We begin with the right-most bit (also called the LSB = least significant bit), which holds the value 2^{0}=1, or the one's column. The next bit holds the value 2^{1}=2, or the twos column. In base 10, each column is ten times larger than the one before it. In base 2, each column's value grows by 2. 
 
@@ -97,3 +97,51 @@ In the example with the value 170, the LSB is 0 so it represents an even value.
 - Is the value 11101 even or odd?
 - Is the value 111110 even or odd?
   
+
+### Byte
+
+Since a unit of eight bits is very common in computer systems there is a well-known term for that unit called a byte.
+
+[Byte](https://en.wikipedia.org/wiki/Byte) : A unit of digital information in computing and telecommunications that most commonly consists of eight bits.
+
+**Examples**:
+
+A bit sequence of 0b10101010 = 170 in decimal notation and consists of 8 bits and represents 1 byte.
+
+So, if we talk about bytes we mean sequences of 8 bits.
+
+### Different Notations
+
+| Encoding    | Alphabet                        | Base (Radix, Size of Alphabet) | # Values in Digits n>0 |
+| ----------- | ------------------------------- | ------------------------------ | ---------------------- |
+| Unary       | 1                               | 1                              | n                      |
+| Binary      | 0,1                             | 2                              | 2^{n}                  |
+| Octal       | 0,1,2,3,4,5,6,7                 | 8                              | 8^{n}                  |
+| Decimal     | 0,1,2,3,4,5,6,7,8,9             | 10                             | 10^{n}                 |
+| Hexadecimal | 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F | 16                             | 16^{n}                 |
+			
+
+[Radix](https://en.wikipedia.org/wiki/Radix) : The number of unique digits, including zero, used to represent numbers in a positional numeral system.
+
+**Examples**:
+
+|      | Encoding    | Representation |
+| ---- | ----------- | -------------- |
+| 42   | Binary      | 0b101010       |
+| 42   | Octal       | 0o52           |
+| 42   | Decimal     | 42             |
+| 42   | Hexadecimal | 0x2A           |
+| "42" | String      | 42             |
+| '*'  | ASCII       | 42             |
+
+### Unary
+
+The [Unary Numeral System](https://en.wikipedia.org/wiki/Unary_numeral_system) is the simplest numeral system to represent natural numbers. 
+
+**Examples**:
+
+The number 42 represented in the unary numeral System:
+
+111111111111111111111111111111111111111111
+
+That are 42 ones in a row. 
