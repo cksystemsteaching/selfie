@@ -59,7 +59,7 @@ Binary numbers interpreted that each bit (the name for a binary digit) holds the
 
 **Examples**:
 
-As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the base 2 binary system, we convert the value into a base 10 number. Starting from the right-most or LSB, we calculate 1\*2^{0}=1, the second column from the right is 1\*2^{1}=2, the third column from the right is 0\*2^{2}=0, and the left-most or MSB is 1\*2^{3}=8. Now we add all 4 values together, 1+2+0+8 = 11. In this interpretation, with a 4-digit sequence, we get the value 11 as base 10 decimal number.
+As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the base 2 binary system, we convert the value into a base 10 number. Starting from the right-most or LSB (least significant bit), we calculate 1\*2^{0}=1, the second column from the right is 1\*2^{1}=2, the third column from the right is 0\*2^{2}=0, and the left-most or MSB (most significant bit) is 1\*2^{3}=8. Now we add all 4 values together, 1+2+0+8 = 11. In this interpretation, with a 4-digit sequence, we get the value 11 as base 10 decimal number.
 
 | 4-digit sequence | 1        | 0        | 1        | 1        | Value |
 | ---------------- | -------- | -------- | -------- | -------- | ----- |
@@ -69,5 +69,5 @@ As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the 
 **Exercise**:
 
 - What is a binary number?
-- What is the decimal number 1337 in binary?
-- What is the decimal number 128 in binary?
+- What is the value of the 5-digit sequence 10101?
+- What is the value of the 8-digit sequence 10110110?
