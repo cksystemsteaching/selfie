@@ -71,3 +71,29 @@ As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the 
 - What is a binary number?
 - What is the value of the 5-digit sequence 10101?
 - What is the value of the 8-digit sequence 10110110?
+
+### MSB & LSB
+
+The most significant bit on the far-left in the binary representation represents the greatest value. The lest significant bit on the right-most can show if a number is even or odd. If the LSB is 1, then it is an even number, and if the LSB is 0, the number is odd.
+
+**Examples**:
+
+| 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
+| --- | --- | --- | --- | --- | --- | --- | --- | ----- |
+| 0   | 1   | 0   | 1   | 0   | 1   | 0   | 1   | = 85  |
+
+In the example with the value 85, the LSB is 1 so it represents an odd value.
+
+| 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
+| --- | --- | --- | --- | --- | --- | --- | --- | ----- |
+| 1   | 0   | 1   | 0   | 1   | 0   | 1   | 0   | = 170 |
+
+In the example with the value 170, the LSB is 0 so it represents an even value.
+
+**Exercises**:
+
+- Is the value 101010 even or odd?
+- Is the value 111 even or odd?
+- Is the value 11101 even or odd?
+- Is the value 111110 even or odd?
+  
