@@ -20,7 +20,7 @@ Welcome to the Introduction to Operating Systems supplementary material. This do
 
 ### Bit Representation
 
-First and foremost, as far as the computer is concerned, there is no way to move "past numbers" because, to the computer, everything is a number. A computer stores everything as a series of 0's and 1's. This representation is called a bit. A [bit](https://en.wikipedia.org/wiki/Bit) can only have one of two values, which are most commonly represented as either a 0 or 1. The value 1 means high voltage, and the value 0 means low voltage in computer systems. 
+First and foremost, as far as computers are concerned, everything is a number, in fact a binary number. A computer stores everything as a series of 0's and 1's. This representation is called a [bit](https://en.wikipedia.org/wiki/Bit). A bit can only have one of two values, which are most commonly represented as a 0 and a 1. In actual electronic hardware, value 1 is typically represented by high voltage, and value 0 by low voltage.
 
 **Example**:
 
@@ -79,13 +79,13 @@ The most significant bit on the far-left in the binary representation represents
 **Examples**:
 
 | 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
-| --- | --- | --- | --- | --- | --- | --- | --- | ----- |
+| --- | --- | --- | --- | --- | --- | --- | --- | :---: |
 | 0   | 1   | 0   | 1   | 0   | 1   | 0   | 1   | = 85  |
 
 In the example with the value 85, the LSB is 1 so it represents an odd value.
 
 | 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
-| --- | --- | --- | --- | --- | --- | --- | --- | ----- |
+| --- | --- | --- | --- | --- | --- | --- | --- | :---: |
 | 1   | 0   | 1   | 0   | 1   | 0   | 1   | 0   | = 170 |
 
 In the example with the value 170, the LSB is 0 so it represents an even value.
@@ -145,3 +145,88 @@ The number 42 represented in the unary numeral System:
 111111111111111111111111111111111111111111
 
 That are 42 ones in a row. 
+
+### Octal
+
+The [Octal](https://en.wikipedia.org/wiki/Octal) (base 8) notation is popular in computer science because it is represented in blocks of three bits. 
+
+Each digit of an octal number can be represented by three bits. Conversely, an octal number can easily be generated from a binary number by grouping three bits each.
+
+**Octal notation**:
+
+| MSB   |       |       |       |       |       |       | LSB   |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| 8^{7} | 8^{6} | 8^{5} | 8^{4} | 8^{3} | 8^{2} | 8^{1} | 8^{0} |
+| 2M    | 262K  | 32K   | 4K    | 512   | 64    | 8     | 1     |
+
+**Octal numbers**:
+
+| Decimal | 3-bit Binary | Octal    |
+| ------- | ------------ | -------- |
+| 0       | 000          | 0        |
+| 1       | 001          | 1        |
+| 2       | 010          | 2        |
+| 3       | 011          | 3        |
+| 4       | 100          | 4        |
+| 5       | 101          | 5        |
+| 6       | 110          | 6        |
+| 7       | 111          | 7        |
+| 8       | 001 000      | 10 (1+0) |
+| 9       | 001 001      | 11 (1+1) |
+| 10      | 001 010      | 12 (1+2) |
+
+**Examples**:
+
+*Example 1*:
+
+Converting the decimal value 42 into the binary number 0b101010. As next step, we group the binary number into three bits each. When we group these value into three bits each, we get 101 and 010. 
+
+Now we can convert each three bit value into a octal representation:
+
+First sequence of three bits: 101
+
+|        | 4   | 2   | 1   | Value |
+| ------ | --- | --- | --- | :---: |
+| Binary | 1   | 0   | 1   |  = 5  |
+
+Second sequence of three bits: 010
+
+|        | 4   | 2   | 1   | Value |
+| ------ | --- | --- | --- | :---: |
+| Binary | 0   | 1   | 0   |  = 2  |
+
+We see that the first three bit value converts into 5, and the second three bit value converts into 2.
+
+That means we get a final value of 52 or in octal notation 0o52.
+
+*Example 2*: 
+
+Converting a octal number into a binary numbers works like follows:
+
+|             |                       |
+| ----------- | :--------------------- |
+| Octal       | 0o52                  |
+| Polynomial  | = (5\*8^1) + (2\*8^0) |
+| Calculation | = 40 + 2              |
+| Decimal     | 42                    |
+
+**Exercises**:
+
+- What is the octal representation of the decimal value 16?
+- What is the octal representation of the binary number 0b100100?
+- What is the decimal representation of the octal value 173?
+
+### Nibble
+
+A [nibble](https://en.wikipedia.org/wiki/Nibble) is a block of four bits.
+A Block of four bits corresponds to exactly one hexadecimal digit.
+
+**Examples**:
+
+For example the bit value 0b1010 is 4 bits long and called a nibble, it represents the decimal value 10.
+
+| 8   | 4   | 2   | 1   | Value |
+| --- | --- | --- | --- | :---: |
+| 1   | 0   | 1   | 0   | = 10  |
+
+
