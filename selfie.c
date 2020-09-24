@@ -1003,7 +1003,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
 void     emit_malloc();
-uint64_t help_brk(uint64_t* context, uint64_t program_break);
+uint64_t try_brk(uint64_t* context, uint64_t new_program_break);
 void     implement_brk(uint64_t* context);
 
 uint64_t is_boot_level_zero();
@@ -6798,7 +6798,7 @@ void emit_malloc() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
+uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
   uint64_t current_program_break;
 
   current_program_break = get_program_break(context);
@@ -6809,14 +6809,15 @@ uint64_t help_brk(uint64_t* context, uint64_t new_program_break) {
         if (debug_brk)
           printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
 
-        mc_brk = mc_brk + (new_program_break - current_program_break);
-
         set_program_break(context, new_program_break);
+
+        // account for memory allocated by brk
+        mc_brk = mc_brk + (new_program_break - current_program_break);
 
         return new_program_break;
       }
 
-  // error returns current program break
+  // setting new program break failed, return current program break
 
   if (debug_brk)
     printf2("%s: retrieving current program break %p\n", selfie_name, (char*) current_program_break);
@@ -6837,7 +6838,7 @@ void implement_brk(uint64_t* context) {
 
   // attempt to update program break
 
-  new_program_break = help_brk(context, new_program_break);
+  new_program_break = try_brk(context, new_program_break);
 
   if (debug_syscalls) {
     print("(brk): ");
@@ -6847,12 +6848,13 @@ void implement_brk(uint64_t* context) {
   }
 
   if (new_program_break == *(get_regs(context) + REG_A0)) {
+    // attempt to update program break succeeded
     if (*(get_regs(context) + REG_A0) != previous_program_break)
       // account for brk syscall if program break actually changed
       sc_brk = sc_brk + 1;
   } else
-    // error case of help_brk
-    *(get_regs(context) + REG_A0) = new_program_break;
+    // attempt to update program break failed
+    *(get_regs(context) + REG_A0) = previous_program_break;
 
   if (debug_syscalls) {
     print(" -> ");
@@ -7456,9 +7458,12 @@ uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
   } else {
     object = get_program_break(context);
 
-    new_program_break = help_brk(context, object + size);
+    // attempt to update program break
+
+    new_program_break = try_brk(context, object + size);
 
     if (new_program_break == object + size)
+      // attempt to update program break succeeded
       return (uint64_t*) object;
   }
 
