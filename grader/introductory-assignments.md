@@ -179,23 +179,23 @@ Each digit of an octal number can be represented by three bits. Conversely, an o
 
 *Example 1*:
 
-Converting the decimal value 42 into the binary number 0b101010. As next step, we group the binary number into three bits each. When we group these value into three bits each, we get 101 and 010. 
+Converting the decimal value 42 into the binary number 0b101010. As the next step, we group the binary number into three bits each. When we group these values into three bits each, we get 101 and 010. 
 
-Now we can convert each three bit value into a octal representation:
+Now we can convert each three-bit value into an octal representation:
 
-First sequence of three bits: 101
+The first sequence of three bits: 101
 
 |        | 4   | 2   | 1   | Value |
 | ------ | --- | --- | --- | :---: |
 | Binary | 1   | 0   | 1   |  = 5  |
 
-Second sequence of three bits: 010
+The second sequence of three bits: 010
 
 |        | 4   | 2   | 1   | Value |
 | ------ | --- | --- | --- | :---: |
 | Binary | 0   | 1   | 0   |  = 2  |
 
-We see that the first three bit value converts into 5, and the second three bit value converts into 2.
+We see that the first three-bit value converts into 5, and the second three-bit value converts into 2.
 
 That means we get a final value of 52 or in octal notation 0o52.
 
@@ -219,11 +219,11 @@ Converting a octal number into a binary numbers works like follows:
 ### Nibble
 
 A [nibble](https://en.wikipedia.org/wiki/Nibble) is a block of four bits.
-A Block of four bits corresponds to exactly one hexadecimal digit.
+A Block of four bits corresponds to precisely one hexadecimal digit.
 
 **Examples**:
 
-For example the bit value 0b1010 is 4 bits long and called a nibble, it represents the decimal value 10.
+For example, the bit value 0b1010 is 4 bits long and called a nibble, it represents the decimal value 10.
 
 | 8   | 4   | 2   | 1   | Value |
 | --- | --- | --- | --- | :---: |
