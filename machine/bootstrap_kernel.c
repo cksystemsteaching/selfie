@@ -64,7 +64,10 @@ int start_init_process(uint64_t argc, const char** argv) {
   int err = load_elf(init, file->data, file->length);
   if (err)
     panic("ERROR: Could not load init file: %s", elf_strerror(err));
-  kupload_argv(init, argc, argv);
+
+  bool argv_upload_successful = kupload_argv(init, argc, argv);
+  if (!argv_upload_successful)
+    panic("could not upload arguments to init");
 
   timer_interrupt_success = set_timer_interrupt_delta(TIMESLICE);
   if (!timer_interrupt_success)
@@ -110,15 +113,20 @@ void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
 
 void setup_kernel_pt() {
   void* stack_end = initial_stack_start();
+  uint64_t old_ppn = ppn_bump;
+
   // No need to clear the page table - the BSS section is cleared automagically
+  // Map kernel
   kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
+  // Map kernel stack
   kidentity_map_range(kernel_pt, &_payload_end, stack_end);
 
   // Map kernel upper half to its own vspace
-  kmap_kernel_upper_half(kernel_pt);
+  kmap_kernel_upper_half(&kernel_context);
 
-  uint64_t old_ppn = ppn_bump;
-  kidentity_map_range(kernel_pt, &_payload_end, (void*) ppn_to_paddr(ppn_bump));
+  // Map kernel's page allocator "heap"
+  kidentity_map_range(kernel_pt, stack_end, (void*) ppn_to_paddr(ppn_bump));
+  // Keep on mapping mid and leaf page-tables until all of them have been mapped
   while (old_ppn != ppn_bump) {
     uint64_t initial = old_ppn;
     old_ppn = ppn_bump;
@@ -134,9 +142,7 @@ void setup_kernel_pt() {
 
 void setup_trap_handler() {
   setup_smode_trap_handler((trap_handler_t) TRAMPOLINE_VADDR);
-  enable_smode_interrupts_after_sret();
-  enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
-                               (1 << CSR_SIE_SOFTWARE_INTS));
+  enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS));
 }
 
 void move_sp_to_upper_half() {

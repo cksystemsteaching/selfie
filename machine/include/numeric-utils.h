@@ -9,4 +9,6 @@
 #define MIN(first, second) ((first) < (second) ? (first) : (second))
 #define MAX(first, second) ((first) > (second) ? (first) : (second))
 
+#define ROUND_UP(num, to) (((num) % (to)) > 0 ? (num) + ((to) - ((num) % (to))) : (num))
+
 #endif /* KERN_NUMERIC_UTILS */

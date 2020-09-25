@@ -6,25 +6,21 @@
 #include "trap.h"
 #include "numeric-utils.h"
 
-// Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
-// invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
-#define SV39_MIN_INVALID_VADDR (1ULL << 38)
-#define SV39_MAX_INVALID_VADDR (UINT64_MAX - (1ULL << 39))
-
-#define LOWEST_39_BITS 0x7FFFFFFFFFULL
-
 #define VPN_2_BITMASK 0x7FC0000000ULL
 #define VPN_1_BITMASK 0x3FE00000
 #define VPN_0_BITMASK 0x1FF000
 
 struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, bool is_pt_node, bool u_mode_accessible) {
+  assert(!(is_pt_node && u_mode_accessible));
+
   struct pt_entry* entry = (table + index);
 
   entry->ppn = ppn;
-  entry->d = 1;
-  entry->a = 1;
 
   if (!is_pt_node) {
+    entry->d = 1;
+    entry->a = 1;
+
     entry->x = 1;
     entry->w = 1;
     entry->r = 1;
@@ -66,10 +62,10 @@ uint64_t kpalloc() {
 }
 
 uint64_t kzalloc() {
-    uint64_t ppn = kpalloc();
-    if (ppn != 0)
-      kzero_page(ppn);
-    return ppn;
+  uint64_t ppn = kpalloc();
+  if (ppn != 0)
+    kzero_page(ppn);
+  return ppn;
 }
 
 void kpfree(uint64_t ppn) {
@@ -108,39 +104,111 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, bool
   struct pt_entry* leaf_pt;
 
   if (!table[vpn_2].v) {
-    uint64_t ppn = kpalloc();
+    uint64_t ppn = kzalloc();
     if (ppn == 0)
       return false;
 
-    mid_pt = create_pt_entry(table, vpn_2, ppn, 1, 0);
-    kzero_page(ppn);
+    mid_pt = create_pt_entry(table, vpn_2, ppn, true, false);
   } else
     mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt[vpn_1].v) {
-    uint64_t ppn = kpalloc();
+    uint64_t ppn = kzalloc();
     if (ppn == 0)
       return false;
 
-    leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
-    kzero_page(ppn);
+    leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, true, false);
   } else
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
-  create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
+  create_pt_entry(leaf_pt, vpn_0, ppn, false, u_mode_accessible);
+  return true;
+}
+
+bool map_and_store_in_user_vaddr_space(struct pt_entry* table, uint64_t vaddr, uint64_t data) {
+  if (!is_vaddr_mapped(table, vaddr)) {
+    bool map_successful = kmap_page(table, vaddr, true);
+    if (!map_successful)
+      return false;
+  }
+
+  *((uint64_t*) vaddr_to_paddr(table, vaddr)) = data;
+
+  return true;
+}
+
+uint64_t upload_string_to_stack(struct pt_entry* table, const char* str, uint64_t sp) {
+  uint64_t bytes_to_upload = ROUND_UP(strlen(str) + 1, sizeof(uint64_t));
+  uint64_t str_vaddr = sp - bytes_to_upload;
+
+  for (uint64_t i = 0; i < bytes_to_upload; i += sizeof(uint64_t)) {
+    bool map_successful = map_and_store_in_user_vaddr_space(table, str_vaddr + i, *((uint64_t*) str));
+    if (!map_successful)
+      return sp;
+
+    str = (char*) ((uint64_t*) str + 1);
+  }
+
+  return str_vaddr;
+}
+
+bool kupload_argv(struct context* context, uint64_t argc, const char** argv) {
+  // basically an adapted version of selfie's algorithm
+
+  uint64_t sp;
+  uint64_t argv_strings[MAX_ARGV_LENGTH];
+
+  sp = context->saved_regs.sp;
+
+  for (uint64_t i = 0; i < argc; ++i) {
+    uint64_t new_sp = upload_string_to_stack(context->pt, argv[i], sp);
+    if (new_sp == sp)
+      return false;
+    sp = new_sp;
+
+    argv_strings[i] = sp;
+  }
+
+  // push null terminator of env table
+  sp -= sizeof(uint64_t);
+  bool map_successful = map_and_store_in_user_vaddr_space(context->pt, sp - sizeof(uint64_t), 0);
+  if (!map_successful)
+    return false;
+
+  // push null terminator for argv table
+  sp -= sizeof(uint64_t);
+  map_successful = map_and_store_in_user_vaddr_space(context->pt, sp - sizeof(uint64_t), 0);
+  if (!map_successful)
+    return false;
+
+  // push argv pointers
+  for (uint64_t i = argc; i > 0;) {
+    sp -= sizeof(uint64_t);
+    i -= 1;
+    map_successful = map_and_store_in_user_vaddr_space(context->pt, sp, argv_strings[i]);
+    if (!map_successful)
+      return false;
+  }
+
+  // push argc
+  sp -= sizeof(uint64_t);
+  map_successful = map_and_store_in_user_vaddr_space(context->pt, sp, argc);
+  if (!map_successful)
+    return false;
+
+  context->saved_regs.sp = sp;
+
   return true;
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
-  // RISC-V requires that for virtual addresses
-  // bits 39 to 64 have the value of bit 38
-  return ((vaddr & LOWEST_39_BITS) >> 12);
+  return (vaddr >> 12);
 }
 
 uint64_t vpn_to_vaddr(uint64_t vpn) {
   // Sv39 requires virtual addresses to sign-extend bit 38
   // The bitmask to OR to this is (2^64 - 1) - (2^39 - 1) = 0xFFFFFF8000000000
-  const uint64_t SIGN_EXTEND_BIT38 = 0xFFFFFF8000000000;
+  const uint64_t SIGN_EXTEND_BIT38 = 0xFFFFFF8000000000ULL;
 
   uint64_t vaddr = vpn << 12;
 
@@ -184,6 +252,10 @@ bool is_valid_sv39_vaddr(uint64_t vaddr) {
   return !(SV39_MIN_INVALID_VADDR <= vaddr && vaddr <= SV39_MAX_INVALID_VADDR);
 }
 
+bool is_user_vaddr(uint64_t vaddr) {
+  return (vaddr < SV39_MIN_INVALID_VADDR);
+}
+
 bool is_vaddr_mapped(struct pt_entry* table, uint64_t vaddr) {
   return (vaddr_to_paddr(table, vaddr) != 0x00);
 }
@@ -203,14 +275,11 @@ void kidentity_map_range(struct pt_entry* table, const void* from, const void* t
     ppn++;
   };
 }
-void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
-  kmap_page_by_ppn(table, (uint64_t) ppn_to_paddr(ppn), ppn, u_mode_accessible);
-}
 
 void kdump_pt(struct pt_entry* table) {
   printf("Page Table:\n");
 
-  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+  for (uint64_t vpn_2 = 0; vpn_2 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_2++) {
     if (!table[vpn_2].v)
       continue;
 
@@ -222,7 +291,7 @@ void kdump_pt(struct pt_entry* table) {
     if (mid_pt == NULL)
       printf("  <invalid>\n");
     else {
-      for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+      for (uint64_t vpn_1 = 0; vpn_1 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_1++) {
         if (!mid_pt[vpn_1].v)
           continue;
 
@@ -234,7 +303,7 @@ void kdump_pt(struct pt_entry* table) {
         if (leaf_pt == NULL)
           printf("    <invalid>\n");
         else {
-          for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+          for (uint64_t vpn_0 = 0; vpn_0 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_0++) {
             if (!leaf_pt[vpn_0].v)
               continue;
 
@@ -250,20 +319,23 @@ void kdump_pt(struct pt_entry* table) {
   }
 }
 
-void kmap_kernel_upper_half(struct pt_entry* table) {
+void kmap_kernel_upper_half(struct context* context) {
   // Map upper-half vspace pages
   // These pages are present in both user and kernel vspace
   // Trap handler trampoline
-  kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+  kmap_page_by_ppn(context->pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+  uint64_t trampoline_vpn = vaddr_to_vpn(TRAMPOLINE_VADDR);
+  context->legal_memory_boundaries.highest_hi_page = trampoline_vpn;
   // Kernel stack
   uint64_t vaddr = STACK_VADDR - PAGESIZE;
   uint64_t ppn = paddr_to_ppn(initial_stack_start() - 1); // -1 due to full stack semantics + pointer arithmetics
   for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
-    kmap_page_by_ppn(table, vaddr, ppn, false);
+    kmap_page_by_ppn(context->pt, vaddr, ppn, false);
 
     vaddr -= PAGESIZE;
     ppn--;
   }
+  context->legal_memory_boundaries.lowest_hi_page = trampoline_vpn - NUM_STACK_PAGES;
 }
 
 uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid) {
@@ -322,7 +394,7 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
   while (read < (n - 1)) {
     // If the userspace source buffer is either not valid or not mapped, we cannot continue
     // As we cannot complete the copying process, return 0
-    if (!(is_valid_sv39_vaddr(src_vaddr) && is_vaddr_mapped(table, src_vaddr)))
+    if (!(is_user_vaddr(src_vaddr) && is_vaddr_mapped(table, src_vaddr)))
       return 0;
 
     // Read enough bytes to align to the next word
@@ -352,25 +424,25 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
   return read;
 }
 
-// kfree_page_table is intentionally not a recursive function
-void kfree_page_table(struct pt_entry* root) {
+// kfree_page_table_and_pages is intentionally not a recursive function
+void kfree_page_table_and_pages(struct pt_entry* root) {
   assert(root != kernel_pt);
   assert(root != NULL);
 
   // Free attached pages and tree nodes
-  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+  for (uint64_t vpn_2 = 0; vpn_2 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_2++) {
     if (!root[vpn_2].v)
       continue;
 
     struct pt_entry* mid_pt = retrieve_pt_entry_from_table(root, vpn_2);
 
-    for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+    for (uint64_t vpn_1 = 0; vpn_1 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_1++) {
       if (!mid_pt[vpn_1].v)
         continue;
 
       struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
-      for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+      for (uint64_t vpn_0 = 0; vpn_0 < NUM_PT_ENTRIES_PER_PAGE_TABLE; vpn_0++) {
         if (!leaf_pt[vpn_0].v)
           continue;
 
@@ -388,4 +460,4 @@ void kfree_page_table(struct pt_entry* root) {
 }
 
 __attribute__((aligned(4096)))
-struct pt_entry kernel_pt[512];
+struct pt_entry kernel_pt[NUM_PT_ENTRIES_PER_PAGE_TABLE];

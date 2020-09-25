@@ -4,7 +4,6 @@
 #include "tinycstd.h"
 
 int main(int argc, char** argv);
-void usermode_test();
 
 
 void bootstrap() {

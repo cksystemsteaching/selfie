@@ -29,8 +29,8 @@ switch_to_kernel_pt:
   // flush TLB
   sfence.vma
 
-set_up_frame:
-  add s0, zero, sp
+setup_frame:
+  mv s0, sp
 
 allocate_registers_struct_space:
   addi sp, sp, -SIZEOF_REGISTERS_STRUCT

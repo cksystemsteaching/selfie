@@ -12,8 +12,9 @@ struct elf_header {
     uint8_t class;
     uint8_t endianness;
     uint8_t version;
-    char pad[8];
-    uint8_t size;
+    uint8_t os_abi;
+    uint8_t abi_version;
+    char pad[7];
   } __attribute__((packed)) ident;
   uint16_t type;
   uint16_t machine;
@@ -87,6 +88,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     if (pheader[i].type != ELF_PH_TYPE_LOAD)
       return EUNSUPPORTED;
 
+    if (pheader[i].flags != (ELF_PH_FLAG_READABLE | ELF_PH_FLAG_WRITABLE | ELF_PH_FLAG_EXECUTABLE))
+      return EUNSUPPORTED;
+
     uint64_t segment_end = pheader[i].offset + pheader[i].file_size;
     if (segment_end > len)
       return EOOB;
@@ -103,12 +107,18 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     for (uint64_t page = 0; page < segment_file_pages; page++) {
       uint64_t vaddr = pheader[i].vaddr + (PAGESIZE * page);
       uint64_t faddr = pheader[i].offset + (PAGESIZE * page);
+
+      if (vaddr_to_vpn(vaddr) >= vaddr_to_vpn(SV39_MIN_INVALID_VADDR))
+        return EINVVADDR;
+
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
+
+      if (ppn == 0x00)
+        return EOOM;
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
 
-      kidentity_map_ppn(kernel_pt, ppn, false);
       memcpy((void *) ppn_to_paddr(ppn), (void *) (elf + faddr), PAGESIZE);
     }
 
@@ -117,12 +127,17 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
     for (uint64_t page = 0; page < page_delta; page++) {
       uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages) * PAGESIZE;
-      uint64_t ppn = kmap_page(context->pt, vaddr, true);
+
+      if (vaddr_to_vpn(vaddr) >= vaddr_to_vpn(SV39_MIN_INVALID_VADDR))
+        return EINVVADDR;
+
+      bool map_successful = kmap_page(context->pt, vaddr, true);
+
+      if (!map_successful)
+        return EOOM;
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
-
-      kidentity_map_ppn(kernel_pt, ppn, false);
     }
 
     if (context->program_break < pheader[i].vaddr + pheader[i].mem_size)
@@ -153,6 +168,8 @@ const char* elf_strerror(int errno) {
       return "ELF file is not an executable";
     case EUNSUPPORTED:
       return "ELF file contains features unsupported by the loader";
+    case EOOM:
+      return "ELF file could not be mapped entirely because the kernel is out-of-memory";
     default:
       return "Unknown error";
   }
