@@ -1856,8 +1856,8 @@ void modeler() {
 
   code_nid = pcs_nid * 3;
 
-  control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   current_callee   = entry_point;
   estimated_return = entry_point;
@@ -2183,16 +2183,10 @@ int main(int argc, char** argv) {
 
   init_system();
 
-  exit_code = selfie();
+  exit_code = selfie(1);
 
-  if (exit_code != EXITCODE_NOARGUMENTS)
+  if (exit_code == EXITCODE_MOREARGUMENTS)
     exit_code = selfie_model();
 
-  if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" - exit-code [ --check-block-access ] ...");
-
-  if (exit_code == EXITCODE_NOARGUMENTS)
-    exit_code = EXITCODE_NOERROR;
-
-  return exit_code;
+  return exit_selfie(exit_code, " - exit-code [ --check-block-access ] ...");
 }
