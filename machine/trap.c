@@ -12,13 +12,15 @@
 #define SCAUSE_EXCEPTION_CODE_MASK (UINT64_MAX ^ SCAUSE_INTERRUPT_BIT_MASK)
 
 // if interrupt bit is 0
-#define SCAUSE_EXCEPTION_CODE_ECALL 8
+#define SCAUSE_EXCEPTION_CODE_USER_ECALL 8
 #define SCAUSE_EXCEPTION_CODE_INSTRUCTION_PAGE_FAULT 12
 #define SCAUSE_EXCEPTION_CODE_LOAD_PAGE_FAULT 13
 #define SCAUSE_EXCEPTION_CODE_STORE_AMO_PAGE_FAULT 15
 
 // if interrupt bit is 1
 #define SCAUSE_EXCEPTION_CODE_SUPERVISOR_TIMER_INTERRUPT 5
+
+#define SSTATUS_SPP_BITMASK (1ULL << 8)
 
 #define SYSCALL_EXIT   93
 #define SYSCALL_READ   63
@@ -43,18 +45,6 @@ void enable_smode_interrupts() {
     "csrs sstatus, %[bitmask]"
     :
     : [bitmask] "r" (bitmask)
-  );
-}
-
-void enable_smode_interrupts_after_sret() {
-  uint64_t enable_bitmask = (1 << CSR_STATUS_SPIE);
-  uint64_t disable_bitmask = (1 << CSR_STATUS_SIE);
-
-  asm volatile (
-    "csrs sstatus, %[enable_bitmask];"
-    "csrc sstatus, %[disable_bitmask]"
-    :
-    : [enable_bitmask] "r" (enable_bitmask), [disable_bitmask] "r" (disable_bitmask)
   );
 }
 
@@ -171,6 +161,8 @@ uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
   uint64_t sepc;  // pc where the exception occured
+  uint64_t sstatus;
+  bool spp_bit; // indicates if the trap comes from S-mode
   bool interrupt_bit;
   uint64_t exception_code;
   struct context* context = get_currently_active_context();
@@ -181,8 +173,18 @@ uint64_t trap_handler(struct registers registers_buffer) {
     "csrr %[scause], scause;"
     "csrr %[sepc], sepc;"
     "csrr %[stval], stval;"
-    : [scause] "=r" (scause), [sepc] "=r" (sepc), [stval] "=r" (stval)
+    "csrr %[sstatus], sstatus;"
+    : [scause] "=r" (scause), [sepc] "=r" (sepc), [stval] "=r" (stval), [sstatus] "=r" (sstatus)
   );
+
+  spp_bit = sstatus & SSTATUS_SPP_BITMASK;
+
+  if (spp_bit)
+    panic("kernel caused a trap\n"
+          "  sstatus: 0x%x\n"
+          "  scause:  0x%x\n"
+          "  sepc:    0x%x\n"
+          "  stval:   0x%x", sstatus, scause, sepc, stval);
 
   interrupt_bit = scause & SCAUSE_INTERRUPT_BIT_MASK;
   exception_code = scause & SCAUSE_EXCEPTION_CODE_MASK;
@@ -202,7 +204,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
     }
   else
     switch (exception_code) {
-      case SCAUSE_EXCEPTION_CODE_ECALL:
+      case SCAUSE_EXCEPTION_CODE_USER_ECALL:
         handle_ecall(context);
         break;
       case SCAUSE_EXCEPTION_CODE_INSTRUCTION_PAGE_FAULT:
@@ -306,7 +308,7 @@ void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel
     if (size < bytes_to_read_or_write)
       bytes_to_read_or_write = size;
 
-    if (is_valid_sv39_vaddr(vbuffer) && is_vaddr_mapped(context->pt, vbuffer)) {
+    if (is_user_vaddr(vbuffer) && is_vaddr_mapped(context->pt, vbuffer)) {
       buffer = (char*) vaddr_to_paddr(context->pt, vbuffer);
 
       actually_read_or_written = kernel_func(fd, buffer, bytes_to_read_or_write, context->open_files, NUM_FDS);
@@ -371,17 +373,15 @@ void implement_syscall_brk(struct context* context) {
   // syscall parameter
   uint64_t program_break;
 
-  // local variables
+  // local variable
   uint64_t previous_program_break;
-  bool valid = false;
 
   program_break = context->saved_regs.a0;
 
   previous_program_break = context->program_break;
 
-  valid = (program_break >= previous_program_break && program_break < context->saved_regs.sp); // selfie also checks here if the new program break is 64bit-aligned but we're more independent of selfie if we don't do this
-
-  if (valid)
+  if (program_break >= previous_program_break && program_break < context->saved_regs.sp && program_break % sizeof(uint64_t) == 0)
+    // new program break is valid
     context->program_break = program_break;
   else
     program_break = previous_program_break;
@@ -389,7 +389,7 @@ void implement_syscall_brk(struct context* context) {
   context->saved_regs.a0 = program_break;
 
 #ifdef DEBUG
-  printf("context %u changed program break from %x to %x\n", context->id, previous_program_break, program_break);
+  printf("context %u changed program break from 0x%x to 0x%x\n", context->id, previous_program_break, program_break);
 #endif /* DEBUG */
 }
 
@@ -409,35 +409,45 @@ enum memory_access_type determine_memory_access_type(struct memory_boundaries* l
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
 
-  if (memory_access_type) {
-    // TODO: handling faults like that is probably necessary for native hypster support
-#ifdef DEBUG
-    // this should never happen since we map the binary when loading it
-    printf("context %u raised an instruction page fault for a legally accessible page\n");
-    printf("  sepc:  0x%x\n", sepc);
-    printf("  stval: 0x%x\n", stval);
-#endif /* DEBUG */
-    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
-  } else {
-    // at the moment we raise a segfault here since we map the entire code
-    // segment when loading a binary
-    printf("segmentation fault: context %u tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
-    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
-  }
+  printf("context %u raised an instruction page fault\n", context->id);
+  printf("  sepc:  0x%x\n", sepc);
+  printf("  stval: 0x%x\n", stval);
 
-#ifdef DEBUG
-  printf("received instruction page fault caused by context %u\n", context->id);
-  printf("  address of instruction:         0x%x\n", sepc);
-  printf("  address that caused page fault: 0x%x\n", stval);
-#endif /* DEBUG */
+  switch (memory_access_type) {
+    case memory_access_type_unknown:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK & PRINT_MEMORY_REGION_MID_MASK & PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_lo:
+      // a lo access could indicate
+      // a) a bug within the ELF loader (a segment hasn't been fully mapped)
+      // b) a bug within the user program
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_mid:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_MID_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      break;
+    case memory_access_type_hi:
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS);
+      break;
+  }
 }
 
-bool is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
-  return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
+bool is_legal_heap_growth(uint64_t program_break, uint64_t highest_lo_page, uint64_t stval) {
+  return (stval < program_break && highest_lo_page <= vaddr_to_vpn(stval));
 }
 
 bool has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
   return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
+}
+
+void signal_oom(struct context* context) {
+    printf("could not map free page into user vspace: out-of-memory!\n");
+    print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_LO_MASK & PRINT_MEMORY_REGION_MID_MASK);
+    kill_context(context->id, KILL_CONTEXT_REASON_OOM);
 }
 
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
@@ -448,40 +458,38 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
   switch (memory_access_type) {
     case memory_access_type_lo:
       map_successful = kmap_page(context->pt, stval, true);
+      if (!map_successful)
+        signal_oom(context);
       break;
     case memory_access_type_mid:
       map_successful = kmap_page(context->pt, stval, true);
+      if (!map_successful)
+        signal_oom(context);
       break;
     case memory_access_type_hi:
-#ifdef DEBUG
-      // that'd be a bug
-      printf("context %u raised a page fault in its hi part\n", context->id);
-      printf("  lowest hi page:  %x\n", context->legal_memory_boundaries.lowest_hi_page);
-      printf("  highest hi page: %x\n", context->legal_memory_boundaries.highest_hi_page);
-#endif /* DEBUG */
+      // user tried to access the trampoline/kernel stack
+      printf("context %u raised a page fault in its hi region\n", context->id);
+      printf("  stval: 0x%x\n", stval);
+      print_memory_boundaries(context, "  ", PRINT_MEMORY_REGION_HI_MASK);
+      kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_KERNEL_MEMORY_ACCESS);
       break;
     case memory_access_type_unknown:
-      if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
+      if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.highest_lo_page, stval)) {
         map_successful = kmap_page(context->pt, stval, true);
+        if (!map_successful)
+          signal_oom(context);
         context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
       } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
         // stack has grown but the page isnt mapped yet
         map_successful = kmap_page(context->pt, stval, true);
+        if (!map_successful)
+          signal_oom(context);
         context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
       } else {
         printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
         kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
       }
       break;
-  }
-
-  if (!map_successful) {
-    printf("could not map free page into user vspace: out-of-memory!\n");
-    printf("  lowest  lo page : 0x%x\n", context->legal_memory_boundaries.lowest_lo_page);
-    printf("  highest lo page : 0x%x\n", context->legal_memory_boundaries.highest_lo_page);
-    printf("  lowest  mid page: 0x%x\n", context->legal_memory_boundaries.lowest_mid_page);
-    printf("  highest mid page: 0x%x\n", context->legal_memory_boundaries.highest_mid_page);
-    kill_context(context->id, KILL_CONTEXT_REASON_OOM);
   }
 }
 
@@ -512,7 +520,7 @@ void setup_smode_trap_handler(trap_handler_t handler) {
     return;
   }
 
-  // mtvec has both the base address and the vectoring mode (2 bits)
+  // stvec has both the base address and the vectoring mode (2 bits)
   // Use direct mode (0x00)
   uint64_t stvec = (((uint64_t) handler) & ~(0x03ULL));
   asm volatile (

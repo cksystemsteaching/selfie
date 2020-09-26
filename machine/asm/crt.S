@@ -42,7 +42,7 @@ _start_warm:
 
   /* Setup stack */
   jal initial_stack_start
-  add sp, zero, a0
+  mv sp, a0
 
   /* Jump to C main */
   call bootstrap
