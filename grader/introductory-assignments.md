@@ -237,7 +237,7 @@ That means we get a final value of 52 or in octal notation 0o52.
 Converting a octal number into a binary numbers works like follows:
  
 |             |                       |
-| ----------- | :--------------------- |
+| ----------- | :-------------------- |
 | Octal       | 0o52                  |
 | Polynomial  | = (5\*8^1) + (2\*8^0) |
 | Calculation | = 40 + 2              |
@@ -330,22 +330,21 @@ As we saw before, a bit can have two possible values, 0 and 1. Now we are going 
 
 ### Examples
 
-| Bits | # of States | Mathematical notation |
-| ---- | ----------- | --------------------- |
-| 2    | 4           | 2^{2}                 |
-| 3    | 8           | 2^{3}                 |
-| 4    | 16          | 2^{4}                 |
-| 5    | 32          | 2^{5}                 |
-| 6    | 64          | 2^{6}                 |
-| 7    | 128         | 2^{7}                 |
-| 8    | 256         | 2^{8}                 |
+| Bits | # of States | Scientific Notation |
+| ---- | ----------- | ------------------- |
+| 2    | 4           | 2^{2}               |
+| 3    | 8           | 2^{3}               |
+| 4    | 16          | 2^{4}               |
+| 5    | 32          | 2^{5}               |
+| 6    | 64          | 2^{6}               |
+| 7    | 128         | 2^{7}               |
+| 8    | 256         | 2^{8}               |
 
 As shown above, 2 bits can have 4 possible states (00,01,10,11), and when we add one bit, the state space grows exponentially.
 
 ### Exercises
 
-Write your answers in Mathematical notation.
+Write your answers in Scientific Notation.
 
 - How many states can we distinguish with 1 byte?
 - How many states can we distinguish with 64 bits?
-
