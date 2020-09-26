@@ -313,3 +313,39 @@ The hexadecimal equivalent of the binary number 0b111 1110 0100 is 0x7E4.
  
 - Convert the binary number 0b1100100100011111 into the hexadecimal representation.
 - Convert the hexadecimal number 64B1D into the binary representation.
+
+## Computation
+
+Computation is the evolution of state. A computer stores a very large but still finite amount of bits in memory and registers at any given time. The values of all these bits together are what we call the state of the machine. Then the processor executes one instruction, which directs it to change the values of a very small number of bits creating a new state. That process of change from one state to the next continues until the machine is turned off.
+
+[State](https://en.wikipedia.org/wiki/State_(computer_science)): The State of a digital logic circuit or computer program is a technical term for all the stored information, at a given instant in time, to which the circuit or program has access. The output of a digital circuit or computer program at any time is entirely determined by its current inputs and its state.
+
+Software on source and machine code level specifies for each state what the next state is. There are the data bits that are being changed and the code bits that determine that change. Input is typically modeled by data bits that are changed by something other than the processor, such as a keyboard.
+
+Machine code or bits describe the change of a state.
+
+## State Space
+
+As we saw before, a bit can have two possible values, 0 and 1. Now we are going to talk about the state space of 1 or more bits. With N bits, we can distinguish 2^{N} states.
+
+### Examples
+
+| Bits | # of States | Mathematical notation |
+| ---- | ----------- | --------------------- |
+| 2    | 4           | 2^{2}                 |
+| 3    | 8           | 2^{3}                 |
+| 4    | 16          | 2^{4}                 |
+| 5    | 32          | 2^{5}                 |
+| 6    | 64          | 2^{6}                 |
+| 7    | 128         | 2^{7}                 |
+| 8    | 256         | 2^{8}                 |
+
+As shown above, 2 bits can have 4 possible states (00,01,10,11), and when we add one bit, the state space grows exponentially.
+
+### Exercises
+
+Write your answers in Mathematical notation.
+
+- How many states can we distinguish with 1 byte?
+- How many states can we distinguish with 64 bits?
+
