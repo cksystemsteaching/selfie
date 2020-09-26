@@ -1,117 +1,150 @@
 # Introductory Assignments
-
-Welcome to the Introduction to Operating Systems supplementary material. This document provides you with content, examples and exercises to help you learn the course content.
-
+ 
+Welcome to the Introduction to Operating Systems supplementary material. This document provides you with content, examples, and exercises to help you learn the course content.
+ 
 ## This information is shared via the course's slack channel.
-
+ 
 - Lectures
 - Recordings
 - Class schedule
-
+ 
 ## Resources
-
+ 
 - Lectures
 - [Slides](https://www.icloud.com/keynote/0J_SKB-ofwiuxg-lCag-s-gOA#selfie)
 - [Selfie: Computer Science for Everyone](https://leanpub.com/selfie)
-
+ 
 ---
-
-## 1) Introduction
-
-### Bit Representation
-
-First and foremost, as far as computers are concerned, everything is a number, in fact a binary number. A computer stores everything as a series of 0's and 1's. This representation is called a [bit](https://en.wikipedia.org/wiki/Bit). A bit can only have one of two values, which are most commonly represented as a 0 and a 1. In actual electronic hardware, value 1 is typically represented by high voltage, and value 0 by low voltage.
-
-**Example**:
-
-When we write bit values we use the 0b extension in front of the bit-value.
-
+ 
+# 1) Introduction
+ 
+## Bit Representation
+ 
+First and foremost, as far as computers are concerned, everything is a number, in fact, a binary number. A computer stores everything as a series of 0's and 1's. This representation is called a [bit](https://en.wikipedia.org/wiki/Bit). A bit can only have one of two values, most commonly represented as a 0 and a 1. In actual electronic hardware, value 1 is typically represented by high voltage, and value 0 by low voltage.
+ 
+### Examples
+ 
+When we write bit values, we use the 0b extension in front of the bit-value.
+ 
 0b101010 = 42 as decimal number
-
+ 
 0b101010 = \* symbol in the ASCII table
-
+ 
 Here we can see that a series of 0's and 1's can be interpreted in different ways.
-
-### Decimal System
-
-A decimal number is a number represented in base 10, in which there are ten possible values for each digit (0–9). When these digits are concatenated to make strings of numbers, they are interpreted column by column. Beginning at the far right and moving to the left, we have the 1's column, the 10's column, the 100's column, and so forth.  The one's column is 10^{0}=1, and the tens column is 10^{1}=10, the hundreds column is 10^{2}=100, and so forth. 
-
-**Examples**:
-
-For example, with a 4-digit sequence of 1011, the decimal (base 10) interpretation looks as following. For the far-right column, we take 1\*10^{0}=1, the second column from the right is 1\*10^{1}=10, the third column from the right 0\*10^{2}=0 and the far left column 1\*10^{3}=1000. When adding all 4 values 1+10+0+1000 together, we get the value 1011 as a decimal representation.
-
-
+ 
+## Decimal System
+ 
+A decimal number is a number represented in base 10, in which there are ten possible values for each digit (0–9). When these digits are concatenated to make strings of numbers, they are interpreted column by column. Beginning at the far right and moving to the left, we have the 1's column, the 10's column, the 100's column, and so forth.  The one's column is 10^{0}=1, and the tens column is 10^{1}=10, the hundreds column is 10^{2}=100, and so on.
+ 
+### Examples
+ 
+For example, with a 4-digit sequence of 1011, the decimal (base 10) interpretation looks as follows. For the far-right column, we take 1\*10^{0}=1, the second column from the right is 1\*10^{1}=10, the third column from the right 0\*10^{2}=0 and the far left column 1\*10^{3}=1000. When adding all four values 1+10+0+1000 together, we get the value 1011 as a decimal representation.
+ 
+ 
 | 4-digit sequence | 1         | 0         | 1         | 1         | Value  |
 | ---------------- | --------- | --------- | --------- | --------- | ------ |
 | Notation         | 1\*10^{3} | 0\*10^{2} | 1\*10^{1} | 1\*10^{0} |        |
 | Representation   | 1000      | 0         | 10        | 1         | = 1011 |
-
-**Exercise**:
-
+ 
+### Exercises
+ 
 - Write the number 1337 in exponential notation.
 - Write the number 267938 in exponential notation.
-
-### Binary Numbers
-
-A [binary number](https://en.wikipedia.org/wiki/Binary_number) is a number represented in base 2, in which there are only 2 possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored in a computer. Although it might be possible for a computer to store more than two voltage values and therefore support a base larger than 2, it would be challenging to support the 10 voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
-
-Binary numbers interpreted that each bit (the name for a binary digit) holds the value 2 raised to an increasing exponent. We begin with the right-most bit (also called the LSB = least significant bit), which holds the value 2^{0}=1, or the one's column. The next bit holds the value 2^{1}=2, or the twos column. In base 10, each column is ten times larger than the one before it. In base 2, each column's value grows by 2. 
-
-**Examples**:
-
+ 
+## Binary Numbers
+ 
+A [binary number](https://en.wikipedia.org/wiki/Binary_number) is a number represented in base 2, in which there are only two possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored on a computer. Although it might be possible for a computer to store more than two voltage values and therefore support a base larger than 2, it would be challenging to support the ten voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
+ 
+Binary numbers interpreted that each bit (the name for a binary digit) holds the value 2 raised to an increasing exponent. We begin with the right-most bit (also called the LSB = least significant bit), which has the value 2^{0}=1, or the one's column. The next bit holds the value 2^{1}=2, or the twos column. In base 10, each column is ten times larger than the one before it. In base 2, each column's value grows by 2.
+ 
+**Binary notation**:
+ 
+| MSB   |       |       |       |       |       |       | LSB   |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^{3} | 2^{2} | 2^{1} | 2^{0} |
+| 128   | 64    | 32    | 16    | 8     | 4     | 2     | 1     |
+ 
+ 
+### Examples
+ 
+**Binary to Decimal**
+ 
 As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the base 2 binary system, we convert the value into a base 10 number. Starting from the right-most or LSB (least significant bit), we calculate 1\*2^{0}=1, the second column from the right is 1\*2^{1}=2, the third column from the right is 0\*2^{2}=0, and the left-most or MSB (most significant bit) is 1\*2^{3}=8. Now we add all 4 values together, 1+2+0+8 = 11. In this interpretation, with a 4-digit sequence, we get the value 11 as base 10 decimal number.
-
+ 
 | 4-digit sequence | 1        | 0        | 1        | 1        | Value |
 | ---------------- | -------- | -------- | -------- | -------- | ----- |
 | Notation         | 1\*2^{3} | 0\*2^{2} | 1\*2^{1} | 1\*2^{0} |       |
 | Representation   | 8        | 0        | 2        | 1        | = 11  |
-
-**Exercise**:
-
+ 
+**Decimal to Binary**
+ 
+We have seen above how to convert binary to decimal numbers, but how do we convert a decimal number into a binary number.
+ 
+An easy method of converting decimal to binary number equivalents is to write down the decimal number and to continually divide-by-2 ([modulo](https://en.wikipedia.org/wiki/Modulo_operation)) to give a result and a remainder of either a "1" or a "0" until the final result equals zero.
+ 
+Converting the decimal number 42 (base 10) into its binary equivalent.
+ 
+| Value | Divide by | Result | Remainder |     |
+| ----- | --------- | ------ | --------- | --- |
+| 42    | 2         | 21     | 0         | LSB |
+| 21    | 2         | 10.5   | 1         |
+| 10    | 2         | 5      | 0         |
+| 5     | 2         | 2.5    | 1         |
+| 2     | 2         | 1      | 0         |
+| 1     | 2         | 0.5    | 1         | MSB |
+ 
+Dividing each decimal number by "2," as shown, will give a result plus a remainder.
+ 
+If the decimal number being divided is even, then the result will be whole, and the remainder will be equal to "0". If the decimal number is odd, then the result will not divide entirely, and the remainder will be a "1".
+ 
+The binary result is obtained by placing all the remainders in order with the least significant bit (LSB) being at the top and the most significant bit (MSB) being at the bottom.
+ 
+Now we can write the value from down-up with the leading MSB as 101010.
+ 
+### Exercises
+ 
 - What is a binary number?
 - What is the value of the 5-digit sequence 10101?
 - What is the value of the 8-digit sequence 10110110?
-
-### MSB & LSB
-
-The most significant bit on the far-left in the binary representation represents the greatest value. The lest significant bit on the right-most can show if a number is even or odd. If the LSB is 1, then it is an even number, and if the LSB is 0, the number is odd.
-
-**Examples**:
-
+ 
+## MSB & LSB
+ 
+The most significant bit on the far-left in the binary representation represents the greatest value. The least significant bit on the right-most can show if a number is even or odd. If the LSB is 1, then it is an even number, and if the LSB is 0, the number is odd.
+ 
+### Examples
+ 
 | 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | :---: |
 | 0   | 1   | 0   | 1   | 0   | 1   | 0   | 1   | = 85  |
-
-In the example with the value 85, the LSB is 1 so it represents an odd value.
-
+ 
+In the example with the value 85, the LSB is 1, representing an odd value.
+ 
 | 128 | 64  | 32  | 16  | 8   | 4   | 2   | 1   | Value |
 | --- | --- | --- | --- | --- | --- | --- | --- | :---: |
 | 1   | 0   | 1   | 0   | 1   | 0   | 1   | 0   | = 170 |
-
-In the example with the value 170, the LSB is 0 so it represents an even value.
-
-**Exercises**:
-
+ 
+In the example with the value 170, the LSB is 0, representing an even value.
+ 
+### Exercises
+ 
 - Is the value 101010 even or odd?
 - Is the value 111 even or odd?
 - Is the value 11101 even or odd?
 - Is the value 111110 even or odd?
-  
-
-### Byte
-
-Since a unit of eight bits is very common in computer systems there is a well-known term for that unit called a byte.
-
-[Byte](https://en.wikipedia.org/wiki/Byte) : A unit of digital information in computing and telecommunications that most commonly consists of eight bits.
-
-**Examples**:
-
+ ## Byte
+ 
+Since a unit of eight bits is very common in computer systems, there is a well-known term for that unit called a byte.
+ 
+[Byte](https://en.wikipedia.org/wiki/Byte): A unit of digital information in computing and telecommunications that most commonly consists of eight bits.
+ 
+### Examples
+ 
 A bit sequence of 0b10101010 = 170 in decimal notation and consists of 8 bits and represents 1 byte.
-
-So, if we talk about bytes we mean sequences of 8 bits.
-
-### Different Notations
-
+ 
+So, if we talk about bytes, we mean sequences of 8 bits.
+ 
+## Different Notations
+ 
 | Encoding    | Alphabet                        | Base (Radix, Size of Alphabet) | # Values in Digits n>0 |
 | ----------- | ------------------------------- | ------------------------------ | ---------------------- |
 | Unary       | 1                               | 1                              | n                      |
@@ -119,12 +152,12 @@ So, if we talk about bytes we mean sequences of 8 bits.
 | Octal       | 0,1,2,3,4,5,6,7                 | 8                              | 8^{n}                  |
 | Decimal     | 0,1,2,3,4,5,6,7,8,9             | 10                             | 10^{n}                 |
 | Hexadecimal | 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F | 16                             | 16^{n}                 |
-			
-
-[Radix](https://en.wikipedia.org/wiki/Radix) : The number of unique digits, including zero, used to represent numbers in a positional numeral system.
-
-**Examples**:
-
+          
+ 
+[Radix](https://en.wikipedia.org/wiki/Radix): The number of unique digits, including zero, represents numbers in a positional numeral system.
+ 
+### Examples
+ 
 |      | Encoding    | Representation |
 | ---- | ----------- | -------------- |
 | 42   | Binary      | 0b101010       |
@@ -133,34 +166,34 @@ So, if we talk about bytes we mean sequences of 8 bits.
 | 42   | Hexadecimal | 0x2A           |
 | "42" | String      | 42             |
 | '*'  | ASCII       | 42             |
-
-### Unary
-
-The [Unary Numeral System](https://en.wikipedia.org/wiki/Unary_numeral_system) is the simplest numeral system to represent natural numbers. 
-
-**Examples**:
-
-The number 42 represented in the unary numeral System:
-
+ 
+## Unary
+ 
+The [Unary Numeral System](https://en.wikipedia.org/wiki/Unary_numeral_system) is the most straightforward numeral system to represent natural numbers.
+ 
+### Examples
+ 
+The number 42 represented in the unary numeral system:
+ 
 111111111111111111111111111111111111111111
-
-That are 42 ones in a row. 
-
-### Octal
-
-The [Octal](https://en.wikipedia.org/wiki/Octal) (base 8) notation is popular in computer science because it is represented in blocks of three bits. 
-
-Each digit of an octal number can be represented by three bits. Conversely, an octal number can easily be generated from a binary number by grouping three bits each.
-
-**Octal notation**:
-
+ 
+That is 42 ones in a row.
+ 
+## Octal
+ 
+The [Octal](https://en.wikipedia.org/wiki/Octal) (base 8) notation is popular in computer science because it is represented in blocks of three bits.
+ 
+Each digit of an octal number is represented by three bits. Conversely, an octal number can easily be generated from a binary number by grouping three bits each.
+ 
+**Octal notation**
+ 
 | MSB   |       |       |       |       |       |       | LSB   |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | 8^{7} | 8^{6} | 8^{5} | 8^{4} | 8^{3} | 8^{2} | 8^{1} | 8^{0} |
 | 2M    | 262K  | 32K   | 4K    | 512   | 64    | 8     | 1     |
-
-**Octal numbers**:
-
+ 
+**Octal numbers**
+ 
 | Decimal | 3-bit Binary | Octal    |
 | ------- | ------------ | -------- |
 | 0       | 000          | 0        |
@@ -174,59 +207,109 @@ Each digit of an octal number can be represented by three bits. Conversely, an o
 | 8       | 001 000      | 10 (1+0) |
 | 9       | 001 001      | 11 (1+1) |
 | 10      | 001 010      | 12 (1+2) |
-
-**Examples**:
-
-*Example 1*:
-
-Converting the decimal value 42 into the binary number 0b101010. As the next step, we group the binary number into three bits each. When we group these values into three bits each, we get 101 and 010. 
-
+ 
+### Examples
+ 
+**Example 1**
+ 
+We are converting the decimal value 42 into the binary number 0b101010. As the next step, we group the binary number into three bits each. When we group these values into three bits each, we get 101 and 010.
+ 
 Now we can convert each three-bit value into an octal representation:
-
+ 
 The first sequence of three bits: 101
-
+ 
 |        | 4   | 2   | 1   | Value |
 | ------ | --- | --- | --- | :---: |
 | Binary | 1   | 0   | 1   |  = 5  |
-
+ 
 The second sequence of three bits: 010
-
+ 
 |        | 4   | 2   | 1   | Value |
 | ------ | --- | --- | --- | :---: |
 | Binary | 0   | 1   | 0   |  = 2  |
-
+ 
 We see that the first three-bit value converts into 5, and the second three-bit value converts into 2.
-
+ 
 That means we get a final value of 52 or in octal notation 0o52.
-
-*Example 2*: 
-
+ 
+**Example 2**
+ 
 Converting a octal number into a binary numbers works like follows:
-
+ 
 |             |                       |
 | ----------- | :--------------------- |
 | Octal       | 0o52                  |
 | Polynomial  | = (5\*8^1) + (2\*8^0) |
 | Calculation | = 40 + 2              |
 | Decimal     | 42                    |
-
-**Exercises**:
-
+ 
+### Exercises
+ 
 - What is the octal representation of the decimal value 16?
 - What is the octal representation of the binary number 0b100100?
 - What is the decimal representation of the octal value 173?
-
-### Nibble
-
+ 
+## Nibble
+ 
 A [nibble](https://en.wikipedia.org/wiki/Nibble) is a block of four bits.
 A Block of four bits corresponds to precisely one hexadecimal digit.
-
-**Examples**:
-
+ 
+### Examples
+ 
 For example, the bit value 0b1010 is 4 bits long and called a nibble, it represents the decimal value 10.
-
+ 
 | 8   | 4   | 2   | 1   | Value |
 | --- | --- | --- | --- | :---: |
 | 1   | 0   | 1   | 0   | = 10  |
-
-
+ 
+## Hexadecimal
+ 
+The [Hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation is popular in computer science because it is represented in blocks of four bits (nibble or half-a-byte). Each group of four bits can have possible values between "0000" (0) and "1111" (8+4+2+1=15), giving a total of 16 different number combinations from 0 to 15. Since 16 in the decimal system is the fourth power of two (2^{4}), there is a direct relationship between the numbers 2 and 16.
+ 
+| Decimal Number | 4-bit Binary Number | Hexadecimal Number |
+| -------------- | ------------------- | ------------------ |
+| 0              | 0000                | 0                  |
+| 1              | 0001                | 1                  |
+| 2              | 0010                | 2                  |
+| 3              | 0011                | 3                  |
+| 4              | 0100                | 4                  |
+| 5              | 0101                | 5                  |
+| 6              | 0110                | 6                  |
+| 7              | 0111                | 7                  |
+| 8              | 1000                | 8                  |
+| 9              | 1001                | 9                  |
+| 10             | 1010                | A                  |
+| 11             | 1011                | B                  |
+| 12             | 1100                | C                  |
+| 13             | 1101                | D                  |
+| 14             | 1110                | E                  |
+| 15             | 1111                | F                  |
+ 
+ 
+When we write hexadecimal notation, we use 0x to emphasize that we talk about hexadecimal.
+ 
+### Examples
+ 
+For example, we can show the hexadecimal, binary and octal representation of the decimal number 42:
+ 
+| Dec | Hex  | Bin      | Oct  |
+| --- | ---- | -------- | ---- |
+| 42  | 0x2A | 0b101010 | 0o52 |
+ 
+ 
+Further, we can convert the decimal number 2020 into hexadecimal:
+ 
+For example, the decimal number 2020 gets converted into binary with modulo-2, and we get a result of 0b11111100100. We group the bits into four's starting from the right-hand side (0b0111 1110 0100). Then we find the Decimal equivalent for each group of four-bits. Finally, we can convert the decimal equivalent into the hexadecimal representation.
+ 
+| Notation    | 4-bit block | 4-bit block | 4-bit block |
+| ----------- | ----------- | ----------- | ----------- |
+| Binary      | 0111        | 1110        | 0100        |
+| Decimal     | 7           | 14          | 4           |
+| Hexadecimal | 7           | E           | 4           |
+ 
+The hexadecimal equivalent of the binary number 0b111 1110 0100 is 0x7E4.
+ 
+### Exercises
+ 
+- Convert the binary number 0b1100100100011111 into the hexadecimal representation.
+- Convert the hexadecimal number 64B1D into the binary representation.
