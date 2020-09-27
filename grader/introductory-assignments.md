@@ -348,3 +348,81 @@ Write your answers in Scientific Notation.
 
 - How many states can we distinguish with 1 byte?
 - How many states can we distinguish with 64 bits?
+
+## Software
+
+Computation is the meaning of software, and software describes how the machine changes from one state into another. That means that software brings the computer in the next state.
+
+### Natural Numbers
+
+An infinite set of numbers can be bigger than another infinite set of numbers. ([Georg Cantor's theorem](https://en.wikipedia.org/wiki/Cantor%27s_theorem))
+
+N: 0,1,2,3,4,... -> Infinite set of Natural Numbers. (syntax)
+
+{0,1,2} -> A subset of a Infinite set of Natural Numbers.
+
+P(N) -> Power-set of all subsets {0},{0,1},{0,1,2,3},... (infinite amount of software)
+
+## Binary Number Names & Prefixes
+
+Today, as microcontroller or microprocessor systems become increasingly larger, the individual binary digits (bits) are now grouped into 8's to form a single byte.
+
+| Number of Binary Digits (bits) | Common Name |
+| ------------------------------ | ----------- |
+| 1                              | Bit         |
+| 4                              | Nibble      |
+| 8                              | Byte        |
+| 16                             | Word        |
+| 32                             | Double Word |
+| 64                             | Quad Word   |
+
+**Binary - base 2**:
+
+The computer industry has historically used the units kilobyte, megabyte, gigabyte, and the corresponding symbols KB, MB, and GB, in at least two slightly different measurement systems. In citations of main memory (RAM) capacity, gigabyte customarily means 1073741824 bytes. This value is a power of 1024, and 1024 is a [power of two](https://en.wikipedia.org/wiki/Power_of_two) (2^{10}). This usage is referred to as a binary measurement.
+
+| Prefix | Symbol | Scientific Notation |
+| ------ | ------ | ------------------- |
+| kibi-  | Ki     | 2^{10}              |
+| mebi-  | Mi     | 2^{20}              |
+| gibi-  | Gi     | 2^{30}              |
+| tebi-  | Ti     | 2^{40}              |
+| pebi-  | Pi     | 2^{50}              |
+| exbi-  | Ei     | 2^{60}              |
+
+**Decimal - base 10:**
+
+The industry uses the multipliers kilo, mega, giga, etc., in a manner consistent with their meaning in the [International System of Units](https://en.wikipedia.org/wiki/International_System_of_Units) (SI), namely as powers of 1000. 
+For example, a 500-gigabyte hard disk holds 500000000000 bytes, and a 1 Gbit/s (gigabit per second) Ethernet connection transfers data at a nominal speed of 1000000000 bit/s. In contrast with the binary prefix usage, this use is described as a decimal prefix, as 1000 is a [power of 10](https://en.wikipedia.org/wiki/Powers_of_10) (10^{3}).
+
+| Prefix | Symbol | Scientific Notation |
+| ------ | ------ | ------------------- |
+| kilo-  | k      | 10^{3}              |
+| mega-  | M      | 10^{6}              |
+| giga-  | G      | 10^{9}              |
+| tera-  | T      | 10^{12}             |
+| peta-  | P      | 10^{15}             |
+| exa-   | E      | 10^{18}             |
+
+### Examples
+
+**binary - base 2**
+
+| Value          | Scientific Notation | Result       | Symbol |
+| -------------- | ------------------- | ------------ | ------ |
+| 1024 bytes     | 2^{10}              | = 1 kibibyte | KiB    |
+| 1024 kibibytes | 2^{20}              | = 1 mebibyte | MiB    |
+| 1024 mebibytes | 2^{30}              | = 1 gibibyte | GiB    |
+| 1024 gibibytes | 2^{40}              | = 1 tebibyte | TiB    |
+
+For example, 1 kibibyte = 8192 bits.
+
+**decimal - base 10**
+
+| Value          | Scientific Notation | Result       | Symbol |
+| -------------- | ------------------- | ------------ | ------ |
+| 1000 bytes     | 10^{3}              | = 1 kilobyte | kB     |
+| 1000 kilobytes | 10^{6}              | = 1 megabyte | MB     |
+| 1000 megabytes | 10^{9}              | = 1 gigabyte | GB     |
+| 1000 gigabytes | 10^{12}             | = 1 terabyte | TB     |
+
+For example, 1 kilobyte = 8000 bits.
