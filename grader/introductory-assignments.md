@@ -414,7 +414,7 @@ For example, a 500-gigabyte hard disk holds 500000000000 bytes, and a 1 Gbit/s (
 | 1024 mebibytes | 2^{30}              | = 1 gibibyte | GiB    |
 | 1024 gibibytes | 2^{40}              | = 1 tebibyte | TiB    |
 
-For example, 1 kibibyte = 8192 bits.
+For example, 1 kibibyte = 1024 byte = 8192 bits.
 
 **decimal - base 10**
 
@@ -425,4 +425,39 @@ For example, 1 kibibyte = 8192 bits.
 | 1000 megabytes | 10^{9}              | = 1 gigabyte | GB     |
 | 1000 gigabytes | 10^{12}             | = 1 terabyte | TB     |
 
-For example, 1 kilobyte = 8000 bits.
+For example, 1 kilobyte = 1000 bytes = 8000 bits.
+
+**state space - storage**
+
+In this example, we want to show how many different states a digital circuit computer with 120GB of storage can have.
+
+\# states = 2^{\# of bits}
+
+\# states = 2^{120GB * 10^{9} giga * 8 bit}
+
+\# states = 2^{120\*10^{9}*8}
+
+\# states = 2^{960 000 000 000}
+
+A digital circuit computer with 120GB of storage can distinguish 2^{960 000 000 000} states.
+
+**state-space - memory**
+
+In this example, we want to show how many different states a digital circuit computer with 2GB of memory can have.
+
+\# states = 2^{\# of bits}
+
+\# states = 2^{2GB * 2^30 gibi * 8 bit}
+
+\# states = 2^{2^{1} * 2^{30} * 2^{3}}
+
+\# states = 2^{2^{34}}
+
+\# states = 2^{17 179 869 184}
+
+A digital circuit computer with 2GB of memory can distinguish 2^{17 179 869 184} states.
+
+### Exercises
+
+- How many different states can a digital computer with 4GB of memory have?
+- How many different states can a digital computer with 80GB of storage have?
