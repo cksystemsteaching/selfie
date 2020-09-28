@@ -53,7 +53,7 @@ For example, with a 4-digit sequence of 1011, the decimal (base 10) interpretati
  
 ## Binary Numbers
  
-A [binary number](https://en.wikipedia.org/wiki/Binary_number) is a number represented in base 2, in which there are only two possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored on a computer. Although it might be possible for a computer to store more than two voltage values and therefore support a base larger than 2, it would be challenging to support the ten voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
+A [binary number](https://en.wikipedia.org/wiki/Binary_number) is a number represented in base 2, in which there are only two possible values for each digit (0 and 1). The 0 and 1 correspond to low and high voltage values stored on a computer. Although it might be possible for a computer to hold more than two voltage values and therefore support a base larger than 2, it would be challenging to support the ten voltage values required to support a base 10 number system in hardware. A familiarity with base 2 helps understand how a computer stores and interprets data.
  
 Binary numbers interpreted that each bit (the name for a binary digit) holds the value 2 raised to an increasing exponent. We begin with the right-most bit (also called the LSB = least significant bit), which has the value 2^{0}=1, or the one's column. The next bit holds the value 2^{1}=2, or the twos column. In base 10, each column is ten times larger than the one before it. In base 2, each column's value grows by 2.
  
@@ -318,9 +318,9 @@ The hexadecimal equivalent of the binary number 0b111 1110 0100 is 0x7E4.
 
 Computation is the evolution of state. A computer stores a very large but still finite amount of bits in memory and registers at any given time. The values of all these bits together are what we call the state of the machine. Then the processor executes one instruction, which directs it to change the values of a very small number of bits creating a new state. That process of change from one state to the next continues until the machine is turned off.
 
-[State](https://en.wikipedia.org/wiki/State_(computer_science)): The State of a digital logic circuit or computer program is a technical term for all the stored information, at a given instant in time, to which the circuit or program has access. The output of a digital circuit or computer program at any time is entirely determined by its current inputs and its state.
+[State](https://en.wikipedia.org/wiki/State_(computer_science)): The State of a digital logic circuit or computer program is a technical term for all the stored information, at a given instant in time, to which the circuit or program has access. Its current inputs and its state entirely determine the output of a digital circuit or computer program at any time.
 
-Software on source and machine code level specifies for each state what the next state is. There are the data bits that are being changed and the code bits that determine that change. Input is typically modeled by data bits that are changed by something other than the processor, such as a keyboard.
+Software on source and machine code level specifies for each state what the next state is. There are the data bits that are being changed and the code bits that determine that change. Input is typically modeled by data bits changed by something other than the processor, such as a keyboard.
 
 Machine code or bits describe the change of a state.
 
@@ -340,7 +340,7 @@ As we saw before, a bit can have two possible values, 0 and 1. Now we are going 
 | 7    | 128         | 2^{7}               |
 | 8    | 256         | 2^{8}               |
 
-As shown above, 2 bits can have 4 possible states (00,01,10,11), and when we add one bit, the state space grows exponentially.
+As shown above, 2 bits can have four possible states (00,01,10,11), and when we add one bit, the state space grows exponentially.
 
 ### Exercises
 
@@ -351,7 +351,7 @@ Write your answers in Scientific Notation.
 
 ## Software
 
-Computation is the meaning of software, and software describes how the machine changes from one state into another. That means that software brings the computer in the next state.
+Computation is the meaning of software, and software describes how the machine changes from one state into another. That means that software brings the computer to the next state.
 
 ### Natural Numbers
 
@@ -359,7 +359,7 @@ An infinite set of numbers can be bigger than another infinite set of numbers. (
 
 N: 0,1,2,3,4,... -> Infinite set of Natural Numbers. (syntax)
 
-{0,1,2} -> A subset of a Infinite set of Natural Numbers.
+{0,1,2} -> A subset of a infinite set of Natural Numbers.
 
 P(N) -> Power-set of all subsets {0},{0,1},{0,1,2,3},... (infinite amount of software)
 
