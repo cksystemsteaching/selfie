@@ -62,24 +62,6 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
-# Compile babysat.c with selfie.h as library into babysat executable
-babysat: tools/babysat.c selfie.h
-	$(CC) $(CFLAGS) --include selfie.h $< -o $@
-
-# Run babysat, the naive SAT solver, natively and as RISC-U executable
-sat: babysat selfie selfie.h
-	./babysat examples/rivest.cnf
-	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
-
-# Compile monster.c with selfie.h as library into monster executable
-monster: tools/monster.c selfie.h
-	$(CC) $(CFLAGS) --include selfie.h $< -o $@
-
-# Run monster, the symbolic execution engine, natively and as RISC-U executable
-mon: monster selfie.h selfie
-	./monster
-	./selfie -c selfie.h tools/monster.c -m 1
-
 # Self-compile with conservative garbage collector in mipster
 gib: selfie selfie.m selfie.s
 	./selfie -c selfie.c -gc -m 1 -c selfie.c -o selfie-gib.m -s selfie-gib.s
@@ -107,6 +89,24 @@ giblib: selfie selfie.h selfie.m selfie.s
 # Test garbage collector as library
 gclibtest: selfie selfie.h examples/garbage_collector_test.c
 	./selfie -gc -c selfie.h examples/garbage_collector_test.c -m 1
+
+# Compile babysat.c with selfie.h as library into babysat executable
+babysat: tools/babysat.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Run babysat, the naive SAT solver, natively and as RISC-U executable
+sat: babysat selfie selfie.h
+	./babysat examples/rivest.cnf
+	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
+
+# Compile monster.c with selfie.h as library into monster executable
+monster: tools/monster.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Run monster, the symbolic execution engine, natively and as RISC-U executable
+mon: monster selfie.h selfie
+	./monster
+	./selfie -c selfie.h tools/monster.c -m 1
 
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
