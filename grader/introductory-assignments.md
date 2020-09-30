@@ -351,7 +351,7 @@ Write your answers in Scientific Notation.
 
 ## Software
 
-Computation is the meaning of software, and software describes how the machine changes from one state into another. That means that software brings the computer to the next state.
+The software makes the meaning of computation. It describes how the machine changes from one state into another, which means that software brings the machine into the next state.
 
 ### Natural Numbers
 
