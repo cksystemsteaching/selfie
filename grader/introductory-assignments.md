@@ -148,6 +148,26 @@ So, if we talk about bytes, we mean sequences of 8 bits.
 - What is the smallest number representable by an (unsigned) byte?
 - What is the largest number representable by an (unsigned) byte?
 
+## ASCII
+Previously we established that as far as computers are concerned, everything is a binary number. But how do computers handle letters or text, just like the very document you are reading right now?
+
+ASCII is used to map characters to 7 bit wide integers and vice versa. So while characters are still integers to a computer, we can use the ASCII map to interpret those integers as human-readable characters that can be printed to a screen.
+
+> :warning: TODO: Insert ASCII table
+
+### Examples
+
+| Representation |    |     |     |     |     |
+|----------------|----|-----|-----|-----|-----|
+| **Decimal**    | 72 | 101 | 108 | 108 | 111 |
+| **ASCII**      | H  | e   | l   | l   | o   |
+
+### Exercises
+
+- How many different characters can be represented in ASCII?
+- What is the decimal representation of your first name?
+- What is the ASCII representation of the decimal numbers 115, 101, 108, 102, 105, 101?
+
 ## Different Notations
 
 | Encoding    | Alphabet                        | Base (Radix, Size of Alphabet) | # Values in Digits n>0 |
