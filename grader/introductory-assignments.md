@@ -143,6 +143,11 @@ A bit sequence of 0b10101010 = 170 in decimal notation and consists of 8 bits an
 
 So, if we talk about bytes, we mean sequences of 8 bits.
 
+### Exercises
+
+- What is the smallest number representable by an (unsigned) byte?
+- What is the largest number representable by an (unsigned) byte?
+
 ## Different Notations
 
 | Encoding    | Alphabet                        | Base (Radix, Size of Alphabet) | # Values in Digits n>0 |
