@@ -80,7 +80,7 @@ As shown with the base 10 decimal system and a 4-digit sequence of 1011, in the 
 
 We have seen above how to convert binary to decimal numbers, but how do we convert a decimal number into a binary number.
 
-An easy method of converting decimal to binary number equivalents is to write down the decimal number and to continually divide-by-2 ([modulo](https://en.wikipedia.org/wiki/Modulo_operation)) to give a result and a remainder of either a "1" or a "0" until the final result equals zero.
+An easy method of converting decimal to binary number equivalents is to write down the decimal number and to continually divide-by-2 ([modulo](https://en.wikipedia.org/wiki/Modulo_operation)) to give a result and a remainder of either a "1" or a "0" until the final result equals zero. If the result is not a whole number, it is rounded down before it is used in the next division.
 
 Converting the decimal number 42 (base 10) into its binary equivalent.
 
@@ -93,7 +93,7 @@ Converting the decimal number 42 (base 10) into its binary equivalent.
 | 2     | 2         | 1      | 0         |
 | 1     | 2         | 0.5    | 1         | MSB |
 
-Dividing each decimal number by "2," as shown, will give a result plus a remainder.
+Dividing each decimal number by "2", as shown, will give a result plus a remainder.
 
 If the decimal number being divided is even, then the result will be whole, and the remainder will be equal to "0". If the decimal number is odd, then the result will not divide entirely, and the remainder will be a "1".
 
