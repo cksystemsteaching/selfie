@@ -5221,6 +5221,8 @@ void selfie_compile() {
   uint64_t number_of_source_files;
   uint64_t fetch_dss_code_location;
 
+  fetch_dss_code_location = 0;
+
   // link until next console option
   link = 1;
 
