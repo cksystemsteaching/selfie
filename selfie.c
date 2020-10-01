@@ -7720,7 +7720,9 @@ void print_gc_profile(uint64_t* context) {
     (char*) fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
     (char*) gc_num_ungced_mallocs);
-  if (is_gc_library(context) == 0) print(" (external)"); println();
+  if (is_gc_library(context) == 0)
+    print(" (external)");
+  println();
 }
 
 void gc_arguments() {
