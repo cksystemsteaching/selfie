@@ -48,8 +48,8 @@ For example, with a 4-digit sequence of 1011, the decimal (base 10) interpretati
 
 ### Exercises
 
-- Write the number 1337 in exponential notation.
-- Write the number 267938 in exponential notation.
+- Write the number 1337 in scientific notation.
+- Write the number 267938 in scientific notation.
 
 ## Binary Numbers
 
