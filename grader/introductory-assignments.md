@@ -461,3 +461,15 @@ A digital circuit computer with 2GB of memory can distinguish 2^{17 179 869 184}
 
 - How many different states can a digital computer with 4GB of memory have?
 - How many different states can a digital computer with 80GB of storage have?
+
+---
+
+# 2) Architecture
+
+## Binary vs. Decimal
+
+Computers encode all information in binary representation, since they also use a binary representation at the hardware level. For example, a 0 is represented by a voltage of -5V or by the state "not electrically charged" and a 1 for example by a voltage +5V or by the state "electrically charged".
+
+Since the states (i.e. 0 and 1) are represented by different voltage levels on the electrical level, it is better to have as few states as possible. The reasons for this are based on physics: By things like heat or other electrical disturbances the voltage levels can be changed easily. So it is easier to compensate for these fluctuations with two different states than it would be with, say, ten states - which would correspond to the decimal system normally used by humans. In order to be able to distinguish between all states, one would have to increase the generally possible voltage, which would lead to an increased power consumption. Additionally the logic, which is needed on hardware level to calculate with multiple states, would be much more complicated than it is the case with only two states.
+
+The second reason is, that we get a storage problem, because decimal numbers need more characters than bits, we are talking about three times more characters than with the binary system.
