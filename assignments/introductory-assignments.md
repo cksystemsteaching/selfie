@@ -1,8 +1,8 @@
 # Introductory Assignments
 
-Welcome to the Introduction to Operating Systems supplementary material. This document provides you with content, examples, and exercises to help you learn the course content.
+Welcome to the Introduction to Computer Science supplementary material. This document provides you with content, examples, and exercises to help you learn and understand the course material.
 
-## This information is shared via the course's slack channel.
+## The following information is shared via the course's slack channel.
 
 - Lectures
 - Recordings
@@ -154,7 +154,7 @@ Previously we established that as far as computers are concerned, everything is 
 
 ASCII is used to map characters to 7 bit wide integers and vice versa. So while characters are still integers to a computer, we can use the ASCII map to interpret those integers as human-readable characters that can be printed to a screen.
 
-Reference: [ASCII-table](https://github.com/cksystemsteaching/selfie/blob/master/assignments/ascii-table.md)
+Reference: [ASCII-table](ascii-table.md)
 
 ### Examples
 
