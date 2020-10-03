@@ -588,3 +588,31 @@ Search in the `selfie.c` file:
 
 - How many registers are implemented in Selfie? 
 - What is the size of a register in Selfie?
+
+### Program Counter (PC)
+
+How does a computer "know" what to execute? After all, the bits in memory could mean anything. They could be code; they could be data, anything. But the answer to that question can anyway not be any more straightforward.
+
+Processors based on the von Neumann architecture feature a special-purpose register as part of their control unit called the program counter (PC). The PC in Selfie is a special-purpose 64-bit register.
+
+[Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter): A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction and holds the memory address of ("points to") the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new PC value. These include branches (sometimes called jumps), subroutine calls, and returns. 
+
+A conditional transfer on some assertion's truth lets the computer follow a different sequence under different conditions. 
+
+A branch provides that the next instruction is fetched from somewhere else in memory. 
+
+A subroutine call not only branches but saves the preceding contents of the PC somewhere. 
+
+A return retrieves the PC's saved contents and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
+
+Each instruction instructs the processor to perform some computation and determines the next value of the PC so that the processor "knows" where in memory the next instruction is stored. That sequence of PC values is called *control flow*.
+
+[Control Flow](https://en.wikipedia.org/wiki/Control_flow): The order in which individual statements, instructions, or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an imperative programming language from a *declarative programming* language.
+
+[Imperative Programming](https://en.wikipedia.org/wiki/Imperative_programming): A programming paradigm that uses statements that change the program's state. In much the same way that the imperative mood in natural languages expresses commands, an imperative program consists of commands for the computer to perform. Imperative programming focuses on describing how a program operates.
+
+Many programming languages support imperative programming, but it is not the only programming paradigm. Declarative programming is an important alternative that is also supported by many programming languages but handles program state differently.
+
+[Declarative Programming](https://en.wikipedia.org/wiki/Declarative_programming): A programming paradigm - a style of building the structure and elements of computer programs - expresses the logic of a computation without describing its control flow.
+
+Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their essential use cases, and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
