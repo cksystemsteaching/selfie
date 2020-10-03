@@ -118,9 +118,9 @@ mon: monster selfie.h selfie
 	./monster -c $< - 0 10 --merge-enabled
 
 # Gather symbolic execution example files as .smt files
-smts-1 := $(patsubst %.c,%.smt,$(wildcard symbolic/*-1-*.c))
-smts-2 := $(patsubst %.c,%.smt,$(wildcard symbolic/*-2-*.c))
-smts-3 := $(patsubst %.c,%.smt,$(wildcard symbolic/*-3-*.c))
+smts-1 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-1-*.c))
+smts-2 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-2-*.c))
+smts-3 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-3-*.c))
 
 # Run monster on *.c files in symbolic
 smt: $(smts-1) $(smts-2) $(smts-3)
@@ -142,7 +142,7 @@ mod: modeler selfie.h selfie
 	./modeler -c $< - 0 --check-block-access
 
 # Gather symbolic execution example files as .btor2 files
-btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
+btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 
 # Run modeler on *.c files in symbolic and even on selfie
 btor2: $(btor2s) selfie.btor2
@@ -206,8 +206,8 @@ btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file) &&) true
 
 # files where validator fails (e.g. timeout) and succeeds
-failingFiles := $(wildcard symbolic/*-fail-*.c)
-succeedFiles := $(filter-out $(failingFiles),$(wildcard symbolic/*.c))
+failingFiles := $(wildcard examples/symbolic/*-fail-*.c)
+succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
 
 # Run validator on *.c files in symbolic
 validator: selfie modeler
@@ -231,5 +231,5 @@ clean:
 	rm -f babysat gc monster modeler riscv-2-x86
 	rm -f examples/*.m
 	rm -f examples/*.s
-	rm -f symbolic/*.smt
-	rm -f symbolic/*.btor2
+	rm -f examples/symbolic/*.smt
+	rm -f examples/symbolic/*.btor2
