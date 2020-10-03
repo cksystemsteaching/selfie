@@ -532,6 +532,45 @@ It is essential to understand that bits *fetched* from memory and executed happe
 
 In Selfie the von Neumann architecture is defined as a 64-bit machine, which means the CPU has a bit-width of 64-bit. It also contains 32 general-purpose registers (processor registers) with 64-bit. With just 5 bits, we can talk to all 32 general-purpose registers (2^{5}), where the ID's go from 0 to 31. 
 
+The **32 general-purpose register** in Selfie are defined as **Global Constants**:
+
+**Global [Constant](https://en.wikipedia.org/wiki/Constant_(computer_programming))**: A constant with global scope, meaning that it is visible (hence accessible) throughout the program and its value cannot be altered by the program during normal execution, i.e., the value is constant.
+
+| Label | Register Address |
+| --- 	| ---	|
+|	ZR	|  = 0	|
+|	RA	|  = 1	|
+|	SP	|  = 2	|
+|	GP	|  = 3	|
+|	TP	|  = 4	|
+|	T0	|  = 5	|
+|	T1	|  = 6	|
+|	T2	|  = 7	|
+|	FP	|  = 8	|
+|	S1	|  = 9	|
+|	A0	|  = 10	|
+|	A1	|  = 11	|
+|	A2	|  = 12	|
+|	A3	|  = 13	|
+|	A4	|  = 14	|
+|	A5	|  = 15	|
+|	A6	|  = 16	|
+|	A7	|  = 17	|
+|	S2	|  = 18	|
+|	S3	|  = 19	|
+|	S4	|  = 20	|
+|	S5	|  = 21	|
+|	S6	|  = 22	|
+|	S7	|  = 23	|
+|	S8	|  = 24	|
+|	S9	|  = 25	|
+|	S10	|  = 26	|
+|	S11	|  = 27	|
+|	T3	|  = 28	|
+|	T4	|  = 29	|
+|	T5	|  = 30	|
+|	T6	|  = 31	|
+
 In the CPU, an [arithmetic logic unit](https://en.wikipedia.org/wiki/Arithmetic_logic_unit) (ALU) is a combinational digital circuit that performs arithmetic and [bitwise operations](https://en.wikipedia.org/wiki/Bitwise_operation) on integer binary numbers.
 The inputs to an ALU are the data to be operated on, called [operands](https://en.wikipedia.org/wiki/Operand), and a code indicating the operation to be performed; the ALU's output is the result of the performed operation. 
 
