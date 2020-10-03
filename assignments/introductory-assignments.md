@@ -494,8 +494,36 @@ A digital circuit computer with 2GB of memory can distinguish 2^{17 179 869 184}
 
 ## Binary vs. Decimal
 
-Computers encode all information in binary representation, since they also use a binary representation at the hardware level. For example, a 0 is represented by a voltage of -5V or by the state "not electrically charged" and a 1 for example by a voltage +5V or by the state "electrically charged".
+Computers encode all information in binary representation since they also use a binary representation at the hardware level. For example, 0 is represented by a voltage of -5V or the state "not electrically charged" and 1, by a voltage +5V or the state "electrically charged".
 
-Since the states (i.e. 0 and 1) are represented by different voltage levels on the electrical level, it is better to have as few states as possible. The reasons for this are based on physics: By things like heat or other electrical disturbances the voltage levels can be changed easily. So it is easier to compensate for these fluctuations with two different states than it would be with, say, ten states - which would correspond to the decimal system normally used by humans. In order to be able to distinguish between all states, one would have to increase the generally possible voltage, which would lead to an increased power consumption. Additionally the logic, which is needed on hardware level to calculate with multiple states, would be much more complicated than it is the case with only two states.
+Since the states (i.e., 0 and 1) are represented by different voltage levels on the electrical level, it is better to have only a few states. The reasons for this are based on physics: By things like heat or other electrical disturbances, the voltage levels can be changed easily. So it is easier to compensate for these fluctuations with two different states than it would be with, say, ten states - which would correspond to the decimal system usually used by humans. To distinguish between all states, one would have to increase the generally possible voltage, which would lead to increased power consumption. Additionally, the logic, which is needed on the hardware level to calculate with multiple states, would be much more complicated than the case with only two states.
 
-The second reason is, that we get a storage problem, because decimal numbers need more characters than bits, we are talking about three times more characters than with the binary system.
+The second reason is that we get a storage problem because decimal numbers need more characters than bits; we talk about three times more characters than with the binary system.
+
+## Von Neumann architecture
+
+Today, most general-purpose computers are based on what is known as the *von Neumann model* or *von Neumann architecture*.
+
+[Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture): A computer architecture, described in 1945 by the mathematician and physicist John von Neumann and others, for an electronic digital computer with parts consisting of a *central processing unit* (CPU) where arithmetic operations (that part is called an *Arithmetic Logic Unit* - ALU) are done, and *processor registers* (that supply operand (the object or quantity to operate on) to the ALU and store the results of ALU operations); a *control unit* containing an *instruction register* (to hold the currently executed instruction) and a *program counter* (indicates where a computer is in its program sequence); a *memory* to store both data and instructions (code); external *mass storage*; and *input and output* mechanisms.
+
+**von Neumann architecture**
+
+- Central Processing Unit (CPU)
+	+ Arithmetic Logic Unit (ALU)
+		* that does arithmetic operations
+	+ Processor registers
+		* that supply operands (the object or quantity that is operated on
+	+ Control unit
+		* Instruction register
+			- to store the currently executed instruction
+		* Program counter
+			- indicates where a computer is in its program sequence
+- Memory that stores data and instructions
+- External mass storage
+- Input and output mechanisms
+
+A von Neumann machine is a [stored-program computer](https://en.wikipedia.org/wiki/Stored-program_computer), which stores both code and data in the same memory. In fact, in memory, there is no distinction between code and data. A von Neumann machine fetches code from memory and executes it. The code will, in turn, instruct the machine to load data from memory into registers, perform some computation on registers, and finally store the results back in memory. 
+
+**fetching vs. loading from memory**
+
+It is essential to understand that bits *fetched* from memory and executed happen to represent *code* at that given moment while bits *loaded* from memory into registers, then modified, and finally stored back in memory represent *data* at that given moment.
