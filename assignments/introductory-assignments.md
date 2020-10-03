@@ -504,7 +504,7 @@ The second reason is that we get a storage problem because decimal numbers need 
 
 Today, most general-purpose computers are based on what is known as the *von Neumann model* or *von Neumann architecture*.
 
-[Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture): A computer architecture, described in 1945 by the mathematician and physicist John von Neumann and others, for an electronic digital computer with parts consisting of a *central processing unit* (CPU) where arithmetic operations (that part is called an *Arithmetic Logic Unit* - ALU) are done, and *processor registers* (that supply operand (the object or quantity to operate on) to the ALU and store the results of ALU operations); a *control unit* containing an *instruction register* (to hold the currently executed instruction) and a *program counter* (indicates where a computer is in its program sequence); a *memory* to store both data and instructions (code); external *mass storage*; and *input and output* mechanisms.
+[Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture): A computer architecture, described in 1945 by the mathematician and physicist John von Neumann and others, for an electronic digital computer with parts consisting of a *central processing unit* (CPU) where arithmetic operations (that part is called an *Arithmetic Logic Unit* - ALU) are done, and *processor registers* (those supply operands, the object or quantity to operate on) to the ALU and store the results of ALU operations); a *control unit* containing an *instruction register* (to hold the currently executed instruction) and a *program counter* (indicates where a computer is in its program sequence); a *memory* to store both data and instructions (code); external *mass storage*; and *input and output* mechanisms.
 
 **von Neumann architecture**
 
@@ -512,7 +512,7 @@ Today, most general-purpose computers are based on what is known as the *von Neu
 	+ Arithmetic Logic Unit (ALU)
 		* that does arithmetic operations
 	+ Processor registers
-		* that supply operands (the object or quantity that is operated on
+		* that supply operands, the object or quantity that is operated on
 	+ Control unit
 		* Instruction register
 			- to store the currently executed instruction
@@ -527,3 +527,25 @@ A von Neumann machine is a [stored-program computer](https://en.wikipedia.org/wi
 **fetching vs. loading from memory**
 
 It is essential to understand that bits *fetched* from memory and executed happen to represent *code* at that given moment while bits *loaded* from memory into registers, then modified, and finally stored back in memory represent *data* at that given moment.
+
+### Central Processing Unit (CPU)
+
+In Selfie the von Neumann architecture is defined as a 64-bit machine, which means the CPU has a bit-width of 64-bit. It also contains 32 general-purpose registers (processor registers) with 64-bit. With just 5 bits, we can talk to all 32 general-purpose registers (2^{5}), where the ID's go from 0 to 31. 
+
+In the CPU, an [arithmetic logic unit](https://en.wikipedia.org/wiki/Arithmetic_logic_unit) (ALU) is a combinational digital circuit that performs arithmetic and [bitwise operations](https://en.wikipedia.org/wiki/Bitwise_operation) on integer binary numbers.
+The inputs to an ALU are the data to be operated on, called [operands](https://en.wikipedia.org/wiki/Operand), and a code indicating the operation to be performed; the ALU's output is the result of the performed operation. 
+
+#### Examples
+
+When we talk about the von Neumann architecture in Selfie, one would ask where it is defined or how we could read the different parameters up?
+
+In the Github Repository, we can look into the `selfie.c` file to clear that up. 
+
+For example, if we want to know how many bits the CPU architecture is defined, we could search for `cpubitwidth`, and there we can find `uint64_t CPUBITWIDTH = 64; // double word` that means the CPU's bit-width is 64 or 8-byte. The comment `// double word` will explained under the topic *Random access memory (RAM)*.
+
+#### Exercises
+
+Search in the `selfie.c` file: 
+
+- How many registers are implemented in Selfie? 
+- What is the size of a register in Selfie?
