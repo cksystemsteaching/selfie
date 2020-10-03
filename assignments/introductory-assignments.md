@@ -28,7 +28,7 @@ When we write bit values, we use the 0b extension in front of the bit-value.
 
 0b101010 = 42 as decimal number
 
-0b101010 = \* symbol in the ASCII table
+0b101010 = \* symbol in the [ASCII Table](ascii-table.md)
 
 Here we can see that a series of 0's and 1's can be interpreted in different ways.
 
@@ -154,7 +154,7 @@ Previously we established that as far as computers are concerned, everything is 
 
 ASCII is used to map characters to 7 bit wide integers and vice versa. So while characters are still integers to a computer, we can use the ASCII map to interpret those integers as human-readable characters that can be printed to a screen.
 
-Reference: [ASCII-table](ascii-table.md)
+Reference: [ASCII Table](ascii-table.md)
 
 ### Examples
 
