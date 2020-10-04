@@ -6913,11 +6913,6 @@ void emit_switch() {
 uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
   restore_context(to_context);
 
-  // restore machine state
-  pc        = get_pc(to_context);
-  registers = get_regs(to_context);
-  pt        = get_pt(to_context);
-
   // use REG_A6 instead of REG_A0 for returning from_context
   // to avoid overwriting REG_A0 in to_context
   if (get_parent(from_context) != MY_CONTEXT)
@@ -9284,6 +9279,7 @@ void save_context(uint64_t* context) {
   set_pc(context, pc);
 
   if (get_parent(context) != MY_CONTEXT) {
+    // upload changes in context to virtual context in parent address space
     parent_table = get_pt(get_parent(context));
 
     vctxt = get_virtual_context(context);
@@ -9383,6 +9379,7 @@ void restore_context(uint64_t* context) {
   uint64_t hi;
 
   if (get_parent(context) != MY_CONTEXT) {
+    // download changes in virtual context in parent address space to context
     parent_table = get_pt(get_parent(context));
 
     vctxt = get_virtual_context(context);
@@ -9409,7 +9406,7 @@ void restore_context(uint64_t* context) {
 
     table = (uint64_t*) load_virtual_memory(parent_table, page_table(vctxt));
 
-    // assert: context page table is only mapped from beginning up and end down
+    // assert: virtual context page table is only mapped from beginning up and end down
 
     lo = load_virtual_memory(parent_table, lowest_lo_page(vctxt));
     hi = load_virtual_memory(parent_table, highest_lo_page(vctxt));
@@ -9432,6 +9429,11 @@ void restore_context(uint64_t* context) {
     set_gcs_in_period(context, load_virtual_memory(parent_table, gcs_in_period(vctxt)));
     set_use_gc_kernel(context, load_virtual_memory(parent_table, use_gc_kernel(vctxt)));
   }
+
+  // restore machine state
+  pc        = get_pc(context);
+  registers = get_regs(context);
+  pt        = get_pt(context);
 }
 
 uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
