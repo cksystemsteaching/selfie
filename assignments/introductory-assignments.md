@@ -616,3 +616,73 @@ Many programming languages support imperative programming, but it is not the onl
 [Declarative Programming](https://en.wikipedia.org/wiki/Declarative_programming): A programming paradigm - a style of building the structure and elements of computer programs - expresses the logic of a computation without describing its control flow.
 
 Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their essential use cases, and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
+
+### Random access memory (RAM)
+
+The great thing in a von Neumann architecture is storing code and data in the same memory. In Selfie the main memory is implemented with 4 GB, which means 2^{32} bytes or 2^{35} bits of memory are available for use. 
+
+How do we get to such numbers? 
+
+When write 4 GB in scientific notation, we get: 
+
+2^{2} \* 2^{30} \* 2{3} = 2{35}
+
+Where: 
+
+- Quantity of 4 = 2^{2}, 
+- 2^{30} stands for Giga and 
+- 2^{3} stands for 8 when we convert from bytes to bits.
+
+Now we know that 4 GB of memory is 2^{35} bit, but how is that large memory split up into smaller pieces?
+
+Most registers of a CPU have the same size, that is, accommodate the same number of bits. Usually, data goes back and forth between memory and registers in chunks of that size called machine words or just words.
+
+[Word](https://en.wikipedia.org/wiki/Word_(computer_architecture)): The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the processor's hardware. The number of bits in a word (the word size, word width, or word length) is an essential characteristic of any specific processor design or computer architecture.
+
+Usually, a word has 32 bit, as we can see in `selfie.c`. That means a double word has 64 bit, but for simplification, when we talk about a word in Selfie, we mean 64 bit.
+
+The processor (CPU) that the mipster emulator in Selfie implements has a size of 64 bits. Virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution. The reason is again performance. Involving 64 bits in parallel in all operations is faster than working with bits individually. However, there are two more reasons why we use a 64-bit machine. The first reason is that the size of an integer in C\* (a subset of C) is also 64 bits. That means that a single mipster register can hold exactly one C\* integer value.
+
+[Emulator](https://en.wikipedia.org/wiki/Emulator): Software that enables one computer system (called the host) to behave like another computer system (called the guest).
+
+How many different integer values can 64 bits represent? Well, 2^{64} values, but what are they? 
+That depends on how we interpret them. In C\* integers are interpreted as *unsigned*, an integer value is either zero or a positive number.
+
+> An unsigned integer in C\* can in total represent integer values i from 0 to 18446744073709551615 = 2^{64}-1. 
+> In `selfie.c`, that value is called `UINT64_MAX` which is the largest unsigned 64-bit integer value.
+
+However, we may also interpret 64-bit integers as signed in *two's complement* with the MSB encoding the sign and the remaining 63 LSBs encoding the value. The number of different integer values that can be represented is nevertheless the same.
+
+> A signed 64-bit integer can in total represent signed integer values i from -9223372036854775808 to 9223372036854775807 since -2^{64-1} to 2^{64-1}-1. 
+> In `selfie.c`, the largest positive integer value is called `INT64_MAX` while the smallest negative integer value is called `INT64_MIN`.
+
+The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits as well. In particular, that means that the content of a register can also be seen as a memory address and not just an integer value. However, there is one crucial detail. On a mipster machine, memory is not only byte-addressed but also word-aligned for access. That means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes (64 bits = 8 bytes).
+
+> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on. 
+> These addresses are values in bytes. The word at address 0, for example, then contains the eight bytes at addresses 0, 1, 2, 3, 4, 5, 6, and 7.
+
+1. word = 0
+2. word = 8
+3. word = 16
+4. word = 24
+5. word = ...
+
+Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a word can be used to encode characters, integers, and even memory addresses! That's right, and this is not all. Even machine instructions are represented by words which is will discuss later.
+
+#### Examples
+
+The string literal `"Hello World!    "` is stored in two 64-bit words located contiguously in memory accommodating the substrings `"Hello Wo"` and `"rld!    "` as well as the value 0 in the third word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
+
+#### Exercises
+
+Search in the `selfie.c` file:
+
+- What is the size of the registers in the CPU?
+- What is the wordsize in Selfie?
+
+Calculate:
+
+- How many states can we store in 4 GB of main memory?
+- How many states can we store in the von Neumann architecture of Selfie? (all components of the CPU and the main memory)
+- How many words can we address in 4 GB of main memory?
+- How many bits do we need to talk to all possible words in 4 GB?
