@@ -678,7 +678,7 @@ The string literal `"Hello World!    "` is stored in two 64-bit words located co
 Search in the `selfie.c` file:
 
 - What is the size of the registers in the CPU?
-- What is the wordsize in Selfie?
+- What is the word size in Selfie?
 
 Calculate:
 
@@ -686,3 +686,28 @@ Calculate:
 - How many states can we store in the von Neumann architecture of Selfie? (all components of the CPU and the main memory)
 - How many words can we address in 4 GB of main memory?
 - How many bits do we need to talk to all possible words in 4 GB?
+
+### Memory-bus
+
+In a machine that follows a von Neumann architecture, the bandwidth between the CPU (where all the work gets done) and memory is minimal compared to the amount of memory. 
+The main memory and CPU are connected via the memory-bus to communicate; this is the bottleneck of a von Neumann machine and the main factor for speed.
+
+The data-bus in Selfie has 64 wires to transfer a double word or just word between CPU and main memory. That means we use one wire for each bit.
+
+The von Neumann bottleneck is a limitation on [throughput](https://en.wikipedia.org/wiki/Throughput) (data transfer rate)  caused by computer architecture.
+
+[Throughput](https://en.wikipedia.org/wiki/Throughput): Amount of work performed per unit of time.
+
+[Latency](https://en.wikipedia.org/wiki/Latency): Amount of time (or delay) to perform work.
+
+Speed is generally characterized in terms of *throughput*, the amount of work done per unit of time, and *latency*, the amount of time to do some work, particularly before some other work can be done. The difference is usually explained with a simple example. Imagine a fiber optic cable connecting, say, New York City and San Francisco, and a truck loaded with DVDs driving from New York City to San Francisco. 
+Which one provides higher throughput and which one lower latency? Surprisingly, it may very well be possible that the truck offers higher throughput. However, delivering just a single bit by truck may take days. Thus the truck provides terrible latency not suitable to host, say, a Zoom call.
+
+| Performance | Unit                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second))                                                      |
+| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |
+
+## Code vs. Data
+
+A computer cannot distinguish between code and data. It all depends on the context. Something is interpreted as code if the program counterpoints the corresponding address in memory, and this word is loaded as instruction into the processor. It is interpreted as data when it gets processed as data. A machine word could be data and code at the same time. As already mentioned, this depends on how it is interpreted.
