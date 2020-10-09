@@ -233,7 +233,6 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
         set_home_path(Path(os.path.abspath(os.path.dirname(argv[0]))))
 
         args = parser.parse_args(argv[1:])
-        print(args)
 
         assignment = parse_assignment(args.assignment, assignments)
 
