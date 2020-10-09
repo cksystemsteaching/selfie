@@ -1,7 +1,8 @@
 import os
 import re
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from io import StringIO
 from pathlib import Path
 from subprocess import run
 from typing import Callable, Optional, List, Tuple, Dict, Set
@@ -11,7 +12,7 @@ from lib.model import Assignment, Check, CheckResult
 from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
 from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, print_error,
-                       print_message, print_usage, print_warning, print_grade, print_processing,
+                       print_message, print_warning, print_grade, print_processing,
                        stop_processing_spinner, print_passed, print_failed)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
@@ -24,6 +25,23 @@ bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
 def error(msg):
     print_error(msg)
     exit(1)
+
+def list_assignments_str(assignments: List[Assignment]) -> str:
+    def print_assignment_of_lecture(lecture, stream):
+        print(lecture + ' Assignments:', file=stream)
+
+        for assignment in filter(lambda x: x.lecture is lecture, assignments):
+            print('  {}'.format(assignment.name), file=stream)
+
+        print(file=stream)
+
+    stream = StringIO()
+
+    print_assignment_of_lecture('General', stream)
+    print_assignment_of_lecture('Compiler', stream)
+    print_assignment_of_lecture('OS', stream)
+
+    return stream.getvalue()
 
 
 def parse_assignment(args: List[str], assignments: Set[Assignment]) -> Optional[Assignment]:
@@ -197,7 +215,8 @@ def reset_state():
 
 
 def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Assignment):
-    parser = ArgumentParser(argv[0])
+    parser = ArgumentParser(argv[0], formatter_class=RawDescriptionHelpFormatter,
+            epilog=list_assignments_str(assignments))
 
     parser.add_argument('-q', action='store_true', default=False,
             help='only the grade is printed', dest='quiet')
