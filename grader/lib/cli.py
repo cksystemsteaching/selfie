@@ -44,14 +44,11 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
     return stream.getvalue()
 
 
-def parse_assignment(args: List[str], assignments: Set[Assignment]) -> Optional[Assignment]:
-    if len(args) == 0:
+def parse_assignment(args: str, assignments: Set[Assignment]) -> Optional[Assignment]:
+    if not args:
         return None
 
-    if len(args) > 1:
-        error('only 1 assignment allowed')
-
-    possible_assignment = list(filter(lambda a: a.name == args[0], assignments))
+    possible_assignment = list(filter(lambda a: a.name == args, assignments))
 
     if len(possible_assignment) == 1:
         return possible_assignment[0]
@@ -226,7 +223,7 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='path where all bulk graded repositories should be saved',
             dest='bulk_directory')
-    parser.add_argument('assignment', metavar='assignment', nargs='*')
+    parser.add_argument('assignment', metavar='assignment', nargs='?')
 
     try:
         if len(argv) <= 1:
