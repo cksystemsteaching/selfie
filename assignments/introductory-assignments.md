@@ -391,7 +391,7 @@ P(N) -> Power-set of all subsets {0},{0,1},{0,1,2,3},... (infinite amount of sof
 
 ## Binary Number Names & Prefixes
 
-Today, as microcontroller or microprocessor systems become increasingly larger, the individual binary digits (bits) are now grouped into 8's to form a single byte.
+Today, as micro controller or microprocessor systems become increasingly larger, the individual binary digits (bits) are now grouped into 8's to form a single byte.
 
 | Number of Binary Digits (bits) | Common Name |
 | ------------------------------ | ----------- |
@@ -496,9 +496,9 @@ A digital circuit computer with 2GB of memory can distinguish 2^{17 179 869 184}
 
 Computers encode all information in binary representation since they also use a binary representation at the hardware level. For example, 0 is represented by a voltage of -5V or the state "not electrically charged" and 1, by a voltage +5V or the state "electrically charged".
 
-Since the states (i.e., 0 and 1) are represented by different voltage levels on the electrical level, it is better to have only a few states. The reasons for this are based on physics: By things like heat or other electrical disturbances, the voltage levels can be changed easily. So it is easier to compensate for these fluctuations with two different states than it would be with, say, ten states - which would correspond to the decimal system usually used by humans. To distinguish between all states, one would have to increase the generally possible voltage, which would lead to increased power consumption. Additionally, the logic, which is needed on the hardware level to calculate with multiple states, would be much more complicated than the case with only two states.
+Since the states (i.e., 0 and 1) are represented by different voltage levels on the electrical level, it is better to have only a few states. The reasons for this are based on physics: By things like heat or other electrical disturbances, the voltage levels can be changed easily. So it is easier to compensate for these fluctuations with two different states than it would be with, say, ten states - which would correspond to the decimal system usually used by humans. To distinguish between all states, one would have to increase the generally possible voltage, which would lead to increased power consumption. Additionally, the hardware levels logic to calculate with multiple states would be much more complicated than the case with only two states.
 
-The second reason is that we get a storage problem because decimal numbers need more characters than bits; we talk about three times more characters than with the binary system.
+The second reason is that we get a storage problem because decimal numbers need more characters than bits; we talk about three times more characters than the base-2 binary system.
 
 ## Von Neumann architecture
 
@@ -534,7 +534,7 @@ In Selfie the von Neumann architecture is defined as a 64-bit machine, which mea
 
 The **32 general-purpose register** in Selfie are defined as **Global Constants**:
 
-**Global [Constant](https://en.wikipedia.org/wiki/Constant_(computer_programming))**: A constant with global scope, meaning that it is visible (hence accessible) throughout the program and its value cannot be altered by the program during normal execution, i.e., the value is constant.
+**Global [Constant](https://en.wikipedia.org/wiki/Constant_(computer_programming))**: A constant with global scope, meaning that it is visible (hence accessible) throughout the program and the program cannot alter its value during normal execution, i.e., the value is constant.
 
 | Label | Register Address |
 | --- 	| ---	|
@@ -580,7 +580,7 @@ When we talk about the von Neumann architecture in Selfie, one would ask where i
 
 In the Github Repository, we can look into the `selfie.c` file to clear that up. 
 
-For example, if we want to know how many bits the CPU architecture is defined, we could search for `cpubitwidth`, and there we can find `uint64_t CPUBITWIDTH = 64; // double word` that means the CPU's bit-width is 64 or 8-byte. The comment `// double word` will explained under the topic *Random access memory (RAM)*.
+For example, if we want to know how many bits the CPU architecture is defined, we could search for `cpubitwidth`, and there we can find `uint64_t CPUBITWIDTH = 64; // double word` that means the CPU's bit-width is 64 or 8-byte. The comment `// double word` will explain under the topic *Random access memory (RAM)*.
 
 #### Exercises
 
@@ -593,21 +593,18 @@ Search in the `selfie.c` file:
 
 How does a computer "know" what to execute? After all, the bits in memory could mean anything. They could be code; they could be data, anything. But the answer to that question can anyway not be any more straightforward.
 
-Processors based on the von Neumann architecture feature a special-purpose register as part of their control unit called the program counter (PC). The PC in Selfie is a special-purpose 64-bit register.
+Processors based on the von Neumann architecture feature a special-purpose register as part of their control unit called the *program counter* (PC). The PC in Selfie is a special-purpose 64-bit register.
 
 [Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter): A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction and holds the memory address of ("points to") the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new PC value. These include branches (sometimes called jumps), subroutine calls, and returns. 
 
-A conditional transfer on some assertion's truth lets the computer follow a different sequence under different conditions. 
-
-A branch provides that the next instruction is fetched from somewhere else in memory. 
-
-A subroutine call not only branches but saves the preceding contents of the PC somewhere. 
-
-A return retrieves the PC's saved contents and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
+- A *control transfer* on some assertion's truth lets the computer follow a different sequence under different conditions. 
+- A *branch* provides that the next instruction is fetched from somewhere else in memory. 
+- A *subroutine call* not only branches but saves the preceding contents of the PC somewhere. 
+- A *return* retrieves the PC's saved contents and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
 
 Each instruction instructs the processor to perform some computation and determines the next value of the PC so that the processor "knows" where in memory the next instruction is stored. That sequence of PC values is called *control flow*.
 
-[Control Flow](https://en.wikipedia.org/wiki/Control_flow): The order in which individual statements, instructions, or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an imperative programming language from a *declarative programming* language.
+[Control Flow](https://en.wikipedia.org/wiki/Control_flow): The order in which individual statements, instructions, or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an **imperative programming** language from a **declarative programming** language.
 
 [Imperative Programming](https://en.wikipedia.org/wiki/Imperative_programming): A programming paradigm that uses statements that change the program's state. In much the same way that the imperative mood in natural languages expresses commands, an imperative program consists of commands for the computer to perform. Imperative programming focuses on describing how a program operates.
 
@@ -615,7 +612,7 @@ Many programming languages support imperative programming, but it is not the onl
 
 [Declarative Programming](https://en.wikipedia.org/wiki/Declarative_programming): A programming paradigm - a style of building the structure and elements of computer programs - expresses the logic of a computation without describing its control flow.
 
-Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their essential use cases, and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
+Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their essential use cases, and a port of Selfie to a declarative programming language would be very nice to have but remains future work for now.
 
 ### Random access memory (RAM)
 
@@ -641,7 +638,7 @@ Most registers of a CPU have the same size, that is, accommodate the same number
 
 Usually, a word has 32 bit, as we can see in `selfie.c`. That means a double word has 64 bit, but for simplification, when we talk about a word in Selfie, we mean 64 bit.
 
-The processor (CPU) that the mipster emulator in Selfie implements has a size of 64 bits. Virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution. The reason is again performance. Involving 64 bits in parallel in all operations is faster than working with bits individually. However, there are two more reasons why we use a 64-bit machine. The first reason is that the size of an integer in C\* (a subset of C) is also 64 bits. That means that a single mipster register can hold exactly one C\* integer value.
+The processor (CPU) that the mipster emulator in Selfie implements has a size of 64 bits. Virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution. The reason is again performance. Involving 64 bits in parallel in all operations is faster than working with bits individually. However, there are two more reasons why we use a 64-bit machine. The first reason is that the size of an integer in C\* (a subset of C) is also 64 bits. That means that a single mipster register can hold precisely one C\* integer value.
 
 [Emulator](https://en.wikipedia.org/wiki/Emulator): Software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
@@ -656,7 +653,7 @@ However, we may also interpret 64-bit integers as signed in *two's complement* w
 > A signed 64-bit integer can in total represent signed integer values i from -9223372036854775808 to 9223372036854775807 since -2^{64-1} to 2^{64-1}-1. 
 > In `selfie.c`, the largest positive integer value is called `INT64_MAX` while the smallest negative integer value is called `INT64_MIN`.
 
-The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits as well. In particular, that means that the content of a register can also be seen as a memory address and not just an integer value. However, there is one crucial detail. On a mipster machine, memory is not only byte-addressed but also word-aligned for access. That means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes (64 bits = 8 bytes).
+The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits as well. In particular, that means that a register's content can also be seen as a memory address and not just an integer value. However, there is one crucial detail. On a mipster machine, memory is not only byte-addressed but also word-aligned for access. That means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes (64 bits = 8 bytes).
 
 > The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on. 
 > These addresses are values in bytes. The word at address 0, for example, then contains the eight bytes at addresses 0, 1, 2, 3, 4, 5, 6, and 7.
@@ -667,11 +664,11 @@ The second reason for using 64-bit words is that memory addresses in mipster and
 4. word = 24
 5. word = ...
 
-Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a word can be used to encode characters, integers, and even memory addresses! That's right, and this is not all. Even machine instructions are represented by words which is will discuss later.
+Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a word can be used to encode characters, integers, and even memory addresses! That's right, and this is not all. Even machine instructions are represented by words which we will discuss later.
 
 #### Examples
 
-The string literal `"Hello World!    "` is stored in two 64-bit words located contiguously in memory accommodating the substrings `"Hello Wo"` and `"rld!    "` as well as the value 0 in the third word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
+The string literal `"Hello World!    "` is stored in two 64-bit words located contiguously in memory accommodating the substrings `"Hello Wo"` and `"rld!    "` as well as the value 0 (null) in the third word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
 
 #### Exercises
 
@@ -700,7 +697,11 @@ The von Neumann bottleneck is a limitation on [throughput](https://en.wikipedia.
 
 [Latency](https://en.wikipedia.org/wiki/Latency): Amount of time (or delay) to perform work.
 
-Speed is generally characterized in terms of *throughput*, the amount of work done per unit of time, and *latency*, the amount of time to do some work, particularly before some other work can be done. The difference is usually explained with a simple example. Imagine a fiber optic cable connecting, say, New York City and San Francisco, and a truck loaded with DVDs driving from New York City to San Francisco. 
+Speed is generally characterized in terms of *throughput*, the amount of work done per unit of time, and *latency*, the amount of time to do some work, particularly before some other work can be done. The difference is usually explained with a simple example. 
+
+#### Examples
+
+Imagine a fiber optic cable connecting, say, New York City and San Francisco, and a truck loaded with DVDs driving from New York City to San Francisco. 
 Which one provides higher throughput and which one lower latency? Surprisingly, it may very well be possible that the truck offers higher throughput. However, delivering just a single bit by truck may take days. Thus the truck provides terrible latency not suitable to host, say, a Zoom call.
 
 | Performance | Unit                                                                                        |
