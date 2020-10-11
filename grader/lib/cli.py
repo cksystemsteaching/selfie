@@ -212,6 +212,9 @@ def reset_state():
 
 
 def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Assignment):
+    def curried_parse_assignment(assignment: str) -> Optional[Assignment]:
+        return parse_assignment(assignment, assignments)
+
     parser = ArgumentParser(argv[0], formatter_class=RawDescriptionHelpFormatter,
             epilog=list_assignments_str(assignments))
 
@@ -223,7 +226,7 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='path where all bulk graded repositories should be saved',
             dest='bulk_directory')
-    parser.add_argument('assignment', metavar='assignment', nargs='?')
+    parser.add_argument('assignment', metavar='assignment', nargs='?', type=curried_parse_assignment)
 
     try:
         if len(argv) <= 1:
@@ -234,8 +237,6 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
 
         args = parser.parse_args(argv[1:])
 
-        assignment = parse_assignment(args.assignment, assignments)
-
         if args.quiet:
             enter_quiet_mode()
 
@@ -245,12 +246,12 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
         if args.bulk_directory:
             set_bulk_grade_directory(args.bulk_directory)
 
-        validate_options_for(assignment)
+        validate_options_for(args.assignment)
 
         if bulk_grade_mode:
-            do_bulk_grading(assignment, baseline)
+            do_bulk_grading(args.assignment, baseline)
         else:
-            check_assignment(assignment, baseline)
+            check_assignment(args.assignment, baseline)
 
     finally:
         reset_state()
