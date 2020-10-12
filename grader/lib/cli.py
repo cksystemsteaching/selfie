@@ -16,6 +16,22 @@ from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, pri
                        stop_processing_spinner, print_passed, print_failed)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
+GRADER_SYNOPSIS = '''
+The Selfie autograder
+
+The autograder is a tool that gives students and teachers the means
+for evaluating assignments that shall extend or adapt Selfie with
+concepts learned in the lecture.
+It also enables teachers to fetch and grade multiple Git repositories
+in one go.
+
+It is part of the Selfie project of the Computational Systems Group
+at the Department of Computer Sciences of the University of Salzburg
+in Austria (http://selfie.cs.uni-salzburg.at).
+
+For more detailed information about its usage, please consult the
+enclosed README.
+'''
 
 bulk_grade_mode = False
 file_with_commit_links = None
@@ -216,7 +232,7 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
         return parse_assignment(assignment, assignments)
 
     parser = ArgumentParser(argv[0], formatter_class=RawDescriptionHelpFormatter,
-            epilog=list_assignments_str(assignments))
+            description=GRADER_SYNOPSIS, epilog=list_assignments_str(assignments))
 
     parser.add_argument('-q', action='store_true', default=False,
             help='only the grade is printed', dest='quiet')
