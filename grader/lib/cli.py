@@ -242,7 +242,8 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='path where all bulk graded repositories should be saved',
             dest='bulk_directory')
-    parser.add_argument('assignment', metavar='assignment', nargs='?', type=curried_parse_assignment)
+    parser.add_argument('assignment', metavar='assignment', nargs='?',
+            type=curried_parse_assignment, help='The assignment to test')
 
     try:
         if len(argv) <= 1:
