@@ -488,6 +488,187 @@ A digital circuit computer with 2GB of memory can distinguish 2^{17 179 869 184}
 - How many different states can a digital computer with 4GB of memory have?
 - How many different states can a digital computer with 80GB of storage have?
 
+## Signed and unsigned integer
+
+Bytes can represent numbers as well as alphabetic characters. But if we want to represent negative numbers, we have to use a sign bit.
+
+### One's complement
+
+The [one's complement](https://en.wikipedia.org/wiki/Signed_number_representations) can be used to represent negative numbers.
+
+**8-bit representation**
+
+We only use 7 bits for the value and the **MSB** for the sign with a simple sign bit.
+If the **MSB** is a 1, it represents a `-` else it is a `+`.
+
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
+| bits       |   1   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |           -41 |
+
+
+**Reason why we don't use the one's complement in practice:**
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |             0 |
+| bits       |   1   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |            -0 |
+
+We get two representations for 0, but we only need one.
+
+### Two's complement
+
+Integers are also commonly represented by using [two's complement](https://en.wikipedia.org/wiki/Two%27s_complement) notation, in which the left-most bit indicates the sign: If the leading bit is 1, we subtract 2^{n} to get the [integer](https://en.wikipedia.org/wiki/Integer_(computer_science)) corresponding to an n-bit number in this notation. Two's complement is used to change subtraction to addition by using the "complementary" of a number.
+
+**Using the binary number system**:
+
+Unsigned:
+
+- an unsigned byte can express the numbers 0 .. 255
+- two unsigned bytes can express the numbers 0 .. 65535
+
+[Signed](https://en.wikipedia.org/wiki/Signed_number_representations) (two's complement):
+
+- a signed byte can express the numbers -128 .. 127
+- two signed bytes can express the numbers -32768 .. 32767
+
+
+For example, -1 is the signed byte 0xff or 0b11111111. In this way, a signed byte can express the numbers -128 .. 127. That means we can use the formula -2^{n-1} to 2^{n-1}-1 to calculate the range.
+
+#### From decimal digit into two's complement
+
+If we want to show a positive representation, we can show this just as in the one's complement, so the sign bit is zero.
+
+If we want to represent 41 in two's complement, we fill in the needed bits.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
+
+
+To show the value of -41 in two's complement, we need to follow a **three-step plan**.
+
+**First**, we convert the decimal digit into the positive value in binary.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
+
+
+**Second**, we invert all binary digits, so that a 0 converts into a 1 and a 1 converts into a 0. 
+
+In the example with -41 that looks as follows:
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   0   |           -86 |
+
+We got the `MSB'with 1 as sign bit.
+
+As **third step**, we need to add 1 to the result of step two.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   1   |           -87 |
+
+That means the value of -87 is the two's complement representation of -41.
+
+**Complementary value**
+
+If we can represent the highest value with 7 bits, we can represent 2^{7}=128 values. As seen in the last example, we got a complement of -87, which means if we calculate 128-87, we get 41, then we also use the sign bit and get as a result -41. That means a two's complement representation of -41 shows us the [complement](https://en.wikipedia.org/wiki/Method_of_complements) of -41 in that 7-bit range.
+
+**Summary**
+
+For a two's complement representation, we need to follow a three-step plan:
+
+1) Convert the decimal digit into the positive representation of the value.
+2) We invert all digits. (0 -> 1 and 1 -> 0)
+3) We add 1 to the result of step two.
+
+#### From two's complement into decimal
+
+If we want to convert the two's complement representation of -41 into the decimal digit -41, we need to follow the three converting steps from above but in the other direction.
+
+Two's complement representation of -41:
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   1   |           -87 |
+
+**Step 1**: Add 1 to the two's complement representation.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   0   |           -86 |
+
+**Step 2**: Invert all bits.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
+
+**Step 3**: Add a leading sign bit.
+
+| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
+| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
+| bits       |   1   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |           -41 |
+
+With these steps, we generate the decimal number -41 from the two's complement representation.
+
+### Numbers we can represent
+
+In the **unsigned** range we can represent:
+
+| Bits | Base 2     | Range                                 |
+| ---- | ---------- | ------------------------------------- |
+| 8    | 2^8 - 1    | 0 to 255                              |
+| 16   | 2^{16} - 1 | 0 to 65,536                           |
+| 32   | 2^{32} - 1 | 0 to 4,294,967,296                    |
+| 64   | 2^{64} - 1 | 0 to 18,​446,​744,​073,​709,​551,​616 |
+
+In the **signed** (one's complement) we can represent:
+
+| Bits | Base 2                    | Range                                                   |
+| ---- | ------------------------- | ------------------------------------------------------- |
+| 8    | -2^{8-1}-1 to 2^{8-1}-1   | -127 to 127                                             |
+| 16   | -2^{16-1}-1 to 2^{16-1}-1 | -32,767 to 32,767                                       |
+| 32   | -2^{32-1}-1 to 2^{32-1}-1 | -2,147,483,647 to 2,147,483,647                         |
+| 64   | -2^{64-1}-1 to 2^{64-1}-1 | -9,223,372,036,854,775,807 to 9,223,372,036,854,775,807 |
+
+
+In the **signed** (two's complement) we can represent:
+
+| Bits | Base 2                  | Range                                                   |
+| ---- | ----------------------- | ------------------------------------------------------- |
+| 8    | -2^{8-1} to 2^{8-1}-1   | -128 to 127                                             |
+| 16   | -2^{16-1} to 2^{16-1}-1 | -32,768 to 32,767                                       |
+| 32   | -2^{32-1} to 2^{32-1}-1 | -2,147,483,648 to 2,147,483,647                         |
+| 64   | -2^{64-1} to 2^{64-1}-1 | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 |
+
+### Exercises
+
+**Range**
+
+How many numbers can we represent with 32 and 64 bit as 
+- an unsigned integer?
+- a signed integer in one's complement?
+- a signed integer in two's complement?
+
+**Convert**
+
+How can we represent the value -42 with the
+- one's complement?
+- two's complement?
+
+How can we represent the value -1 with the 
+- one's complement?
+- two's complement?
+
+How can we represent the value -12 with the 
+- one's complement?
+- two's complement?
+
 ---
 
 # 2) Architecture
@@ -713,187 +894,3 @@ Which one provides higher throughput and which one lower latency? Surprisingly, 
 
 A computer cannot distinguish between code and data. It all depends on the context. Something is interpreted as code if the program counterpoints the corresponding address in memory, and this word is loaded as instruction into the processor. It is interpreted as data when it gets processed as data. A machine word could be data and code at the same time. As already mentioned, this depends on how it is interpreted.
 
----
-
-# 3) Architecture 2
-
-## Signed and unsigned integer
-
-Bytes can represent numbers as well as alphabetic characters. But if we want to represent negative numbers, we have to use a sign bit.
-
-### One's complement
-
-The [one's complement](https://en.wikipedia.org/wiki/Signed_number_representations) can be used to represent negative numbers.
-
-**8-bit representation**
-
-We only use 7 bits for the value and the **MSB** for the sign with a simple sign bit.
-If the **MSB** is a 1, it represents a `-` else it is a `+`.
-
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
-| bits       |   1   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |           -41 |
-
-
-**Reason why we don't use the one's complement in practice:**
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |             0 |
-| bits       |   1   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |            -0 |
-
-We get two representations for 0, but we only need one.
-
-### Two's complement
-
-Integers are also commonly represented by using [two's complement](https://en.wikipedia.org/wiki/Two%27s_complement) notation, in which the left-most bit indicates the sign: If the leading bit is 1, we subtract 2^{n} to get the [integer](https://en.wikipedia.org/wiki/Integer_(computer_science)) corresponding to an n-bit number in this notation. Two's complement is used to change subtraction to addition by using the "complementary" of a number.
-
-**Using the binary number system**:
-
-Unsigned:
-
-- an unsigned byte can express the numbers 0 .. 255
-- two unsigned bytes can express the numbers 0 .. 65535
-
-[Signed](https://en.wikipedia.org/wiki/Signed_number_representations) (two's complement):
-
-- a signed byte can express the numbers -128 .. 127
-- two signed bytes can express the numbers -32768 .. 32767
-
-
-For example, -1 is the signed byte 0xff or 0b11111111. In this way, a signed byte can express the numbers -128 .. 127. That means we can use the formula -2^{n-1} to 2^{n-1}-1 to calculate the range.
-
-#### From decimal digit into two's complement
-
-If we want to show a positive representation, we can show this just as in the one's complement, so the sign bit is zero.
-
-If we want to represent 41 in two's complement, we fill in the needed bits.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
-
-
-To show the value of -41 in two's complement, we need to follow a **three-step plan**.
-
-**First**, we convert the decimal digit into the positive value in binary.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
-
-
-**Second**, we invert all binary digits, so that a 0 converts into a 1 and a 1 converts into a 0. 
-
-In the example with -41 that looks as follows:
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   0   |           -86 |
-
-We got the `MSB'with 1 as sign bit.
-
-As **third step**, we need to add 1 to the result of step two.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   1   |           -87 |
-
-That means the value of -87 is the two's complement representation of -41.
-
-**Complementary value**
-
-If we can represent the highest value with 7 bits, we can represent 2^{7}=128 values. As seen in the last example, we got a complement of -87, which means if we calculate 128-87, we get 41, then we also use the sign bit and get as a result -41. That means a two's complement representation of -41 shows us the [complement](https://en.wikipedia.org/wiki/Method_of_complements) of -41 in that 7-bit range.
-
-**Summary**
-
-For a two's complement representation, we need to follow a three-step plan:
-
-1) Convert the decimal digit into the positive representation of the value.
-2) We invert all digits. (0 -> 1 and 1 -> 0)
-3) We add 1 to the result of step two.
-
-#### From two's complement into decimal
-
-If we want to convert the two's complement representation of -41 into the decimal digit -41, we need to follow the three converting steps from above but in the other direction.
-
-Two's complement representation of -41:
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   1   |           -87 |
-
-**Step 1**: Add 1 to the two's complement representation.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   1   |   1   |   0   |   1   |   0   |   1   |   1   |   0   |           -86 |
-
-**Step 2**: Invert all bits.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
-
-**Step 3**: Add a leading sign bit.
-
-| bit values |  +/-  |  64   |  32   |  16   |   8   |   4   |   2   |   1   | Decimal Value |
-| :--------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ------------: |
-| bits       |   1   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |           -41 |
-
-With these steps, we generate the decimal number -41 from the two's complement representation.
-
-### Numbers we can represent
-
-In the **unsigned** range we can represent:
-
-| Bits | Base 2     | Range                                 |
-| ---- | ---------- | ------------------------------------- |
-| 8    | 2^8 - 1    | 0 to 255                              |
-| 16   | 2^{16} - 1 | 0 to 65,536                           |
-| 32   | 2^{32} - 1 | 0 to 4,294,967,296                    |
-| 64   | 2^{64} - 1 | 0 to 18,​446,​744,​073,​709,​551,​616 |
-
-In the **signed** (one's complement) we can represent:
-
-| Bits | Base 2                    | Range                                                   |
-| ---- | ------------------------- | ------------------------------------------------------- |
-| 8    | -2^{8-1}-1 to 2^{8-1}-1   | -127 to 127                                             |
-| 16   | -2^{16-1}-1 to 2^{16-1}-1 | -32,767 to 32,767                                       |
-| 32   | -2^{32-1}-1 to 2^{32-1}-1 | -2,147,483,647 to 2,147,483,647                         |
-| 64   | -2^{64-1}-1 to 2^{64-1}-1 | -9,223,372,036,854,775,807 to 9,223,372,036,854,775,807 |
-
-
-In the **signed** (two's complement) we can represent:
-
-| Bits | Base 2                  | Range                                                   |
-| ---- | ----------------------- | ------------------------------------------------------- |
-| 8    | -2^{8-1} to 2^{8-1}-1   | -128 to 127                                             |
-| 16   | -2^{16-1} to 2^{16-1}-1 | -32,768 to 32,767                                       |
-| 32   | -2^{32-1} to 2^{32-1}-1 | -2,147,483,648 to 2,147,483,647                         |
-| 64   | -2^{64-1} to 2^{64-1}-1 | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 |
-
-### Exercises
-
-**Range**
-
-How many numbers can we represent with 32 and 64 bit as 
-- an unsigned integer?
-- a signed integer in one's complement?
-- a signed integer in two's complement?
-
-**Convert**
-
-How can we represent the value -42 with the
-- one's complement?
-- two's complement?
-
-How can we represent the value -1 with the 
-- one's complement?
-- two's complement?
-
-How can we represent the value -12 with the 
-- one's complement?
-- two's complement?
