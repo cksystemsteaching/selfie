@@ -1,6 +1,6 @@
 # The Selfie Autograder
 
-[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features [compiler](../assignments/compiler-assignments.md) and [systems](../assignments/systems-assignments.md) assignments, located in the [assignments](assignments) subdirectory. Instructions for the assignments are placed in the main assignments. The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
+[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features [compiler](../assignments/compiler-assignments.md) and [systems](../assignments/systems-assignments.md) assignments, located in the [assignments](assignments) subdirectory. The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
 
 In order to use the autograder [install](../README.md) selfie first.
 
