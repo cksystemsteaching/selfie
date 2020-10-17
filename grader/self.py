@@ -195,8 +195,14 @@ def check_struct_execution() -> List[Check]:
 def check_assembler_parser() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
                            'selfie can parse its own implementation in assembly') + \
-        check_execution('./selfie -a <assignment>missing-address.s',
-                        'assembly file with a missing address is not parseable', success_criteria=False) + \
+        check_execution('./selfie -a <assignment>valid-registers-add.s',
+                           'assembly file with valid register access for RISC-U add instruction') + \
+        check_execution('./selfie -a <assignment>valid-registers-addi.s',
+                           'assembly file with valid register access for RISC-U addi instruction') + \
+        check_execution('./selfie -a <assignment>valid-hex.s',
+                           'assembly file with valid hex numbers') + \
+        check_execution('./selfie -a <assignment>invalid-argument.s',
+                        'assembly file with a invalid argument is not parseable', success_criteria=False) + \
         check_execution('./selfie -a <assignment>missing-instruction.s',
                         'assembly file with a missing instruction is not parseable', success_criteria=False) + \
         check_execution('./selfie -a <assignment>missing-literal.s',
