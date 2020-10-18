@@ -62,6 +62,8 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
+noprm: tools/nop_remover.c selfie.h
+	$(CC) -Wall -Wextra -O0 -g -m64 -D'uint64_t=unsigned long long' $< -o $@
 wipopt: tools/wip_recursive_traversal.c selfie.h
 	$(CC) -Wall -Wextra -O0 -g -m64 -D'uint64_t=unsigned long long' $< -o $@
 opt: tools/recursive_traversal.c selfie.h

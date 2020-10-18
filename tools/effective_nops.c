@@ -333,7 +333,7 @@ int main(int argc, char **argv) {
 
   debug = 0;
   find_nops();
-  printf1("found and patched %d effective nops\n", nops);
+  printf1("found and patched %d effective nops\n", (char*) nops);
   binary_name = replace_extension(binary_name, "nop2");
   selfie_output(binary_name);
 
