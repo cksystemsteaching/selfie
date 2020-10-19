@@ -2,6 +2,7 @@
 #define uint64_t unsigned long long
 
 uint64_t *machine_states = (uint64_t *) 0;
+uint64_t *cached_machine_states = (uint64_t *) 0;
 
 uint64_t *tmp_state = (uint64_t *) 0; // re-use this to avoid unnecessary allocations (since we can't free memory)
 
@@ -24,6 +25,19 @@ uint64_t *get_state(uint64_t pc) {
 
 void set_state(uint64_t pc, uint64_t *state) {
   *(machine_states + pc / INSTRUCTIONSIZE) = (uint64_t) state;
+}
+
+uint64_t *get_cached_state(uint64_t pc) {
+  if (cached_machine_states == (uint64_t*) 0) {
+    print("Cached states aren't initialized yet!");
+    exit(1);
+  }
+
+  return (uint64_t *) *(cached_machine_states + pc / INSTRUCTIONSIZE);
+}
+
+void set_cached_state(uint64_t pc, uint64_t *state) {
+  *(cached_machine_states + pc / INSTRUCTIONSIZE) = (uint64_t) state;
 }
 
 uint64_t is_reg_unknown(uint64_t *state, uint64_t reg) {
@@ -216,7 +230,62 @@ uint64_t apply_effects(uint64_t *state) {
   return tracked_change;
 }
 
-uint64_t depth = 0;
+uint64_t *call_stack = (uint64_t *) 0;
+uint64_t call_stack_index = 0;
+
+uint64_t call_stack_peek() {
+  return call_stack[call_stack_index - 1];
+}
+
+uint64_t call_stack_pop() {
+  call_stack_index = call_stack_index - 1;
+  return call_stack[call_stack_index];
+}
+
+void call_stack_push(uint64_t address) {
+  call_stack[call_stack_index] = address;
+  call_stack_index = call_stack_index + 1;
+}
+
+// check if current top address is also somewhere else on the stack to detect recursion
+uint64_t call_stack_recursion_check() {
+  uint64_t address;
+  uint64_t index;
+
+  if (call_stack_index == 1) {
+    return 0;
+  }
+
+  address = call_stack_peek();
+  index = 0;
+
+  while (index < call_stack_index - 1) {
+    if (call_stack[index] == address) {
+      return 1;
+    }
+    index = index + 1;
+  }
+  return 0;
+}
+
+// copy or merge
+void update_state(uint64_t address, uint64_t* new_state) {
+  if (get_state(address) == 0) {
+    set_state(address, new_machine_state());
+    copy_state(new_state, get_state(address));
+  } else {
+    merge_states(new_state, get_state(address));
+  }
+}
+
+void update_cached_state(uint64_t address, uint64_t* new_state) {
+  if (get_cached_state(address) == 0) {
+    set_cached_state(address, new_machine_state());
+    copy_state(new_state, get_cached_state(address));
+  } else {
+    merge_states(new_state, get_cached_state(address));
+  }
+}
 
 void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t created_new_state;
@@ -224,7 +293,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t force_continue;
   uint64_t i;
 
-  depth = depth + 1;
   force_continue = 0;
 
   while (1) {
@@ -249,7 +317,13 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       } else if (!merge_states(tmp_state, state)) { // merge current machine states
         if (!force_continue) {
           // if merge didn't result in any changes: return
-          depth = depth - 1;
+          if (current_ra != -1) {
+            if (get_cached_state(call_stack_peek()) != 0) {
+              if (!call_stack_recursion_check()) {
+                update_state(current_ra, get_cached_state(call_stack_peek()));
+              }
+            }
+          }
           return;
         }
       }
@@ -261,7 +335,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     decode();
 
     if (debug) {
-      printf1("%d: ", (char *) depth);
+      printf1("%d: ", (char *) call_stack_index);
       print_instruction();
       printf1(" (%d):", (char *) pc);
       i = 1;
@@ -277,22 +351,31 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     prev_pc = pc;
 
     if (is == BEQ) {
-      // explore branch in recursive call and continue executing non-branch path in current call
-      traverse_recursive(pc + imm, pc, current_ra);
-      // last loaded instruction from recursive call remains
-      // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
-      // (the loaded instruction ends up being the beq itself, which has no effect)
-      ir = load_instruction(pc);
-      decode();
-      // if the source registers are equal: the branch must be taken!
-      // therefore, we do not have to explore the other path and we can return early
-      //if (!is_reg_unknown(state, rs1))
-      //  if (!is_reg_unknown(state, rs2))
-      //    if (get_reg(state, rs1) == get_reg(state, rs2))
-      //      return;
+      // if the registers being compared have known values: explore the corresponding branch only
+      if (is_reg_unknown(state, rs1) + is_reg_unknown(state, rs2) == 0) {
+        if (get_reg(state, rs1) == get_reg(state, rs2)) {
+          // explore branch and return
+          traverse_recursive(pc + imm, pc, current_ra);
+          return;
+        }
+        // else: continue exploring current path
+      }
+        // explore both branches
+      else {
+        // explore branch in recursive call and continue executing non-branch path in current call
+        traverse_recursive(pc + imm, pc, current_ra);
+        // last loaded instruction from recursive call remains
+        // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
+        // (the loaded instruction ends up being the beq itself, which has no effect)
+        ir = load_instruction(pc);
+        decode();
+      }
+
     } else if (is == JAL) {
       if (rd == REG_RA) { // procedure call
+        call_stack_push(pc + imm);
         traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
+        call_stack_pop();
 
         // load and decode jal again
         ir = load_instruction(pc);
@@ -302,23 +385,21 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
         // this is needed because the machine state at the next instruction got modified by the recursive call earlier
         // but we still need to follow that path as the following machine states haven't been updated yet
         force_continue = 1;
+        prev_pc = (uint64_t) -1;
       }
       else if (rd == REG_ZR) { // "normal" jump
         pc = pc + imm - INSTRUCTIONSIZE; // subtract INSTRUCTIONSIZE because it gets added again at the end of the loop
       }
       else { // other
-        print("Error: jal doesn't seem to be return from procedure or \"normal\" jump!");
+        print("Error: jal doesn't seem to be procedure call or \"normal\" jump!");
         exit(1);
       }
     } else if (is == JALR) {
       // for now: assume that every jalr returns from a function
       if (rd == REG_ZR) {
-        depth = depth - 1;
-        if (get_state(current_ra) == 0) {
-          set_state(current_ra, new_machine_state());
-          copy_state(state, get_state(current_ra));
-        } else {
-          merge_states(state, get_state(current_ra));
+        if (!call_stack_recursion_check()) {
+          update_state(current_ra, state);
+          update_cached_state(call_stack_peek(), state);
         }
         return;
       } else {
@@ -328,7 +409,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     } else if (is == ECALL) {
       // assume that value of a7 is always known
       if (get_reg(state, REG_A7) == SYSCALL_EXIT) {
-        depth = depth - 1;
         return;
       }
     }
@@ -339,6 +419,10 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
 void selfie_traverse() {
   // allocate for each instruction
   machine_states = zalloc(SIZEOFUINT64STAR * (code_length / INSTRUCTIONSIZE));
+  // these allocations could be way smaller (with more complicated code)
+  // but we need O(n) memory with n = number of instructions anyway
+  cached_machine_states = zalloc(SIZEOFUINT64STAR * (code_length / INSTRUCTIONSIZE));
+  call_stack = malloc(SIZEOFUINT64STAR * (code_length / INSTRUCTIONSIZE));
 
   // binary_name = replace_extension(binary_name, "opt");
 
@@ -405,11 +489,14 @@ uint64_t find_next_enop(uint64_t from_pc) {
         } //else {print_state(get_state(i));print("->\n");print_state(state);print("\n");}
       }
     }
+    else {
+      return i;
+    }
 
     i = i + INSTRUCTIONSIZE;
   }
 
-  return -1;
+  return (uint64_t) -1;
 }
 
 uint64_t found_enops = 0;
