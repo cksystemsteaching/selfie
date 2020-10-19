@@ -202,11 +202,11 @@ def check_assembler_parser() -> List[Check]:
         check_execution('./selfie -a <assignment>valid-hex.s',
                         'assembly file with valid hex numbers') + \
         check_execution('./selfie -a <assignment>invalid-argument.s',
-                        'assembly file with a invalid argument is not parseable', success_criteria=False) + \
+                        'assembly file with a invalid argument is not parseable', should_succeed=False) + \
         check_execution('./selfie -a <assignment>missing-instruction.s',
-                        'assembly file with a missing instruction is not parseable', success_criteria=False) + \
+                        'assembly file with a missing instruction is not parseable', should_succeed=False) + \
         check_execution('./selfie -a <assignment>missing-literal.s',
-                        'assembly file with a missing literal is not parseable', success_criteria=False)
+                        'assembly file with a missing literal is not parseable', should_succeed=False)
 
 
 def check_self_assemblation() -> List[Check]:
