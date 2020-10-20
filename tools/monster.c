@@ -735,7 +735,7 @@ void constrain_ld() {
       if (sword) {
         *(registers + rd) = get_word_value(sword);
 
-        if (get_number_of_bits(sword) < CPUBITWIDTH)
+        if (get_number_of_bits(sword) < WORDSIZEINBITS)
           *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
         else
           *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
@@ -786,7 +786,7 @@ void constrain_sd() {
       *(registers + rs2),
       (char*) *(reg_sym + rs2),
       0,
-      CPUBITWIDTH);
+      WORDSIZEINBITS);
 
     // keep track of instruction address for profiling stores
     a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -1212,7 +1212,7 @@ char* bv_zero_extension(uint64_t bits) {
 
   string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf1(string, "(_ zero_extend %u)", (char*) (CPUBITWIDTH - bits));
+  sprintf1(string, "(_ zero_extend %u)", (char*) (WORDSIZEINBITS - bits));
 
   return string;
 }
