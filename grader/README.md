@@ -53,7 +53,7 @@ Then, on the web:
 
 And then, in a terminal where your selfie installation is:
 
-1. Change directory to the root directory of your selfie installation from https://github.com/cksystemsteaching/selfie.
+1. Change directory to the root directory of your selfie installation (from https://github.com/cksystemsteaching/selfie).
 2. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
 3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin https://github.com/<yourusername>/myselfie.git`
 4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
