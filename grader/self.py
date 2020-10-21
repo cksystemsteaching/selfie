@@ -201,7 +201,7 @@ def check_assembler_parser() -> List[Check]:
                         'assembly file with valid register access for RISC-U addi instruction') + \
         check_execution('./selfie -a <assignment>valid-hex.s',
                         'assembly file with valid hex numbers') + \
-        check_execution('./selfie -a <assignment>invalid-argument.s',
+        check_execution('./selfie -a <assignment>invalid-argument-add.s',
                         'assembly file with a invalid argument is not parseable', should_succeed=False) + \
         check_execution('./selfie -a <assignment>missing-instruction.s',
                         'assembly file with a missing instruction is not parseable', should_succeed=False) + \
