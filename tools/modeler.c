@@ -1806,12 +1806,12 @@ void modeler() {
       data_flow_nid = current_nid + 2;
     }
 
-    pc = pc + REGISTERSIZE;
+    pc = pc + WORDSIZE;
 
     if (current_nid == loader_nid + 1)
-      current_nid = loader_nid + REGISTERSIZE;
+      current_nid = loader_nid + WORDSIZE;
     else
-      current_nid = current_nid + REGISTERSIZE;
+      current_nid = current_nid + WORDSIZE;
   }
 
   print("\n; 64-bit memory\n\n");
