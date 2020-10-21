@@ -10,7 +10,7 @@ from .output_processing import (filter_status_messages, has_compiled,
                                 has_no_compile_warnings, is_interleaved_output,
                                 is_permutation_of)
 from .print import print_processing, print_warning, stop_processing_spinner
-from .system import INSTRUCTIONSIZE, REGISTERSIZE, read_data, read_instruction
+from .system import INSTRUCTIONSIZE, WORDSIZE, read_data, read_instruction
 
 if sys.version_info < (3, 3):
     from subprocess import Popen, PIPE
@@ -123,7 +123,7 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
 
                 try:
                     with open('.tmp.bin', 'rb') as f:
-                        ignored_elf_header_size = 14 * REGISTERSIZE
+                        ignored_elf_header_size = 14 * WORDSIZE
 
                         f.read(ignored_elf_header_size)
 
@@ -131,7 +131,7 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
                         code_length = read_data(f)
 
                         # ignore all pading bytes
-                        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
+                        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * WORDSIZE
 
                         if no_of_bytes_until_code < 0:
                             no_of_bytes_until_code = 0
