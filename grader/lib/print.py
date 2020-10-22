@@ -23,33 +23,6 @@ def print_loud(msg, end='\n'):
     sys.stdout = quiet_writer
 
 
-def print_usage(options, assignments: List[Assignment]):
-    println('Usage: python3 grader/self.py { option } <test>\n')
-
-    println('Options:')
-
-    width = max(
-        map(lambda x: 0 if x[2] is None else len(x[2]), options))
-
-    for option in options:
-        println('  {0} {1:{width}}  {2}'.format(
-            option[0], option[2] if option[2] is not None else '', option[3], width=width))
-
-    println()
-
-    def print_assignment_of_lecture(lecture):
-        println(lecture + ' Assignments:')
-
-        for assignment in filter(lambda x: x.lecture is lecture, assignments):
-            println('  {}'.format(assignment.name))
-
-        println()
-
-    print_assignment_of_lecture('General')
-    print_assignment_of_lecture('Compiler')
-    print_assignment_of_lecture('OS')
-
-
 def print_grade(grade):
     colors = {'2': 92, '3': 93, '4': 93, '5': 91}
 

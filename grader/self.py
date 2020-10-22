@@ -195,12 +195,18 @@ def check_struct_execution() -> List[Check]:
 def check_assembler_parser() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
                            'selfie can parse its own implementation in assembly') + \
-        check_execution('./selfie -a <assignment>missing-address.s',
-                        'assembly file with a missing address is not parseable', success_criteria=False) + \
+        check_execution('./selfie -a <assignment>valid-registers-add.s',
+                        'assembly file with valid register access for RISC-U add instruction') + \
+        check_execution('./selfie -a <assignment>valid-registers-addi.s',
+                        'assembly file with valid register access for RISC-U addi instruction') + \
+        check_execution('./selfie -a <assignment>valid-hex.s',
+                        'assembly file with valid hex numbers') + \
+        check_execution('./selfie -a <assignment>invalid-argument-add.s',
+                        'assembly file with a invalid argument is not parseable', should_succeed=False) + \
         check_execution('./selfie -a <assignment>missing-instruction.s',
-                        'assembly file with a missing instruction is not parseable', success_criteria=False) + \
+                        'assembly file with a missing instruction is not parseable', should_succeed=False) + \
         check_execution('./selfie -a <assignment>missing-literal.s',
-                        'assembly file with a missing literal is not parseable', success_criteria=False)
+                        'assembly file with a missing literal is not parseable', should_succeed=False)
 
 
 def check_self_assemblation() -> List[Check]:
@@ -313,28 +319,28 @@ assignments: Set[Assignment] = {
     Assignment('struct-execution', 'Compiler', 'struct',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
                check_struct_execution),
-    Assignment('assembler-parser', 'OS', 'assembler',
+    Assignment('assembler-parser', 'Systems', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
                check_assembler_parser),
-    Assignment('self-assembler', 'OS', 'assembler',
+    Assignment('self-assembler', 'Systems', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-self-assembler',
                check_self_assemblation),
-    Assignment('processes', 'OS', 'processes',
+    Assignment('processes', 'Systems', 'processes',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-processes',
                check_processes),
-    Assignment('fork-wait', 'OS', 'fork-wait',
+    Assignment('fork-wait', 'Systems', 'fork-wait',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait',
                check_fork_and_wait),
-    Assignment('fork-wait-exit', 'OS', 'fork-wait',
+    Assignment('fork-wait-exit', 'Systems', 'fork-wait',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait-exit',
                check_fork_wait_exit),
-    Assignment('lock', 'OS', 'lock',
+    Assignment('lock', 'Systems', 'lock',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-lock',
                check_lock),
-    Assignment('threads', 'OS', 'threads',
+    Assignment('threads', 'Systems', 'threads',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threads',
                check_threads),
-    Assignment('treiber-stack', 'OS', 'treiber-stack',
+    Assignment('treiber-stack', 'Systems', 'treiber-stack',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
                check_treiber_stack)
 }

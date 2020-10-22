@@ -735,7 +735,7 @@ void constrain_ld() {
       if (sword) {
         *(registers + rd) = get_word_value(sword);
 
-        if (get_number_of_bits(sword) < CPUBITWIDTH)
+        if (get_number_of_bits(sword) < WORDSIZEINBITS)
           *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
         else
           *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
@@ -786,7 +786,7 @@ void constrain_sd() {
       *(registers + rs2),
       (char*) *(reg_sym + rs2),
       0,
-      CPUBITWIDTH);
+      WORDSIZEINBITS);
 
     // keep track of instruction address for profiling stores
     a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -961,7 +961,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   set_pc(context, location);
 
-  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_regs(context, smalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
   r = 0;
 
@@ -1012,7 +1012,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   symbolic_memory = get_symbolic_memory(original);
 
-  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR));
 
   set_merge_partner(context, original);
 
@@ -1050,7 +1050,7 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_execution_depth(context, 0);
   set_path_condition(context, "true");
   set_symbolic_memory(context, (uint64_t*) 0);
-  set_symbolic_regs(context, zmalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_symbolic_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR));
   set_beq_counter(context, 0);
   set_merge_partner(context, (uint64_t*) 0);
   set_call_stack(context, call_stack_tree);
@@ -1212,7 +1212,7 @@ char* bv_zero_extension(uint64_t bits) {
 
   string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf1(string, "(_ zero_extend %u)", (char*) (CPUBITWIDTH - bits));
+  sprintf1(string, "(_ zero_extend %u)", (char*) (WORDSIZEINBITS - bits));
 
   return string;
 }

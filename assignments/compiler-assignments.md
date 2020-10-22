@@ -1,6 +1,6 @@
 # Compiler Assignments
 
-## This information is shared via the course's slack channel.
+## The following information is shared via the course's slack channel.
 
 - Lectures and tutorials
 - Recordings
@@ -13,7 +13,7 @@ Always submit something for each assignment by the due date and time, even if yo
 
 ## Essential for every assignment
 
-Use the autograder to determine your grade. See the grader [README.md](https://github.com/cksystemsteaching/selfie/blob/master/grader/README.md) file for instructions.
+Use the autograder to determine your grade. See the autograder's [README.md](../grader/README.md) for instructions.
 
 > No compiler warnings, please!
 
@@ -25,7 +25,7 @@ Part of the assignment is to figure out how to do that.
 - Do not modify any files other than **selfie.c**.
 - Use the `print-your-name` target in the grader to determine your grade.
 
-**Hint**: [output_processing.py](https://github.com/cksystemsteaching/selfie/blob/e5b752478f774a384ab6ebd382acc6bdad0ea5df/grader/lib/output_processing.py#L8)
+**Hint**: see [output_processing.py](../grader/lib/output_processing.py)
 
 Your message has to be prefixed like every other "status message" of selfie.
 So instead of printing:
