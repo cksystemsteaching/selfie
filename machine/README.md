@@ -4,7 +4,7 @@ Selfie features bare-metal support in the form of a library operating system and
 
 ## Library Operating System
 
-The library OS is an unikernel that is linked at compile-time with Selfie. Upon boot, the unikernel initializes the hardware and prepares an execution environment, before calling into Selfie's `main` function with compile-time arguments. After returning from `main` or calling `exit`, the kernel prints the exit code and stalls the system.
+The library OS is a unikernel that is linked at compile-time with Selfie. Upon boot, the unikernel initializes the hardware and prepares an execution environment, before calling into Selfie's `main` function with compile-time arguments. After returning from `main` or calling `exit`, the kernel prints the exit code and stalls the system.
 
 As the library OS is a simple layer between the hardware and Selfie, it does not utilize multitasking or memory virtualization. In a cooperative way, the kernel passes control to the linked application and regains control when Selfie performs a syscall. Selfie and the kernel are not spatially isolated  and both use physical addressing. System calls are plain function calls and do not raise an environment call exception.
 
@@ -109,9 +109,9 @@ build
 :
 ```
 
-`selfie.elf` is the main artifact that contains the kernel and the static file system. `selfie.bin` is the flat binary version of `selfie.elf` that must be loaded to \$SBI_START+\$PAYLOAD_OFFSET, as specified in the Makefile.
+`selfie.elf` is the main artifact that contains the kernel and the static file system. `selfie.bin` is the flat binary version of `selfie.elf` that must be loaded to \$SBI\_START+\$PAYLOAD\_OFFSET, as specified in the Makefile.
 
-`selfie.elf` and `selfie.bin` do not contain OpenSBI which is required as supervisor binary. Therefor it is necessary that the board's bootloader loads OpenSBI and the kernel.
+`selfie.elf` and `selfie.bin` do not contain OpenSBI which is required as supervisor binary. Therefore, it is necessary that the board's bootloader loads OpenSBI and the kernel.
 
 `selfie-opensbi.elf` packages `selfie.bin` to OpenSBI using the `FW_PAYLOAD` Makefile configuration. Thus, it is an OpenSBI binary that passes execution to the `selfie.bin` payload after initialization. This is necessary for binaries that must be self-contained, mostly on embedded platforms.
 
