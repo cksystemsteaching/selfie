@@ -22,9 +22,11 @@ The library OS does not install a trap handler. If Selfie or the kernel raise an
 The multitasking kernel builds upon [RISC-V's privileged specification v1.11](https://riscv.org//wp-content/uploads/2019/08/riscv-privileged-20190608-1.pdf) but is compatible with implementations of [RISC-V's privileged specification v1.10](https://riscv.org//wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf). This means that at the moment it is not possible to execute it on the Kendryte K210.
 
 Special features include:
-* Multitasking
+* Preemptive multitasking
 * Round-robin scheduling
 * Memory virtualization through the use of RISC-V's Sv39 paging
+* Rudimentary trap handling including support for the five system calls `exit`, `read`, `write`, `openat`, and `brk`
+* An ELF loader that is capable of loading ELF files emitted by Selfie
 
 Details of this kernel's implementation are described in [Martin Fischer's bachelor thesis "RISC-V S-Mode-Hosted Bare-Metal Selfie"](../theses#risc-v-s-mode-hosted-bare-metal-selfie-by-martin-fischer-university-of-salzburg-austria-2020-pdf-release).
 
