@@ -10,6 +10,13 @@ As the library OS is a simple layer between the hardware and Selfie, it does not
 
 The library OS does not install a trap handler. If Selfie or the kernel raise an exception, it will be handled by OpenSBI.
 
+### Software Stack
+
+| Privilege level | Software   |
+| --------------- | ---------- |
+| Machine mode    | OpenSBI    |
+| Supervisor mode | Library OS |
+
 ## Multitasking Kernel
 
 The multitasking kernel builds upon [RISC-V's privileged specification v1.11](https://riscv.org//wp-content/uploads/2019/08/riscv-privileged-20190608-1.pdf) but is compatible with implementations of [RISC-V's privileged specification v1.10](https://riscv.org//wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf). This means that at the moment it is not possible to execute it on the Kendryte K210.
