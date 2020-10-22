@@ -4,7 +4,11 @@ Selfie features bare-metal support in the form of a library operating system and
 
 ## Library Operating System
 
+The library OS kernel is an unikernel that is linked at compile-time with Selfie. Upon boot, the unikernel initializes the hardware and prepares an execution environment, before calling into Selfie's `main` function with compile-time arguments. After returning from `main` or calling `exit`, the kernel prints the exit code and stalls the system.
 
+As the library OS is a simple layer between the hardware and Selfie, it does not utilize multitasking or memory virtualization. In a cooperative way, the kernel passes control to the linked application and regains control when Selfie performs a syscall. Selfie and the kernel are not spatially isolated  and both use physical addressing. System calls are plain function calls and do not raise an environment call exception.
+
+The library OS does not install a trap handler. If Selfie or the kernel raise an exception, it will be handled by OpenSBI.
 
 ## Multitasking Kernel
 
@@ -24,6 +28,20 @@ Details of this kernel's implementation are described in [Martin Fischer's bache
 | Machine mode    | OpenSBI        |
 | Supervisor mode | Kernel         |
 | User mode       | User processes |
+
+## Common Source Code
+
+Both the library OS and kernel OS variant [share common code](./Makefile#L24) for:
+- Kernel Bootstrapping
+- Generalized init process bootstrapping
+- Kernel C standard library
+- Console
+- SBI calls
+- Static read-only File System
+- Diagnostics
+- Generalized system calls
+
+Each kernel variant must provide implementations for concrete init process bootstrapping as well as glue code between the syscall interface and the generalized syscall implementation.
 
 ## Building Selfie For Bare Metal
 
