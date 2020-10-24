@@ -394,8 +394,14 @@ uint64_t SYM_GEQ          = 27; // >=
 uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
+uint64_t SYM_VA_LIST   = 31; // va_list
+
+uint64_t MACRO_VA_START = 0;
+uint64_t MACRO_VA_ARG   = 1;
+uint64_t MACRO_VA_END   = 2;
 
 uint64_t* SYMBOLS; // strings representing symbols
+uint64_t* MACROS;  // strings representing macro names
 
 uint64_t MAX_IDENTIFIER_LENGTH = 64;  // maximum number of characters in an identifier
 uint64_t MAX_INTEGER_LENGTH    = 20;  // maximum number of characters in an unsigned integer
@@ -429,7 +435,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_VA_LIST + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -463,6 +469,13 @@ void init_scanner () {
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
+  *(SYMBOLS + SYM_VA_LIST)  = (uint64_t) "va_list";
+
+  MACROS = smalloc((MACRO_VA_END + 1) * SIZEOFUINT64STAR);
+
+  *(MACROS + MACRO_VA_START) = (uint64_t) "va_start";
+  *(MACROS + MACRO_VA_ARG)   = (uint64_t) "va_arg";
+  *(MACROS + MACRO_VA_END)   = (uint64_t) "va_end";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -504,7 +517,7 @@ uint64_t report_undefined_procedures();
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | value   | VARIABLE: initial value
+// |  5 | value   | VARIABLE: initial value, PROCEDURE: number of parameters
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
 // |  7 | scope   | REG_GP (global), REG_S0 (local)
 // +----+---------+
@@ -558,6 +571,7 @@ uint64_t HASH_TABLE_SIZE = 1024;
 uint64_t* global_symbol_table  = (uint64_t*) 0;
 uint64_t* local_symbol_table   = (uint64_t*) 0;
 uint64_t* library_symbol_table = (uint64_t*) 0;
+uint64_t* current_function     = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
 uint64_t number_of_procedures       = 0;
@@ -572,6 +586,7 @@ void reset_symbol_tables() {
   global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
+  current_function     = (uint64_t*) 0;
 
   number_of_global_variables = 0;
   number_of_procedures       = 0;
@@ -623,6 +638,8 @@ uint64_t procedure_call(uint64_t* entry, char* procedure);
 void     procedure_prologue(uint64_t number_of_local_variable_bytes);
 void     procedure_epilogue(uint64_t number_of_parameter_bytes);
 
+uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro);
+uint64_t compile_call_or_macro(char* procedure_or_macro);
 uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
@@ -637,6 +654,10 @@ void     compile_variable(uint64_t offset);
 uint64_t compile_initialization(uint64_t type);
 void     compile_procedure(char* procedure, uint64_t type);
 void     compile_cstar();
+
+void     builtin_va_start();
+uint64_t builtin_va_arg();
+void     builtin_va_end();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -3049,6 +3070,9 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
+  else if (identifier_string_match(SYM_VA_LIST))
+    // selfie bootstraps va_list to uint64_t!
+    return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
 }
@@ -3931,6 +3955,23 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
+  return string_compare(procedure_or_macro, (char*) *(MACROS + macro));
+}
+
+uint64_t compile_call_or_macro(char* procedure_or_macro) {
+  if (macro_string_match(procedure_or_macro, MACRO_VA_START)) {
+    builtin_va_start();
+    return VOID_T;
+  } else if (macro_string_match(procedure_or_macro, MACRO_VA_ARG)) {
+    return builtin_va_arg();
+  } else if (macro_string_match(procedure_or_macro, MACRO_VA_END)) {
+    builtin_va_end();
+    return VOID_T;
+  } else
+    return compile_call(procedure_or_macro);
+}
+
 uint64_t compile_call(char* procedure) {
   uint64_t* entry;
   uint64_t number_of_temporaries;
@@ -4079,7 +4120,7 @@ uint64_t compile_factor() {
       get_symbol();
 
       // procedure call: identifier "(" ... ")"
-      type = compile_call(variable_or_procedure_name);
+      type = compile_call_or_macro(variable_or_procedure_name);
 
       talloc();
 
@@ -4654,7 +4695,7 @@ void compile_statement() {
     if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
-      compile_call(variable_or_procedure_name);
+      compile_call_or_macro(variable_or_procedure_name);
 
       // reset return register to initial return value
       // for missing return expressions
@@ -4873,7 +4914,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
     else if (get_type(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
@@ -4885,7 +4926,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, binary_length);
     else {
       // procedure already called or declared or defined
       if (get_address(entry) != 0) {
@@ -4921,6 +4962,8 @@ void compile_procedure(char* procedure, uint64_t type) {
         printf1("redefinition of procedure %s ignored\n", procedure);
       }
     }
+
+    current_function = search_global_symbol_table(procedure, PROCEDURE);
 
     get_symbol();
 
@@ -5050,6 +5093,100 @@ void compile_cstar() {
         }
       } else
         syntax_error_symbol(SYM_IDENTIFIER);
+    }
+  }
+}
+
+//
+// builtins
+//
+
+void builtin_va_start() {
+  uint64_t* va_list;
+  uint64_t s0_offset;
+  
+  va_list = (uint64_t*) 0;
+  s0_offset = 0;
+
+  if (symbol == SYM_IDENTIFIER) {
+    va_list = get_scoped_symbol_table_entry(identifier, VARIABLE);
+
+    get_symbol();
+    if (symbol == SYM_COMMA) {
+      get_symbol();
+
+      if (symbol == SYM_IDENTIFIER) {
+        get_symbol();
+
+        if (symbol == SYM_RPARENTHESIS) {
+          get_symbol();
+
+          s0_offset = (get_value(current_function) + 2) * REGISTERSIZE;
+
+          load_integer(s0_offset);
+
+          emit_add(current_temporary(), current_temporary(), REG_S0);
+
+          emit_sd(REG_S0, get_address(va_list), current_temporary());
+
+          tfree(1);
+
+          return;
+        }
+      }
+    }
+  }
+}
+
+uint64_t builtin_va_arg() {
+  uint64_t* va_list;
+  uint64_t  type;
+  uint64_t  va_list_address;
+  
+  va_list = (uint64_t*) 0;
+  type = 0;
+  va_list_address = 0;
+
+  if (symbol == SYM_IDENTIFIER) {
+    va_list = get_scoped_symbol_table_entry(identifier, VARIABLE);
+
+    get_symbol();
+    if (symbol == SYM_COMMA) {
+      get_symbol();
+
+      type = compile_type();
+
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        va_list_address = get_address(va_list);
+
+        talloc();
+
+        emit_ld(current_temporary(), REG_S0, va_list_address);
+
+        emit_ld(REG_A0, current_temporary(), 0);
+
+        emit_addi(current_temporary(), current_temporary(), REGISTERSIZE);
+
+        emit_sd(REG_S0, va_list_address, current_temporary());
+
+        tfree(1);
+
+        return type;
+      }
+    }
+  }
+
+  return type;
+}
+
+void builtin_va_end() {
+  if (symbol == SYM_IDENTIFIER) {
+    get_symbol();
+
+    if (symbol == SYM_RPARENTHESIS) {
+      get_symbol();
     }
   }
 }
