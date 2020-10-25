@@ -5102,14 +5102,14 @@ void compile_cstar() {
 //
 
 void builtin_va_start() {
-  uint64_t* va_list;
+  uint64_t* va_list_variable;
   uint64_t s0_offset;
   
-  va_list = (uint64_t*) 0;
+  va_list_variable = (uint64_t*) 0;
   s0_offset = 0;
 
   if (symbol == SYM_IDENTIFIER) {
-    va_list = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    va_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
 
     get_symbol();
     if (symbol == SYM_COMMA) {
@@ -5127,7 +5127,7 @@ void builtin_va_start() {
 
           emit_add(current_temporary(), current_temporary(), REG_S0);
 
-          emit_sd(REG_S0, get_address(va_list), current_temporary());
+          emit_sd(REG_S0, get_address(va_list_variable), current_temporary());
 
           tfree(1);
 
@@ -5139,16 +5139,16 @@ void builtin_va_start() {
 }
 
 uint64_t builtin_va_arg() {
-  uint64_t* va_list;
+  uint64_t* va_list_variable;
   uint64_t  type;
   uint64_t  va_list_address;
   
-  va_list = (uint64_t*) 0;
+  va_list_variable = (uint64_t*) 0;
   type = 0;
   va_list_address = 0;
 
   if (symbol == SYM_IDENTIFIER) {
-    va_list = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    va_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
 
     get_symbol();
     if (symbol == SYM_COMMA) {
@@ -5159,7 +5159,7 @@ uint64_t builtin_va_arg() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
-        va_list_address = get_address(va_list);
+        va_list_address = get_address(va_list_variable);
 
         talloc();
 
