@@ -3810,7 +3810,7 @@ void load_integer(uint64_t value) {
 
   // assert: n = allocated_temporaries
 
-  if (is_signed_integer(value, SINGLEWORDSIZEINBITS)) {
+  if (is_signed_integer(value, 32)) {
     // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
