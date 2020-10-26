@@ -5449,7 +5449,7 @@ void check_immediate_range(uint64_t immediate, uint64_t bits) {
     printf3("%d expected between %d and %d\n",
       (char*) immediate,
       (char*) -two_to_the_power_of(bits - 1),
-      (char*) two_to_the_power_of(bits - 1) - 1);
+      (char*) (two_to_the_power_of(bits - 1) - 1));
 
     exit(EXITCODE_COMPILERERROR);
   }
