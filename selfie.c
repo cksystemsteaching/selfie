@@ -187,12 +187,15 @@ uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 char* SELFIE_URL = (char*) 0;
 
 uint64_t WORDSIZE       = 8;  // (double) word size in bytes
-uint64_t WORDSIZEINBITS = 64; // 8 * WORDSIZE
+uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
 uint64_t SINGLEWORDSIZEINBITS = 32;
 
-uint64_t SIZEOFUINT64     = 8; // must be the same as WORDSIZE
-uint64_t SIZEOFUINT64STAR = 8; // must be the same as WORDSIZE
+uint64_t SIZEOFUINT64       = 8;  // in bytes
+uint64_t SIZEOFUINT64INBITS = 64; // SIZEOFUINT64 * 8
+
+uint64_t SIZEOFUINT64STAR       = 8; // in bytes, must be the same as SIZEOFUINT64
+uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 
 uint64_t* power_of_two_table;
 
@@ -275,16 +278,24 @@ uint64_t output_cursor = 0; // cursor for output buffer
 void init_library() {
   uint64_t i;
 
-  SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
+  SELFIE_URL = "selfie.cs.uni-salzburg.at";
 
-  // powers of two table with WORDSIZEINBITS entries for 2^0 to 2^(WORDSIZEINBITS - 1)
-  power_of_two_table = smalloc(WORDSIZEINBITS * SIZEOFUINT64);
+  // determine actual size of uint64_t
+  SIZEOFUINT64       = (uint64_t) ((uint64_t*) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
+  SIZEOFUINT64INBITS = SIZEOFUINT64 * 8;
+
+  // determine actual size of uint64_t*
+  SIZEOFUINT64STAR       = (uint64_t) ((uint64_t**) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
+  SIZEOFUINT64STARINBITS = SIZEOFUINT64STAR * 8;
+
+  // powers of two table with SIZEOFUINT64INBITS entries for 2^0 to 2^(SIZEOFUINT64INBITS - 1)
+  power_of_two_table = smalloc(SIZEOFUINT64INBITS * SIZEOFUINT64);
 
   *power_of_two_table = 1; // 2^0 == 1
 
   i = 1;
 
-  while (i < WORDSIZEINBITS) {
+  while (i < SIZEOFUINT64INBITS) {
     // compute powers of two incrementally using this recurrence relation
     *(power_of_two_table + i) = *(power_of_two_table + (i - 1)) * 2;
 
@@ -295,15 +306,15 @@ void init_library() {
   UINT64_MAX = -1;
 
   // compute 64-bit signed integer range using unsigned integer arithmetic
-  INT64_MAX = two_to_the_power_of(WORDSIZEINBITS - 1) - 1;
-  INT64_MIN = INT64_MAX + 1;
+  INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
+  INT64_MAX = INT64_MIN - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
-  // accommodate at least WORDSIZEINBITS numbers for itoa, no mapping needed
-  integer_buffer = string_alloc(WORDSIZEINBITS);
+  // accommodate at least SIZEOFUINT64INBITS numbers for itoa, no mapping needed
+  integer_buffer = string_alloc(SIZEOFUINT64INBITS);
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
@@ -1875,20 +1886,21 @@ uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 11; // leaving 1-10 for apps
 uint64_t EXITCODE_BADARGUMENTS           = 12;
 uint64_t EXITCODE_MOREARGUMENTS          = 13;
-uint64_t EXITCODE_IOERROR                = 14;
-uint64_t EXITCODE_SCANNERERROR           = 15;
-uint64_t EXITCODE_PARSERERROR            = 16;
-uint64_t EXITCODE_COMPILERERROR          = 17;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 18;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 19;
-uint64_t EXITCODE_DIVISIONBYZERO         = 20;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 21;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 22;
-uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 23;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 24;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 25; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 26; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 27;
+uint64_t EXITCODE_SYSTEMERROR            = 14;
+uint64_t EXITCODE_IOERROR                = 15;
+uint64_t EXITCODE_SCANNERERROR           = 16;
+uint64_t EXITCODE_PARSERERROR            = 17;
+uint64_t EXITCODE_COMPILERERROR          = 18;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 19;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 20;
+uint64_t EXITCODE_DIVISIONBYZERO         = 21;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 22;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 23;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 24;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 25;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 26; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 27; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 28;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1959,6 +1971,10 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
 }
 
 void init_system() {
+  if (SIZEOFUINT64 != SIZEOFUINT64STAR)
+    // uint64_t and uint64_t* must be the same size
+    exit(EXITCODE_SYSTEMERROR);
+
   if (is_boot_level_zero()) {
     BOOTLEVELZERO = 1;
 
@@ -1991,7 +2007,7 @@ void turn_on_gc_library(uint64_t period, char* name) {
 // -----------------------------------------------------------------
 
 uint64_t two_to_the_power_of(uint64_t p) {
-  // assert: 0 <= p < WORDSIZEINBITS
+  // assert: 0 <= p < SIZEOFUINT64INBITS
   return *(power_of_two_table + p);
 }
 
@@ -2014,24 +2030,24 @@ uint64_t log_ten(uint64_t n) {
 }
 
 uint64_t left_shift(uint64_t n, uint64_t b) {
-  // assert: 0 <= b < WORDSIZEINBITS
+  // assert: 0 <= b < SIZEOFUINT64INBITS
   return n * two_to_the_power_of(b);
 }
 
 uint64_t right_shift(uint64_t n, uint64_t b) {
-  // assert: 0 <= b < WORDSIZEINBITS
+  // assert: 0 <= b < SIZEOFUINT64INBITS
   return n / two_to_the_power_of(b);
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 < b <= i + b < WORDSIZEINBITS
+  // assert: 0 < b <= i + b < SIZEOFUINT64INBITS
   if (i == 0)
     return n % two_to_the_power_of(b);
   else
     // shift to-be-loaded bits all the way to the left
     // to reset all bits to the left of them, then
     // shift to-be-loaded bits all the way to the right and return
-    return right_shift(left_shift(n, WORDSIZEINBITS - (i + b)), WORDSIZEINBITS - b);
+    return right_shift(left_shift(n, SIZEOFUINT64INBITS - (i + b)), SIZEOFUINT64INBITS - b);
 }
 
 uint64_t get_low_word(uint64_t n) {
@@ -2088,7 +2104,7 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
 }
 
 uint64_t is_signed_integer(uint64_t n, uint64_t b) {
-  // assert: 0 < b <= WORDSIZEINBITS
+  // assert: 0 < b <= SIZEOFUINT64INBITS
   if (n < two_to_the_power_of(b - 1))
     // assert: 0 <= n < 2^(b - 1)
     return 1;
@@ -2101,7 +2117,7 @@ uint64_t is_signed_integer(uint64_t n, uint64_t b) {
 
 uint64_t sign_extend(uint64_t n, uint64_t b) {
   // assert: 0 <= n <= 2^b
-  // assert: 0 < b < WORDSIZEINBITS
+  // assert: 0 < b < SIZEOFUINT64INBITS
   if (n < two_to_the_power_of(b - 1))
     return n;
   else
@@ -2110,7 +2126,7 @@ uint64_t sign_extend(uint64_t n, uint64_t b) {
 
 uint64_t sign_shrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
-  // assert: 0 < b < WORDSIZEINBITS
+  // assert: 0 < b < SIZEOFUINT64INBITS
   return get_bits(n, 0, b);
 }
 
@@ -10201,6 +10217,12 @@ uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
+    printf4("%s: this is %s with %u-bit unsigned integers and %u-bit pointers on bootlevel ", selfie_name,
+      SELFIE_URL,
+      (char*) SIZEOFUINT64INBITS,
+      (char*) SIZEOFUINT64STARINBITS);
+    if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
+
     init_scanner();
     init_register();
     init_interpreter();
