@@ -186,16 +186,16 @@ uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 char* SELFIE_URL = (char*) 0;
 
-uint64_t WORDSIZE       = 8;  // (double) word size in bytes
-uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
-
-uint64_t SINGLEWORDSIZEINBITS = 32;
-
 uint64_t SIZEOFUINT64       = 8;  // in bytes
 uint64_t SIZEOFUINT64INBITS = 64; // SIZEOFUINT64 * 8
 
 uint64_t SIZEOFUINT64STAR       = 8; // in bytes, must be the same as SIZEOFUINT64
 uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
+
+uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same as SIZEOFUINT64
+uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
+
+uint64_t SINGLEWORDSIZEINBITS = 32; // single word size in bits
 
 uint64_t* power_of_two_table;
 
@@ -287,6 +287,10 @@ void init_library() {
   // determine actual size of uint64_t*
   SIZEOFUINT64STAR       = (uint64_t) ((uint64_t**) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
   SIZEOFUINT64STARINBITS = SIZEOFUINT64STAR * 8;
+
+  // WORDSIZE must be the same as SIZEOFUINT64
+  WORDSIZE       = SIZEOFUINT64;
+  WORDSIZEINBITS = WORDSIZE * 8;
 
   // powers of two table with SIZEOFUINT64INBITS entries for 2^0 to 2^(SIZEOFUINT64INBITS - 1)
   power_of_two_table = smalloc(SIZEOFUINT64INBITS * SIZEOFUINT64);
