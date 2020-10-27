@@ -709,7 +709,7 @@ With 1+1=2, we obtain the leftmost digit and the final result of 255.
 
 Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way. 
 
-|     | 2^{6} | 2^{5} | 2^{4} | 2^{3} | 2^{2} | 2^{1} | 2^{0} |       |          |
+|     | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^{3} | 2^{2} | 2^{1} | 2^{0} |          |
 | --- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | -------- |
 |     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | 1     | =85      |
 | +   | 1     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | =170     |
@@ -725,11 +725,11 @@ What happens if we try to add two numbers where the result exceeds the number of
 
 In this case, we get a binary number with 9 bits rather than the 8 bits representing 255. 
 
-|     | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^3} | 2^{2} | 2^{1} | 2^{0} |
-| --- | ----- | ----- | ----- | ----- | ---- | ----- | ----- | ----- |
-|     | 1     | 1     | 1     | 1     | 1    | 1     | 1     | 1     |
-| +   | 0     | 0     | 0     | 0     | 0    | 0     | 0     | 1     |
-| 1   | 0     | 0     | 0     | 0     | 0    | 0     | 0     | 0     |
+|       | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^3}  | 2^{2} | 2^{1} | 2^{0} |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+|       | 1     | 1     | 1     | 1     | 1     | 1     | 1     | 1     |
+| +     | 0     | 0     | 0     | 0     | 0     | 0     | 0     | 1     |
+| **1** | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
 
 If we have more than 8 bits, this is not a problem. However, with computers, everything is finite, in particular memory. 
  
@@ -737,7 +737,9 @@ Moreover, arithmetic operations are on most machines implemented for bit strings
 
 [Arithmetic Overflow](https://en.wikipedia.org/wiki/Arithmetic_overflow): This occurs when an arithmetic operation attempts to create a numeric value too large to be represented within the available storage space.
 
-How can we deal with arithmetic overflow? Two approaches can be combined: *detection* and *semantics*. If an arithmetic overflow is detected, one can discard the computation and do something else. For this purpose, most processors feature a so-called carry bit or [carry flag](https://en.wikipedia.org/wiki/Carry_flag). The carry flag is set if an arithmetic operation causes an overflow indicated by a carry out of the most significant bit. In our example, the 9-th bit in 100000000 is that carry bit.
+How can we deal with arithmetic overflow? Two approaches can be combined: *detection* and *semantics*. If an arithmetic overflow is detected, one can discard the computation and do something else. 
+
+For this purpose, most processors feature a so-called carry bit or [carry flag](https://en.wikipedia.org/wiki/Carry_flag). The carry flag is set if an arithmetic operation causes an overflow indicated by a carry out of the most significant bit. In our example, the 9-th bit in 100000000 is that carry bit.
 
 In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^{n}, also referred to as wrap-around semantics, or wrap around. 
 
