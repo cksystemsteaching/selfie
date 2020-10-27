@@ -683,41 +683,42 @@ Let us add the values 85 and 170.
 
 Starting from the right, we find that 5+0=5. Thus the rightmost digit of the result is 5.
 
-|     |      |      |       |
-| --- | ---: | ---: | ----: |
-|     |      |    8 |     5 |
-| +   |    1 |    7 |     0 |
-| =   |      |      | **5** |
+|       | 10^{2} | 10^{1} | 10^{0} |
+| ----- | -----: | -----: | -----: |
+|       |        |      8 |      5 |
+| +     |      1 |      7 |      0 |
+| **=** |        |        |  **5** |
 
 Then, with 8+7=15, the second rightmost digit is 5. Since 15>9, there is an overflow that needs to be considered next. 
 
-|     |           |       |       |
-| --- | --------: | ----: | ----: |
-|     |           |     8 |     5 |
-| +   |         1 |     7 |     0 |
-| =   | (carry 1) | **5** | **5** |
+|       |    10^{2} | 10^{1} | 10^{0} |
+| ----- | --------: | -----: | -----: |
+|       |           |      8 |      5 |
+| +     |         1 |      7 |      0 |
+| **=** | (carry 1) |  **5** |  **5** |
 
 With 1+1=2, we obtain the leftmost digit and the final result of 255. 
 
-|     |       |       |       |
-| --- | ----: | ----: | ----: |
-|     |       |     8 |     5 |
-| +   |     1 |     7 |     0 |
-| =   | **2** | **5** | **5** |
+|       | 10^{2} | 10^{1} | 10^{0} |
+| ----- | -----: | -----: | -----: |
+|       |        |      8 |      5 |
+| +     |      1 |      7 |      0 |
+| **=** |  **2** |  **5** |  **5** |
 
 **Example**:
 
 Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way. 
 
-|     |       |       |       |       |       |       |       |       |      |
-| --- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ---- |
-|     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | 1     | =85  |
-| +   | 1     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | =170 |
-|     | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | =255 |
+|     | 2^{6} | 2^{5} | 2^{4} | 2^{3} | 2^{2} | 2^{1} | 2^{0} |       |          |
+| --- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | -------- |
+|     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | 1     | =85      |
+| +   | 1     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | =170     |
+|     | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **=255** |
 
 Since 1+0=1, there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. 
 
 In general, though, one adds two binary numbers, just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
+
 
 ---
 
