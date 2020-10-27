@@ -719,6 +719,33 @@ Since 1+0=1, there is no overflow here. Thus the result of 11111111, which is bi
 
 In general, though, one adds two binary numbers, just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
 
+### Arithmetic overflow
+
+What happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? 
+
+In this case, we get a binary number with 9 bits rather than the 8 bits representing 255. 
+
+|     | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^3} | 2^{2} | 2^{1} | 2^{0} |
+| --- | ----- | ----- | ----- | ----- | ---- | ----- | ----- | ----- |
+|     | 1     | 1     | 1     | 1     | 1    | 1     | 1     | 1     |
+| +   | 0     | 0     | 0     | 0     | 0    | 0     | 0     | 1     |
+| 1   | 0     | 0     | 0     | 0     | 0    | 0     | 0     | 0     |
+
+If we have more than 8 bits, this is not a problem. However, with computers, everything is finite, in particular memory. 
+ 
+Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size, such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called *arithmetic overflow*.
+
+[Arithmetic Overflow](https://en.wikipedia.org/wiki/Arithmetic_overflow): This occurs when an arithmetic operation attempts to create a numeric value too large to be represented within the available storage space.
+
+How can we deal with arithmetic overflow? Two approaches can be combined: *detection* and *semantics*. If an arithmetic overflow is detected, one can discard the computation and do something else. For this purpose, most processors feature a so-called carry bit or [carry flag](https://en.wikipedia.org/wiki/Carry_flag). The carry flag is set if an arithmetic operation causes an overflow indicated by a carry out of the most significant bit. In our example, the 9-th bit in 100000000 is that carry bit.
+
+In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^{n}, also referred to as wrap-around semantics, or wrap around. 
+
+For example, 255+1=256 modulo 2^8=256 modulo 256=0, which is precisely what 100000000 in an 8-bit system stands for. Some applications are correct even when such wrap-around occurs.
+
+[Modulo](https://en.wikipedia.org/wiki/Modulo_operation): The remainder after division of one number by another, also called modulus.
+
+Arithmetic overflow nevertheless is the cause of numerous software bugs and even costly accidents. Restricting the space available for representing something that can be arbitrarily large such as numbers, has serious consequences. Integer arithmetics are always an approximation of real arithmetics. For correctness, computer applications need to be appropriately adapted to work for integer arithmetics, not real arithmetics.
 
 ---
 
