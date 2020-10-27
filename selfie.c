@@ -689,7 +689,7 @@ void reset_parser() {
 // -----------------------------------------------------------------
 
 void emit_round_up(uint64_t reg, uint64_t m);
-void emit_left_shift_by(uint64_t reg, uint64_t b);
+void emit_multiply_by(uint64_t reg, uint64_t m);
 void emit_program_entry();
 
 // bootstrapping binary
@@ -4250,15 +4250,15 @@ uint64_t compile_simple_expression() {
       if (ltype == UINT64STAR_T) {
         if (rtype == UINT64_T)
           // UINT64STAR_T + UINT64_T
-          // pointer arithmetic: factor of 2^3 of integer operand
-          emit_left_shift_by(current_temporary(), 3);
+          // pointer arithmetic: left_term + right_term * SIZEOFUINT64
+          emit_multiply_by(current_temporary(), SIZEOFUINT64);
         else
           // UINT64STAR_T + UINT64STAR_T
           syntax_error_message("(uint64_t*) + (uint64_t*) is undefined");
       } else if (rtype == UINT64STAR_T) {
         // UINT64_T + UINT64STAR_T
-        // pointer arithmetic: factor of 2^3 of integer operand
-        emit_left_shift_by(previous_temporary(), 3);
+        // pointer arithmetic: left_term * SIZEOFUINT64 + right_term
+        emit_multiply_by(previous_temporary(), SIZEOFUINT64);
 
         ltype = UINT64STAR_T;
       }
@@ -4269,8 +4269,8 @@ uint64_t compile_simple_expression() {
       if (ltype == UINT64STAR_T) {
         if (rtype == UINT64_T) {
           // UINT64STAR_T - UINT64_T
-          // pointer arithmetic: factor of 2^3 of integer operand
-          emit_left_shift_by(current_temporary(), 3);
+          // pointer arithmetic: left_term - right_term * SIZEOFUINT64
+          emit_multiply_by(current_temporary(), SIZEOFUINT64);
           emit_sub(previous_temporary(), previous_temporary(), current_temporary());
         } else {
           // UINT64STAR_T - UINT64STAR_T
@@ -5093,11 +5093,11 @@ void emit_round_up(uint64_t reg, uint64_t m) {
   tfree(1);
 }
 
-void emit_left_shift_by(uint64_t reg, uint64_t b) {
-  // assert: 0 <= b < 11
+void emit_multiply_by(uint64_t reg, uint64_t m) {
+  // assert: there is a 0 <= b < 11 such that m == 2^b
 
-  // load multiplication factor less than 2^11 to avoid sign extension
-  emit_addi(next_temporary(), REG_ZR, two_to_the_power_of(b));
+  // load multiplier less than 2^11 to avoid sign extension
+  emit_addi(next_temporary(), REG_ZR, m);
   emit_mul(reg, reg, next_temporary());
 }
 
