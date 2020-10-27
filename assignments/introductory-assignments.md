@@ -152,7 +152,7 @@ So, if we talk about bytes, we mean sequences of 8 bits.
 
 Previously we established that as far as computers are concerned, everything is a binary number. But how do computers handle letters or text, just like the very document you are reading right now?
 
-ASCII is used to map characters to 7 bit wide integers and vice versa. So while characters are still integers to a computer, we can use the ASCII map to interpret those integers as human-readable characters that can be printed to a screen.
+[ASCII](https://en.wikipedia.org/wiki/ASCII) is used to map characters to 7 bit wide integers and vice versa. So while characters are still integers to a computer, we can use the ASCII map to interpret those integers as human-readable characters that can be printed to a screen.
 
 Reference: [ASCII Table](ascii-table.md)
 
@@ -168,6 +168,24 @@ Reference: [ASCII Table](ascii-table.md)
 - How many different characters can be represented in ASCII?
 - What is the decimal representation of your first name?
 - What is the ASCII representation of the decimal numbers 115, 101, 108, 102, 105, 101?
+
+## Unicode
+
+So the 8-bit sequence for a character is translated through ASCII. Still, only 128 different possible states can we get with the ASCII table because ASCII is represented through 8-bits, but the leading bit is always 0. That means we can only represent 128 different characters. So the ASCII encoding wastes one leading bit. That is why we prefer to deal with full bytes (8 bits) on a computer.
+
+Nowadays, in most computer systems, we use [unicode](https://en.wikipedia.org/wiki/Unicode). It is easy to identify 120000 different characters because each one has a unique number assigned to it. Unicode is a character set. To represent it, we use Unicode encoding schemes like UTF-8, UTF-16, or UTF-32. It distinguished between fixed-length encoding. That means every character uses the same amount of bits, and in variable-length encoding, every character uses only the amount of bits it needs.
+
+So how many bits do we need to represent 120000 different characters?
+
+We would need 17-bit = 2^{17} = 131072 > 120000 characters.
+
+In UTF-32, we use a fixed-length encoding with 32-bit. It is rarely used and inefficient because it often uses an unnecessary amount of bits to represent a character.
+
+In UTF-16, we use a variable-length encoding that uses 16-bit or 32-bit to represent characters.
+
+Selfie uses UTF-8 as an encoding scheme for Unicode; it is a variable-length encoding and can represent 8, 16, 24, or 32-bits. It is very widely used and efficient.
+
+For example, the character `U` in decimal is `85`, and the binary representation would be `0b01010101`, that are 8 bits or 1 byte to represent one character.
 
 ## Different Notations
 
@@ -718,6 +736,13 @@ Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, whi
 Since 1+0=1, there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. 
 
 In general, though, one adds two binary numbers, just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
+
+#### Exercises
+
+Convert the decimal numbers into binary (8-bit representation) and add them together:
+- 42 + 101 = ?
+- 147 + 13 = ?
+- 13 + 37 = ?
 
 ### Arithmetic overflow
 
