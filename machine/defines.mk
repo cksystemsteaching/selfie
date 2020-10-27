@@ -179,8 +179,9 @@ endef
 define generate-target-sbi-elf
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie.bin | opensbi
-	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$$(BOARD_$(1)_SBI_NAME) O=build/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$$(BOARD_$(1)_PAYLOAD_START) FW_PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET)
-	mv opensbi/build/platform/$$(BOARD_$(1)_SBI_NAME)/firmware/fw_payload.elf $$@
+	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$$(BOARD_$(1)_SBI_NAME) O=build-$(2)/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$$(BOARD_$(1)_PAYLOAD_START) FW_PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET)
+	mv opensbi/build-$(2)/platform/$$(BOARD_$(1)_SBI_NAME)/firmware/fw_payload.elf $$@
+	rm -r opensbi/build-$(2)/platform/$$(BOARD_$(1)_SBI_NAME)/firmware/*
 
 .PHONY: selfie-opensbi-$(1)-$(2).elf
 selfie-opensbi-$(1)-$(2).elf: $$(TARGET_$(1)_$(2)_DIR)/selfie-opensbi.elf
