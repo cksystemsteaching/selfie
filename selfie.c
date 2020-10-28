@@ -211,6 +211,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+uint64_t CHAR_DOT		   = '.';
 
 uint64_t CPUBITWIDTH    = 64; // double word
 uint64_t WORDSIZEINBITS = 32; // single word
@@ -388,12 +389,13 @@ uint64_t SYM_LT           = 24; // <
 uint64_t SYM_LEQ          = 25; // <=
 uint64_t SYM_GT           = 26; // >
 uint64_t SYM_GEQ          = 27; // >=
+uint64_t SYM_ELLIPSIS	  = 28; // ...
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 28; // int
-uint64_t SYM_CHAR     = 29; // char
-uint64_t SYM_UNSIGNED = 30; // unsigned
+uint64_t SYM_INT      = 29; // int
+uint64_t SYM_CHAR     = 30; // char
+uint64_t SYM_UNSIGNED = 31; // unsigned
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -459,6 +461,7 @@ void init_scanner () {
   *(SYMBOLS + SYM_LEQ)          = (uint64_t) "<=";
   *(SYMBOLS + SYM_GT)           = (uint64_t) ">";
   *(SYMBOLS + SYM_GEQ)          = (uint64_t) ">=";
+  *(SYMBOLS + SYM_ELLIPSIS)		= (uint64_t) "...";
 
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
@@ -488,7 +491,7 @@ void reset_symbol_tables();
 
 uint64_t hash(uint64_t* key);
 
-void create_symbol_table_entry(uint64_t which, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+void create_symbol_table_entry(uint64_t which, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t variadic, uint64_t value, uint64_t address);
 
 uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
 uint64_t* search_global_symbol_table(char* string, uint64_t class);
@@ -504,13 +507,14 @@ uint64_t report_undefined_procedures();
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | value   | VARIABLE: initial value
-// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP (global), REG_S0 (local)
+// |  5 | variadic| PROCEDURE: is variadic procedure
+// |  6 | value   | VARIABLE: initial value
+// |  7 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
+// |  8 | scope   | REG_GP (global), REG_S0 (local)
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
-  return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  return smalloc(2 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 }
 
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -518,18 +522,20 @@ char*     get_string(uint64_t* entry)      { return (char*)     *(entry + 1); }
 uint64_t  get_line_number(uint64_t* entry) { return             *(entry + 2); }
 uint64_t  get_class(uint64_t* entry)       { return             *(entry + 3); }
 uint64_t  get_type(uint64_t* entry)        { return             *(entry + 4); }
-uint64_t  get_value(uint64_t* entry)       { return             *(entry + 5); }
-uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
-uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
+uint64_t  get_variadic(uint64_t* entry)    { return             *(entry + 5); }
+uint64_t  get_value(uint64_t* entry)       { return             *(entry + 6); }
+uint64_t  get_address(uint64_t* entry)     { return             *(entry + 7); }
+uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 8); }
 
 void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
 void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
 void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
 void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
 void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
-void set_value(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
-void set_address(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
-void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
+void set_variadic(uint64_t* entry, uint64_t variadic)  { *(entry + 5) = variadic; }
+void set_value(uint64_t* entry, uint64_t value)        { *(entry + 6) = value; }
+void set_address(uint64_t* entry, uint64_t address)    { *(entry + 7) = address; }
+void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 8) = scope; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -921,6 +927,7 @@ void emit_ecall();
 
 void fixup_relative_BFormat(uint64_t from_address);
 void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
+void fixup_relative_IFormat(uint64_t from_address, uint64_t immediate);
 void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
@@ -3276,7 +3283,21 @@ void get_symbol() {
           symbol = SYM_GEQ;
         } else
           symbol = SYM_GT;
+	  
+	  } else if (character == CHAR_DOT) {
+        get_character();
 
+        if (character == CHAR_DOT) {
+          get_character();
+		  
+		  if (character == CHAR_DOT) {
+			get_character();
+		
+			symbol = SYM_ELLIPSIS;
+		  } else
+            syntax_error_character(CHAR_DOT);
+        } else
+		  syntax_error_character(CHAR_DOT);
       } else {
         print_line_number("syntax error", line_number);
         print("found unknown character ");
@@ -3327,7 +3348,7 @@ uint64_t hash(uint64_t* key) {
   return (*key + (*key + (*key + (*key + (*key + *key / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) % HASH_TABLE_SIZE;
 }
 
-void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t variadic, uint64_t value, uint64_t address) {
   uint64_t* new_entry;
   uint64_t* hashed_entry_address;
 
@@ -3337,6 +3358,7 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
   set_line_number(new_entry, line);
   set_class(new_entry, class);
   set_type(new_entry, type);
+  set_variadic(new_entry, variadic);
   set_value(new_entry, value);
   set_address(new_entry, address);
 
@@ -3819,7 +3841,7 @@ void load_integer(uint64_t value) {
     if (entry == (uint64_t*) 0) {
       allocated_memory = allocated_memory + REGISTERSIZE;
 
-      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -allocated_memory);
+      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, 0, value, -allocated_memory);
     }
 
     load_variable_or_big_int(integer, BIGINT);
@@ -3837,7 +3859,7 @@ void load_string(char* string) {
 
   allocated_memory = allocated_memory + round_up(length, REGISTERSIZE);
 
-  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, 0, -allocated_memory);
 
   load_integer(-allocated_memory);
 
@@ -3855,7 +3877,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
     // default return type is "uint64_t"
     type = UINT64_T;
 
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, binary_length);
 
     emit_jal(REG_RA, 0);
 
@@ -3935,6 +3957,8 @@ uint64_t compile_call(char* procedure) {
   uint64_t* entry;
   uint64_t number_of_temporaries;
   uint64_t type;
+  uint64_t number_of_parameters;
+  uint64_t allocate_memory_on_stack;
 
   // assert: n = allocated_temporaries
 
@@ -3943,31 +3967,42 @@ uint64_t compile_call(char* procedure) {
   number_of_temporaries = allocated_temporaries;
 
   save_temporaries();
+  
+  number_of_parameters = 0;
 
   // assert: allocated_temporaries == 0
 
   if (is_expression()) {
-    compile_expression();
-
+	compile_expression();
+	
     // TODO: check if types/number of parameters is correct
-
-    // push first parameter onto stack
-    emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
-
-    tfree(1);
-
-    while (symbol == SYM_COMMA) {
+	
+	//allocate memory on stack for parameters; we do not know how many, fixup later
+    allocate_memory_on_stack = binary_length;
+	emit_addi(REG_SP, REG_SP, 0);
+	
+	//push first parameter onto the stack
+	emit_sd(REG_SP, number_of_parameters * REGISTERSIZE, current_temporary());
+	
+	tfree(1);
+	
+	number_of_parameters = number_of_parameters + 1;
+	
+	while (symbol == SYM_COMMA) {
       get_symbol();
 
       compile_expression();
 
       // push more parameters onto stack
-      emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
-      emit_sd(REG_SP, 0, current_temporary());
-
-      tfree(1);
+      emit_sd(REG_SP, number_of_parameters * REGISTERSIZE, current_temporary());
+	  
+	  tfree(1);
+	  
+	  number_of_parameters = number_of_parameters + 1;
     }
+	
+	//now we know the number of parameters
+	fixup_relative_IFormat(allocate_memory_on_stack, -(number_of_parameters * REGISTERSIZE));
 
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
@@ -3993,6 +4028,10 @@ uint64_t compile_call(char* procedure) {
   restore_temporaries(number_of_temporaries);
 
   number_of_calls = number_of_calls + 1;
+  
+  //deallocate variadic parameters //MTODO: use value(entry) for this
+  if(get_variadic(entry))
+	emit_addi(REG_SP, REG_SP, (number_of_parameters * REGISTERSIZE));
 
   // assert: allocated_temporaries == n
 
@@ -4747,13 +4786,13 @@ void compile_variable(uint64_t offset) {
 
   if (symbol == SYM_IDENTIFIER) {
     // TODO: check if identifier has already been declared
-    create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, offset);
+    create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, 0, offset);
 
     get_symbol();
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
 
-    create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, offset);
+    create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, 0, offset);
   }
 }
 
@@ -4819,12 +4858,16 @@ uint64_t compile_initialization(uint64_t type) {
 void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_undefined;
   uint64_t number_of_parameters;
+  uint64_t is_variadic;
   uint64_t parameters;
   uint64_t number_of_local_variable_bytes;
   uint64_t* entry;
 
   // assuming procedure is undefined
   is_undefined = 1;
+  
+  //assuming procedure is not variadic
+  is_variadic = 0;
 
   number_of_parameters = 0;
 
@@ -4839,21 +4882,27 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       while (symbol == SYM_COMMA) {
         get_symbol();
+		
+		if(symbol == SYM_ELLIPSIS) {
+			get_symbol();
+		
+			is_variadic = 1;		
+		} else {
+			compile_variable(0);
 
-        compile_variable(0);
-
-        number_of_parameters = number_of_parameters + 1;
+			number_of_parameters = number_of_parameters + 1;
+		}
       }
 
       entry = local_symbol_table;
 
-      parameters = 0;
+      parameters = number_of_parameters;
 
-      while (parameters < number_of_parameters) {
+      while (parameters > 0) {
         // 8 bytes offset to skip frame pointer and link
-        set_address(entry, parameters * REGISTERSIZE + 2 * REGISTERSIZE);
+        set_address(entry, (parameters - 1) * REGISTERSIZE + 2 * REGISTERSIZE);
 
-        parameters = parameters + 1;
+        parameters = parameters - 1;
 
         entry = get_next_entry(entry);
       }
@@ -4873,7 +4922,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, is_variadic, 0, 0);
     else if (get_type(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
@@ -4885,7 +4934,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, is_variadic, 0, binary_length);
     else {
       // procedure already called or declared or defined
       if (get_address(entry) != 0) {
@@ -4961,8 +5010,11 @@ void compile_procedure(char* procedure, uint64_t type) {
     fixlink_relative(return_branches, binary_length);
 
     return_branches = 0;
-
-    procedure_epilogue(number_of_parameters * REGISTERSIZE);
+	
+	if(is_variadic)
+	  procedure_epilogue(0);
+	else
+      procedure_epilogue(number_of_parameters * REGISTERSIZE);
 
   } else
     syntax_error_unexpected();
@@ -5041,7 +5093,7 @@ void compile_cstar() {
           if (entry == (uint64_t*) 0) {
             allocated_memory = allocated_memory + REGISTERSIZE;
 
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -allocated_memory);
+            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, 0, initial_value, -allocated_memory);
           } else {
             // global variable already declared or defined
             print_line_number("warning", current_line_number);
@@ -5169,24 +5221,23 @@ void emit_bootstrapping() {
     //    sp
     //     |
     //     V
-    // | argc | argv[0] | argv[1] | ... | argv[n]
+    // | argc |      | argv[0] | argv[1] | ... | argv[n]
 
     talloc();
 
     // first obtain pointer to argv
     //
-    //    sp + REGISTERSIZE
-    //            |
-    //            V
-    // | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, REGISTERSIZE);
+    //            sp + REGISTERSIZE
+    //                    |
+    //                    V
+    // | argc |      | argv[0] | argv[1] | ... | argv[n]
+    emit_addi(current_temporary(), REG_SP, (2 * REGISTERSIZE));
 
     // then push argv pointer onto the stack
-    //      ______________
-    //     |              V
-    // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
+    //      ______________________
+    //     |                      V
+    // | &argv |      | argc | argv[0] | argv[1] | ... | argv[n]
+	emit_sd(REG_SP, REGISTERSIZE, current_temporary());
 
     tfree(1);
 
@@ -5271,7 +5322,7 @@ void selfie_compile() {
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -5995,6 +6046,32 @@ void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address) {
       get_rd(instruction),
       get_opcode(instruction)));
 }
+/*
+void fixup_relative_SFormat(uint64_t from_address, uint64_t offset) {
+  uint64_t instruction;
+
+  instruction = load_instruction(from_address);
+
+  store_instruction(from_address,
+    encode_s_format(offset,
+      get_rs2(instruction),
+	  get_rs1(instruction),
+	  get_funct3(instruction),
+      get_opcode(instruction)));
+}
+*/
+void fixup_relative_IFormat(uint64_t from_address, uint64_t immediate) {
+	uint64_t instruction;
+
+  instruction = load_instruction(from_address);
+
+  store_instruction(from_address,
+    encode_i_format(immediate,
+      get_rs1(instruction),
+	  get_funct3(instruction),
+	  get_rd(instruction),
+      get_opcode(instruction)));
+}
 
 void fixlink_relative(uint64_t from_address, uint64_t to_address) {
   uint64_t previous_address;
@@ -6319,7 +6396,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, 0, binary_length);
 
   // load signed 32-bit integer exit code
   emit_ld(REG_A0, REG_SP, 0);
@@ -6356,15 +6433,15 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_ld(REG_A0, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_ld(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_ld(REG_A2, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
@@ -6480,15 +6557,15 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_ld(REG_A0, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_ld(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_ld(REG_A2, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
@@ -6603,15 +6680,15 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A3, REG_SP, 0); // mode
+  emit_ld(REG_A1, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_ld(REG_A2, REG_SP, 0); // flags
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // filename
+  emit_ld(REG_A3, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
@@ -6735,11 +6812,11 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
   // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
@@ -6747,7 +6824,7 @@ void emit_malloc() {
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, 0, -allocated_memory);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
@@ -6892,12 +6969,12 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
-  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
+  emit_ld(REG_A0, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
+  emit_ld(REG_A1, REG_SP, 0); // context to which we switch
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
@@ -7150,7 +7227,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
 
@@ -7158,7 +7235,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
 
@@ -7166,7 +7243,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
   // up to three instructions needed to load data segment size but is not yet known
 
@@ -9657,12 +9734,12 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
 }
 
 void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
-  /* upload arguments like a UNIX system
+  /* upload arguments like a UNIX system //MTODO: where should &argv go?
 
       SP
       |
       V
-   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+   | argc |      | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
 
      with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
   uint64_t SP;
@@ -9691,6 +9768,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push null value to terminate env table
   map_and_store(context, SP, 0);
+  
 
   // allocate memory for termination of argv table
   SP = SP - REGISTERSIZE;
@@ -9710,6 +9788,9 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
     // push argv table entry
     map_and_store(context, SP, *(vargv + i));
   }
+  
+  // allocate memory for &argv
+  SP = SP - REGISTERSIZE;
 
   // allocate memory for argc
   SP = SP - REGISTERSIZE;
@@ -10246,7 +10327,7 @@ uint64_t selfie(uint64_t extras) {
 uint64_t exit_selfie(uint64_t exit_code, char* extras) {
   if (no_or_bad_or_more_arguments(exit_code))
     print_synopsis(extras);
-
+	return exit_code;
   if (exit_code == EXITCODE_MOREARGUMENTS)
     return EXITCODE_BADARGUMENTS;
   else if (exit_code == EXITCODE_NOARGUMENTS)
