@@ -1599,7 +1599,7 @@ void modeler() {
 
   print("; 4GB of memory\n\n");
 
-  printf2("50 constd 2 %u ; %x\n\n", (char*) VIRTUALMEMORYSIZE, (char*) VIRTUALMEMORYSIZE);
+  printf2("50 constd 2 %u ; %x\n\n", (char*) (VIRTUALMEMORYSIZE * GIGABYTE), (char*) (VIRTUALMEMORYSIZE * GIGABYTE));
 
   print("; kernel-mode flag\n\n");
 
@@ -1670,8 +1670,8 @@ void modeler() {
       else if (i == UP_FLOW)
         printf3("\n%u constd 2 %u ; %x\n",
           (char*) *(reg_flow_nids + i), // nid of this line
-          (char*) VIRTUALMEMORYSIZE,    // 4GB of memory addresses
-          (char*) VIRTUALMEMORYSIZE);   // 4GB of memory addresses
+          (char*) (VIRTUALMEMORYSIZE * GIGABYTE),  // 4GB of memory addresses
+          (char*) (VIRTUALMEMORYSIZE * GIGABYTE)); // 4GB of memory addresses
       else {
         printf1("%u state 2 ", (char*) *(reg_flow_nids + i));
 
@@ -1735,7 +1735,7 @@ void modeler() {
   // 100*8 lines per 64-bit machine word in data segment
   pcs_nid = ten_to_the_power_of(
     log_ten(entry_point + binary_length +
-      (VIRTUALMEMORYSIZE - *(registers + REG_SP))) + 3);
+      (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
   while (pc < entry_point + code_length) {
     current_nid = pc_nid(pcs_nid, pc);
@@ -1769,9 +1769,9 @@ void modeler() {
 
   // assert: pc == entry_point + code_length
 
-  while (pc < VIRTUALMEMORYSIZE) {
+  while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
     if (pc == entry_point + binary_length) {
-      // assert: stack pointer < VIRTUALMEMORYSIZE
+      // assert: stack pointer < VIRTUALMEMORYSIZE * GIGABYTE
       pc = *(registers + REG_SP);
 
       print("\n; stack\n\n");

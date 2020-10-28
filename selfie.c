@@ -1105,13 +1105,15 @@ void     store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 uint64_t debug_tlb = 0;
 
-uint64_t MEGABYTE = 1048576; // 1MB
+uint64_t KILOBYTE = 1024;       // 1KB (KiB: 2^10B)
+uint64_t MEGABYTE = 1048576;    // 1MB (MiB: 2^20B)
+uint64_t GIGABYTE = 1073741824; // 1GB (GiB: 2^30B)
 
-uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
+uint64_t VIRTUALMEMORYSIZE = 4; // 4GB of virtual memory (avoiding 32-bit overflow)
 
 uint64_t PAGESIZE = 4096; // 4KB virtual pages
 
-uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE / PAGESIZE
+uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
 
 uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / SIZEOFUINT64STAR
 
@@ -1132,6 +1134,9 @@ void init_memory(uint64_t megabytes) {
     megabytes = 4096;
 
   total_page_frame_memory = megabytes * MEGABYTE;
+
+  // reinitialize in case SIZEOFUINT64STAR is not 8
+  NUMBEROFLEAFPTES = PAGESIZE / SIZEOFUINT64STAR;
 }
 
 // -----------------------------------------------------------------
@@ -6155,7 +6160,7 @@ uint64_t validate_elf_header(uint64_t* header) {
     // segment size in file is not the same as segment size in memory
     return 0;
 
-  if (new_entry_point > VIRTUALMEMORYSIZE - PAGESIZE - new_binary_length)
+  if (new_entry_point > VIRTUALMEMORYSIZE * GIGABYTE - PAGESIZE - new_binary_length)
     // binary does not fit into virtual address space
     return 0;
 
@@ -7107,7 +7112,7 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
 }
 
 uint64_t is_valid_virtual_address(uint64_t vaddr) {
-  if (vaddr <= VIRTUALMEMORYSIZE - WORDSIZE)
+  if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
     // memory access must be machine-word-aligned
     if (vaddr % WORDSIZE == 0)
       return 1;
@@ -7658,7 +7663,7 @@ void mark(uint64_t* context) {
   // root segments: call stack and data segment
 
   // traverse call stack
-  mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE);
+  mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE * GIGABYTE);
 
   // traverse data segment
   mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
@@ -9195,7 +9200,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - WORDSIZE));
+  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
@@ -9483,7 +9488,7 @@ uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
   // is address in the stack?
   if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= VIRTUALMEMORYSIZE - WORDSIZE)
+    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
       // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
@@ -9693,7 +9698,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   uint64_t i;
 
   // the call stack grows top down
-  SP = VIRTUALMEMORYSIZE;
+  SP = VIRTUALMEMORYSIZE * GIGABYTE;
 
   vargv = smalloc(argc * SIZEOFUINT64STAR);
 
