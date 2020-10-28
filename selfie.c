@@ -6046,20 +6046,7 @@ void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address) {
       get_rd(instruction),
       get_opcode(instruction)));
 }
-/*
-void fixup_relative_SFormat(uint64_t from_address, uint64_t offset) {
-  uint64_t instruction;
 
-  instruction = load_instruction(from_address);
-
-  store_instruction(from_address,
-    encode_s_format(offset,
-      get_rs2(instruction),
-	  get_rs1(instruction),
-	  get_funct3(instruction),
-      get_opcode(instruction)));
-}
-*/
 void fixup_relative_IFormat(uint64_t from_address, uint64_t immediate) {
 	uint64_t instruction;
 
@@ -10327,7 +10314,6 @@ uint64_t selfie(uint64_t extras) {
 uint64_t exit_selfie(uint64_t exit_code, char* extras) {
   if (no_or_bad_or_more_arguments(exit_code))
     print_synopsis(extras);
-	return exit_code;
   if (exit_code == EXITCODE_MOREARGUMENTS)
     return EXITCODE_BADARGUMENTS;
   else if (exit_code == EXITCODE_NOARGUMENTS)
