@@ -1091,9 +1091,10 @@ void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame);
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
-uint64_t is_valid_virtual_address(uint64_t vaddr);
 uint64_t get_page_of_virtual_address(uint64_t vaddr);
 uint64_t get_virtual_address_of_page_start(uint64_t page);
+
+uint64_t is_aligned_virtual_address(uint64_t vaddr, uint64_t alignment);
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr);
 
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
@@ -1813,11 +1814,13 @@ void     map_page(uint64_t* context, uint64_t page, uint64_t frame);
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 void restore_context(uint64_t* context);
 
-uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
+
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
 
 uint64_t is_valid_segment_read(uint64_t vaddr);
 uint64_t is_valid_segment_write(uint64_t vaddr);
@@ -6447,8 +6450,8 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
 
@@ -6570,8 +6573,8 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
 
@@ -6659,8 +6662,8 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr))
-      if (is_valid_data_stack_heap_address(context, vaddr)) {
+    if (is_aligned_virtual_address(vaddr, WORDSIZE))
+      if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         else {
@@ -6833,19 +6836,18 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
   current_program_break = get_program_break(context);
 
-  if (is_valid_virtual_address(new_program_break))
-    if (new_program_break >= current_program_break)
-      if (new_program_break < *(get_regs(context) + REG_SP)) {
-        if (debug_brk)
-          printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
+  if (is_aligned_virtual_address(new_program_break, WORDSIZE))
+    if (is_address_between_stack_and_heap(context, new_program_break)) {
+      if (debug_brk)
+        printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
 
-        set_program_break(context, new_program_break);
+      set_program_break(context, new_program_break);
 
-        // account for memory allocated by brk
-        mc_brk = mc_brk + (new_program_break - current_program_break);
+      // account for memory allocated by brk
+      mc_brk = mc_brk + (new_program_break - current_program_break);
 
-        return new_program_break;
-      }
+      return new_program_break;
+    }
 
   // setting new program break failed, return current program break
 
@@ -7111,15 +7113,6 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
     return 0;
 }
 
-uint64_t is_valid_virtual_address(uint64_t vaddr) {
-  if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
-    // memory access must be word-aligned
-    if (vaddr % WORDSIZE == 0)
-      return 1;
-
-  return 0;
-}
-
 uint64_t get_page_of_virtual_address(uint64_t vaddr) {
   return vaddr / PAGESIZE;
 }
@@ -7128,8 +7121,18 @@ uint64_t get_virtual_address_of_page_start(uint64_t page) {
   return page * PAGESIZE;
 }
 
+uint64_t is_aligned_virtual_address(uint64_t vaddr, uint64_t alignment) {
+  // is address virtual?
+  if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - alignment)
+    // is address aligned?
+    if (vaddr % alignment == 0)
+      return 1;
+
+  return 0;
+}
+
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
-  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
 
   return is_page_mapped(table, get_page_of_virtual_address(vaddr));
 }
@@ -7139,7 +7142,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   uint64_t frame;
   uint64_t paddr;
 
-  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   page = get_page_of_virtual_address(vaddr);
@@ -7160,14 +7163,14 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 }
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
-  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
-  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
@@ -7436,7 +7439,7 @@ uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
-    // assert: is_valid_virtual_address(address) == 1
+    // assert: is_aligned_virtual_address(address, WORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       return load_virtual_memory(get_pt(context), address);
     else
@@ -7447,7 +7450,7 @@ void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
   if (is_gc_library(context))
     *((uint64_t*) address) = value;
   else
-    // assert: is_valid_virtual_address(address) == 1
+    // assert: is_aligned_virtual_address(address, WORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       store_virtual_memory(get_pt(context), address, value);
 }
@@ -7581,7 +7584,7 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
   // get word at address and check if it may be a pointer
   address = gc_load_memory(context, address);
 
-  if (is_valid_virtual_address(address) == 0)
+  if (is_aligned_virtual_address(address, WORDSIZE) == 0)
     return (uint64_t*) 0;
 
   // pointer below gced heap
@@ -7643,7 +7646,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
   // assert: segment is not heap
 
   while (segment_start <= segment_end - WORDSIZE) {
-    // assert: is_valid_virtual_address(segment_start) == 1
+    // assert: is_aligned_virtual_address(segment_start, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
     mark_object(context, segment_start);
 
@@ -8064,7 +8067,7 @@ void print_ld_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
         printf2(",mem[%x]=%x |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
@@ -8079,7 +8082,7 @@ void print_ld_before() {
 }
 
 void print_ld_after(uint64_t vaddr) {
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
@@ -8092,7 +8095,7 @@ void record_ld() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(*(registers + rd));
 }
@@ -8106,7 +8109,7 @@ uint64_t do_ld() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -8155,7 +8158,7 @@ void print_sd_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(",");
       print_register_value(rs2);
@@ -8171,7 +8174,7 @@ void print_sd_before() {
 }
 
 void print_sd_after(uint64_t vaddr) {
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       printf1(" -> mem[%x]=", (char*) vaddr);
       print_register_value(rs2);
@@ -8183,7 +8186,7 @@ void record_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr))
+  if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(load_virtual_memory(pt, vaddr));
 }
@@ -8196,7 +8199,7 @@ uint64_t do_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -8683,18 +8686,23 @@ void throw_exception(uint64_t exception, uint64_t fault) {
 }
 
 void fetch() {
-  // assert: is_virtual_address_mapped(pt, pc) == 1
+  if (is_aligned_virtual_address(pc, INSTRUCTIONSIZE)) {
+    if (is_code_address(current_context, pc)) {
+      // assert: is_virtual_address_mapped(pt, pc) == 1
 
-  if (is_valid_code_address(current_context, pc))
-    if (pc % WORDSIZE == 0)
-      ir = get_low_word(load_virtual_memory(pt, pc));
-    else
-      ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
-  else {
-    ir = encode_nop();
+      if (pc % WORDSIZE == 0)
+        ir = get_low_word(load_virtual_memory(pt, pc));
+      else
+        ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
 
-    throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
-  }
+      return;
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
+  } else
+    throw_exception(EXCEPTION_INVALIDADDRESS, pc);
+
+  // reset instruction register
+  ir = encode_nop();
 }
 
 void decode() {
@@ -9464,68 +9472,72 @@ void restore_context(uint64_t* context) {
   pt        = get_pt(context);
 }
 
-uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
   // is address in code segment?
   if (vaddr >= get_code_seg_start(context))
     if (vaddr < get_data_seg_start(context))
-      // code must be single-word-aligned
-      if (vaddr % INSTRUCTIONSIZE == 0)
-        return 1;
+      return 1;
 
   return 0;
 }
 
-uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
   // is address in data segment?
   if (vaddr >= get_data_seg_start(context))
     if (vaddr < get_heap_seg_start(context))
-      // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
   return 0;
 }
 
-uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
-  // is address in the stack?
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
+  // is address in stack segment?
   if (vaddr >= *(get_regs(context) + REG_SP))
     if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
-      // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
   return 0;
 }
 
-uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
-  // is address in the heap?
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr) {
+  // is address in heap segment?
   if (vaddr >= get_heap_seg_start(context))
     if (vaddr < get_program_break(context))
-      // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
   return 0;
 }
 
-uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
-  if (is_valid_data_address(context, vaddr))
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr) {
+  // is address between heap and stack segments?
+  if (vaddr >= get_program_break(context))
+    if (vaddr < *(get_regs(context) + REG_SP))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
+  if (is_data_address(context, vaddr))
     return 1;
-  else if (is_valid_stack_address(context, vaddr))
+  else if (is_stack_address(context, vaddr))
     return 1;
-  else if (is_valid_heap_address(context, vaddr))
+  else if (is_heap_address(context, vaddr))
     return 1;
   else
     return 0;
 }
 
 uint64_t is_valid_segment_read(uint64_t vaddr) {
-  if (is_valid_data_address(current_context, vaddr)) {
+  if (is_data_address(current_context, vaddr)) {
     data_reads = data_reads + 1;
 
     return 1;
-  } else if (is_valid_stack_address(current_context, vaddr)) {
+  } else if (is_stack_address(current_context, vaddr)) {
     stack_reads = stack_reads + 1;
 
     return 1;
-  } else if (is_valid_heap_address(current_context, vaddr)) {
+  } else if (is_heap_address(current_context, vaddr)) {
     heap_reads = heap_reads + 1;
 
     return 1;
@@ -9534,15 +9546,15 @@ uint64_t is_valid_segment_read(uint64_t vaddr) {
 }
 
 uint64_t is_valid_segment_write(uint64_t vaddr) {
-  if (is_valid_data_address(current_context, vaddr)) {
+  if (is_data_address(current_context, vaddr)) {
     data_writes = data_writes + 1;
 
     return 1;
-  } else if (is_valid_stack_address(current_context, vaddr)) {
+  } else if (is_stack_address(current_context, vaddr)) {
     stack_writes = stack_writes + 1;
 
     return 1;
-  } else if (is_valid_heap_address(current_context, vaddr)) {
+  } else if (is_heap_address(current_context, vaddr)) {
     heap_writes = heap_writes + 1;
 
     return 1;
@@ -9622,7 +9634,7 @@ void pfree(uint64_t* frame) {
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
-  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
 
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
@@ -9796,7 +9808,7 @@ uint64_t handle_page_fault(uint64_t* context) {
   // TODO: reuse frames
   map_page(context, page, (uint64_t) palloc());
 
-  if (is_valid_heap_address(context, get_virtual_address_of_page_start(page)))
+  if (is_heap_address(context, get_virtual_address_of_page_start(page)))
     mc_mapped_heap = mc_mapped_heap + PAGESIZE;
 
   return DONOTEXIT;
