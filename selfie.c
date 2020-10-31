@@ -2143,12 +2143,12 @@ uint64_t load_character(char* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
-  // a is the index of the double word where
-  // the to-be-loaded i-th character in s is
+  // a is the index of the word where the
+  // to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
   // CAUTION: at boot levels higher than 0, s is only accessible
-  // in C* at machine word granularity, not individual characters
+  // in C* at word granularity, not individual characters
 
   // return i-th 8-bit character in s
   return get_bits(*((uint64_t*) s + a), (i % SIZEOFUINT64) * 8, 8);
@@ -2158,12 +2158,12 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
-  // a is the index of the double word where
-  // the with c to-be-overwritten i-th character in s is
+  // a is the index of the word where the with c
+  // to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
 
   // CAUTION: at boot levels higher than 0, s is only accessible
-  // in C* at machine word granularity, not individual characters
+  // in C* at word granularity, not individual characters
 
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
@@ -2174,7 +2174,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
 
 char* string_alloc(uint64_t l) {
   // allocates zeroed memory for a string of l characters
-  // plus a null terminator aligned to machine word size
+  // plus a null terminator aligned to word size
   return (char*) zmalloc(l + 1);
 }
 
@@ -2260,7 +2260,7 @@ uint64_t atoi(char* s) {
   n = 0;
 
   // load character (one byte) at index i in s from memory requires
-  // bit shifting since memory access can only be done in double words
+  // bit shifting since memory access can only be done at word granularity
   c = load_character(s, i);
 
   // loop until s is terminated
@@ -2300,7 +2300,7 @@ uint64_t atoi(char* s) {
     i = i + 1;
 
     // load character (one byte) at index i in s from memory requires
-    // bit shifting since memory access can only be done in double words
+    // bit shifting since memory access can only be done at word granularity
     c = load_character(s, i);
   }
 
@@ -3181,7 +3181,7 @@ void get_symbol() {
 
         // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
-        // in double words but may end non-word-aligned
+        // in words but may end non-word-aligned
         string = string_alloc(MAX_STRING_LENGTH);
 
         i = 0;
@@ -5135,7 +5135,7 @@ void emit_bootstrapping() {
   // calculate the global pointer value
   gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
-  // make sure gp is machine-word-aligned
+  // make sure gp is word-aligned
   padding = gp % WORDSIZE;
   gp      = gp + padding;
 
@@ -5175,18 +5175,18 @@ void emit_bootstrapping() {
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
     emit_ecall();
 
-    // align current program break for double-word access
-    emit_round_up(REG_A0, SIZEOFUINT64);
+    // word-align current program break
+    emit_round_up(REG_A0, WORDSIZE);
 
-    // set program break to aligned program break
+    // set program break to word-aligned program break
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
     emit_ecall();
 
     // look up global variable _bump for storing malloc's bump pointer
-    // copy "_bump" string into zeroed double word to obtain unique hash
+    // copy "_bump" string into zeroed word to obtain unique hash
     entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
-    // store aligned program break in _bump
+    // store word-aligned program break in _bump
     emit_sd(get_scope(entry), get_address(entry), REG_A0);
 
     // reset return register to initial return value
@@ -5221,7 +5221,7 @@ void emit_bootstrapping() {
     // assert: global, _bump, and stack pointers are set up
     //         with all other non-temporary registers zeroed
 
-    // copy "main" string into zeroed double word to obtain unique hash
+    // copy "main" string into zeroed word to obtain unique hash
     entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
 
     procedure_call(entry, "main");
@@ -5298,7 +5298,7 @@ void selfie_compile() {
   }
 
   // implicitly declare main procedure in global symbol table
-  // copy "main" string into zeroed double word to obtain unique hash
+  // copy "main" string into zeroed word to obtain unique hash
   create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
@@ -6058,7 +6058,7 @@ void emit_string_data(uint64_t* entry) {
 
   while (i < l) {
     // CAUTION: at boot levels higher than 0, s is only accessible
-    // in C* at machine word granularity, not individual characters
+    // in C* at word granularity, not individual characters
     emit_data_word(*((uint64_t*) s), get_address(entry) + i, get_line_number(entry));
 
     s = (char*) ((uint64_t*) s + 1);
@@ -6671,7 +6671,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
 
         j = 0;
 
-        // check if string ends in the current machine word
+        // check if string ends in the current word
         while (j < SIZEOFUINT64) {
           if (load_character((char*) ((uint64_t*) s + i), j) == 0)
             return 1;
@@ -6679,10 +6679,10 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
           j = j + 1;
         }
 
-        // advance to the next machine word in virtual memory
+        // advance to the next word in virtual memory
         vaddr = vaddr + SIZEOFUINT64;
 
-        // advance to the next machine word in our memory
+        // advance to the next word in our memory
         i = i + 1;
       } else {
         printf2("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
@@ -6774,7 +6774,7 @@ void emit_malloc() {
   allocated_memory = allocated_memory + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
-  // copy "_bump" string into zeroed double word to obtain unique hash
+  // copy "_bump" string into zeroed word to obtain unique hash
   create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
 
   // do not account for _bump as global variable
@@ -6788,8 +6788,8 @@ void emit_malloc() {
   emit_ld(current_temporary(), REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  // round up size to double-word alignment
-  emit_round_up(current_temporary(), SIZEOFUINT64);
+  // round up to word size
+  emit_round_up(current_temporary(), WORDSIZE);
 
   // allocate register to compute new bump pointer
   talloc();
@@ -7113,7 +7113,7 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
 
 uint64_t is_valid_virtual_address(uint64_t vaddr) {
   if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
-    // memory access must be machine-word-aligned
+    // memory access must be word-aligned
     if (vaddr % WORDSIZE == 0)
       return 1;
 
@@ -9468,7 +9468,7 @@ uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
   // is address in code segment?
   if (vaddr >= get_code_seg_start(context))
     if (vaddr < get_data_seg_start(context))
-      // code must be single-word-addressed
+      // code must be single-word-aligned
       if (vaddr % INSTRUCTIONSIZE == 0)
         return 1;
 
@@ -9673,7 +9673,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
 
   while (i < bytes) {
     // CAUTION: at boot levels higher than 0, s is only accessible
-    // in C* at machine word granularity, not individual characters
+    // in C* at word granularity, not individual characters
     map_and_store(context, SP + i, *((uint64_t*) s));
 
     s = (char*) ((uint64_t*) s + 1);
