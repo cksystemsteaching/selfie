@@ -2675,6 +2675,8 @@ void tiny_printf(char* s, ...) {
   }
 
   print_format0(s, offset);
+
+  va_end(args);
 }
 
 void sprintf1(char* b, char* s, char* a1) {
