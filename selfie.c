@@ -5233,10 +5233,10 @@ void emit_bootstrapping() {
     // | argc |      | argv[0] | argv[1] | ... | argv[n]
     emit_addi(current_temporary(), REG_SP, (2 * REGISTERSIZE));
 
-    // then push argv pointer onto the stack
-    //      ______________________
-    //     |                      V
-    // | &argv |      | argc | argv[0] | argv[1] | ... | argv[n]
+    // then put argv pointer onto the stack
+    //             ________
+    //            |        V
+    // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
 	emit_sd(REG_SP, REGISTERSIZE, current_temporary());
 
     tfree(1);
@@ -9756,7 +9756,6 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push null value to terminate env table
   map_and_store(context, SP, 0);
   
-
   // allocate memory for termination of argv table
   SP = SP - REGISTERSIZE;
 
