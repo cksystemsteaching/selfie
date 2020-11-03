@@ -2,6 +2,7 @@
 #define uint64_t unsigned long long
 
 uint64_t *machine_states = (uint64_t *) 0;
+uint64_t *cached_machine_states = (uint64_t *) 0;
 
 uint64_t *tmp_state = (uint64_t *) 0; // re-use this to avoid unnecessary allocations (since we can't free memory)
 
@@ -24,6 +25,19 @@ uint64_t *get_state(uint64_t pc) {
 
 void set_state(uint64_t pc, uint64_t *state) {
   *(machine_states + pc / INSTRUCTIONSIZE) = (uint64_t) state;
+}
+
+uint64_t *get_cached_state(uint64_t pc) {
+  if (cached_machine_states == (uint64_t*) 0) {
+    print("Cached states aren't initialized yet!");
+    exit(1);
+  }
+
+  return (uint64_t *) *(cached_machine_states + pc / INSTRUCTIONSIZE);
+}
+
+void set_cached_state(uint64_t pc, uint64_t *state) {
+  *(cached_machine_states + pc / INSTRUCTIONSIZE) = (uint64_t) state;
 }
 
 uint64_t is_reg_unknown(uint64_t *state, uint64_t reg) {
@@ -216,21 +230,199 @@ uint64_t apply_effects(uint64_t *state) {
   return tracked_change;
 }
 
-uint64_t depth = 0;
+uint64_t *call_stack = (uint64_t *) 0;
+uint64_t call_stack_index = 0;
+
+uint64_t call_stack_peek() {
+  return call_stack[call_stack_index - 1];
+}
+
+uint64_t call_stack_pop() {
+  call_stack_index = call_stack_index - 1;
+  return call_stack[call_stack_index];
+}
+
+void call_stack_push(uint64_t address) {
+  call_stack[call_stack_index] = address;
+  call_stack_index = call_stack_index + 1;
+}
+
+// check if current top address is also somewhere else on the stack to detect recursion
+uint64_t call_stack_recursion_check() {
+  uint64_t address;
+  uint64_t index;
+
+  if (call_stack_index == 1) {
+    return 0;
+  }
+
+  address = call_stack_peek();
+  index = 0;
+
+  while (index < call_stack_index - 1) {
+    if (call_stack[index] == address) {
+      return 1;
+    }
+    index = index + 1;
+  }
+  return 0;
+}
+
+// copy or merge
+void update_state(uint64_t address, uint64_t* new_state) {
+  if (get_state(address) == 0) {
+    set_state(address, new_machine_state());
+    copy_state(new_state, get_state(address));
+  } else {
+    merge_states(new_state, get_state(address));
+  }
+}
+
+void update_cached_state(uint64_t address, uint64_t* new_state) {
+  if (get_cached_state(address) == 0) {
+    set_cached_state(address, new_machine_state());
+    copy_state(new_state, get_cached_state(address));
+  } else {
+    merge_states(new_state, get_cached_state(address));
+  }
+}
+
+uint64_t* cfg;
+uint64_t* inverse_cfg;
+
+uint64_t* new_edge() {
+  return malloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+}
+
+uint64_t* get_next_edge(uint64_t* edge) { return (uint64_t*) *edge; }
+uint64_t get_to_pc(uint64_t* edge)      { return *(edge + 1); }
+
+void set_next_edge(uint64_t* edge, uint64_t* next) { *edge = (uint64_t) next; }
+void set_to_pc(uint64_t* edge, uint64_t to)        { *(edge + 1) = to; }
+
+uint64_t* get_edges(uint64_t* graph, uint64_t pc) {
+  return (uint64_t*) *(graph + pc/INSTRUCTIONSIZE);
+}
+
+void set_edges(uint64_t* graph, uint64_t pc, uint64_t* edges) {
+  *(graph + pc/INSTRUCTIONSIZE) = (uint64_t) edges;
+}
+
+uint64_t add_edge(uint64_t* graph, uint64_t from_pc, uint64_t to_pc) {
+  uint64_t* head;
+  uint64_t* current;
+  uint64_t* new;
+
+  head = get_edges(graph, from_pc);
+  current = head;
+
+  while (current != (uint64_t*) 0) {
+    if (get_to_pc(current) == to_pc) {
+      return 0;
+    }
+    current = get_next_edge(current);
+  }
+
+  new = new_edge();
+  set_to_pc(new, to_pc);
+  set_next_edge(new, head);
+  set_edges(graph, from_pc, new);
+
+  return 1;
+}
+
+void add_cfg_edge(uint64_t from_pc, uint64_t to_pc) {
+  add_edge(cfg, from_pc, to_pc);
+  add_edge(inverse_cfg, to_pc, from_pc);
+}
+
+uint64_t* cached_returns = (uint64_t*) 0;
+
+uint64_t* new_return() {
+  return malloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+}
+
+uint64_t* get_next_return(uint64_t* ret) { return (uint64_t*) *ret; }
+uint64_t get_return_pc(uint64_t* ret)    { return *(ret + 1); }
+
+void set_next_return(uint64_t* ret, uint64_t* next) { *ret = (uint64_t) next; }
+void set_return_pc(uint64_t* ret, uint64_t pc)      { *(ret + 1) = pc; }
+
+uint64_t* get_returns(uint64_t function) {
+  return (uint64_t*) *(cached_returns + function/INSTRUCTIONSIZE);
+}
+
+void set_returns(uint64_t function, uint64_t* returns) {
+  *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) returns;
+}
+
+void set_function_exits(uint64_t function) {
+  // assumption: a function that does an exit ecall does not have any returns in it
+  *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) -1;
+}
+
+uint64_t add_return(uint64_t function, uint64_t ret_pc) {
+  uint64_t* head;
+  uint64_t* current;
+  uint64_t* new;
+
+  head = get_returns(function);
+  current = head;
+
+  while (current != (uint64_t*) 0) {
+    if (get_return_pc(current) == ret_pc) {
+      return 0;
+    }
+    current = get_next_return(current);
+  }
+
+  new = new_return();
+  set_return_pc(new, ret_pc);
+  set_next_return(new, head);
+  set_returns(function, new);
+
+  return 1;
+}
+
+uint64_t* exits = (uint64_t*) 0;
+
+uint64_t* new_exit() {
+  return malloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+}
+
+uint64_t* get_next_exit(uint64_t* exit) { return (uint64_t*) *exit; }
+uint64_t get_exit_pc(uint64_t* exit)    { return *(exit + 1); }
+
+void set_next_exit(uint64_t* exit, uint64_t* next) { *exit = (uint64_t) next; }
+void set_exit_pc(uint64_t* exit, uint64_t pc)      { *(exit + 1) = pc; }
+
+void add_exit(uint64_t pc) {
+  uint64_t* new;
+
+  new = new_exit();
+  set_exit_pc(new, pc);
+  set_next_exit(new, exits);
+
+  exits = new;
+}
 
 void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t created_new_state;
   uint64_t *state;
   uint64_t force_continue;
   uint64_t i;
+  uint64_t* current;
 
-  depth = depth + 1;
   force_continue = 0;
 
   while (1) {
     if (pc >= code_length) {
       print("Error: pc went past end of code!");
       exit(1);
+    }
+
+    if (prev_pc != -1) {
+      add_cfg_edge(prev_pc, pc);
     }
 
     created_new_state = 0;
@@ -249,7 +441,13 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       } else if (!merge_states(tmp_state, state)) { // merge current machine states
         if (!force_continue) {
           // if merge didn't result in any changes: return
-          depth = depth - 1;
+          if (current_ra != -1) {
+            if (get_cached_state(call_stack_peek()) != 0) {
+              if (!call_stack_recursion_check()) {
+                update_state(current_ra, get_cached_state(call_stack_peek()));
+              }
+            }
+          }
           return;
         }
       }
@@ -261,7 +459,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     decode();
 
     if (debug) {
-      printf1("%d: ", (char *) depth);
+      printf1("%d: ", (char *) call_stack_index);
       print_instruction();
       printf1(" (%d):", (char *) pc);
       i = 1;
@@ -277,49 +475,70 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     prev_pc = pc;
 
     if (is == BEQ) {
-      // explore branch in recursive call and continue executing non-branch path in current call
-      traverse_recursive(pc + imm, pc, current_ra);
-      // last loaded instruction from recursive call remains
-      // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
-      // (the loaded instruction ends up being the beq itself, which has no effect)
-      ir = load_instruction(pc);
-      decode();
-      // if the source registers are equal: the branch must be taken!
-      // therefore, we do not have to explore the other path and we can return early
-      //if (!is_reg_unknown(state, rs1))
-      //  if (!is_reg_unknown(state, rs2))
-      //    if (get_reg(state, rs1) == get_reg(state, rs2))
-      //      return;
-    } else if (is == JAL) {
-      if (rd == REG_RA) { // procedure call
-        traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
-
-        // load and decode jal again
+      // if the registers being compared have known values: explore the corresponding branch only
+      if (is_reg_unknown(state, rs1) + is_reg_unknown(state, rs2) == 0) {
+        if (get_reg(state, rs1) == get_reg(state, rs2)) {
+          // explore branch and return
+          traverse_recursive(pc + imm, pc, current_ra);
+          return;
+        }
+        // else: continue exploring current path
+      }
+        // explore both branches
+      else {
+        // explore branch in recursive call and continue executing non-branch path in current call
+        traverse_recursive(pc + imm, pc, current_ra);
+        // last loaded instruction from recursive call remains
+        // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
+        // (the loaded instruction ends up being the beq itself, which has no effect)
         ir = load_instruction(pc);
         decode();
+      }
+
+    } else if (is == JAL) {
+      if (rd == REG_RA) { // procedure call
+        call_stack_push(pc + imm);
+        traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
+
+        current = get_returns(call_stack_peek());
+
+        call_stack_pop();
+
+        if (current == (uint64_t*) -1) {
+          // the function we just called doesn't have any returns, only exits
+          // therefore the path doesn't continue after the call
+          return;
+        }
+
+        // load and decode jal again
+        // not necessary as we set prev_pc to -1,
+        // therefore the next iteration won't attempt to apply the effects of the previous instruction
+        /*
+        ir = load_instruction(pc);
+        decode();
+         */
 
         // force continuation of execution along this path, even if the next iteration results in a merge with no change
         // this is needed because the machine state at the next instruction got modified by the recursive call earlier
         // but we still need to follow that path as the following machine states haven't been updated yet
         force_continue = 1;
+        prev_pc = (uint64_t) -1;
       }
       else if (rd == REG_ZR) { // "normal" jump
         pc = pc + imm - INSTRUCTIONSIZE; // subtract INSTRUCTIONSIZE because it gets added again at the end of the loop
       }
       else { // other
-        print("Error: jal doesn't seem to be return from procedure or \"normal\" jump!");
+        print("Error: jal doesn't seem to be procedure call or \"normal\" jump!");
         exit(1);
       }
     } else if (is == JALR) {
       // for now: assume that every jalr returns from a function
       if (rd == REG_ZR) {
-        depth = depth - 1;
-        if (get_state(current_ra) == 0) {
-          set_state(current_ra, new_machine_state());
-          copy_state(state, get_state(current_ra));
-        } else {
-          merge_states(state, get_state(current_ra));
+        if (!call_stack_recursion_check()) {
+          update_state(current_ra, state);
+          update_cached_state(call_stack_peek(), state);
         }
+        add_return(call_stack_peek(), pc);
         return;
       } else {
         print("Error: jalr with non-zero destination register not supported!");
@@ -328,7 +547,8 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     } else if (is == ECALL) {
       // assume that value of a7 is always known
       if (get_reg(state, REG_A7) == SYSCALL_EXIT) {
-        depth = depth - 1;
+        add_exit(pc);
+        set_function_exits(call_stack_peek());
         return;
       }
     }
@@ -336,9 +556,193 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   }
 }
 
+void add_return_edges() {
+  uint64_t* current;
+
+  pc = 0;
+
+  while (pc < code_length) {
+    ir = load_instruction(pc);
+    decode();
+
+    if (is == JAL) {
+      if (rd == REG_RA) {
+        // function call
+        current = get_returns(pc + imm);
+
+        if (current != (uint64_t*) -1) {
+          while (current != (uint64_t *) 0) {
+            add_cfg_edge(get_return_pc(current), pc + INSTRUCTIONSIZE);
+            current = get_next_return(current);
+          }
+        }
+      }
+    }
+    pc = pc + INSTRUCTIONSIZE;
+  }
+}
+
+uint64_t* livedeads = (uint64_t*) 0;
+
+uint64_t* tmp_livedead = (uint64_t*) 0;
+
+uint64_t is_reg_live(uint64_t* livedead, uint64_t reg) { return *(livedead + reg); }
+
+void set_reg_live(uint64_t* livedead, uint64_t reg)    { *(livedead + reg) = 1; }
+void set_reg_dead(uint64_t* livedead, uint64_t reg) {
+  if (reg != REG_ZR) {
+    *(livedead + reg) = 0;
+  }
+}
+
+uint64_t* new_livedead() {
+  uint64_t* new;
+
+  new = zalloc(SIZEOFUINT64 * NUMBEROFREGISTERS);
+  set_reg_live(new, REG_ZR);
+  return new;
+}
+
+uint64_t* get_livedead(uint64_t pc) { return (uint64_t*) *(livedeads + pc/INSTRUCTIONSIZE); }
+
+void set_livedead(uint64_t pc, uint64_t* livedead) { *(livedeads + pc/INSTRUCTIONSIZE) = (uint64_t) livedead; }
+
+void copy_livedead(uint64_t* source, uint64_t* dest) {
+  uint64_t i;
+
+  dest = new_livedead();
+
+  i = 0;
+  while (i < NUMBEROFREGISTERS) {
+    if (is_reg_live(source, i)) {
+      set_reg_live(dest, i);
+    }
+    i = i + 1;
+  }
+}
+
+uint64_t merge_livedead(uint64_t *source, uint64_t *dest) {
+  uint64_t i;
+  uint64_t changed;
+
+  changed = 0;
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (is_reg_live(source, i)) {
+      if (!is_reg_live(dest, i)) {
+        set_reg_live(dest, i);
+        changed = changed + 1;
+      }
+    }
+    i = i + 1;
+  }
+  return changed;
+}
+
+void apply_livedead_effects(uint64_t *livedead) {
+  if ((is == LUI) + (is == JAL)) {
+    set_reg_dead(livedead, rd);
+  }
+  else if ((is == ADDI) + (is == LD) + (is == JALR)) {
+    set_reg_dead(livedead, rd);
+    set_reg_live(livedead, rs1);
+  }
+  else if ((is == SD) + (is == BEQ)) {
+    set_reg_live(livedead, rs1);
+    set_reg_live(livedead, rs2);
+  }
+  else if ((is == ADD) + (is == SUB) + (is == MUL) + (is == DIVU) + (is == REMU) + (is == SLTU)) {
+    set_reg_dead(livedead, rd);
+    set_reg_live(livedead, rs1);
+    set_reg_live(livedead, rs2);
+  }
+  else if (is == ECALL) {
+    set_reg_dead(livedead, REG_A0);
+    set_reg_live(livedead, REG_A7);
+  }
+  else {
+    print("Error: unhandled instruction in apply_livedead_effects!\n");
+    exit(1);
+  }
+}
+
+void recursive_livedead(uint64_t pc, uint64_t prev_pc) {
+  uint64_t* livedead;
+  uint64_t created_new;
+  uint64_t* current;
+
+  while (1) {
+    if (pc >= code_length) {
+      print("Error: pc went past end of code!");
+      exit(1);
+    }
+
+    created_new = 0;
+    livedead = get_livedead(pc);
+    if (livedead == (uint64_t *) 0) {
+      livedead = new_livedead();
+      set_livedead(pc, livedead);
+      created_new = 1;
+    }
+
+    ir = load_instruction(pc);
+    decode();
+
+    if (prev_pc != (uint64_t) -1) {
+      copy_livedead(get_livedead(prev_pc), tmp_livedead);
+    }
+    else {
+      tmp_livedead = new_livedead();
+    }
+
+    apply_livedead_effects(tmp_livedead); // apply effects of current instruction to live/dead information
+    if (created_new) {
+      copy_livedead(tmp_livedead, livedead);
+    } else if (!merge_livedead(tmp_livedead, livedead)) { // merge current live/dead information
+      // if merge didn't result in any changes: return
+      return;
+    }
+
+    current = get_edges(inverse_cfg, pc);
+
+    if (current == (uint64_t*) 0) {
+      if (pc != 0) {
+        printf1("Error! No in-edges at pc=%d", (char*) pc);
+        exit(1);
+      }
+      else {
+        // reached cfg root
+        return;
+      }
+    }
+
+    while (get_next_edge(current) != 0) {
+      recursive_livedead(get_to_pc(current), pc);
+      current = get_next_edge(current);
+    }
+
+    // traverse last edge without recursion to avoid a stack overflow
+    prev_pc = pc;
+    pc = get_to_pc(current);
+  }
+}
+
 void selfie_traverse() {
+  uint64_t num_instructions;
+  uint64_t* exit;
+
+  num_instructions = code_length / INSTRUCTIONSIZE;
   // allocate for each instruction
-  machine_states = zalloc(SIZEOFUINT64STAR * (code_length / INSTRUCTIONSIZE));
+  machine_states = zalloc(SIZEOFUINT64STAR * num_instructions);
+  // these allocations could be way smaller (with more complicated code)
+  // but we need O(n) memory with n = number of instructions anyway
+  cached_machine_states = zalloc(SIZEOFUINT64STAR * num_instructions);
+  cached_returns = zalloc(SIZEOFUINT64STAR * num_instructions);
+  cfg = zalloc(SIZEOFUINT64STAR * num_instructions);
+  inverse_cfg = zalloc(SIZEOFUINT64STAR * num_instructions);
+  livedeads = zalloc(SIZEOFUINT64STAR * num_instructions);
+  call_stack = malloc(SIZEOFUINT64STAR * num_instructions);
 
   // binary_name = replace_extension(binary_name, "opt");
 
@@ -347,10 +751,16 @@ void selfie_traverse() {
 
   run = 0;
 
-  set_state(0, new_machine_state());
   tmp_state = new_machine_state();
-
   traverse_recursive(0, (uint64_t) -1, (uint64_t) -1);
+
+  add_return_edges();
+
+  exit = exits;
+  while (exit != (uint64_t) 0) {
+    recursive_livedead(get_exit_pc(exit), (uint64_t) -1);
+    exit = get_next_exit(exit);
+  }
 }
 
 void insert_nop(uint64_t position) {
@@ -373,13 +783,39 @@ void print_state(uint64_t* machine_state) {
   }
 }
 
-void print_states() {
+void print_livedead(uint64_t* livedead) {
+  uint64_t i;
+
+  if (livedead == 0)
+    return;
+
+  i = 0;
+
+  print("\tlive:\t");
+  while (i < NUMBEROFREGISTERS) {
+    if (is_reg_live(livedead, i)) {
+      printf1("%s ", (char *) *(REGISTERS + i));
+    }
+
+    i = i + 1;
+  }
+  println();
+}
+
+void print_states_and_livedeads() {
   uint64_t i;
 
   i = 0;
   while (i < code_length / INSTRUCTIONSIZE) {
-    printf1("%x\n", (char *) (i * INSTRUCTIONSIZE));
+    printf1("%x:", (char *) (i * INSTRUCTIONSIZE));
+    ir = load_instruction(i * INSTRUCTIONSIZE);
+    decode();
+    print("\t");
+    print_instruction();
+    println();
     print_state((uint64_t *) *(machine_states + i));
+    print_livedead((uint64_t *) *(livedeads + i));
+    println();
     i = i + 1;
   }
 }
@@ -405,11 +841,14 @@ uint64_t find_next_enop(uint64_t from_pc) {
         } //else {print_state(get_state(i));print("->\n");print_state(state);print("\n");}
       }
     }
+    else {
+      return i;
+    }
 
     i = i + INSTRUCTIONSIZE;
   }
 
-  return -1;
+  return (uint64_t) -1;
 }
 
 uint64_t found_enops = 0;
@@ -460,6 +899,8 @@ int main(int argc, char **argv) {
 
   debug = 0;
   selfie_traverse();
+
+  print_states_and_livedeads();
 
   // This is testing code, remove later
   // print_states();
