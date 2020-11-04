@@ -317,8 +317,8 @@ void implement_symbolic_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
 
@@ -392,8 +392,8 @@ void implement_symbolic_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           // TODO: What should symbolically executed code actually output?
 
@@ -448,8 +448,8 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr))
-      if (is_valid_data_stack_heap_address(context, vaddr)) {
+    if (is_aligned_virtual_address(vaddr, WORDSIZE))
+      if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr)) {
           sword = load_symbolic_memory(vaddr);
 
@@ -727,7 +727,7 @@ void constrain_ld() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
     // semantics of ld
     if (rd != REG_ZR) {
       sword = load_symbolic_memory(vaddr);
@@ -780,7 +780,7 @@ void constrain_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
     // semantics of sd
     store_symbolic_memory(vaddr,
       *(registers + rs2),
