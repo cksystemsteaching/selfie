@@ -16,10 +16,10 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       gcc-riscv64-linux-gnu \
-       git \
-       libc-dev-riscv64-cross \
        make \
+       git \
+       gcc-riscv64-linux-gnu \
+       libc-dev-riscv64-cross \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -56,12 +56,10 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       device-tree-compiler \
-       g++ \
-       gcc \
-       git \
-       libc-dev \
        make \
+       git \
+       g++ \
+       device-tree-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -115,14 +113,11 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       cmake \
-       g++ \
-       gcc \
-       git \
-       libc-dev \
        make \
-       wget \
+       git \
+       g++ \
        curl \
+       cmake \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -153,13 +148,13 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       gcc \
        make \
-       automake \
-       pkg-config \
+       git \
+       gcc \
        libtool \
        libusb-dev \
-       git \
+       automake \
+       pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/riscv/riscv-openocd.git
@@ -188,17 +183,19 @@ WORKDIR $TOP
 # Setting non-interactive mode
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# install git and basic build tools (gcc, make) for working with selfie,
+# install basic build tools, git, python3.8 for selfie,
 # and device-tree-compiler which is required for spike
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       build-essential \
        ca-certificates \
-       gcc-riscv64-linux-gnu \
-       binutils-riscv64-linux-gnu \
-       libc-dev-riscv64-cross \
-       make \
+       build-essential \
+       git \
+       python3.8 \
        device-tree-compiler \
+  && apt-get install -y --no-install-recommends \
+       binutils-riscv64-linux-gnu \
+       gcc-riscv64-linux-gnu \
+       libc-dev-riscv64-cross \
        xxd \
        gettext \
        curl \
@@ -208,8 +205,8 @@ RUN apt-get update \
        lldb \
        libusb-dev \
        libhidapi-dev \
-       git \
-       python3.8 \
+       libc6-dev-i386-amd64-cross \
+       lib32gcc-9-dev \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
   && rm -rf /var/lib/apt/lists/*
 
