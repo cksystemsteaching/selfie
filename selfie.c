@@ -2052,8 +2052,10 @@ uint64_t right_shift(uint64_t n, uint64_t b) {
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 < b <= i + b < SIZEOFUINT64INBITS
-  if (i == 0)
+  // assert: 0 < b <= i + b <= SIZEOFUINT64INBITS
+  if (b >= SIZEOFUINT64STARINBITS)
+    return n;
+  else if (i == 0)
     return n % two_to_the_power_of(b);
   else
     // shift to-be-loaded bits all the way to the left
