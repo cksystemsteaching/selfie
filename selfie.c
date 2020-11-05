@@ -10118,6 +10118,10 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
+  // current_context is ready to run
+
+  run = 1;
+
   printf3("%s: selfie executing %s with %uMB physical memory", selfie_name,
     binary_name,
     (char*) (total_page_frame_memory / MEGABYTE));
@@ -10133,26 +10137,21 @@ uint64_t selfie_run(uint64_t machine) {
     debug          = 1;
     debug_syscalls = 1;
     print(", debugger");
+    machine = MIPSTER;
   } else if (machine == RIPSTER) {
     debug  = 1;
     record = 1;
     init_replay_engine();
     print(", replay");
+    machine = MIPSTER;
   } else if (machine == HYPSTER) {
     if (BOOTLEVELZERO)
       // no hypster on boot level zero
       machine = MIPSTER;
   }
-
   print(" on ");
 
-  run = 1;
-
   if (machine == MIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == DIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == RIPSTER)
     exit_code = mipster(current_context);
   else if (machine == MINSTER)
     exit_code = minster(current_context);
@@ -10163,8 +10162,6 @@ uint64_t selfie_run(uint64_t machine) {
   else
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
-
-  run = 0;
 
   record = 0;
 
@@ -10179,6 +10176,8 @@ uint64_t selfie_run(uint64_t machine) {
     print_profile(current_context);
   else if (GC_ON)
     print_gc_profile(current_context);
+
+  run = 0;
 
   return exit_code;
 }
