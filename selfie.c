@@ -145,6 +145,9 @@ char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
 
+uint64_t ratio_format(uint64_t a, uint64_t b);
+uint64_t percentage_format(uint64_t a, uint64_t b);
+
 void put_character(uint64_t c);
 
 void print(char* s);
@@ -897,10 +900,10 @@ uint64_t funct7 = 0;
 void reset_instruction_counters();
 
 uint64_t get_total_number_of_instructions();
-uint64_t get_total_percentage_of_nops();
+uint64_t get_total_number_of_nops();
 
-void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
-void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics);
+void print_instruction_counter(uint64_t counter, char* mnemonics);
+void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* mnemonics);
 
 void print_instruction_counters();
 
@@ -2423,6 +2426,14 @@ uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
     return ten_to_the_power_of(4 + f) / r;
   else
     return 0;
+}
+
+uint64_t ratio_format(uint64_t a, uint64_t b) {
+  return fixed_point_ratio(a, b, 2);
+}
+
+uint64_t percentage_format(uint64_t a, uint64_t b) {
+  return fixed_point_percentage(fixed_point_ratio(a, b, 4), 4);
 }
 
 void put_character(uint64_t c) {
@@ -5340,7 +5351,7 @@ void selfie_compile() {
 
       printf4("%s: with %u(%.2u%%) characters in %u actual symbols\n", selfie_name,
         (char*) (number_of_read_characters - number_of_ignored_characters),
-        (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
+        (char*) percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters),
         (char*) number_of_scanned_symbols);
 
       printf4("%s: %u global variables, %u procedures, %u string literals\n", selfie_name,
@@ -5792,70 +5803,65 @@ uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
 
-uint64_t get_total_percentage_of_nops() {
-  return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(),
-    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr, 4), 4);
+uint64_t get_total_number_of_nops() {
+  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr;
 }
 
-void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
+void print_instruction_counter(uint64_t counter, char* mnemonics) {
   printf3("%s: %u(%.2u%%)",
     mnemonics,
     (char*) counter,
-    (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
+    (char*) percentage_format(get_total_number_of_instructions(), counter));
 }
 
-void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics) {
-  print_instruction_counter(total, counter, mnemonics);
+void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* mnemonics) {
+  print_instruction_counter(counter, mnemonics);
 
   if (run)
-    printf1("[%.2u%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+    printf1("[%.2u%%]", (char*) percentage_format(counter, nops));
 }
 
 void print_instruction_counters() {
-  uint64_t ic;
-
-  ic = get_total_number_of_instructions();
-
   printf1("%s: init:    ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_lui, nopc_lui, "lui");
+  print_instruction_counter_with_nops(ic_lui, nopc_lui, "lui");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_addi, nopc_addi, "addi");
+  print_instruction_counter_with_nops(ic_addi, nopc_addi, "addi");
   println();
 
   printf1("%s: memory:  ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_ld, nopc_ld, "ld");
+  print_instruction_counter_with_nops(ic_ld, nopc_ld, "ld");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_sd, nopc_sd, "sd");
+  print_instruction_counter_with_nops(ic_sd, nopc_sd, "sd");
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_add, nopc_add, "add");
+  print_instruction_counter_with_nops(ic_add, nopc_add, "add");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_sub, nopc_sub, "sub");
+  print_instruction_counter_with_nops(ic_sub, nopc_sub, "sub");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_mul, nopc_mul, "mul");
+  print_instruction_counter_with_nops(ic_mul, nopc_mul, "mul");
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
+  print_instruction_counter_with_nops(ic_divu, nopc_divu, "divu");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_remu, nopc_remu, "remu");
+  print_instruction_counter_with_nops(ic_remu, nopc_remu, "remu");
   println();
 
   printf1("%s: compare: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_sltu, nopc_sltu, "sltu");
+  print_instruction_counter_with_nops(ic_sltu, nopc_sltu, "sltu");
   println();
 
   printf1("%s: control: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_beq, nopc_beq, "beq");
+  print_instruction_counter_with_nops(ic_beq, nopc_beq, "beq");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_jal, nopc_jal, "jal");
+  print_instruction_counter_with_nops(ic_jal, nopc_jal, "jal");
   print(", ");
-  print_instruction_counter_with_nops(ic, ic_jalr, nopc_jalr, "jalr");
+  print_instruction_counter_with_nops(ic_jalr, nopc_jalr, "jalr");
   println();
 
   printf1("%s: system:  ", selfie_name);
-  print_instruction_counter(ic, ic_ecall, "ecall");
+  print_instruction_counter(ic_ecall, "ecall");
   println();
 }
 
@@ -7725,30 +7731,30 @@ void gc_collect(uint64_t* context) {
 void print_gc_profile(uint64_t* context) {
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf5("%s: gc:      %.2uMB requested in %u mallocs (%u gced, %u reuses)\n", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
+    (char*) ratio_format(gc_mem_mallocated, MEGABYTE),
     (char*) gc_num_mallocated,
     (char*) gc_num_gced_mallocs,
     (char*) gc_num_reused_mallocs);
   printf4("%s: gc:      %.2uMB(%.2u%%) reused in %u reused mallocs\n", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
+    (char*) ratio_format(gc_mem_reused, MEGABYTE),
+    (char*) percentage_format(gc_mem_mallocated, gc_mem_reused),
     (char*) gc_num_reused_mallocs);
   printf3("%s: gc:      %.2uMB collected in %u gc runs\n", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
+    (char*) ratio_format(gc_mem_collected, MEGABYTE),
     (char*) gc_num_collects);
   printf6("%s: gc:      %.2uMB(%.2u%%) allocated in %u mallocs (%u gced, %u ungced)\n", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_objects + gc_mem_metadata, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata, 4), 4),
+    (char*) ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE),
+    (char*) percentage_format(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
     (char*) (gc_num_gced_mallocs + gc_num_ungced_mallocs),
     (char*) gc_num_gced_mallocs,
     (char*) gc_num_ungced_mallocs);
   printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
+    (char*) ratio_format(gc_mem_objects, MEGABYTE),
+    (char*) percentage_format(gc_mem_mallocated, gc_mem_objects),
     (char*) gc_num_gced_mallocs);
   printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u ungced mallocs", selfie_name,
-    (char*) fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
+    (char*) ratio_format(gc_mem_metadata, MEGABYTE),
+    (char*) percentage_format(gc_mem_mallocated, gc_mem_metadata),
     (char*) gc_num_ungced_mallocs);
   if (is_gc_library(context) == 0)
     print(" (external)");
@@ -9023,7 +9029,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3(",%u(%.2u%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
+    printf3(",%u(%.2u%%)@%x", (char*) c, (char*) percentage_format(total, c), (char*) a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -9047,7 +9053,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       writes = 1;
 
     printf7("%s: %s%s%d,%d,%d[%.2u]\n", selfie_name, message, padding,
-      (char*) (reads + writes), (char*) reads, (char*) writes, (char*) fixed_point_ratio(reads, writes, 2));
+      (char*) (reads + writes), (char*) reads, (char*) writes, (char*) ratio_format(reads, writes));
   }
 }
 
@@ -9116,17 +9122,17 @@ void print_profile(uint64_t* context) {
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
     (char*) get_total_number_of_instructions(),
-    (char*) get_total_percentage_of_nops());
+    (char*) percentage_format(get_total_number_of_instructions(), get_total_number_of_nops()));
   printf3("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
-    (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2),
+    (char*) ratio_format(mc_brk, MEGABYTE),
     (char*) sc_brk);
   printf4("%s:          %.2uMB(%.2u%% of %.2uMB) actually accessed\n", selfie_name,
-    (char*) fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4),
-    (char*) fixed_point_ratio(mc_brk, MEGABYTE, 2));
+    (char*) ratio_format(mc_mapped_heap, MEGABYTE),
+    (char*) percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
+    (char*) ratio_format(mc_brk, MEGABYTE));
   printf4("%s:          %.2uMB(%.2u%% of %uMB) mapped memory\n", selfie_name,
-    (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (char*) fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
+    (char*) ratio_format(pused(), MEGABYTE),
+    (char*) percentage_format(total_page_frame_memory, pused()),
     (char*) (total_page_frame_memory / MEGABYTE));
 
   if (GC_ON)
