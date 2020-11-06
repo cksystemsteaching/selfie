@@ -183,26 +183,26 @@ WORKDIR $TOP
 # Setting non-interactive mode
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# install basic build tools, git, python3.8 for selfie,
-# and device-tree-compiler which is required for spike
-RUN apt-get update \
+# install tools for selfie
+RUN dpkg --add-architecture i386 \
+  && apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       build-essential \
+       make \
        git \
+       clang \
+       lldb \
        python3.8 \
        device-tree-compiler \
+       gcc-riscv64-linux-gnu \
   && apt-get install -y --no-install-recommends \
        binutils-riscv64-linux-gnu \
-       gcc-riscv64-linux-gnu \
        libc-dev-riscv64-cross \
        xxd \
        gettext \
        curl \
-       clang \
        lld \
        llvm \
-       lldb \
        libusb-dev \
        libhidapi-dev \
        libc6-dev-i386-amd64-cross \
