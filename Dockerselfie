@@ -190,6 +190,8 @@ RUN dpkg --add-architecture i386 \
        ca-certificates \
        make \
        git \
+       gcc \
+       gdb \
        clang \
        lldb \
        python3.8 \
