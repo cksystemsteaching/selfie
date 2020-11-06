@@ -1947,25 +1947,29 @@ uint64_t selfie_run_symbolically() {
 
       boot_loader(current_context);
 
+      // current_context is ready to run
+
+      run = 1;
+
       printf3("%s: monster symbolically executing %s with %uMB physical memory\n", selfie_name,
         binary_name,
         (char*) (total_page_frame_memory / MEGABYTE));
 
       use_file();
 
-      run      = 1;
       symbolic = 1;
 
       monster(current_context);
 
       symbolic = 0;
-      run      = 0;
 
       use_stdout();
 
       printf2("%s: monster terminating %s\n", selfie_name, get_name(current_context));
 
       print_profile(current_context);
+
+      run = 0;
 
       printf3("%s: %u characters of SMT-LIB formulae written into %s\n", selfie_name,
         (char*) number_of_written_characters,

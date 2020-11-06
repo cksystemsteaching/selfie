@@ -2143,12 +2143,12 @@ uint64_t selfie_model() {
 
       boot_loader(current_context);
 
+      run = 0;
+
       do_switch(current_context, current_context, TIMEROFF);
 
       output_name = model_name;
       output_fd   = model_fd;
-
-      run = 0;
 
       model = 1;
 
