@@ -16,10 +16,8 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       make \
-       git \
-       gcc-riscv64-linux-gnu \
-       libc-dev-riscv64-cross \
+       make git \
+       gcc-riscv64-linux-gnu libc-dev-riscv64-cross \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -56,10 +54,8 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       make \
-       git \
-       g++ \
-       device-tree-compiler \
+       make git \
+       g++ device-tree-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -88,8 +84,7 @@ WORKDIR $TOP
 # install statically linked QEMU (so it's easier to move it to another image)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       qemu-user-static \
-       qemu-system-misc \
+       qemu-user-static qemu-system-misc \
   && rm -rf /var/lib/apt/lists/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
@@ -113,11 +108,9 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       make \
-       git \
+       make git \
        g++ \
-       curl \
-       cmake \
+       curl cmake \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -148,13 +141,9 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       make \
-       git \
-       gcc \
-       libtool \
-       libusb-dev \
-       automake \
-       pkg-config \
+       make git \
+       gcc libtool libusb-dev \
+       automake pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/riscv/riscv-openocd.git
@@ -184,32 +173,18 @@ WORKDIR $TOP
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # install tools for selfie
-RUN dpkg --add-architecture i386 \
-  && apt-get update \
+RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       make \
-       git \
-       gcc \
-       gdb \
-       clang \
-       lldb \
+       make git \
+       gcc gdb libc6-dev-i386-amd64-cross lib32gcc-9-dev \
        python3.8 \
-       device-tree-compiler \
-       gcc-riscv64-linux-gnu \
-  && apt-get install -y --no-install-recommends \
-       binutils-riscv64-linux-gnu \
-       libc-dev-riscv64-cross \
-       xxd \
-       gettext \
-       curl \
-       lld \
-       llvm \
-       libusb-dev \
-       libhidapi-dev \
-       libc6-dev-i386-amd64-cross \
-       lib32gcc-9-dev \
+       device-tree-compiler gcc-riscv64-linux-gnu \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
+  && apt-get install -y --no-install-recommends \
+       binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
+       libusb-dev libhidapi-dev \
+       xxd gettext curl \
   && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images
