@@ -1059,27 +1059,62 @@ uint64_t debug_switch = 0;
 // ----------------------------- CACHE -----------------------------
 // -----------------------------------------------------------------
 
-// L1-cache entry struct:
+// cache struct
+// +---+-----------------+
+// | 0 | cache memory    | pointer to actual cache consisting of cache blocks
+// | 1 | cache size      | cache size in bytes
+// | 2 | associativity   | cache associativity
+// | 3 | cache-line size | cache-line size in bytes
+// | 4 | cache sets      | number of sets in the cache
+// | 5 | cache hits      | counter for cache hits
+// | 6 | cache misses    | counter for cache misses
+// +---+-----------------+
+
+uint64_t* allocate_cache() {
+  return smalloc(1 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+}
+
+uint64_t* get_cache_memory(uint64_t* cache)    { return (uint64_t*) *cache; }
+uint64_t  get_cache_size(uint64_t* cache)      { return             *(cache + 1); }
+uint64_t  get_associativity(uint64_t* cache)   { return             *(cache + 2); }
+uint64_t  get_cache_line_size(uint64_t* cache) { return             *(cache + 3); }
+uint64_t  get_cache_sets(uint64_t* cache)      { return             *(cache + 4); }
+uint64_t  get_cache_hits(uint64_t* cache)      { return             *(cache + 5); }
+uint64_t  get_cache_misses(uint64_t* cache)    { return             *(cache + 6); }
+
+void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)      { *cache       = (uint64_t) cache_memory; }
+void set_cache_size(uint64_t* cache, uint64_t cache_size)           { *(cache + 1) = cache_size; }
+void set_associativity(uint64_t* cache, uint64_t associativity)     { *(cache + 2) = associativity; }
+void set_cache_line_size(uint64_t* cache, uint64_t cache_line_size) { *(cache + 3) = cache_line_size; }
+void set_cache_sets(uint64_t* cache, uint64_t cache_sets)           { *(cache + 4) = cache_sets; }
+void set_cache_hits(uint64_t* cache, uint64_t cache_hits)           { *(cache + 5) = cache_hits; }
+void set_cache_misses(uint64_t* cache, uint64_t cache_misses)       { *(cache + 6) = cache_misses; }
+
+// L1-cache block struct:
 // +---+------------+
-// | 0 | valid flag | flags whether the entry is valid or not
+// | 0 | valid flag | flags whether the block is valid or not
 // | 1 | tag        | unique identifier within a set
 // | 2 | data       | pointer to cache-line data
 // +---+------------+
 
-uint64_t* allocate_l1_cache_entry() {
+uint64_t* allocate_cache_block() {
   return zmalloc(1 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 }
 
-uint64_t  get_valid_flag(uint64_t* cache_entry) { return             *cache_entry; }
-uint64_t  get_tag(uint64_t* cache_entry)        { return             *(cache_entry + 1); }
-uint64_t* get_data(uint64_t* cache_entry)       { return (uint64_t*) *(cache_entry + 2); }
+uint64_t  get_valid_flag(uint64_t* cache_block) { return             *cache_block; }
+uint64_t  get_tag(uint64_t* cache_block)        { return             *(cache_block + 1); }
+uint64_t* get_data(uint64_t* cache_block)       { return (uint64_t*) *(cache_block + 2); }
 
-void set_valid_flag(uint64_t* cache_entry, uint64_t valid) { *cache_entry       = valid; }
-void set_tag(uint64_t* cache_entry, uint64_t tag)          { *(cache_entry + 1) = tag; }
-void set_data(uint64_t* cache_entry, uint64_t* data)       { *(cache_entry + 2) = (uint64_t) data; }
+void set_valid_flag(uint64_t* cache_block, uint64_t valid) { *cache_block       = valid; }
+void set_tag(uint64_t* cache_block, uint64_t tag)          { *(cache_block + 1) = tag; }
+void set_data(uint64_t* cache_block, uint64_t* data)       { *(cache_block + 2) = (uint64_t) data; }
 
-void reset_l1_cache_counters();
-void init_l1_cache();
+void reset_cache_counters(uint64_t* cache);
+void reset_all_cache_counters();
+
+void init_cache_memory(uint64_t* cache);
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
+void init_all_caches();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1090,17 +1125,16 @@ uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
 uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
 
 // L1-cache associativity
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY <= PAGESIZE
+// (this is necessary in order to prevent aliasing problems)
 uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
 uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
-
-// L1 cache-line width
-uint64_t L1_DCACHE_LINE_WIDTH = 128; // in bits
-uint64_t L1_ICACHE_LINE_WIDTH = 128; // in bits
 
 // L1 cache-line size
 uint64_t L1_DCACHE_LINE_SIZE = 16; // in byte
 uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
 
+// pointers to L1 caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
 
@@ -1690,6 +1724,7 @@ void reset_segments_access_counters() {
 void reset_profiler() {
   reset_instruction_counters();
   reset_nop_counters();
+  reset_all_cache_counters();
   reset_memory_counters();
   reset_source_profile();
   reset_register_access_counters();
@@ -7042,33 +7077,61 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // ----------------------------- CACHE -----------------------------
 // -----------------------------------------------------------------
 
-void init_l1_cache() {
-  uint64_t number_of_dcache_entries;
-  uint64_t number_of_icache_entries;
-  uint64_t i;
-  uint64_t* current_entry;
+void reset_cache_counters(uint64_t* cache) {
+  set_cache_sets(cache, 0);
+  set_cache_hits(cache, 0);
+}
 
-  number_of_dcache_entries = L1_DCACHE_SIZE / L1_DCACHE_LINE_SIZE;
-  number_of_icache_entries = L1_ICACHE_SIZE / L1_ICACHE_LINE_SIZE;
+void reset_all_cache_counters() {
+  if (L1_DCACHE != (uint64_t*) 0)
+    reset_cache_counters(L1_DCACHE);
+
+  if (L1_ICACHE != (uint64_t*) 0)
+    reset_cache_counters(L1_ICACHE);
+}
+
+void init_cache_memory(uint64_t* cache) {
+  uint64_t no_of_cache_blocks;
+  uint64_t* cache_memory;
+  uint64_t cache_line_size;
+  uint64_t* current_block;
+  uint64_t i;
+
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_line_size(cache);
   i = 0;
 
-  L1_DCACHE = smalloc(number_of_dcache_entries * SIZEOFUINT64STAR);
-  L1_ICACHE = smalloc(number_of_icache_entries * SIZEOFUINT64STAR);
+  cache_memory = smalloc(no_of_cache_blocks * SIZEOFUINT64STAR);
+  set_cache_memory(cache, cache_memory);
 
-  while (i < number_of_dcache_entries) {
-    current_entry = allocate_l1_cache_entry();
-    *(L1_DCACHE + i) = (uint64_t) current_entry;
-    set_data(current_entry, smalloc(L1_DCACHE_LINE_SIZE));
+  cache_line_size = get_cache_line_size(cache);
+
+  while (i < no_of_cache_blocks) {
+    current_block = allocate_cache_block();
+    *(cache_memory + i) = (uint64_t) current_block;
+    set_data(current_block, smalloc(cache_line_size));
     i = i + 1;
   }
+}
+
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size) {
+  set_cache_size(cache, cache_size);
+  set_associativity(cache, associativity);
+  set_cache_line_size(cache, cache_line_size);
+  set_cache_sets(cache, cache_size / associativity);
+  init_cache_memory(cache);
+  reset_cache_counters(cache);
+}
+
+void init_all_caches() {
+  L1_DCACHE = allocate_cache();
+  init_cache(L1_DCACHE, L1_DCACHE_SIZE, L1_DCACHE_ASSOCIATIVITY, L1_DCACHE_LINE_SIZE);
+
+  L1_ICACHE = allocate_cache();
+  init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_LINE_SIZE);
+}
 
   i = 0;
 
-  while (i < number_of_icache_entries) {
-    current_entry = allocate_l1_cache_entry();
-    *(L1_ICACHE + i) = (uint64_t) current_entry;
-    set_data(current_entry, smalloc(L1_ICACHE_LINE_SIZE));
-    i = i + 1;
   }
 }
 
@@ -10154,8 +10217,8 @@ uint64_t selfie_run(uint64_t machine) {
   reset_profiler();
   reset_microkernel();
 
+  init_all_caches();
   init_memory(atoi(peek_argument(0)));
-  init_l1_cache();
 
   current_context = create_context(MY_CONTEXT, 0);
 
