@@ -1079,6 +1079,7 @@ void set_tag(uint64_t* cache_entry, uint64_t tag)          { *(cache_entry + 1) 
 void set_data(uint64_t* cache_entry, uint64_t* data)       { *(cache_entry + 2) = (uint64_t) data; }
 
 void reset_l1_cache_counters();
+void init_l1_cache();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1095,6 +1096,13 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 // L1 cache-line width
 uint64_t L1_DCACHE_LINE_WIDTH = 128; // in bits
 uint64_t L1_ICACHE_LINE_WIDTH = 128; // in bits
+
+// L1 cache-line size
+uint64_t L1_DCACHE_LINE_SIZE = 16; // in byte
+uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
+
+uint64_t* L1_ICACHE;
+uint64_t* L1_DCACHE;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -7031,6 +7039,40 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+void init_l1_cache() {
+  uint64_t number_of_dcache_entries;
+  uint64_t number_of_icache_entries;
+  uint64_t i;
+  uint64_t* current_entry;
+
+  number_of_dcache_entries = L1_DCACHE_SIZE / L1_DCACHE_LINE_SIZE;
+  number_of_icache_entries = L1_ICACHE_SIZE / L1_ICACHE_LINE_SIZE;
+  i = 0;
+
+  L1_DCACHE = smalloc(number_of_dcache_entries * SIZEOFUINT64STAR);
+  L1_ICACHE = smalloc(number_of_icache_entries * SIZEOFUINT64STAR);
+
+  while (i < number_of_dcache_entries) {
+    current_entry = allocate_l1_cache_entry();
+    *(L1_DCACHE + i) = (uint64_t) current_entry;
+    set_data(current_entry, smalloc(L1_DCACHE_LINE_SIZE));
+    i = i + 1;
+  }
+
+  i = 0;
+
+  while (i < number_of_icache_entries) {
+    current_entry = allocate_l1_cache_entry();
+    *(L1_ICACHE + i) = (uint64_t) current_entry;
+    set_data(current_entry, smalloc(L1_ICACHE_LINE_SIZE));
+    i = i + 1;
+  }
+}
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -10113,6 +10155,7 @@ uint64_t selfie_run(uint64_t machine) {
   reset_microkernel();
 
   init_memory(atoi(peek_argument(0)));
+  init_l1_cache();
 
   current_context = create_context(MY_CONTEXT, 0);
 
