@@ -1116,6 +1116,8 @@ void init_cache_memory(uint64_t* cache);
 void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
 void init_all_caches();
 
+uint64_t* retrieve_cache_block(uint64_t* index, uint64_t* table, uint64_t vaddr);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t L1_CACHE_ENABLED = 1;
@@ -7130,9 +7132,33 @@ void init_all_caches() {
   init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_LINE_SIZE);
 }
 
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
+  uint64_t page_address;
+  uint64_t tag;
+  uint64_t index;
+  uint64_t* set;
+  uint64_t i;
+  uint64_t* cache_block;
+
+  page_address = (vaddr / PAGESIZE) * PAGESIZE;
+
+  tag = (uint64_t) tlb(table, page_address) / get_cache_sets(cache);
+  index = (vaddr - page_address) / get_cache_line_size(cache);
+
+  set = (uint64_t*) (get_cache_memory(cache) + index * get_associativity(cache));
+
   i = 0;
 
+  while (i < get_associativity(cache)) {
+    cache_block = set + i;
+
+    if (get_tag(cache_block) == tag)
+      if (get_valid_flag(cache_block))
+        return cache_block;
   }
+
+
+  return (uint64_t*) 0;
 }
 
 // -----------------------------------------------------------------
