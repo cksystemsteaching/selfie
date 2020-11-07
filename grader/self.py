@@ -210,10 +210,10 @@ def check_assembler_parser() -> List[Check]:
 
 
 def check_self_assemblation() -> List[Check]:
-    return check_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s ',
-                           'selfie can assemble its own binary file') + \
-        check_execution('diff -q selfie1.s selfie2.s',
-                        'both assembly files are exactly the same')
+    return check_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -o selfie1.m -m 128 -c selfie.c -o selfie2.m',
+                           'selfie can re-assemble its own binary file') + \
+        check_execution('diff -q selfie1.m selfie2.m',
+                        'both binary files are exactly the same')
 
 
 def check_processes() -> List[Check]:
