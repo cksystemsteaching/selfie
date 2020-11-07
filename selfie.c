@@ -186,6 +186,21 @@ uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 char* SELFIE_URL = (char*) 0;
 
+uint64_t WORDSIZE       = 8;  // (double) word size in bytes
+uint64_t WORDSIZEINBITS = 64; // 8 * WORDSIZE
+
+uint64_t SINGLEWORDSIZEINBITS = 32;
+
+uint64_t SIZEOFUINT64     = 8; // must be the same as WORDSIZE
+uint64_t SIZEOFUINT64STAR = 8; // must be the same as WORDSIZE
+
+uint64_t* power_of_two_table;
+
+uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
+
+uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
+uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
+
 uint64_t CHAR_EOF          =  -1; // end of file
 uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
 uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
@@ -211,21 +226,6 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
-
-uint64_t WORDSIZE       = 8;  // (double) word size in bytes
-uint64_t WORDSIZEINBITS = 64; // 8 * WORDSIZE
-
-uint64_t SINGLEWORDSIZEINBITS = 32;
-
-uint64_t SIZEOFUINT64     = 8; // must be the same as WORDSIZE
-uint64_t SIZEOFUINT64STAR = 8; // must be the same as WORDSIZE
-
-uint64_t* power_of_two_table;
-
-uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
-
-uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
-uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 
@@ -411,7 +411,7 @@ char* identifier = (char*) 0; // stores scanned identifier as string
 char* integer    = (char*) 0; // stores scanned integer as string
 char* string     = (char*) 0; // stores scanned string
 
-uint64_t literal = 0; // stores numerical value of scanned integer or character
+uint64_t literal = 0; // numerical value of most recently scanned integer or character
 
 uint64_t integer_is_signed = 0; // enforce INT64_MIN limit if '-' was scanned before
 
@@ -622,8 +622,9 @@ void      load_integer(uint64_t value);
 void      load_string(char* string);
 
 uint64_t procedure_call(uint64_t* entry, char* procedure);
-void     procedure_prologue(uint64_t number_of_local_variable_bytes);
-void     procedure_epilogue(uint64_t number_of_parameter_bytes);
+
+void procedure_prologue(uint64_t number_of_local_variable_bytes);
+void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
@@ -1142,7 +1143,7 @@ uint64_t is_gc_library(uint64_t* context);
 // |  0 | next    | pointer to next entry
 // |  1 | memory  | pointer to allocated memory
 // |  2 | size    | size of allocated memory (in bytes!)
-// |  3 | markbit | markbit indicating reachability of pointer
+// |  3 | markbit | markbit indicating reachability of allocated memory
 // +----+---------+
 
 uint64_t* allocate_metadata(uint64_t* context);
@@ -3809,7 +3810,7 @@ void load_integer(uint64_t value) {
 
   // assert: n = allocated_temporaries
 
-  if (is_signed_integer(value, SINGLEWORDSIZEINBITS)) {
+  if (is_signed_integer(value, 32)) {
     // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
@@ -5448,7 +5449,7 @@ void check_immediate_range(uint64_t immediate, uint64_t bits) {
     printf3("%d expected between %d and %d\n",
       (char*) immediate,
       (char*) -two_to_the_power_of(bits - 1),
-      (char*) two_to_the_power_of(bits - 1) - 1);
+      (char*) (two_to_the_power_of(bits - 1) - 1));
 
     exit(EXITCODE_COMPILERERROR);
   }
