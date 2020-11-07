@@ -1056,6 +1056,47 @@ uint64_t debug_switch = 0;
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+// L1-cache entry struct:
+// +---+------------+
+// | 0 | valid flag | flags whether the entry is valid or not
+// | 1 | tag        | unique identifier within a set
+// | 2 | data       | pointer to cache-line data
+// +---+------------+
+
+uint64_t* allocate_l1_cache_entry() {
+  return zmalloc(1 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+}
+
+uint64_t  get_valid_flag(uint64_t* cache_entry) { return             *cache_entry; }
+uint64_t  get_tag(uint64_t* cache_entry)        { return             *(cache_entry + 1); }
+uint64_t* get_data(uint64_t* cache_entry)       { return (uint64_t*) *(cache_entry + 2); }
+
+void set_valid_flag(uint64_t* cache_entry, uint64_t valid) { *cache_entry       = valid; }
+void set_tag(uint64_t* cache_entry, uint64_t tag)          { *(cache_entry + 1) = tag; }
+void set_data(uint64_t* cache_entry, uint64_t* data)       { *(cache_entry + 2) = (uint64_t) data; }
+
+void reset_l1_cache_counters();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t L1_CACHE_ENABLED = 1;
+
+// L1-cache size in byte
+uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
+uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
+
+// L1-cache associativity
+uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
+uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
+
+// L1 cache-line width
+uint64_t L1_DCACHE_LINE_WIDTH = 128; // in bits
+uint64_t L1_ICACHE_LINE_WIDTH = 128; // in bits
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
