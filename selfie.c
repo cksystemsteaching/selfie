@@ -2408,15 +2408,15 @@ uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
 
   uint64_t p;
 
-  p = f;
+  p = 0;
 
-  while (p > 0) {
-    if (a <= UINT64_MAX / ten_to_the_power_of(p)) {
-      if (b / ten_to_the_power_of(f - p) != 0)
-        return (a * ten_to_the_power_of(p)) / (b / ten_to_the_power_of(f - p));
+  while (p <= f) {
+    if (a <= UINT64_MAX / ten_to_the_power_of(f - p)) {
+      if (b / ten_to_the_power_of(p) != 0)
+        return (a * ten_to_the_power_of(f - p)) / (b / ten_to_the_power_of(p));
     }
 
-    p = p - 1;
+    p = p + 1;
   }
 
   return 0;
