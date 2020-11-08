@@ -8785,7 +8785,10 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-      printf2("%s: unknown instruction with %x opcode detected\n", selfie_name, (char*) opcode);
+      printf4("%s: at address %p unknown instruction %x with opcode %x detected\n", selfie_name,
+        (char*) pc,
+        (char*) ir,
+        (char*) opcode);
 
       exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
