@@ -2055,16 +2055,18 @@ uint64_t right_shift(uint64_t n, uint64_t b) {
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 < b <= i + b <= SIZEOFUINT64INBITS
-  if (b >= SIZEOFUINT64STARINBITS)
+  if (i + b < SIZEOFUINT64INBITS)
+    // reset all bits from index i + b to SIZEOFUINT64INBITS - 1
+    n = n % two_to_the_power_of(i + b);
+  else if (i >= SIZEOFUINT64INBITS)
+    return 0;
+
+  if (i == 0)
+    // fast path
     return n;
-  else if (i == 0)
-    return n % two_to_the_power_of(b);
   else
-    // shift to-be-loaded bits all the way to the left
-    // to reset all bits to the left of them, then
-    // shift to-be-loaded bits all the way to the right and return
-    return right_shift(left_shift(n, SIZEOFUINT64INBITS - (i + b)), SIZEOFUINT64INBITS - b);
+    // cancel all bits from index 0 to i - 1
+    return right_shift(n, i);
 }
 
 uint64_t get_low_word(uint64_t n) {
