@@ -18,7 +18,10 @@ selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
+.PHONY: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86 all
+
+# Run everything that only requires standard tools
+all: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -158,8 +161,11 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 	diff -q selfie.x86 selfie1.x86
 
-# Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86
+# Consider these targets as targets, not files
+.PHONY: grader grade assemble spike qemu x86 boolector btormc validator extras
+
+# Run everything that requires non-standard tools
+extras: grader grade assemble spike qemu x86 boolector btormc validator
 
 # Test autograder
 grader: selfie
@@ -214,8 +220,20 @@ validator: selfie modeler
 	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
 	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
 
-# Run everything that requires non-standard tools
-extras: assemble spike qemu x86 boolector btormc validator grader grade
+# Consider these targets as targets, not files
+.PHONY: 32-bit
+
+# 32-bit compiler flags
+32-BIT-CFLAGS := -Wall -Wextra -O3 -m32 -D'uint64_t=unsigned long'
+
+# Bootstrap selfie.c into 32-bit selfie executable
+32-bit-selfie: selfie.c
+	$(CC) $(32-BIT-CFLAGS) $< -o $@
+
+32-bit: 32-bit-selfie compile
+
+# Consider these targets as targets, not files
+.PHONY: everything clean
 
 # Run everything
 everything: all extras
