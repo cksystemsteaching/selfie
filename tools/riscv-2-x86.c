@@ -135,9 +135,9 @@ void fetch_translator() {
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
   if (pc_translator % WORDSIZE == 0)
-    ir = get_low_word(load_virtual_memory(pt, pc_translator));
+    ir = get_low_instruction(load_virtual_memory(pt, pc_translator));
   else
-    ir = get_high_word(load_virtual_memory(pt, pc_translator - INSTRUCTIONSIZE));
+    ir = get_high_instruction(load_virtual_memory(pt, pc_translator - INSTRUCTIONSIZE));
 }
 
 void x86SaveAddress() {
