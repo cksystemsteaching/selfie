@@ -1068,10 +1068,11 @@ uint64_t debug_switch = 0;
 // | 4 | cache sets      | number of sets in the cache
 // | 5 | cache hits      | counter for cache hits
 // | 6 | cache misses    | counter for cache misses
+// | 7 | cache timer     | counter for replacement strategy
 // +---+-----------------+
 
 uint64_t* allocate_cache() {
-  return smalloc(1 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  return smalloc(1 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 }
 
 uint64_t* get_cache_memory(uint64_t* cache)    { return (uint64_t*) *cache; }
@@ -1081,6 +1082,7 @@ uint64_t  get_cache_line_size(uint64_t* cache) { return             *(cache + 3)
 uint64_t  get_cache_sets(uint64_t* cache)      { return             *(cache + 4); }
 uint64_t  get_cache_hits(uint64_t* cache)      { return             *(cache + 5); }
 uint64_t  get_cache_misses(uint64_t* cache)    { return             *(cache + 6); }
+uint64_t  get_cache_timer(uint64_t* cache)     { return             *(cache + 7); }
 
 void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)      { *cache       = (uint64_t) cache_memory; }
 void set_cache_size(uint64_t* cache, uint64_t cache_size)           { *(cache + 1) = cache_size; }
@@ -1089,25 +1091,30 @@ void set_cache_line_size(uint64_t* cache, uint64_t cache_line_size) { *(cache + 
 void set_cache_sets(uint64_t* cache, uint64_t cache_sets)           { *(cache + 4) = cache_sets; }
 void set_cache_hits(uint64_t* cache, uint64_t cache_hits)           { *(cache + 5) = cache_hits; }
 void set_cache_misses(uint64_t* cache, uint64_t cache_misses)       { *(cache + 6) = cache_misses; }
+void set_cache_timer(uint64_t* cache, uint64_t cache_timer)         { *(cache + 7) = cache_timer; }
+
 
 // L1-cache block struct:
 // +---+------------+
 // | 0 | valid flag | flags whether the block is valid or not
 // | 1 | tag        | unique identifier within a set
 // | 2 | data       | pointer to cache-line data
+// | 3 | timestamp  | timestamp for replacement strategy
 // +---+------------+
 
 uint64_t* allocate_cache_block() {
-  return zmalloc(1 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return zmalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t  get_valid_flag(uint64_t* cache_block) { return             *cache_block; }
 uint64_t  get_tag(uint64_t* cache_block)        { return             *(cache_block + 1); }
 uint64_t* get_data(uint64_t* cache_block)       { return (uint64_t*) *(cache_block + 2); }
+uint64_t* get_timestamp(uint64_t* cache_block)  { return (uint64_t*) *(cache_block + 3); }
 
-void set_valid_flag(uint64_t* cache_block, uint64_t valid) { *cache_block       = valid; }
-void set_tag(uint64_t* cache_block, uint64_t tag)          { *(cache_block + 1) = tag; }
-void set_data(uint64_t* cache_block, uint64_t* data)       { *(cache_block + 2) = (uint64_t) data; }
+void set_valid_flag(uint64_t* cache_block, uint64_t valid)     { *cache_block       = valid; }
+void set_tag(uint64_t* cache_block, uint64_t tag)              { *(cache_block + 1) = tag; }
+void set_data(uint64_t* cache_block, uint64_t* data)           { *(cache_block + 2) = (uint64_t) data; }
+void set_timestamp(uint64_t* cache_block, uint64_t* timestamp) { *(cache_block + 3) = (uint64_t) timestamp; }
 
 void reset_cache_counters(uint64_t* cache);
 void reset_all_cache_counters();
@@ -1117,6 +1124,8 @@ void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, ui
 void init_all_caches();
 
 uint64_t* retrieve_cache_block(uint64_t* index, uint64_t* table, uint64_t vaddr);
+void load_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr);
+uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1139,6 +1148,11 @@ uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
 // pointers to L1 caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// indicates an unsuccessful cache lookup
+uint64_t cache_miss;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -7157,8 +7171,30 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
         return cache_block;
   }
 
-
   return (uint64_t*) 0;
+}
+
+void load_into_cache (uint64_t* cache, uint64_t* table, uint64_t vaddr) {
+
+}
+
+uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
+  uint64_t* data;
+  uint64_t byte_offset;
+
+  data = retrieve_cache_block(cache, table, vaddr);
+
+  if (data == (uint64_t*) 0) {
+    cache_miss = 1;
+
+    return 0;
+  } else {
+    cache_miss = 0;
+
+    byte_offset = (vaddr / get_cache_line_size(cache)) * get_cache_line_size(cache);
+
+    return *(data + byte_offset);
+  }
 }
 
 // -----------------------------------------------------------------
@@ -7311,6 +7347,32 @@ uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_physical_memory(tlb(table, vaddr));
+}
+
+uint64_t load_instruction_from_virtual_memory(uint64_t* table, uint64_t vaddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_virtual_address_mapped(table, vaddr) == 1
+
+  uint64_t data;
+  data = load_from_cache(L1_ICACHE, table, vaddr);
+
+  if (cache_miss == 0)
+    return data;
+  else
+    return load_physical_memory(tlb(table, vaddr));
+}
+
+uint64_t load_data_from_virtual_memory(uint64_t* table, uint64_t vaddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_virtual_address_mapped(table, vaddr) == 1
+
+  uint64_t data;
+  data = load_from_cache(L1_DCACHE, table, vaddr);
+
+  if (cache_miss == 0)
+    return data;
+  else
+    return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
@@ -8834,9 +8896,9 @@ void fetch() {
 
   if (is_valid_code_address(current_context, pc))
     if (pc % WORDSIZE == 0)
-      ir = get_low_word(load_virtual_memory(pt, pc));
+      ir = get_low_word(load_instruction_from_virtual_memory(pt, pc));
     else
-      ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+      ir = get_high_word(load_instruction_from_virtual_memory(pt, pc - INSTRUCTIONSIZE));
   else {
     ir = encode_nop();
 
