@@ -117,8 +117,6 @@ uint64_t left_shift(uint64_t n, uint64_t b);
 uint64_t right_shift(uint64_t n, uint64_t b);
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b);
-uint64_t get_low_word(uint64_t n);
-uint64_t get_high_word(uint64_t n);
 
 uint64_t absolute(uint64_t n);
 uint64_t max(uint64_t a, uint64_t b);
@@ -907,6 +905,9 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* 
 
 void print_instruction_counters();
 
+uint64_t get_low_instruction(uint64_t word);
+uint64_t get_high_instruction(uint64_t word);
+
 uint64_t load_instruction(uint64_t baddr);
 void     store_instruction(uint64_t baddr, uint64_t instruction);
 
@@ -1449,7 +1450,8 @@ void print_profile(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t INSTRUCTIONSIZE = 4; // in bytes
+uint64_t INSTRUCTIONSIZE       = 4;  // in bytes
+uint64_t INSTRUCTIONSIZEINBITS = 32; // INSTRUCTIONSIZE * 8
 
 // RISC-U instructions
 
@@ -2062,19 +2064,11 @@ uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
     return 0;
 
   if (i == 0)
-    // fast path
+    // redundant fast path
     return n;
   else
     // cancel all bits from index 0 to i - 1
     return right_shift(n, i);
-}
-
-uint64_t get_low_word(uint64_t n) {
-  return get_bits(n, 0, SINGLEWORDSIZEINBITS);
-}
-
-uint64_t get_high_word(uint64_t n) {
-  return get_bits(n, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
 uint64_t absolute(uint64_t n) {
@@ -5867,32 +5861,38 @@ void print_instruction_counters() {
   println();
 }
 
+uint64_t get_low_instruction(uint64_t word) {
+  return get_bits(word, 0, INSTRUCTIONSIZEINBITS);
+}
+
+uint64_t get_high_instruction(uint64_t word) {
+  return get_bits(word, INSTRUCTIONSIZEINBITS, INSTRUCTIONSIZEINBITS);
+}
+
 uint64_t load_instruction(uint64_t baddr) {
   if (baddr % WORDSIZE == 0)
-    return get_low_word(*(binary + baddr / WORDSIZE));
+    return get_low_instruction(*(binary + baddr / WORDSIZE));
   else
-    return get_high_word(*(binary + baddr / WORDSIZE));
+    return get_high_instruction(*(binary + baddr / WORDSIZE));
 }
 
 void store_instruction(uint64_t baddr, uint64_t instruction) {
-  uint64_t word;
-
   if (baddr >= MAX_CODE_LENGTH) {
     syntax_error_message("maximum code length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
 
-  word = *(binary + baddr / WORDSIZE);
-
-  if (baddr % WORDSIZE == 0)
+  if (INSTRUCTIONSIZE == WORDSIZE)
+    *(binary + baddr / WORDSIZE) = instruction;
+  else if (baddr % WORDSIZE == 0)
     // replace low word
-    word = left_shift(get_high_word(word), SINGLEWORDSIZEINBITS) + instruction;
+    *(binary + baddr / WORDSIZE) =
+      left_shift(load_instruction(baddr + INSTRUCTIONSIZE), INSTRUCTIONSIZEINBITS) + instruction;
   else
     // replace high word
-    word = left_shift(instruction, SINGLEWORDSIZEINBITS) + get_low_word(word);
-
-  *(binary + baddr / WORDSIZE) = word;
+    *(binary + baddr / WORDSIZE) =
+      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(baddr - INSTRUCTIONSIZE);
 }
 
 uint64_t load_data(uint64_t baddr) {
@@ -8701,9 +8701,9 @@ void fetch() {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
       if (pc % WORDSIZE == 0)
-        ir = get_low_word(load_virtual_memory(pt, pc));
+        ir = get_low_instruction(load_virtual_memory(pt, pc));
       else
-        ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+        ir = get_high_instruction(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
 
       return;
     } else
