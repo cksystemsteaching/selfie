@@ -10250,8 +10250,8 @@ uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
-    printf2("%s: this is the selfie system from %s\n", selfie_name, SELFIE_URL);
-    printf3("%s: using %u-bit unsigned integers and %u-bit pointers on bootlevel ", selfie_name,
+    printf2("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
+    printf3("%s: %u-bit unsigned integers and %u-bit pointers on bootlevel ", selfie_name,
       (char*) SIZEOFUINT64INBITS,
       (char*) SIZEOFUINT64STARINBITS);
     if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
