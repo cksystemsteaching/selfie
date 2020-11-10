@@ -881,6 +881,56 @@ uint64_t F7_SLTU = 0;  // 0000000
 // f12-codes (immediates)
 uint64_t F12_ECALL = 0; // 000000000000
 
+// ELF header
+
+uint64_t EI_MAG0 = 127; // magic number part 0 is 0x7F
+uint64_t EI_MAG1 = 'E'; // magic number part 1
+uint64_t EI_MAG2 = 'L'; // magic number part 2
+uint64_t EI_MAG3 = 'F'; // magic number part 3
+
+uint64_t EI_CLASS   = 2; // file class is 2 (ELFCLASS64) or 1 (ELFCLASS32)
+uint64_t EI_DATA    = 1; // object file data structures endianness is 1 (ELFDATA2LSB)
+uint64_t EI_VERSION = 1; // version of the object file format
+uint64_t EI_OSABI   = 0; // target OS ABI is usually set to 0
+
+uint64_t EI_ABIVERSION_PAD = 0; // ABI version and start of padding bytes
+
+uint64_t e_type    = 2;   // object file type is 0x02 (ET_EXEC)
+uint64_t e_machine = 243; // target architecture is 0xF3 (RISC-V)
+
+uint64_t e_version = 1; // version of the object file format
+
+// according to RISC-V pk
+uint64_t e_entry = 65536; // entry point address 0x10000 (address of beginning of code)
+
+uint64_t e_phoff = 64; // program header offset 0x40 (ELFCLASS64) or 0x34 (ELFCLASS32)
+uint64_t e_shoff = 0;  // section header offset
+
+uint64_t e_flags     = 0;  // ignored
+uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
+uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
+
+uint64_t e_phnum = 1; // number of program header entries
+
+uint64_t e_shentsize = 0; // size of section header entry
+uint64_t e_shnum     = 0; // number of section header entries
+uint64_t e_shstrndx  = 0; // section header offset
+
+// ELF program header
+
+uint64_t p_type  = 1; // type of segment is PT_LOAD
+uint64_t p_flags = 7; // segment attributes are RWX
+
+uint64_t p_offset = 4096; // segment offset in file (must be page-aligned)
+
+uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (address of beginning of code)
+uint64_t p_paddr = 0;     // physical address (ignored)
+
+uint64_t p_filesz = 0; // size of segment in file (binary_length)
+uint64_t p_memsz  = 0; // size of segment in memory (binary_length)
+
+uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t opcode = 0;
@@ -10251,7 +10301,7 @@ uint64_t selfie(uint64_t extras) {
     return EXITCODE_NOARGUMENTS;
   else {
     printf2("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
-    printf3("%s: %u-bit unsigned integers and %u-bit pointers on bootlevel ", selfie_name,
+    printf3("%s: %u-bit unsigned integers and %u-bit pointers on boot level ", selfie_name,
       (char*) SIZEOFUINT64INBITS,
       (char*) SIZEOFUINT64STARINBITS);
     if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
