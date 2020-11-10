@@ -196,7 +196,7 @@ uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same as SIZEOFUINT64
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
-uint64_t SINGLEWORDSIZEINBITS = 32; // single word size in bits
+uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
 
 uint64_t* power_of_two_table;
 
@@ -881,56 +881,6 @@ uint64_t F7_SLTU = 0;  // 0000000
 // f12-codes (immediates)
 uint64_t F12_ECALL = 0; // 000000000000
 
-// ELF header
-
-uint64_t EI_MAG0 = 127; // magic number part 0 is 0x7F
-uint64_t EI_MAG1 = 'E'; // magic number part 1
-uint64_t EI_MAG2 = 'L'; // magic number part 2
-uint64_t EI_MAG3 = 'F'; // magic number part 3
-
-uint64_t EI_CLASS   = 2; // file class is 2 (ELFCLASS64) or 1 (ELFCLASS32)
-uint64_t EI_DATA    = 1; // object file data structures endianness is 1 (ELFDATA2LSB)
-uint64_t EI_VERSION = 1; // version of the object file format
-uint64_t EI_OSABI   = 0; // target OS ABI is usually set to 0
-
-uint64_t EI_ABIVERSION_PAD = 0; // ABI version and start of padding bytes
-
-uint64_t e_type    = 2;   // object file type is 0x02 (ET_EXEC)
-uint64_t e_machine = 243; // target architecture is 0xF3 (RISC-V)
-
-uint64_t e_version = 1; // version of the object file format
-
-// according to RISC-V pk
-uint64_t e_entry = 65536; // entry point address 0x10000 (address of beginning of code)
-
-uint64_t e_phoff = 64; // program header offset 0x40 (ELFCLASS64) or 0x34 (ELFCLASS32)
-uint64_t e_shoff = 0;  // section header offset
-
-uint64_t e_flags     = 0;  // ignored
-uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
-uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
-
-uint64_t e_phnum = 1; // number of program header entries
-
-uint64_t e_shentsize = 0; // size of section header entry
-uint64_t e_shnum     = 0; // number of section header entries
-uint64_t e_shstrndx  = 0; // section header offset
-
-// ELF program header
-
-uint64_t p_type  = 1; // type of segment is PT_LOAD
-uint64_t p_flags = 7; // segment attributes are RWX
-
-uint64_t p_offset = 4096; // segment offset in file (must be page-aligned)
-
-uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (address of beginning of code)
-uint64_t p_paddr = 0;     // physical address (ignored)
-
-uint64_t p_filesz = 0; // size of segment in file (binary_length)
-uint64_t p_memsz  = 0; // size of segment in memory (binary_length)
-
-uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t opcode = 0;
@@ -999,7 +949,9 @@ void emit_string_data(uint64_t* entry);
 void emit_data_segment();
 
 uint64_t* allocate_elf_header();
-uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
+
+uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length);
+uint64_t  decode_elf_header(uint64_t* header);
 uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
@@ -1017,12 +969,62 @@ uint64_t MAX_BINARY_LENGTH = 524288; // 512KB = MAX_CODE_LENGTH + MAX_DATA_LENGT
 uint64_t MAX_CODE_LENGTH = 491520; // 480KB
 uint64_t MAX_DATA_LENGTH = 32768; // 32KB
 
-// page-aligned ELF header for storing file header (64 bytes),
-// program header (56 bytes), and code length (8 bytes)
+// page-aligned ELF header size for storing file header, program header, code length
 uint64_t ELF_HEADER_LEN = 4096;
 
 // according to RISC-V pk
-uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
+uint64_t ELF_ENTRY_POINT = 65536; // 0x10000 (address of beginning of code)
+
+// ELF file header
+
+uint64_t EI_MAG0 = 127; // magic number part 0 is 0x7F
+uint64_t EI_MAG1 = 'E'; // magic number part 1
+uint64_t EI_MAG2 = 'L'; // magic number part 2
+uint64_t EI_MAG3 = 'F'; // magic number part 3
+
+uint64_t EI_CLASS   = 2; // file class is 2 (ELFCLASS64) or 1 (ELFCLASS32)
+uint64_t EI_DATA    = 1; // object file data structures endianness is 1 (ELFDATA2LSB)
+uint64_t EI_VERSION = 1; // version of the object file format
+uint64_t EI_OSABI   = 0; // target OS ABI is usually set to 0
+
+uint64_t EI_ABIVERSION = 0; // ABI version
+uint64_t EI_PAD        = 0; // start of padding bytes
+
+uint64_t e_type    = 2;   // object file type is 0x02 (ET_EXEC)
+uint64_t e_machine = 243; // target architecture is 0xF3 (RISC-V)
+uint64_t e_version = 1;   // version of the object file format
+
+// according to RISC-V pk
+uint64_t e_entry = 65536; // entry point address 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
+
+uint64_t e_phoff = 64; // program header offset 0x40 (ELFCLASS64) or 0x34 (ELFCLASS32)
+uint64_t e_shoff = 0;  // section header offset
+
+uint64_t e_flags     = 0;  // ignored
+uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
+uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
+
+uint64_t e_phnum = 1; // number of program header entries
+
+uint64_t e_shentsize = 0; // size of section header entry
+uint64_t e_shnum     = 0; // number of section header entries
+uint64_t e_shstrndx  = 0; // section header offset
+
+// ELF program header
+
+uint64_t p_type  = 1; // type of segment is PT_LOAD
+uint64_t p_flags = 7; // segment attributes are RWX
+
+uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_LEN
+
+uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
+
+uint64_t p_paddr = 0; // physical address (ignored)
+
+uint64_t p_filesz = 0; // size of segment in file (binary_length)
+uint64_t p_memsz  = 0; // size of segment in memory (binary_length)
+
+uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1048,7 +1050,6 @@ uint64_t  binary_length = 0;             // length of binary in bytes including 
 char*     binary_name   = (char*) 0;     // file name of binary
 
 uint64_t code_length = 0; // length of code segment in binary in bytes
-uint64_t entry_point = 0; // beginning of code segment in virtual address space
 
 uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
 uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
@@ -2042,10 +2043,18 @@ void init_system() {
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
 
+  if (SIZEOFUINT64INBITS != 64) {
+    if (SIZEOFUINT64INBITS == 32)
+      IS64BITSYSTEM = 0;
+    else
+      // selfie only supports 32-bit and 64-bit systems
+      exit(EXITCODE_SYSTEMERROR);
+  }
+
   if (is_boot_level_zero()) {
     BOOTLEVELZERO = 1;
 
-    // Caution: the name of the executable must not have an extension to make this work
+    // caution: the name of the executable must not have an extension to make this work
     // try opening executable with zeroed flags which likely fails but just on Windows
     if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
       WINDOWS = 1;
@@ -5424,9 +5433,7 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = create_elf_header(binary_length, code_length);
-
-  entry_point = ELF_ENTRY_POINT;
+  ELF_header = encode_elf_header(binary_length, code_length);
 
   printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
@@ -6165,69 +6172,138 @@ uint64_t* allocate_elf_header() {
   return touch(zmalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 }
 
-uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
+uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
 
   header = allocate_elf_header();
 
-  // store all data necessary for creating a minimal and valid ELF64 file and program header
+  // store all data necessary for creating a minimal and valid file and program header
 
-  // RISC-U ELF64 file header:
-  *(header + 0) = 127                               // magic number part 0 is 0x7F
-                + left_shift((uint64_t) 'E', 8)     // magic number part 1
-                + left_shift((uint64_t) 'L', 16)    // magic number part 2
-                + left_shift((uint64_t) 'F', 24)    // magic number part 3
-                + left_shift(2, 32)                 // file class is ELFCLASS64
-                + left_shift(1, 40)                 // object file data structures endianness is ELFDATA2LSB
-                + left_shift(1, 48);                // version of the object file format
-  *(header + 1) = 0;                                // ABI version and start of padding bytes
-  *(header + 2) = 2                                 // object file type is ET_EXEC
-                + left_shift(243, 16)               // target architecture is RV64
-                + left_shift(1, 32);                // version of the object file format
-  *(header + 3) = ELF_ENTRY_POINT;                  // entry point address
-  *(header + 4) = 8 * SIZEOFUINT64;                 // program header offset
-  *(header + 5) = 0;                                // section header offset
-  *(header + 6) = left_shift(8 * SIZEOFUINT64, 32)  // elf header size
-                + left_shift(7 * SIZEOFUINT64, 48); // size of program header entry
-  *(header + 7) = 1;                                // number of program header entries
+  if (IS64BITSYSTEM) {
+    // RISC-U ELF64 file header:
+    *(header + 0) = EI_MAG0
+                  + left_shift(EI_MAG1, 8)
+                  + left_shift(EI_MAG2, 16)
+                  + left_shift(EI_MAG3, 24)
+                  + left_shift(EI_CLASS, 32)
+                  + left_shift(EI_DATA, 40)
+                  + left_shift(EI_VERSION, 48)
+                  + left_shift(EI_OSABI, 56);
+    *(header + 1) = EI_ABIVERSION
+                  + left_shift(EI_PAD, 8);
+    *(header + 2) = e_type
+                  + left_shift(e_machine, 16)
+                  + left_shift(e_version, 32);
+    *(header + 3) = e_entry;
+    *(header + 4) = e_phoff;
+    *(header + 5) = e_shoff;
+    *(header + 6) = e_flags
+                  + left_shift(e_ehsize, 32)
+                  + left_shift(e_phentsize, 48);
+    *(header + 7) = e_phnum
+                  + left_shift(e_shentsize, 16)
+                  + left_shift(e_shnum, 32)
+                  + left_shift(e_shstrndx, 48);
 
-  // RISC-U ELF64 program header table:
-  *(header + 8)  = 1                              // type of segment is LOAD
-                 + left_shift(7, 32);             // segment attributes is RWX
-  *(header + 9)  = ELF_HEADER_LEN;                // segment offset in file (must be page-aligned)
-  *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
-  *(header + 11) = 0;                             // physical address (reserved)
-  *(header + 12) = binary_length;                 // size of segment in file
-  *(header + 13) = binary_length;                 // size of segment in memory
-  *(header + 14) = PAGESIZE;                      // alignment of segment
+    p_filesz = binary_length;
+    p_memsz  = binary_length;
 
-  // This field is not part of the standard ELF header but
-  // used by selfie to load its own generated ELF files
-  *(header + 15) = code_length;
+    // RISC-U ELF64 program header:
+    *(header + 8)  = p_type
+                   + left_shift(p_flags, 32);
+    *(header + 9)  = p_offset;
+    *(header + 10) = p_vaddr;
+    *(header + 11) = p_paddr;
+    *(header + 12) = p_filesz;
+    *(header + 13) = p_memsz;
+    *(header + 14) = p_align;
+
+    // This field is not part of the standard ELF header but
+    // used by selfie to load its own generated ELF files
+    *(header + 15) = code_length;
+  } else {
+    EI_CLASS = 1; // file class is 1 (ELFCLASS32)
+
+    e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
+
+    e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
+    e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+
+    // RISC-U ELF32 file header:
+    *(header + 0)  = EI_MAG0
+                   + left_shift(EI_MAG1, 8)
+                   + left_shift(EI_MAG2, 16)
+                   + left_shift(EI_MAG3, 24);
+    *(header + 1)  = EI_CLASS
+                   + left_shift(EI_DATA, 8)
+                   + left_shift(EI_VERSION, 16)
+                   + left_shift(EI_OSABI, 24);
+    *(header + 2)  = EI_ABIVERSION; // ignoring 24 LSBs of EI_PAD
+    *(header + 3)  = EI_PAD;        // ignoring 24 MSBs of EI_PAD
+    *(header + 4)  = e_type
+                   + left_shift(e_machine, 16);
+    *(header + 5)  = e_version;
+    *(header + 6)  = e_entry;
+    *(header + 7)  = e_phoff;
+    *(header + 8)  = e_shoff;
+    *(header + 9)  = e_flags;
+    *(header + 10) = e_ehsize
+                   + left_shift(e_phentsize, 16);
+    *(header + 11) = e_phnum
+                   + left_shift(e_shentsize, 16);
+    *(header + 12) = e_shnum
+                   + left_shift(e_shstrndx, 16);
+
+    p_filesz = binary_length;
+    p_memsz  = binary_length;
+
+    // RISC-U ELF32 program header:
+    *(header + 13) = p_type;
+    *(header + 14) = p_offset;
+    *(header + 15) = p_vaddr;
+    *(header + 16) = p_paddr;
+    *(header + 17) = p_filesz;
+    *(header + 18) = p_memsz;
+    *(header + 19) = p_flags;
+    *(header + 20) = p_align;
+
+    // This field is not part of the standard ELF header but
+    // used by selfie to load its own generated ELF files
+    *(header + 21) = code_length;
+  }
 
   return header;
 }
 
+uint64_t decode_elf_header(uint64_t* header) {
+  if (IS64BITSYSTEM) {
+    p_filesz = *(header + 12);
+    p_memsz  = *(header + 13);
+
+    return *(header + 15);
+  } else {
+    p_filesz = *(header + 17);
+    p_memsz  = *(header + 18);
+
+    return *(header + 21);
+  }
+}
+
 uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t  new_entry_point;
-  uint64_t  new_binary_length;
   uint64_t  new_code_length;
-  uint64_t  position;
+  uint64_t  new_binary_length;
   uint64_t* valid_header;
+  uint64_t  position;
 
-  new_entry_point   = *(header + 10);
-  new_binary_length = *(header + 12);
-  new_code_length   = *(header + 15);
+  new_code_length = decode_elf_header(header);
 
-  if (new_binary_length != *(header + 13))
+  if (p_filesz != p_memsz)
     // segment size in file is not the same as segment size in memory
     return 0;
 
-  if (new_entry_point > VIRTUALMEMORYSIZE * GIGABYTE - PAGESIZE - new_binary_length)
-    // binary does not fit into virtual address space
-    return 0;
+  new_binary_length = p_filesz;
 
-  valid_header = create_elf_header(new_binary_length, new_code_length);
+  valid_header = encode_elf_header(new_binary_length, new_code_length);
 
   position = 0;
 
@@ -6238,7 +6314,6 @@ uint64_t validate_elf_header(uint64_t* header) {
     position = position + 1;
   }
 
-  entry_point   = new_entry_point;
   binary_length = new_binary_length;
   code_length   = new_code_length;
 
@@ -6363,7 +6438,6 @@ void selfie_load() {
   // make sure binary is mapped for reading into it
   binary = touch(smalloc(MAX_BINARY_LENGTH), MAX_BINARY_LENGTH);
 
-  entry_point   = 0;
   binary_length = 0;
   code_length   = 0;
 
@@ -7843,7 +7917,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
     printf2("%s: pc=%x", binary_name, (char*) address);
-    print_code_line_number_for_instruction(address, entry_point);
+    print_code_line_number_for_instruction(address, ELF_ENTRY_POINT);
     if (symbolic)
       // skip further output
       return;
@@ -7852,7 +7926,7 @@ void print_code_context_for_instruction(uint64_t address) {
   } else {
     if (model) {
       printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, entry_point);
+      print_code_line_number_for_instruction(address, ELF_ENTRY_POINT);
       print(": ");
     } else if (disassemble_verbose) {
       printf1("%x", (char*) address);
@@ -8186,7 +8260,7 @@ uint64_t do_ld() {
           nopc_ld = nopc_ld + 1;
 
         // keep track of instruction address for profiling loads
-        a = (pc - entry_point) / INSTRUCTIONSIZE;
+        a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8271,7 +8345,7 @@ uint64_t do_sd() {
           nopc_sd = nopc_sd + 1;
 
         // keep track of instruction address for profiling stores
-        a = (pc - entry_point) / INSTRUCTIONSIZE;
+        a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8377,7 +8451,7 @@ void do_jal() {
     pc = pc + imm;
 
     // prologue address for profiling procedure calls
-    a = (pc - entry_point) / INSTRUCTIONSIZE;
+    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
 
     // keep track of number of procedure calls in total
     calls = calls + 1;
@@ -8389,7 +8463,7 @@ void do_jal() {
     pc = pc + imm;
 
     // first loop instruction address for profiling loop iterations
-    a = (pc - entry_point) / INSTRUCTIONSIZE;
+    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
 
     // keep track of number of loop iterations in total
     iterations = iterations + 1;
@@ -9708,26 +9782,26 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
 void up_load_binary(uint64_t* context) {
   uint64_t baddr;
 
-  // assert: entry_point is multiple of PAGESIZE and WORDSIZE
+  // assert: ELF_ENTRY_POINT is multiple of PAGESIZE and WORDSIZE
 
-  set_pc(context, entry_point);
+  set_pc(context, ELF_ENTRY_POINT);
 
   // setting up page table cache
 
-  set_lowest_lo_page(context, get_page_of_virtual_address(entry_point));
+  set_lowest_lo_page(context, get_page_of_virtual_address(ELF_ENTRY_POINT));
   set_highest_lo_page(context, get_lowest_lo_page(context));
 
   // setting up memory segments
 
-  set_code_seg_start(context, entry_point);
-  set_data_seg_start(context, entry_point + code_length);
-  set_heap_seg_start(context, entry_point + binary_length);
+  set_code_seg_start(context, ELF_ENTRY_POINT);
+  set_data_seg_start(context, ELF_ENTRY_POINT + code_length);
+  set_heap_seg_start(context, ELF_ENTRY_POINT + binary_length);
   set_program_break(context, get_heap_seg_start(context));
 
   baddr = 0;
 
   while (baddr < binary_length) {
-    map_and_store(context, entry_point + baddr, load_data(baddr));
+    map_and_store(context, ELF_ENTRY_POINT + baddr, load_data(baddr));
 
     baddr = baddr + WORDSIZE;
   }
