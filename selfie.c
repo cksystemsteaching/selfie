@@ -943,7 +943,7 @@ void emit_ecall();
 
 void fixup_relative_BFormat(uint64_t from_address);
 void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
-void fixup_relative_IFormat(uint64_t from_address, uint64_t immediate);
+void fixup_IFormat(uint64_t from_address, uint64_t immediate);
 void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
@@ -4050,7 +4050,7 @@ uint64_t compile_call(char* procedure) {
     }
   
   //now we know the number of parameters
-  fixup_relative_IFormat(allocate_memory_on_stack, -(number_of_parameters * REGISTERSIZE));
+  fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * REGISTERSIZE));
 
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
@@ -4077,9 +4077,10 @@ uint64_t compile_call(char* procedure) {
 
   number_of_calls = number_of_calls + 1;
   
-  //deallocate variadic parameters //MTODO: use value(entry) for this
-  if(get_variadic(entry))
-  emit_addi(REG_SP, REG_SP, (number_of_parameters * REGISTERSIZE));
+  //deallocate variadic parameters
+	if(entry != (uint64_t*) 0)
+		if(get_variadic(entry))
+			emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * REGISTERSIZE));
 
   // assert: allocated_temporaries == n
 
@@ -5061,9 +5062,6 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     return_branches = 0;
   
-  if(is_variadic)
-    procedure_epilogue(0);
-  else
     procedure_epilogue(number_of_parameters * REGISTERSIZE);
 
   } else
@@ -6208,7 +6206,7 @@ void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address) {
       get_opcode(instruction)));
 }
 
-void fixup_relative_IFormat(uint64_t from_address, uint64_t immediate) {
+void fixup_IFormat(uint64_t from_address, uint64_t immediate) {
   uint64_t instruction;
 
   instruction = load_instruction(from_address);
@@ -9882,7 +9880,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
 }
 
 void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
-  /* upload arguments like a UNIX system //MTODO: where should &argv go?
+  /* upload arguments like a UNIX system
 
       SP
       |
