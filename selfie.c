@@ -845,9 +845,9 @@ void     decode_u_format();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // opcodes
-uint64_t OP_LD     = 3;   // 0000011, I format (LD)
+uint64_t OP_LOAD   = 3;   // 0000011, I format (LD,LW)
 uint64_t OP_IMM    = 19;  // 0010011, I format (ADDI, NOP)
-uint64_t OP_SD     = 35;  // 0100011, S format (SD)
+uint64_t OP_STORE  = 35;  // 0100011, S format (SD,SW)
 uint64_t OP_OP     = 51;  // 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
 uint64_t OP_LUI    = 55;  // 0110111, U format (LUI)
 uint64_t OP_BRANCH = 99;  // 1100011, B format (BEQ)
@@ -866,6 +866,8 @@ uint64_t F3_REMU  = 7; // 111
 uint64_t F3_SLTU  = 3; // 011
 uint64_t F3_LD    = 3; // 011
 uint64_t F3_SD    = 3; // 011
+uint64_t F3_LW    = 3; // 010
+uint64_t F3_SW    = 3; // 010
 uint64_t F3_BEQ   = 0; // 000
 uint64_t F3_JALR  = 0; // 000
 uint64_t F3_ECALL = 0; // 000
@@ -900,8 +902,8 @@ void reset_instruction_counters();
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_number_of_nops();
 
-void print_instruction_counter(uint64_t counter, char* mnemonics);
-void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* mnemonics);
+void print_instruction_counter(uint64_t counter, uint64_t is);
+void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64_t is);
 
 void print_instruction_counters();
 
@@ -929,8 +931,8 @@ void emit_divu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emit_remu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emit_sltu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 
-void emit_ld(uint64_t rd, uint64_t rs1, uint64_t immediate);
-void emit_sd(uint64_t rs1, uint64_t immediate, uint64_t rs2);
+void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate);
+void emit_store(uint64_t rs1, uint64_t immediate, uint64_t rs2);
 
 void emit_beq(uint64_t rs1, uint64_t rs2, uint64_t immediate);
 
@@ -1038,8 +1040,8 @@ uint64_t ic_mul   = 0;
 uint64_t ic_divu  = 0;
 uint64_t ic_remu  = 0;
 uint64_t ic_sltu  = 0;
-uint64_t ic_ld    = 0;
-uint64_t ic_sd    = 0;
+uint64_t ic_load  = 0;
+uint64_t ic_store = 0;
 uint64_t ic_beq   = 0;
 uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
@@ -1363,14 +1365,14 @@ void print_lui_before();
 void print_lui_after();
 void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
 void do_lui();
-void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+void undo_lui_addi_add_sub_mul_divu_remu_sltu_load_jal_jalr();
 
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void do_addi();
 
-void print_add_sub_mul_divu_remu_sltu(char *mnemonics);
+void print_add_sub_mul_divu_remu_sltu();
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
@@ -1381,18 +1383,18 @@ void do_remu();
 
 void do_sltu();
 
-void     print_ld();
-void     print_ld_before();
-void     print_ld_after(uint64_t vaddr);
-void     record_ld();
-uint64_t do_ld();
+void     print_load();
+void     print_load_before();
+void     print_load_after(uint64_t vaddr);
+void     record_load();
+uint64_t do_load();
 
-void     print_sd();
-void     print_sd_before();
-void     print_sd_after(uint64_t vaddr);
-void     record_sd();
-uint64_t do_sd();
-void     undo_sd();
+void     print_store();
+void     print_store_before();
+void     print_store_after(uint64_t vaddr);
+void     record_store();
+uint64_t do_store();
+void     undo_store();
 
 void print_beq();
 void print_beq_before();
@@ -1467,7 +1469,14 @@ void init_interpreter();
 void reset_interpreter();
 
 void reset_nop_counters();
+
+void reset_source_profile();
+void reset_register_access_counters();
+void reset_segments_access_counters();
+
 void reset_profiler();
+
+char* get_mnemonic(uint64_t ins);
 
 void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
@@ -1514,12 +1523,14 @@ uint64_t MUL   = 5;
 uint64_t DIVU  = 6;
 uint64_t REMU  = 7;
 uint64_t SLTU  = 8;
-uint64_t LD    = 9;
-uint64_t SD    = 10;
+uint64_t LOAD  = 9;
+uint64_t STORE = 10;
 uint64_t BEQ   = 11;
 uint64_t JAL   = 12;
 uint64_t JALR  = 13;
 uint64_t ECALL = 14;
+
+uint64_t* MNEMONICS; // assembly mnemonics of instructions
 
 // exceptions
 
@@ -1534,7 +1545,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
 uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 9; // for symbolic execution
 
-uint64_t* EXCEPTIONS; // strings representing exceptions
+uint64_t* EXCEPTIONS; // textual representation of exceptions
 
 uint64_t debug_exception = 0;
 
@@ -1579,19 +1590,19 @@ uint64_t trap  = 0; // flag for creating a trap
 
 // effective nop counters
 
-uint64_t nopc_lui  = 0;
-uint64_t nopc_addi = 0;
-uint64_t nopc_add  = 0;
-uint64_t nopc_sub  = 0;
-uint64_t nopc_mul  = 0;
-uint64_t nopc_divu = 0;
-uint64_t nopc_remu = 0;
-uint64_t nopc_sltu = 0;
-uint64_t nopc_ld   = 0;
-uint64_t nopc_sd   = 0;
-uint64_t nopc_beq  = 0;
-uint64_t nopc_jal  = 0;
-uint64_t nopc_jalr = 0;
+uint64_t nopc_lui   = 0;
+uint64_t nopc_addi  = 0;
+uint64_t nopc_add   = 0;
+uint64_t nopc_sub   = 0;
+uint64_t nopc_mul   = 0;
+uint64_t nopc_divu  = 0;
+uint64_t nopc_remu  = 0;
+uint64_t nopc_sltu  = 0;
+uint64_t nopc_load  = 0;
+uint64_t nopc_store = 0;
+uint64_t nopc_beq   = 0;
+uint64_t nopc_jal   = 0;
+uint64_t nopc_jalr  = 0;
 
 // source profile
 
@@ -1644,6 +1655,28 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
   *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
+
+  MNEMONICS = smalloc((ECALL + 1) * SIZEOFUINT64STAR);
+
+  *(MNEMONICS + LUI)   = (uint64_t) "lui";
+  *(MNEMONICS + ADDI)  = (uint64_t) "addi";
+  *(MNEMONICS + ADD)   = (uint64_t) "add";
+  *(MNEMONICS + SUB)   = (uint64_t) "sub";
+  *(MNEMONICS + MUL)   = (uint64_t) "mul";
+  *(MNEMONICS + DIVU)  = (uint64_t) "divu";
+  *(MNEMONICS + REMU)  = (uint64_t) "remu";
+  *(MNEMONICS + SLTU)  = (uint64_t) "sltu";
+  if (IS64BITSYSTEM) {
+    *(MNEMONICS + LOAD)  = (uint64_t) "ld";
+    *(MNEMONICS + STORE) = (uint64_t) "sd";
+  } else {
+    *(MNEMONICS + LOAD)  = (uint64_t) "lw";
+    *(MNEMONICS + STORE) = (uint64_t) "sw";
+  }
+  *(MNEMONICS + BEQ)   = (uint64_t) "beq";
+  *(MNEMONICS + JAL)   = (uint64_t) "jal";
+  *(MNEMONICS + JALR)  = (uint64_t) "jalr";
+  *(MNEMONICS + ECALL) = (uint64_t) "ecall";
 }
 
 void reset_interpreter() {
@@ -1661,19 +1694,19 @@ void reset_interpreter() {
 }
 
 void reset_nop_counters() {
-  nopc_lui  = 0;
-  nopc_addi = 0;
-  nopc_add  = 0;
-  nopc_sub  = 0;
-  nopc_mul  = 0;
-  nopc_divu = 0;
-  nopc_remu = 0;
-  nopc_sltu = 0;
-  nopc_ld   = 0;
-  nopc_sd   = 0;
-  nopc_beq  = 0;
-  nopc_jal  = 0;
-  nopc_jalr = 0;
+  nopc_lui   = 0;
+  nopc_addi  = 0;
+  nopc_add   = 0;
+  nopc_sub   = 0;
+  nopc_mul   = 0;
+  nopc_divu  = 0;
+  nopc_remu  = 0;
+  nopc_sltu  = 0;
+  nopc_load  = 0;
+  nopc_store = 0;
+  nopc_beq   = 0;
+  nopc_jal   = 0;
+  nopc_jalr  = 0;
 }
 
 void reset_source_profile() {
@@ -2106,6 +2139,8 @@ uint64_t log_ten(uint64_t n) {
 }
 
 uint64_t left_shift(uint64_t n, uint64_t b) {
+  if (b >= SIZEOFUINT64INBITS)
+    return b / 0;
   // assert: 0 <= b < SIZEOFUINT64INBITS
   return n * two_to_the_power_of(b);
 }
@@ -3747,7 +3782,7 @@ void save_temporaries() {
   while (allocated_temporaries > 0) {
     // push temporary onto stack
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
   }
@@ -3758,7 +3793,7 @@ void restore_temporaries(uint64_t number_of_temporaries) {
     talloc();
 
     // restore temporary from stack
-    emit_ld(current_temporary(), REG_SP, 0);
+    emit_load(current_temporary(), REG_SP, 0);
     emit_addi(REG_SP, REG_SP, WORDSIZE);
   }
 }
@@ -3889,11 +3924,11 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   if (is_signed_integer(offset, 12)) {
     talloc();
 
-    emit_ld(current_temporary(), get_scope(entry), offset);
+    emit_load(current_temporary(), get_scope(entry), offset);
   } else {
     load_upper_base_address(entry);
 
-    emit_ld(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
+    emit_load(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
   }
 
   // assert: allocated_temporaries == n + 1
@@ -3985,13 +4020,13 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   emit_addi(REG_SP, REG_SP, -WORDSIZE);
 
   // save return address
-  emit_sd(REG_SP, 0, REG_RA);
+  emit_store(REG_SP, 0, REG_RA);
 
   // allocate memory for caller's frame pointer
   emit_addi(REG_SP, REG_SP, -WORDSIZE);
 
   // save caller's frame pointer
-  emit_sd(REG_SP, 0, REG_S0);
+  emit_store(REG_SP, 0, REG_S0);
 
   // set callee's frame pointer
   emit_addi(REG_S0, REG_SP, 0);
@@ -4015,13 +4050,13 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_addi(REG_SP, REG_S0, 0);
 
   // restore caller's frame pointer
-  emit_ld(REG_S0, REG_SP, 0);
+  emit_load(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // restore return address
-  emit_ld(REG_RA, REG_SP, 0);
+  emit_load(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
   emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
@@ -4052,7 +4087,7 @@ uint64_t compile_call(char* procedure) {
 
     // push first parameter onto stack
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
 
@@ -4063,7 +4098,7 @@ uint64_t compile_call(char* procedure) {
 
       // push more parameters onto stack
       emit_addi(REG_SP, REG_SP, -WORDSIZE);
-      emit_sd(REG_SP, 0, current_temporary());
+      emit_store(REG_SP, 0, current_temporary());
 
       tfree(1);
     }
@@ -4239,7 +4274,7 @@ uint64_t compile_factor() {
       type_warning(UINT64STAR_T, type);
 
     // dereference
-    emit_ld(current_temporary(), current_temporary(), 0);
+    emit_load(current_temporary(), current_temporary(), 0);
 
     type = UINT64_T;
   }
@@ -4686,7 +4721,7 @@ void compile_statement() {
         if (rtype != UINT64_T)
           type_warning(UINT64_T, rtype);
 
-        emit_sd(previous_temporary(), 0, current_temporary());
+        emit_store(previous_temporary(), 0, current_temporary());
 
         tfree(2);
 
@@ -4723,7 +4758,7 @@ void compile_statement() {
           if (rtype != UINT64_T)
             type_warning(UINT64_T, rtype);
 
-          emit_sd(previous_temporary(), 0, current_temporary());
+          emit_store(previous_temporary(), 0, current_temporary());
 
           tfree(2);
 
@@ -4780,13 +4815,13 @@ void compile_statement() {
       offset = get_address(entry);
 
       if (is_signed_integer(offset, 12)) {
-        emit_sd(get_scope(entry), offset, current_temporary());
+        emit_store(get_scope(entry), offset, current_temporary());
 
         tfree(1);
       } else {
         load_upper_base_address(entry);
 
-        emit_sd(current_temporary(), sign_extend(get_bits(offset, 0, 12), 12), previous_temporary());
+        emit_store(current_temporary(), sign_extend(get_bits(offset, 0, 12), 12), previous_temporary());
 
         tfree(2);
       }
@@ -5258,7 +5293,7 @@ void emit_bootstrapping() {
     entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
     // store word-aligned program break in _bump
-    emit_sd(get_scope(entry), get_address(entry), REG_A0);
+    emit_store(get_scope(entry), get_address(entry), REG_A0);
 
     // reset return register to initial return value
     emit_addi(REG_A0, REG_ZR, 0);
@@ -5285,7 +5320,7 @@ void emit_bootstrapping() {
     //     |              V
     // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
 
@@ -5300,7 +5335,7 @@ void emit_bootstrapping() {
 
   // we exit with exit code in return register pushed onto the stack
   emit_addi(REG_SP, REG_SP, -WORDSIZE);
-  emit_sd(REG_SP, 0, REG_A0);
+  emit_store(REG_SP, 0, REG_A0);
 
   // discount NOPs in profile that were generated for program entry
   ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
@@ -5844,8 +5879,8 @@ void reset_instruction_counters() {
   ic_divu  = 0;
   ic_remu  = 0;
   ic_sltu  = 0;
-  ic_ld    = 0;
-  ic_sd    = 0;
+  ic_load  = 0;
+  ic_store = 0;
   ic_beq   = 0;
   ic_jal   = 0;
   ic_jalr  = 0;
@@ -5853,22 +5888,22 @@ void reset_instruction_counters() {
 }
 
 uint64_t get_total_number_of_instructions() {
-  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
+  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
 
 uint64_t get_total_number_of_nops() {
-  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr;
+  return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr;
 }
 
-void print_instruction_counter(uint64_t counter, char* mnemonics) {
+void print_instruction_counter(uint64_t counter, uint64_t ins) {
   printf3("%s: %u(%.2u%%)",
-    mnemonics,
+    get_mnemonic(ins),
     (char*) counter,
     (char*) percentage_format(get_total_number_of_instructions(), counter));
 }
 
-void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* mnemonics) {
-  print_instruction_counter(counter, mnemonics);
+void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64_t ins) {
+  print_instruction_counter(counter, ins);
 
   if (run)
     printf1("[%.2u%%]", (char*) percentage_format(counter, nops));
@@ -5876,45 +5911,45 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, char* 
 
 void print_instruction_counters() {
   printf1("%s: init:    ", selfie_name);
-  print_instruction_counter_with_nops(ic_lui, nopc_lui, "lui");
+  print_instruction_counter_with_nops(ic_lui, nopc_lui, LUI);
   print(", ");
-  print_instruction_counter_with_nops(ic_addi, nopc_addi, "addi");
+  print_instruction_counter_with_nops(ic_addi, nopc_addi, ADDI);
   println();
 
   printf1("%s: memory:  ", selfie_name);
-  print_instruction_counter_with_nops(ic_ld, nopc_ld, "ld");
+  print_instruction_counter_with_nops(ic_load, nopc_load, LOAD);
   print(", ");
-  print_instruction_counter_with_nops(ic_sd, nopc_sd, "sd");
+  print_instruction_counter_with_nops(ic_store, nopc_store, STORE);
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic_add, nopc_add, "add");
+  print_instruction_counter_with_nops(ic_add, nopc_add, ADD);
   print(", ");
-  print_instruction_counter_with_nops(ic_sub, nopc_sub, "sub");
+  print_instruction_counter_with_nops(ic_sub, nopc_sub, SUB);
   print(", ");
-  print_instruction_counter_with_nops(ic_mul, nopc_mul, "mul");
+  print_instruction_counter_with_nops(ic_mul, nopc_mul, MUL);
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic_divu, nopc_divu, "divu");
+  print_instruction_counter_with_nops(ic_divu, nopc_divu, DIVU);
   print(", ");
-  print_instruction_counter_with_nops(ic_remu, nopc_remu, "remu");
+  print_instruction_counter_with_nops(ic_remu, nopc_remu, REMU);
   println();
 
   printf1("%s: compare: ", selfie_name);
-  print_instruction_counter_with_nops(ic_sltu, nopc_sltu, "sltu");
+  print_instruction_counter_with_nops(ic_sltu, nopc_sltu, SLTU);
   println();
 
   printf1("%s: control: ", selfie_name);
-  print_instruction_counter_with_nops(ic_beq, nopc_beq, "beq");
+  print_instruction_counter_with_nops(ic_beq, nopc_beq, BEQ);
   print(", ");
-  print_instruction_counter_with_nops(ic_jal, nopc_jal, "jal");
+  print_instruction_counter_with_nops(ic_jal, nopc_jal, JAL);
   print(", ");
-  print_instruction_counter_with_nops(ic_jalr, nopc_jalr, "jalr");
+  print_instruction_counter_with_nops(ic_jalr, nopc_jalr, JALR);
   println();
 
   printf1("%s: system:  ", selfie_name);
-  print_instruction_counter(ic_ecall, "ecall");
+  print_instruction_counter(ic_ecall, ECALL);
   println();
 }
 
@@ -6034,16 +6069,22 @@ void emit_sltu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   ic_sltu = ic_sltu + 1;
 }
 
-void emit_ld(uint64_t rd, uint64_t rs1, uint64_t immediate) {
-  emit_instruction(encode_i_format(immediate, rs1, F3_LD, rd, OP_LD));
+void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate) {
+  if (IS64BITSYSTEM)
+    emit_instruction(encode_i_format(immediate, rs1, F3_LD, rd, OP_LOAD));
+  else
+    emit_instruction(encode_i_format(immediate, rs1, F3_LW, rd, OP_LOAD));
 
-  ic_ld = ic_ld + 1;
+  ic_load = ic_load + 1;
 }
 
-void emit_sd(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
-  emit_instruction(encode_s_format(immediate, rs2, rs1, F3_SD, OP_SD));
+void emit_store(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
+  if (IS64BITSYSTEM)
+    emit_instruction(encode_s_format(immediate, rs2, rs1, F3_SD, OP_STORE));
+  else
+    emit_instruction(encode_s_format(immediate, rs2, rs1, F3_SW, OP_STORE));
 
-  ic_sd = ic_sd + 1;
+  ic_store = ic_store + 1;
 }
 
 void emit_beq(uint64_t rs1, uint64_t rs2, uint64_t immediate) {
@@ -6189,8 +6230,7 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
                   + left_shift(EI_DATA, 40)
                   + left_shift(EI_VERSION, 48)
                   + left_shift(EI_OSABI, 56);
-    *(header + 1) = EI_ABIVERSION
-                  + left_shift(EI_PAD, 8);
+    *(header + 1) = EI_ABIVERSION + left_shift(EI_PAD, 8);
     *(header + 2) = e_type
                   + left_shift(e_machine, 16)
                   + left_shift(e_version, 32);
@@ -6209,8 +6249,7 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
     p_memsz  = binary_length;
 
     // RISC-U ELF64 program header:
-    *(header + 8)  = p_type
-                   + left_shift(p_flags, 32);
+    *(header + 8)  = p_type + left_shift(p_flags, 32);
     *(header + 9)  = p_offset;
     *(header + 10) = p_vaddr;
     *(header + 11) = p_paddr;
@@ -6240,19 +6279,15 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
                    + left_shift(EI_OSABI, 24);
     *(header + 2)  = EI_ABIVERSION; // ignoring 24 LSBs of EI_PAD
     *(header + 3)  = EI_PAD;        // ignoring 24 MSBs of EI_PAD
-    *(header + 4)  = e_type
-                   + left_shift(e_machine, 16);
+    *(header + 4)  = e_type + left_shift(e_machine, 16);
     *(header + 5)  = e_version;
     *(header + 6)  = e_entry;
     *(header + 7)  = e_phoff;
     *(header + 8)  = e_shoff;
     *(header + 9)  = e_flags;
-    *(header + 10) = e_ehsize
-                   + left_shift(e_phentsize, 16);
-    *(header + 11) = e_phnum
-                   + left_shift(e_shentsize, 16);
-    *(header + 12) = e_shnum
-                   + left_shift(e_shstrndx, 16);
+    *(header + 10) = e_ehsize + left_shift(e_phentsize, 16);
+    *(header + 11) = e_phnum + left_shift(e_shentsize, 16);
+    *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
 
     p_filesz = binary_length;
     p_memsz  = binary_length;
@@ -6487,7 +6522,7 @@ void emit_exit() {
   create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
 
   // load signed 32-bit integer exit code
-  emit_ld(REG_A0, REG_SP, 0);
+  emit_load(REG_A0, REG_SP, 0);
 
   // remove the exit code from the stack
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -6523,13 +6558,13 @@ void implement_exit(uint64_t* context) {
 void emit_read() {
   create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // *buffer
+  emit_load(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
@@ -6647,13 +6682,13 @@ void implement_read(uint64_t* context) {
 void emit_write() {
   create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // *buffer
+  emit_load(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
@@ -6770,13 +6805,13 @@ void implement_write(uint64_t* context) {
 void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  emit_ld(REG_A3, REG_SP, 0); // mode
+  emit_load(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A2, REG_SP, 0); // flags
+  emit_load(REG_A2, REG_SP, 0); // flags
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // filename
+  emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
@@ -6922,7 +6957,7 @@ void emit_malloc() {
   // allocate register for size parameter
   talloc();
 
-  emit_ld(current_temporary(), REG_SP, 0); // size
+  emit_load(current_temporary(), REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // round up to word size
@@ -6935,7 +6970,7 @@ void emit_malloc() {
   // lower and upper bounds on addresses in model generation of brk syscall
 
   // get current _bump which will be returned upon success
-  emit_ld(current_temporary(), get_scope(entry), get_address(entry));
+  emit_load(current_temporary(), get_scope(entry), get_address(entry));
 
   // call brk syscall to set new program break to _bump + size
   emit_add(REG_A0, current_temporary(), previous_temporary());
@@ -6957,7 +6992,7 @@ void emit_malloc() {
   // if memory was successfully allocated
   // set _bump to new program break
   // and then return original _bump
-  emit_sd(get_scope(entry), get_address(entry), REG_A0);
+  emit_store(get_scope(entry), get_address(entry), REG_A0);
   emit_addi(REG_A0, current_temporary(), 0);
 
   tfree(2);
@@ -7058,10 +7093,10 @@ uint64_t is_boot_level_zero() {
 void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
-  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
+  emit_load(REG_A1, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
+  emit_load(REG_A0, REG_SP, 0); // context to which we switch
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
@@ -7938,7 +7973,7 @@ void print_code_context_for_instruction(uint64_t address) {
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  printf2("lui %s,%x", get_register_name(rd), (char*) sign_shrink(imm, 20));
+  printf3("%s %s,%x", get_mnemonic(is), get_register_name(rd), (char*) sign_shrink(imm, 20));
 }
 
 void print_lui_before() {
@@ -7978,7 +8013,7 @@ void do_lui() {
   ic_lui = ic_lui + 1;
 }
 
-void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
+void undo_lui_addi_add_sub_mul_divu_remu_sltu_load_jal_jalr() {
   *(registers + rd) = *(values + (tc % MAX_REPLAY_LENGTH));
 }
 
@@ -7993,7 +8028,7 @@ void print_addi() {
         return;
       }
 
-  printf3("addi %s,%s,%d", get_register_name(rd), get_register_name(rs1), (char*) imm);
+  printf4("%s %s,%s,%d", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), (char*) imm);
 }
 
 void print_addi_before() {
@@ -8031,9 +8066,9 @@ void do_addi() {
   ic_addi = ic_addi + 1;
 }
 
-void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
+void print_add_sub_mul_divu_remu_sltu() {
   print_code_context_for_instruction(pc);
-  printf4("%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -8188,12 +8223,12 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void print_ld() {
+void print_load() {
   print_code_context_for_instruction(pc);
-  printf3("ld %s,%d(%s)", get_register_name(rd), (char*) imm, get_register_name(rs1));
+  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rd), (char*) imm, get_register_name(rs1));
 }
 
-void print_ld_before() {
+void print_load_before() {
   uint64_t vaddr;
 
   vaddr = *(registers + rs1) + imm;
@@ -8215,7 +8250,7 @@ void print_ld_before() {
   print(" |-");
 }
 
-void print_ld_after(uint64_t vaddr) {
+void print_load_after(uint64_t vaddr) {
   if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
@@ -8224,7 +8259,7 @@ void print_ld_after(uint64_t vaddr) {
     }
 }
 
-void record_ld() {
+void record_load() {
   uint64_t vaddr;
 
   vaddr = *(registers + rs1) + imm;
@@ -8234,12 +8269,12 @@ void record_ld() {
       record_state(*(registers + rd));
 }
 
-uint64_t do_ld() {
+uint64_t do_load() {
   uint64_t vaddr;
   uint64_t next_rd_value;
   uint64_t a;
 
-  // load double word
+  // load (double) word
 
   vaddr = *(registers + rs1) + imm;
 
@@ -8249,15 +8284,15 @@ uint64_t do_ld() {
         update_register_counters();
 
         if (rd != REG_ZR) {
-          // semantics of ld
+          // semantics of load (double) word
           next_rd_value = load_virtual_memory(pt, vaddr);
 
           if (*(registers + rd) != next_rd_value)
             *(registers + rd) = next_rd_value;
           else
-            nopc_ld = nopc_ld + 1;
+            nopc_load = nopc_load + 1;
         } else
-          nopc_ld = nopc_ld + 1;
+          nopc_load = nopc_load + 1;
 
         // keep track of instruction address for profiling loads
         a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
@@ -8265,7 +8300,7 @@ uint64_t do_ld() {
         pc = pc + INSTRUCTIONSIZE;
 
         // keep track of number of loads in total
-        ic_ld = ic_ld + 1;
+        ic_load = ic_load + 1;
 
         // and individually
         *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
@@ -8279,12 +8314,12 @@ uint64_t do_ld() {
   return vaddr;
 }
 
-void print_sd() {
+void print_store() {
   print_code_context_for_instruction(pc);
-  printf3("sd %s,%d(%s)", get_register_name(rs2), (char*) imm, get_register_name(rs1));
+  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rs2), (char*) imm, get_register_name(rs1));
 }
 
-void print_sd_before() {
+void print_store_before() {
   uint64_t vaddr;
 
   vaddr = *(registers + rs1) + imm;
@@ -8307,7 +8342,7 @@ void print_sd_before() {
   print(" |-");
 }
 
-void print_sd_after(uint64_t vaddr) {
+void print_store_after(uint64_t vaddr) {
   if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       printf1(" -> mem[%x]=", (char*) vaddr);
@@ -8315,7 +8350,7 @@ void print_sd_after(uint64_t vaddr) {
     }
 }
 
-void record_sd() {
+void record_store() {
   uint64_t vaddr;
 
   vaddr = *(registers + rs1) + imm;
@@ -8325,11 +8360,11 @@ void record_sd() {
       record_state(load_virtual_memory(pt, vaddr));
 }
 
-uint64_t do_sd() {
+uint64_t do_store() {
   uint64_t vaddr;
   uint64_t a;
 
-  // store double word
+  // store (double) word
 
   vaddr = *(registers + rs1) + imm;
 
@@ -8338,11 +8373,11 @@ uint64_t do_sd() {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
 
-        // semantics of sd
+        // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
           store_virtual_memory(pt, vaddr, *(registers + rs2));
         else
-          nopc_sd = nopc_sd + 1;
+          nopc_store = nopc_store + 1;
 
         // keep track of instruction address for profiling stores
         a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
@@ -8350,7 +8385,7 @@ uint64_t do_sd() {
         pc = pc + INSTRUCTIONSIZE;
 
         // keep track of number of stores in total
-        ic_sd = ic_sd + 1;
+        ic_store = ic_store + 1;
 
         // and individually
         *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
@@ -8364,7 +8399,7 @@ uint64_t do_sd() {
   return vaddr;
 }
 
-void undo_sd() {
+void undo_store() {
   uint64_t vaddr;
 
   vaddr = *(registers + rs1) + imm;
@@ -8374,7 +8409,7 @@ void undo_sd() {
 
 void print_beq() {
   print_code_context_for_instruction(pc);
-  printf3("beq %s,%s,%d", get_register_name(rs1), get_register_name(rs2), (char*) signed_division(imm, INSTRUCTIONSIZE));
+  printf4("%s %s,%s,%d", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), (char*) signed_division(imm, INSTRUCTIONSIZE));
   if (disassemble_verbose)
     printf1("[%x]", (char*) (pc + imm));
 }
@@ -8414,7 +8449,7 @@ void do_beq() {
 
 void print_jal() {
   print_code_context_for_instruction(pc);
-  printf2("jal %s,%d", get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE));
+  printf3("%s %s,%d", get_mnemonic(is), get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE));
   if (disassemble_verbose)
     printf1("[%x]", (char*) (pc + imm));
 }
@@ -8483,7 +8518,7 @@ void do_jal() {
 
 void print_jalr() {
   print_code_context_for_instruction(pc);
-  printf3("jalr %s,%d(%s)", get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
 }
 
 void print_jalr_before() {
@@ -8528,7 +8563,7 @@ void do_jalr() {
 
 void print_ecall() {
   print_code_context_for_instruction(pc);
-  print("ecall");
+  print(get_mnemonic(is));
 }
 
 void record_ecall() {
@@ -8598,7 +8633,10 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-  printf1(".quad %x", (char*) data);
+  if (IS64BITSYSTEM)
+    printf1(".8byte %x", (char*) data);
+  else
+    printf1(".4byte %x", (char*) data);
 }
 
 // -----------------------------------------------------------------
@@ -8609,22 +8647,22 @@ void print_instruction() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     print_addi();
-  else if (is == LD)
-    print_ld();
-  else if (is == SD)
-    print_sd();
+  else if (is == LOAD)
+    print_load();
+  else if (is == STORE)
+    print_store();
   else if (is == ADD)
-    print_add_sub_mul_divu_remu_sltu("add");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == SUB)
-    print_add_sub_mul_divu_remu_sltu("sub");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == MUL)
-    print_add_sub_mul_divu_remu_sltu("mul");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == DIVU)
-    print_add_sub_mul_divu_remu_sltu("divu");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == REMU)
-    print_add_sub_mul_divu_remu_sltu("remu");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == SLTU)
-    print_add_sub_mul_divu_remu_sltu("sltu");
+    print_add_sub_mul_divu_remu_sltu();
   else if (is == BEQ)
     print_beq();
   else if (is == JAL)
@@ -8760,6 +8798,10 @@ void replay_trace() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+char* get_mnemonic(uint64_t ins) {
+  return (char*) *(MNEMONICS + ins);
+}
+
 void print_register_hexadecimal(uint64_t reg) {
   printf2("%s=%x", get_register_name(reg), (char*) *(registers + reg));
 }
@@ -8849,16 +8891,22 @@ void decode() {
 
     if (funct3 == F3_ADDI)
       is = ADDI;
-  } else if (opcode == OP_LD) {
+  } else if (opcode == OP_LOAD) {
     decode_i_format();
 
-    if (funct3 == F3_LD)
-      is = LD;
-  } else if (opcode == OP_SD) {
+    if (IS64BITSYSTEM) {
+      if (funct3 == F3_LD)
+        is = LOAD;
+    } else if (funct3 == F3_LW)
+      is = LOAD;
+  } else if (opcode == OP_STORE) {
     decode_s_format();
 
-    if (funct3 == F3_SD)
-      is = SD;
+    if (IS64BITSYSTEM) {
+      if (funct3 == F3_SD)
+        is = STORE;
+    } else if (funct3 == F3_SW)
+      is = STORE;
   } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
     decode_r_format();
 
@@ -8934,10 +8982,10 @@ void execute() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     do_addi();
-  else if (is == LD)
-    do_ld();
-  else if (is == SD)
-    do_sd();
+  else if (is == LOAD)
+    do_load();
+  else if (is == STORE)
+    do_store();
   else if (is == ADD)
     do_add();
   else if (is == SUB)
@@ -8967,12 +9015,12 @@ void execute_record() {
   if (is == ADDI) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_addi();
-  } else if (is == LD) {
-    record_ld();
-    do_ld();
-  } else if (is == SD) {
-    record_sd();
-    do_sd();
+  } else if (is == LOAD) {
+    record_load();
+    do_load();
+  } else if (is == STORE) {
+    record_store();
+    do_store();
   } else if (is == ADD) {
     record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_add();
@@ -9011,15 +9059,15 @@ void execute_record() {
 
 void execute_undo() {
   // assert: 1 <= is <= number of RISC-U instructions
-  if (is == SD)
-    undo_sd();
+  if (is == STORE)
+    undo_store();
   else if (is == BEQ)
     // beq does not require any undo
     return;
   else if (is == ECALL)
     undo_ecall();
   else
-    undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+    undo_lui_addi_add_sub_mul_divu_remu_sltu_load_jal_jalr();
 }
 
 void execute_debug() {
@@ -9030,12 +9078,12 @@ void execute_debug() {
     print_addi_before();
     do_addi();
     print_addi_add_sub_mul_divu_remu_sltu_after();
-  } else if (is == LD) {
-    print_ld_before();
-    print_ld_after(do_ld());
-  } else if (is == SD) {
-    print_sd_before();
-    print_sd_after(do_sd());
+  } else if (is == LOAD) {
+    print_load_before();
+    print_load_after(do_load());
+  } else if (is == STORE) {
+    print_store_before();
+    print_store_after(do_store());
   } else if (is == ADD) {
     print_add_sub_mul_divu_remu_sltu_before();
     do_add();
@@ -9278,8 +9326,8 @@ void print_profile(uint64_t* context) {
 
     print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
     print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
-    print_per_instruction_profile("loads:   ", ic_ld, loads_per_instruction);
-    print_per_instruction_profile("stores:  ", ic_sd, stores_per_instruction);
+    print_per_instruction_profile("loads:   ", ic_load, loads_per_instruction);
+    print_per_instruction_profile("stores:  ", ic_store, stores_per_instruction);
 
     print_register_memory_profile();
   }
