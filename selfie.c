@@ -866,8 +866,8 @@ uint64_t F3_REMU  = 7; // 111
 uint64_t F3_SLTU  = 3; // 011
 uint64_t F3_LD    = 3; // 011
 uint64_t F3_SD    = 3; // 011
-uint64_t F3_LW    = 3; // 010
-uint64_t F3_SW    = 3; // 010
+uint64_t F3_LW    = 2; // 010
+uint64_t F3_SW    = 2; // 010
 uint64_t F3_BEQ   = 0; // 000
 uint64_t F3_JALR  = 0; // 000
 uint64_t F3_ECALL = 0; // 000
@@ -902,8 +902,8 @@ void reset_instruction_counters();
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_number_of_nops();
 
-void print_instruction_counter(uint64_t counter, uint64_t is);
-void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64_t is);
+void print_instruction_counter(uint64_t counter, uint64_t ins);
+void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64_t ins);
 
 void print_instruction_counters();
 
@@ -1058,6 +1058,25 @@ uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
 
 uint64_t* ELF_header = (uint64_t*) 0;
 
+// ------------------------- INITIALIZATION ------------------------
+
+void reset_instruction_counters() {
+  ic_lui   = 0;
+  ic_addi  = 0;
+  ic_add   = 0;
+  ic_sub   = 0;
+  ic_mul   = 0;
+  ic_divu  = 0;
+  ic_remu  = 0;
+  ic_sltu  = 0;
+  ic_load  = 0;
+  ic_store = 0;
+  ic_beq   = 0;
+  ic_jal   = 0;
+  ic_jalr  = 0;
+  ic_ecall = 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -1197,9 +1216,18 @@ void init_memory(uint64_t megabytes) {
   NUMBEROFLEAFPTES = PAGESIZE / SIZEOFUINT64STAR;
 }
 
+void reset_memory_counters() {
+  mc_brk = 0;
+  sc_brk = 0;
+
+  mc_mapped_heap = 0;
+}
+
 // -----------------------------------------------------------------
 // ---------------------- GARBAGE COLLECTOR ------------------------
 // -----------------------------------------------------------------
+
+void reset_gc_counters();
 
 // bootstrapped to actual functions during compilation ...
 uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
@@ -1420,9 +1448,34 @@ void print_data_line_number();
 void print_data_context(uint64_t data);
 void print_data(uint64_t data);
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// RISC-U instructions
+
+uint64_t LUI   = 1; // 0 is reserved for unknown instructions
+uint64_t ADDI  = 2;
+uint64_t ADD   = 3;
+uint64_t SUB   = 4;
+uint64_t MUL   = 5;
+uint64_t DIVU  = 6;
+uint64_t REMU  = 7;
+uint64_t SLTU  = 8;
+uint64_t LOAD  = 9;
+uint64_t STORE = 10;
+uint64_t BEQ   = 11;
+uint64_t JAL   = 12;
+uint64_t JALR  = 13;
+uint64_t ECALL = 14;
+
+uint64_t* MNEMONICS; // assembly mnemonics of instructions
+
 // -----------------------------------------------------------------
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
+
+void init_disassembler();
+
+char* get_mnemonic(uint64_t ins);
 
 void print_instruction();
 
@@ -1432,6 +1485,32 @@ void selfie_disassemble(uint64_t verbose);
 
 char*    assembly_name = (char*) 0; // name of assembly file
 uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_disassembler() {
+  MNEMONICS = smalloc((ECALL + 1) * SIZEOFUINT64STAR);
+
+  *(MNEMONICS + LUI)   = (uint64_t) "lui";
+  *(MNEMONICS + ADDI)  = (uint64_t) "addi";
+  *(MNEMONICS + ADD)   = (uint64_t) "add";
+  *(MNEMONICS + SUB)   = (uint64_t) "sub";
+  *(MNEMONICS + MUL)   = (uint64_t) "mul";
+  *(MNEMONICS + DIVU)  = (uint64_t) "divu";
+  *(MNEMONICS + REMU)  = (uint64_t) "remu";
+  *(MNEMONICS + SLTU)  = (uint64_t) "sltu";
+  if (IS64BITSYSTEM) {
+    *(MNEMONICS + LOAD)  = (uint64_t) "ld";
+    *(MNEMONICS + STORE) = (uint64_t) "sd";
+  } else {
+    *(MNEMONICS + LOAD)  = (uint64_t) "lw";
+    *(MNEMONICS + STORE) = (uint64_t) "sw";
+  }
+  *(MNEMONICS + BEQ)   = (uint64_t) "beq";
+  *(MNEMONICS + JAL)   = (uint64_t) "jal";
+  *(MNEMONICS + JALR)  = (uint64_t) "jalr";
+  *(MNEMONICS + ECALL) = (uint64_t) "ecall";
+}
 
 // -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
@@ -1476,8 +1555,6 @@ void reset_segments_access_counters();
 
 void reset_profiler();
 
-char* get_mnemonic(uint64_t ins);
-
 void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
 void print_register_value(uint64_t reg);
@@ -1512,25 +1589,6 @@ void print_profile(uint64_t* context);
 
 uint64_t INSTRUCTIONSIZE       = 4;  // in bytes
 uint64_t INSTRUCTIONSIZEINBITS = 32; // INSTRUCTIONSIZE * 8
-
-// RISC-U instructions
-
-uint64_t LUI   = 1; // 0 is reserved for unknown instructions
-uint64_t ADDI  = 2;
-uint64_t ADD   = 3;
-uint64_t SUB   = 4;
-uint64_t MUL   = 5;
-uint64_t DIVU  = 6;
-uint64_t REMU  = 7;
-uint64_t SLTU  = 8;
-uint64_t LOAD  = 9;
-uint64_t STORE = 10;
-uint64_t BEQ   = 11;
-uint64_t JAL   = 12;
-uint64_t JALR  = 13;
-uint64_t ECALL = 14;
-
-uint64_t* MNEMONICS; // assembly mnemonics of instructions
 
 // exceptions
 
@@ -1655,28 +1713,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
   *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
-
-  MNEMONICS = smalloc((ECALL + 1) * SIZEOFUINT64STAR);
-
-  *(MNEMONICS + LUI)   = (uint64_t) "lui";
-  *(MNEMONICS + ADDI)  = (uint64_t) "addi";
-  *(MNEMONICS + ADD)   = (uint64_t) "add";
-  *(MNEMONICS + SUB)   = (uint64_t) "sub";
-  *(MNEMONICS + MUL)   = (uint64_t) "mul";
-  *(MNEMONICS + DIVU)  = (uint64_t) "divu";
-  *(MNEMONICS + REMU)  = (uint64_t) "remu";
-  *(MNEMONICS + SLTU)  = (uint64_t) "sltu";
-  if (IS64BITSYSTEM) {
-    *(MNEMONICS + LOAD)  = (uint64_t) "ld";
-    *(MNEMONICS + STORE) = (uint64_t) "sd";
-  } else {
-    *(MNEMONICS + LOAD)  = (uint64_t) "lw";
-    *(MNEMONICS + STORE) = (uint64_t) "sw";
-  }
-  *(MNEMONICS + BEQ)   = (uint64_t) "beq";
-  *(MNEMONICS + JAL)   = (uint64_t) "jal";
-  *(MNEMONICS + JALR)  = (uint64_t) "jalr";
-  *(MNEMONICS + ECALL) = (uint64_t) "ecall";
 }
 
 void reset_interpreter() {
@@ -1750,8 +1786,8 @@ void reset_segments_access_counters() {
 
 void reset_profiler() {
   reset_instruction_counters();
-  reset_nop_counters();
   reset_memory_counters();
+  reset_nop_counters();
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
@@ -5868,23 +5904,6 @@ void decode_u_format() {
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
-void reset_instruction_counters() {
-  ic_lui   = 0;
-  ic_addi  = 0;
-  ic_add   = 0;
-  ic_sub   = 0;
-  ic_mul   = 0;
-  ic_divu  = 0;
-  ic_remu  = 0;
-  ic_sltu  = 0;
-  ic_load  = 0;
-  ic_store = 0;
-  ic_beq   = 0;
-  ic_jal   = 0;
-  ic_jalr  = 0;
-  ic_ecall = 0;
-}
-
 uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_load + ic_store + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
@@ -7186,13 +7205,6 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
-
-void reset_memory_counters() {
-  mc_brk = 0;
-  sc_brk = 0;
-
-  mc_mapped_heap = 0;
-}
 
 uint64_t load_physical_memory(uint64_t* paddr) {
   return *paddr;
@@ -8641,6 +8653,10 @@ void print_data(uint64_t data) {
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
+char* get_mnemonic(uint64_t ins) {
+  return (char*) *(MNEMONICS + ins);
+}
+
 void print_instruction() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
@@ -8795,10 +8811,6 @@ void replay_trace() {
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
-
-char* get_mnemonic(uint64_t ins) {
-  return (char*) *(MNEMONICS + ins);
-}
 
 void print_register_hexadecimal(uint64_t reg) {
   printf2("%s=%x", get_register_name(reg), (char*) *(registers + reg));
@@ -10428,6 +10440,7 @@ uint64_t selfie(uint64_t extras) {
 
     init_scanner();
     init_register();
+    init_disassembler();
     init_interpreter();
 
     while (number_of_remaining_arguments() > 0) {
