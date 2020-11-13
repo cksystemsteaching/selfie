@@ -119,9 +119,9 @@ void constrain_addi();
 void constrain_add_sub_mul_divu_remu_sltu(char* operator);
 
 void zero_extend_sltu();
-void constrain_ld();
+void constrain_load();
 
-void constrain_sd();
+void constrain_store();
 
 void constrain_beq();
 void constrain_jalr();
@@ -707,7 +707,7 @@ void zero_extend_sltu() {
       *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(1), (char*) *(reg_sym + rd));
 }
 
-void constrain_ld() {
+void constrain_load() {
   uint64_t vaddr;
   uint64_t* sword;
   uint64_t a;
@@ -752,7 +752,7 @@ void constrain_ld() {
     pc = pc + INSTRUCTIONSIZE;
 
     // keep track of number of loads in total
-    ic_ld = ic_ld + 1;
+    ic_load = ic_load + 1;
 
     // and individually
     *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
@@ -761,7 +761,7 @@ void constrain_ld() {
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
-void constrain_sd() {
+void constrain_store() {
   uint64_t vaddr;
   uint64_t a;
 
@@ -794,7 +794,7 @@ void constrain_sd() {
     pc = pc + INSTRUCTIONSIZE;
 
     // keep track of number of stores in total
-    ic_sd = ic_sd + 1;
+    ic_store = ic_store + 1;
 
     // and individually
     *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
@@ -872,10 +872,10 @@ void execute_symbolically() {
   if (is == ADDI) {
     constrain_addi();
     do_addi();
-  } else if (is == LD)
-    constrain_ld();
-  else if (is == SD)
-    constrain_sd();
+  } else if (is == LOAD)
+    constrain_load();
+  else if (is == STORE)
+    constrain_store();
   else if (is == ADD) {
     constrain_add_sub_mul_divu_remu_sltu("bvadd");
     do_add();

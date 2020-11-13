@@ -1,4 +1,3 @@
-
 /*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
@@ -111,8 +110,8 @@ void translate_mul();
 void translate_divu();
 void translate_remu();
 void translate_sltu();
-void translate_ld();
-void translate_sd();
+void translate_load();
+void translate_store();
 void translate_beq();
 void translate_jal();
 void translate_jalr();
@@ -496,7 +495,7 @@ void translate_addi() {
         fetch_translator();
         pc_translator = pc_translator - INSTRUCTIONSIZE;
 
-        if (get_opcode(ir) == OP_SD) {
+        if (get_opcode(ir) == OP_STORE) {
           return;
         }
       }
@@ -797,7 +796,7 @@ void translate_sltu() {
     translate_nop();
 }
 
-void translate_ld() {
+void translate_load() {
   uint64_t op1;
   uint64_t op2;
   uint64_t length;
@@ -902,7 +901,7 @@ void translate_ld() {
   x86emitInstructionBuffer(length);
 }
 
-void translate_sd() {
+void translate_store() {
   uint64_t op1;
   uint64_t op2;
   uint64_t length;
@@ -1071,10 +1070,10 @@ void translate_to_x86_binary() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     translate_addi();
-  else if (is == LD)
-    translate_ld();
-  else if (is == SD)
-    translate_sd();
+  else if (is == LOAD)
+    translate_load();
+  else if (is == STORE)
+    translate_store();
   else if (is == ADD)
     translate_add();
   else if (is == SUB)

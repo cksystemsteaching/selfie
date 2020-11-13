@@ -85,8 +85,8 @@ uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t 
 uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
 uint64_t compute_address();
 
-void model_ld();
-void model_sd();
+void model_load();
+void model_store();
 
 void model_beq();
 void model_jal();
@@ -941,7 +941,7 @@ void model_add() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("add");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -967,7 +967,7 @@ void model_sub() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("sub");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -993,7 +993,7 @@ void model_mul() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("mul");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1031,7 +1031,7 @@ void model_divu() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("divu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1069,7 +1069,7 @@ void model_remu() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("remu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1099,7 +1099,7 @@ void model_sltu() {
 
     *(reg_flow_nids + rd) = current_nid + 2;
 
-    print_add_sub_mul_divu_remu_sltu("sltu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1177,7 +1177,7 @@ uint64_t compute_address() {
   }
 }
 
-void model_ld() {
+void model_load() {
   uint64_t address_nid;
 
   if (rd != REG_ZR) {
@@ -1247,13 +1247,13 @@ void model_ld() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_ld();println();
+    print_load();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_sd() {
+void model_store() {
   uint64_t address_nid;
 
   current_nid = current_nid + record_start_bounds(0, pc_nid(pcs_nid, pc), rs1);
@@ -1325,7 +1325,7 @@ void model_sd() {
 
   memory_flow_nid = current_nid + 1;
 
-  print_sd();println();
+  print_store();println();
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
@@ -1435,10 +1435,10 @@ void translate_to_model() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     model_addi();
-  else if (is == LD)
-    model_ld();
-  else if (is == SD)
-    model_sd();
+  else if (is == LOAD)
+    model_load();
+  else if (is == STORE)
+    model_store();
   else if (is == ADD)
     model_add();
   else if (is == SUB)
