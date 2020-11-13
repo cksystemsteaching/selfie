@@ -2139,8 +2139,6 @@ uint64_t log_ten(uint64_t n) {
 }
 
 uint64_t left_shift(uint64_t n, uint64_t b) {
-  if (b >= SIZEOFUINT64INBITS)
-    return b / 0;
   // assert: 0 <= b < SIZEOFUINT64INBITS
   return n * two_to_the_power_of(b);
 }
