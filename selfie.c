@@ -1109,12 +1109,12 @@ uint64_t* allocate_cache_block() {
 uint64_t  get_valid_flag(uint64_t* cache_block) { return             *cache_block; }
 uint64_t  get_tag(uint64_t* cache_block)        { return             *(cache_block + 1); }
 uint64_t* get_data(uint64_t* cache_block)       { return (uint64_t*) *(cache_block + 2); }
-uint64_t* get_timestamp(uint64_t* cache_block)  { return (uint64_t*) *(cache_block + 3); }
+uint64_t  get_timestamp(uint64_t* cache_block)  { return             *(cache_block + 3); }
 
 void set_valid_flag(uint64_t* cache_block, uint64_t valid)     { *cache_block       = valid; }
 void set_tag(uint64_t* cache_block, uint64_t tag)              { *(cache_block + 1) = tag; }
 void set_data(uint64_t* cache_block, uint64_t* data)           { *(cache_block + 2) = (uint64_t) data; }
-void set_timestamp(uint64_t* cache_block, uint64_t* timestamp) { *(cache_block + 3) = (uint64_t) timestamp; }
+void set_timestamp(uint64_t* cache_block, uint64_t timestamp)  { *(cache_block + 3) = timestamp; }
 
 void reset_cache_counters(uint64_t* cache);
 void reset_all_cache_counters();
