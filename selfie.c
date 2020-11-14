@@ -7094,8 +7094,8 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // -----------------------------------------------------------------
 
 void reset_cache_counters(uint64_t* cache) {
-  set_cache_sets(cache, 0);
   set_cache_hits(cache, 0);
+  set_cache_misses(cache, 0);
 }
 
 void reset_all_cache_counters() {
