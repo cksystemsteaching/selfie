@@ -9392,6 +9392,18 @@ void print_profile(uint64_t* context) {
     print_register_memory_profile();
   }
 
+  printf1("%s: L1-instruction-cache: ", selfie_name);
+  print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_hits(L1_ICACHE), "hits");
+  print(", ");
+  print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_misses(L1_ICACHE), "misses");
+  println();
+
+  printf1("%s: L1-data-cache: ", selfie_name);
+  print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_hits(L1_DCACHE), "hits");
+  print(", ");
+  print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_misses(L1_DCACHE), "misses");
+  println();
+
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
