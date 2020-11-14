@@ -9239,7 +9239,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       // may happen in read-only memory segments
       writes = 1;
 
-    printf7("%s: %s%s%d,%d,%d[%.2u]\n", selfie_name, message, padding,
+    printf7("%s: %s%s%u,%u,%u[%.2u]\n", selfie_name, message, padding,
       (char*) (reads + writes), (char*) reads, (char*) writes, (char*) ratio_format(reads, writes));
   }
 }
@@ -10322,7 +10322,7 @@ uint64_t selfie_run(uint64_t machine) {
   if (GC_ON) {
     gc_init(current_context);
 
-    printf1(", gcing every %d mallocs, ", (char*) GC_PERIOD);
+    printf1(", gcing every %u mallocs, ", (char*) GC_PERIOD);
     if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
   }
 
