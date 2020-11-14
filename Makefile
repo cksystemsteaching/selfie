@@ -162,6 +162,24 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	diff -q selfie.x86 selfie1.x86
 
 # Consider these targets as targets, not files
+.PHONY: 32-bit
+
+# 32-bit compiler flags
+32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long'
+
+# Bootstrap selfie.c into 32-bit selfie executable, requires 32-bit compiler
+selfie-32-bit: selfie.c
+	$(CC) $(32-BIT-CFLAGS) $< -o $@
+
+# Self-compile, self-execute, self-host 32-bit selfie
+32-bit: selfie-32-bit
+	./selfie-32-bit -c selfie.c -o selfie1-32-bit.m -s selfie1-32-bit.s -m 2 -c selfie.c -o selfie2-32-bit.m -s selfie2-32-bit.s
+	diff -q selfie1-32-bit.m selfie2-32-bit.m
+	diff -q selfie1-32-bit.s selfie2-32-bit.s
+	./selfie-32-bit -l selfie1-32-bit.m -m 2 -l selfie2-32-bit.m -m 1
+	./selfie-32-bit -l selfie1-32-bit.m -m 2 -l selfie2-32-bit.m -y 2 -l selfie2-32-bit.m -y 2
+
+# Consider these targets as targets, not files
 .PHONY: grader grade assemble spike qemu x86 boolector btormc validator extras
 
 # Run everything that requires non-standard tools
@@ -221,22 +239,10 @@ validator: selfie modeler
 	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
 
 # Consider these targets as targets, not files
-.PHONY: 32-bit
-
-# 32-bit compiler flags
-32-BIT-CFLAGS := -Wall -Wextra -O3 -m32 -D'uint64_t=unsigned long'
-
-# Bootstrap selfie.c into 32-bit selfie executable
-32-bit-selfie: selfie.c
-	$(CC) $(32-BIT-CFLAGS) $< -o $@
-
-32-bit: 32-bit-selfie compile
-
-# Consider these targets as targets, not files
 .PHONY: everything clean
 
 # Run everything
-everything: all extras
+everything: all 32-bit extras
 
 # Clean up
 clean:
