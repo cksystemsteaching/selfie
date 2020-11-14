@@ -884,7 +884,7 @@ void reset_instruction_counters();
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_percentage_of_nops();
 
-void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
+void print_counter_relative(uint64_t total, uint64_t counter, char* mnemonics);
 void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics);
 
 void print_instruction_counters();
@@ -5866,7 +5866,7 @@ uint64_t get_total_percentage_of_nops() {
     nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr, 4), 4);
 }
 
-void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
+void print_counter_relative(uint64_t total, uint64_t counter, char* mnemonics) {
   printf3("%s: %u(%.2u%%)",
     mnemonics,
     (char*) counter,
@@ -5874,7 +5874,7 @@ void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics
 }
 
 void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics) {
-  print_instruction_counter(total, counter, mnemonics);
+  print_counter_relative(total, counter, mnemonics);
 
   if (run)
     printf1("[%.2u%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
@@ -5924,7 +5924,7 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: system:  ", selfie_name);
-  print_instruction_counter(ic, ic_ecall, "ecall");
+  print_counter_relative(ic, ic_ecall, "ecall");
   println();
 }
 
