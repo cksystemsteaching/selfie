@@ -90,7 +90,9 @@ RUN apt-get update \
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
   && cp /usr/bin/qemu-riscv64-static $RISCV/bin \
-  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin
+  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin \
+  && cp /usr/bin/qemu-riscv32-static $RISCV/bin \
+  && cp /usr/bin/qemu-system-riscv32 $RISCV/bin
 
 ########################################
 # Boolector (SMT solver) builder image #
