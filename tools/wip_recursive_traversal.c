@@ -804,6 +804,7 @@ void print_livedead(uint64_t* livedead) {
 
 void print_states_and_livedeads() {
   uint64_t i;
+  uint64_t* edge;
 
   i = 0;
   while (i < code_length / INSTRUCTIONSIZE) {
@@ -815,6 +816,13 @@ void print_states_and_livedeads() {
     println();
     print_state((uint64_t *) *(machine_states + i));
     print_livedead((uint64_t *) *(livedeads + i));
+    print("\tnext:\t");
+    edge = get_edges(cfg, i * INSTRUCTIONSIZE);
+    while (edge != (uint64_t *) 0) {
+      printf1("%x ", (char *) get_to_pc(edge));
+      edge = get_next_edge(edge);
+    }
+    println();
     println();
     i = i + 1;
   }
