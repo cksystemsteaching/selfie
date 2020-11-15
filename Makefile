@@ -205,7 +205,7 @@ assemble: selfie.s
 	diff -q selfie-32.m selfie-32-2-32.m
 	diff -q selfie-32.s selfie-32-2-32.s
 	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -m 1
-	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -y 2 -l selfie-32.m -y 2
+	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -y 1 -l selfie-32.m -y 1
 	chmod +x selfie-32.m
 	qemu-riscv32-static selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
 	diff -q selfie-32.m selfie-qemu-32.m
