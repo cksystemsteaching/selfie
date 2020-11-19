@@ -1182,14 +1182,44 @@ void selfie_translate() {
 
   binary_length = x86binaryLength;
 
+  i = 0;
+
+  while (i < ELF_HEADER_LEN / SIZEOFUINT64) {
+    *(ELF_header + i) = 0;
+
+    i = i + 1;
+  }
+
+  // x86-64 ELF64 header
+  *(ELF_header + 0) = EI_MAG0
+                  + left_shift(EI_MAG1, 8)
+                  + left_shift(EI_MAG2, 16)
+                  + left_shift(EI_MAG3, 24)
+                  + left_shift(EI_CLASS, 32)
+                  + left_shift(EI_DATA, 40)
+                  + left_shift(EI_VERSION, 48)
+                  + left_shift(EI_OSABI, 56);
+  *(ELF_header + 1) = EI_ABIVERSION + left_shift(EI_PAD, 8);
   *(ELF_header + 2)  = 4299030530;    //machine flag 0x3e
+  *(ELF_header + 3) = e_entry;
+  *(ELF_header + 4) = e_phoff;
   *(ELF_header + 5)  = 120;
-  *(ELF_header + 7)  = 1
-    + left_shift(64, 16)
-    + left_shift(3, 32)               // 3 section headers
-    + left_shift(2, 48);              // shstrtab section index
-  *(ELF_header + 12) = x86binaryLength;
-  *(ELF_header + 13) = x86binaryLength;
+  *(ELF_header + 6) = e_flags
+                  + left_shift(e_ehsize, 32)
+                  + left_shift(e_phentsize, 48);
+  *(ELF_header + 7) = 1             // 1 program header
+                  + left_shift(64, 16)
+                  + left_shift(3, 32)               // 3 section headers
+                  + left_shift(2, 48);              // shstrtab section index
+
+  // encode combined code+data segment program header
+  *(ELF_header + 8)  = p_type + left_shift(7, 32);
+  *(ELF_header + 9)  = p_offset_code;
+  *(ELF_header + 10) = p_vaddr_code;
+  *(ELF_header + 11) = p_paddr;
+  *(ELF_header + 12) = binary_length;
+  *(ELF_header + 13) = binary_length;
+  *(ELF_header + 14) = p_align;
 
   //first section header is always null
   *(ELF_header + 15) = 0;

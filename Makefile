@@ -253,7 +253,7 @@ clean:
 	rm -f *.smt
 	rm -f *.btor2
 	rm -f *.x86
-	rm -f selfie selfie.h selfie.exe
+	rm -f selfie selfie.h selfie.exe selfie-32
 	rm -f babysat gc monster modeler riscv-2-x86
 	rm -f examples/*.m
 	rm -f examples/*.s
