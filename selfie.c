@@ -162,6 +162,7 @@ void print_binary(uint64_t n, uint64_t a);
 uint64_t print_format0(char* s, uint64_t i);
 uint64_t print_format1(char* s, uint64_t i, char* a);
 
+int printf(const char *, ...);
 void tiny_printf(char* s, ...);
 
 void sprintf1(char* b, char* s, char* a1);
@@ -2265,7 +2266,7 @@ uint64_t atoi(char* s) {
     c = c - '0';
 
     if (c > 9) {
-      tiny_printf("%s: cannot convert non-decimal number %s\n", selfie_name, s);
+      printf("%s: cannot convert non-decimal number %s\n", selfie_name, s);
 
       exit(EXITCODE_SCANNERERROR);
     }
@@ -2280,13 +2281,13 @@ uint64_t atoi(char* s) {
         n = n * 10 + c;
       else {
         // s contains a decimal number larger than UINT64_MAX
-        tiny_printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
+        printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
         exit(EXITCODE_SCANNERERROR);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
-      tiny_printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
+      printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
       exit(EXITCODE_SCANNERERROR);
     }
@@ -2416,6 +2417,8 @@ uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
 }
 
 void put_character(uint64_t c) {
+  uint64_t written_bytes;
+
   if (output_buffer) {
     // buffering character instead of outputting
     store_character(output_buffer, output_cursor, c);
@@ -2426,9 +2429,17 @@ void put_character(uint64_t c) {
 
     // assert: character_buffer is mapped
 
+    if (output_fd == 1) {
+      if (BOOTLEVELZERO)
+        written_bytes = printf("%c", (char) c);
+      else
+        written_bytes = write(output_fd, character_buffer, 1);
+    } else
+      written_bytes = write(output_fd, character_buffer, 1);
+
     // try to write 1 character from character_buffer
     // into file with output_fd file descriptor
-    if (write(output_fd, character_buffer, 1) == 1) {
+    if (written_bytes == 1) {
       if (output_fd != 1)
         // count number of characters written to a file,
         // not the console which has file descriptor 1
@@ -2440,7 +2451,7 @@ void put_character(uint64_t c) {
         // to report the error we may thus still write to the console
         output_fd = 1;
 
-        tiny_printf("%s: could not write character to output file %s\n", selfie_name, output_name);
+        printf("%s: could not write character to output file %s\n", selfie_name, output_name);
       }
 
       exit(EXITCODE_IOERROR);
@@ -2593,7 +2604,7 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
           else if (load_character(s, i + 3) == 'd')
             print_integer((uint64_t) a / ten_to_the_power_of(p));
           else
-            // precision only supported for %u and %d
+            // precision only supported for %llu and %lld
             return i + 4;
 
           if (p > 0) {
@@ -2757,7 +2768,7 @@ uint64_t* smalloc(uint64_t size) {
   else if (memory == (uint64_t*) 0) {
     if (character_buffer)
       // can only print error message if character_buffer has been successfully allocated
-      tiny_printf("%s: malloc out of memory\n", selfie_name);
+      printf("%s: malloc out of memory\n", selfie_name);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2830,12 +2841,12 @@ void print_symbol(uint64_t symbol) {
 }
 
 void print_line_number(char* message, uint64_t line) {
-  tiny_printf("%s: %s in %s in line %u: ", selfie_name, message, source_name, line);
+  printf("%s: %s in %s in line %llu: ", selfie_name, message, source_name, line);
 }
 
 void syntax_error_message(char* message) {
   print_line_number("syntax error", line_number);
-  tiny_printf("%s\n", message);
+  printf("%s\n", message);
 }
 
 void syntax_error_character(uint64_t expected) {
@@ -2872,7 +2883,7 @@ void get_character() {
     // reached end of file
     character = CHAR_EOF;
   else {
-    tiny_printf("%s: could not read character from input file %s\n", selfie_name, source_name);
+    printf("%s: could not read character from input file %s\n", selfie_name, source_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -3489,7 +3500,7 @@ uint64_t report_undefined_procedures() {
         undefined = 1;
 
         print_line_number("syntax error", get_line_number(entry));
-        tiny_printf("procedure %s undefined\n", get_string(entry));
+        printf("procedure %s undefined\n", get_string(entry));
       }
 
       // keep looking
@@ -3799,7 +3810,7 @@ uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
 
     if (entry == (uint64_t*) 0) {
       print_line_number("syntax error", line_number);
-      tiny_printf("%s undeclared\n", variable_or_big_int);
+      printf("%s undeclared\n", variable_or_big_int);
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -5016,7 +5027,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       } else {
         // procedure already defined
         print_line_number("warning", line_number);
-        tiny_printf("redefinition of procedure %s ignored\n", procedure);
+        printf("redefinition of procedure %s ignored\n", procedure);
       }
     }
 
@@ -5145,7 +5156,7 @@ void compile_cstar() {
           } else {
             // global variable already declared or defined
             print_line_number("warning", current_line_number);
-            tiny_printf("redefinition of global variable %s ignored\n", variable_or_procedure_name);
+            printf("redefinition of global variable %s ignored\n", variable_or_procedure_name);
           }
         }
       } else
@@ -5493,14 +5504,14 @@ void selfie_compile() {
 
       number_of_source_files = number_of_source_files + 1;
 
-      tiny_printf("%s: selfie compiling %s with starc\n", selfie_name, source_name);
+      printf("%s: selfie compiling %s with starc\n", selfie_name, source_name);
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
       source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signed_less_than(source_fd, 0)) {
-        tiny_printf("%s: could not open input file %s\n", selfie_name, source_name);
+        printf("%s: could not open input file %s\n", selfie_name, source_name);
 
         exit(EXITCODE_IOERROR);
       }
@@ -5510,22 +5521,22 @@ void selfie_compile() {
 
       compile_cstar();
 
-      tiny_printf("%s: %u characters read in %u lines and %u comments\n", selfie_name,
+      printf("%s: %llu characters read in %llu lines and %llu comments\n", selfie_name,
         number_of_read_characters,
         line_number,
         number_of_comments);
 
-      tiny_printf("%s: with %u(%.2u%%) characters in %u actual symbols\n", selfie_name,
+      printf("%s: with %llu(%.2llu%%) characters in %llu actual symbols\n", selfie_name,
         number_of_read_characters - number_of_ignored_characters,
         fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
         number_of_scanned_symbols);
 
-      tiny_printf("%s: %u global variables, %u procedures, %u string literals\n", selfie_name,
+      printf("%s: %llu global variables, %llu procedures, %llu string literals\n", selfie_name,
         number_of_global_variables,
         number_of_procedures,
         number_of_strings);
 
-      tiny_printf("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
+      printf("%s: %llu calls, %llu assignments, %llu while, %llu if, %llu return\n", selfie_name,
         number_of_calls,
         number_of_assignments,
         number_of_while,
@@ -5535,7 +5546,7 @@ void selfie_compile() {
   }
 
   if (number_of_source_files == 0)
-    tiny_printf("%s: nothing to compile, only library generated\n", selfie_name);
+    printf("%s: nothing to compile, only library generated\n", selfie_name);
 
   emit_bootstrapping();
 
@@ -5548,11 +5559,11 @@ void selfie_compile() {
 
   entry_point = ELF_ENTRY_POINT;
 
-  tiny_printf("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
+  printf("%s: symbol table search time was %llu iterations on average and %llu in total\n", selfie_name,
     total_search_time / number_of_searches,
     total_search_time);
 
-  tiny_printf("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
+  printf("%s: %llu bytes generated with %llu instructions and %llu bytes of data\n", selfie_name,
     binary_length,
     code_length / INSTRUCTIONSIZE,
     binary_length - code_length);
@@ -5653,7 +5664,7 @@ void update_register_counters() {
 void check_immediate_range(uint64_t immediate, uint64_t bits) {
   if (is_signed_integer(immediate, bits) == 0) {
     print_line_number("encoding error", line_number);
-    tiny_printf("%d expected between %d and %d\n",
+    printf("%lld expected between %lld and %lld\n",
       immediate,
       -two_to_the_power_of(bits - 1),
       two_to_the_power_of(bits - 1) - 1);
@@ -5975,7 +5986,7 @@ uint64_t get_total_percentage_of_nops() {
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
-  tiny_printf("%s: %u(%.2u%%)",
+  printf("%s: %llu(%.2llu%%)",
     mnemonics,
     counter,
     fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
@@ -5985,7 +5996,7 @@ void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint6
   print_instruction_counter(total, counter, mnemonics);
 
   if (run)
-    tiny_printf("[%.2u%%]", fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+    printf("[%.2llu%%]", fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -5993,19 +6004,19 @@ void print_instruction_counters() {
 
   ic = get_total_number_of_instructions();
 
-  tiny_printf("%s: init:    ", selfie_name);
+  printf("%s: init:    ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_lui, nopc_lui, "lui");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_addi, nopc_addi, "addi");
   println();
 
-  tiny_printf("%s: memory:  ", selfie_name);
+  printf("%s: memory:  ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_ld, nopc_ld, "ld");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_sd, nopc_sd, "sd");
   println();
 
-  tiny_printf("%s: compute: ", selfie_name);
+  printf("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_add, nopc_add, "add");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_sub, nopc_sub, "sub");
@@ -6013,17 +6024,17 @@ void print_instruction_counters() {
   print_instruction_counter_with_nops(ic, ic_mul, nopc_mul, "mul");
   println();
 
-  tiny_printf("%s: compute: ", selfie_name);
+  printf("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_remu, nopc_remu, "remu");
   println();
 
-  tiny_printf("%s: compare: ", selfie_name);
+  printf("%s: compare: ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_sltu, nopc_sltu, "sltu");
   println();
 
-  tiny_printf("%s: control: ", selfie_name);
+  printf("%s: control: ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_beq, nopc_beq, "beq");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_jal, nopc_jal, "jal");
@@ -6031,7 +6042,7 @@ void print_instruction_counters() {
   print_instruction_counter_with_nops(ic, ic_jalr, nopc_jalr, "jalr");
   println();
 
-  tiny_printf("%s: system:  ", selfie_name);
+  printf("%s: system:  ", selfie_name);
   print_instruction_counter(ic, ic_ecall, "ecall");
   println();
 }
@@ -6404,7 +6415,7 @@ void selfie_output(char* filename) {
   binary_name = filename;
 
   if (binary_length == 0) {
-    tiny_printf("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
+    printf("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
 
     return;
   }
@@ -6414,7 +6425,7 @@ void selfie_output(char* filename) {
   fd = open_write_only(binary_name);
 
   if (signed_less_than(fd, 0)) {
-    tiny_printf("%s: could not create binary output file %s\n", selfie_name, binary_name);
+    printf("%s: could not create binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -6423,7 +6434,7 @@ void selfie_output(char* filename) {
 
   // first write ELF header
   if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
-    tiny_printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
+    printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -6432,12 +6443,12 @@ void selfie_output(char* filename) {
 
   // then write binary
   if (write(fd, binary, binary_length) != binary_length) {
-    tiny_printf("%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
+    printf("%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
-  tiny_printf("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
+  printf("%s: %llu bytes with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
     (ELF_HEADER_LEN + binary_length),
     (code_length / INSTRUCTIONSIZE),
     (binary_length - code_length),
@@ -6487,7 +6498,7 @@ void selfie_load() {
   fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0)) {
-    tiny_printf("%s: could not open input file %s\n", selfie_name, binary_name);
+    printf("%s: could not open input file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -6518,7 +6529,7 @@ void selfie_load() {
         if (signed_less_than(0, number_of_read_bytes)) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            tiny_printf("%s: %u bytes with %u instructions and %u bytes of data loaded from %s\n",
+            printf("%s: %llu bytes with %llu instructions and %llu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_LEN + binary_length,
               code_length / INSTRUCTIONSIZE,
@@ -6532,7 +6543,7 @@ void selfie_load() {
     }
   }
 
-  tiny_printf("%s: failed to load code from input file %s\n", selfie_name, binary_name);
+  printf("%s: failed to load code from input file %s\n", selfie_name, binary_name);
 
   exit(EXITCODE_IOERROR);
 }
@@ -6572,8 +6583,8 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  tiny_printf("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
-  tiny_printf("%s: %s exiting with exit code %d\n", selfie_name,
+  printf("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
+  printf("%s: %s exiting with exit code %lld\n", selfie_name,
     get_name(context),
     sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
 }
@@ -6627,10 +6638,10 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    tiny_printf("%s: trying to read %u bytes from file with descriptor %u into buffer at virtual address %p\n", selfie_name,
+    printf("%s: trying to read %llu bytes from file with descriptor %llu into buffer at virtual address %p\n", selfie_name,
       size,
       fd,
-      vbuffer);
+      (void*) vbuffer);
 
   read_total = 0;
 
@@ -6667,21 +6678,21 @@ void implement_read(uint64_t* context) {
 
           size = 0;
 
-          tiny_printf("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, vbuffer);
+          printf("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (void*) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        tiny_printf("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, vbuffer);
+        printf("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (void*) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      tiny_printf("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, vbuffer);
+      printf("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (void*) vbuffer);
     }
   }
 
@@ -6693,7 +6704,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    tiny_printf("%s: actually read %u bytes from file with descriptor %u\n", selfie_name, read_total, fd);
+    printf("%s: actually read %llu bytes from file with descriptor %llu\n", selfie_name, read_total, fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6750,9 +6761,9 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    tiny_printf("%s: trying to write %u bytes from buffer at virtual address %p into file with descriptor %u\n", selfie_name,
+    printf("%s: trying to write %llu bytes from buffer at virtual address %p into file with descriptor %llu\n", selfie_name,
       size,
-      vbuffer,
+      (void*) vbuffer,
       fd);
 
   written_total = 0;
@@ -6790,21 +6801,21 @@ void implement_write(uint64_t* context) {
 
           size = 0;
 
-          tiny_printf("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, vbuffer);
+          printf("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (void*) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        tiny_printf("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, vbuffer);
+        printf("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (void*) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      tiny_printf("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, vbuffer);
+      printf("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (void*) vbuffer);
     }
   }
 
@@ -6816,7 +6827,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    tiny_printf("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name, written_total, fd);
+    printf("%s: actually wrote %llu bytes into file with descriptor %llu\n", selfie_name, written_total, fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6859,7 +6870,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         else {
-          tiny_printf("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, vaddr);
+          printf("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (void*) vaddr);
 
           return 0;
         }
@@ -6880,18 +6891,18 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         // advance to the next machine word in our memory
         i = i + 1;
       } else {
-        tiny_printf("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, vaddr);
+        printf("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (void*) vaddr);
 
         return 0;
       }
     else {
-      tiny_printf("%s: opening file failed because the file name address %p is invalid\n", selfie_name, vaddr);
+      printf("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (void*) vaddr);
 
       return 0;
     }
   }
 
-  tiny_printf("%s: opening file failed because the file name is too long at address %p\n", selfie_name, vaddr);
+  printf("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (void*) vaddr);
 
   return 0;
 }
@@ -6938,7 +6949,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      tiny_printf("%s: opened file %s with flags %x and mode %o returning file descriptor %u\n", selfie_name,
+      printf("%s: opened file %s with flags %llx and mode %llo returning file descriptor %llu\n", selfie_name,
         filename_buffer,
         flags,
         mode,
@@ -7032,7 +7043,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
     if (new_program_break >= current_program_break)
       if (new_program_break < *(get_regs(context) + REG_SP)) {
         if (debug_brk)
-          tiny_printf("%s: setting program break to %p\n", selfie_name, new_program_break);
+          printf("%s: setting program break to %p\n", selfie_name, (void*) new_program_break);
 
         set_program_break(context, new_program_break);
 
@@ -7045,7 +7056,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
   // setting new program break failed, return current program break
 
   if (debug_brk)
-    tiny_printf("%s: retrieving current program break %p\n", selfie_name, current_program_break);
+    printf("%s: retrieving current program break %p\n", selfie_name, (void*) current_program_break);
 
   return current_program_break;
 }
@@ -7146,11 +7157,11 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   timer = timeout;
 
   if (debug_switch) {
-    tiny_printf("%s: switched from context %p to context %p", selfie_name,
-      from_context,
-      to_context);
+    printf("%s: switched from context %p to context %p", selfie_name,
+      (void*) from_context,
+      (void*) to_context);
     if (timer != TIMEROFF)
-      tiny_printf(" to execute %u instructions", timer);
+      printf(" to execute %llu instructions", timer);
     println();
   }
 
@@ -7345,11 +7356,11 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb)
-    tiny_printf("%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfie_name,
-      vaddr,
-      page * PAGESIZE,
-      frame,
-      paddr);
+    printf("%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfie_name,
+      (void*) vaddr,
+      (void*) (page * PAGESIZE),
+      (void*) frame,
+      (void*) paddr);
 
   return (uint64_t*) paddr;
 }
@@ -7913,30 +7924,30 @@ void gc_collect(uint64_t* context) {
 }
 
 void print_gc_profile(uint64_t* context) {
-  tiny_printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  tiny_printf("%s: gc:      %.2uMB requested in %u mallocs (%u gced, %u reuses)\n", selfie_name,
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf("%s: gc:      %.2lluMB requested in %llu mallocs (%llu gced, %llu reuses)\n", selfie_name,
     fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
     gc_num_mallocated,
     gc_num_gced_mallocs,
     gc_num_reused_mallocs);
-  tiny_printf("%s: gc:      %.2uMB(%.2u%%) reused in %u reused mallocs\n", selfie_name,
+  printf("%s: gc:      %.2lluMB(%.2llu%%) reused in %llu reused mallocs\n", selfie_name,
     fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
     gc_num_reused_mallocs);
-  tiny_printf("%s: gc:      %.2uMB collected in %u gc runs\n", selfie_name,
+  printf("%s: gc:      %.2lluMB collected in %llu gc runs\n", selfie_name,
     fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
     gc_num_collects);
-  tiny_printf("%s: gc:      %.2uMB(%.2u%%) allocated in %u mallocs (%u gced, %u ungced)\n", selfie_name,
+  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu mallocs (%llu gced, %llu ungced)\n", selfie_name,
     fixed_point_ratio(gc_mem_objects + gc_mem_metadata, MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata, 4), 4),
     gc_num_gced_mallocs + gc_num_ungced_mallocs,
     gc_num_gced_mallocs,
     gc_num_ungced_mallocs);
-  tiny_printf("%s: gc:      %.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name,
+  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu gced mallocs\n", selfie_name,
     fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
     gc_num_gced_mallocs);
-  tiny_printf("%s: gc:      %.2uMB(%.2u%%) allocated in %u ungced mallocs", selfie_name,
+  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu ungced mallocs", selfie_name,
     fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
     gc_num_ungced_mallocs);
@@ -7969,12 +7980,12 @@ void gc_arguments() {
 
 void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    tiny_printf("(~%u)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    printf("(~%llu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
 }
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    tiny_printf("%s: pc=%x", binary_name, address);
+    printf("%s: pc=%llx", binary_name, address);
     print_code_line_number_for_instruction(address, entry_point);
     if (symbolic)
       // skip further output
@@ -7983,20 +7994,20 @@ void print_code_context_for_instruction(uint64_t address) {
       print(": ");
   } else {
     if (model) {
-      tiny_printf("%x", address);
+      printf("%llx", address);
       print_code_line_number_for_instruction(address, entry_point);
       print(": ");
     } else if (disassemble_verbose) {
-      tiny_printf("%x", address);
+      printf("%llx", address);
       print_code_line_number_for_instruction(address, 0);
-      tiny_printf(": %p: ", ir);
+      printf(": %p: ", (void*) ir);
     }
   }
 }
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  tiny_printf("lui %s,%x", get_register_name(rd), sign_shrink(imm, 20));
+  printf("lui %s,%llx", get_register_name(rd), sign_shrink(imm, 20));
 }
 
 void print_lui_before() {
@@ -8051,7 +8062,7 @@ void print_addi() {
         return;
       }
 
-  tiny_printf("addi %s,%s,%d", get_register_name(rd), get_register_name(rs1), imm);
+  printf("addi %s,%s,%lld", get_register_name(rd), get_register_name(rs1), imm);
 }
 
 void print_addi_before() {
@@ -8091,7 +8102,7 @@ void do_addi() {
 
 void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
   print_code_context_for_instruction(pc);
-  tiny_printf("%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  printf("%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -8248,7 +8259,7 @@ void do_sltu() {
 
 void print_ld() {
   print_code_context_for_instruction(pc);
-  tiny_printf("ld %s,%d(%s)", get_register_name(rd), imm, get_register_name(rs1));
+  printf("ld %s,%lld(%s)", get_register_name(rd), imm, get_register_name(rs1));
 }
 
 void print_ld_before() {
@@ -8262,9 +8273,9 @@ void print_ld_before() {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        tiny_printf(",mem[%x]=%x |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[%llx]=%llx |- ", vaddr, load_virtual_memory(pt, vaddr));
       else
-        tiny_printf(",mem[%x]=%d |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[%llx]=%lld |- ", vaddr, load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
@@ -8278,7 +8289,7 @@ void print_ld_after(uint64_t vaddr) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
-      tiny_printf("=mem[%x]", vaddr);
+      printf("=mem[%llx]", vaddr);
     }
 }
 
@@ -8339,7 +8350,7 @@ uint64_t do_ld() {
 
 void print_sd() {
   print_code_context_for_instruction(pc);
-  tiny_printf("sd %s,%d(%s)", get_register_name(rs2), imm, get_register_name(rs1));
+  printf("sd %s,%lld(%s)", get_register_name(rs2), imm, get_register_name(rs1));
 }
 
 void print_sd_before() {
@@ -8355,9 +8366,9 @@ void print_sd_before() {
       print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        tiny_printf(" |- mem[%x]=%x", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[%llx]=%llx", vaddr, load_virtual_memory(pt, vaddr));
       else
-        tiny_printf(" |- mem[%x]=%d", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[%llx]=%lld", vaddr, load_virtual_memory(pt, vaddr));
 
       return;
     }
@@ -8368,7 +8379,7 @@ void print_sd_before() {
 void print_sd_after(uint64_t vaddr) {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      tiny_printf(" -> mem[%x]=", vaddr);
+      printf(" -> mem[%llx]=", vaddr);
       print_register_value(rs2);
     }
 }
@@ -8432,9 +8443,9 @@ void undo_sd() {
 
 void print_beq() {
   print_code_context_for_instruction(pc);
-  tiny_printf("beq %s,%s,%d", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
+  printf("beq %s,%s,%lld", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
   if (disassemble_verbose)
-    tiny_printf("[%x]", pc + imm);
+    printf("[%llx]", pc + imm);
 }
 
 void print_beq_before() {
@@ -8442,11 +8453,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  tiny_printf(" |- pc=%x", pc);
+  printf(" |- pc=%llx", pc);
 }
 
 void print_beq_after() {
-  tiny_printf(" -> pc=%x", pc);
+  printf(" -> pc=%llx", pc);
 }
 
 void record_beq() {
@@ -8472,9 +8483,9 @@ void do_beq() {
 
 void print_jal() {
   print_code_context_for_instruction(pc);
-  tiny_printf("jal %s,%d", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
+  printf("jal %s,%lld", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
   if (disassemble_verbose)
-    tiny_printf("[%x]", pc + imm);
+    printf("[%llx]", pc + imm);
 }
 
 void print_jal_before() {
@@ -8483,7 +8494,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  tiny_printf("pc=%x", pc);
+  printf("pc=%llx", pc);
 }
 
 void print_jal_jalr_after() {
@@ -8541,7 +8552,7 @@ void do_jal() {
 
 void print_jalr() {
   print_code_context_for_instruction(pc);
-  tiny_printf("jalr %s,%d(%s)", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  printf("jalr %s,%lld(%s)", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
 }
 
 void print_jalr_before() {
@@ -8552,7 +8563,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  tiny_printf("pc=%x", pc);
+  printf("pc=%llx", pc);
 }
 
 void do_jalr() {
@@ -8607,11 +8618,11 @@ void do_ecall() {
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
-      tiny_printf("%s: context switching during recording is unsupported\n", selfie_name);
+      printf("%s: context switching during recording is unsupported\n", selfie_name);
 
       exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else if (symbolic) {
-      tiny_printf("%s: context switching during symbolic execution is unsupported\n", selfie_name);
+      printf("%s: context switching during symbolic execution is unsupported\n", selfie_name);
 
       exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else {
@@ -8638,11 +8649,11 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    tiny_printf("(~%u)", *(data_line_number + (pc - code_length) / REGISTERSIZE));
+    printf("(~%llu)", *(data_line_number + (pc - code_length) / REGISTERSIZE));
 }
 
 void print_data_context(uint64_t data) {
-  tiny_printf("%x", pc);
+  printf("%llx", pc);
 
   if (disassemble_verbose) {
     print_data_line_number();
@@ -8656,7 +8667,7 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-  tiny_printf(".quad %x", data);
+  printf(".quad %llx", data);
 }
 
 // -----------------------------------------------------------------
@@ -8701,7 +8712,7 @@ void selfie_disassemble(uint64_t verbose) {
   assembly_name = get_argument();
 
   if (code_length == 0) {
-    tiny_printf("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
+    printf("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
 
     return;
   }
@@ -8711,7 +8722,7 @@ void selfie_disassemble(uint64_t verbose) {
   assembly_fd = open_write_only(assembly_name);
 
   if (signed_less_than(assembly_fd, 0)) {
-    tiny_printf("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
+    printf("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -8750,7 +8761,7 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-  tiny_printf("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
+  printf("%s: %llu characters of assembly with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
     (code_length / INSTRUCTIONSIZE),
     (binary_length - code_length),
@@ -8819,35 +8830,35 @@ void replay_trace() {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  tiny_printf("%s=%x", get_register_name(reg), *(registers + reg));
+  printf("%s=%llx", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
-  tiny_printf("%s=%o", get_register_name(reg), *(registers + reg));
+  printf("%s=%llo", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    tiny_printf("%s=%d(%x)", get_register_name(reg), *(registers + reg), *(registers + reg));
+    printf("%s=%lld(%llx)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
   print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    tiny_printf(" at page %p", fault);
+    printf(" at page %p", (void*) fault);
   else if (exception == EXCEPTION_SEGMENTATIONFAULT)
-    tiny_printf(" at address %p", fault);
+    printf(" at address %p", (void*) fault);
   else if (exception == EXCEPTION_SYSCALL)
-    tiny_printf(" ID %u", fault);
+    printf(" ID %llu", fault);
   else if (exception == EXCEPTION_DIVISIONBYZERO)
-    tiny_printf(" at address %p", fault);
+    printf(" at address %p", (void*) fault);
   else if (exception == EXCEPTION_INVALIDADDRESS)
-    tiny_printf(" %p", (char*) fault);
+    printf(" %p", (void*) fault);
   else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
-    tiny_printf(" at address %p", fault);
+    printf(" at address %p", (void*) fault);
   else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
     print(" ");print_register_name(fault);
   }
@@ -8856,7 +8867,7 @@ void print_exception(uint64_t exception, uint64_t fault) {
 void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      tiny_printf("%s: context %p throws exception: ", selfie_name, current_context);
+      printf("%s: context %p throws exception: ", selfie_name, (void*) current_context);
       print_exception(exception, fault);
       print(" in presence of existing exception: ");
       print_exception(get_exception(current_context), get_fault(current_context));
@@ -8871,7 +8882,7 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   trap = 1;
 
   if (debug_exception) {
-    tiny_printf("%s: context %p throws exception: ", selfie_name, current_context);
+    printf("%s: context %p throws exception: ", selfie_name, (void*) current_context);
     print_exception(exception, fault);
     println();
   }
@@ -8964,7 +8975,7 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-      tiny_printf("%s: unknown instruction with %x opcode detected\n", selfie_name, opcode);
+      printf("%s: unknown instruction with %llx opcode detected\n", selfie_name, opcode);
 
       exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
@@ -9208,7 +9219,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    tiny_printf(",%u(%.2u%%)@%x", c, fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), a);
+    printf(",%llu(%.2llu%%)@%llx", c, fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -9220,7 +9231,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  tiny_printf("%s: %s%u", selfie_name, message, total);
+  printf("%s: %s%llu", selfie_name, message, total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
@@ -9231,7 +9242,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       // may happen in read-only memory segments
       writes = 1;
 
-    tiny_printf("%s: %s%s%d,%d,%d[%.2u]\n", selfie_name, message, padding,
+    printf("%s: %s%s%lld,%lld,%lld[%.2llu]\n", selfie_name, message, padding,
       reads + writes, reads, writes, fixed_point_ratio(reads, writes, 2));
   }
 }
@@ -9243,7 +9254,7 @@ void print_per_register_profile(uint64_t reg) {
 void print_register_memory_profile() {
   uint64_t reg;
 
-  tiny_printf("%s: CPU+memory:    reads+writes,reads,writes[reads/writes]\n", selfie_name);
+  printf("%s: CPU+memory:    reads+writes,reads,writes[reads/writes]\n", selfie_name);
 
   print_access_profile("heap segment:  ", "", heap_reads, heap_writes);
 
@@ -9298,18 +9309,18 @@ void print_register_memory_profile() {
 }
 
 void print_profile(uint64_t* context) {
-  tiny_printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  tiny_printf("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf("%s: summary: %llu executed instructions [%.2llu%% nops]\n", selfie_name,
     get_total_number_of_instructions(),
     get_total_percentage_of_nops());
-  tiny_printf("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
+  printf("%s:          %.2lluMB allocated in %llu mallocs\n", selfie_name,
     fixed_point_ratio(mc_brk, MEGABYTE, 2),
     sc_brk);
-  tiny_printf("%s:          %.2uMB(%.2u%% of %.2uMB) actually accessed\n", selfie_name,
+  printf("%s:          %.2lluMB(%.2llu%% of %.2lluMB) actually accessed\n", selfie_name,
     fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4),
     fixed_point_ratio(mc_brk, MEGABYTE, 2));
-  tiny_printf("%s:          %.2uMB(%.2u%% of %uMB) mapped memory\n", selfie_name,
+  printf("%s:          %.2lluMB(%.2llu%% of %lluMB) mapped memory\n", selfie_name,
     fixed_point_ratio(pused(), MEGABYTE, 2),
     fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
     total_page_frame_memory / MEGABYTE);
@@ -9318,13 +9329,13 @@ void print_profile(uint64_t* context) {
     print_gc_profile(context);
 
   if (get_total_number_of_instructions() > 0) {
-    tiny_printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
-      tiny_printf("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
+      printf("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
     else
-      tiny_printf("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
+      printf("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
 
     print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
     print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
@@ -9334,7 +9345,7 @@ void print_profile(uint64_t* context) {
     print_register_memory_profile();
   }
 
-  tiny_printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -9471,9 +9482,9 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   init_context(context, parent, vctxt);
 
   if (debug_create)
-    tiny_printf("%s: parent context %p created child context %p\n", selfie_name,
-      parent,
-      used_contexts);
+    printf("%s: parent context %p created child context %p\n", selfie_name,
+      (void*) parent,
+      (void*) used_contexts);
 
   return context;
 }
@@ -9571,9 +9582,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 
   if (debug_map) {
-    tiny_printf("%s: page ", selfie_name);
+    printf("%s: page ", selfie_name);
     print_hexadecimal(page, 4);
-    tiny_printf(" mapped to frame %p in context %p\n", frame, context);
+    printf(" mapped to frame %p in context %p\n", (void*) frame, (void*) context);
   }
 }
 
@@ -9795,7 +9806,7 @@ uint64_t* palloc() {
         // losing one page frame to fragmentation
         free_page_frame_memory = free_page_frame_memory - PAGESIZE;
     } else {
-      tiny_printf("%s: palloc out of physical memory\n", selfie_name);
+      printf("%s: palloc out of physical memory\n", selfie_name);
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
@@ -9974,7 +9985,7 @@ uint64_t handle_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    tiny_printf("%s: unknown system call %u\n", selfie_name, a7);
+    printf("%s: unknown system call %llu\n", selfie_name, a7);
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -10004,13 +10015,13 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (record) {
-    tiny_printf("%s: division by zero, replaying...\n", selfie_name);
+    printf("%s: division by zero, replaying...\n", selfie_name);
 
     replay_trace();
 
     set_exit_code(context, EXITCODE_NOERROR);
   } else {
-    tiny_printf("%s: division by zero\n", selfie_name);
+    printf("%s: division by zero\n", selfie_name);
 
     set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   }
@@ -10038,7 +10049,7 @@ uint64_t handle_exception(uint64_t* context) {
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
   else {
-    tiny_printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
+    printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
     print_exception(exception, get_fault(context));
     println();
 
@@ -10053,7 +10064,7 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t* from_context;
 
   print("mipster\n");
-  tiny_printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   timeout = TIMESLICE;
 
@@ -10080,7 +10091,7 @@ uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
   print("hypster\n");
-  tiny_printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   while (1) {
     from_context = hypster_switch(to_context, TIMESLICE);
@@ -10099,8 +10110,8 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  tiny_printf("mixter (%u%% mipster/%u%% hypster)\n", mix, 100 - mix);
-  tiny_printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("mixter (%llu%% mipster/%llu%% hypster)\n", mix, 100 - mix);
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   mslice = TIMESLICE;
 
@@ -10170,7 +10181,7 @@ uint64_t minmob(uint64_t* to_context) {
     } else {
       // minster and mobster do not handle page faults
       if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
-        tiny_printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(from_context));
+        printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(from_context));
         print_exception(get_exception(from_context), get_fault(from_context));
         println();
 
@@ -10205,7 +10216,7 @@ void map_unmapped_pages(uint64_t* context) {
 
 uint64_t minster(uint64_t* to_context) {
   print("minster\n");
-  tiny_printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -10218,7 +10229,7 @@ uint64_t minster(uint64_t* to_context) {
 
 uint64_t mobster(uint64_t* to_context) {
   print("mobster\n");
-  tiny_printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
@@ -10285,7 +10296,7 @@ uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
 
   if (binary_length == 0) {
-    tiny_printf("%s: nothing to run, debug, or host\n", selfie_name);
+    printf("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
   }
@@ -10302,14 +10313,14 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-  tiny_printf("%s: selfie executing %s with %uMB physical memory", selfie_name,
+  printf("%s: selfie executing %s with %lluMB physical memory", selfie_name,
     binary_name,
     total_page_frame_memory / MEGABYTE);
 
   if (GC_ON) {
     gc_init(current_context);
 
-    tiny_printf(", gcing every %d mallocs, ", GC_PERIOD);
+    printf(", gcing every %lld mallocs, ", GC_PERIOD);
     if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
   }
 
@@ -10355,7 +10366,7 @@ uint64_t selfie_run(uint64_t machine) {
   debug_syscalls = 0;
   debug          = 0;
 
-  tiny_printf("%s: selfie terminating %s with exit code %d\n", selfie_name,
+  printf("%s: selfie terminating %s with exit code %lld\n", selfie_name,
     get_name(current_context),
     sign_extend(exit_code, SYSCALL_BITWIDTH));
 
@@ -10413,7 +10424,7 @@ uint64_t no_or_bad_or_more_arguments(uint64_t exit_code) {
 }
 
 void print_synopsis(char* extras) {
-  tiny_printf("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
+  printf("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 // -----------------------------------------------------------------
