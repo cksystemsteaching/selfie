@@ -10315,6 +10315,7 @@ uint64_t mobster(uint64_t* to_context) {
 
 char* replace_extension(char* filename, char* extension) {
   char* s;
+  char* filename_without_extension;
   uint64_t i;
   uint64_t c;
 
@@ -10345,17 +10346,20 @@ char* replace_extension(char* filename, char* extension) {
     // writing filename plus extension into s
     sprintf(s, "%s.%s", filename, extension);
   else {
-    // assert: s is zeroed and thus null-terminated
+    // gcc's sprintf dislikes overlapping input and output buffers, an additional copy is necessary
+    filename_without_extension = string_alloc(string_length(filename));
 
-    // copy filename without extension and null-terminator into s
+    // assert: filename_without_extension is zeroed and thus null-terminated
+
+    // copy filename without extension and null-terminator into filename_without_extension
     while (i > 0) {
       i = i - 1;
 
-      store_character(s, i, load_character(filename, i));
+      store_character(filename_without_extension, i, load_character(filename, i));
     }
 
-    // writing s plus extension into s
-    sprintf(s, "%s.%s", s, extension);
+    // writing filename_without_extension plus extension into s
+    sprintf(s, "%s.%s", filename_without_extension, extension);
   }
 
   return s;
