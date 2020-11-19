@@ -136,8 +136,10 @@ char*    store_character(char* s, uint64_t i, uint64_t c);
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
 char*    string_copy(char* s);
+char*    string_sub(char* s, uint64_t begin, uint64_t end);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
+uint64_t string_prefix_for(char* prefix, char* s);
 
 uint64_t atoi(char* s);
 char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
@@ -163,7 +165,7 @@ uint64_t print_format0(char* s, uint64_t i);
 uint64_t print_format1(char* s, uint64_t i, char* a);
 
 int printf(const char *, ...);
-void tiny_printf(char* s, ...);
+uint64_t internal_wrapped_printf(char* s, ...);
 
 void sprintf1(char* b, char* s, char* a1);
 void sprintf2(char* b, char* s, char* a1, char* a2);
@@ -257,6 +259,7 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
+uint64_t number_of_currently_written_bytes = 0;
 
 char*    output_name = (char*) 0;
 uint64_t output_fd   = 1; // 1 is file descriptor of standard output
@@ -610,6 +613,7 @@ uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
 uint64_t is_possibly_parameter(uint64_t is_already_variadic);
+uint64_t is_castable();
 
 uint64_t look_for_factor();
 uint64_t look_for_statement();
@@ -639,6 +643,8 @@ void      load_string(char* string);
 uint64_t procedure_call(uint64_t* entry, char* procedure);
 void     procedure_prologue(uint64_t number_of_local_variable_bytes);
 void     procedure_epilogue(uint64_t number_of_parameter_bytes);
+
+char* rewrite_wrapped_procedure(char* procedure);
 
 uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro);
 uint64_t compile_call_or_macro(char* procedure_or_macro);
@@ -2207,6 +2213,28 @@ char* string_copy(char* s) {
   return t;
 }
 
+char* string_sub(char* s, uint64_t begin, uint64_t end) {
+  uint64_t l;
+  char* t;
+  uint64_t i;
+
+  l = end - begin;
+
+  t = string_alloc(l);
+
+  i = 0;
+
+  while (begin + i < end) {
+    store_character(t, i, load_character(s, begin + i));
+
+    i = i + 1;
+  }
+
+  store_character(t, i, 0); // null-terminated string
+
+  return t;
+}
+
 void string_reverse(char* s) {
   uint64_t i;
   uint64_t j;
@@ -2241,6 +2269,23 @@ uint64_t string_compare(char* s, char* t) {
       i = i + 1;
     else
       return 0;
+}
+
+uint64_t string_prefix_for(char* prefix, char* s) {
+  uint64_t i;
+
+  i = 0;
+
+  while (1) {
+    if (load_character(prefix, i) == 0)
+      return 1;
+    else if (load_character(s, i) == 0)
+      return 0;
+    else if (load_character(prefix, i) == load_character(s, i))
+      i = i + 1;
+    else
+      return 0;
+  }
 }
 
 uint64_t atoi(char* s) {
@@ -2459,6 +2504,8 @@ void put_character(uint64_t c) {
   } else
     // character_buffer has not been successfully allocated yet
     exit(EXITCODE_IOERROR);
+
+  number_of_currently_written_bytes = number_of_currently_written_bytes + 1;
 }
 
 void print(char* s) {
@@ -2659,11 +2706,13 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
   }
 }
 
-void tiny_printf(char* s, ...) {
+uint64_t internal_wrapped_printf(char* s, ...) {
   va_list args;
   uint64_t offset;
   uint64_t placeholder_positions;
   uint64_t i;
+
+  number_of_currently_written_bytes = 0;
 
   va_start(args, s);
   offset = 0;
@@ -2688,13 +2737,15 @@ void tiny_printf(char* s, ...) {
   print_format0(s, offset);
 
   va_end(args);
+
+  return number_of_currently_written_bytes;
 }
 
 void sprintf1(char* b, char* s, char* a1) {
   output_buffer = b;
   output_cursor = 0;
 
-  tiny_printf(s, a1);put_character(0);
+  printf(s, a1);put_character(0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -2704,7 +2755,7 @@ void sprintf2(char* b, char* s, char* a1, char* a2) {
   output_buffer = b;
   output_cursor = 0;
 
-  tiny_printf(s, a1, a2);put_character(0);
+  printf(s, a1, a2);put_character(0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -2714,7 +2765,7 @@ void sprintf3(char* b, char* s, char* a1, char* a2, char* a3) {
   output_buffer = b;
   output_cursor = 0;
 
-  tiny_printf(s, a1, a2, a3);put_character(0);
+  printf(s, a1, a2, a3);put_character(0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -2724,7 +2775,7 @@ void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4) {
   output_buffer = b;
   output_cursor = 0;
 
-  tiny_printf(s, a1, a2, a3, a4);put_character(0);
+  printf(s, a1, a2, a3, a4);put_character(0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -3599,6 +3650,15 @@ uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
   return 0;
 }
 
+uint64_t is_castable() {
+  if (symbol == SYM_UINT64)
+    return 1;
+  if (symbol == SYM_VOID)
+    return 1;
+
+  return 0;
+}
+
 uint64_t look_for_factor() {
   if (symbol == SYM_ASTERISK)
     return 0;
@@ -3995,6 +4055,14 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+char* rewrite_wrapped_procedure(char* procedure) {
+  if (string_prefix_for("internal_wrapped_", procedure)) {
+    return string_sub(procedure, string_length("internal_wrapped_"), string_length(procedure));
+  }
+
+  return procedure;
+}
+
 uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
   return string_compare(procedure_or_macro, (char*) *(MACROS + macro));
 }
@@ -4122,7 +4190,8 @@ uint64_t compile_factor() {
     get_symbol();
 
     // cast: "(" "uint64_t" [ "*" ] ")"
-    if (symbol == SYM_UINT64) {
+    // additionally, we allow (void) casts for bootstrapping
+    if (is_castable()) {
       has_cast = 1;
 
       cast = compile_type();
@@ -4833,6 +4902,18 @@ uint64_t compile_type() {
 
       get_symbol();
     }
+  } else if (symbol == SYM_VOID) {
+    get_symbol();
+
+    // we tolerate casts to void for bootstrapping
+    type = UINT64_T;
+
+    while (symbol == SYM_ASTERISK) {
+      // we tolerate pointer to pointers for bootstrapping
+      type = UINT64STAR_T;
+
+      get_symbol();
+    }
   } else
     syntax_error_symbol(SYM_UINT64);
 
@@ -4922,6 +5003,8 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t parameters;
   uint64_t number_of_local_variable_bytes;
   uint64_t* entry;
+
+  procedure = rewrite_wrapped_procedure(procedure);
 
   // assuming procedure is undefined
   is_undefined = 1;
