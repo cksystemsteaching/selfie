@@ -165,12 +165,11 @@ uint64_t print_format0(char* s, uint64_t i);
 uint64_t print_format1(char* s, uint64_t i, char* a);
 
 int printf(const char *, ...);
-uint64_t internal_wrapped_printf(char* s, ...);
+int sprintf(char* str, const char* format, ...);
 
-void sprintf1(char* b, char* s, char* a1);
-void sprintf2(char* b, char* s, char* a1, char* a2);
-void sprintf3(char* b, char* s, char* a1, char* a2, char* a3);
-void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
+uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, va_list args);
+uint64_t internal_wrapped_printf(char* s, ...);
+uint64_t internal_wrapped_sprintf(char *str, char *format, ...);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -2632,43 +2631,39 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
         put_character((uint64_t) a);
 
         return i + 2;
-      } else if (load_character(s, i + 1) == 'u') {
-        print_unsigned_integer((uint64_t) a);
-
-        return i + 2;
-      } else if (load_character(s, i + 1) == 'd') {
-        print_integer((uint64_t) a);
-
-        return i + 2;
       } else if (load_character(s, i + 1) == '.') {
         // for simplicity we support a single digit only
         p = load_character(s, i + 2) - '0';
 
         if (p < 10) {
           // the character at i + 2 is in fact a digit
-          if (load_character(s, i + 3) == 'u')
-            print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
-          else if (load_character(s, i + 3) == 'd')
-            print_integer((uint64_t) a / ten_to_the_power_of(p));
-          else
-            // precision only supported for %llu and %lld
-            return i + 4;
+          if (load_character(s, i + 3) == 'l') {
+            if (load_character(s, i + 4) == 'l') {
+              if (load_character(s, i + 5) == 'u')
+                print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+              else if (load_character(s, i + 5) == 'd')
+                print_integer((uint64_t) a / ten_to_the_power_of(p));
+              else
+                // precision only supported for %llu and %lld
+                return i + 6;
 
-          if (p > 0) {
-            // using integer_buffer here is ok since we are not using print_integer
-            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
-            p = p - string_length(integer_buffer);
+              if (p > 0) {
+                // using integer_buffer here is ok since we are not using print_integer
+                itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
+                p = p - string_length(integer_buffer);
 
-            put_character('.');
-            while (p > 0) {
-              put_character('0');
+                put_character('.');
+                while (p > 0) {
+                  put_character('0');
 
-              p = p - 1;
+                  p = p - 1;
+                }
+                print(integer_buffer);
+              }
             }
-            print(integer_buffer);
           }
 
-          return i + 4;
+          return i + 6;
         } else {
           put_character(load_character(s, i));
 
@@ -2678,14 +2673,27 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
         print_hexadecimal((uint64_t) a, SIZEOFUINT64STAR);
 
         return i + 2;
-      } else if (load_character(s, i + 1) == 'x') {
-        print_hexadecimal((uint64_t) a, 0);
 
-        return i + 2;
-      } else if (load_character(s, i + 1) == 'o') {
-        print_octal((uint64_t) a, 0);
+      } else if (load_character(s, i + 1) == 'l') {
+        if (load_character(s, i + 2) == 'l') {
+          if (load_character(s, i + 3) == 'u') {
+            print_unsigned_integer((uint64_t) a);
 
-        return i + 2;
+            return i + 4;
+          } else if (load_character(s, i + 3) == 'd') {
+            print_integer((uint64_t) a);
+
+            return i + 4;
+          } else if (load_character(s, i + 3) == 'x') {
+            print_hexadecimal((uint64_t) a, 0);
+
+            return i + 4;
+          } else if (load_character(s, i + 3) == 'o') {
+            print_octal((uint64_t) a, 0);
+
+            return i + 4;
+          }
+        }
       } else if (load_character(s, i + 1) == 'b') {
         print_binary((uint64_t) a, 0);
 
@@ -2708,13 +2716,28 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
 uint64_t internal_wrapped_printf(char* s, ...) {
   va_list args;
+  uint64_t written_bytes;
+
+  va_start(args, s);
+  written_bytes = vdsprintf(1, (char*) 0, s, args);
+  va_end(args);
+
+  return written_bytes;
+}
+
+uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, va_list args) {
   uint64_t offset;
   uint64_t placeholder_positions;
   uint64_t i;
 
+  if (buffer) {
+    output_buffer = buffer;
+    output_cursor = 0;
+  } else
+    output_fd = fd;
+
   number_of_currently_written_bytes = 0;
 
-  va_start(args, s);
   offset = 0;
   placeholder_positions = 0;
   i = 0;
@@ -2736,49 +2759,21 @@ uint64_t internal_wrapped_printf(char* s, ...) {
 
   print_format0(s, offset);
 
-  va_end(args);
+  output_buffer = (char*) 0;
+  output_cursor = 0;
 
   return number_of_currently_written_bytes;
 }
 
-void sprintf1(char* b, char* s, char* a1) {
-  output_buffer = b;
-  output_cursor = 0;
+uint64_t internal_wrapped_sprintf(char* buffer, char* s, ...) {
+  va_list args;
+  uint64_t written_bytes;
 
-  printf(s, a1);put_character(0);
+  va_start(args, s);
+  written_bytes = vdsprintf(0, buffer, s, args);
+  va_end(args);
 
-  output_buffer = (char*) 0;
-  output_cursor = 0;
-}
-
-void sprintf2(char* b, char* s, char* a1, char* a2) {
-  output_buffer = b;
-  output_cursor = 0;
-
-  printf(s, a1, a2);put_character(0);
-
-  output_buffer = (char*) 0;
-  output_cursor = 0;
-}
-
-void sprintf3(char* b, char* s, char* a1, char* a2, char* a3) {
-  output_buffer = b;
-  output_cursor = 0;
-
-  printf(s, a1, a2, a3);put_character(0);
-
-  output_buffer = (char*) 0;
-  output_cursor = 0;
-}
-
-void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4) {
-  output_buffer = b;
-  output_cursor = 0;
-
-  printf(s, a1, a2, a3, a4);put_character(0);
-
-  output_buffer = (char*) 0;
-  output_cursor = 0;
+  return written_bytes;
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
@@ -10348,7 +10343,7 @@ char* replace_extension(char* filename, char* extension) {
   // filename has no extension
   if (i == 0)
     // writing filename plus extension into s
-    sprintf2(s, "%s.%s", filename, extension);
+    sprintf(s, "%s.%s", filename, extension);
   else {
     // assert: s is zeroed and thus null-terminated
 
@@ -10360,7 +10355,7 @@ char* replace_extension(char* filename, char* extension) {
     }
 
     // writing s plus extension into s
-    sprintf2(s, "%s.%s", s, extension);
+    sprintf(s, "%s.%s", s, extension);
   }
 
   return s;
