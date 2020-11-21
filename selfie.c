@@ -7187,7 +7187,7 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   uint64_t* lru_block;
   uint64_t cache_line_size;
 
-  page_address = (vaddr / PAGESIZE) * PAGESIZE;
+  page_address = (vaddr / (get_cache_size(cache) / get_associativity(cache))) * (get_cache_size(cache) / get_associativity(cache));
 
   tag = (uint64_t) tlb(table, vaddr) / get_cache_sets(cache);
   index = (vaddr - page_address) / get_cache_line_size(cache);
