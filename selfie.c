@@ -7185,7 +7185,6 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   uint64_t i;
   uint64_t* cache_block;
   uint64_t* lru_block;
-  uint64_t cache_line_size;
 
   page_address = (vaddr / (get_cache_size(cache) / get_associativity(cache))) * (get_cache_size(cache) / get_associativity(cache));
 
@@ -7206,6 +7205,8 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
 
     if (get_valid_flag(cache_block))
       if (get_tag(cache_block) == tag) {
+        // cache hit
+
         set_cache_hits(cache, get_cache_hits(cache) + 1);
 
         set_timestamp(cache_block, get_new_timestamp(cache));
@@ -7216,13 +7217,11 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
     i = i + 1;
   }
 
+  // cache miss
+
   set_cache_misses(cache, get_cache_misses(cache) + 1);
 
-  cache_line_size = get_cache_line_size(cache);
-
-  fill_cache_block(lru_block, cache_line_size, table, (vaddr / cache_line_size) * cache_line_size);
-
-  set_valid_flag(lru_block, 1);
+  set_valid_flag(lru_block, 0);
 
   set_tag(lru_block, tag);
 
@@ -7236,14 +7235,24 @@ void save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
 }
 
 uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
+  uint64_t* cache_block;
   uint64_t* data;
   uint64_t cache_line_size;
   uint64_t byte_offset;
   uint64_t word_offset;
 
-  data = get_data(retrieve_cache_block(cache, table, vaddr));
-
   cache_line_size = get_cache_line_size(cache);
+
+  cache_block = retrieve_cache_block(cache, table, vaddr);
+
+  // if we missed the cache, we receive a block whose data has been invalidated
+  if (get_valid_flag(cache_block) == 0) {
+    fill_cache_block(cache_block, cache_line_size, table, (vaddr / cache_line_size) * cache_line_size);
+
+    set_valid_flag(cache_block, 1);
+  }
+
+  data = get_data(cache_block);
 
   byte_offset = vaddr - ((vaddr / cache_line_size) * cache_line_size);
 
