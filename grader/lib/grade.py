@@ -34,17 +34,19 @@ def grade(results: List[CheckResult]) -> Tuple[int, List[str]]:
     failed_mandatory_test = any(
         filter(lambda x: x.result != x.should_succeed, mandatory_tests))
 
-    if number_of_tests_passed == 0:
+    if number_of_tests_passed == 0 and number_of_tests != 0:
         passed = 0.0
+    elif number_of_tests_passed == 0 and number_of_tests == 0: # No tests or only mandatory tests
+        passed = 1.0
     else:
         passed = number_of_tests_passed / float(number_of_tests)
 
     reasons = [ ]
 
-    if failed_mandatory_test or number_of_positive_tests_passed == 0:
+    if failed_mandatory_test or (number_of_positive_tests_passed == 0 and number_of_tests != 0):
         if failed_mandatory_test:
             reasons.append('you have failed a mandatory test')
-        if number_of_positive_tests_passed == 0:
+        if number_of_positive_tests_passed == 0 and number_of_tests != 0:
             reasons.append('you have not passed at least one positive test')
 
         grade = 5

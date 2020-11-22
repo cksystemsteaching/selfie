@@ -25,6 +25,6 @@ jobs:
         python-version: "3.7.x"
     # extract assignment from "commit message [assignment]"
     - name: Parse commit message
-      run: echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
+      run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
     - name: Autograde assignment
       run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
