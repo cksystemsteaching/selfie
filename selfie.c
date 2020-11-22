@@ -1099,6 +1099,7 @@ void set_cache_timer(uint64_t* cache, uint64_t cache_timer)         { *(cache + 
 // | 1 | tag        | unique identifier within a set
 // | 2 | data       | pointer to cache-line data
 // | 3 | timestamp  | timestamp for replacement strategy
+// | 4 | dirty flag | flags whether the block has been written to or not
 // +---+------------+
 
 uint64_t* allocate_cache_block() {
@@ -1109,11 +1110,13 @@ uint64_t  get_valid_flag(uint64_t* cache_block) { return             *cache_bloc
 uint64_t  get_tag(uint64_t* cache_block)        { return             *(cache_block + 1); }
 uint64_t* get_data(uint64_t* cache_block)       { return (uint64_t*) *(cache_block + 2); }
 uint64_t  get_timestamp(uint64_t* cache_block)  { return             *(cache_block + 3); }
+uint64_t  get_dirty_flag(uint64_t* cache_block) { return             *(cache_block + 4); }
 
 void set_valid_flag(uint64_t* cache_block, uint64_t valid)     { *cache_block       = valid; }
 void set_tag(uint64_t* cache_block, uint64_t tag)              { *(cache_block + 1) = tag; }
 void set_data(uint64_t* cache_block, uint64_t* data)           { *(cache_block + 2) = (uint64_t) data; }
 void set_timestamp(uint64_t* cache_block, uint64_t timestamp)  { *(cache_block + 3) = timestamp; }
+void set_dirty_flag(uint64_t* cache_block, uint64_t dirty)     { *(cache_block + 4) = dirty; }
 
 void reset_cache_counters(uint64_t* cache);
 void reset_all_cache_counters();
@@ -1122,14 +1125,16 @@ void init_cache_memory(uint64_t* cache);
 void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
 void init_all_caches();
 
-void      fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* table, uint64_t start_vaddr);
+void      evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
 uint64_t* retrieve_cache_block(uint64_t* index, uint64_t* table, uint64_t vaddr);
 
-void     save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr);
+void     fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
+void     save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr, uint64_t data);
 uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr);
 
 uint64_t load_instruction_from_cache(uint64_t* table, uint64_t vaddr);
 uint64_t load_data_from_cache(uint64_t* table, uint64_t vaddr);
+void     save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -7159,7 +7164,7 @@ uint64_t get_new_timestamp(uint64_t* cache) {
   return timestamp;
 }
 
-void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* table, uint64_t start_vaddr) {
+void evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
   uint64_t words;
   uint64_t* data;
   uint64_t i;
@@ -7171,7 +7176,7 @@ void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t*
   i = 0;
 
   while (i < words) {
-    *(data + i) = load_virtual_memory(table, start_vaddr + i * WORDSIZE);
+    store_physical_memory(start_paddr + i, *(data + i));
 
     i = i + 1;
   }
@@ -7185,11 +7190,14 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   uint64_t i;
   uint64_t* cache_block;
   uint64_t* lru_block;
+  uint64_t cache_line_size;
+
+  cache_line_size = get_cache_line_size(cache);
 
   page_address = (vaddr / (get_cache_size(cache) / get_associativity(cache))) * (get_cache_size(cache) / get_associativity(cache));
 
   tag = (uint64_t) tlb(table, vaddr) / get_cache_sets(cache);
-  index = (vaddr - page_address) / get_cache_line_size(cache);
+  index = (vaddr - page_address) / cache_line_size;
 
   set = get_cache_memory(cache) + index * get_associativity(cache);
 
@@ -7219,6 +7227,10 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
 
   // cache miss
 
+  // write-back semantics
+  if (get_dirty_flag(lru_block))
+    evict_cache_block(lru_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
+
   set_cache_misses(cache, get_cache_misses(cache) + 1);
 
   set_valid_flag(lru_block, 0);
@@ -7230,8 +7242,50 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   return lru_block;
 }
 
-void save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
-  // TODO
+void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
+  uint64_t words;
+  uint64_t* data;
+  uint64_t i;
+
+  words = cache_line_size / WORDSIZE;
+
+  data = get_data(cache_block);
+
+  i = 0;
+
+  while (i < words) {
+    *(data + i) = load_physical_memory(start_paddr + i);
+
+    i = i + 1;
+  }
+}
+
+void save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr, uint64_t data) {
+  uint64_t* cache_block;
+  uint64_t* cache_block_data;
+  uint64_t cache_line_size;
+  uint64_t byte_offset;
+  uint64_t word_offset;
+
+  cache_line_size = get_cache_line_size(cache);
+
+  cache_block = retrieve_cache_block(cache, table, vaddr);
+
+  cache_block_data = get_data(cache_block);
+
+  if (get_valid_flag(cache_block) == 0) {
+    // make sure that the entire block contains valid data since we will only write one word
+    fill_cache_block(cache_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
+
+    set_valid_flag(cache_block, 1);
+  }
+
+  byte_offset = vaddr - ((vaddr / cache_line_size) * cache_line_size);
+
+  // calculate word offset due to pointer arithmetic
+  word_offset = byte_offset / WORDSIZE;
+
+  *(cache_block_data + word_offset) = data;
 }
 
 uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
@@ -7247,7 +7301,7 @@ uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
 
   // if we missed the cache, we receive a block whose data has been invalidated
   if (get_valid_flag(cache_block) == 0) {
-    fill_cache_block(cache_block, cache_line_size, table, (vaddr / cache_line_size) * cache_line_size);
+    fill_cache_block(cache_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
 
     set_valid_flag(cache_block, 1);
   }
@@ -7274,6 +7328,13 @@ uint64_t load_data_from_cache(uint64_t* table, uint64_t vaddr) {
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_from_cache(L1_DCACHE, table, vaddr);
+}
+
+void save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+  // assert: is_virtual_address_mapped(table, vaddr) == 1
+
+  save_into_cache(L1_DCACHE, table, vaddr, data);
 }
 
 // -----------------------------------------------------------------
