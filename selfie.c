@@ -661,8 +661,6 @@ void     compile_cstar();
 
 uint64_t allocated_temporaries = 0; // number of allocated temporaries
 
-uint64_t allocated_memory = 0; // number of bytes for global variables and strings
-
 uint64_t return_branches = 0; // fixup chain for return statements
 
 uint64_t return_type = 0; // return type of currently parsed procedure
@@ -910,11 +908,14 @@ void print_instruction_counters();
 uint64_t get_low_instruction(uint64_t word);
 uint64_t get_high_instruction(uint64_t word);
 
-uint64_t load_instruction(uint64_t baddr);
-void     store_instruction(uint64_t baddr, uint64_t instruction);
+uint64_t load_code(uint64_t caddr);
+void     store_code(uint64_t caddr, uint64_t code);
 
-uint64_t load_data(uint64_t baddr);
-void     store_data(uint64_t baddr, uint64_t data);
+uint64_t load_instruction(uint64_t caddr);
+void     store_instruction(uint64_t caddr, uint64_t instruction);
+
+uint64_t load_data(uint64_t daddr);
+void     store_data(uint64_t daddr, uint64_t data);
 
 void emit_instruction(uint64_t instruction);
 
@@ -952,7 +953,7 @@ void emit_data_segment();
 
 uint64_t* allocate_elf_header();
 
-uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length);
+uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size);
 uint64_t  decode_elf_header(uint64_t* header);
 uint64_t  validate_elf_header(uint64_t* header);
 
@@ -960,22 +961,17 @@ uint64_t open_write_only(char* name);
 
 void selfie_output(char* filename);
 
-uint64_t* touch(uint64_t* memory, uint64_t length);
+uint64_t* touch(uint64_t* memory, uint64_t bytes);
 
 void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_BINARY_LENGTH = 524288; // 512KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
+// page-aligned ELF header size for storing file header, program header, code size
+uint64_t ELF_HEADER_SIZE = 4096;
 
-uint64_t MAX_CODE_LENGTH = 491520; // 480KB
-uint64_t MAX_DATA_LENGTH = 32768; // 32KB
-
-// page-aligned ELF header size for storing file header, program header, code length
-uint64_t ELF_HEADER_LEN = 4096;
-
-// according to RISC-V pk
-uint64_t ELF_ENTRY_POINT = 65536; // 0x10000 (address of beginning of code)
+uint64_t MAX_CODE_SIZE = 262144; // 256KB
+uint64_t MAX_DATA_SIZE = 16384;  // 16KB
 
 // ELF file header
 
@@ -996,8 +992,7 @@ uint64_t e_type    = 2;   // object file type is 0x02 (ET_EXEC)
 uint64_t e_machine = 243; // target architecture is 0xF3 (RISC-V)
 uint64_t e_version = 1;   // version of the object file format
 
-// according to RISC-V pk
-uint64_t e_entry = 65536; // entry point address 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
+uint64_t e_entry = 65536; // entry point address 0x10000 (according to RISC-V pk)
 
 uint64_t e_phoff = 64; // program header offset 0x40 (ELFCLASS64) or 0x34 (ELFCLASS32)
 uint64_t e_shoff = 0;  // section header offset
@@ -1017,14 +1012,14 @@ uint64_t e_shstrndx  = 0; // section header offset
 uint64_t p_type  = 1; // type of segment is PT_LOAD
 uint64_t p_flags = 7; // segment attributes are RWX
 
-uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_LEN
+uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_SIZE
 
-uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
+uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (according to RISC-V pk)
 
 uint64_t p_paddr = 0; // physical address (ignored)
 
-uint64_t p_filesz = 0; // size of segment in file (binary_length)
-uint64_t p_memsz  = 0; // size of segment in memory (binary_length)
+uint64_t p_filesz = 0; // size of segment in file (code_size + data_size)
+uint64_t p_memsz  = 0; // size of segment in memory (code_size + data_size)
 
 uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
@@ -1047,16 +1042,18 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-uint64_t* binary        = (uint64_t*) 0; // binary of code and data segments
-uint64_t  binary_length = 0;             // length of binary in bytes including data segment
-char*     binary_name   = (char*) 0;     // file name of binary
-
-uint64_t code_length = 0; // length of code segment in binary in bytes
-
-uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
-uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
+char* binary_name = (char*) 0; // file name of binary
 
 uint64_t* ELF_header = (uint64_t*) 0;
+
+uint64_t* code_binary = (uint64_t*) 0; // code binary
+uint64_t  code_size   = 0;             // size of code binary in bytes
+
+uint64_t* data_binary = (uint64_t*) 0; // data binary
+uint64_t  data_size   = 0;             // size of data binary in bytes
+
+uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
+uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data word
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1747,13 +1744,13 @@ void reset_nop_counters() {
 
 void reset_source_profile() {
   calls               = 0;
-  calls_per_procedure = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  calls_per_procedure = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   iterations          = 0;
-  iterations_per_loop = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  iterations_per_loop = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  loads_per_instruction  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  stores_per_instruction = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  loads_per_instruction  = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  stores_per_instruction = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
 void reset_register_access_counters() {
@@ -3985,9 +3982,9 @@ void load_integer(uint64_t value) {
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
-      allocated_memory = allocated_memory + WORDSIZE;
+      data_size = data_size + WORDSIZE;
 
-      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -allocated_memory);
+      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
 
     load_variable_or_big_int(integer, BIGINT);
@@ -4003,11 +4000,11 @@ void load_string(char* string) {
 
   length = string_length(string) + 1;
 
-  allocated_memory = allocated_memory + round_up(length, WORDSIZE);
+  data_size = data_size + round_up(length, WORDSIZE);
 
-  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
 
-  load_integer(-allocated_memory);
+  load_integer(-data_size);
 
   emit_add(current_temporary(), REG_GP, current_temporary());
 
@@ -4023,7 +4020,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
     // default return type is "uint64_t"
     type = UINT64_T;
 
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
 
     emit_jal(REG_RA, 0);
 
@@ -4032,7 +4029,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
 
     if (get_address(entry) == 0) {
       // procedure declared but never called nor defined
-      set_address(entry, binary_length);
+      set_address(entry, code_size);
 
       emit_jal(REG_RA, 0);
     } else if (get_opcode(load_instruction(get_address(entry))) == OP_JAL) {
@@ -4040,10 +4037,10 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
 
       // create fixup chain using absolute address
       emit_jal(REG_RA, get_address(entry));
-      set_address(entry, binary_length - INSTRUCTIONSIZE);
+      set_address(entry, code_size - INSTRUCTIONSIZE);
     } else
       // procedure defined, use relative address
-      emit_jal(REG_RA, get_address(entry) - binary_length);
+      emit_jal(REG_RA, get_address(entry) - code_size);
   }
 
   return type;
@@ -4526,7 +4523,7 @@ void compile_while() {
 
   // assert: allocated_temporaries == 0
 
-  jump_back_to_while = binary_length;
+  jump_back_to_while = code_size;
 
   branch_forward_to_end = 0;
 
@@ -4540,7 +4537,7 @@ void compile_while() {
       compile_expression();
 
       // we do not know where to branch, fixup later
-      branch_forward_to_end = binary_length;
+      branch_forward_to_end = code_size;
 
       emit_beq(current_temporary(), REG_ZR, 0);
 
@@ -4576,7 +4573,7 @@ void compile_while() {
   // we use JAL for the unconditional jump back to the loop condition because:
   // 1. the RISC-V doc recommends to do so to not disturb branch prediction
   // 2. GCC also uses JAL for the unconditional back jump of a while loop
-  emit_jal(REG_ZR, jump_back_to_while - binary_length);
+  emit_jal(REG_ZR, jump_back_to_while - code_size);
 
   if (branch_forward_to_end != 0)
     // first instruction after loop body will be generated here
@@ -4604,7 +4601,7 @@ void compile_if() {
       compile_expression();
 
       // if the "if" case is not true we branch to "else" (if provided)
-      branch_forward_to_else_or_end = binary_length;
+      branch_forward_to_else_or_end = code_size;
 
       emit_beq(current_temporary(), REG_ZR, 0);
 
@@ -4637,7 +4634,7 @@ void compile_if() {
 
           // if the "if" case was true we skip the "else" case
           // by unconditionally jumping to the end
-          jump_forward_to_end = binary_length;
+          jump_forward_to_end = code_size;
 
           emit_jal(REG_ZR, 0);
 
@@ -4664,7 +4661,7 @@ void compile_if() {
             compile_statement();
 
           // if the "if" case was true we unconditionally jump here
-          fixup_relative_JFormat(jump_forward_to_end, binary_length);
+          fixup_relative_JFormat(jump_forward_to_end, code_size);
         } else
           // if the "if" case was not true we branch here
           fixup_relative_BFormat(branch_forward_to_else_or_end);
@@ -4708,7 +4705,7 @@ void compile_return() {
   emit_jal(REG_ZR, return_branches);
 
   // new head of fixup chain
-  return_branches = binary_length - INSTRUCTIONSIZE;
+  return_branches = code_size - INSTRUCTIONSIZE;
 
   // assert: allocated_temporaries == 0
 
@@ -5053,14 +5050,14 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
     else {
       // procedure already called or declared or defined
       if (get_address(entry) != 0) {
         // procedure already called or defined
         if (get_opcode(load_instruction(get_address(entry))) == OP_JAL)
           // procedure already called but not defined
-          fixlink_relative(get_address(entry), binary_length);
+          fixlink_relative(get_address(entry), code_size);
         else
           // procedure already defined
           is_undefined = 0;
@@ -5074,7 +5071,7 @@ void compile_procedure(char* procedure, uint64_t type) {
           type_warning(get_type(entry), type);
 
         set_type(entry, type);
-        set_address(entry, binary_length);
+        set_address(entry, code_size);
 
         if (string_compare(procedure, "main")) {
           // first source containing main procedure provides binary name
@@ -5126,7 +5123,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       exit(EXITCODE_PARSERERROR);
     }
 
-    fixlink_relative(return_branches, binary_length);
+    fixlink_relative(return_branches, code_size);
 
     return_branches = 0;
 
@@ -5207,9 +5204,9 @@ void compile_cstar() {
           entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
-            allocated_memory = allocated_memory + WORDSIZE;
+            data_size = data_size + WORDSIZE;
 
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -allocated_memory);
+            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
           } else {
             // global variable already declared or defined
             print_line_number("warning", current_line_number);
@@ -5268,25 +5265,23 @@ void emit_bootstrapping() {
       4. call main procedure
       5. proceed to exit procedure
   */
-  uint64_t gp;
-  uint64_t padding;
+  uint64_t gp_value;
+  uint64_t saved_code_size;
   uint64_t* entry;
 
-  // calculate the global pointer value
-  gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
-
-  // make sure gp is word-aligned
-  padding = gp % WORDSIZE;
-  gp      = gp + padding;
-
-  if (padding != 0)
+  // code size must be word-aligned
+  if (code_size % WORDSIZE != 0)
     emit_nop();
 
-  // no more allocation in code segment from now on
-  code_length = binary_length;
+  // TODO: start of data segment must be page-aligned
+  // data_start = round_up(p_vaddr + code_size, p_align);
 
-  // reset code emission to program entry
-  binary_length = 0;
+  // calculate global pointer value
+  gp_value = p_vaddr + code_size + data_size;
+
+  // set code emission to program entry
+  saved_code_size = code_size;
+  code_size       = 0;
 
   // assert: emitting no more than 20 instructions
 
@@ -5296,9 +5291,9 @@ void emit_bootstrapping() {
     emit_addi(REG_A0, REG_ZR, 0);
   } else {
     // avoid sign extension that would result in an additional sub instruction
-    if (gp < two_to_the_power_of(31) - two_to_the_power_of(11))
+    if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
       // assert: generates no more than two instructions
-      load_integer(gp);
+      load_integer(gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
 
@@ -5372,12 +5367,12 @@ void emit_bootstrapping() {
   emit_store(REG_SP, 0, REG_A0);
 
   // discount NOPs in profile that were generated for program entry
-  ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
+  ic_addi = ic_addi - code_size / INSTRUCTIONSIZE;
 
   // wrapper code for exit must follow here
 
-  // restore original binary length
-  binary_length = code_length;
+  // restore original code size
+  code_size = saved_code_size;
 }
 
 // -----------------------------------------------------------------
@@ -5401,15 +5396,14 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary        = zmalloc(MAX_BINARY_LENGTH);
-  binary_length = 0;
-
-  // reset code length
-  code_length = 0;
+  code_binary = zmalloc(MAX_CODE_SIZE);
+  code_size   = 0;
+  data_binary = zmalloc(MAX_DATA_SIZE);
+  data_size   = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  code_line_number = zmalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zmalloc(MAX_DATA_LENGTH / WORDSIZE * SIZEOFUINT64);
+  code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_SIZE / WORDSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -5432,7 +5426,7 @@ void selfie_compile() {
     emit_fetch_global_pointer();
 
     // save code location of eventual fetch_data_segment_size implementation
-    fetch_dss_code_location = binary_length;
+    fetch_dss_code_location = code_size;
 
     emit_fetch_data_segment_size_interface();
   }
@@ -5502,16 +5496,16 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = encode_elf_header(binary_length, code_length);
+  ELF_header = encode_elf_header(code_size, data_size);
 
   printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
     (char*) total_search_time);
 
   printf4("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
-    (char*) binary_length,
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length));
+    (char*) code_size + data_size,
+    (char*) (code_size / INSTRUCTIONSIZE),
+    (char*) data_size);
 
   print_instruction_counters();
 }
@@ -5978,54 +5972,62 @@ uint64_t get_high_instruction(uint64_t word) {
   return get_bits(word, INSTRUCTIONSIZEINBITS, INSTRUCTIONSIZEINBITS);
 }
 
-uint64_t load_instruction(uint64_t baddr) {
-  if (baddr % WORDSIZE == 0)
-    return get_low_instruction(*(binary + baddr / WORDSIZE));
-  else
-    return get_high_instruction(*(binary + baddr / WORDSIZE));
+uint64_t load_code(uint64_t caddr) {
+  return *(code_binary + caddr / WORDSIZE);
 }
 
-void store_instruction(uint64_t baddr, uint64_t instruction) {
-  if (baddr >= MAX_CODE_LENGTH) {
-    syntax_error_message("maximum code length exceeded");
+void store_code(uint64_t caddr, uint64_t code) {
+  if (caddr >= MAX_CODE_SIZE) {
+    syntax_error_message("maximum code size exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
 
+  *(code_binary + caddr / WORDSIZE) = code;
+}
+
+uint64_t load_instruction(uint64_t caddr) {
+  if (caddr % WORDSIZE == 0)
+    return get_low_instruction(load_code(caddr));
+  else
+    return get_high_instruction(load_code(caddr));
+}
+
+void store_instruction(uint64_t caddr, uint64_t instruction) {
   if (INSTRUCTIONSIZE == WORDSIZE)
-    *(binary + baddr / WORDSIZE) = instruction;
-  else if (baddr % WORDSIZE == 0)
+    store_code(caddr, instruction);
+  else if (caddr % WORDSIZE == 0)
     // replace low word
-    *(binary + baddr / WORDSIZE) =
-      left_shift(load_instruction(baddr + INSTRUCTIONSIZE), INSTRUCTIONSIZEINBITS) + instruction;
+    store_code(caddr,
+      left_shift(load_instruction(caddr + INSTRUCTIONSIZE), INSTRUCTIONSIZEINBITS) + instruction);
   else
     // replace high word
-    *(binary + baddr / WORDSIZE) =
-      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(baddr - INSTRUCTIONSIZE);
+    store_code(caddr,
+      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(caddr - INSTRUCTIONSIZE));
 }
 
-uint64_t load_data(uint64_t baddr) {
-  return *(binary + baddr / WORDSIZE);
+uint64_t load_data(uint64_t daddr) {
+  return *(data_binary + daddr / WORDSIZE);
 }
 
-void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr - code_length >= MAX_DATA_LENGTH) {
-    syntax_error_message("maximum data length exceeded");
+void store_data(uint64_t daddr, uint64_t data) {
+  if (daddr >= MAX_DATA_SIZE) {
+    syntax_error_message("maximum data size exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / WORDSIZE) = data;
+  *(data_binary + daddr / WORDSIZE) = data;
 }
 
 void emit_instruction(uint64_t instruction) {
-  store_instruction(binary_length, instruction);
+  store_instruction(code_size, instruction);
 
   if (code_line_number != (uint64_t*) 0)
-    if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
-      *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
+    if (*(code_line_number + code_size / INSTRUCTIONSIZE) == 0)
+      *(code_line_number + code_size / INSTRUCTIONSIZE) = line_number;
 
-  binary_length = binary_length + INSTRUCTIONSIZE;
+  code_size = code_size + INSTRUCTIONSIZE;
 }
 
 uint64_t encode_nop() {
@@ -6134,7 +6136,7 @@ void fixup_relative_BFormat(uint64_t from_address) {
   instruction = load_instruction(from_address);
 
   store_instruction(from_address,
-    encode_b_format(binary_length - from_address,
+    encode_b_format(code_size - from_address,
       get_rs2(instruction),
       get_rs1(instruction),
       get_funct3(instruction),
@@ -6167,10 +6169,10 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
   // assert: offset < 0
 
-  store_data(binary_length + offset, data);
+  store_data(data_size + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (allocated_memory + offset) / WORDSIZE) = source_line_number;
+    *(data_line_number + (data_size + offset) / WORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -6199,8 +6201,6 @@ void emit_data_segment() {
   uint64_t i;
   uint64_t* entry;
 
-  binary_length = binary_length + allocated_memory;
-
   i = 0;
 
   while (i < HASH_TABLE_SIZE) {
@@ -6220,17 +6220,15 @@ void emit_data_segment() {
 
     i = i + 1;
   }
-
-  allocated_memory = 0;
 }
 
 uint64_t* allocate_elf_header() {
   // allocate and map (on all boot levels) zeroed memory for ELF header preparing
   // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
-  return touch(zmalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  return touch(zmalloc(ELF_HEADER_SIZE), ELF_HEADER_SIZE);
 }
 
-uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
+uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
   uint64_t* header;
 
   header = allocate_elf_header();
@@ -6262,8 +6260,8 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
                   + left_shift(e_shnum, 32)
                   + left_shift(e_shstrndx, 48);
 
-    p_filesz = binary_length;
-    p_memsz  = binary_length;
+    p_filesz = code_size + data_size;
+    p_memsz  = code_size + data_size;
 
     // RISC-U ELF64 program header:
     *(header + 8)  = p_type + left_shift(p_flags, 32);
@@ -6276,7 +6274,7 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
 
     // This field is not part of the standard ELF header but
     // used by selfie to load its own generated ELF files
-    *(header + 15) = code_length;
+    *(header + 15) = code_size;
   } else {
     EI_CLASS = 1; // file class is 1 (ELFCLASS32)
 
@@ -6306,8 +6304,8 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
     *(header + 11) = e_phnum + left_shift(e_shentsize, 16);
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
 
-    p_filesz = binary_length;
-    p_memsz  = binary_length;
+    p_filesz = code_size + data_size;
+    p_memsz  = code_size + data_size;
 
     // RISC-U ELF32 program header:
     *(header + 13) = p_type;
@@ -6321,7 +6319,7 @@ uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
 
     // This field is not part of the standard ELF header but
     // used by selfie to load its own generated ELF files
-    *(header + 21) = code_length;
+    *(header + 21) = code_size;
   }
 
   return header;
@@ -6342,32 +6340,38 @@ uint64_t decode_elf_header(uint64_t* header) {
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t  new_code_length;
-  uint64_t  new_binary_length;
+  uint64_t  new_code_size;
+  uint64_t  new_data_size;
   uint64_t* valid_header;
-  uint64_t  position;
+  uint64_t  i;
 
-  new_code_length = decode_elf_header(header);
+  new_code_size = decode_elf_header(header);
 
   if (p_filesz != p_memsz)
     // segment size in file is not the same as segment size in memory
     return 0;
 
-  new_binary_length = p_filesz;
+  if (new_code_size > MAX_CODE_SIZE)
+    return 0;
 
-  valid_header = encode_elf_header(new_binary_length, new_code_length);
+  new_data_size = p_filesz - new_code_size;
 
-  position = 0;
+  if (new_data_size > MAX_DATA_SIZE)
+    return 0;
 
-  while (position < ELF_HEADER_LEN / SIZEOFUINT64) {
-    if (*(header + position) != *(valid_header + position))
+  valid_header = encode_elf_header(new_code_size, new_data_size);
+
+  i = 0;
+
+  while (i < ELF_HEADER_SIZE / SIZEOFUINT64) {
+    if (*(header + i) != *(valid_header + i))
       return 0;
 
-    position = position + 1;
+    i = i + 1;
   }
 
-  binary_length = new_binary_length;
-  code_length   = new_code_length;
+  code_size = new_code_size;
+  data_size = new_data_size;
 
   return 1;
 }
@@ -6398,7 +6402,7 @@ void selfie_output(char* filename) {
 
   binary_name = filename;
 
-  if (binary_length == 0) {
+  if (code_size + data_size == 0) {
     printf2("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
 
     return;
@@ -6417,40 +6421,49 @@ void selfie_output(char* filename) {
   // assert: ELF_header is mapped
 
   // first write ELF header
-  if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
+  if (write(fd, ELF_header, ELF_HEADER_SIZE) != ELF_HEADER_SIZE) {
     printf2("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
-  // assert: binary is mapped
+  // assert: code_binary is mapped
 
-  // then write binary
-  if (write(fd, binary, binary_length) != binary_length) {
-    printf2("%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
+  // then write code
+  if (write(fd, code_binary, code_size) != code_size) {
+    printf2("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  // assert: data_binary is mapped
+
+  // finally write data
+  if (write(fd, data_binary, data_size) != data_size) {
+    printf2("%s: could not write data into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
   printf5("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
-    (char*) (ELF_HEADER_LEN + binary_length),
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length),
+    (char*) (ELF_HEADER_SIZE + code_size + data_size),
+    (char*) (code_size / INSTRUCTIONSIZE),
+    (char*) data_size,
     binary_name);
 }
 
-uint64_t* touch(uint64_t* memory, uint64_t length) {
+uint64_t* touch(uint64_t* memory, uint64_t bytes) {
   uint64_t* m;
   uint64_t n;
 
   m = memory;
 
-  if (length > 0)
+  if (bytes > 0)
     // touch memory at beginning
     n = *m;
 
-  while (length > PAGESIZE) {
-    length = length - PAGESIZE;
+  while (bytes > PAGESIZE) {
+    bytes = bytes - PAGESIZE;
 
     m = m + PAGESIZE / SIZEOFUINT64;
 
@@ -6458,8 +6471,8 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
     n = *m;
   }
 
-  if (length > 0) {
-    m = m + (length - 1) / SIZEOFUINT64;
+  if (bytes > 0) {
+    m = m + (bytes - 1) / SIZEOFUINT64;
 
     // touch at end
     n = *m;
@@ -6487,36 +6500,36 @@ void selfie_load() {
     exit(EXITCODE_IOERROR);
   }
 
-  // make sure binary is mapped for reading into it
-  binary = touch(smalloc(MAX_BINARY_LENGTH), MAX_BINARY_LENGTH);
+  // this call makes sure ELF_header is mapped for reading into it
+  ELF_header = allocate_elf_header();
 
-  binary_length = 0;
-  code_length   = 0;
+  // make sure code and data binaries are also mapped for reading into them
+  code_binary = touch(smalloc(MAX_CODE_SIZE), MAX_CODE_SIZE);
+  code_size   = 0;
+  data_binary = touch(smalloc(MAX_DATA_SIZE), MAX_DATA_SIZE);
+  data_size   = 0;
 
   // no source line numbers in binaries
   code_line_number = (uint64_t*) 0;
   data_line_number = (uint64_t*) 0;
 
-  // this call makes sure ELF_header is mapped for reading into it
-  ELF_header = allocate_elf_header();
+  number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_SIZE);
 
-  // read ELF_header first
-  number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_LEN);
-
-  if (number_of_read_bytes == ELF_HEADER_LEN) {
+  if (number_of_read_bytes == ELF_HEADER_SIZE) {
     if (validate_elf_header(ELF_header)) {
-      if (binary_length <= MAX_BINARY_LENGTH) {
-        // now read binary including global variables and strings
-        number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
+      number_of_read_bytes = sign_extend(read(fd, code_binary, code_size), SYSCALL_BITWIDTH);
 
-        if (signed_less_than(0, number_of_read_bytes)) {
+      if (number_of_read_bytes == code_size) {
+        number_of_read_bytes = sign_extend(read(fd, data_binary, data_size), SYSCALL_BITWIDTH);
+
+        if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
             printf5("%s: %u bytes with %u instructions and %u bytes of data loaded from %s\n",
               selfie_name,
-              (char*) (ELF_HEADER_LEN + binary_length),
-              (char*) (code_length / INSTRUCTIONSIZE),
-              (char*) (binary_length - code_length),
+              (char*) (ELF_HEADER_SIZE + code_size + data_size),
+              (char*) (code_size / INSTRUCTIONSIZE),
+              (char*) data_size,
               binary_name);
 
             return;
@@ -6526,7 +6539,7 @@ void selfie_load() {
     }
   }
 
-  printf2("%s: failed to load code from input file %s\n", selfie_name, binary_name);
+  printf2("%s: failed to load binary from input file %s\n", selfie_name, binary_name);
 
   exit(EXITCODE_IOERROR);
 }
@@ -6536,7 +6549,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -6573,7 +6586,7 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -6697,7 +6710,7 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -6820,7 +6833,7 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -6952,19 +6965,19 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
-  allocated_memory = allocated_memory + WORDSIZE;
+  data_size = data_size + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -data_size);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
@@ -7108,7 +7121,7 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7360,7 +7373,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
 
@@ -7368,7 +7381,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
 
@@ -7376,7 +7389,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   // up to three instructions needed to load data segment size but is not yet known
 
@@ -7388,19 +7401,22 @@ void emit_fetch_data_segment_size_interface() {
 }
 
 void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  uint64_t saved_code_size;
+
   // set code emission to fetch_data_segment_size
-  binary_length = fetch_dss_code_location;
+  saved_code_size = code_size;
+  code_size       = fetch_dss_code_location;
 
   // assert: emitting no more than 3 instructions
 
   // load data segment size into A0 (size is independent of entry point)
-  load_small_and_medium_integer(REG_A0, allocated_memory);
+  load_small_and_medium_integer(REG_A0, data_size);
 
   // discount NOPs in profile that were generated for fetch_data_segment_size
-  ic_addi = ic_addi - (binary_length - fetch_dss_code_location) / INSTRUCTIONSIZE;
+  ic_addi = ic_addi - (code_size - fetch_dss_code_location) / INSTRUCTIONSIZE;
 
-  // restore original binary length
-  binary_length = code_length;
+  // restore original code size
+  code_size = saved_code_size;
 }
 
 void implement_gc_brk(uint64_t* context) {
@@ -7962,7 +7978,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
     printf2("%s: pc=%x", binary_name, (char*) address);
-    print_code_line_number_for_instruction(address, ELF_ENTRY_POINT);
+    print_code_line_number_for_instruction(address, p_vaddr);
     if (symbolic)
       // skip further output
       return;
@@ -7971,7 +7987,7 @@ void print_code_context_for_instruction(uint64_t address) {
   } else {
     if (model) {
       printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, ELF_ENTRY_POINT);
+      print_code_line_number_for_instruction(address, p_vaddr);
       print(": ");
     } else if (disassemble_verbose) {
       printf1("%x", (char*) address);
@@ -8305,7 +8321,7 @@ uint64_t do_load() {
           nopc_load = nopc_load + 1;
 
         // keep track of instruction address for profiling loads
-        a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+        a = (pc - p_vaddr) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8390,7 +8406,7 @@ uint64_t do_store() {
           nopc_store = nopc_store + 1;
 
         // keep track of instruction address for profiling stores
-        a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+        a = (pc - p_vaddr) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8496,7 +8512,7 @@ void do_jal() {
     pc = pc + imm;
 
     // prologue address for profiling procedure calls
-    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+    a = (pc - p_vaddr) / INSTRUCTIONSIZE;
 
     // keep track of number of procedure calls in total
     calls = calls + 1;
@@ -8508,7 +8524,7 @@ void do_jal() {
     pc = pc + imm;
 
     // first loop instruction address for profiling loop iterations
-    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+    a = (pc - p_vaddr) / INSTRUCTIONSIZE;
 
     // keep track of number of loop iterations in total
     iterations = iterations + 1;
@@ -8625,7 +8641,7 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf1("(~%u)", (char*) *(data_line_number + (pc - code_length) / SIZEOFUINT64));
+    printf1("(~%u)", (char*) *(data_line_number + (pc - code_size) / SIZEOFUINT64));
 }
 
 void print_data_context(uint64_t data) {
@@ -8694,7 +8710,7 @@ void selfie_disassemble(uint64_t verbose) {
 
   assembly_name = get_argument();
 
-  if (code_length == 0) {
+  if (code_size + data_size == 0) {
     printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
 
     return;
@@ -8720,7 +8736,7 @@ void selfie_disassemble(uint64_t verbose) {
 
   disassemble_verbose = verbose;
 
-  while (pc < code_length) {
+  while (pc < code_size) {
     ir = load_instruction(pc);
 
     decode();
@@ -8730,8 +8746,8 @@ void selfie_disassemble(uint64_t verbose) {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  while (pc < binary_length) {
-    data = load_data(pc);
+  while (pc - code_size < data_size) {
+    data = load_data(pc - code_size);
 
     print_data(data);
     println();
@@ -8746,8 +8762,8 @@ void selfie_disassemble(uint64_t verbose) {
 
   printf5("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) number_of_written_characters,
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length),
+    (char*) (code_size / INSTRUCTIONSIZE),
+    (char*) data_size,
     assembly_name);
 }
 
@@ -9184,7 +9200,7 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
   n = 0;
   i = 0;
 
-  while (i < code_length / INSTRUCTIONSIZE) {
+  while (i < code_size / INSTRUCTIONSIZE) {
     c = *(counters + i);
 
     if (n < c) {
@@ -9840,26 +9856,34 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
 void up_load_binary(uint64_t* context) {
   uint64_t baddr;
 
-  // assert: ELF_ENTRY_POINT is multiple of PAGESIZE and WORDSIZE
+  // assert: e_entry is multiple of PAGESIZE and INSTRUCTIONSIZE
 
-  set_pc(context, ELF_ENTRY_POINT);
+  set_pc(context, e_entry);
 
   // setting up page table cache
 
-  set_lowest_lo_page(context, get_page_of_virtual_address(ELF_ENTRY_POINT));
+  set_lowest_lo_page(context, get_page_of_virtual_address(p_vaddr));
   set_highest_lo_page(context, get_lowest_lo_page(context));
 
   // setting up memory segments
 
-  set_code_seg_start(context, ELF_ENTRY_POINT);
-  set_data_seg_start(context, ELF_ENTRY_POINT + code_length);
-  set_heap_seg_start(context, ELF_ENTRY_POINT + binary_length);
+  set_code_seg_start(context, p_vaddr);
+  set_data_seg_start(context, p_vaddr + code_size);
+  set_heap_seg_start(context, p_vaddr + code_size + data_size);
   set_program_break(context, get_heap_seg_start(context));
 
   baddr = 0;
 
-  while (baddr < binary_length) {
-    map_and_store(context, ELF_ENTRY_POINT + baddr, load_data(baddr));
+  while (baddr < code_size) {
+    map_and_store(context, get_code_seg_start(context) + baddr, load_code(baddr));
+
+    baddr = baddr + WORDSIZE;
+  }
+
+  baddr = 0;
+
+  while (baddr < data_size) {
+    map_and_store(context, get_data_seg_start(context) + baddr, load_data(baddr));
 
     baddr = baddr + WORDSIZE;
   }
@@ -10293,7 +10317,7 @@ void boot_loader(uint64_t* context) {
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
 
-  if (binary_length == 0) {
+  if (code_size == 0) {
     printf1("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
