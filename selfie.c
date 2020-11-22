@@ -953,7 +953,7 @@ void emit_data_segment();
 uint64_t* allocate_elf_header();
 
 uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length);
-void      decode_elf_header(uint64_t* header);
+uint64_t  decode_elf_header(uint64_t* header);
 uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
@@ -1006,7 +1006,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 2; // number of program header entries (code and data)
+uint64_t e_phnum = 1; // number of program header entries
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -1014,22 +1014,17 @@ uint64_t e_shstrndx  = 0; // section header offset
 
 // ELF program header
 
-uint64_t p_type       = 1; // type of segment is PT_LOAD
-uint64_t p_flags_code = 1; // segment attributes are X
-uint64_t p_flags_data = 6; // segment attributes are RW
+uint64_t p_type  = 1; // type of segment is PT_LOAD
+uint64_t p_flags = 7; // segment attributes are RWX
 
-uint64_t p_offset_code = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_LEN
-uint64_t p_offset_data = 0;    // segment offset in file (must be page-aligned)
+uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_LEN
 
-uint64_t p_vaddr_code = 65536; // virtual address for code in memory 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
-uint64_t p_vaddr_data = 0;     // virtual address for in memory 0x10000 (address of beginning of data) (ELF_ENTRY_POINT + code_length)
+uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (address of beginning of code) == ELF_ENTRY_POINT
 
 uint64_t p_paddr = 0; // physical address (ignored)
 
-uint64_t p_filesz_code = 0; // size of segment in file (code_length)
-uint64_t p_filesz_data = 0; // size of segment in file (data_length)
-uint64_t p_memsz_code  = 0; // size of segment in memory (code_length)
-uint64_t p_memsz_data  = 0; // size of segment in memory (data_length)
+uint64_t p_filesz = 0; // size of segment in file (binary_length)
+uint64_t p_memsz  = 0; // size of segment in memory (binary_length)
 
 uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
@@ -1057,8 +1052,6 @@ uint64_t  binary_length = 0;             // length of binary in bytes including 
 char*     binary_name   = (char*) 0;     // file name of binary
 
 uint64_t code_length = 0; // length of code segment in binary in bytes
-uint64_t data_length = 0; // length of data segment in binary in bytes
-uint64_t data_offset = 0; // offset of data segment start in binary in bytes
 
 uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
 uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
@@ -5275,24 +5268,23 @@ void emit_bootstrapping() {
       4. call main procedure
       5. proceed to exit procedure
   */
-  uint64_t  gp;
+  uint64_t gp;
+  uint64_t padding;
   uint64_t* entry;
 
-  // code segment length must be word-aligned
-  if (binary_length % WORDSIZE != 0)
+  // calculate the global pointer value
+  gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
+
+  // make sure gp is word-aligned
+  padding = gp % WORDSIZE;
+  gp      = gp + padding;
+
+  if (padding != 0)
     emit_nop();
 
   // no more allocation in code segment from now on
   code_length = binary_length;
-  data_length = allocated_memory;
-  
-  data_offset = round_up(code_length, p_align);
 
-  // calculate the global pointer value
-  gp = ELF_ENTRY_POINT + data_offset + data_length;
-
-  // assert: gp is word-aligned
-  
   // reset code emission to program entry
   binary_length = 0;
 
@@ -5412,10 +5404,8 @@ void selfie_compile() {
   binary        = zmalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
-  // reset segment length
+  // reset code length
   code_length = 0;
-  data_length = 0;
-  data_offset = 0;
 
   // allocate zeroed memory for storing source code line numbers
   code_line_number = zmalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
@@ -5512,7 +5502,7 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = encode_elf_header(code_length, data_length);
+  ELF_header = encode_elf_header(binary_length, code_length);
 
   printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
@@ -5521,7 +5511,7 @@ void selfie_compile() {
   printf4("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
     (char*) binary_length,
     (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) data_length);
+    (char*) (binary_length - code_length));
 
   print_instruction_counters();
 }
@@ -6019,7 +6009,7 @@ uint64_t load_data(uint64_t baddr) {
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr - data_offset >= MAX_DATA_LENGTH) {
+  if (baddr - code_length >= MAX_DATA_LENGTH) {
     syntax_error_message("maximum data length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
@@ -6209,8 +6199,7 @@ void emit_data_segment() {
   uint64_t i;
   uint64_t* entry;
 
-  // start of data segment has to be aligned to p_align
-  binary_length = data_offset + data_length;
+  binary_length = binary_length + allocated_memory;
 
   i = 0;
 
@@ -6241,36 +6230,8 @@ uint64_t* allocate_elf_header() {
   return touch(zmalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 }
 
-uint64_t* encode_elf_program_header(uint64_t* buffer, uint64_t flags, uint64_t offset,
-    uint64_t vaddr, uint64_t filesz, uint64_t memsz) {
-
-  if (IS64BITSYSTEM)
-    *(buffer + 0) = p_type + left_shift(flags, 32);
-  else
-    *(buffer + 0) = p_type;
-
-  *(buffer + 1) = offset;
-  *(buffer + 2) = vaddr;
-  *(buffer + 3) = p_paddr;
-  *(buffer + 4) = filesz;
-  *(buffer + 5) = memsz;
-
-  if (IS64BITSYSTEM) {
-    *(buffer + 6) = p_align;
-
-    return buffer + 7;
-  } else {
-    *(buffer + 6) = flags;
-    *(buffer + 7) = p_align;
-
-    return buffer + 8;
-  }
-}
-
-uint64_t* encode_elf_header(uint64_t code_length, uint64_t data_length) {
+uint64_t* encode_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
-  uint64_t* program_header;
-  uint64_t  code_with_padding_length;
 
   header = allocate_elf_header();
 
@@ -6301,7 +6262,21 @@ uint64_t* encode_elf_header(uint64_t code_length, uint64_t data_length) {
                   + left_shift(e_shnum, 32)
                   + left_shift(e_shstrndx, 48);
 
-    program_header = header + 8;
+    p_filesz = binary_length;
+    p_memsz  = binary_length;
+
+    // RISC-U ELF64 program header:
+    *(header + 8)  = p_type + left_shift(p_flags, 32);
+    *(header + 9)  = p_offset;
+    *(header + 10) = p_vaddr;
+    *(header + 11) = p_paddr;
+    *(header + 12) = p_filesz;
+    *(header + 13) = p_memsz;
+    *(header + 14) = p_align;
+
+    // This field is not part of the standard ELF header but
+    // used by selfie to load its own generated ELF files
+    *(header + 15) = code_length;
   } else {
     EI_CLASS = 1; // file class is 1 (ELFCLASS32)
 
@@ -6331,69 +6306,56 @@ uint64_t* encode_elf_header(uint64_t code_length, uint64_t data_length) {
     *(header + 11) = e_phnum + left_shift(e_shentsize, 16);
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
 
-    program_header = header + 13;
+    p_filesz = binary_length;
+    p_memsz  = binary_length;
+
+    // RISC-U ELF32 program header:
+    *(header + 13) = p_type;
+    *(header + 14) = p_offset;
+    *(header + 15) = p_vaddr;
+    *(header + 16) = p_paddr;
+    *(header + 17) = p_filesz;
+    *(header + 18) = p_memsz;
+    *(header + 19) = p_flags;
+    *(header + 20) = p_align;
+
+    // This field is not part of the standard ELF header but
+    // used by selfie to load its own generated ELF files
+    *(header + 21) = code_length;
   }
-
-  // RISC-U ELF code section program header:
-  p_filesz_code = code_length;
-  p_memsz_code  = code_length;
-
-  program_header = encode_elf_program_header(program_header, p_flags_code, p_offset_code, p_vaddr_code, p_filesz_code, p_memsz_code);
-
-  code_with_padding_length = round_up(p_filesz_code, p_align);
-
-  // RISC-U ELF data section program header:
-  p_offset_data = p_offset_code + code_with_padding_length;
-  p_filesz_data = data_length;
-
-  p_vaddr_data  = p_vaddr_code + code_with_padding_length;
-  p_memsz_data  = data_length;
-
-  encode_elf_program_header(program_header, p_flags_data, p_offset_data, p_vaddr_data, p_filesz_data, p_memsz_data);
 
   return header;
 }
 
-void decode_elf_header(uint64_t* header) {
-  uint64_t code_ph;
-  uint64_t data_ph;
-  
+uint64_t decode_elf_header(uint64_t* header) {
   if (IS64BITSYSTEM) {
-    code_ph = 8;
-    data_ph = 15;
+    p_filesz = *(header + 12);
+    p_memsz  = *(header + 13);
+
+    return *(header + 15);
   } else {
-    code_ph = 13;
-    data_ph = 21;
+    p_filesz = *(header + 17);
+    p_memsz  = *(header + 18);
+
+    return *(header + 21);
   }
-
-  p_offset_code = *(header + code_ph + 1);
-  p_filesz_code = *(header + code_ph + 4);
-  p_memsz_code  = *(header + code_ph + 5);
-
-  p_offset_data = *(header + data_ph + 1);
-  p_filesz_data = *(header + data_ph + 4);
-  p_memsz_data  = *(header + data_ph + 5);
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
   uint64_t  new_code_length;
-  uint64_t  new_data_length;
+  uint64_t  new_binary_length;
   uint64_t* valid_header;
   uint64_t  position;
 
-  decode_elf_header(header);
+  new_code_length = decode_elf_header(header);
 
-  if (p_filesz_code != p_memsz_code)
-    // code segment size in file is not the same as code segment size in memory
-    return 0;
-  else if (p_filesz_data != p_memsz_data)
-    // data segment size in file is not the same as data segment size in memory
+  if (p_filesz != p_memsz)
+    // segment size in file is not the same as segment size in memory
     return 0;
 
-  new_code_length = p_filesz_code;
-  new_data_length = p_filesz_data;
+  new_binary_length = p_filesz;
 
-  valid_header = encode_elf_header(new_code_length, new_data_length);
+  valid_header = encode_elf_header(new_binary_length, new_code_length);
 
   position = 0;
 
@@ -6404,14 +6366,8 @@ uint64_t validate_elf_header(uint64_t* header) {
     position = position + 1;
   }
 
-  code_length = new_code_length;
-  data_length = new_data_length;
-
-  // assert: p_offset_code < p_offset_data
-  data_offset = p_offset_data - p_offset_code;
-
-  // a binary consists of code segment, data segment and padding bytes
-  binary_length = data_offset + data_length;
+  binary_length = new_binary_length;
+  code_length   = new_code_length;
 
   return 1;
 }
@@ -6479,7 +6435,7 @@ void selfie_output(char* filename) {
   printf5("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) (ELF_HEADER_LEN + binary_length),
     (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) data_length,
+    (char*) (binary_length - code_length),
     binary_name);
 }
 
@@ -6536,8 +6492,6 @@ void selfie_load() {
 
   binary_length = 0;
   code_length   = 0;
-  data_length   = 0;
-  data_offset   = 0;
 
   // no source line numbers in binaries
   code_line_number = (uint64_t*) 0;
@@ -6562,7 +6516,7 @@ void selfie_load() {
               selfie_name,
               (char*) (ELF_HEADER_LEN + binary_length),
               (char*) (code_length / INSTRUCTIONSIZE),
-              (char*) data_length,
+              (char*) (binary_length - code_length),
               binary_name);
 
             return;
@@ -8671,7 +8625,7 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf1("(~%u)", (char*) *(data_line_number + (pc - data_offset) / SIZEOFUINT64));
+    printf1("(~%u)", (char*) *(data_line_number + (pc - code_length) / SIZEOFUINT64));
 }
 
 void print_data_context(uint64_t data) {
@@ -8776,9 +8730,6 @@ void selfie_disassemble(uint64_t verbose) {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // ignore padding bytes between code and data segment
-  pc = data_offset;
-
   while (pc < binary_length) {
     data = load_data(pc);
 
@@ -8796,7 +8747,7 @@ void selfie_disassemble(uint64_t verbose) {
   printf5("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) number_of_written_characters,
     (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) data_length,
+    (char*) (binary_length - code_length),
     assembly_name);
 }
 
@@ -9901,7 +9852,7 @@ void up_load_binary(uint64_t* context) {
   // setting up memory segments
 
   set_code_seg_start(context, ELF_ENTRY_POINT);
-  set_data_seg_start(context, ELF_ENTRY_POINT + data_offset);
+  set_data_seg_start(context, ELF_ENTRY_POINT + code_length);
   set_heap_seg_start(context, ELF_ENTRY_POINT + binary_length);
   set_program_break(context, get_heap_seg_start(context));
 
