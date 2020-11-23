@@ -356,6 +356,10 @@ void set_returns(uint64_t function, uint64_t* returns) {
   *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) returns;
 }
 
+uint64_t function_exits(uint64_t function) {
+  return (uint64_t) ((uint64_t) get_returns(function) == -1);
+}
+
 void set_function_exits(uint64_t function) {
   // assumption: a function that does an exit ecall does not have any returns in it
   *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) -1;
@@ -406,12 +410,90 @@ void add_exit(uint64_t pc) {
   exits = new;
 }
 
+void build_cfg_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_func) {
+  uint64_t ecall_is_exit;
+  uint64_t already_visited;
+
+  ecall_is_exit = 0;
+  while (1) {
+    if (pc >= code_length) {
+      print("Error: pc went past end of code!");
+      exit(1);
+    }
+
+    already_visited = (uint64_t) (get_edges(inverse_cfg, pc) != (uint64_t *) 0);
+
+    if (prev_pc != -1) {
+      add_cfg_edge(prev_pc, pc);
+    }
+
+    if (already_visited) {
+      return;
+    }
+
+    prev_pc = pc;
+
+    ir = load_instruction(pc);
+    decode();
+
+    if (is == ADDI) {
+      if (rs1 == REG_ZR) {
+        if (rd == REG_A7) {
+          ecall_is_exit = (uint64_t) (imm == 93);
+        }
+      }
+    }
+
+    if (is == BEQ) {
+      build_cfg_recursive(pc + imm, pc, current_func);
+    } else if (is == JAL) {
+      if (rd == REG_RA) { // procedure call
+        build_cfg_recursive(pc + imm, pc, pc + imm);
+
+        ir = load_instruction(pc);
+        decode();
+
+        if (function_exits(pc + imm)) {
+          return;
+        }
+        prev_pc = (uint64_t) -1;
+      }
+      else if (rd == REG_ZR) { // "normal" jump
+        pc = pc + imm - INSTRUCTIONSIZE; // subtract INSTRUCTIONSIZE because it gets added again at the end of the loop
+      }
+      else { // other
+        print("Error: jal doesn't seem to be procedure call or \"normal\" jump!");
+        exit(1);
+      }
+    } else if (is == JALR) {
+      // for now: assume that every jalr returns from a function
+      if (rd == REG_ZR) {
+        if (current_func == (uint64_t) -1) {
+          print("Error: tried to return from top level");
+          exit(1);
+        }
+        add_return(current_func, pc);
+        return;
+      } else {
+        print("Error: jalr with non-zero destination register not supported!");
+        exit(1);
+      }
+    } else if (is == ECALL) {
+      if (ecall_is_exit) {
+        add_exit(pc);
+        set_function_exits(current_func);
+        return;
+      }
+    }
+    pc = pc + INSTRUCTIONSIZE;
+  }
+}
+
 void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t created_new_state;
   uint64_t *state;
   uint64_t force_continue;
   uint64_t i;
-  uint64_t* current;
 
   force_continue = 0;
 
@@ -419,10 +501,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     if (pc >= code_length) {
       print("Error: pc went past end of code!");
       exit(1);
-    }
-
-    if (prev_pc != -1) {
-      add_cfg_edge(prev_pc, pc);
     }
 
     created_new_state = 0;
@@ -500,11 +578,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
         call_stack_push(pc + imm);
         traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
 
-        current = get_returns(call_stack_peek());
-
-        call_stack_pop();
-
-        if (current == (uint64_t*) -1) {
+        if (function_exits(call_stack_pop())) {
           // the function we just called doesn't have any returns, only exits
           // therefore the path doesn't continue after the call
           return;
@@ -538,7 +612,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
           update_state(current_ra, state);
           update_cached_state(call_stack_peek(), state);
         }
-        add_return(call_stack_peek(), pc);
         return;
       } else {
         print("Error: jalr with non-zero destination register not supported!");
@@ -547,8 +620,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     } else if (is == ECALL) {
       // assume that value of a7 is always known
       if (get_reg(state, REG_A7) == SYSCALL_EXIT) {
-        add_exit(pc);
-        set_function_exits(call_stack_peek());
         return;
       }
     }
@@ -708,7 +779,7 @@ void recursive_livedead(uint64_t pc, uint64_t prev_pc) {
 
     if (current == (uint64_t*) 0) {
       if (pc != 0) {
-        printf1("Error! No in-edges at pc=%d", (char*) pc);
+        printf1("Error! No in-edges at pc=%x", (char*) pc);
         exit(1);
       }
       else {
@@ -750,6 +821,8 @@ void selfie_traverse() {
   reset_interpreter();
 
   run = 0;
+
+  build_cfg_recursive(0, (uint64_t) -1, (uint64_t) -1);
 
   tmp_state = new_machine_state();
   traverse_recursive(0, (uint64_t) -1, (uint64_t) -1);
@@ -908,7 +981,7 @@ int main(int argc, char **argv) {
   debug = 0;
   selfie_traverse();
 
-  print_states_and_livedeads();
+  // print_states_and_livedeads();
 
   // This is testing code, remove later
   // print_states();
