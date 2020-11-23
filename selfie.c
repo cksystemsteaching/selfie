@@ -1079,7 +1079,7 @@ uint64_t* get_cache_memory(uint64_t* cache)    { return (uint64_t*) *cache; }
 uint64_t  get_cache_size(uint64_t* cache)      { return             *(cache + 1); }
 uint64_t  get_associativity(uint64_t* cache)   { return             *(cache + 2); }
 uint64_t  get_cache_line_size(uint64_t* cache) { return             *(cache + 3); }
-uint64_t  get_cache_sets(uint64_t* cache)      { return             *(cache + 4); }
+uint64_t  get_cache_set_size(uint64_t* cache)  { return             *(cache + 4); }
 uint64_t  get_cache_hits(uint64_t* cache)      { return             *(cache + 5); }
 uint64_t  get_cache_misses(uint64_t* cache)    { return             *(cache + 6); }
 uint64_t  get_cache_timer(uint64_t* cache)     { return             *(cache + 7); }
@@ -1088,7 +1088,7 @@ void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)      { *cache    
 void set_cache_size(uint64_t* cache, uint64_t cache_size)           { *(cache + 1) = cache_size; }
 void set_associativity(uint64_t* cache, uint64_t associativity)     { *(cache + 2) = associativity; }
 void set_cache_line_size(uint64_t* cache, uint64_t cache_line_size) { *(cache + 3) = cache_line_size; }
-void set_cache_sets(uint64_t* cache, uint64_t cache_sets)           { *(cache + 4) = cache_sets; }
+void set_cache_set_size(uint64_t* cache, uint64_t cache_set_size)   { *(cache + 4) = cache_set_size; }
 void set_cache_hits(uint64_t* cache, uint64_t cache_hits)           { *(cache + 5) = cache_hits; }
 void set_cache_misses(uint64_t* cache, uint64_t cache_misses)       { *(cache + 6) = cache_misses; }
 void set_cache_timer(uint64_t* cache, uint64_t cache_timer)         { *(cache + 7) = cache_timer; }
@@ -7142,7 +7142,7 @@ void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, ui
   set_cache_size(cache, cache_size);
   set_associativity(cache, associativity);
   set_cache_line_size(cache, cache_line_size);
-  set_cache_sets(cache, cache_size / associativity);
+  set_cache_set_size(cache, cache_size / associativity);
   init_cache_memory(cache);
   reset_cache_counters(cache);
 }
@@ -7183,7 +7183,7 @@ void evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t
 }
 
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
-  uint64_t page_address;
+  uint64_t most_significant_bits;
   uint64_t tag;
   uint64_t index;
   uint64_t* set;
@@ -7194,10 +7194,10 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
 
   cache_line_size = get_cache_line_size(cache);
 
-  page_address = (vaddr / (get_cache_size(cache) / get_associativity(cache))) * (get_cache_size(cache) / get_associativity(cache));
+  most_significant_bits = (vaddr / get_cache_set_size(cache)) * get_cache_set_size(cache);
 
-  tag = (uint64_t) tlb(table, vaddr) / get_cache_sets(cache);
-  index = (vaddr - page_address) / cache_line_size;
+  tag = (uint64_t) tlb(table, vaddr) / get_cache_set_size(cache);
+  index = (vaddr - most_significant_bits) / cache_line_size;
 
   set = get_cache_memory(cache) + index * get_associativity(cache);
 
