@@ -1126,7 +1126,7 @@ void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, ui
 void init_all_caches();
 
 void      evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
-uint64_t* retrieve_cache_block(uint64_t* index, uint64_t* table, uint64_t vaddr);
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr);
 
 void     fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
 void     save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr, uint64_t data);
