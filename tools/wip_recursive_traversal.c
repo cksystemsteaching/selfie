@@ -901,6 +901,9 @@ void print_states_and_livedeads() {
   }
 }
 
+// Counter var. Decremented on every found enop.
+uint64_t n = 90;
+
 // Return first pc after from_pc that is an effective nop, or -1
 uint64_t find_next_enop(uint64_t from_pc) {
   uint64_t i;
@@ -918,12 +921,34 @@ uint64_t find_next_enop(uint64_t from_pc) {
 
       if (apply_effects(state) == 1) {
         if (test_states_equal(get_state(i), state)) {
-          return i;
-        } //else {print_state(get_state(i));print("->\n");print_state(state);print("\n");}
+          // For now, only consider instructions on dead registers
+          //return i;
+        } 
       }
+
+      // TODO: Bisect n to find bad instructions?
+      if (n > 0) // remove later
+        if (i < code_length - INSTRUCTIONSIZE)
+          if (i > 1000) // skip ecalls etc.
+            if (is != JAL) // don't replace jumps
+              if (is != BEQ)
+                if (is != JALR)
+                  if (rd == REG_A0) // for now only operate on a0
+                    if (get_livedead(i + INSTRUCTIONSIZE))
+                      if (is_reg_live(get_livedead(i + INSTRUCTIONSIZE), rd) == 0)  {
+                        n = n - 1; // remove later
+                        // this makes it so only the n-th enop is actually replaced with a noop
+                        if (n == 0) { // remove later
+                          printf1("%x\t", (char*) i);
+                          print_instruction();
+                          print("\n");
+                          return i;
+                        }
+                      } // remove later
     }
     else {
-      return i;
+      // For now, only consider instructions on dead registers
+      //return i;
     }
 
     i = i + INSTRUCTIONSIZE;
@@ -981,7 +1006,7 @@ int main(int argc, char **argv) {
   debug = 0;
   selfie_traverse();
 
-  // print_states_and_livedeads();
+  //print_states_and_livedeads();
 
   // This is testing code, remove later
   // print_states();
