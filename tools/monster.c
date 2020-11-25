@@ -719,7 +719,7 @@ void constrain_load() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in ld instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, ELF_ENTRY_POINT);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -747,7 +747,7 @@ void constrain_load() {
     }
 
     // keep track of instruction address for profiling loads
-    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+    a = (pc - code_start) / INSTRUCTIONSIZE;
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -772,7 +772,7 @@ void constrain_store() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in sd instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, ELF_ENTRY_POINT);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -789,7 +789,7 @@ void constrain_store() {
       WORDSIZEINBITS);
 
     // keep track of instruction address for profiling stores
-    a = (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE;
+    a = (pc - code_start) / INSTRUCTIONSIZE;
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -856,7 +856,7 @@ void constrain_jalr() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in jalr instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, ELF_ENTRY_POINT);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -1916,7 +1916,7 @@ uint64_t selfie_run_symbolically() {
         }
       }
 
-      if (binary_length == 0) {
+      if (code_size == 0) {
         printf1("%s: nothing to run symbolically\n", selfie_name);
 
         return EXITCODE_BADARGUMENTS;
