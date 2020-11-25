@@ -7193,12 +7193,15 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   uint64_t* cache_block;
   uint64_t* lru_block;
   uint64_t cache_line_size;
+  uint64_t cache_set_size;
 
   cache_line_size = get_cache_line_size(cache);
 
-  most_significant_bits = (vaddr / get_cache_set_size(cache)) * get_cache_set_size(cache);
+  cache_set_size = get_cache_set_size(cache);
 
-  tag = (uint64_t) tlb(table, vaddr) / get_cache_set_size(cache);
+  most_significant_bits = (vaddr / cache_set_size) * cache_set_size;
+
+  tag = (uint64_t) tlb(table, vaddr) / cache_set_size;
   index = (vaddr - most_significant_bits) / cache_line_size;
 
   set = get_cache_memory(cache) + index * get_associativity(cache);
@@ -7230,9 +7233,14 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
   // cache miss
 
   if (L1_WRITE_BACK)
-    // write-back semantics
-    if (get_dirty_flag(lru_block))
-      flush_cache_block(lru_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
+    if (get_valid_flag(lru_block))
+      // write-back semantics
+      if (get_dirty_flag(lru_block)) {
+        // index is the same between vaddr and paddr so it is ok to add it to the paddr
+        flush_cache_block(lru_block, cache_line_size, (uint64_t*) (get_tag(lru_block) * cache_set_size + index));
+
+        set_dirty_flag(lru_block, 0);
+      }
 
   set_cache_misses(cache, get_cache_misses(cache) + 1);
 
