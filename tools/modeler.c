@@ -726,22 +726,22 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   uint64_t* in_edge;
 
   if (to_address % INSTRUCTIONSIZE == 0) {
-    if (to_address < ELF_ENTRY_POINT + code_length) {
+    if (to_address < code_start + code_size) {
       if (validate_procedure_body(from_instruction, from_link, to_address)) {
         in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-        *in_edge       = *(control_in + (to_address - ELF_ENTRY_POINT) / INSTRUCTIONSIZE);
+        *in_edge       = *(control_in + (to_address - code_start) / INSTRUCTIONSIZE);
         *(in_edge + 1) = from_instruction; // from which instruction
         *(in_edge + 2) = from_address;     // at which address
         *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-        *(control_in + (to_address - ELF_ENTRY_POINT) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+        *(control_in + (to_address - code_start) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
         return;
       }
-    } else if (from_address == ELF_ENTRY_POINT + code_length - INSTRUCTIONSIZE)
+    } else if (from_address == code_start + code_size - INSTRUCTIONSIZE)
       // from_instruction is last instruction in binary
-      if (*(control_in + (from_address - ELF_ENTRY_POINT) / INSTRUCTIONSIZE) == 0)
+      if (*(control_in + (from_address - code_start) / INSTRUCTIONSIZE) == 0)
         // and unreachable
         return;
   }
@@ -1384,9 +1384,9 @@ void model_jalr() {
       if (rs1 == REG_RA)
         if (pc >= estimated_return)
           // no forward branches and jumps outside of "procedure body"
-          if (current_callee > ELF_ENTRY_POINT) {
+          if (current_callee > code_start) {
             // assert: current_callee points to an instruction to which a jal jumps
-            *(call_return + (current_callee - ELF_ENTRY_POINT) / INSTRUCTIONSIZE) = pc;
+            *(call_return + (current_callee - code_start) / INSTRUCTIONSIZE) = pc;
 
             // assert: next "procedure body" begins right after jalr
             current_callee = pc + INSTRUCTIONSIZE;
@@ -1585,12 +1585,12 @@ void modeler() {
   print("; word-aligned end of code segment in memory\n\n");
 
   // end of code segment for checking address validity
-  printf2("30 constd 2 %u ; %x\n\n", (char*) (ELF_ENTRY_POINT + code_length), (char*) (ELF_ENTRY_POINT + code_length));
+  printf2("30 constd 2 %u ; %x\n\n", (char*) (code_start + code_size), (char*) (code_start + code_size));
 
   print("; word-aligned end of data segment in memory (initial program break)\n\n");
 
   // end of data segment (initial program break) for checking program break validity
-  printf2("31 constd 2 %u ; %x\n\n", (char*) (ELF_ENTRY_POINT + binary_length), (char*) (ELF_ENTRY_POINT + binary_length));
+  printf2("31 constd 2 %u ; %x\n\n", (char*) (data_start + data_size), (char*) (data_start + data_size));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
@@ -1664,9 +1664,9 @@ void modeler() {
 
       if (i == LO_FLOW)
         printf3("\n%u constd 2 %u ; %x\n",
-          (char*) *(reg_flow_nids + i),             // nid of this line
-          (char*) (ELF_ENTRY_POINT + code_length),  // end of code segment
-          (char*) (ELF_ENTRY_POINT + code_length)); // end of code segment
+          (char*) *(reg_flow_nids + i),      // nid of this line
+          (char*) (code_start + code_size),  // end of code segment
+          (char*) (code_start + code_size)); // end of code segment
       else if (i == UP_FLOW)
         printf3("\n%u constd 2 %u ; %x\n",
           (char*) *(reg_flow_nids + i), // nid of this line
@@ -1730,20 +1730,20 @@ void modeler() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate binary starting at entry point and stack with
+  // 3 more digits to accommodate code, data, and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
   // 100*8 lines per 64-bit machine word in data segment
   pcs_nid = ten_to_the_power_of(
-    log_ten(ELF_ENTRY_POINT + binary_length +
+    log_ten(data_start + data_size +
       (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
-  while (pc < ELF_ENTRY_POINT + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(pcs_nid, pc);
 
     // pc flag of current instruction
     printf1("%u state 1\n", (char*) current_nid);
 
-    if (pc == ELF_ENTRY_POINT)
+    if (pc == e_entry)
       // set pc here by initializing pc flag of instruction at address 0 to true
       printf2("%u init 1 %u 11 ; initial program counter\n",
         (char*) (current_nid + 1), // nid of this line
@@ -1767,10 +1767,10 @@ void modeler() {
 
   print("\n; data segment\n\n");
 
-  // assert: pc == ELF_ENTRY_POINT + code_length
+  // assert: pc == code_start + code_size
 
   while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
-    if (pc == ELF_ENTRY_POINT + binary_length) {
+    if (pc == data_start + data_size) {
       // assert: stack pointer < VIRTUALMEMORYSIZE * GIGABYTE
       pc = *(registers + REG_SP);
 
@@ -1856,15 +1856,15 @@ void modeler() {
 
   code_nid = pcs_nid * 3;
 
-  control_in  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  current_callee   = ELF_ENTRY_POINT;
-  estimated_return = ELF_ENTRY_POINT;
+  current_callee   = code_start;
+  estimated_return = code_start;
 
   pc = get_pc(current_context);
 
-  while (pc < ELF_ENTRY_POINT + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(code_nid, pc);
 
     fetch();
@@ -1887,10 +1887,10 @@ void modeler() {
 
   pc = get_pc(current_context);
 
-  while (pc < ELF_ENTRY_POINT + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(control_nid, pc);
 
-    in_edge = (uint64_t*) *(control_in + (pc - ELF_ENTRY_POINT) / INSTRUCTIONSIZE);
+    in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
 
     // nid of 1-bit 0
     control_flow_nid = 10;
@@ -1907,21 +1907,21 @@ void modeler() {
           (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
           (char*) condition_nid,                       // nid of true or false beq condition
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
-        print_code_line_number_for_instruction(from_address, ELF_ENTRY_POINT);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         current_nid = current_nid + 1;
 
         // activate this instruction if beq is active and its condition is true (false)
         control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
       } else if (from_instruction == JALR) {
-        jalr_address = *(call_return + (from_address - ELF_ENTRY_POINT) / INSTRUCTIONSIZE);
+        jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
 
         if (jalr_address != 0) {
           // is value of $ra register with LSB reset equal to address of this instruction?
           printf3("%u not 2 21 ; jalr %u[%x]",
             (char*) current_nid,                         // nid of this line
             (char*) jalr_address, (char*) jalr_address); // address of instruction proceeding here
-          print_code_line_number_for_instruction(jalr_address, ELF_ENTRY_POINT);println();
+          print_code_line_number_for_instruction(jalr_address, code_start);println();
           printf3("%u and 2 %u %u\n",
             (char*) (current_nid + 1),   // nid of this line
             (char*) (reg_nids + REG_RA), // nid of current value of $ra register
@@ -1945,7 +1945,7 @@ void modeler() {
           // no jalr returning from jal found
 
           printf2("; exit ecall wrapper call or runaway jal %u[%x]", (char*) from_address, (char*) from_address);
-          print_code_line_number_for_instruction(from_address, ELF_ENTRY_POINT);println();
+          print_code_line_number_for_instruction(from_address, code_start);println();
 
           // this instruction may stay deactivated if there is no more in-edges
         }
@@ -1953,7 +1953,7 @@ void modeler() {
         printf3("%u state 1 ; kernel-mode pc flag of ecall %u[%x]",
           (char*) current_nid,                         // nid of this line
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
-        print_code_line_number_for_instruction(from_address, ELF_ENTRY_POINT);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         printf2("%u init 1 %u 10 ; ecall is initially inactive\n",
           (char*) (current_nid + 1), // nid of this line
@@ -1980,7 +1980,7 @@ void modeler() {
       } else {
         if (from_instruction == JAL) print("; jal "); else print("; ");
         printf2("%u[%x]", (char*) from_address, (char*) from_address);
-        print_code_line_number_for_instruction(from_address, ELF_ENTRY_POINT);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         // activate this instruction if instruction proceeding here is active
         control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
@@ -1995,9 +1995,9 @@ void modeler() {
       (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
       (char*) control_flow_nid,    // nid of most recently processed in-edge
       (char*) pc, (char*) pc);     // address of current instruction
-    print_code_line_number_for_instruction(pc, ELF_ENTRY_POINT);
+    print_code_line_number_for_instruction(pc, code_start);
     if (control_flow_nid == 10)
-      if (pc > ELF_ENTRY_POINT)
+      if (pc > code_start)
         // TODO: warn here about unreachable code
         print(" (unreachable)");
     println();
@@ -2112,7 +2112,7 @@ uint64_t selfie_model() {
           get_argument();
         }
 
-      if (binary_length == 0) {
+      if (code_size == 0) {
         printf1("%s: nothing to model\n", selfie_name);
 
         return EXITCODE_BADARGUMENTS;
