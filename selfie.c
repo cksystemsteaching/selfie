@@ -973,6 +973,8 @@ uint64_t ELF_HEADER_SIZE = 4096;
 uint64_t MAX_CODE_SIZE = 262144; // 256KB
 uint64_t MAX_DATA_SIZE = 16384;  // 16KB
 
+uint64_t PK_CODE_START = 65536; // start of code segment at 0x10000 (according to RISC-V pk)
+
 // ELF file header
 
 uint64_t EI_MAG0 = 127; // magic number part 0 is 0x7F
@@ -1014,9 +1016,9 @@ uint64_t p_flags = 7; // segment attributes are RWX
 
 uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_SIZE
 
-uint64_t p_vaddr = 65536; // virtual address in memory 0x10000 (according to RISC-V pk)
+uint64_t p_vaddr = 65536; // start of segment in virtual memory at 0x10000 == PK_CODE_START
 
-uint64_t p_paddr = 0; // physical address (ignored)
+uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
 
 uint64_t p_filesz = 0; // size of segment in file (code_size + data_size)
 uint64_t p_memsz  = 0; // size of segment in memory (code_size + data_size)
@@ -1047,9 +1049,11 @@ char* binary_name = (char*) 0; // file name of binary
 uint64_t* ELF_header = (uint64_t*) 0;
 
 uint64_t* code_binary = (uint64_t*) 0; // code binary
+uint64_t  code_start  = 0;             // start of code segment in virtual memory
 uint64_t  code_size   = 0;             // size of code binary in bytes
 
 uint64_t* data_binary = (uint64_t*) 0; // data binary
+uint64_t  data_start  = 0;             // start of data segment in virtual memory
 uint64_t  data_size   = 0;             // size of data binary in bytes
 
 uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
@@ -5273,11 +5277,17 @@ void emit_bootstrapping() {
   if (code_size % WORDSIZE != 0)
     emit_nop();
 
+  // code segment starts at PK_CODE_START
+  code_start = PK_CODE_START;
+
   // TODO: start of data segment must be page-aligned
-  // data_start = round_up(p_vaddr + code_size, p_align);
+  // data_start = round_up(code_start + code_size, p_align);
+
+  // data segment starts right after code segment
+  data_start = code_start + code_size;
 
   // calculate global pointer value
-  gp_value = p_vaddr + code_size + data_size;
+  gp_value = data_start + data_size;
 
   // set code emission to program entry
   saved_code_size = code_size;
@@ -5397,8 +5407,10 @@ void selfie_compile() {
 
   // allocate memory for storing binary
   code_binary = zmalloc(MAX_CODE_SIZE);
+  code_start  = 0;
   code_size   = 0;
   data_binary = zmalloc(MAX_DATA_SIZE);
+  data_start  = 0;
   data_size   = 0;
 
   // allocate zeroed memory for storing source code line numbers
@@ -6370,8 +6382,10 @@ uint64_t validate_elf_header(uint64_t* header) {
     i = i + 1;
   }
 
-  code_size = new_code_size;
-  data_size = new_data_size;
+  code_start = PK_CODE_START;
+  code_size  = new_code_size;
+  data_start = code_start + code_size;
+  data_size  = new_data_size;
 
   return 1;
 }
@@ -6505,8 +6519,10 @@ void selfie_load() {
 
   // make sure code and data binaries are also mapped for reading into them
   code_binary = touch(smalloc(MAX_CODE_SIZE), MAX_CODE_SIZE);
+  code_start  = 0;
   code_size   = 0;
   data_binary = touch(smalloc(MAX_DATA_SIZE), MAX_DATA_SIZE);
+  data_start  = 0;
   data_size   = 0;
 
   // no source line numbers in binaries
@@ -7978,7 +7994,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
     printf2("%s: pc=%x", binary_name, (char*) address);
-    print_code_line_number_for_instruction(address, p_vaddr);
+    print_code_line_number_for_instruction(address, code_start);
     if (symbolic)
       // skip further output
       return;
@@ -7987,7 +8003,7 @@ void print_code_context_for_instruction(uint64_t address) {
   } else {
     if (model) {
       printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, p_vaddr);
+      print_code_line_number_for_instruction(address, code_start);
       print(": ");
     } else if (disassemble_verbose) {
       printf1("%x", (char*) address);
@@ -8321,7 +8337,7 @@ uint64_t do_load() {
           nopc_load = nopc_load + 1;
 
         // keep track of instruction address for profiling loads
-        a = (pc - p_vaddr) / INSTRUCTIONSIZE;
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8406,7 +8422,7 @@ uint64_t do_store() {
           nopc_store = nopc_store + 1;
 
         // keep track of instruction address for profiling stores
-        a = (pc - p_vaddr) / INSTRUCTIONSIZE;
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -8512,7 +8528,7 @@ void do_jal() {
     pc = pc + imm;
 
     // prologue address for profiling procedure calls
-    a = (pc - p_vaddr) / INSTRUCTIONSIZE;
+    a = (pc - code_start) / INSTRUCTIONSIZE;
 
     // keep track of number of procedure calls in total
     calls = calls + 1;
@@ -8524,7 +8540,7 @@ void do_jal() {
     pc = pc + imm;
 
     // first loop instruction address for profiling loop iterations
-    a = (pc - p_vaddr) / INSTRUCTIONSIZE;
+    a = (pc - code_start) / INSTRUCTIONSIZE;
 
     // keep track of number of loop iterations in total
     iterations = iterations + 1;
@@ -9862,14 +9878,14 @@ void up_load_binary(uint64_t* context) {
 
   // setting up page table cache
 
-  set_lowest_lo_page(context, get_page_of_virtual_address(p_vaddr));
+  set_lowest_lo_page(context, get_page_of_virtual_address(code_start));
   set_highest_lo_page(context, get_lowest_lo_page(context));
 
   // setting up memory segments
 
-  set_code_seg_start(context, p_vaddr);
-  set_data_seg_start(context, p_vaddr + code_size);
-  set_heap_seg_start(context, p_vaddr + code_size + data_size);
+  set_code_seg_start(context, code_start);
+  set_data_seg_start(context, data_start);
+  set_heap_seg_start(context, data_start + data_size);
   set_program_break(context, get_heap_seg_start(context));
 
   baddr = 0;
