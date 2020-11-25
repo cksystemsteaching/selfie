@@ -1125,7 +1125,7 @@ void init_cache_memory(uint64_t* cache);
 void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
 void init_all_caches();
 
-void      evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
+void      flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr);
 
 void     fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
@@ -1139,6 +1139,8 @@ void     save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t L1_CACHE_ENABLED = 1;
+
+uint64_t L1_WRITE_BACK = 0; // write-through otherwise
 
 // L1-cache size in byte
 uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
@@ -7164,7 +7166,7 @@ uint64_t get_new_timestamp(uint64_t* cache) {
   return timestamp;
 }
 
-void evict_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
+void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
   uint64_t words;
   uint64_t* data;
   uint64_t i;
@@ -7227,9 +7229,10 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
 
   // cache miss
 
-  // write-back semantics
-  if (get_dirty_flag(lru_block))
-    evict_cache_block(lru_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
+  if (L1_WRITE_BACK)
+    // write-back semantics
+    if (get_dirty_flag(lru_block))
+      flush_cache_block(lru_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
 
   set_cache_misses(cache, get_cache_misses(cache) + 1);
 
@@ -7286,6 +7289,11 @@ void save_into_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr, uint64_t 
   word_offset = byte_offset / WORDSIZE;
 
   *(cache_block_data + word_offset) = data;
+
+  if (L1_WRITE_BACK)
+    set_dirty_flag(cache_block, 1);
+  else
+    flush_cache_block(cache_block, cache_line_size, tlb(table, (vaddr / cache_line_size) * cache_line_size));
 }
 
 uint64_t load_from_cache(uint64_t* cache, uint64_t* table, uint64_t vaddr) {
