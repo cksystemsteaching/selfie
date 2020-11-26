@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from pathlib import Path
-from subprocess import run
+from subprocess import run, DEVNULL
 from typing import Callable, Optional, List, Tuple, Dict, Set
 
 from lib.functional import flatmap
@@ -172,24 +172,26 @@ def do_bulk_grading(assignment: Optional[Assignment], base_test: Assignment):
             clone_dir = os.path.join(bulk_grade_directory, repo_id)
 
             if not os.path.exists(clone_dir):
-                status = os.system(
-                    'git clone -q git@github.com:{} {} >/dev/null 2>&1'.format(repo_id, repo_id))
+                status = run(
+                        ['git', 'clone', '-q', 'git@github.com:{}'.format(repo_id), repo_id],
+                        stdout=DEVNULL, stderr=DEVNULL).returncode
 
                 if status != 0:
-                    print_message('error when cloning ' + repo_id, loud=True)
+                    print_message('error while cloning ' + repo_id, loud=True)
                     continue
 
             os.chdir(clone_dir)
 
             # remove all changes in local repository
-            os.system('git reset --hard -q >/dev/null 2>&1')
+            run(['git', 'reset', '--hard', '-q'], stdout=DEVNULL, stderr=DEVNULL)
 
             # fetch updates from github repository
-            os.system('git fetch -q >/dev/null 2>&1')
+            run(['git', 'fetch', '-q'], stdout=DEVNULL, stderr=DEVNULL)
 
             # change the local repository state using the commit ID
-            status = os.system(
-                'git checkout -q {} >/dev/null 2>&1'.format(info['commit']))
+            status = run(
+                    ['git', 'checkout', '-q', info['commit']],
+                    stdout=DEVNULL, stderr=DEVNULL).returncode
 
             if status == 0:
                 if assignment is None:

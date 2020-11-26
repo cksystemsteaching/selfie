@@ -28,7 +28,7 @@ Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sif
 
 ## Extras
 
-1. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/master/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
+1. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/riscv-2-x86-unsupported/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
 2. Symbolic execution: There is a self-executing symbolic execution engine called [monster](https://github.com/cksystemsteaching/selfie/blob/master/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
 3. Bounded model checking: There is a self-translating modeling engine called [modeler](https://github.com/cksystemsteaching/selfie/blob/master/tools/modeler.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
 4. SAT solving: There is a naive SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/master/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.

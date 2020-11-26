@@ -2,17 +2,16 @@ import unittest
 import sys
 import re
 import os
+import subprocess
 # from os import system
 from os.path import isfile
 import shlex
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, run
 from unittest.mock import patch
 
 from self import main as grader_main
 from lib.print import println
 from tests.utils import CaptureOutput, compile_with_gcc_and_run
-
-system = os.system
 
 
 class ExitError(Exception):
@@ -22,10 +21,10 @@ class ExitError(Exception):
 
 class TestBulkGrader(unittest.TestCase):
 
-    def commit_without_auth(self, command):
-        return system(command.replace('git@github.com:', 'https://github.com/'))
+    def commit_without_auth(self, command, **kwargs):
+        return run([arg.replace('git@github.com:', 'https://github.com/') for arg in command], **kwargs)
 
-    @patch('os.system')
+    @patch('lib.cli.run') # imported from subprocess
     def test_bulk_grading_with_wrong_arguments(self, mock):
         mock.side_effect = self.commit_without_auth
 
@@ -44,7 +43,7 @@ class TestBulkGrader(unittest.TestCase):
             raise ExitError(code)
 
     @patch('lib.cli.exit')
-    @patch('os.system')
+    @patch('lib.cli.run') # imported from subprocess
     def test_bulk_grading(self, mock, exit_mock):
         mock.side_effect = self.commit_without_auth
 
