@@ -971,7 +971,7 @@ void selfie_load();
 uint64_t ELF_HEADER_SIZE = 4096;
 
 uint64_t MAX_CODE_SIZE = 262144; // 256KB
-uint64_t MAX_DATA_SIZE = 16384;  // 16KB
+uint64_t MAX_DATA_SIZE = 32768;  // 32KB
 
 uint64_t PK_CODE_START = 65536; // start of code segment at 0x10000 (according to RISC-V pk)
 
