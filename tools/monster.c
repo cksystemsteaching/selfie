@@ -978,7 +978,9 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_lowest_hi_page(context, get_lowest_hi_page(original));
   set_highest_hi_page(context, get_highest_hi_page(original));
   set_code_seg_start(context, get_code_seg_start(original));
+  set_code_seg_size(context, get_code_seg_size(original));
   set_data_seg_start(context, get_data_seg_start(original));
+  set_data_seg_size(context, get_data_seg_size(original));
   set_heap_seg_start(context, get_heap_seg_start(original));
   set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
