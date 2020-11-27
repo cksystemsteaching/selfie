@@ -1267,7 +1267,7 @@ void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = ma
 
 // getters and setters with different access in library/kernel
 
-uint64_t  get_stack_start_gc(uint64_t* context);
+uint64_t  get_stack_seg_start_gc(uint64_t* context);
 uint64_t  get_data_seg_start_gc(uint64_t* context);
 uint64_t  get_data_seg_end_gc(uint64_t* context);
 uint64_t  get_heap_seg_start_gc(uint64_t* context);
@@ -7478,7 +7478,7 @@ void implement_gc_brk(uint64_t* context) {
     // assert: _bump pointer is last entry in data segment
 
     // updating the _bump pointer of the program (for consistency)
-    store_virtual_memory(get_pt(context), get_heap_seg_start(context) - SIZEOFUINT64, get_program_break(context));
+    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - SIZEOFUINT64, get_program_break(context));
 
     sc_brk = sc_brk + 1;
 
@@ -7505,7 +7505,7 @@ uint64_t* allocate_metadata(uint64_t* context) {
     return smalloc(GC_METADATA_SIZE);
 }
 
-uint64_t get_stack_start_gc(uint64_t* context) {
+uint64_t get_stack_seg_start_gc(uint64_t* context) {
   if (is_gc_library(context))
     return fetch_stack_pointer();
   else
@@ -7523,8 +7523,7 @@ uint64_t get_data_seg_end_gc(uint64_t* context) {
   if (is_gc_library(context))
     return gc_data_seg_end;
   else
-    // data segment end is here equal to heap segment start
-    return get_heap_seg_start(context);
+    return get_data_seg_start(context) + get_data_seg_size(context);
 }
 
 uint64_t get_heap_seg_start_gc(uint64_t* context) {
@@ -7883,7 +7882,7 @@ void mark(uint64_t* context) {
   // root segments: call stack and data segment
 
   // traverse call stack
-  mark_segment(context, get_stack_start_gc(context), VIRTUALMEMORYSIZE * GIGABYTE);
+  mark_segment(context, get_stack_seg_start_gc(context), VIRTUALMEMORYSIZE * GIGABYTE);
 
   // traverse data segment
   mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
