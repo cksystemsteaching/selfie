@@ -162,7 +162,7 @@ uint64_t division_flow_nid  = 21;
 uint64_t remainder_flow_nid = 21;
 
 // for checking address validity during state transitions with no memory access:
-// 30 is nid of end of code segment which must be a valid address (thus also checked)
+// 30 is nid of start of data segment which must be a valid address (thus also checked)
 uint64_t access_flow_start_nid = 30;
 
 // 50 is nid of 4GB of memory addresses
@@ -590,7 +590,7 @@ void model_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%u state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%u init 2 %u 31 ; initial program break is end of data segment\n",
+  printf2("%u init 2 %u 31 ; initial program break\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -665,7 +665,7 @@ void model_syscalls() {
 
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1465;
 
-    printf3("%u ite 2 %u 30 %u ; lower bound on $t1 = end of code segment if brk ecall is active and $a0 is invalid\n",
+    printf3("%u ite 2 %u 30 %u ; lower bound on $t1 = start of data segment if brk ecall is active and $a0 is invalid\n",
       (char*) (current_nid + 1466),                 // nid of this line
       (char*) (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
       (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
@@ -758,7 +758,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
 void reset_bounds() {
   if (check_block_access) {
-    // if this instruction is active reset lower bound on $rd register to end of code segment
+    // if this instruction is active reset lower bound on $rd register to start of data segment
     printf3("%u ite 2 %u 30 %u\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
@@ -1584,13 +1584,13 @@ void modeler() {
 
   print("; word-aligned end of code segment in memory\n\n");
 
-  // end of code segment for checking address validity
-  printf2("30 constd 2 %u ; %x\n\n", (char*) (code_start + code_size), (char*) (code_start + code_size));
+  // start of data segment for checking address validity
+  printf2("30 constd 2 %u ; %x\n\n", (char*) data_start, (char*) data_start);
 
   print("; word-aligned end of data segment in memory (initial program break)\n\n");
 
-  // end of data segment (initial program break) for checking program break validity
-  printf2("31 constd 2 %u ; %x\n\n", (char*) (data_start + data_size), (char*) (data_start + data_size));
+  // initial program break
+  printf2("31 constd 2 %u ; %x\n\n", (char*) get_program_break(current_context), (char*) get_program_break(current_context));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
@@ -1715,7 +1715,7 @@ void modeler() {
       if (i % NUMBEROFREGISTERS == 0)
         println();
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf3("%u init 2 %u 30 %s ; initial value is end of code segment\n",
+        printf3("%u init 2 %u 30 %s ; initial value is start of data segment\n",
           (char*) (reg_nids * 2 + i),                // nid of this line
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
@@ -1834,7 +1834,7 @@ void modeler() {
     lo_memory_nid = current_nid;
 
     printf1("\n%u state 3 lower-bounds ; for checking address validity\n", (char*) current_nid);
-    printf2("%u init 3 %u 30 ; initializing lower bounds to end of code segment\n",
+    printf2("%u init 3 %u 30 ; initializing lower bounds to start of data segment\n",
       (char*) (current_nid + 1), // nid of this line
       (char*) current_nid);      // nid of lower bounds on addresses in memory
 
