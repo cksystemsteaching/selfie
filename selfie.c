@@ -9895,7 +9895,7 @@ void up_load_binary(uint64_t* context) {
   set_code_seg_size(context, code_size);
   set_data_seg_start(context, data_start);
   set_data_seg_size(context, data_size);
-  set_heap_seg_start(context, data_start + data_size);
+  set_heap_seg_start(context, round_up(data_start + data_size, p_align));
   set_program_break(context, get_heap_seg_start(context));
 
   baddr = 0;
