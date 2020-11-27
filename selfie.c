@@ -1824,27 +1824,29 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  6 | highest lo page | highest low uncached page (code, data, heap)
 // |  7 | lowest hi page  | lowest high uncached page (stack)
 // |  8 | highest hi page | highest high uncached page (stack)
-// |  9 | code segment    | start of code segment
-// | 10 | data segment    | end of code segment, start of data segment
-// | 11 | heap segment    | end of data segment, start of heap segment
-// | 12 | program break   | current program break
-// | 13 | exception       | exception ID
-// | 14 | faulting page   | faulting page
-// | 15 | exit code       | exit code
-// | 16 | parent          | context that created this context
-// | 17 | virtual context | virtual context address
-// | 18 | name            | binary name loaded into context
+// |  9 | code start      | start of code segment
+// | 10 | code size       | size of code segment
+// | 11 | data start      | start of data segment
+// | 12 | data size       | size of data segment
+// | 13 | heap start      | start of heap segment
+// | 14 | program break   | current program break
+// | 15 | exception       | exception ID
+// | 16 | faulting page   | faulting page
+// | 17 | exit code       | exit code
+// | 18 | parent          | context that created this context
+// | 19 | virtual context | virtual context address
+// | 20 | name            | binary name loaded into context
 // +----+-----------------+
-// | 19 | used-list head  | pointer to head of used list
-// | 20 | free-list head  | pointer to head of free list
-// | 21 | gcs counter     | number of gc runs in gc period
-// | 22 | gc enabled      | flag indicating whether to use gc or not
+// | 21 | used-list head  | pointer to head of used list
+// | 22 | free-list head  | pointer to head of free list
+// | 23 | gcs counter     | number of gc runs in gc period
+// | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 14 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1857,20 +1859,22 @@ uint64_t highest_lo_page(uint64_t* context) { return (uint64_t) (context + 6); }
 uint64_t lowest_hi_page(uint64_t* context)  { return (uint64_t) (context + 7); }
 uint64_t highest_hi_page(uint64_t* context) { return (uint64_t) (context + 8); }
 uint64_t code_seg_start(uint64_t* context)  { return (uint64_t) (context + 9); }
-uint64_t data_seg_start(uint64_t* context)  { return (uint64_t) (context + 10); }
-uint64_t heap_seg_start(uint64_t* context)  { return (uint64_t) (context + 11); }
-uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 12); }
-uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 13); }
-uint64_t fault(uint64_t* context)           { return (uint64_t) (context + 14); }
-uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 15); }
-uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); }
-uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
-uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); }
+uint64_t code_seg_size(uint64_t* context)   { return (uint64_t) (context + 10); }
+uint64_t data_seg_start(uint64_t* context)  { return (uint64_t) (context + 11); }
+uint64_t data_seg_size(uint64_t* context)   { return (uint64_t) (context + 12); }
+uint64_t heap_seg_start(uint64_t* context)  { return (uint64_t) (context + 13); }
+uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 14); }
+uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 15); }
+uint64_t fault(uint64_t* context)           { return (uint64_t) (context + 16); }
+uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 17); }
+uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 18); }
+uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 19); }
+uint64_t name(uint64_t* context)            { return (uint64_t) (context + 20); }
 
-uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 19); }
-uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 20); }
-uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 21); }
-uint64_t use_gc_kernel(uint64_t* context)    { return (uint64_t) (context + 22); }
+uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 21); }
+uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 22); }
+uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 23); }
+uint64_t use_gc_kernel(uint64_t* context)    { return (uint64_t) (context + 24); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1882,20 +1886,22 @@ uint64_t  get_highest_lo_page(uint64_t* context) { return             *(context 
 uint64_t  get_lowest_hi_page(uint64_t* context)  { return             *(context + 7); }
 uint64_t  get_highest_hi_page(uint64_t* context) { return             *(context + 8); }
 uint64_t  get_code_seg_start(uint64_t* context)  { return             *(context + 9); }
-uint64_t  get_data_seg_start(uint64_t* context)  { return             *(context + 10); }
-uint64_t  get_heap_seg_start(uint64_t* context)  { return             *(context + 11); }
-uint64_t  get_program_break(uint64_t* context)   { return             *(context + 12); }
-uint64_t  get_exception(uint64_t* context)       { return             *(context + 13); }
-uint64_t  get_fault(uint64_t* context)           { return             *(context + 14); }
-uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 15); }
-uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 16); }
-uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
-char*     get_name(uint64_t* context)            { return (char*)     *(context + 18); }
+uint64_t  get_code_seg_size(uint64_t* context)   { return             *(context + 10); }
+uint64_t  get_data_seg_start(uint64_t* context)  { return             *(context + 11); }
+uint64_t  get_data_seg_size(uint64_t* context)   { return             *(context + 12); }
+uint64_t  get_heap_seg_start(uint64_t* context)  { return             *(context + 13); }
+uint64_t  get_program_break(uint64_t* context)   { return             *(context + 14); }
+uint64_t  get_exception(uint64_t* context)       { return             *(context + 15); }
+uint64_t  get_fault(uint64_t* context)           { return             *(context + 16); }
+uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 17); }
+uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 18); }
+uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 19); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 20); }
 
-uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 19); }
-uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 20); }
-uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 21); }
-uint64_t  get_use_gc_kernel(uint64_t* context)    { return             *(context + 22); }
+uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 21); }
+uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 22); }
+uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 23); }
+uint64_t  get_use_gc_kernel(uint64_t* context)    { return             *(context + 24); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1907,20 +1913,22 @@ void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  
 void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
 void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
 void set_code_seg_start(uint64_t* context, uint64_t start)    { *(context + 9)  = start; }
-void set_data_seg_start(uint64_t* context, uint64_t start)    { *(context + 10) = start; }
-void set_heap_seg_start(uint64_t* context, uint64_t start)    { *(context + 11) = start; }
-void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 12) = brk; }
-void set_exception(uint64_t* context, uint64_t exception)     { *(context + 13) = exception; }
-void set_fault(uint64_t* context, uint64_t page)              { *(context + 14) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 15) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 16) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 17) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 18) = (uint64_t) name; }
+void set_code_seg_size(uint64_t* context, uint64_t size)      { *(context + 10) = size; }
+void set_data_seg_start(uint64_t* context, uint64_t start)    { *(context + 11) = start; }
+void set_data_seg_size(uint64_t* context, uint64_t size)      { *(context + 12) = size; }
+void set_heap_seg_start(uint64_t* context, uint64_t start)    { *(context + 13) = start; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 14) = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 15) = exception; }
+void set_fault(uint64_t* context, uint64_t page)              { *(context + 16) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 17) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 18) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 19) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 20) = (uint64_t) name; }
 
-void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 19) = (uint64_t) used_list_head; }
-void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t) free_list_head; }
-void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 21) = gcs; }
-void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 22) = use; }
+void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 21) = (uint64_t) used_list_head; }
+void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 22) = (uint64_t) free_list_head; }
+void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 23) = gcs; }
+void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 24) = use; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -5280,11 +5288,8 @@ void emit_bootstrapping() {
   // code segment starts at PK_CODE_START
   code_start = PK_CODE_START;
 
-  // TODO: start of data segment must be page-aligned
-  // data_start = round_up(code_start + code_size, p_align);
-
-  // data segment starts right after code segment
-  data_start = code_start + code_size;
+  // start of data segment must be page-aligned for ELF program header
+  data_start = round_up(code_start + code_size, p_align);
 
   // calculate global pointer value
   gp_value = data_start + data_size;
@@ -6382,9 +6387,10 @@ uint64_t validate_elf_header(uint64_t* header) {
     i = i + 1;
   }
 
+  // must match compiler bootstrapping of binary
   code_start = PK_CODE_START;
   code_size  = new_code_size;
-  data_start = code_start + code_size;
+  data_start = round_up(code_start + code_size, p_align);
   data_size  = new_data_size;
 
   return 1;
@@ -9440,7 +9446,9 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   if (parent != MY_CONTEXT) {
     set_code_seg_start(context, load_virtual_memory(get_pt(parent), code_seg_start(vctxt)));
+    set_code_seg_size(context, load_virtual_memory(get_pt(parent), code_seg_size(vctxt)));
     set_data_seg_start(context, load_virtual_memory(get_pt(parent), data_seg_start(vctxt)));
+    set_data_seg_size(context, load_virtual_memory(get_pt(parent), data_seg_size(vctxt)));
     set_heap_seg_start(context, load_virtual_memory(get_pt(parent), heap_seg_start(vctxt)));
 
     // TODO: cache name
@@ -9702,7 +9710,7 @@ void restore_context(uint64_t* context) {
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
   // is address in code segment?
   if (vaddr >= get_code_seg_start(context))
-    if (vaddr < get_data_seg_start(context))
+    if (vaddr < get_code_seg_start(context) + get_code_seg_size(context))
       return 1;
 
   return 0;
@@ -9711,7 +9719,7 @@ uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
   // is address in data segment?
   if (vaddr >= get_data_seg_start(context))
-    if (vaddr < get_heap_seg_start(context))
+    if (vaddr < get_data_seg_start(context) + get_data_seg_size(context))
       return 1;
 
   return 0;
@@ -9884,7 +9892,9 @@ void up_load_binary(uint64_t* context) {
   // setting up memory segments
 
   set_code_seg_start(context, code_start);
+  set_code_seg_size(context, code_size);
   set_data_seg_start(context, data_start);
+  set_data_seg_size(context, data_size);
   set_heap_seg_start(context, data_start + data_size);
   set_program_break(context, get_heap_seg_start(context));
 

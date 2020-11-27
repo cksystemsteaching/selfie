@@ -2093,6 +2093,8 @@ void modeler() {
   check_address_validity(1, access_flow_start_nid, lo_flow_start_nid, up_flow_start_nid);
   check_address_validity(0, access_flow_end_nid, lo_flow_end_nid, up_flow_end_nid);
 
+  // TODO: check segmentation
+
   // TODO: check validity of return addresses in jalr
 
   printf1("; end of BTOR2 %s\n", model_name);
