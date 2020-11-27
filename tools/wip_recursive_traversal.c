@@ -681,8 +681,6 @@ void set_livedead(uint64_t pc, uint64_t* livedead) { *(livedeads + pc/INSTRUCTIO
 void copy_livedead(uint64_t* source, uint64_t* dest) {
   uint64_t i;
 
-  dest = new_livedead();
-
   i = 0;
   while (i < NUMBEROFREGISTERS) {
     if (is_reg_live(source, i)) {
