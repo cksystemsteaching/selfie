@@ -164,7 +164,7 @@ void print_binary(uint64_t n, uint64_t a);
 uint64_t print_format0(char* s, uint64_t i);
 uint64_t print_format1(char* s, uint64_t i, char* a);
 
-int printf(const char *, ...);
+int printf(const char* format, ...);
 int sprintf(char* str, const char* format, ...);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
@@ -393,6 +393,7 @@ uint64_t SYM_ELLIPSIS     = 28; // ...
 uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
+uint64_t SYM_CONST    = 31; // const
 
 uint64_t MACRO_VAR_START = 0;
 uint64_t MACRO_VAR_ARG   = 1;
@@ -433,7 +434,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_CONST + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -468,6 +469,7 @@ void init_scanner () {
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
+  *(SYMBOLS + SYM_CONST)    = (uint64_t) "const";
 
   MACROS = smalloc((MACRO_VAR_END + 1) * SIZEOFUINT64STAR);
 
@@ -3145,6 +3147,9 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
+  else if (identifier_string_match(SYM_CONST))
+    // selfie bootstraps const to uint64_t!
+    return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
 }
@@ -4901,6 +4906,10 @@ uint64_t compile_type() {
 
   if (symbol == SYM_UINT64) {
     get_symbol();
+
+    while (symbol == SYM_UINT64)
+      // we tolerate multiple uint64_t aliases for bootstrapping
+      get_symbol();
 
     while (symbol == SYM_ASTERISK) {
       // we tolerate pointer to pointers for bootstrapping
