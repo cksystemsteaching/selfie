@@ -182,6 +182,21 @@ uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 char* SELFIE_URL = (char*) 0;
 
+uint64_t WORDSIZE       = 8;  // (double) word size in bytes
+uint64_t WORDSIZEINBITS = 64; // 8 * WORDSIZE
+
+uint64_t SINGLEWORDSIZEINBITS = 32;
+
+uint64_t SIZEOFUINT64     = 8; // must be the same as WORDSIZE
+uint64_t SIZEOFUINT64STAR = 8; // must be the same as WORDSIZE
+
+uint64_t* power_of_two_table;
+
+uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
+
+uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
+uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
+
 uint64_t CHAR_EOF          =  -1; // end of file
 uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
 uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
@@ -208,19 +223,6 @@ uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 uint64_t CHAR_DOT          = '.';
-
-uint64_t CPUBITWIDTH    = 64; // double word
-uint64_t WORDSIZEINBITS = 32; // single word
-
-uint64_t SIZEOFUINT64     = 8; // must be the same as REGISTERSIZE
-uint64_t SIZEOFUINT64STAR = 8; // must be the same as REGISTERSIZE
-
-uint64_t* power_of_two_table;
-
-uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
-uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
-
-uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 
@@ -273,14 +275,14 @@ void init_library() {
 
   SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
 
-  // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
-  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFUINT64);
+  // powers of two table with WORDSIZEINBITS entries for 2^0 to 2^(WORDSIZEINBITS - 1)
+  power_of_two_table = smalloc(WORDSIZEINBITS * SIZEOFUINT64);
 
   *power_of_two_table = 1; // 2^0 == 1
 
   i = 1;
 
-  while (i < CPUBITWIDTH) {
+  while (i < WORDSIZEINBITS) {
     // compute powers of two incrementally using this recurrence relation
     *(power_of_two_table + i) = *(power_of_two_table + (i - 1)) * 2;
 
@@ -291,15 +293,15 @@ void init_library() {
   UINT64_MAX = -1;
 
   // compute 64-bit signed integer range using unsigned integer arithmetic
-  INT64_MAX = two_to_the_power_of(CPUBITWIDTH - 1) - 1;
+  INT64_MAX = two_to_the_power_of(WORDSIZEINBITS - 1) - 1;
   INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
-  // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
-  integer_buffer = string_alloc(CPUBITWIDTH);
+  // accommodate at least WORDSIZEINBITS numbers for itoa, no mapping needed
+  integer_buffer = string_alloc(WORDSIZEINBITS);
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
@@ -414,7 +416,7 @@ char* identifier = (char*) 0; // stores scanned identifier as string
 char* integer    = (char*) 0; // stores scanned integer as string
 char* string     = (char*) 0; // stores scanned string
 
-uint64_t literal = 0; // stores numerical value of scanned integer or character
+uint64_t literal = 0; // numerical value of most recently scanned integer or character
 
 uint64_t integer_is_signed = 0; // enforce INT64_MIN limit if '-' was scanned before
 
@@ -640,8 +642,9 @@ void      load_integer(uint64_t value);
 void      load_string(char* string);
 
 uint64_t procedure_call(uint64_t* entry, char* procedure);
-void     procedure_prologue(uint64_t number_of_local_variable_bytes);
-void     procedure_epilogue(uint64_t number_of_parameter_bytes);
+
+void procedure_prologue(uint64_t number_of_local_variable_bytes);
+void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 char* rewrite_wrapped_procedure(char* procedure);
 
@@ -749,8 +752,6 @@ void     write_register(uint64_t reg);
 void update_register_counters();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t REGISTERSIZE = 8; // in bytes, must be twice of INSTRUCTIONSIZE
 
 uint64_t NUMBEROFREGISTERS   = 32;
 uint64_t NUMBEROFTEMPORARIES = 7;
@@ -1135,9 +1136,11 @@ uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
 uint64_t PAGESIZE = 4096; // 4KB virtual pages
 
-uint64_t NUMBER_OF_LEAF_PTES = 512; // number of leaf page table entries == PAGESIZE / REGISTERSIZE
+uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE / PAGESIZE
 
-uint64_t PAGE_TABLE_TREE = 1; // two-level page table is default
+uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / SIZEOFUINT64STAR
+
+uint64_t PAGETABLETREE = 1; // two-level page table is default
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1180,7 +1183,7 @@ uint64_t is_gc_library(uint64_t* context);
 // |  0 | next    | pointer to next entry
 // |  1 | memory  | pointer to allocated memory
 // |  2 | size    | size of allocated memory (in bytes!)
-// |  3 | markbit | markbit indicating reachability of pointer
+// |  3 | markbit | markbit indicating reachability of allocated memory
 // +----+---------+
 
 uint64_t* allocate_metadata(uint64_t* context);
@@ -1462,7 +1465,7 @@ void print_profile(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t INSTRUCTIONSIZE = 4; // in bytes, must be half of REGISTERSIZE
+uint64_t INSTRUCTIONSIZE = 4; // in bytes
 
 // RISC-U instructions
 
@@ -1648,8 +1651,8 @@ void reset_source_profile() {
 }
 
 void reset_register_access_counters() {
-  reads_per_register  = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  writes_per_register = zmalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reads_per_register  = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+  writes_per_register = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
 
   // stack and frame pointer registers are initialized by boot loader
   *(writes_per_register + REG_SP) = 1;
@@ -2028,7 +2031,7 @@ void turn_on_gc_library(uint64_t period, char* name) {
 // -----------------------------------------------------------------
 
 uint64_t two_to_the_power_of(uint64_t p) {
-  // assert: 0 <= p < CPUBITWIDTH
+  // assert: 0 <= p < WORDSIZEINBITS
   return *(power_of_two_table + p);
 }
 
@@ -2051,32 +2054,32 @@ uint64_t log_ten(uint64_t n) {
 }
 
 uint64_t left_shift(uint64_t n, uint64_t b) {
-  // assert: 0 <= b < CPUBITWIDTH
+  // assert: 0 <= b < WORDSIZEINBITS
   return n * two_to_the_power_of(b);
 }
 
 uint64_t right_shift(uint64_t n, uint64_t b) {
-  // assert: 0 <= b < CPUBITWIDTH
+  // assert: 0 <= b < WORDSIZEINBITS
   return n / two_to_the_power_of(b);
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 < b <= i + b < CPUBITWIDTH
+  // assert: 0 < b <= i + b < WORDSIZEINBITS
   if (i == 0)
     return n % two_to_the_power_of(b);
   else
     // shift to-be-loaded bits all the way to the left
     // to reset all bits to the left of them, then
     // shift to-be-loaded bits all the way to the right and return
-    return right_shift(left_shift(n, CPUBITWIDTH - (i + b)), CPUBITWIDTH - b);
+    return right_shift(left_shift(n, WORDSIZEINBITS - (i + b)), WORDSIZEINBITS - b);
 }
 
 uint64_t get_low_word(uint64_t n) {
-  return get_bits(n, 0, WORDSIZEINBITS);
+  return get_bits(n, 0, SINGLEWORDSIZEINBITS);
 }
 
 uint64_t get_high_word(uint64_t n) {
-  return get_bits(n, WORDSIZEINBITS, WORDSIZEINBITS);
+  return get_bits(n, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
 uint64_t absolute(uint64_t n) {
@@ -2125,7 +2128,7 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
 }
 
 uint64_t is_signed_integer(uint64_t n, uint64_t b) {
-  // assert: 0 < b <= CPUBITWIDTH
+  // assert: 0 < b <= WORDSIZEINBITS
   if (n < two_to_the_power_of(b - 1))
     // assert: 0 <= n < 2^(b - 1)
     return 1;
@@ -2138,7 +2141,7 @@ uint64_t is_signed_integer(uint64_t n, uint64_t b) {
 
 uint64_t sign_extend(uint64_t n, uint64_t b) {
   // assert: 0 <= n <= 2^b
-  // assert: 0 < b < CPUBITWIDTH
+  // assert: 0 < b < WORDSIZEINBITS
   if (n < two_to_the_power_of(b - 1))
     return n;
   else
@@ -2147,7 +2150,7 @@ uint64_t sign_extend(uint64_t n, uint64_t b) {
 
 uint64_t sign_shrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
-  // assert: 0 < b < CPUBITWIDTH
+  // assert: 0 < b < WORDSIZEINBITS
   return get_bits(n, 0, b);
 }
 
@@ -2801,7 +2804,7 @@ uint64_t round_up(uint64_t n, uint64_t m) {
 void zero_memory(uint64_t* memory, uint64_t size) {
   uint64_t i;
 
-  size = round_up(size, REGISTERSIZE) / REGISTERSIZE;
+  size = round_up(size, SIZEOFUINT64) / SIZEOFUINT64;
 
   i = 0;
 
@@ -2863,7 +2866,7 @@ uint64_t* zalloc(uint64_t size) {
   // called zalloc to avoid redeclaring calloc
   uint64_t* memory;
 
-  size = round_up(size, REGISTERSIZE);
+  size = round_up(size, SIZEOFUINT64);
 
   memory = smalloc(size);
 
@@ -3781,7 +3784,7 @@ void tfree(uint64_t number_of_temporaries) {
 void save_temporaries() {
   while (allocated_temporaries > 0) {
     // push temporary onto stack
-    emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+    emit_addi(REG_SP, REG_SP, -WORDSIZE);
     emit_sd(REG_SP, 0, current_temporary());
 
     tfree(1);
@@ -3794,7 +3797,7 @@ void restore_temporaries(uint64_t number_of_temporaries) {
 
     // restore temporary from stack
     emit_ld(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+    emit_addi(REG_SP, REG_SP, WORDSIZE);
   }
 }
 
@@ -3951,7 +3954,7 @@ void load_integer(uint64_t value) {
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
-      allocated_memory = allocated_memory + REGISTERSIZE;
+      allocated_memory = allocated_memory + WORDSIZE;
 
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, 0, value, -allocated_memory);
     }
@@ -3969,7 +3972,7 @@ void load_string(char* string) {
 
   length = string_length(string) + 1;
 
-  allocated_memory = allocated_memory + round_up(length, REGISTERSIZE);
+  allocated_memory = allocated_memory + round_up(length, WORDSIZE);
 
   create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, 0, -allocated_memory);
 
@@ -4017,13 +4020,13 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   // allocate memory for return address
-  emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, -WORDSIZE);
 
   // save return address
   emit_sd(REG_SP, 0, REG_RA);
 
   // allocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, -WORDSIZE);
 
   // save caller's frame pointer
   emit_sd(REG_SP, 0, REG_S0);
@@ -4053,13 +4056,13 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_ld(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // restore return address
   emit_ld(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE + number_of_parameter_bytes);
+  emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
 
   // return
   emit_jalr(REG_ZR, REG_RA, 0);
@@ -4111,43 +4114,43 @@ uint64_t compile_call(char* procedure) {
   // assert: allocated_temporaries == 0
 
   if (is_expression()) {
-  compile_expression();
+    compile_expression();
   
     // TODO: check if types/number of parameters is correct
   
-  //allocate memory on stack for parameters; we do not know how many, fixup later
+    // allocate memory on stack for parameters; we do not know how many, fixup later
     allocate_memory_on_stack = binary_length;
-  emit_addi(REG_SP, REG_SP, 0);
+    emit_addi(REG_SP, REG_SP, 0);
   
-  //push first parameter onto the stack
-  emit_sd(REG_SP, number_of_parameters * REGISTERSIZE, current_temporary());
+    // push first parameter onto the stack
+    emit_sd(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
   
-  tfree(1);
+    tfree(1);
   
-  number_of_parameters = number_of_parameters + 1;
-  
-  while (symbol == SYM_COMMA) {
+    number_of_parameters = number_of_parameters + 1;
+
+    while (symbol == SYM_COMMA) {
       get_symbol();
 
       compile_expression();
 
       // push more parameters onto stack
-      emit_sd(REG_SP, number_of_parameters * REGISTERSIZE, current_temporary());
-    
-    tfree(1);
-    
-    number_of_parameters = number_of_parameters + 1;
+      emit_sd(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+  
+      tfree(1);
+  
+      number_of_parameters = number_of_parameters + 1;
     }
   
-  //now we know the number of parameters
-  fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * REGISTERSIZE));
+    // now we know the number of parameters
+    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * WORDSIZE));
 
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
 
       type = procedure_call(entry, procedure);
     } else {
-      syntax_error_symbol(SYM_RPARENTHESIS);
+     syntax_error_symbol(SYM_RPARENTHESIS);
 
       type = UINT64_T;
     }
@@ -4167,10 +4170,10 @@ uint64_t compile_call(char* procedure) {
 
   number_of_calls = number_of_calls + 1;
   
-  //deallocate variadic parameters
+  // deallocate variadic parameters
 	if(entry != (uint64_t*) 0)
 		if(get_variadic(entry))
-			emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * REGISTERSIZE));
+			emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
 
   // assert: allocated_temporaries == n
 
@@ -5057,8 +5060,10 @@ void compile_procedure(char* procedure, uint64_t type) {
       parameters = number_of_parameters;
 
       while (parameters > 0) {
-        // 8 bytes offset to skip frame pointer and link
-        set_address(entry, (parameters - 1) * REGISTERSIZE + 2 * REGISTERSIZE);
+        // 2 * WORDIZE offset to skip frame pointer and link
+        // additional (parameters - 1) * WORDSIZE offset due to the
+        // order of the parameters
+        set_address(entry, (parameters - 1) * WORDSIZE + 2 * WORDSIZE);
 
         parameters = parameters - 1;
 
@@ -5136,7 +5141,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     number_of_local_variable_bytes = 0;
 
     while (symbol == SYM_UINT64) {
-      number_of_local_variable_bytes = number_of_local_variable_bytes + REGISTERSIZE;
+      number_of_local_variable_bytes = number_of_local_variable_bytes + WORDSIZE;
 
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
@@ -5170,8 +5175,8 @@ void compile_procedure(char* procedure, uint64_t type) {
     fixlink_relative(return_branches, binary_length);
 
     return_branches = 0;
-  
-    procedure_epilogue(number_of_parameters * REGISTERSIZE);
+
+    procedure_epilogue(number_of_parameters * WORDSIZE);
 
   } else
     syntax_error_unexpected();
@@ -5248,7 +5253,7 @@ void compile_cstar() {
           entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
-            allocated_memory = allocated_memory + REGISTERSIZE;
+            allocated_memory = allocated_memory + WORDSIZE;
 
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, 0, initial_value, -allocated_memory);
           } else {
@@ -5285,7 +5290,7 @@ void builtin_var_start() {
       get_symbol();
 
       // skip the return address, frame pointer and fixed parameters
-      s0_offset = (get_value(current_function) + 2) * REGISTERSIZE;
+      s0_offset = (get_value(current_function) + 2) * WORDSIZE;
 
       load_integer(s0_offset);
 
@@ -5321,7 +5326,7 @@ void builtin_var_arg() {
 
       emit_ld(REG_A0, current_temporary(), 0);
 
-      emit_addi(current_temporary(), current_temporary(), REGISTERSIZE);
+      emit_addi(current_temporary(), current_temporary(), WORDSIZE);
 
       emit_sd(REG_S0, var_list_address, current_temporary());
 
@@ -5400,8 +5405,8 @@ void emit_bootstrapping() {
   // calculate the global pointer value
   gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
-  // make sure gp is double-word-aligned
-  padding = gp % REGISTERSIZE;
+  // make sure gp is machine-word-aligned
+  padding = gp % WORDSIZE;
   gp      = gp + padding;
 
   if (padding != 0)
@@ -5468,17 +5473,17 @@ void emit_bootstrapping() {
 
     // first obtain pointer to argv
     //
-    //            sp + REGISTERSIZE
+    //            sp + 2 *WORDSIZE
     //                    |
     //                    V
     // | argc |      | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, (2 * REGISTERSIZE));
+    emit_addi(current_temporary(), REG_SP, 2 * WORDSIZE);
 
     // then put argv pointer onto the stack
     //             ________
     //            |        V
     // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
-  emit_sd(REG_SP, REGISTERSIZE, current_temporary());
+    emit_sd(REG_SP, WORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -5492,7 +5497,7 @@ void emit_bootstrapping() {
   }
 
   // we exit with exit code in return register pushed onto the stack
-  emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, -WORDSIZE);
   emit_sd(REG_SP, 0, REG_A0);
 
   // discount NOPs in profile that were generated for program entry
@@ -5533,7 +5538,7 @@ void selfie_compile() {
 
   // allocate zeroed memory for storing source code line numbers
   code_line_number = zmalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zmalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_LENGTH / WORDSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -6119,14 +6124,14 @@ void print_instruction_counters() {
 }
 
 uint64_t load_instruction(uint64_t baddr) {
-  if (baddr % REGISTERSIZE == 0)
-    return get_low_word(*(binary + baddr / REGISTERSIZE));
+  if (baddr % WORDSIZE == 0)
+    return get_low_word(*(binary + baddr / WORDSIZE));
   else
-    return get_high_word(*(binary + baddr / REGISTERSIZE));
+    return get_high_word(*(binary + baddr / WORDSIZE));
 }
 
 void store_instruction(uint64_t baddr, uint64_t instruction) {
-  uint64_t doubleword;
+  uint64_t word;
 
   if (baddr >= MAX_CODE_LENGTH) {
     syntax_error_message("maximum code length exceeded");
@@ -6134,20 +6139,20 @@ void store_instruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  doubleword = *(binary + baddr / REGISTERSIZE);
+  word = *(binary + baddr / WORDSIZE);
 
-  if (baddr % REGISTERSIZE == 0)
+  if (baddr % WORDSIZE == 0)
     // replace low word
-    doubleword = left_shift(get_high_word(doubleword), WORDSIZEINBITS) + instruction;
+    word = left_shift(get_high_word(word), SINGLEWORDSIZEINBITS) + instruction;
   else
     // replace high word
-    doubleword = left_shift(instruction, WORDSIZEINBITS) + get_low_word(doubleword);
+    word = left_shift(instruction, SINGLEWORDSIZEINBITS) + get_low_word(word);
 
-  *(binary + baddr / REGISTERSIZE) = doubleword;
+  *(binary + baddr / WORDSIZE) = word;
 }
 
 uint64_t load_data(uint64_t baddr) {
-  return *(binary + baddr / REGISTERSIZE);
+  return *(binary + baddr / WORDSIZE);
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
@@ -6157,7 +6162,7 @@ void store_data(uint64_t baddr, uint64_t data) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / REGISTERSIZE) = data;
+  *(binary + baddr / WORDSIZE) = data;
 }
 
 void emit_instruction(uint64_t instruction) {
@@ -6319,7 +6324,7 @@ void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number)
   store_data(binary_length + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (allocated_memory + offset) / REGISTERSIZE) = source_line_number;
+    *(data_line_number + (allocated_memory + offset) / WORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -6331,7 +6336,7 @@ void emit_string_data(uint64_t* entry) {
 
   i = 0;
 
-  l = round_up(string_length(s) + 1, REGISTERSIZE);
+  l = round_up(string_length(s) + 1, WORDSIZE);
 
   while (i < l) {
     // CAUTION: at boot levels higher than 0, s is only accessible
@@ -6340,7 +6345,7 @@ void emit_string_data(uint64_t* entry) {
 
     s = (char*) ((uint64_t*) s + 1);
 
-    i = i + REGISTERSIZE;
+    i = i + WORDSIZE;
   }
 }
 
@@ -6520,9 +6525,9 @@ void selfie_output(char* filename) {
   }
 
   printf("%s: %llu bytes with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
-    (ELF_HEADER_LEN + binary_length),
-    (code_length / INSTRUCTIONSIZE),
-    (binary_length - code_length),
+    ELF_HEADER_LEN + binary_length,
+    code_length / INSTRUCTIONSIZE,
+    binary_length - code_length,
     binary_name);
 }
 
@@ -6539,14 +6544,14 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / REGISTERSIZE;
+    m = m + PAGESIZE / SIZEOFUINT64;
 
     // touch every following page
     n = *m;
   }
 
   if (length > 0) {
-    m = m + (length - 1) / REGISTERSIZE;
+    m = m + (length - 1) / SIZEOFUINT64;
 
     // touch at end
     n = *m;
@@ -6630,7 +6635,7 @@ void emit_exit() {
   emit_ld(REG_A0, REG_SP, 0);
 
   // remove the exit code from the stack
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // load the correct syscall number and invoke syscall
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
@@ -6663,14 +6668,14 @@ void implement_exit(uint64_t* context) {
 void emit_read() {
   create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A0, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_ld(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A2, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
 
@@ -6787,14 +6792,14 @@ void implement_read(uint64_t* context) {
 void emit_write() {
   create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A0, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A0, REG_SP, 0); // fd
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_ld(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A2, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A2, REG_SP, 0); // size
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
 
@@ -6910,14 +6915,14 @@ void implement_write(uint64_t* context) {
 void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
 
-  emit_ld(REG_A1, REG_SP, 0); // mode
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A1, REG_SP, 0); // filename
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_ld(REG_A2, REG_SP, 0); // flags
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A3, REG_SP, 0); // filename
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A3, REG_SP, 0); // mode
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
   emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD);
@@ -7048,7 +7053,7 @@ void emit_malloc() {
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
-  allocated_memory = allocated_memory + REGISTERSIZE;
+  allocated_memory = allocated_memory + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed double word to obtain unique hash
@@ -7063,7 +7068,7 @@ void emit_malloc() {
   talloc();
 
   emit_ld(current_temporary(), REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // round up size to double-word alignment
   emit_round_up(current_temporary(), SIZEOFUINT64);
@@ -7199,11 +7204,11 @@ uint64_t is_boot_level_zero() {
 void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
-  emit_ld(REG_A0, REG_SP, 0); // number of instructions to execute
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // context to which we switch
-  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
 
@@ -7315,20 +7320,20 @@ uint64_t get_root_PDE_offset(uint64_t page) {
   // in a two-level page table with 4KB (2^12B) pages as leaf nodes and
   // 64-bit pointers (2^3B), each leaf node accommodates 2^(12-3) PTEs;
   // thus bits 9 through 19 encode the root PDE (page directory entry) offset
-  return page / NUMBER_OF_LEAF_PTES; // right shift by 9 bits
+  return page / NUMBEROFLEAFPTES; // right shift by 9 bits
 }
 
 uint64_t get_leaf_PTE_offset(uint64_t page) {
   // bits 0 through 8 encode the leaf PTE (page table entry) offset
-  return page - get_root_PDE_offset(page) * NUMBER_OF_LEAF_PTES; // extract the 9 LSBs
+  return page - get_root_PDE_offset(page) * NUMBEROFLEAFPTES; // extract the 9 LSBs
 }
 
 uint64_t* get_PTE_address_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pt;
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+  // assert: 0 <= page < NUMBEROFPAGES
 
-  if (PAGE_TABLE_TREE == 0)
+  if (PAGETABLETREE == 0)
     // just pointer arithmetic, no access!
     return table + page;
   else {
@@ -7362,9 +7367,9 @@ void set_PTE_for_page(uint64_t* table, uint64_t page, uint64_t frame) {
   uint64_t  root_PDE_offset;
   uint64_t* leaf_pt;
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+  // assert: 0 <= page < NUMBEROFPAGES
 
-  if (PAGE_TABLE_TREE == 0)
+  if (PAGETABLETREE == 0)
     *(table + page) = frame;
   else {
     root_PDE_offset = get_root_PDE_offset(page);
@@ -7389,9 +7394,9 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
 }
 
 uint64_t is_valid_virtual_address(uint64_t vaddr) {
-  if (vaddr < VIRTUALMEMORYSIZE)
-    // memory must be word-addressed for lack of byte-sized data type
-    if (vaddr % REGISTERSIZE == 0)
+  if (vaddr <= VIRTUALMEMORYSIZE - WORDSIZE)
+    // memory access must be machine-word-aligned
+    if (vaddr % WORDSIZE == 0)
       return 1;
 
   return 0;
@@ -7919,7 +7924,7 @@ void mark_object(uint64_t* context, uint64_t address) {
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap
 
-  while (segment_start < segment_end) {
+  while (segment_start <= segment_end - WORDSIZE) {
     // assert: is_valid_virtual_address(segment_start) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
     mark_object(context, segment_start);
@@ -8720,7 +8725,7 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf("(~%llu)", *(data_line_number + (pc - code_length) / REGISTERSIZE));
+    printf("(~%llu)", *(data_line_number + (pc - code_length) / SIZEOFUINT64));
 }
 
 void print_data_context(uint64_t data) {
@@ -8824,7 +8829,7 @@ void selfie_disassemble(uint64_t verbose) {
     print_data(data);
     println();
 
-    pc = pc + REGISTERSIZE;
+    pc = pc + WORDSIZE;
   }
 
   disassemble_verbose = 0;
@@ -8963,7 +8968,7 @@ void fetch() {
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
   if (is_valid_code_address(current_context, pc))
-    if (pc % REGISTERSIZE == 0)
+    if (pc % WORDSIZE == 0)
       ir = get_low_word(load_virtual_memory(pt, pc));
     else
       ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
@@ -9456,28 +9461,28 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  set_regs(context, zmalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  if (PAGE_TABLE_TREE == 0)
+  if (PAGETABLETREE == 0)
     // for a 4GB-virtual-memory page table with
     // 4KB pages and 64-bit pointers, allocate
-    // 8MB = 2^23 (2^32 / 2^12 * 2^3) bytes to
+    // 8MB = 2^23 ((2^32 / 2^12) * 2^3) bytes to
     // accommodate 2^20 (2^32 / 2^12) PTEs
-    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+    set_pt(context, zmalloc(NUMBEROFPAGES * SIZEOFUINT64STAR));
   else
     // for the root node (page directory), allocate
     // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
-    // accommodate 2^11 (2^32 / 2^12 / 2^9) root PDEs
+    // accommodate 2^11 ((2^32 / 2^12) / 2^9) root PDEs
     // pointing to 4KB leaf nodes (page tables) that
     // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
-    set_pt(context, zmalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+    set_pt(context, zmalloc(NUMBEROFPAGES / NUMBEROFLEAFPTES * SIZEOFUINT64STAR));
 
   // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
+  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - WORDSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
@@ -9642,7 +9647,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
       set_PTE_for_page(table, page, frame);
 
       // exploit spatial locality in page table caching
-      if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
+      if (page <= get_page_of_virtual_address(get_program_break(context) - WORDSIZE)) {
         set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
         set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
       } else {
@@ -9765,7 +9770,7 @@ uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
   // is address in the stack?
   if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr < VIRTUALMEMORYSIZE)
+    if (vaddr <= VIRTUALMEMORYSIZE - WORDSIZE)
       // assert: is_valid_virtual_address(vaddr) == 1
       return 1;
 
@@ -9910,7 +9915,7 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
 void up_load_binary(uint64_t* context) {
   uint64_t baddr;
 
-  // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
+  // assert: entry_point is multiple of PAGESIZE and WORDSIZE
 
   set_pc(context, entry_point);
 
@@ -9931,7 +9936,7 @@ void up_load_binary(uint64_t* context) {
   while (baddr < binary_length) {
     map_and_store(context, entry_point + baddr, load_data(baddr));
 
-    baddr = baddr + REGISTERSIZE;
+    baddr = baddr + WORDSIZE;
   }
 
   set_name(context, binary_name);
@@ -9941,7 +9946,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   uint64_t bytes;
   uint64_t i;
 
-  bytes = round_up(string_length(s) + 1, REGISTERSIZE);
+  bytes = round_up(string_length(s) + 1, WORDSIZE);
 
   // allocate memory for storing string
   SP = SP - bytes;
@@ -9955,7 +9960,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
 
     s = (char*) ((uint64_t*) s + 1);
 
-    i = i + REGISTERSIZE;
+    i = i + WORDSIZE;
   }
 
   return SP;
@@ -9992,13 +9997,13 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
 
   // allocate memory for termination of env table
-  SP = SP - REGISTERSIZE;
+  SP = SP - WORDSIZE;
 
   // push null value to terminate env table
   map_and_store(context, SP, 0);
   
   // allocate memory for termination of argv table
-  SP = SP - REGISTERSIZE;
+  SP = SP - WORDSIZE;
 
   // push null value to terminate argv table
   map_and_store(context, SP, 0);
@@ -10008,7 +10013,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push argv table onto the stack
   while (i > 0) {
     // allocate memory for argv table entry
-    SP = SP - REGISTERSIZE;
+    SP = SP - WORDSIZE;
 
     i = i - 1;
 
@@ -10017,10 +10022,10 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
   
   // allocate memory for &argv
-  SP = SP - REGISTERSIZE;
+  SP = SP - WORDSIZE;
 
   // allocate memory for argc
-  SP = SP - REGISTERSIZE;
+  SP = SP - WORDSIZE;
 
   // push argc
   map_and_store(context, SP, argc);

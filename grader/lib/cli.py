@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from io import StringIO
 from pathlib import Path
-from subprocess import run
+from subprocess import run, DEVNULL
 from typing import Callable, Optional, List, Tuple, Dict, Set
 
 from lib.functional import flatmap
@@ -17,20 +17,15 @@ from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, pri
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 GRADER_SYNOPSIS = '''
-The Selfie autograder
+The Selfie Autograder is a tool that enables students and teachers evaluating
+assignments that shall extend or adapt Selfie with concepts learned in lectures
+on selfie. It also enables teachers bulk grading students' Git repositories.
 
-The autograder is a tool that gives students and teachers the means
-for evaluating assignments that shall extend or adapt Selfie with
-concepts learned in the lecture.
-It also enables teachers to fetch and grade multiple Git repositories
-in one go.
+The autograder is part of the Selfie Project of the Computational Systems Group
+at the Department of Computer Sciences of the University of Salzburg in Austria,
+http://selfie.cs.uni-salzburg.at
 
-It is part of the Selfie project of the Computational Systems Group
-at the Department of Computer Sciences of the University of Salzburg
-in Austria (http://selfie.cs.uni-salzburg.at).
-
-For more detailed information about its usage, please consult the
-enclosed README.
+For more detailed information about its usage, please consult the README.
 '''
 
 bulk_grade_mode = False
@@ -55,7 +50,7 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
 
     print_assignment_of_lecture('General', stream)
     print_assignment_of_lecture('Compiler', stream)
-    print_assignment_of_lecture('OS', stream)
+    print_assignment_of_lecture('Systems', stream)
 
     return stream.getvalue()
 
@@ -74,7 +69,7 @@ def parse_assignment(args: str, assignments: Set[Assignment]) -> Optional[Assign
 
 def validate_options_for(assignment: Optional[Assignment]):
     if not bulk_grade_mode and is_in_quiet_mode() and assignment is None:
-        error('please specify a assignment')
+        error('please specify an assignment')
 
 
 def execute_with_output(check: Check) -> CheckResult:
@@ -177,24 +172,26 @@ def do_bulk_grading(assignment: Optional[Assignment], base_test: Assignment):
             clone_dir = os.path.join(bulk_grade_directory, repo_id)
 
             if not os.path.exists(clone_dir):
-                status = os.system(
-                    'git clone -q git@github.com:{} {} >/dev/null 2>&1'.format(repo_id, repo_id))
+                status = run(
+                        ['git', 'clone', '-q', 'git@github.com:{}'.format(repo_id), repo_id],
+                        stdout=DEVNULL, stderr=DEVNULL).returncode
 
                 if status != 0:
-                    print_message('error when cloning ' + repo_id, loud=True)
+                    print_message('error while cloning ' + repo_id, loud=True)
                     continue
 
             os.chdir(clone_dir)
 
             # remove all changes in local repository
-            os.system('git reset --hard -q >/dev/null 2>&1')
+            run(['git', 'reset', '--hard', '-q'], stdout=DEVNULL, stderr=DEVNULL)
 
             # fetch updates from github repository
-            os.system('git fetch -q >/dev/null 2>&1')
+            run(['git', 'fetch', '-q'], stdout=DEVNULL, stderr=DEVNULL)
 
             # change the local repository state using the commit ID
-            status = os.system(
-                'git checkout -q {} >/dev/null 2>&1'.format(info['commit']))
+            status = run(
+                    ['git', 'checkout', '-q', info['commit']],
+                    stdout=DEVNULL, stderr=DEVNULL).returncode
 
             if status == 0:
                 if assignment is None:
@@ -235,15 +232,15 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
             description=GRADER_SYNOPSIS, epilog=list_assignments_str(assignments))
 
     parser.add_argument('-q', action='store_true', default=False,
-            help='only the grade is printed', dest='quiet')
+            help='print grade only', dest='quiet')
     parser.add_argument('-b', default=None, metavar="<file>",
-            help='bulk grade assignments defined by a file with github commit links',
+            help='bulk grade assignments given as github commit links in file',
             dest='bulk_file')
     parser.add_argument('-d', default=None, metavar="<directory>",
-            help='path where all bulk graded repositories should be saved',
+            help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
     parser.add_argument('assignment', metavar='assignment', nargs='?',
-            type=curried_parse_assignment, help='The assignment to test')
+            type=curried_parse_assignment, help='grade this assignment')
 
     try:
         if len(argv) <= 1:

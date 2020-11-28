@@ -22,7 +22,7 @@ EXITCODE_ERROR_RANGE = range(
 
 
 INSTRUCTIONSIZE = 4  # in bytes
-REGISTERSIZE = 8  # in bytes
+WORDSIZE = 8  # in bytes
 
 OP_OP = 51
 OP_AMO = 47
@@ -55,9 +55,9 @@ def read_instruction(file):
 
 
 def read_data(file):
-    b = file.read(REGISTERSIZE)
+    b = file.read(WORDSIZE)
 
-    if len(b) != REGISTERSIZE:
+    if len(b) != WORDSIZE:
         return 0
 
     return struct.unpack('<Q', b)[0]

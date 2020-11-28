@@ -1,6 +1,6 @@
 # The Selfie Autograder
 
-[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features compiler and systems [assignments](assignments). The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
+[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features [compiler](../assignments/compiler-assignments.md) and [systems](../assignments/systems-assignments.md) assignments, located in the [assignments](assignments) subdirectory. The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
 
 In order to use the autograder [install](../README.md) selfie first.
 
@@ -53,7 +53,7 @@ Then, on the web:
 
 And then, in a terminal where your selfie installation is:
 
-1. Change directory to the root directory of your selfie installation.
+1. Change directory to the root directory of your selfie installation (from https://github.com/cksystemsteaching/selfie).
 2. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
 3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin https://github.com/<yourusername>/myselfie.git`
 4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
@@ -87,7 +87,7 @@ Create a development branch in your selfie installation and work on your solutio
 3. Create the development branch off the master branch and check it out: `git checkout -b <developmentbranch>`
 4. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
 5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](https://github.com/cksystemsteaching/selfie/actions) on the next push.
-6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin`
+6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin <developmentbranch>`
 7. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
 8. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
 9. Merge the updates into your `<developmentbranch>`: `git merge master`
@@ -99,8 +99,10 @@ In a terminal where your selfie installation is:
 1. Change directory to the root directory of your selfie installation.
 2. Make sure the master branch of your selfie installation is checked out: `git checkout master`
 3. Merge the `<developmentbranch>` with your solution into the master branch of your selfie installation: `git merge --squash <developmentbranch>`
+4. Commit the merged changes: `git commit`
+5. Push your updated `master` branch to your `myselfie` repository on GitHub: `git push origin`
 
-Note that the option `--squash` is important. It makes sure that all commits on the `<developmentbranch>` are squashed into one commit which improves readability of your solution.
+Note that the option `--squash` in step 3 is important. It makes sure that all commits on the `<developmentbranch>` are squashed into one commit which improves readability of your solution.
 
 Finally, on the web:
 
