@@ -15,6 +15,8 @@ uint64_t main() {
   a = 40;
   x = malloc(8);
 
+  *x = 0; // touch memory
+
   read(0, x, 1);
 
   if (*x <= 48)
