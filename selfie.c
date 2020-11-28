@@ -167,7 +167,7 @@ uint64_t print_format1(char* s, uint64_t i, char* a);
 int printf(const char *, ...);
 int sprintf(char* str, const char* format, ...);
 
-uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, va_list args);
+uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 uint64_t internal_wrapped_printf(char* s, ...);
 uint64_t internal_wrapped_sprintf(char *str, char *format, ...);
 
@@ -393,11 +393,10 @@ uint64_t SYM_ELLIPSIS     = 28; // ...
 uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
-uint64_t SYM_VA_LIST  = 31; // va_list
 
-uint64_t MACRO_VA_START = 0;
-uint64_t MACRO_VA_ARG   = 1;
-uint64_t MACRO_VA_END   = 2;
+uint64_t MACRO_VAR_START = 0;
+uint64_t MACRO_VAR_ARG   = 1;
+uint64_t MACRO_VAR_END   = 2;
 
 uint64_t* SYMBOLS; // strings representing symbols
 uint64_t* MACROS;  // strings representing macro names
@@ -434,7 +433,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_VA_LIST + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -469,13 +468,12 @@ void init_scanner () {
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
-  *(SYMBOLS + SYM_VA_LIST)  = (uint64_t) "va_list";
 
-  MACROS = smalloc((MACRO_VA_END + 1) * SIZEOFUINT64STAR);
+  MACROS = smalloc((MACRO_VAR_END + 1) * SIZEOFUINT64STAR);
 
-  *(MACROS + MACRO_VA_START) = (uint64_t) "va_start";
-  *(MACROS + MACRO_VA_ARG)   = (uint64_t) "va_arg";
-  *(MACROS + MACRO_VA_END)   = (uint64_t) "va_end";
+  *(MACROS + MACRO_VAR_START) = (uint64_t) "var_start";
+  *(MACROS + MACRO_VAR_ARG)   = (uint64_t) "var_arg";
+  *(MACROS + MACRO_VAR_END)   = (uint64_t) "var_end";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -662,9 +660,20 @@ uint64_t compile_initialization(uint64_t type);
 void     compile_procedure(char* procedure, uint64_t type);
 void     compile_cstar();
 
-void     builtin_va_start();
-uint64_t builtin_va_arg();
-void     builtin_va_end();
+// these macros are seen as functions by the bootstrapping compiler
+void  var_start(uint64_t* args);
+char* var_arg(uint64_t* args);
+void  var_end(uint64_t* args);
+
+// these macros need a dummy definition for the bootstrapping compiler
+// additionally, all arguments are used to avoid compiler warnings
+void  var_start(uint64_t* args) { *args = *args; }
+char* var_arg(uint64_t* args) { *args = *args; return ""; }
+void  var_end(uint64_t* args) { *args = *args; }
+
+void builtin_var_start();
+void builtin_var_arg();
+void builtin_var_end();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2715,17 +2724,19 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 }
 
 uint64_t internal_wrapped_printf(char* s, ...) {
-  va_list args;
-  uint64_t written_bytes;
+  uint64_t* args;
+  uint64_t  written_bytes;
 
-  va_start(args, s);
+  args = (uint64_t*) 0;
+
+  var_start(args);
   written_bytes = vdsprintf(1, (char*) 0, s, args);
-  va_end(args);
+  var_end(args);
 
   return written_bytes;
 }
 
-uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, va_list args) {
+uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   uint64_t offset;
   uint64_t placeholder_positions;
   uint64_t i;
@@ -2752,7 +2763,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, va_list args) {
   }
 
   while (placeholder_positions > 0) {
-    offset = print_format1(s, offset, va_arg(args, char*));
+    offset = print_format1(s, offset, var_arg(args));
 
     placeholder_positions = placeholder_positions - 1;
   }
@@ -2766,12 +2777,14 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, va_list args) {
 }
 
 uint64_t internal_wrapped_sprintf(char* buffer, char* s, ...) {
-  va_list args;
+  uint64_t* args;
   uint64_t written_bytes;
 
-  va_start(args, s);
+  args = (uint64_t*) 0;
+
+  var_start(args);
   written_bytes = vdsprintf(0, buffer, s, args);
-  va_end(args);
+  var_end(args);
 
   return written_bytes;
 }
@@ -3131,9 +3144,6 @@ uint64_t identifier_or_keyword() {
     return SYM_UINT64;
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
-    return SYM_UINT64;
-  else if (identifier_string_match(SYM_VA_LIST))
-    // selfie bootstraps va_list to uint64_t!
     return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
@@ -4063,13 +4073,14 @@ uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
 }
 
 uint64_t compile_call_or_macro(char* procedure_or_macro) {
-  if (macro_string_match(procedure_or_macro, MACRO_VA_START)) {
-    builtin_va_start();
+  if (macro_string_match(procedure_or_macro, MACRO_VAR_START)) {
+    builtin_var_start();
     return VOID_T;
-  } else if (macro_string_match(procedure_or_macro, MACRO_VA_ARG)) {
-    return builtin_va_arg();
-  } else if (macro_string_match(procedure_or_macro, MACRO_VA_END)) {
-    builtin_va_end();
+  } else if (macro_string_match(procedure_or_macro, MACRO_VAR_ARG)) {
+    builtin_var_arg();
+    return VOID_T;
+  } else if (macro_string_match(procedure_or_macro, MACRO_VAR_END)) {
+    builtin_var_end();
     return VOID_T;
   } else
     return compile_call(procedure_or_macro);
@@ -5247,101 +5258,74 @@ void compile_cstar() {
 // builtins
 //
 
-void builtin_va_start() {
-  uint64_t* va_list_variable;
+void builtin_var_start() {
+  uint64_t* var_list_variable;
   uint64_t s0_offset;
   
-  va_list_variable = (uint64_t*) 0;
+  var_list_variable = (uint64_t*) 0;
   s0_offset = 0;
 
   if (get_variadic(current_function) == 0)
-    syntax_error_message("'va_start' used in function with fixed args");
+    syntax_error_message("'var_start' used in function with fixed args");
 
   if (symbol == SYM_IDENTIFIER) {
-    va_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    var_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
 
     get_symbol();
-    if (symbol == SYM_COMMA) {
+    if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
 
-      if (symbol == SYM_IDENTIFIER) {
-        get_symbol();
+      // skip the return address, frame pointer and fixed parameters
+      s0_offset = (get_value(current_function) + 2) * REGISTERSIZE;
 
-        if (symbol == SYM_RPARENTHESIS) {
-          get_symbol();
+      load_integer(s0_offset);
 
-          // skip the return address, frame pointer and fixed parameters
-          s0_offset = (get_value(current_function) + 2) * REGISTERSIZE;
+      emit_add(current_temporary(), current_temporary(), REG_S0);
 
-          load_integer(s0_offset);
+      emit_sd(REG_S0, get_address(var_list_variable), current_temporary());
 
-          emit_add(current_temporary(), current_temporary(), REG_S0);
-
-          emit_sd(REG_S0, get_address(va_list_variable), current_temporary());
-
-          tfree(1);
-        } else
-          syntax_error_symbol(SYM_RPARENTHESIS);
-      } else
-        syntax_error_symbol(SYM_IDENTIFIER);
-    } else
-      syntax_error_symbol(SYM_COMMA);
+      tfree(1);
+    }
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
-uint64_t builtin_va_arg() {
-  uint64_t* va_list_variable;
-  uint64_t  type;
-  uint64_t  va_list_address;
+void builtin_var_arg() {
+  uint64_t* var_list_variable;
+  uint64_t  var_list_address;
   
-  va_list_variable = (uint64_t*) 0;
-  type = 0;
-  va_list_address = 0;
-
-  if (get_variadic(current_function) == 0)
-    syntax_error_message("'va_arg' used in function with fixed args");
+  var_list_variable = (uint64_t*) 0;
+  var_list_address = 0;
 
   if (symbol == SYM_IDENTIFIER) {
-    va_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    var_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
 
     get_symbol();
-    if (symbol == SYM_COMMA) {
+    if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
 
-      type = compile_type();
+      var_list_address = get_address(var_list_variable);
 
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
+      talloc();
 
-        va_list_address = get_address(va_list_variable);
+      emit_ld(current_temporary(), REG_S0, var_list_address);
 
-        talloc();
+      emit_ld(REG_A0, current_temporary(), 0);
 
-        emit_ld(current_temporary(), REG_S0, va_list_address);
+      emit_addi(current_temporary(), current_temporary(), REGISTERSIZE);
 
-        emit_ld(REG_A0, current_temporary(), 0);
+      emit_sd(REG_S0, var_list_address, current_temporary());
 
-        emit_addi(current_temporary(), current_temporary(), REGISTERSIZE);
-
-        emit_sd(REG_S0, va_list_address, current_temporary());
-
-        tfree(1);
-
-        return type;
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      tfree(1);
     } else
-      syntax_error_symbol(SYM_COMMA);
+      syntax_error_symbol(SYM_RPARENTHESIS);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
-
-  return type;
 }
 
-void builtin_va_end() {
+void builtin_var_end() {
   if (get_variadic(current_function) == 0)
-    syntax_error_message("'va_end' used in function with fixed args");
+    syntax_error_message("'var_end' used in function with fixed args");
 
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
