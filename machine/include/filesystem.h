@@ -16,7 +16,7 @@ typedef struct FILEDESC {
   size_t pos;
 } FILEDESC;
 
-extern const KFILE* files;
+extern const KFILE files[];
 
 const KFILE* find_file(const char* filename);
 
