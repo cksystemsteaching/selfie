@@ -899,8 +899,43 @@ void print_states_and_livedeads() {
   }
 }
 
-// Counter var. Decremented on every found enop.
-uint64_t n = 90;
+
+uint64_t find_next_dead_op(uint64_t from_pc) {
+  uint64_t i;
+
+  i = from_pc + INSTRUCTIONSIZE; // will miss if first instruction is literally a nop, but doesn't matter
+
+  while (i < code_length) {
+    ir = load_instruction(i);
+    decode();
+
+    if (i < code_length - INSTRUCTIONSIZE)
+      if (i > 1000) // skip ecalls etc.
+        if (is != JAL) // don't replace jumps
+          if (is != BEQ)
+            if (is != JALR)
+              if (get_livedead(i + INSTRUCTIONSIZE))
+                if (is_reg_live(get_livedead(i + INSTRUCTIONSIZE), rd) == 0)
+                  return i;
+    i = i + INSTRUCTIONSIZE;
+  }
+
+  return (uint64_t) -1;
+}
+
+uint64_t found_dead_ops;
+
+void patch_dead_ops() {
+  uint64_t last_dead_op;
+  last_dead_op = find_next_dead_op(0);
+  found_dead_ops = 0;
+
+  while (last_dead_op != -1) {
+    found_dead_ops = found_dead_ops + 1;
+    insert_nop(last_dead_op);
+    last_dead_op = find_next_dead_op(last_dead_op);
+  }
+}
 
 // Return first pc after from_pc that is an effective nop, or -1
 uint64_t find_next_enop(uint64_t from_pc) {
@@ -919,34 +954,13 @@ uint64_t find_next_enop(uint64_t from_pc) {
 
       if (apply_effects(state) == 1) {
         if (test_states_equal(get_state(i), state)) {
-          // For now, only consider instructions on dead registers
-          //return i;
+          return i;
         } 
       }
 
-      // TODO: Bisect n to find bad instructions?
-      if (n > 0) // remove later
-        if (i < code_length - INSTRUCTIONSIZE)
-          if (i > 1000) // skip ecalls etc.
-            if (is != JAL) // don't replace jumps
-              if (is != BEQ)
-                if (is != JALR)
-                  if (rd == REG_A0) // for now only operate on a0
-                    if (get_livedead(i + INSTRUCTIONSIZE))
-                      if (is_reg_live(get_livedead(i + INSTRUCTIONSIZE), rd) == 0)  {
-                        n = n - 1; // remove later
-                        // this makes it so only the n-th enop is actually replaced with a noop
-                        if (n == 0) { // remove later
-                          printf1("%x\t", (char*) i);
-                          print_instruction();
-                          print("\n");
-                          return i;
-                        }
-                      } // remove later
-    }
-    else {
-      // For now, only consider instructions on dead registers
-      //return i;
+    // TODO move to find_dead_code or something
+    } else {
+      return i;
     }
 
     i = i + INSTRUCTIONSIZE;
@@ -1002,33 +1016,28 @@ int main(int argc, char **argv) {
   selfie_load();
 
   debug = 0;
+
+  /////////////////////////
+  // OPTIMIZATION PASSES //
+  /////////////////////////
+
+  // TODO un-unroll this
   selfie_traverse();
-
-  //print_states_and_livedeads();
-
-  // This is testing code, remove later
-  // print_states();
-  // printf1("1==1: %d\n", (char*) test_states_equal(machine_states, machine_states));
-  // print("109\n");
-  // print_state((uint64_t *) *(machine_states + 109));
-  // print("110\n");
-  // print_state((uint64_t *) *(machine_states + 110));
-  // print("111\n");
-  // print_state((uint64_t *) *(machine_states + 111));
-  // print("114\n");
-  // print_state((uint64_t *) *(machine_states + 114));
-  // printf1("109==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 109), (uint64_t*) *(machine_states + 110)));
-  // printf1("110==111: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 111)));
-  // printf1("110==114: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 114)));
-  // printf1("110==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 110)));
-
-  // Uncomment to get states.
-  //print_states();
-  //print_enops();
-
   patch_enops();
-
   printf1("found %d enops\n", (char*) found_enops);
+
+  selfie_traverse();
+  patch_dead_ops();
+  printf1("pass 1: found %d dead ops\n", (char*) found_dead_ops);
+
+  selfie_traverse();
+  patch_dead_ops();
+  printf1("pass 2: found %d dead ops\n", (char*) found_dead_ops);
+
+  selfie_traverse();
+  patch_dead_ops();
+  printf1("pass 3: found %d dead ops\n", (char*) found_dead_ops);
+
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
