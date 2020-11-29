@@ -56,7 +56,7 @@ uint64_t parallel_sum(uint64_t depth) {
 
     return *(sorted_numbers + process_identity);
   } else {
-    // save process id for a specifc depth
+    // save process id for a specific depth
     *(pids + depth) = fork();
 
     // parallel_print here is called 2 times
