@@ -226,9 +226,13 @@ uint64_t CHAR_DOT          = '.';
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 
+char* string_buffer; // buffer for reading and writing to files
+
 char* integer_buffer; // buffer for formatting integers
 
 uint64_t MAX_FILENAME_LENGTH = 128;
+
+uint64_t MAX_OUTPUT_LENGTH = 256;
 
 char* filename_buffer; // buffer for opening files
 
@@ -299,6 +303,9 @@ void init_library() {
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
+  
+  // allocate and touch to make sure memory is mapped
+  string_buffer = string_alloc(MAX_OUTPUT_LENGTH);
 
   // accommodate at least WORDSIZEINBITS numbers for itoa, no mapping needed
   integer_buffer = string_alloc(WORDSIZEINBITS);
@@ -2726,6 +2733,13 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
     return i;
   }
+}
+
+void direct_output(char* buffer) {
+	if(output_fd == 1)
+		printf(buffer, (uint64_t*) 0);
+	else
+		vdsprintf(output_fd, (char*) 0, buffer, (uint64_t*) 0);
 }
 
 uint64_t internal_wrapped_printf(char* s, ...) {
@@ -8055,13 +8069,16 @@ void gc_arguments() {
 // -----------------------------------------------------------------
 
 void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
-  if (code_line_number != (uint64_t*) 0)
-    printf("(~%llu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+  if (code_line_number != (uint64_t*) 0){
+    sprintf(string_buffer, "(~%llu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    direct_output(string_buffer);
+  }
 }
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    printf("%s: pc=%llx", binary_name, address);
+    sprintf(string_buffer,"%s: pc=%llx", binary_name, address);
+    direct_output(string_buffer);
     print_code_line_number_for_instruction(address, entry_point);
     if (symbolic)
       // skip further output
@@ -8070,20 +8087,24 @@ void print_code_context_for_instruction(uint64_t address) {
       print(": ");
   } else {
     if (model) {
-      printf("%llx", address);
+      sprintf(string_buffer,"%llx", address);
+      direct_output(string_buffer);
       print_code_line_number_for_instruction(address, entry_point);
       print(": ");
     } else if (disassemble_verbose) {
-      printf("%llx", address);
+      sprintf(string_buffer,"%llx", address);
+      direct_output(string_buffer);
       print_code_line_number_for_instruction(address, 0);
-      printf(": %p: ", (void*) ir);
+      sprintf(string_buffer, ": %p: ", (void*) ir);
+      direct_output(string_buffer);
     }
   }
 }
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  printf("lui %s,%llx", get_register_name(rd), sign_shrink(imm, 20));
+  sprintf(string_buffer,"lui %s,%llx", get_register_name(rd), sign_shrink(imm, 20));
+  direct_output(string_buffer);
 }
 
 void print_lui_before() {
@@ -8138,7 +8159,8 @@ void print_addi() {
         return;
       }
 
-  printf("addi %s,%s,%lld", get_register_name(rd), get_register_name(rs1), imm);
+  sprintf(string_buffer, "addi %s,%s,%lld", get_register_name(rd), get_register_name(rs1), imm);
+  direct_output(string_buffer);
 }
 
 void print_addi_before() {
@@ -8178,7 +8200,8 @@ void do_addi() {
 
 void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
   print_code_context_for_instruction(pc);
-  printf("%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  sprintf(string_buffer, "%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  direct_output(string_buffer);
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -8335,7 +8358,8 @@ void do_sltu() {
 
 void print_ld() {
   print_code_context_for_instruction(pc);
-  printf("ld %s,%lld(%s)", get_register_name(rd), imm, get_register_name(rs1));
+  sprintf(string_buffer, "ld %s,%lld(%s)", get_register_name(rd), imm, get_register_name(rs1));
+  direct_output(string_buffer);
 }
 
 void print_ld_before() {
@@ -8426,7 +8450,8 @@ uint64_t do_ld() {
 
 void print_sd() {
   print_code_context_for_instruction(pc);
-  printf("sd %s,%lld(%s)", get_register_name(rs2), imm, get_register_name(rs1));
+  sprintf(string_buffer, "sd %s,%lld(%s)", get_register_name(rs2), imm, get_register_name(rs1));
+  direct_output(string_buffer);
 }
 
 void print_sd_before() {
@@ -8519,9 +8544,12 @@ void undo_sd() {
 
 void print_beq() {
   print_code_context_for_instruction(pc);
-  printf("beq %s,%s,%lld", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
-  if (disassemble_verbose)
-    printf("[%llx]", pc + imm);
+  sprintf(string_buffer, "beq %s,%s,%lld", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
+  direct_output(string_buffer);
+  if (disassemble_verbose) {
+    sprintf(string_buffer, "[%llx]", pc + imm);
+    direct_output(string_buffer);
+  }
 }
 
 void print_beq_before() {
@@ -8559,9 +8587,12 @@ void do_beq() {
 
 void print_jal() {
   print_code_context_for_instruction(pc);
-  printf("jal %s,%lld", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
-  if (disassemble_verbose)
-    printf("[%llx]", pc + imm);
+  sprintf(string_buffer, "jal %s,%lld", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
+  direct_output(string_buffer);
+  if (disassemble_verbose){
+    sprintf(string_buffer,"[%llx]", pc + imm);
+    direct_output(string_buffer);
+  }
 }
 
 void print_jal_before() {
@@ -8628,7 +8659,8 @@ void do_jal() {
 
 void print_jalr() {
   print_code_context_for_instruction(pc);
-  printf("jalr %s,%lld(%s)", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  sprintf(string_buffer, "jalr %s,%lld(%s)", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  direct_output(string_buffer);
 }
 
 void print_jalr_before() {
@@ -8724,12 +8756,15 @@ void undo_ecall() {
 }
 
 void print_data_line_number() {
-  if (data_line_number != (uint64_t*) 0)
-    printf("(~%llu)", *(data_line_number + (pc - code_length) / SIZEOFUINT64));
+  if (data_line_number != (uint64_t*) 0) {
+    sprintf(string_buffer, "(~%llu)", *(data_line_number + (pc - code_length) / SIZEOFUINT64));
+    direct_output(string_buffer);
+    }
 }
 
 void print_data_context(uint64_t data) {
-  printf("%llx", pc);
+  sprintf(string_buffer, "%llx", pc);
+  direct_output(string_buffer);
 
   if (disassemble_verbose) {
     print_data_line_number();
@@ -8743,7 +8778,8 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-  printf(".quad %llx", data);
+  sprintf(string_buffer, ".quad %llx", data);
+  direct_output(string_buffer);
 }
 
 // -----------------------------------------------------------------
