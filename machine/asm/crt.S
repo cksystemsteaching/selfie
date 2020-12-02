@@ -37,7 +37,7 @@ _start_warm:
   csrw sip, zero
 
   /* Setup exception vectors */
-  la a3, _start_hang
+  la a3, hang_machine
   csrw stvec, a3
 
   /* Setup stack */
@@ -48,14 +48,14 @@ _start_warm:
   call bootstrap
 
   /* We don't expect to reach here hence just hang */
-  j _start_hang
+  j hang_machine
 
   .section .entry, "ax", %progbits
   .p2align 3
-  .global _start_hang
-_start_hang:
+  .global hang_machine
+hang_machine:
   wfi
-  j _start_hang
+  j hang_machine
 
   .global initial_stack_start
 initial_stack_start:
