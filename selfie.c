@@ -2778,6 +2778,9 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
 
   print_format0(s, offset);
 
+  if (buffer)
+    store_character(buffer, output_cursor, 0);
+
   output_buffer = (char*) 0;
   output_cursor = 0;
 
