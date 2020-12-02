@@ -158,22 +158,13 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 btor2: $(btor2s) selfie.btor2
 
 # Consider these targets as targets, not files
-.PHONY: grader grade spike qemu assemble 32-bit boolector btormc validator extras
+.PHONY: spike qemu assemble 32-bit boolector btormc validator grader grade extras
 
 # Run everything that requires non-standard tools
-extras: grader grade spike qemu assemble 32-bit boolector btormc validator
-
-# Test autograder
-grader: selfie
-	cd grader && python3 -m unittest discover -v
-
-# Run autograder
-grade:
-	grader/self.py self-compile
+extras: spike qemu assemble 32-bit boolector btormc validator grader grade
 
 # Run selfie on spike
 spike: selfie.m selfie.s
-	chmod +x selfie.m
 	spike pk selfie.m -c selfie.c -o selfie-spike.m -s selfie-spike.s -m 1
 	diff -q selfie.m selfie-spike.m
 	diff -q selfie.s selfie-spike.s
@@ -220,6 +211,14 @@ succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
 validator: selfie modeler
 	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
 	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
+
+# Test autograder
+grader: selfie
+	cd grader && python3 -m unittest discover -v
+
+# Run autograder
+grade:
+	grader/self.py self-compile
 
 # Consider these targets as targets, not files
 .PHONY: everything clean
