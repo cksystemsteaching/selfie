@@ -173,6 +173,7 @@ grade:
 
 # Run selfie on spike
 spike: selfie.m selfie.s
+	chmod +x selfie.m
 	spike pk selfie.m -c selfie.c -o selfie-spike.m -s selfie-spike.s -m 1
 	diff -q selfie.m selfie-spike.m
 	diff -q selfie.s selfie-spike.s
