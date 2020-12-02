@@ -210,20 +210,18 @@ char* smt_unary(char* opt, char* op);
 char* smt_binary(char* opt, char* op1, char* op2);
 char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
 
-uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* condition);
-
-void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
-void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
+void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
 
 uint64_t* schedule_next_symbolic_context();
 void      check_if_mergeable_and_merge_if_possible(uint64_t* context);
 
-void      add_child(uint64_t* parent, uint64_t* child);
-void      step_into_call(uint64_t* context, uint64_t address);
-void      step_out_of_call(uint64_t* context);
+void add_child(uint64_t* parent, uint64_t* child);
+void step_into_call(uint64_t* context, uint64_t address);
+void step_out_of_call(uint64_t* context);
 
 void use_stdout();
 void use_file();
@@ -728,34 +726,39 @@ void constrain_load() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
-    // semantics of ld
-    if (rd != REG_ZR) {
-      sword = load_symbolic_memory(vaddr);
+    if (is_valid_segment_read(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        // semantics of load double word
+        if (rd != REG_ZR) {
+          sword = load_symbolic_memory(vaddr);
 
-      if (sword) {
-        *(registers + rd) = get_word_value(sword);
+          if (sword) {
+            *(registers + rd) = get_word_value(sword);
 
-        if (get_number_of_bits(sword) < WORDSIZEINBITS)
-          *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
-        else
-          *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
-      } else {
-        // assert: vaddr is mapped
-        *(registers + rd) = load_virtual_memory(pt, vaddr);
-        *(reg_sym + rd)   = 0;
-      }
-    }
+            if (get_number_of_bits(sword) < WORDSIZEINBITS)
+              *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
+            else
+              *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
+          } else {
+            *(registers + rd) = load_virtual_memory(pt, vaddr);
+            *(reg_sym + rd)   = 0;
+          }
+        }
 
-    // keep track of instruction address for profiling loads
-    a = (pc - code_start) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling loads
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
-    pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-    // keep track of number of loads in total
-    ic_load = ic_load + 1;
+        // keep track of number of loads in total
+        ic_load = ic_load + 1;
 
-    // and individually
-    *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+        // and individually
+        *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     // invalid concrete memory address
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
@@ -781,23 +784,29 @@ void constrain_store() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
-    // semantics of sd
-    store_symbolic_memory(vaddr,
-      *(registers + rs2),
-      (char*) *(reg_sym + rs2),
-      0,
-      WORDSIZEINBITS);
+    if (is_valid_segment_write(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        // semantics of store double word
+        store_symbolic_memory(vaddr,
+          *(registers + rs2),
+          (char*) *(reg_sym + rs2),
+          0,
+          WORDSIZEINBITS);
 
-    // keep track of instruction address for profiling stores
-    a = (pc - code_start) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling stores
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
-    pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-    // keep track of number of stores in total
-    ic_store = ic_store + 1;
+        // keep track of number of stores in total
+        ic_store = ic_store + 1;
 
-    // and individually
-    *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+        // and individually
+        *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+      }  else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     // invalid concrete memory address
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
