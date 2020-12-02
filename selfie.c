@@ -166,10 +166,12 @@ uint64_t print_format1(char* s, uint64_t i, char* a);
 
 int printf(const char* format, ...);
 int sprintf(char* str, const char* format, ...);
+int dprintf(int fd, const char* format, ...);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
-uint64_t internal_wrapped_printf(char* s, ...);
+uint64_t internal_wrapped_printf(char* format, ...);
 uint64_t internal_wrapped_sprintf(char *str, char *format, ...);
+uint64_t internal_wrapped_dprintf(uint64_t fd, char* format, ...);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -2737,22 +2739,9 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
 void direct_output(char* buffer) {
 	if(output_fd == 1)
-		printf(buffer, (uint64_t*) 0);
+		printf("%s", buffer);
 	else
-		vdsprintf(output_fd, (char*) 0, buffer, (uint64_t*) 0);
-}
-
-uint64_t internal_wrapped_printf(char* s, ...) {
-  uint64_t* args;
-  uint64_t  written_bytes;
-
-  args = (uint64_t*) 0;
-
-  var_start(args);
-  written_bytes = vdsprintf(1, (char*) 0, s, args);
-  var_end(args);
-
-  return written_bytes;
+		dprintf(output_fd, "%s", buffer);
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
@@ -2795,14 +2784,40 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   return number_of_currently_written_bytes;
 }
 
-uint64_t internal_wrapped_sprintf(char* buffer, char* s, ...) {
+uint64_t internal_wrapped_printf(char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
   args = (uint64_t*) 0;
 
   var_start(args);
-  written_bytes = vdsprintf(0, buffer, s, args);
+  written_bytes = vdsprintf(1, (char*) 0, format, args);
+  var_end(args);
+
+  return written_bytes;
+}
+
+uint64_t internal_wrapped_sprintf(char* buffer, char* format, ...) {
+  uint64_t* args;
+  uint64_t written_bytes;
+
+  args = (uint64_t*) 0;
+
+  var_start(args);
+  written_bytes = vdsprintf(0, buffer, format, args);
+  var_end(args);
+
+  return written_bytes;
+}
+
+uint64_t internal_wrapped_dprintf(uint64_t fd, char* format, ...) {
+  uint64_t* args;
+  uint64_t written_bytes;
+
+  args = (uint64_t*) 0;
+
+  var_start(args);
+  written_bytes = vdsprintf(fd, (char*) 0, format, args);
   var_end(args);
 
   return written_bytes;
