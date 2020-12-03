@@ -953,6 +953,7 @@ void emit_data_segment();
 
 uint64_t* allocate_elf_header();
 
+void      encode_elf_program_header(uint64_t* program_header);
 uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size);
 uint64_t  decode_elf_header(uint64_t* header);
 uint64_t  validate_elf_header(uint64_t* header);
@@ -6245,6 +6246,29 @@ uint64_t* allocate_elf_header() {
   return touch(zmalloc(ELF_HEADER_SIZE), ELF_HEADER_SIZE);
 }
 
+void encode_elf_program_header(uint64_t* program_header) {
+  if (IS64BITSYSTEM) {
+    // RISC-U ELF64 program header
+    *(program_header + 0) = p_type + left_shift(p_flags, 32);
+    *(program_header + 1) = p_offset;
+    *(program_header + 2) = p_vaddr;
+    *(program_header + 3) = p_paddr;
+    *(program_header + 4) = p_filesz;
+    *(program_header + 5) = p_memsz;
+    *(program_header + 6) = p_align;
+  } else {
+    // RISC-U ELF32 program header
+    *(header + 0) = p_type;
+    *(header + 1) = p_offset;
+    *(header + 2) = p_vaddr;
+    *(header + 3) = p_paddr;
+    *(header + 4) = p_filesz;
+    *(header + 5) = p_memsz;
+    *(header + 6) = p_flags;
+    *(header + 7) = p_align;
+  }
+}
+
 uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
   uint64_t* header;
 
@@ -6253,7 +6277,7 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
   // store all data necessary for creating a minimal and valid file and program header
 
   if (IS64BITSYSTEM) {
-    // RISC-U ELF64 file header:
+    // RISC-U ELF64 file header
     *(header + 0) = EI_MAG0
                   + left_shift(EI_MAG1, 8)
                   + left_shift(EI_MAG2, 16)
@@ -6280,14 +6304,7 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
     p_filesz = code_size + data_size;
     p_memsz  = code_size + data_size;
 
-    // RISC-U ELF64 program header:
-    *(header + 8)  = p_type + left_shift(p_flags, 32);
-    *(header + 9)  = p_offset;
-    *(header + 10) = p_vaddr;
-    *(header + 11) = p_paddr;
-    *(header + 12) = p_filesz;
-    *(header + 13) = p_memsz;
-    *(header + 14) = p_align;
+    encode_elf_program_header(header + 8);
 
     // This field is not part of the standard ELF header but
     // used by selfie to load its own generated ELF files
@@ -6300,7 +6317,7 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
     e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
     e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
 
-    // RISC-U ELF32 file header:
+    // RISC-U ELF32 file header
     *(header + 0)  = EI_MAG0
                    + left_shift(EI_MAG1, 8)
                    + left_shift(EI_MAG2, 16)
@@ -6324,15 +6341,7 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
     p_filesz = code_size + data_size;
     p_memsz  = code_size + data_size;
 
-    // RISC-U ELF32 program header:
-    *(header + 13) = p_type;
-    *(header + 14) = p_offset;
-    *(header + 15) = p_vaddr;
-    *(header + 16) = p_paddr;
-    *(header + 17) = p_filesz;
-    *(header + 18) = p_memsz;
-    *(header + 19) = p_flags;
-    *(header + 20) = p_align;
+    encode_elf_program_header(header + 13);
 
     // This field is not part of the standard ELF header but
     // used by selfie to load its own generated ELF files
