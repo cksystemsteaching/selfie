@@ -953,9 +953,14 @@ void emit_data_segment();
 
 uint64_t* allocate_elf_header();
 
+uint64_t* encode_elf_header();
 void      encode_elf_program_header(uint64_t* program_header);
-uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size);
-uint64_t  decode_elf_header(uint64_t* header);
+
+void encode_code_header(uint64_t* header);
+void decode_code_header(uint64_t* header);
+void encode_data_header(uint64_t* header);
+void decode_data_header(uint64_t* header);
+
 uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
@@ -1004,7 +1009,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 1; // number of program header entries
+uint64_t e_phnum = 2; // number of program header entries (code and data segment)
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -1013,16 +1018,15 @@ uint64_t e_shstrndx  = 0; // section header offset
 // ELF program header
 
 uint64_t p_type  = 1; // type of segment is PT_LOAD
-uint64_t p_flags = 7; // segment attributes are RWX
+uint64_t p_flags = 0; // segment attributes
 
-uint64_t p_offset = 4096; // segment offset in file (must be page-aligned) == ELF_HEADER_SIZE
+uint64_t p_offset = 0; // segment offset in file (must be page-aligned)
 
-uint64_t p_vaddr = 65536; // start of segment in virtual memory at 0x10000 == PK_CODE_START
-
+uint64_t p_vaddr = 0; // start of segment in virtual memory
 uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
 
-uint64_t p_filesz = 0; // size of segment in file (code_size + data_size)
-uint64_t p_memsz  = 0; // size of segment in memory (code_size + data_size)
+uint64_t p_filesz = 0; // size of segment in file
+uint64_t p_memsz  = 0; // size of segment in memory
 
 uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
@@ -5514,7 +5518,7 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = encode_elf_header(code_size, data_size);
+  ELF_header = encode_elf_header();
 
   printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
@@ -6246,30 +6250,7 @@ uint64_t* allocate_elf_header() {
   return touch(zmalloc(ELF_HEADER_SIZE), ELF_HEADER_SIZE);
 }
 
-void encode_elf_program_header(uint64_t* program_header) {
-  if (IS64BITSYSTEM) {
-    // RISC-U ELF64 program header
-    *(program_header + 0) = p_type + left_shift(p_flags, 32);
-    *(program_header + 1) = p_offset;
-    *(program_header + 2) = p_vaddr;
-    *(program_header + 3) = p_paddr;
-    *(program_header + 4) = p_filesz;
-    *(program_header + 5) = p_memsz;
-    *(program_header + 6) = p_align;
-  } else {
-    // RISC-U ELF32 program header
-    *(header + 0) = p_type;
-    *(header + 1) = p_offset;
-    *(header + 2) = p_vaddr;
-    *(header + 3) = p_paddr;
-    *(header + 4) = p_filesz;
-    *(header + 5) = p_memsz;
-    *(header + 6) = p_flags;
-    *(header + 7) = p_align;
-  }
-}
-
-uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
+uint64_t* encode_elf_header() {
   uint64_t* header;
 
   header = allocate_elf_header();
@@ -6300,15 +6281,6 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
                   + left_shift(e_shentsize, 16)
                   + left_shift(e_shnum, 32)
                   + left_shift(e_shstrndx, 48);
-
-    p_filesz = code_size + data_size;
-    p_memsz  = code_size + data_size;
-
-    encode_elf_program_header(header + 8);
-
-    // This field is not part of the standard ELF header but
-    // used by selfie to load its own generated ELF files
-    *(header + 15) = code_size;
   } else {
     EI_CLASS = 1; // file class is 1 (ELFCLASS32)
 
@@ -6337,55 +6309,103 @@ uint64_t* encode_elf_header(uint64_t code_size, uint64_t data_size) {
     *(header + 10) = e_ehsize + left_shift(e_phentsize, 16);
     *(header + 11) = e_phnum + left_shift(e_shentsize, 16);
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
-
-    p_filesz = code_size + data_size;
-    p_memsz  = code_size + data_size;
-
-    encode_elf_program_header(header + 13);
-
-    // This field is not part of the standard ELF header but
-    // used by selfie to load its own generated ELF files
-    *(header + 21) = code_size;
   }
+
+  p_flags  = 1; // code segment attributes are X
+  p_offset = ELF_HEADER_SIZE; // must match binary format
+  p_vaddr  = code_start;
+  p_filesz = code_size;
+  p_memsz  = code_size;
+
+  encode_code_header(header);
+
+  p_flags  = 6; // data segment attributes are RW
+  p_offset = ELF_HEADER_SIZE + code_size; // must match binary format
+  p_vaddr  = data_start;
+  p_filesz = data_size;
+  p_memsz  = data_size;
+
+  encode_data_header(header);
 
   return header;
 }
 
-uint64_t decode_elf_header(uint64_t* header) {
+void encode_elf_program_header(uint64_t* program_header) {
   if (IS64BITSYSTEM) {
-    p_filesz = *(header + 12);
-    p_memsz  = *(header + 13);
-
-    return *(header + 15);
+    // RISC-U ELF64 program header
+    *(program_header + 0) = p_type + left_shift(p_flags, 32);
+    *(program_header + 1) = p_offset;
+    *(program_header + 2) = p_vaddr;
+    *(program_header + 3) = p_paddr;
+    *(program_header + 4) = p_filesz;
+    *(program_header + 5) = p_memsz;
+    *(program_header + 6) = p_align;
   } else {
-    p_filesz = *(header + 17);
-    p_memsz  = *(header + 18);
-
-    return *(header + 21);
+    // RISC-U ELF32 program header
+    *(program_header + 0) = p_type;
+    *(program_header + 1) = p_offset;
+    *(program_header + 2) = p_vaddr;
+    *(program_header + 3) = p_paddr;
+    *(program_header + 4) = p_filesz;
+    *(program_header + 5) = p_memsz;
+    *(program_header + 6) = p_flags;
+    *(program_header + 7) = p_align;
   }
 }
 
+void encode_code_header(uint64_t* header) {
+  if (IS64BITSYSTEM)
+    encode_elf_program_header(header + 8);
+  else
+    encode_elf_program_header(header + 13);
+}
+
+void decode_code_header(uint64_t* header) {
+  if (IS64BITSYSTEM)
+    p_filesz = *(header + 8 + 4);
+  else
+    p_filesz = *(header + 13 + 4);
+}
+
+void encode_data_header(uint64_t* header) {
+  if (IS64BITSYSTEM)
+    encode_elf_program_header(header + 15);
+  else
+    encode_elf_program_header(header + 21);
+}
+
+void decode_data_header(uint64_t* header) {
+  if (IS64BITSYSTEM)
+    p_filesz = *(header + 15 + 4);
+  else
+    p_filesz = *(header + 21 + 4);
+}
+
 uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t  new_code_size;
-  uint64_t  new_data_size;
   uint64_t* valid_header;
   uint64_t  i;
 
-  new_code_size = decode_elf_header(header);
+  // must match binary bootstrapping
+  code_start = PK_CODE_START;
 
-  if (p_filesz != p_memsz)
-    // segment size in file is not the same as segment size in memory
+  decode_code_header(header);
+
+  code_size = p_filesz;
+
+  if (code_size > MAX_CODE_SIZE)
     return 0;
 
-  if (new_code_size > MAX_CODE_SIZE)
+  // must match binary bootstrapping
+  data_start = round_up(code_start + code_size, p_align);
+
+  decode_data_header(header);
+
+  data_size = p_filesz;
+
+  if (data_size > MAX_DATA_SIZE)
     return 0;
 
-  new_data_size = p_filesz - new_code_size;
-
-  if (new_data_size > MAX_DATA_SIZE)
-    return 0;
-
-  valid_header = encode_elf_header(new_code_size, new_data_size);
+  valid_header = encode_elf_header();
 
   i = 0;
 
@@ -6395,12 +6415,6 @@ uint64_t validate_elf_header(uint64_t* header) {
 
     i = i + 1;
   }
-
-  // must match compiler bootstrapping of binary
-  code_start = PK_CODE_START;
-  code_size  = new_code_size;
-  data_start = round_up(code_start + code_size, p_align);
-  data_size  = new_data_size;
 
   return 1;
 }
