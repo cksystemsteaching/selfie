@@ -10,9 +10,13 @@ uint64_t *get_unknown_regs(uint64_t *state) { return (uint64_t *) *state; }
 
 uint64_t *get_reg_values(uint64_t *state) { return (uint64_t *) *(state + 1); }
 
+uint64_t *get_vars(uint64_t *state) { return (uint64_t *) *(state + 2); }
+
 void set_unknown_regs(uint64_t *state, uint64_t *unknown_regs) { *state = (uint64_t) unknown_regs; }
 
 void set_reg_values(uint64_t *state, uint64_t *reg_values) { *(state + 1) = (uint64_t) reg_values; }
+
+void set_vars(uint64_t *state, uint64_t *vars) { *(state + 2) = (uint64_t) vars; }
 
 uint64_t *get_state(uint64_t pc) {
   if (machine_states == (uint64_t*) 0) {
@@ -56,15 +60,41 @@ void set_reg(uint64_t *state, uint64_t reg, uint64_t value) {
   }
 }
 
+void set_var_unknown(uint64_t *state, uint64_t var) {
+  *(get_vars(state) + var) = 52596306927616181; // TODO don't use magic number
+}
+
+uint64_t is_var_unknown(uint64_t *state, uint64_t var) {
+  return (uint64_t) (*(get_vars(state) + var) == 52596306927616181);
+}
+
+void set_var(uint64_t *state, uint64_t var, uint64_t value) {
+  *(get_vars(state) + var) = value;
+  // TODO
+  //*(get_unknown_regs(state) + reg) = 0;
+}
+
+uint64_t get_var(uint64_t *state, uint64_t var) {
+  if (is_var_unknown(state, var)) {
+    print("Attempted to get value of unknown register!");
+    exit(1);
+  }
+  return *(get_vars(state) + var);
+}
+
+
 uint64_t *new_machine_state() {
   uint64_t *result;
   uint64_t *unknown_regs;
   uint64_t *reg_values;
+  uint64_t *vars;
   uint64_t i;
 
-  i = 0;
   unknown_regs = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
   reg_values = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+  vars = malloc(2048 * SIZEOFUINT64);
+
+  i = 0;
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_ZR) {
       *(unknown_regs + i) = 0;
@@ -75,9 +105,16 @@ uint64_t *new_machine_state() {
     i = i + 1;
   }
 
-  result = malloc(2 * SIZEOFUINT64STAR);
+  i = 0;
+  while (i < 2048) {
+    *(vars + i) = 0;
+    i = i + 1;
+  }
+
+  result = malloc(3 * SIZEOFUINT64STAR);
   set_unknown_regs(result, unknown_regs);
   set_reg_values(result, reg_values);
+  set_vars(result, vars);
   return result;
 }
 
@@ -98,6 +135,12 @@ void copy_state(uint64_t *source, uint64_t *dest) {
     } else {
       set_reg(dest, i, get_reg(source, i));
     }
+    i = i + 1;
+  }
+
+  i = 0;
+  while (i < 2048) {
+    set_var(dest, i, get_var(source, i));
     i = i + 1;
   }
 }
@@ -834,10 +877,6 @@ void selfie_traverse() {
   }
 }
 
-void insert_nop(uint64_t position) {
-  store_instruction(position, encode_i_format(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM));
-}
-
 void print_state(uint64_t* machine_state) {
   uint64_t i;
 
@@ -900,6 +939,145 @@ void print_states_and_livedeads() {
 }
 
 
+// ---------------------------------------------------------------------------------
+// ----------------------------- PATTERN MATCHER VARS ------------------------------
+// ---------------------------------------------------------------------------------
+
+uint64_t ANY = (uint64_t) -1; // matches anything
+uint64_t ANY_TEMPORARY = (uint64_t) -2; // use selfies is_temporary_register
+
+// The patter matcher will match the currently decoded instruction against these variables
+// if it's not set to ANY, the instruction has to match it.
+// For registers (e.g. rd) setting ANY_TEMPORARY will match t0-t6
+uint64_t match_opcode = 0;
+uint64_t match_rs1    = 0;
+uint64_t match_rs2    = 0;
+uint64_t match_rd     = 0;
+uint64_t match_imm    = 0;
+uint64_t match_funct3 = 0;
+uint64_t match_funct7 = 0;
+
+// If this is not ANY, this overrides the previous settings, matching the exact instruction given by this.
+uint64_t match_ir = 0;
+
+// set by pattern library
+uint64_t number_of_instructions_in_pattern = 0;
+
+// Number of instructions that the current pattern has matched
+uint64_t number_of_matched_instructions = 0;
+
+uint64_t current_pattern = 0;
+
+uint64_t PATTERN_NONE = 0;
+uint64_t POINTLESS_JAL = 1;
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------- PATTERN LIBRARY ------------------------------
+// ----------------------------------------------------------------------------
+
+
+// jal which only goes to next instruction
+void pattern_pointless_jal() {
+  number_of_instructions_in_pattern = 1;
+
+  // 4194415 = 0x0040006F = jal zero,1
+  match_ir = 4194415;
+}
+
+void set_pattern() {
+  if (current_pattern == POINTLESS_JAL)
+    pattern_pointless_jal();
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------- PATTERN MATCHER ------------------------------
+// ----------------------------------------------------------------------------
+
+void reset_pattern_matcher() {
+  match_opcode = 0;
+  match_rs1    = 0;
+  match_rs2    = 0;
+  match_rd     = 0;
+  match_imm    = 0;
+  match_funct3 = 0;
+  match_funct7 = 0;
+  match_ir = 0;
+}
+
+// Match currently decoded instruction against current pattern
+uint64_t match_current() {
+  if (match_ir != ANY) {
+    if (match_ir == ir)
+      return 1;
+    else
+      return 0;
+  }
+
+  if (match_opcode != ANY)
+    if (match_opcode != opcode)
+      return 0;
+
+  //... TODO match everything else
+
+  if (match_rd != ANY)
+    if (match_rd != ANY_TEMPORARY) {
+      if (!is_temporary_register(rd))
+        return 0;
+      else if (match_rd != rd)
+        return 0;
+    }
+
+  return 1;
+}
+
+// Return first pc after from_pc that matches the current pattern, or -1
+uint64_t next_match(uint64_t from_pc) {
+  uint64_t i;
+  uint64_t did_break = 0;
+
+  i = from_pc + INSTRUCTIONSIZE;
+  number_of_matched_instructions = 0;
+
+  while (i < code_length) {
+    // match each instruction in the pattern
+    while (number_of_matched_instructions != number_of_instructions_in_pattern) {
+      ir = load_instruction(i);
+      decode();
+
+      if (match_current()) {
+        number_of_matched_instructions = number_of_matched_instructions + 1;
+        set_pattern(); // go to pattern's next instruction
+        i = i + INSTRUCTIONSIZE;
+      } else {
+        did_break = 1;
+        i = i - number_of_matched_instructions;
+        number_of_matched_instructions = number_of_instructions_in_pattern;
+      }
+    }
+
+    if (!did_break) {
+        return i - number_of_matched_instructions;
+    }
+  }
+
+  return (uint64_t) -1;
+}
+
+uint64_t eliminate_matches() {
+  // care: after eliming n instructions, move pc n instructions further
+}
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------- TRANSFORMATIONS ------------------------------
+// ----------------------------------------------------------------------------
+
+void insert_nop(uint64_t position) {
+  store_instruction(position, encode_i_format(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM));
+}
+
+
 uint64_t find_next_dead_op(uint64_t from_pc) {
   uint64_t i;
 
@@ -923,15 +1101,15 @@ uint64_t find_next_dead_op(uint64_t from_pc) {
   return (uint64_t) -1;
 }
 
-uint64_t found_dead_ops;
+uint64_t number_of_dead_ops;
 
 void patch_dead_ops() {
   uint64_t last_dead_op;
   last_dead_op = find_next_dead_op(0);
-  found_dead_ops = 0;
+  number_of_dead_ops = 0;
 
   while (last_dead_op != -1) {
-    found_dead_ops = found_dead_ops + 1;
+    number_of_dead_ops = number_of_dead_ops + 1;
     insert_nop(last_dead_op);
     last_dead_op = find_next_dead_op(last_dead_op);
   }
@@ -969,15 +1147,15 @@ uint64_t find_next_enop(uint64_t from_pc) {
   return (uint64_t) -1;
 }
 
-uint64_t found_enops = 0;
+uint64_t number_of_enops = 0;
 
 void print_enops() {
   uint64_t last_enop;
   last_enop = find_next_enop(0);
-  found_enops = 0;
+  number_of_enops = 0;
 
   while (last_enop != -1) {
-    found_enops = found_enops + 1;
+    number_of_enops = number_of_enops + 1;
     printf1("enop at: %x\n", (char*) last_enop);
     print_state(get_state(last_enop));
     print_instruction();
@@ -989,10 +1167,10 @@ void print_enops() {
 void patch_enops() {
   uint64_t last_enop;
   last_enop = find_next_enop(0);
-  found_enops = 0;
+  number_of_enops = 0;
 
   while (last_enop != -1) {
-    found_enops = found_enops + 1;
+    number_of_enops = number_of_enops + 1;
     insert_nop(last_enop);
     last_enop = find_next_enop(last_enop);
   }
@@ -1024,19 +1202,19 @@ int main(int argc, char **argv) {
   // TODO un-unroll this
   selfie_traverse();
   patch_enops();
-  printf1("found %d enops\n", (char*) found_enops);
+  printf1("found %d enops\n", (char*) number_of_enops);
 
   selfie_traverse();
   patch_dead_ops();
-  printf1("pass 1: found %d dead ops\n", (char*) found_dead_ops);
+  printf1("pass 1: found %d dead ops\n", (char*) number_of_dead_ops);
 
   selfie_traverse();
   patch_dead_ops();
-  printf1("pass 2: found %d dead ops\n", (char*) found_dead_ops);
+  printf1("pass 2: found %d dead ops\n", (char*) number_of_dead_ops);
 
   selfie_traverse();
   patch_dead_ops();
-  printf1("pass 3: found %d dead ops\n", (char*) found_dead_ops);
+  printf1("pass 3: found %d dead ops\n", (char*) number_of_dead_ops);
 
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
