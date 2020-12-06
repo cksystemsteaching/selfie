@@ -1217,3 +1217,54 @@ Finally, `addi $a7,$zero,214` is the instruction's human-readable assembly versi
 This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent. 
 
 The 32-bit word `0x0D600893` in binary stored at address `0x10 in memory is thus the only thing that the machine needs; the rest is for us to make it readable.
+
+## RISC-V
+
+We know that `0x0D600893` represents `addi $a7,$zero,214` because it is specified precisely by the ISA of the open RISC-V processor family.
+
+RISC-V is an open-source architecture we use in this class.
+RISC-U is the RISC-V subset targeted, emulated, and virtualized by selfie.
+
+[RISC-V](https://en.wikipedia.org/wiki/RISC-V) an available instruction set architecture (ISA) based on established reduced instruction set computing (RISC) principles. In contrast to most ISAs, the RISC-V ISA can be freely used for any purpose, permitting anyone to design, manufacture, and sell RISC-V chips and software. While not the first open architecture ISA, it is significant because it is designed to be useful in a wide range of devices. The instruction set also has a substantial body of supporting software, which avoids new instruction sets' usual weakness.
+
+The mipster emulator implements a strict subset of 64-bit RISC-V instructions, which we call RISC-U. Mipster only implements 14 (32-bit-wide) out of several dozen RISC-V instructions. The starc compiler generates RISC-U code that runs on mipster and is compatible with the official RISC-V toolchain and runs, at least in principle, on real RISC-V processors.
+
+When talking about formal languages, it is essential to distinguish between the [syntax](https://en.wikipedia.org/wiki/Syntax) and the [semantics](https://en.wikipedia.org/wiki/Semantics) of that language.
+
+**Example** 
+
+In the above example, the `addi` string in `addi $a7,$zero,214` is an assembly mnemonic of the operation code or opcode, for short, that identifies the operation to be performed. In contrast, the remaining `$a7,$zero,214` are three operands of that operation.
+
+[Opcode](https://en.wikipedia.org/wiki/Opcode) The portion of a machine language instruction that specifies the operation to be performed. Besides the opcode itself, most instructions also specify the data they will process, in the form of operands.
+
+In our example, `addi` instructs the processor to add the value of the integer `214` to the value stored in register `$zero` (which is always 0) and store the result in register `$a7` (which will thus contain the value 214 after executing the instruction).
+
+A 64-bit RISC-V processor has 32 64-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is the register 0 while the register `$a7`, less obviously, happens to be the register 17. The only missing piece of information is that `addi` is represented by the opcode 19. Now, how do we get from there to `0x0D600893`?
+
+We take:
+
+- the opcode 19 (`0010011`),
+- register 17 (`10001`),
+- register 0 (`00000`),
+- and value 214 (`000011010110`) 
+ 
+and put them together in binary as follows:
+
+`000011010110 00000 000 10001 0010011`
+
+If you merge that into a 32-bit word, you get `0x0D600893`.
+
+The RISC-V ISA specifies that:
+
+- the twelve MSBs encode the third (!) operand value 214, in 12-bit two's complement in fact, so it could even be a negative value.
+- The next five bits encode the second (!) operand register 0, followed by three bits set to 0.
+- The next five bits encode the first (!) operand register 17 followed by,
+- the remaining seven LSBs that encode the opcode 19.
+
+The third operand is treated by `addi` as an integer value rather than, say, a number identifying a register, is called *immediate* addressing hence the `i` in `addi`. Immediate addressing is one of various so-called *addressing modes*.
+
+[Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode) An aspect of the instruction set architecture in most central processing unit (CPU) designs. The various addressing modes defined in a given instruction set architecture to define how machine language instructions in that architecture identify each instruction's operand(s).
+
+But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5=32 different registers of the machine. The seven bits for the opcode allow us to distinguish up to 2^6=64 different opcodes, but we do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. 
+
+Note that the value in register `$zero` is assumed to be 0 at all times. This is, in fact needed for initializing registers using the `addi` instruction. There exists RISC-V assembly in which such intention is made explicit by using pseudo instructions. Here, the pseudo instruction `movi $a7,214`, for example, could be used instead but would anyhow be a short version of `addi $a7,$zero,214`. The remaining thirteen instructions of RISC-U are introduced later.
