@@ -1,3 +1,9 @@
+// computes the exit code from the status value
+// exit code is in the least significant bits from 8 to 16
+uint64_t wexitstatus(uint64_t status) {
+  return status * 281474976710656 / 72057594037927936;
+}
+
 int main() {
   uint64_t pid;
   uint64_t* code;
@@ -18,5 +24,5 @@ int main() {
     wait(code + 4095);
   }
 
-  return 21 + *(code + 4095) / 1024;
+  return 21 + wexitstatus(*(code + 4095)) / 4;
 }
