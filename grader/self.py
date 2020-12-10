@@ -244,7 +244,9 @@ def check_fork_wait_exit() -> List[Check]:
         check_hypster_execution('sum-exit-code.c', 28,
                                 'exit code is returned as status parameter from wait with HYPSTER') + \
         check_mipster_execution('unmapped-page-wait.c', 42,
-                                'wait system call maps page to unmapped virtual address')
+                                'wait system call maps page to unmapped virtual address') + \
+        check_mipster_execution('invalid-address.c', 42,
+                                'wait system call returns error when an invalid address is passed')
 
 
 def check_lock() -> List[Check]:
