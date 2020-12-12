@@ -2778,6 +2778,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
 
   print_format0(s, offset);
 
+  // sprintf always null-terminates the buffer
   if (buffer)
     store_character(buffer, output_cursor, 0);
 
