@@ -1125,6 +1125,11 @@ void init_cache_memory(uint64_t* cache);
 void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
 void init_all_caches();
 
+uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size, uint64_t tag, uint64_t index);
+
+void flush_cache(uint64_t* cache);
+void flush_all_caches();
+
 void      flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr);
 
@@ -6496,6 +6501,9 @@ void implement_read(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_read;
+  uint64_t* table;
+  uint64_t* cache_block;
+  uint64_t cache_line_size;
 
   if (debug_syscalls) {
     print("(read): ");
@@ -6518,6 +6526,11 @@ void implement_read(uint64_t* context) {
       (char*) fd,
       (char*) vbuffer);
 
+  table = get_pt(context);
+
+  cache_line_size = get_cache_line_size(L1_DCACHE);
+  cache_block = (uint64_t*) 0;
+
   read_total = 0;
 
   bytes_to_read = SIZEOFUINT64;
@@ -6530,10 +6543,29 @@ void implement_read(uint64_t* context) {
 
     if (is_valid_virtual_address(vbuffer))
       if (is_valid_data_stack_heap_address(context, vbuffer))
-        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          buffer = tlb(get_pt(context), vbuffer);
+        if (is_virtual_address_mapped(table, vbuffer)) {
+          if (L1_CACHE_ENABLED) {
+            cache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer);
+
+            if (get_valid_flag(cache_block) == 0) {
+              // make sure that the entire block contains valid data since we will only write a maximum of one word
+              fill_cache_block(cache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
+
+              set_valid_flag(cache_block, 1);
+            }
+
+            buffer = (uint64_t*) ((uint64_t) get_data(cache_block) + (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)));
+          } else
+            buffer = tlb(get_pt(context), vbuffer);
 
           actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+
+          if (L1_CACHE_ENABLED) {
+            if (L1_WRITE_BACK) {
+              // TODO: write-back implementation
+            } else
+              flush_cache_block(cache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
+          }
 
           if (actually_read == bytes_to_read) {
             read_total = read_total + actually_read;
@@ -6619,6 +6651,9 @@ void implement_write(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_written;
+  uint64_t* table;
+  uint64_t* cache_block;
+  uint64_t cache_line_size;
 
   if (debug_syscalls) {
     print("(write): ");
@@ -6641,6 +6676,11 @@ void implement_write(uint64_t* context) {
       (char*) vbuffer,
       (char*) fd);
 
+  table = get_pt(context);
+
+  cache_line_size = get_cache_line_size(L1_DCACHE);
+  cache_block = (uint64_t*) 0;
+
   written_total = 0;
 
   bytes_to_write = SIZEOFUINT64;
@@ -6654,9 +6694,28 @@ void implement_write(uint64_t* context) {
     if (is_valid_virtual_address(vbuffer))
       if (is_valid_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          buffer = tlb(get_pt(context), vbuffer);
+          if (L1_CACHE_ENABLED) {
+            cache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer);
+
+            if (get_valid_flag(cache_block) == 0) {
+              // make sure that the entire block contains valid data since we will only write a maximum of one word
+              fill_cache_block(cache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
+
+              set_valid_flag(cache_block, 1);
+            }
+
+            buffer = (uint64_t*) ((uint64_t) get_data(cache_block) + (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)));
+          } else
+            buffer = tlb(get_pt(context), vbuffer);
 
           actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+
+          if (L1_CACHE_ENABLED) {
+            if (L1_WRITE_BACK) {
+              // TODO: write-back implementation
+            } else
+              flush_cache_block(cache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
+          }
 
           if (actually_written == bytes_to_write) {
             written_total = written_total + actually_written;
@@ -7166,6 +7225,57 @@ uint64_t get_new_timestamp(uint64_t* cache) {
   return timestamp;
 }
 
+uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size, uint64_t tag, uint64_t index) {
+  return (uint64_t*) (tag * cache_set_size + index * cache_line_size);
+}
+
+void flush_cache(uint64_t* cache) {
+  uint64_t* cache_memory;
+  uint64_t associativity;
+  uint64_t cache_set_size;
+  uint64_t cache_line_size;
+  uint64_t sets;
+  uint64_t index;
+  uint64_t i;
+  uint64_t* cache_block;
+
+  cache_memory = get_cache_memory(cache);
+
+  associativity = get_associativity(cache);
+
+  cache_set_size = get_cache_set_size(cache);
+
+  cache_line_size = get_cache_line_size(cache);
+
+  sets = get_cache_size(cache) / cache_set_size;
+
+  index = 0;
+
+  i = 0;
+
+  while (index < sets) {
+    while (i < associativity) {
+      cache_block = (uint64_t*) *(cache_memory + (index * associativity + i));
+
+      if (L1_WRITE_BACK)
+        flush_cache_block(cache_block, cache_line_size, cache_entry_to_paddr(cache_set_size, cache_line_size, get_tag(cache_block), index));
+
+      set_valid_flag(cache_block, 0);
+
+      i = i + 1;
+    }
+
+    i = 0;
+
+    index = index + 1;
+  }
+}
+
+void flush_all_caches() {
+  flush_cache(L1_DCACHE);
+  flush_cache(L1_ICACHE);
+}
+
 void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
   uint64_t words;
   uint64_t* data;
@@ -7237,7 +7347,7 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* table, uint64_t vaddr)
       // write-back semantics
       if (get_dirty_flag(lru_block)) {
         // index is the same between vaddr and paddr so it is ok to add it to the paddr
-        flush_cache_block(lru_block, cache_line_size, (uint64_t*) (get_tag(lru_block) * cache_set_size + index));
+        flush_cache_block(lru_block, cache_line_size, cache_entry_to_paddr(cache_set_size, cache_line_size, get_tag(lru_block), index));
 
         set_dirty_flag(lru_block, 0);
       }
@@ -7502,14 +7612,20 @@ uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
   // assert: is_valid_virtual_address(vaddr) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  return load_physical_memory(tlb(table, vaddr));
+  if (L1_CACHE_ENABLED)
+    return load_data_from_cache(table, vaddr);
+  else
+    return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_valid_virtual_address(vaddr) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  store_physical_memory(tlb(table, vaddr), data);
+  if (L1_CACHE_ENABLED)
+    save_data_into_cache(table, vaddr, data);
+  else
+    store_physical_memory(tlb(table, vaddr), data);
 }
 
 // -----------------------------------------------------------------
@@ -9025,10 +9141,16 @@ void fetch() {
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
   if (is_valid_code_address(current_context, pc))
-    if (pc % WORDSIZE == 0)
-      ir = get_low_word(load_instruction_from_cache(pt, pc));
+    if (L1_CACHE_ENABLED)
+      if (pc % WORDSIZE == 0)
+        ir = get_low_word(load_instruction_from_cache(pt, pc));
+      else
+        ir = get_high_word(load_instruction_from_cache(pt, pc - INSTRUCTIONSIZE));
     else
-      ir = get_high_word(load_instruction_from_cache(pt, pc - INSTRUCTIONSIZE));
+      if (pc % WORDSIZE == 0)
+        ir = get_low_word(load_virtual_memory(pt, pc));
+      else
+        ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
   else {
     ir = encode_nop();
 
@@ -10230,7 +10352,12 @@ uint64_t mipster(uint64_t* to_context) {
 }
 
 uint64_t hypster(uint64_t* to_context) {
+  uint64_t l1_prev_enabled;
   uint64_t* from_context;
+
+  l1_prev_enabled = L1_CACHE_ENABLED;
+
+  L1_CACHE_ENABLED = 0;
 
   print("hypster\n");
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
@@ -10244,6 +10371,8 @@ uint64_t hypster(uint64_t* to_context) {
       // TODO: scheduler should go here
       to_context = from_context;
   }
+
+  L1_CACHE_ENABLED = l1_prev_enabled;
 }
 
 uint64_t mixter(uint64_t* to_context, uint64_t mix) {
