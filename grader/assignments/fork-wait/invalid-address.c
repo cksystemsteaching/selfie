@@ -8,37 +8,39 @@ uint64_t wexitstatus(uint64_t status) {
   return status * 281474976710656 / 72057594037927936;
 }
 
+
 int main() {
   uint64_t sum;
-  uint64_t pid;
+  uint64_t wait_pid;
+  uint64_t fork_pid;
   uint64_t* heap_top;
 
   heap_top = malloc(8);
-  sum = 38;
+  sum = 40;
 
-  pid = fork();
-  if (pid == 0)
+  fork_pid = fork();
+  if (fork_pid == 0)
     exit(5);
   else {
     // First invalid access - code segment
-    pid = wait(ELF_ENTRY_POINT);
-    sum = sum + pid;
+    wait_pid = wait(ELF_ENTRY_POINT);
+    sum = sum + wait_pid;
 
     // Second invalid access - free region between stack and heap
     // Bump pointer allocation -> we can derive the end of the heap
     // using the most recently allocated memory block, in this case `heap_top`
-    pid = wait(heap_top + 1);
-    sum = sum + pid;
+    wait_pid = wait(heap_top + 1);
+    sum = sum + wait_pid;
 
     // Third invalid address - outside the 4GiB virtual addressing space
-    pid = wait(VIRTUALMEMORYSIZE);
-    sum = sum + pid;
+    wait_pid = wait(VIRTUALMEMORYSIZE);
+    sum = sum + wait_pid;
   }
 
   // Actually query the PID/status
   // The previous calls should have failed before and mustn't have consumed the zombie
-  pid = wait(heap_top);
+  wait_pid = wait(heap_top);
 
-  // 38 (initial) + 5 (exit code) + 2 (PID) + 3 * (-1) (wait error on invalid vaddr)
-  return sum + pid + wexitstatus(*heap_top);
+  // 40 (initial) + 5 (exit code) + 3 * (-1) (wait error on invalid vaddr) (+ child PID - child PID)
+  return sum + fork_pid - wait_pid + wexitstatus(*heap_top);
 }
