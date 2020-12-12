@@ -246,7 +246,9 @@ def check_fork_wait_exit() -> List[Check]:
         check_mipster_execution('unmapped-page-wait.c', 42,
                                 'wait system call maps page to unmapped virtual address') + \
         check_mipster_execution('invalid-address.c', 42,
-                                'wait system call correctly handles invalid addresses')
+                                'wait system call correctly handles invalid addresses') + \
+        check_mipster_execution('null-ptr.c', 2,
+                                'wait system call returns PID when NULL is passed');
 
 
 def check_lock() -> List[Check]:
