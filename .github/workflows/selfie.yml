@@ -2,7 +2,6 @@ name: Make Everything Selfie
 
 on:
   push:
-    branches: [ master ]
     paths-ignore:
     - '**.md'
     - '**.txt'

@@ -16,10 +16,8 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       gcc-riscv64-linux-gnu \
-       git \
-       libc-dev-riscv64-cross \
-       make \
+       make git \
+       gcc-riscv64-linux-gnu libc-dev-riscv64-cross \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -56,12 +54,8 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       device-tree-compiler \
-       g++ \
-       gcc \
-       git \
-       libc-dev \
-       make \
+       make git \
+       g++ device-tree-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -90,14 +84,15 @@ WORKDIR $TOP
 # install statically linked QEMU (so it's easier to move it to another image)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       qemu-user-static \
-       qemu-system-misc \
+       qemu-user-static qemu-system-misc \
   && rm -rf /var/lib/apt/lists/*
 
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
   && cp /usr/bin/qemu-riscv64-static $RISCV/bin \
-  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin
+  && cp /usr/bin/qemu-system-riscv64 $RISCV/bin \
+  && cp /usr/bin/qemu-riscv32-static $RISCV/bin \
+  && cp /usr/bin/qemu-system-riscv32 $RISCV/bin
 
 ########################################
 # Boolector (SMT solver) builder image #
@@ -115,14 +110,9 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       cmake \
+       make git \
        g++ \
-       gcc \
-       git \
-       libc-dev \
-       make \
-       wget \
-       curl \
+       curl cmake \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
@@ -153,13 +143,9 @@ WORKDIR $TOP
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
-       gcc \
-       make \
-       automake \
-       pkg-config \
-       libtool \
-       libusb-dev \
-       git \
+       make git \
+       gcc libtool libusb-dev \
+       automake pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/riscv/riscv-openocd.git
@@ -188,29 +174,19 @@ WORKDIR $TOP
 # Setting non-interactive mode
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# install git and basic build tools (gcc, make) for working with selfie,
-# and device-tree-compiler which is required for spike
+# install tools for selfie
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-       build-essential \
        ca-certificates \
-       gcc-riscv64-linux-gnu \
-       binutils-riscv64-linux-gnu \
-       libc-dev-riscv64-cross \
-       make \
-       device-tree-compiler \
-       xxd \
-       gettext \
-       curl \
-       clang \
-       lld \
-       llvm \
-       lldb \
-       libusb-dev \
-       libhidapi-dev \
-       git \
+       make git \
+       gcc gdb libc6-dev-i386-amd64-cross lib32gcc-9-dev \
        python3.8 \
+       device-tree-compiler gcc-riscv64-linux-gnu \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
+  && apt-get install -y --no-install-recommends \
+       binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
+       libusb-dev libhidapi-dev \
+       xxd gettext curl \
   && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images

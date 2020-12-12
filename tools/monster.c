@@ -119,9 +119,9 @@ void constrain_addi();
 void constrain_add_sub_mul_divu_remu_sltu(char* operator);
 
 void zero_extend_sltu();
-void constrain_ld();
+void constrain_load();
 
-void constrain_sd();
+void constrain_store();
 
 void constrain_beq();
 void constrain_jalr();
@@ -150,34 +150,34 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
 // symbolic context extension:
 // +----+-----------------+
-// | 23 | execution depth | number of executed instructions
-// | 24 | path condition  | pointer to path condition
-// | 25 | symbolic memory | pointer to symbolic memory
-// | 26 | symbolic regs   | pointer to symbolic registers
-// | 27 | beq counter     | number of executed symbolic beq instructions
-// | 28 | merge partner   | pointer to the context from which this context was created
-// | 29 | call stack      | pointer to the corresponding node in the call stack tree
+// | 25 | execution depth | number of executed instructions
+// | 26 | path condition  | pointer to path condition
+// | 27 | symbolic memory | pointer to symbolic memory
+// | 28 | symbolic regs   | pointer to symbolic registers
+// | 29 | beq counter     | number of executed symbolic beq instructions
+// | 30 | merge partner   | pointer to the context from which this context was created
+// | 31 | call stack      | pointer to the corresponding node in the call stack tree
 // +----+-----------------+
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 14 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 }
 
-uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 23); }
-char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 24); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 25); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 26); }
-uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 27); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 28); }
-uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 29); }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 25); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 26); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 27); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 28); }
+uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 29); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 30); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 31); }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 23) =            depth; }
-void set_path_condition(uint64_t* context, char* path)        { *(context + 24) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 25) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 26) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 27) =            counter; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 28) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 29) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 25) =            depth; }
+void set_path_condition(uint64_t* context, char* condition)   { *(context + 26) = (uint64_t) condition; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 27) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 28) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 29) =            counter; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 30) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 31) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -210,20 +210,18 @@ char* smt_unary(char* opt, char* op);
 char* smt_binary(char* opt, char* op1, char* op2);
 char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
 
-uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* condition);
-
-void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
-void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
+void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
+void merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
 
 uint64_t* schedule_next_symbolic_context();
 void      check_if_mergeable_and_merge_if_possible(uint64_t* context);
 
-void      add_child(uint64_t* parent, uint64_t* child);
-void      step_into_call(uint64_t* context, uint64_t address);
-void      step_out_of_call(uint64_t* context);
+void add_child(uint64_t* parent, uint64_t* child);
+void step_into_call(uint64_t* context, uint64_t address);
+void step_out_of_call(uint64_t* context);
 
 void use_stdout();
 void use_file();
@@ -317,8 +315,8 @@ void implement_symbolic_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
 
@@ -392,8 +390,8 @@ void implement_symbolic_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer))
-      if (is_valid_data_stack_heap_address(context, vbuffer))
+    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+      if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           // TODO: What should symbolically executed code actually output?
 
@@ -448,8 +446,8 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr))
-      if (is_valid_data_stack_heap_address(context, vaddr)) {
+    if (is_aligned_virtual_address(vaddr, WORDSIZE))
+      if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr)) {
           sword = load_symbolic_memory(vaddr);
 
@@ -707,7 +705,7 @@ void zero_extend_sltu() {
       *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(1), (char*) *(reg_sym + rd));
 }
 
-void constrain_ld() {
+void constrain_load() {
   uint64_t vaddr;
   uint64_t* sword;
   uint64_t a;
@@ -719,7 +717,7 @@ void constrain_ld() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in ld instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -727,41 +725,46 @@ void constrain_ld() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
-    // semantics of ld
-    if (rd != REG_ZR) {
-      sword = load_symbolic_memory(vaddr);
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+    if (is_valid_segment_read(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        // semantics of load double word
+        if (rd != REG_ZR) {
+          sword = load_symbolic_memory(vaddr);
 
-      if (sword) {
-        *(registers + rd) = get_word_value(sword);
+          if (sword) {
+            *(registers + rd) = get_word_value(sword);
 
-        if (get_number_of_bits(sword) < WORDSIZEINBITS)
-          *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
-        else
-          *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
-      } else {
-        // assert: vaddr is mapped
-        *(registers + rd) = load_virtual_memory(pt, vaddr);
-        *(reg_sym + rd)   = 0;
-      }
-    }
+            if (get_number_of_bits(sword) < WORDSIZEINBITS)
+              *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
+            else
+              *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
+          } else {
+            *(registers + rd) = load_virtual_memory(pt, vaddr);
+            *(reg_sym + rd)   = 0;
+          }
+        }
 
-    // keep track of instruction address for profiling loads
-    a = (pc - entry_point) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling loads
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
-    pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-    // keep track of number of loads in total
-    ic_ld = ic_ld + 1;
+        // keep track of number of loads in total
+        ic_load = ic_load + 1;
 
-    // and individually
-    *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+        // and individually
+        *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     // invalid concrete memory address
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
-void constrain_sd() {
+void constrain_store() {
   uint64_t vaddr;
   uint64_t a;
 
@@ -772,7 +775,7 @@ void constrain_sd() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in sd instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -780,24 +783,30 @@ void constrain_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_valid_virtual_address(vaddr)) {
-    // semantics of sd
-    store_symbolic_memory(vaddr,
-      *(registers + rs2),
-      (char*) *(reg_sym + rs2),
-      0,
-      WORDSIZEINBITS);
+  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+    if (is_valid_segment_write(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        // semantics of store double word
+        store_symbolic_memory(vaddr,
+          *(registers + rs2),
+          (char*) *(reg_sym + rs2),
+          0,
+          WORDSIZEINBITS);
 
-    // keep track of instruction address for profiling stores
-    a = (pc - entry_point) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling stores
+        a = (pc - code_start) / INSTRUCTIONSIZE;
 
-    pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-    // keep track of number of stores in total
-    ic_sd = ic_sd + 1;
+        // keep track of number of stores in total
+        ic_store = ic_store + 1;
 
-    // and individually
-    *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+        // and individually
+        *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+      }  else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+    } else
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     // invalid concrete memory address
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
@@ -856,7 +865,7 @@ void constrain_jalr() {
 
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in jalr instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
+    print_code_line_number_for_instruction(pc, code_start);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -872,10 +881,10 @@ void execute_symbolically() {
   if (is == ADDI) {
     constrain_addi();
     do_addi();
-  } else if (is == LD)
-    constrain_ld();
-  else if (is == SD)
-    constrain_sd();
+  } else if (is == LOAD)
+    constrain_load();
+  else if (is == STORE)
+    constrain_store();
   else if (is == ADD) {
     constrain_add_sub_mul_divu_remu_sltu("bvadd");
     do_add();
@@ -978,7 +987,9 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_lowest_hi_page(context, get_lowest_hi_page(original));
   set_highest_hi_page(context, get_highest_hi_page(original));
   set_code_seg_start(context, get_code_seg_start(original));
+  set_code_seg_size(context, get_code_seg_size(original));
   set_data_seg_start(context, get_data_seg_start(original));
+  set_data_seg_size(context, get_data_seg_size(original));
   set_heap_seg_start(context, get_heap_seg_start(original));
   set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
@@ -1916,7 +1927,7 @@ uint64_t selfie_run_symbolically() {
         }
       }
 
-      if (binary_length == 0) {
+      if (code_size == 0) {
         printf1("%s: nothing to run symbolically\n", selfie_name);
 
         return EXITCODE_BADARGUMENTS;
@@ -1947,25 +1958,29 @@ uint64_t selfie_run_symbolically() {
 
       boot_loader(current_context);
 
+      // current_context is ready to run
+
+      run = 1;
+
       printf3("%s: monster symbolically executing %s with %uMB physical memory\n", selfie_name,
         binary_name,
         (char*) (total_page_frame_memory / MEGABYTE));
 
       use_file();
 
-      run      = 1;
       symbolic = 1;
 
       monster(current_context);
 
       symbolic = 0;
-      run      = 0;
 
       use_stdout();
 
       printf2("%s: monster terminating %s\n", selfie_name, get_name(current_context));
 
       print_profile(current_context);
+
+      run = 0;
 
       printf3("%s: %u characters of SMT-LIB formulae written into %s\n", selfie_name,
         (char*) number_of_written_characters,

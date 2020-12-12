@@ -12,9 +12,11 @@ uint64_t main() {
 
   x = malloc(8);
 
-  // access code segment by reaching over _bump variable, no --check-block-access required
+  *x = 0; // touch memory
 
-  v = x + -2;
+  // access code segment by reaching over data segment with _bump variable, no --check-block-access required
+
+  v = x + -(4096 / 8) + -1;
 
   *v = *v;
   open(v, 32768, 0);
