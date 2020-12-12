@@ -10,5 +10,5 @@ int main() {
   else
     pid = wait(NULL);
 
-  return pid;
+  return 21 * pid;
 }
