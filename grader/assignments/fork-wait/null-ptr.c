@@ -1,14 +1,20 @@
 uint64_t* NULL = (uint64_t*) 0;
 
 int main() {
-  uint64_t pid;
+  uint64_t fork_pid;
+  uint64_t wait_pid;
   uint64_t i;
 
-  pid = fork();
-  if (pid == 0)
+  fork_pid = fork();
+  if (fork_pid == 0)
     exit(0);
   else
-    pid = wait(NULL);
+    wait_pid = wait(NULL);
 
-  return 21 * pid;
+  if (fork_pid == -1)
+    return 1;
+  if (wait_pid == -1)
+    return 2;
+
+  return 42 + (fork_pid - wait_pid);
 }
