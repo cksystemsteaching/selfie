@@ -102,7 +102,6 @@ not_compilable = [
     'assembler-parser',
     'self-assembler',
     'processes',
-    'fork-wait-exit',
     'lock',
     'threads',
     'treiber-stack'
