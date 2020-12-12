@@ -7,9 +7,8 @@ int main() {
   pid = fork();
   if (pid == 0)
     exit(0);
-  else {
+  else
     pid = wait(NULL);
-  }
 
   return pid;
 }
