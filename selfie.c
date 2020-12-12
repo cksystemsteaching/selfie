@@ -2917,10 +2917,10 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 }
 
 void direct_output(char* buffer) {
-	if(output_fd == 1)
-		printf("%s", buffer);
-	else
-		dprintf(output_fd, "%s", buffer);
+  if(output_fd == 1)
+    printf("%s", buffer);
+  else
+    dprintf(output_fd, "%s", buffer);
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
@@ -4168,11 +4168,7 @@ void load_integer(uint64_t value) {
     if (entry == (uint64_t*) 0) {
       data_size = data_size + WORDSIZE;
 
-<<<<<<< HEAD
-      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, 0, value, -allocated_memory);
-=======
-      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
->>>>>>> ck/arch
+      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, 0, value, -data_size);
     }
 
     load_variable_or_big_int(integer, BIGINT);
@@ -4190,11 +4186,7 @@ void load_string(char* string) {
 
   data_size = data_size + round_up(length, WORDSIZE);
 
-<<<<<<< HEAD
-  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, 0, -allocated_memory);
-=======
-  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, 0, -data_size);
 
   load_integer(-data_size);
 
@@ -4212,11 +4204,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
     // default return type is "uint64_t"
     type = UINT64_T;
 
-<<<<<<< HEAD
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, binary_length);
-=======
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
->>>>>>> ck/arch
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, code_size);
 
     emit_jal(REG_RA, 0);
 
@@ -4341,22 +4329,14 @@ uint64_t compile_call(char* procedure) {
     compile_expression();
   
     // TODO: check if types/number of parameters is correct
-<<<<<<< HEAD
   
     // allocate memory on stack for parameters; we do not know how many, fixup later
-    allocate_memory_on_stack = binary_length;
+    allocate_memory_on_stack = code_size;
     emit_addi(REG_SP, REG_SP, 0);
   
     // push first parameter onto the stack
-    emit_sd(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+    emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
   
-=======
-
-    // push first parameter onto stack
-    emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_store(REG_SP, 0, current_temporary());
-
->>>>>>> ck/arch
     tfree(1);
   
     number_of_parameters = number_of_parameters + 1;
@@ -4367,14 +4347,8 @@ uint64_t compile_call(char* procedure) {
       compile_expression();
 
       // push more parameters onto stack
-<<<<<<< HEAD
-      emit_sd(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+      emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
   
-=======
-      emit_addi(REG_SP, REG_SP, -WORDSIZE);
-      emit_store(REG_SP, 0, current_temporary());
-
->>>>>>> ck/arch
       tfree(1);
   
       number_of_parameters = number_of_parameters + 1;
@@ -4409,9 +4383,9 @@ uint64_t compile_call(char* procedure) {
   number_of_calls = number_of_calls + 1;
   
   // deallocate variadic parameters
-	if(entry != (uint64_t*) 0)
-		if(get_variadic(entry))
-			emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
+  if(entry != (uint64_t*) 0)
+    if(get_variadic(entry))
+      emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
 
   // assert: allocated_temporaries == n
 
@@ -5335,11 +5309,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-<<<<<<< HEAD
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, is_variadic, number_of_parameters, binary_length);
-=======
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
->>>>>>> ck/arch
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, code_size);
     else {
       // procedure already called or declared or defined
       if (get_address(entry) != 0) {
@@ -5497,11 +5467,7 @@ void compile_cstar() {
           if (entry == (uint64_t*) 0) {
             data_size = data_size + WORDSIZE;
 
-<<<<<<< HEAD
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, 0, initial_value, -allocated_memory);
-=======
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
->>>>>>> ck/arch
+            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, 0, initial_value, -data_size);
           } else {
             // global variable already declared or defined
             print_line_number("warning", current_line_number);
@@ -5542,7 +5508,7 @@ void builtin_var_start() {
 
       emit_add(current_temporary(), current_temporary(), REG_S0);
 
-      emit_sd(REG_S0, get_address(var_list_variable), current_temporary());
+      emit_store(REG_S0, get_address(var_list_variable), current_temporary());
 
       tfree(1);
     }
@@ -5568,13 +5534,13 @@ void builtin_var_arg() {
 
       talloc();
 
-      emit_ld(current_temporary(), REG_S0, var_list_address);
+      emit_load(current_temporary(), REG_S0, var_list_address);
 
-      emit_ld(REG_A0, current_temporary(), 0);
+      emit_load(REG_A0, current_temporary(), 0);
 
       emit_addi(current_temporary(), current_temporary(), WORDSIZE);
 
-      emit_sd(REG_S0, var_list_address, current_temporary());
+      emit_store(REG_S0, var_list_address, current_temporary());
 
       tfree(1);
     } else
@@ -5720,7 +5686,6 @@ void emit_bootstrapping() {
 
     // first obtain pointer to argv
     //
-<<<<<<< HEAD
     //            sp + 2 *WORDSIZE
     //                    |
     //                    V
@@ -5731,21 +5696,7 @@ void emit_bootstrapping() {
     //             ________
     //            |        V
     // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
-    emit_sd(REG_SP, WORDSIZE, current_temporary());
-=======
-    //    sp + WORDSIZE
-    //            |
-    //            V
-    // | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, WORDSIZE);
-
-    // then push argv pointer onto the stack
-    //      ______________
-    //     |              V
-    // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_store(REG_SP, 0, current_temporary());
->>>>>>> ck/arch
+    emit_store(REG_SP, WORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -5830,13 +5781,8 @@ void selfie_compile() {
   }
 
   // implicitly declare main procedure in global symbol table
-<<<<<<< HEAD
-  // copy "main" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0, 0);
-=======
   // copy "main" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
->>>>>>> ck/arch
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -5865,7 +5811,6 @@ void selfie_compile() {
 
       compile_cstar();
 
-<<<<<<< HEAD
       printf("%s: %llu characters read in %llu lines and %llu comments\n", selfie_name,
         number_of_read_characters,
         line_number,
@@ -5873,7 +5818,7 @@ void selfie_compile() {
 
       printf("%s: with %llu(%.2llu%%) characters in %llu actual symbols\n", selfie_name,
         number_of_read_characters - number_of_ignored_characters,
-        fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
+        percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters),
         number_of_scanned_symbols);
 
       printf("%s: %llu global variables, %llu procedures, %llu string literals\n", selfie_name,
@@ -5887,29 +5832,6 @@ void selfie_compile() {
         number_of_while,
         number_of_if,
         number_of_return);
-=======
-      printf4("%s: %u characters read in %u lines and %u comments\n", selfie_name,
-        (char*) number_of_read_characters,
-        (char*) line_number,
-        (char*) number_of_comments);
-
-      printf4("%s: with %u(%.2u%%) characters in %u actual symbols\n", selfie_name,
-        (char*) (number_of_read_characters - number_of_ignored_characters),
-        (char*) percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters),
-        (char*) number_of_scanned_symbols);
-
-      printf4("%s: %u global variables, %u procedures, %u string literals\n", selfie_name,
-        (char*) number_of_global_variables,
-        (char*) number_of_procedures,
-        (char*) number_of_strings);
-
-      printf6("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
-        (char*) number_of_calls,
-        (char*) number_of_assignments,
-        (char*) number_of_while,
-        (char*) number_of_if,
-        (char*) number_of_return);
->>>>>>> ck/arch
     }
   }
 
@@ -5929,17 +5851,10 @@ void selfie_compile() {
     total_search_time / number_of_searches,
     total_search_time);
 
-<<<<<<< HEAD
   printf("%s: %llu bytes generated with %llu instructions and %llu bytes of data\n", selfie_name,
-    binary_length,
-    code_length / INSTRUCTIONSIZE,
-    binary_length - code_length);
-=======
-  printf4("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
-    (char*) code_size + data_size,
-    (char*) (code_size / INSTRUCTIONSIZE),
-    (char*) data_size);
->>>>>>> ck/arch
+    code_size + data_size,
+    code_size / INSTRUCTIONSIZE,
+    data_size);
 
   print_instruction_counters();
 }
@@ -6340,111 +6255,61 @@ uint64_t get_total_number_of_nops() {
   return nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_load + nopc_store + nopc_beq + nopc_jal + nopc_jalr;
 }
 
-<<<<<<< HEAD
-void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
-  printf("%s: %llu(%.2llu%%)",
-    mnemonics,
-    counter,
-    fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
-=======
 void print_instruction_counter(uint64_t counter, uint64_t ins) {
-  printf3("%s: %u(%.2u%%)",
+  printf("%s: %llu(%.2llu%%)",
     get_mnemonic(ins),
-    (char*) counter,
-    (char*) percentage_format(get_total_number_of_instructions(), counter));
->>>>>>> ck/arch
+    counter,
+    percentage_format(get_total_number_of_instructions(), counter));
 }
 
 void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64_t ins) {
   print_instruction_counter(counter, ins);
 
   if (run)
-<<<<<<< HEAD
-    printf("[%.2llu%%]", fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+    printf("[%.2llu%%]", percentage_format(counter, nops));
 }
 
 void print_instruction_counters() {
-  uint64_t ic;
-
-  ic = get_total_number_of_instructions();
-
   printf("%s: init:    ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_lui, nopc_lui, "lui");
-=======
-    printf1("[%.2u%%]", (char*) percentage_format(counter, nops));
-}
-
-void print_instruction_counters() {
-  printf1("%s: init:    ", selfie_name);
   print_instruction_counter_with_nops(ic_lui, nopc_lui, LUI);
->>>>>>> ck/arch
   print(", ");
   print_instruction_counter_with_nops(ic_addi, nopc_addi, ADDI);
   println();
 
-<<<<<<< HEAD
   printf("%s: memory:  ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_ld, nopc_ld, "ld");
-=======
-  printf1("%s: memory:  ", selfie_name);
   print_instruction_counter_with_nops(ic_load, nopc_load, LOAD);
->>>>>>> ck/arch
   print(", ");
   print_instruction_counter_with_nops(ic_store, nopc_store, STORE);
   println();
 
-<<<<<<< HEAD
   printf("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_add, nopc_add, "add");
-=======
-  printf1("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic_add, nopc_add, ADD);
->>>>>>> ck/arch
   print(", ");
   print_instruction_counter_with_nops(ic_sub, nopc_sub, SUB);
   print(", ");
   print_instruction_counter_with_nops(ic_mul, nopc_mul, MUL);
   println();
 
-<<<<<<< HEAD
   printf("%s: compute: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
-=======
-  printf1("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic_divu, nopc_divu, DIVU);
->>>>>>> ck/arch
   print(", ");
   print_instruction_counter_with_nops(ic_remu, nopc_remu, REMU);
   println();
 
-<<<<<<< HEAD
   printf("%s: compare: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_sltu, nopc_sltu, "sltu");
-  println();
-
-  printf("%s: control: ", selfie_name);
-  print_instruction_counter_with_nops(ic, ic_beq, nopc_beq, "beq");
-=======
-  printf1("%s: compare: ", selfie_name);
   print_instruction_counter_with_nops(ic_sltu, nopc_sltu, SLTU);
   println();
 
-  printf1("%s: control: ", selfie_name);
+  printf("%s: control: ", selfie_name);
   print_instruction_counter_with_nops(ic_beq, nopc_beq, BEQ);
->>>>>>> ck/arch
   print(", ");
   print_instruction_counter_with_nops(ic_jal, nopc_jal, JAL);
   print(", ");
   print_instruction_counter_with_nops(ic_jalr, nopc_jalr, JALR);
   println();
 
-<<<<<<< HEAD
   printf("%s: system:  ", selfie_name);
-  print_instruction_counter(ic, ic_ecall, "ecall");
-=======
-  printf1("%s: system:  ", selfie_name);
   print_instruction_counter(ic_ecall, ECALL);
->>>>>>> ck/arch
   println();
 }
 
@@ -6920,13 +6785,8 @@ void selfie_output(char* filename) {
 
   binary_name = filename;
 
-<<<<<<< HEAD
-  if (binary_length == 0) {
-    printf("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
-=======
   if (code_size + data_size == 0) {
-    printf2("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
->>>>>>> ck/arch
+    printf("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
 
     return;
   }
@@ -6944,27 +6804,17 @@ void selfie_output(char* filename) {
   // assert: ELF_header is mapped
 
   // first write ELF header
-<<<<<<< HEAD
-  if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
-    printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
-=======
   if (write(fd, ELF_header, ELF_HEADER_SIZE) != ELF_HEADER_SIZE) {
-    printf2("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
->>>>>>> ck/arch
+    printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
   // assert: code_binary is mapped
 
-<<<<<<< HEAD
-  // then write binary
-  if (write(fd, binary, binary_length) != binary_length) {
-    printf("%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
-=======
   // then write code
   if (write(fd, code_binary, code_size) != code_size) {
-    printf2("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
+    printf("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -6973,23 +6823,15 @@ void selfie_output(char* filename) {
 
   // finally write data
   if (write(fd, data_binary, data_size) != data_size) {
-    printf2("%s: could not write data into binary output file %s\n", selfie_name, binary_name);
->>>>>>> ck/arch
+    printf("%s: could not write data into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
-<<<<<<< HEAD
   printf("%s: %llu bytes with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
-    ELF_HEADER_LEN + binary_length,
-    code_length / INSTRUCTIONSIZE,
-    binary_length - code_length,
-=======
-  printf5("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
-    (char*) (ELF_HEADER_SIZE + code_size + data_size),
-    (char*) (code_size / INSTRUCTIONSIZE),
-    (char*) data_size,
->>>>>>> ck/arch
+    ELF_HEADER_SIZE + code_size + data_size,
+    code_size / INSTRUCTIONSIZE,
+    data_size,
     binary_name);
 }
 
@@ -7070,15 +6912,9 @@ void selfie_load() {
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
             printf("%s: %llu bytes with %llu instructions and %llu bytes of data loaded from %s\n",
               selfie_name,
-<<<<<<< HEAD
-              ELF_HEADER_LEN + binary_length,
-              code_length / INSTRUCTIONSIZE,
-              binary_length - code_length,
-=======
-              (char*) (ELF_HEADER_SIZE + code_size + data_size),
-              (char*) (code_size / INSTRUCTIONSIZE),
-              (char*) data_size,
->>>>>>> ck/arch
+              ELF_HEADER_SIZE + code_size + data_size,
+              code_size / INSTRUCTIONSIZE,
+              data_size,
               binary_name);
 
             return;
@@ -7088,11 +6924,7 @@ void selfie_load() {
     }
   }
 
-<<<<<<< HEAD
-  printf("%s: failed to load code from input file %s\n", selfie_name, binary_name);
-=======
-  printf2("%s: failed to load binary from input file %s\n", selfie_name, binary_name);
->>>>>>> ck/arch
+  printf("%s: failed to load binary from input file %s\n", selfie_name, binary_name);
 
   exit(EXITCODE_IOERROR);
 }
@@ -7102,11 +6934,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, 0, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -7143,25 +6971,15 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, code_size);
-
-  emit_load(REG_A2, REG_SP, 0); // size
->>>>>>> ck/arch
+  emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-<<<<<<< HEAD
-  emit_ld(REG_A2, REG_SP, 0); // size
-=======
-  emit_load(REG_A0, REG_SP, 0); // fd
->>>>>>> ck/arch
+  emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
@@ -7277,25 +7095,15 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
-  emit_ld(REG_A0, REG_SP, 0); // fd
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, code_size);
-
-  emit_load(REG_A2, REG_SP, 0); // size
->>>>>>> ck/arch
+  emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-<<<<<<< HEAD
-  emit_ld(REG_A2, REG_SP, 0); // size
-=======
-  emit_load(REG_A0, REG_SP, 0); // fd
->>>>>>> ck/arch
+  emit_load(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
@@ -7410,25 +7218,15 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
-  emit_ld(REG_A1, REG_SP, 0); // filename
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, code_size);
-
-  emit_load(REG_A3, REG_SP, 0); // mode
->>>>>>> ck/arch
+  emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // flags
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-<<<<<<< HEAD
-  emit_ld(REG_A3, REG_SP, 0); // mode
-=======
-  emit_load(REG_A1, REG_SP, 0); // filename
->>>>>>> ck/arch
+  emit_load(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
@@ -7552,32 +7350,19 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
 
   // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
-
-  // on boot levels higher than 0, zalloc falls back to malloc
-  // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
   data_size = data_size + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
-<<<<<<< HEAD
-  // copy "_bump" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, 0, -allocated_memory);
-=======
   // copy "_bump" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -data_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, 0, -data_size);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
@@ -7635,18 +7420,10 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
   current_program_break = get_program_break(context);
 
-<<<<<<< HEAD
-  if (is_valid_virtual_address(new_program_break))
-    if (new_program_break >= current_program_break)
-      if (new_program_break < *(get_regs(context) + REG_SP)) {
-        if (debug_brk)
-          printf("%s: setting program break to %p\n", selfie_name, (void*) new_program_break);
-=======
   if (is_aligned_virtual_address(new_program_break, WORDSIZE))
     if (is_address_between_stack_and_heap(context, new_program_break)) {
       if (debug_brk)
-        printf2("%s: setting program break to %p\n", selfie_name, (char*) new_program_break);
->>>>>>> ck/arch
+        printf("%s: setting program break to %p\n", selfie_name, (void*) new_program_break);
 
       set_program_break(context, new_program_break);
 
@@ -7729,11 +7506,7 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7985,11 +7758,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
 
@@ -7997,11 +7766,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
 
@@ -8009,11 +7774,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-<<<<<<< HEAD
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, 0, binary_length);
-=======
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, code_size);
->>>>>>> ck/arch
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
 
   // up to three instructions needed to load data segment size but is not yet known
 
@@ -8539,63 +8300,33 @@ void gc_collect(uint64_t* context) {
 }
 
 void print_gc_profile(uint64_t* context) {
-<<<<<<< HEAD
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf("%s: gc:      %.2lluMB requested in %llu mallocs (%llu gced, %llu reuses)\n", selfie_name,
-    fixed_point_ratio(gc_mem_mallocated, MEGABYTE, 2),
+    ratio_format(gc_mem_mallocated, MEGABYTE),
     gc_num_mallocated,
     gc_num_gced_mallocs,
     gc_num_reused_mallocs);
   printf("%s: gc:      %.2lluMB(%.2llu%%) reused in %llu reused mallocs\n", selfie_name,
-    fixed_point_ratio(gc_mem_reused, MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_reused, 4), 4),
+    ratio_format(gc_mem_reused, MEGABYTE),
+    percentage_format(gc_mem_mallocated, gc_mem_reused),
     gc_num_reused_mallocs);
   printf("%s: gc:      %.2lluMB collected in %llu gc runs\n", selfie_name,
-    fixed_point_ratio(gc_mem_collected, MEGABYTE, 2),
+    ratio_format(gc_mem_collected, MEGABYTE),
     gc_num_collects);
   printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu mallocs (%llu gced, %llu ungced)\n", selfie_name,
-    fixed_point_ratio(gc_mem_objects + gc_mem_metadata, MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata, 4), 4),
+    ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE),
+    percentage_format(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
     gc_num_gced_mallocs + gc_num_ungced_mallocs,
     gc_num_gced_mallocs,
     gc_num_ungced_mallocs);
   printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu gced mallocs\n", selfie_name,
-    fixed_point_ratio(gc_mem_objects, MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_objects, 4), 4),
+    ratio_format(gc_mem_objects, MEGABYTE),
+    percentage_format(gc_mem_mallocated, gc_mem_objects),
     gc_num_gced_mallocs);
   printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu ungced mallocs", selfie_name,
-    fixed_point_ratio(gc_mem_metadata, MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(gc_mem_mallocated, gc_mem_metadata, 4), 4),
+    ratio_format(gc_mem_metadata, MEGABYTE),
+    percentage_format(gc_mem_mallocated, gc_mem_metadata),
     gc_num_ungced_mallocs);
-=======
-  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf5("%s: gc:      %.2uMB requested in %u mallocs (%u gced, %u reuses)\n", selfie_name,
-    (char*) ratio_format(gc_mem_mallocated, MEGABYTE),
-    (char*) gc_num_mallocated,
-    (char*) gc_num_gced_mallocs,
-    (char*) gc_num_reused_mallocs);
-  printf4("%s: gc:      %.2uMB(%.2u%%) reused in %u reused mallocs\n", selfie_name,
-    (char*) ratio_format(gc_mem_reused, MEGABYTE),
-    (char*) percentage_format(gc_mem_mallocated, gc_mem_reused),
-    (char*) gc_num_reused_mallocs);
-  printf3("%s: gc:      %.2uMB collected in %u gc runs\n", selfie_name,
-    (char*) ratio_format(gc_mem_collected, MEGABYTE),
-    (char*) gc_num_collects);
-  printf6("%s: gc:      %.2uMB(%.2u%%) allocated in %u mallocs (%u gced, %u ungced)\n", selfie_name,
-    (char*) ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE),
-    (char*) percentage_format(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
-    (char*) (gc_num_gced_mallocs + gc_num_ungced_mallocs),
-    (char*) gc_num_gced_mallocs,
-    (char*) gc_num_ungced_mallocs);
-  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u gced mallocs\n", selfie_name,
-    (char*) ratio_format(gc_mem_objects, MEGABYTE),
-    (char*) percentage_format(gc_mem_mallocated, gc_mem_objects),
-    (char*) gc_num_gced_mallocs);
-  printf4("%s: gc:      %.2uMB(%.2u%%) allocated in %u ungced mallocs", selfie_name,
-    (char*) ratio_format(gc_mem_metadata, MEGABYTE),
-    (char*) percentage_format(gc_mem_mallocated, gc_mem_metadata),
-    (char*) gc_num_ungced_mallocs);
->>>>>>> ck/arch
   if (is_gc_library(context) == 0)
     print(" (external)");
   println();
@@ -8632,14 +8363,9 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-<<<<<<< HEAD
     sprintf(string_buffer,"%s: pc=%llx", binary_name, address);
     direct_output(string_buffer);
-    print_code_line_number_for_instruction(address, entry_point);
-=======
-    printf2("%s: pc=%x", binary_name, (char*) address);
     print_code_line_number_for_instruction(address, code_start);
->>>>>>> ck/arch
     if (symbolic)
       // skip further output
       return;
@@ -8647,14 +8373,9 @@ void print_code_context_for_instruction(uint64_t address) {
       print(": ");
   } else {
     if (model) {
-<<<<<<< HEAD
       sprintf(string_buffer,"%llx", address);
       direct_output(string_buffer);
-      print_code_line_number_for_instruction(address, entry_point);
-=======
-      printf1("%x", (char*) address);
       print_code_line_number_for_instruction(address, code_start);
->>>>>>> ck/arch
       print(": ");
     } else if (disassemble_verbose) {
       sprintf(string_buffer,"%llx", address);
@@ -8668,12 +8389,8 @@ void print_code_context_for_instruction(uint64_t address) {
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer,"lui %s,%llx", get_register_name(rd), sign_shrink(imm, 20));
+  sprintf(string_buffer,"%s %s,%llx", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
   direct_output(string_buffer);
-=======
-  printf3("%s %s,%x", get_mnemonic(is), get_register_name(rd), (char*) sign_shrink(imm, 20));
->>>>>>> ck/arch
 }
 
 void print_lui_before() {
@@ -8728,12 +8445,8 @@ void print_addi() {
         return;
       }
 
-<<<<<<< HEAD
-  sprintf(string_buffer, "addi %s,%s,%lld", get_register_name(rd), get_register_name(rs1), imm);
+  sprintf(string_buffer, "%s %s,%s,%lld", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), imm);
   direct_output(string_buffer);
-=======
-  printf4("%s %s,%s,%d", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), (char*) imm);
->>>>>>> ck/arch
 }
 
 void print_addi_before() {
@@ -8773,12 +8486,8 @@ void do_addi() {
 
 void print_add_sub_mul_divu_remu_sltu() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  sprintf(string_buffer, "%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
   direct_output(string_buffer);
-=======
-  printf4("%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
->>>>>>> ck/arch
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -8935,12 +8644,8 @@ void do_sltu() {
 
 void print_load() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "ld %s,%lld(%s)", get_register_name(rd), imm, get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rd), imm, get_register_name(rs1));
   direct_output(string_buffer);
-=======
-  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rd), (char*) imm, get_register_name(rs1));
->>>>>>> ck/arch
 }
 
 void print_load_before() {
@@ -9031,12 +8736,8 @@ uint64_t do_load() {
 
 void print_store() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "sd %s,%lld(%s)", get_register_name(rs2), imm, get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rs2), imm, get_register_name(rs1));
   direct_output(string_buffer);
-=======
-  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rs2), (char*) imm, get_register_name(rs1));
->>>>>>> ck/arch
 }
 
 void print_store_before() {
@@ -9129,18 +8830,12 @@ void undo_store() {
 
 void print_beq() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "beq %s,%s,%lld", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
+  sprintf(string_buffer, "%s %s,%s,%lld", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose) {
     sprintf(string_buffer, "[%llx]", pc + imm);
     direct_output(string_buffer);
   }
-=======
-  printf4("%s %s,%s,%d", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), (char*) signed_division(imm, INSTRUCTIONSIZE));
-  if (disassemble_verbose)
-    printf1("[%x]", (char*) (pc + imm));
->>>>>>> ck/arch
 }
 
 void print_beq_before() {
@@ -9178,18 +8873,12 @@ void do_beq() {
 
 void print_jal() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "jal %s,%lld", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
+  sprintf(string_buffer, "%s %s,%lld", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose){
     sprintf(string_buffer,"[%llx]", pc + imm);
     direct_output(string_buffer);
   }
-=======
-  printf3("%s %s,%d", get_mnemonic(is), get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE));
-  if (disassemble_verbose)
-    printf1("[%x]", (char*) (pc + imm));
->>>>>>> ck/arch
 }
 
 void print_jal_before() {
@@ -9256,12 +8945,8 @@ void do_jal() {
 
 void print_jalr() {
   print_code_context_for_instruction(pc);
-<<<<<<< HEAD
-  sprintf(string_buffer, "jalr %s,%lld(%s)", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
   direct_output(string_buffer);
-=======
-  printf4("%s %s,%d(%s)", get_mnemonic(is), get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
->>>>>>> ck/arch
 }
 
 void print_jalr_before() {
@@ -9357,15 +9042,10 @@ void undo_ecall() {
 }
 
 void print_data_line_number() {
-<<<<<<< HEAD
   if (data_line_number != (uint64_t*) 0) {
-    sprintf(string_buffer, "(~%llu)", *(data_line_number + (pc - code_length) / SIZEOFUINT64));
+    sprintf(string_buffer, "(~%llu)", *(data_line_number + (pc - code_size) / SIZEOFUINT64));
     direct_output(string_buffer);
-    }
-=======
-  if (data_line_number != (uint64_t*) 0)
-    printf1("(~%u)", (char*) *(data_line_number + (pc - code_size) / SIZEOFUINT64));
->>>>>>> ck/arch
+  }  
 }
 
 void print_data_context(uint64_t data) {
@@ -9384,15 +9064,11 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-<<<<<<< HEAD
-  sprintf(string_buffer, ".quad %llx", data);
-  direct_output(string_buffer);
-=======
   if (IS64BITSYSTEM)
-    printf1(".8byte %x", (char*) data);
+    sprintf(string_buffer, ".8byte %llx", data);
   else
-    printf1(".4byte %x", (char*) data);
->>>>>>> ck/arch
+    sprintf(string_buffer, ".4byte %llx", data);
+  direct_output(string_buffer);
 }
 
 // -----------------------------------------------------------------
@@ -9440,13 +9116,8 @@ void selfie_disassemble(uint64_t verbose) {
 
   assembly_name = get_argument();
 
-<<<<<<< HEAD
-  if (code_length == 0) {
-    printf("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
-=======
   if (code_size + data_size == 0) {
-    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
->>>>>>> ck/arch
+    printf("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
 
     return;
   }
@@ -9495,17 +9166,10 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-<<<<<<< HEAD
   printf("%s: %llu characters of assembly with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
-    (code_length / INSTRUCTIONSIZE),
-    (binary_length - code_length),
-=======
-  printf5("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
-    (char*) number_of_written_characters,
-    (char*) (code_size / INSTRUCTIONSIZE),
-    (char*) data_size,
->>>>>>> ck/arch
+    code_size / INSTRUCTIONSIZE,
+    data_size,
     assembly_name);
 }
 
@@ -9727,14 +9391,10 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-<<<<<<< HEAD
-      printf("%s: unknown instruction with %llx opcode detected\n", selfie_name, opcode);
-=======
-      printf4("%s: at address %p unknown instruction %x with opcode %x detected\n", selfie_name,
-        (char*) pc,
-        (char*) ir,
-        (char*) opcode);
->>>>>>> ck/arch
+      printf("%s: at address %p unknown instruction %llx with opcode %llx detected\n", selfie_name,
+        (void*) pc,
+        ir,
+        opcode);
 
       exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
@@ -9978,11 +9638,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-<<<<<<< HEAD
-    printf(",%llu(%.2llu%%)@%llx", c, fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), a);
-=======
-    printf3(",%u(%.2u%%)@%x", (char*) c, (char*) percentage_format(total, c), (char*) a);
->>>>>>> ck/arch
+    printf(",%llu(%.2llu%%)@%llx", c, percentage_format(total, c), a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -10005,13 +9661,8 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       // may happen in read-only memory segments
       writes = 1;
 
-<<<<<<< HEAD
-    printf("%s: %s%s%lld,%lld,%lld[%.2llu]\n", selfie_name, message, padding,
-      reads + writes, reads, writes, fixed_point_ratio(reads, writes, 2));
-=======
-    printf7("%s: %s%s%u,%u,%u[%.2u]\n", selfie_name, message, padding,
-      (char*) (reads + writes), (char*) reads, (char*) writes, (char*) ratio_format(reads, writes));
->>>>>>> ck/arch
+    printf("%s: %s%s%llu,%llu,%llu[%.2llu]\n", selfie_name, message, padding,
+      reads + writes, reads, writes, ratio_format(reads, writes));
   }
 }
 
@@ -10077,39 +9728,21 @@ void print_register_memory_profile() {
 }
 
 void print_profile(uint64_t* context) {
-<<<<<<< HEAD
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf("%s: summary: %llu executed instructions [%.2llu%% nops]\n", selfie_name,
     get_total_number_of_instructions(),
-    get_total_percentage_of_nops());
+    percentage_format(get_total_number_of_instructions(), get_total_number_of_nops()));
   printf("%s:          %.2lluMB allocated in %llu mallocs\n", selfie_name,
-    fixed_point_ratio(mc_brk, MEGABYTE, 2),
+    ratio_format(mc_brk, MEGABYTE),
     sc_brk);
   printf("%s:          %.2lluMB(%.2llu%% of %.2lluMB) actually accessed\n", selfie_name,
-    fixed_point_ratio(mc_mapped_heap, MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(round_up(mc_brk, PAGESIZE), mc_mapped_heap, 4), 4),
-    fixed_point_ratio(mc_brk, MEGABYTE, 2));
+    ratio_format(mc_mapped_heap, MEGABYTE),
+    percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
+    ratio_format(mc_brk, MEGABYTE));
   printf("%s:          %.2lluMB(%.2llu%% of %lluMB) mapped memory\n", selfie_name,
-    fixed_point_ratio(pused(), MEGABYTE, 2),
-    fixed_point_percentage(fixed_point_ratio(total_page_frame_memory, pused(), 4), 4),
+    ratio_format(pused(), MEGABYTE),
+    percentage_format(total_page_frame_memory, pused()),
     total_page_frame_memory / MEGABYTE);
-=======
-  printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf3("%s: summary: %u executed instructions [%.2u%% nops]\n", selfie_name,
-    (char*) get_total_number_of_instructions(),
-    (char*) percentage_format(get_total_number_of_instructions(), get_total_number_of_nops()));
-  printf3("%s:          %.2uMB allocated in %u mallocs\n", selfie_name,
-    (char*) ratio_format(mc_brk, MEGABYTE),
-    (char*) sc_brk);
-  printf4("%s:          %.2uMB(%.2u%% of %.2uMB) actually accessed\n", selfie_name,
-    (char*) ratio_format(mc_mapped_heap, MEGABYTE),
-    (char*) percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
-    (char*) ratio_format(mc_brk, MEGABYTE));
-  printf4("%s:          %.2uMB(%.2u%% of %uMB) mapped memory\n", selfie_name,
-    (char*) ratio_format(pused(), MEGABYTE),
-    (char*) percentage_format(total_page_frame_memory, pused()),
-    (char*) (total_page_frame_memory / MEGABYTE));
->>>>>>> ck/arch
 
   if (GC_ON)
     print_gc_profile(context);
@@ -11101,13 +10734,8 @@ void boot_loader(uint64_t* context) {
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
 
-<<<<<<< HEAD
-  if (binary_length == 0) {
-    printf("%s: nothing to run, debug, or host\n", selfie_name);
-=======
   if (code_size == 0) {
-    printf1("%s: nothing to run, debug, or host\n", selfie_name);
->>>>>>> ck/arch
+    printf("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
   }
@@ -11124,26 +10752,18 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-<<<<<<< HEAD
-  printf("%s: selfie executing %s with %lluMB physical memory", selfie_name,
-=======
   // current_context is ready to run
 
   run = 1;
 
-  printf3("%s: selfie executing %s with %uMB physical memory", selfie_name,
->>>>>>> ck/arch
+  printf("%s: selfie executing %s with %lluMB physical memory", selfie_name,
     binary_name,
     total_page_frame_memory / MEGABYTE);
 
   if (GC_ON) {
     gc_init(current_context);
 
-<<<<<<< HEAD
-    printf(", gcing every %lld mallocs, ", GC_PERIOD);
-=======
-    printf1(", gcing every %u mallocs, ", (char*) GC_PERIOD);
->>>>>>> ck/arch
+    printf(", gcing every %llu mallocs, ", GC_PERIOD);
     if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
   }
 
@@ -11253,10 +10873,10 @@ uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
-    printf2("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
-    printf3("%s: %u-bit unsigned integers and %u-bit pointers on boot level ", selfie_name,
-      (char*) SIZEOFUINT64INBITS,
-      (char*) SIZEOFUINT64STARINBITS);
+    printf("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
+    printf("%s: %llu-bit unsigned integers and %llu-bit pointers on boot level ", selfie_name,
+      SIZEOFUINT64INBITS,
+      SIZEOFUINT64STARINBITS);
     if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
 
     init_scanner();
@@ -11308,6 +10928,7 @@ uint64_t selfie(uint64_t extras) {
 uint64_t exit_selfie(uint64_t exit_code, char* extras) {
   if (no_or_bad_or_more_arguments(exit_code))
     print_synopsis(extras);
+
   if (exit_code == EXITCODE_MOREARGUMENTS)
     return EXITCODE_BADARGUMENTS;
   else if (exit_code == EXITCODE_NOARGUMENTS)
