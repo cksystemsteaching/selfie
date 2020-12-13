@@ -1007,7 +1007,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 2; // number of program header entries (code and data segment)
+uint64_t e_phnum = 1; // number of program header entries (code and data segment; TODO: extend to 2)
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -5292,7 +5292,8 @@ void emit_bootstrapping() {
   code_start = PK_CODE_START;
 
   // start of data segment must be page-aligned for ELF program header
-  data_start = round_up(code_start + code_size, p_align);
+  // TODO: data_start = round_up(code_start + code_size, p_align);
+  data_start = code_start + code_size;
 
   // calculate global pointer value
   gp_value = data_start + data_size;
@@ -6309,11 +6310,11 @@ uint64_t* encode_elf_header() {
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
   }
 
-  p_flags  = 5; // code segment attributes are RE
+  p_flags  = 7; // code segment attributes are RWE (TODO: should be 5 for RE)
   p_offset = ELF_HEADER_SIZE; // must match binary format
   p_vaddr  = code_start;
-  p_filesz = code_size;
-  p_memsz  = code_size;
+  p_filesz = code_size + data_size; // TODO: should be code_size
+  p_memsz  = code_size + data_size; // TODO: should be code_size
 
   encode_elf_program_header(header, 0);
 
@@ -6323,6 +6324,7 @@ uint64_t* encode_elf_header() {
   p_filesz = data_size;
   p_memsz  = data_size;
 
+  // TODO: currently ignored because e_phnum == 1
   encode_elf_program_header(header, 1);
 
   return header;
@@ -6364,25 +6366,30 @@ void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
+  uint64_t binary_size;
   uint64_t* valid_header;
-  uint64_t  i;
+  uint64_t i;
 
   // must match binary bootstrapping
   code_start = PK_CODE_START;
 
   decode_elf_program_header(header, 0);
 
-  code_size = p_filesz;
-
-  if (code_size > MAX_CODE_SIZE)
-    return 0;
-
-  // must match binary bootstrapping
-  data_start = round_up(code_start + code_size, p_align);
+  // TODO: code_size = p_filesz;
+  binary_size = p_filesz;
 
   decode_elf_program_header(header, 1);
 
   data_size = p_filesz;
+
+  code_size = binary_size - data_size;
+
+  // must match binary bootstrapping
+  // TODO: data_start = round_up(code_start + code_size, p_align);
+  data_start = code_start + code_size;
+
+  if (code_size > MAX_CODE_SIZE)
+    return 0;
 
   if (data_size > MAX_DATA_SIZE)
     return 0;
