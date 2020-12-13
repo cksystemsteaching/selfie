@@ -2125,9 +2125,18 @@ void init_system() {
     exit(EXITCODE_SYSTEMERROR);
 
   if (SIZEOFUINT64INBITS != 64) {
-    if (SIZEOFUINT64INBITS == 32)
+    if (SIZEOFUINT64INBITS == 32) {
       IS64BITSYSTEM = 0;
-    else
+
+      // configuring ELF32 file header
+
+      EI_CLASS = 1; // file class is 1 (ELFCLASS32)
+
+      e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
+
+      e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
+      e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+    } else
       // selfie only supports 32-bit and 64-bit systems
       exit(EXITCODE_SYSTEMERROR);
   }
@@ -6281,13 +6290,6 @@ uint64_t* encode_elf_header() {
                   + left_shift(e_shnum, 32)
                   + left_shift(e_shstrndx, 48);
   } else {
-    EI_CLASS = 1; // file class is 1 (ELFCLASS32)
-
-    e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
-
-    e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
-    e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
-
     // RISC-U ELF32 file header
     *(header + 0)  = EI_MAG0
                    + left_shift(EI_MAG1, 8)
