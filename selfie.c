@@ -5293,12 +5293,12 @@ void emit_bootstrapping() {
   uint64_t saved_code_size;
   uint64_t* entry;
 
+  // code segment starts at PK_CODE_START
+  code_start = PK_CODE_START;
+
   // code size must be word-aligned
   if (code_size % WORDSIZE != 0)
     emit_nop();
-
-  // code segment starts at PK_CODE_START
-  code_start = PK_CODE_START;
 
   // start of data segment must be page-aligned for ELF program header
   // TODO: data_start = round_up(code_start + code_size, p_align);
