@@ -315,7 +315,7 @@ void implement_symbolic_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
@@ -390,7 +390,7 @@ void implement_symbolic_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           // TODO: What should symbolically executed code actually output?
@@ -446,7 +446,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_aligned_virtual_address(vaddr, WORDSIZE))
+    if (is_virtual_address_valid(vaddr, WORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr)) {
           sword = load_symbolic_memory(vaddr);
@@ -725,7 +725,7 @@ void constrain_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         // semantics of load double word
@@ -783,7 +783,7 @@ void constrain_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         // semantics of store double word
@@ -1171,6 +1171,18 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     // check if this invalid memory access is reachable
     print("(push 1)\n");
     printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+    set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
+
+    // we terminate the execution of the context, because if the location is not reachable,
+    // the rest of the path is not reachable either, and otherwise
+    // the execution would be terminated by this error anyway
+    return EXIT;
+  } else if (exception == EXCEPTION_SEGMENTATIONFAULT) {
+    // check if this memory access is reachable
+    print("(push 1)\n");
+    printf1("(assert %s); segmentation fault detected; check if this memory access is reachable", path_condition);
     print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
