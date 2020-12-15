@@ -7237,10 +7237,10 @@ uint64_t is_boot_level_zero() {
 void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
-  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
+  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
+  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
