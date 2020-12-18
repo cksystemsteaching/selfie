@@ -239,6 +239,10 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
+    parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
+            type=int, default=[-1, -1],
+            help='truncates the amount of leading and trailing lines',
+            dest='truncate')
     parser.add_argument('assignment', metavar='assignment', nargs='?',
             type=curried_parse_assignment, help='grade this assignment')
 
