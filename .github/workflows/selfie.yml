@@ -61,4 +61,4 @@ jobs:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Make everything
-      uses: cksystemsteaching/selfie@master
+      uses: .
