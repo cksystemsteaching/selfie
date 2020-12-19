@@ -52,13 +52,3 @@ jobs:
         CC: gcc
       run: make all
     # python3 does not work
-
-  make-everything-of-selfie-on-docker:
-    name: Make everything on docker
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout selfie
-      uses: actions/checkout@v2
-    - name: Make everything
-      uses: .

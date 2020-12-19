@@ -1,12 +1,21 @@
-name: Build Docker Selfie
+name: Run Docker Selfie
 
 on:
   push:
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
+  pull_request:
     branches: [ master ]
     paths-ignore:
     - '**.md'
     - '**.txt'
     - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
   schedule:
     # trigger fridays at 12am
     - cron: '0 0 * * 5'
@@ -28,3 +37,4 @@ jobs:
       run: |
         echo '${{ secrets.DOCKERHUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push cksystemsteaching/selfie
+      if: ${{ github.ref == 'refs/heads/master' }}
