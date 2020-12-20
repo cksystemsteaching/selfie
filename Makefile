@@ -187,10 +187,10 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 btor2: $(btor2s) selfie.btor2
 
 # Consider these targets as targets, not files
-.PHONY: spike qemu assemble 32-bit boolector btormc validator grader grade extras
+.PHONY: spike qemu assemble 32-bit boolector btormc extras
 
 # Run everything that requires non-standard tools
-extras: spike qemu assemble 32-bit boolector btormc validator grader grade
+extras: spike qemu assemble 32-bit boolector btormc
 
 # Run selfie on spike
 spike: selfie.m selfie.s
@@ -238,12 +238,15 @@ boolector: smt
 btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file) &&) true
 
+# Consider these targets as targets, not files
+.PHONY: validator grader grade pythons
+
+# Run everything that requires python
+pythons: validator grader grade
+
 # files where validator fails (e.g. timeout) and succeeds
 failingFiles := $(wildcard examples/symbolic/*-fail-*.c)
 succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
-
-# Prevent make from running these targets in parallel
-.NOTPARALLEL: validator grader grade
 
 # Run validator on *.c files in symbolic
 validator: selfie modeler
@@ -261,7 +264,7 @@ grade:
 # Consider these targets as targets, not files
 .PHONY: everything clean
 
-# Run everything
+# Run everything, except anything that requires python
 everything: all extras
 
 # Clean up

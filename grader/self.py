@@ -32,7 +32,7 @@ REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/master/'
 
 
 def check_self_compilation(mandatory=False) -> List[Check]:
-    return check_execution('make self', 'selfie compiles selfie.c', mandatory=mandatory) + \
+    return check_execution('make clean self', 'selfie compiles selfie.c', mandatory=mandatory) + \
         check_compile_warnings(
             'selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
