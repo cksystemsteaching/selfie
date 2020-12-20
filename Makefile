@@ -33,13 +33,17 @@ selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2
 
-# Self-contained fixed-point of self-compilation
-compile: selfie
+# Self-compile selfie
+self: selfie
+	./selfie -c selfie.c
+
+# Self-self-compile selfie and check fixed point of self-compilation
+self-self: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
 	chmod $(XPERMISSIONS) selfie1.m selfie2.m
 	chmod $(RPERMISSIONS) selfie1.s selfie2.s
@@ -208,7 +212,7 @@ qemu: selfie.m selfie.s
 assemble: selfie.s
 	riscv64-linux-gnu-as selfie.s
 
-# Self-compile, self-execute, self-host 32-bit selfie
+# Self-self-compile, self-execute, self-host 32-bit selfie
 32-bit: selfie-32
 	./selfie-32 -c selfie.c -o selfie-32.m -s selfie-32.s -m 2 -c selfie.c -o selfie-32-2-32.m -s selfie-32-2-32.s
 	chmod $(XPERMISSIONS) selfie-32.m selfie-32-2-32.m
