@@ -37,19 +37,19 @@ jobs:
       services: docker
       os: linux
       script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker build -t cksystemsteaching/selfie .
         - docker run cksystemsteaching/selfie make all
     - stage: docker-extras
       services: docker
       os: linux
       script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker build -t cksystemsteaching/selfie .
         - docker run cksystemsteaching/selfie make extras
     - stage: deploy
       services: docker
       os: linux
       script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker build -t cksystemsteaching/selfie .
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         - docker push cksystemsteaching/selfie
     - stage: run
