@@ -34,7 +34,8 @@ jobs:
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make -j everything ; make pythons
+        - docker run cksystemsteaching/selfie make -j everything
+        - docker run cksystemsteaching/selfie make pythons
     - stage: deploy
       services: docker
       os: linux
