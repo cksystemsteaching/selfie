@@ -11,7 +11,7 @@ from lib.functional import flatmap
 from lib.model import Assignment, Check, CheckResult
 from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
-from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, print_error,
+from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
                        print_message, print_warning, print_grade, print_processing,
                        stop_processing_spinner, print_passed, print_failed,
                        reset_truncate, set_truncate)
@@ -80,7 +80,7 @@ def parse_truncate_range(arg: str) -> int:
 
 
 def validate_options_for(assignment: Optional[Assignment]):
-    if not bulk_grade_mode and is_in_quiet_mode() and assignment is None:
+    if not bulk_grade_mode and assignment is None:
         error('please specify an assignment')
 
 
