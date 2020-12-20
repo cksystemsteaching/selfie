@@ -9,7 +9,6 @@ on:
     - 'AUTHORS'
     - 'LICENSE'
   pull_request:
-    branches: [ master ]
     paths-ignore:
     - '**.md'
     - '**.txt'
