@@ -71,8 +71,8 @@ def parse_truncate_range(arg: str) -> int:
     try:
         value = int(arg)
 
-        if value < -1:
-            raise ArgumentTypeError("truncate line count must be -1 (unlimited), 0 (omitted) or positive")
+        if value < 0:
+            raise ArgumentTypeError("truncate line count must be a natural number")
 
         return value
     except ValueError:
@@ -254,7 +254,7 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
             dest='bulk_directory')
     parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
             type=parse_truncate_range,
-            help='truncates the amount of leading and trailing lines (-1 for unlimited output)',
+            help='truncates the amount of leading and trailing lines',
             dest='truncate')
     parser.add_argument('assignment', metavar='assignment', nargs='?',
             type=curried_parse_assignment, help='grade this assignment')
