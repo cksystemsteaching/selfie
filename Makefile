@@ -242,6 +242,9 @@ btormc: btor2
 failingFiles := $(wildcard examples/symbolic/*-fail-*.c)
 succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
 
+# Prevent make from running these targets in parallel
+.NOTPARALLEL: validator grader grade
+
 # Run validator on *.c files in symbolic
 validator: selfie modeler
 	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
