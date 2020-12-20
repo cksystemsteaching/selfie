@@ -3,12 +3,10 @@
 *.s
 *.smt
 *.btor2
-*.h
-*.x86
 selfie
+selfie-32
+selfie.h
 selfie.exe
 babysat
-gc
 monster
 modeler
-riscv-2-x86
