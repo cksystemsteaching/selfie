@@ -263,7 +263,10 @@ def check_lock() -> List[Check]:
                         success_criteria='Hello World!    ' * 8) + \
         check_execution('./selfie -c selfie.c -m 128 -c <assignment>print-with-lock.c -y 10',
                         '16 processes are printing in sequential order with the use of locks on HYPSTER',
-                        success_criteria='Hello World!    ' * 8)
+                        success_criteria='Hello World!    ' * 8) + \
+        check_execution('./selfie -c <assignment>release-after-exit.c -m 128',
+                        'Locks that have not been released by a terminated child are released by the system',
+                        success_criteria='Hello child!    Hello parent!   ')
 
 
 def check_threads() -> List[Check]:
