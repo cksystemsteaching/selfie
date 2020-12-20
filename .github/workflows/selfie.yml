@@ -31,7 +31,7 @@ jobs:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Make all
-      run: make all
+      run: make -j all
     - name: Use Python 3.7.x
       uses: actions/setup-python@v1
       with:
@@ -49,5 +49,5 @@ jobs:
     - name: Make all
       env:
         CC: gcc
-      run: make all
+      run: make -j all
     # python3 does not work

@@ -10,7 +10,7 @@ compiler:
   - clang
   - gcc
 
-script: travis_wait 60 make all
+script: travis_wait 60 make -j all
 
 stages:
   - test
@@ -38,13 +38,13 @@ jobs:
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make all
+        - docker run cksystemsteaching/selfie make -j all
     - stage: docker-extras
       services: docker
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make extras
+        - docker run cksystemsteaching/selfie make -j extras
     - stage: deploy
       services: docker
       os: linux
@@ -56,7 +56,7 @@ jobs:
       services: docker
       os: linux
       script:
-        - docker run cksystemsteaching/selfie make everything
+        - docker run cksystemsteaching/selfie make -j everything
 
 notifications:
   email: false
