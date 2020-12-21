@@ -1,7 +1,7 @@
 import os
 import re
 import sys
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, ArgumentTypeError
 from io import StringIO
 from pathlib import Path
 from subprocess import run, DEVNULL
@@ -11,9 +11,10 @@ from lib.functional import flatmap
 from lib.model import Assignment, Check, CheckResult
 from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
-from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, print_error,
+from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
                        print_message, print_warning, print_grade, print_processing,
-                       stop_processing_spinner, print_passed, print_failed)
+                       stop_processing_spinner, print_passed, print_failed,
+                       reset_truncate, set_truncate)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 GRADER_SYNOPSIS = '''
@@ -66,9 +67,20 @@ def parse_assignment(args: str, assignments: Set[Assignment]) -> Optional[Assign
 
     error('unknown test: {}'.format(args))
 
+def parse_truncate_range(arg: str) -> int:
+    try:
+        value = int(arg)
+
+        if value < 0:
+            raise ArgumentTypeError("truncate line count must be a natural number")
+
+        return value
+    except ValueError:
+        raise ArgumentTypeError("truncate line count must be an integer")
+
 
 def validate_options_for(assignment: Optional[Assignment]):
-    if not bulk_grade_mode and is_in_quiet_mode() and assignment is None:
+    if not bulk_grade_mode and assignment is None:
         error('please specify an assignment')
 
 
@@ -222,6 +234,7 @@ def reset_state():
     set_assignment_name('')
 
     leave_quiet_mode()
+    reset_truncate()
 
 
 def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Assignment):
@@ -239,6 +252,10 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
+    parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
+            type=parse_truncate_range,
+            help='truncates the amount of leading and trailing lines',
+            dest='truncate')
     parser.add_argument('assignment', metavar='assignment', nargs='?',
             type=curried_parse_assignment, help='grade this assignment')
 
@@ -253,6 +270,9 @@ def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: A
 
         if args.quiet:
             enter_quiet_mode()
+
+        if args.truncate:
+            set_truncate(*args.truncate)
 
         if args.bulk_file:
             enable_bulk_grader(args.bulk_file)
