@@ -20,12 +20,9 @@ on:
     - cron: '0 0 * * 5'
 
 jobs:
-  make-all-of-selfie-on-linux-and-macos:
-    name: Make all of selfie
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  make-all-of-selfie-on-linux:
+    name: Make all of selfie on Linux
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout selfie
@@ -39,8 +36,24 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
+  make-all-of-selfie-on-macos:
+    name: Make all of selfie on macOS
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
+      run: make -j all
+    - name: Use Python 3.7.x
+      uses: actions/setup-python@v1
+      with:
+        python-version: "3.7.x"
+    - name: Run autograder baseline
+      run: make grade
+
   make-all-of-selfie-on-windows:
-    name: Make all of selfie on windows
+    name: Make all of selfie on Windows
     runs-on: windows-latest
 
     steps:
@@ -50,4 +63,4 @@ jobs:
       env:
         CC: gcc
       run: make -j -O all
-    # python3 does not work
+    # python3 does not work here
