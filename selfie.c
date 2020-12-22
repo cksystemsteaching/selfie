@@ -8668,9 +8668,11 @@ uint64_t do_sd() {
         update_register_counters();
 
         // semantics of sd
-        if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
+        if (load_virtual_memory(pt, vaddr) != *(registers + rs2)) {
           store_virtual_memory(pt, vaddr, *(registers + rs2));
-        else
+
+          set_cache_hits(L1_DCACHE, get_cache_hits(L1_DCACHE) - 1);
+        } else
           nopc_sd = nopc_sd + 1;
 
         // keep track of instruction address for profiling stores
