@@ -265,7 +265,7 @@ def check_lock() -> List[Check]:
                         '16 processes are printing in sequential order with the use of locks on HYPSTER',
                         success_criteria='Hello World!    ' * 8) + \
         check_execution('./selfie -c <assignment>release-after-exit.c -m 128',
-                        'Locks that have not been released by a terminated child are released by the system',
+                        'Lock is granted to a process after a terminated process did not release its lock',
                         success_criteria='Hello child!    Hello parent!   ')
 
 
