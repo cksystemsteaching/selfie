@@ -85,8 +85,8 @@ uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t 
 uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
 uint64_t compute_address();
 
-void model_ld();
-void model_sd();
+void model_load();
+void model_store();
 
 void model_beq();
 void model_jal();
@@ -162,7 +162,7 @@ uint64_t division_flow_nid  = 21;
 uint64_t remainder_flow_nid = 21;
 
 // for checking address validity during state transitions with no memory access:
-// 30 is nid of end of code segment which must be a valid address (thus also checked)
+// 30 is nid of start of data segment which must be a valid address (thus also checked)
 uint64_t access_flow_start_nid = 30;
 
 // 50 is nid of 4GB of memory addresses
@@ -590,7 +590,7 @@ void model_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%u state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%u init 2 %u 31 ; initial program break is end of data segment\n",
+  printf2("%u init 2 %u 31 ; initial program break\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -665,7 +665,7 @@ void model_syscalls() {
 
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1465;
 
-    printf3("%u ite 2 %u 30 %u ; lower bound on $t1 = end of code segment if brk ecall is active and $a0 is invalid\n",
+    printf3("%u ite 2 %u 30 %u ; lower bound on $t1 = start of data segment if brk ecall is active and $a0 is invalid\n",
       (char*) (current_nid + 1466),                 // nid of this line
       (char*) (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
       (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
@@ -726,22 +726,22 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   uint64_t* in_edge;
 
   if (to_address % INSTRUCTIONSIZE == 0) {
-    if (to_address < entry_point + code_length) {
+    if (to_address < code_start + code_size) {
       if (validate_procedure_body(from_instruction, from_link, to_address)) {
         in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-        *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
+        *in_edge       = *(control_in + (to_address - code_start) / INSTRUCTIONSIZE);
         *(in_edge + 1) = from_instruction; // from which instruction
         *(in_edge + 2) = from_address;     // at which address
         *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-        *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+        *(control_in + (to_address - code_start) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
         return;
       }
-    } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
+    } else if (from_address == code_start + code_size - INSTRUCTIONSIZE)
       // from_instruction is last instruction in binary
-      if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
+      if (*(control_in + (from_address - code_start) / INSTRUCTIONSIZE) == 0)
         // and unreachable
         return;
   }
@@ -758,7 +758,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
 void reset_bounds() {
   if (check_block_access) {
-    // if this instruction is active reset lower bound on $rd register to end of code segment
+    // if this instruction is active reset lower bound on $rd register to start of data segment
     printf3("%u ite 2 %u 30 %u\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
@@ -941,7 +941,7 @@ void model_add() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("add");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -967,7 +967,7 @@ void model_sub() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("sub");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -993,7 +993,7 @@ void model_mul() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("mul");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1031,7 +1031,7 @@ void model_divu() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("divu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1069,7 +1069,7 @@ void model_remu() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_add_sub_mul_divu_remu_sltu("remu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1099,7 +1099,7 @@ void model_sltu() {
 
     *(reg_flow_nids + rd) = current_nid + 2;
 
-    print_add_sub_mul_divu_remu_sltu("sltu");println();
+    print_add_sub_mul_divu_remu_sltu();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -1177,7 +1177,7 @@ uint64_t compute_address() {
   }
 }
 
-void model_ld() {
+void model_load() {
   uint64_t address_nid;
 
   if (rd != REG_ZR) {
@@ -1247,13 +1247,13 @@ void model_ld() {
 
     *(reg_flow_nids + rd) = current_nid + 1;
 
-    print_ld();println();
+    print_load();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_sd() {
+void model_store() {
   uint64_t address_nid;
 
   current_nid = current_nid + record_start_bounds(0, pc_nid(pcs_nid, pc), rs1);
@@ -1325,7 +1325,7 @@ void model_sd() {
 
   memory_flow_nid = current_nid + 1;
 
-  print_sd();println();
+  print_store();println();
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
@@ -1384,9 +1384,9 @@ void model_jalr() {
       if (rs1 == REG_RA)
         if (pc >= estimated_return)
           // no forward branches and jumps outside of "procedure body"
-          if (current_callee > entry_point) {
+          if (current_callee > code_start) {
             // assert: current_callee points to an instruction to which a jal jumps
-            *(call_return + (current_callee - entry_point) / INSTRUCTIONSIZE) = pc;
+            *(call_return + (current_callee - code_start) / INSTRUCTIONSIZE) = pc;
 
             // assert: next "procedure body" begins right after jalr
             current_callee = pc + INSTRUCTIONSIZE;
@@ -1435,10 +1435,10 @@ void translate_to_model() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     model_addi();
-  else if (is == LD)
-    model_ld();
-  else if (is == SD)
-    model_sd();
+  else if (is == LOAD)
+    model_load();
+  else if (is == STORE)
+    model_store();
   else if (is == ADD)
     model_add();
   else if (is == SUB)
@@ -1584,13 +1584,13 @@ void modeler() {
 
   print("; word-aligned end of code segment in memory\n\n");
 
-  // end of code segment for checking address validity
-  printf2("30 constd 2 %u ; %x\n\n", (char*) (entry_point + code_length), (char*) (entry_point + code_length));
+  // start of data segment for checking address validity
+  printf2("30 constd 2 %u ; %x\n\n", (char*) data_start, (char*) data_start);
 
   print("; word-aligned end of data segment in memory (initial program break)\n\n");
 
-  // end of data segment (initial program break) for checking program break validity
-  printf2("31 constd 2 %u ; %x\n\n", (char*) (entry_point + binary_length), (char*) (entry_point + binary_length));
+  // initial program break
+  printf2("31 constd 2 %u ; %x\n\n", (char*) get_program_break(current_context), (char*) get_program_break(current_context));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
@@ -1599,7 +1599,7 @@ void modeler() {
 
   print("; 4GB of memory\n\n");
 
-  printf2("50 constd 2 %u ; %x\n\n", (char*) VIRTUALMEMORYSIZE, (char*) VIRTUALMEMORYSIZE);
+  printf2("50 constd 2 %u ; %x\n\n", (char*) (VIRTUALMEMORYSIZE * GIGABYTE), (char*) (VIRTUALMEMORYSIZE * GIGABYTE));
 
   print("; kernel-mode flag\n\n");
 
@@ -1664,14 +1664,14 @@ void modeler() {
 
       if (i == LO_FLOW)
         printf3("\n%u constd 2 %u ; %x\n",
-          (char*) *(reg_flow_nids + i),         // nid of this line
-          (char*) (entry_point + code_length),  // end of code segment
-          (char*) (entry_point + code_length)); // end of code segment
+          (char*) *(reg_flow_nids + i),      // nid of this line
+          (char*) (code_start + code_size),  // end of code segment
+          (char*) (code_start + code_size)); // end of code segment
       else if (i == UP_FLOW)
         printf3("\n%u constd 2 %u ; %x\n",
           (char*) *(reg_flow_nids + i), // nid of this line
-          (char*) VIRTUALMEMORYSIZE,    // 4GB of memory addresses
-          (char*) VIRTUALMEMORYSIZE);   // 4GB of memory addresses
+          (char*) (VIRTUALMEMORYSIZE * GIGABYTE),  // 4GB of memory addresses
+          (char*) (VIRTUALMEMORYSIZE * GIGABYTE)); // 4GB of memory addresses
       else {
         printf1("%u state 2 ", (char*) *(reg_flow_nids + i));
 
@@ -1715,7 +1715,7 @@ void modeler() {
       if (i % NUMBEROFREGISTERS == 0)
         println();
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf3("%u init 2 %u 30 %s ; initial value is end of code segment\n",
+        printf3("%u init 2 %u 30 %s ; initial value is start of data segment\n",
           (char*) (reg_nids * 2 + i),                // nid of this line
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
@@ -1730,20 +1730,20 @@ void modeler() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate binary starting at entry point and stack with
+  // 3 more digits to accommodate code, data, and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
   // 100*8 lines per 64-bit machine word in data segment
   pcs_nid = ten_to_the_power_of(
-    log_ten(entry_point + binary_length +
-      (VIRTUALMEMORYSIZE - *(registers + REG_SP))) + 3);
+    log_ten(data_start + data_size +
+      (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
-  while (pc < entry_point + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(pcs_nid, pc);
 
     // pc flag of current instruction
     printf1("%u state 1\n", (char*) current_nid);
 
-    if (pc == entry_point)
+    if (pc == e_entry)
       // set pc here by initializing pc flag of instruction at address 0 to true
       printf2("%u init 1 %u 11 ; initial program counter\n",
         (char*) (current_nid + 1), // nid of this line
@@ -1767,11 +1767,11 @@ void modeler() {
 
   print("\n; data segment\n\n");
 
-  // assert: pc == entry_point + code_length
+  // assert: pc == code_start + code_size
 
-  while (pc < VIRTUALMEMORYSIZE) {
-    if (pc == entry_point + binary_length) {
-      // assert: stack pointer < VIRTUALMEMORYSIZE
+  while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
+    if (pc == data_start + data_size) {
+      // assert: stack pointer < VIRTUALMEMORYSIZE * GIGABYTE
       pc = *(registers + REG_SP);
 
       print("\n; stack\n\n");
@@ -1834,7 +1834,7 @@ void modeler() {
     lo_memory_nid = current_nid;
 
     printf1("\n%u state 3 lower-bounds ; for checking address validity\n", (char*) current_nid);
-    printf2("%u init 3 %u 30 ; initializing lower bounds to end of code segment\n",
+    printf2("%u init 3 %u 30 ; initializing lower bounds to start of data segment\n",
       (char*) (current_nid + 1), // nid of this line
       (char*) current_nid);      // nid of lower bounds on addresses in memory
 
@@ -1856,15 +1856,15 @@ void modeler() {
 
   code_nid = pcs_nid * 3;
 
-  control_in  = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zmalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  current_callee   = entry_point;
-  estimated_return = entry_point;
+  current_callee   = code_start;
+  estimated_return = code_start;
 
   pc = get_pc(current_context);
 
-  while (pc < entry_point + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(code_nid, pc);
 
     fetch();
@@ -1887,10 +1887,10 @@ void modeler() {
 
   pc = get_pc(current_context);
 
-  while (pc < entry_point + code_length) {
+  while (pc < code_start + code_size) {
     current_nid = pc_nid(control_nid, pc);
 
-    in_edge = (uint64_t*) *(control_in + (pc - entry_point) / INSTRUCTIONSIZE);
+    in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
 
     // nid of 1-bit 0
     control_flow_nid = 10;
@@ -1907,21 +1907,21 @@ void modeler() {
           (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
           (char*) condition_nid,                       // nid of true or false beq condition
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
-        print_code_line_number_for_instruction(from_address, entry_point);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         current_nid = current_nid + 1;
 
         // activate this instruction if beq is active and its condition is true (false)
         control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
       } else if (from_instruction == JALR) {
-        jalr_address = *(call_return + (from_address - entry_point) / INSTRUCTIONSIZE);
+        jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
 
         if (jalr_address != 0) {
           // is value of $ra register with LSB reset equal to address of this instruction?
           printf3("%u not 2 21 ; jalr %u[%x]",
             (char*) current_nid,                         // nid of this line
             (char*) jalr_address, (char*) jalr_address); // address of instruction proceeding here
-          print_code_line_number_for_instruction(jalr_address, entry_point);println();
+          print_code_line_number_for_instruction(jalr_address, code_start);println();
           printf3("%u and 2 %u %u\n",
             (char*) (current_nid + 1),   // nid of this line
             (char*) (reg_nids + REG_RA), // nid of current value of $ra register
@@ -1945,7 +1945,7 @@ void modeler() {
           // no jalr returning from jal found
 
           printf2("; exit ecall wrapper call or runaway jal %u[%x]", (char*) from_address, (char*) from_address);
-          print_code_line_number_for_instruction(from_address, entry_point);println();
+          print_code_line_number_for_instruction(from_address, code_start);println();
 
           // this instruction may stay deactivated if there is no more in-edges
         }
@@ -1953,7 +1953,7 @@ void modeler() {
         printf3("%u state 1 ; kernel-mode pc flag of ecall %u[%x]",
           (char*) current_nid,                         // nid of this line
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
-        print_code_line_number_for_instruction(from_address, entry_point);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         printf2("%u init 1 %u 10 ; ecall is initially inactive\n",
           (char*) (current_nid + 1), // nid of this line
@@ -1980,7 +1980,7 @@ void modeler() {
       } else {
         if (from_instruction == JAL) print("; jal "); else print("; ");
         printf2("%u[%x]", (char*) from_address, (char*) from_address);
-        print_code_line_number_for_instruction(from_address, entry_point);println();
+        print_code_line_number_for_instruction(from_address, code_start);println();
 
         // activate this instruction if instruction proceeding here is active
         control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
@@ -1995,9 +1995,9 @@ void modeler() {
       (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
       (char*) control_flow_nid,    // nid of most recently processed in-edge
       (char*) pc, (char*) pc);     // address of current instruction
-    print_code_line_number_for_instruction(pc, entry_point);
+    print_code_line_number_for_instruction(pc, code_start);
     if (control_flow_nid == 10)
-      if (pc > entry_point)
+      if (pc > code_start)
         // TODO: warn here about unreachable code
         print(" (unreachable)");
     println();
@@ -2093,6 +2093,8 @@ void modeler() {
   check_address_validity(1, access_flow_start_nid, lo_flow_start_nid, up_flow_start_nid);
   check_address_validity(0, access_flow_end_nid, lo_flow_end_nid, up_flow_end_nid);
 
+  // TODO: check segmentation
+
   // TODO: check validity of return addresses in jalr
 
   printf1("; end of BTOR2 %s\n", model_name);
@@ -2112,7 +2114,7 @@ uint64_t selfie_model() {
           get_argument();
         }
 
-      if (binary_length == 0) {
+      if (code_size == 0) {
         printf1("%s: nothing to model\n", selfie_name);
 
         return EXITCODE_BADARGUMENTS;
@@ -2143,12 +2145,12 @@ uint64_t selfie_model() {
 
       boot_loader(current_context);
 
+      run = 0;
+
       do_switch(current_context, current_context, TIMEROFF);
 
       output_name = model_name;
       output_fd   = model_fd;
-
-      run = 0;
 
       model = 1;
 

@@ -5,24 +5,48 @@ CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
+# 32-bit compiler flags
+32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long'
+
+# Bootstrap selfie.c into 32-bit selfie executable, requires 32-bit compiler support
+selfie-32: selfie.c
+	$(CC) $(32-BIT-CFLAGS) $< -o $@
+
+# Permission flags for selfie-generated executables
+XPERMISSIONS := +rx,u+w
+
 # Compile *.c including selfie.c into RISC-U *.m executable
 %.m: %.c selfie
 	./selfie -c $< -o $@
+	chmod $(XPERMISSIONS) $@
+
+# Permission flags for selfie-generated text files
+RPERMISSIONS := +r,u+w
 
 # Compile *.c including selfie.c into RISC-U *.s assembly
 %.s: %.c selfie
 	./selfie -c $< -s $@
+	chmod $(RPERMISSIONS) $@
 
 # Generate selfie library as selfie.h
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
 
-# Self-contained fixed-point of self-compilation
-compile: selfie
+# Run everything that only requires standard tools
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2
+
+# Self-compile selfie
+self: selfie
+	./selfie -c selfie.c
+
+# Self-self-compile selfie and check fixed point of self-compilation
+self-self: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	chmod $(XPERMISSIONS) selfie1.m selfie2.m
+	chmod $(RPERMISSIONS) selfie1.s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
@@ -49,12 +73,16 @@ os: selfie.m
 # Self-compile on two virtual machines
 vm: selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-vm.m -s selfie-vm.s
+	chmod $(XPERMISSIONS) selfie-vm.m
+	chmod $(RPERMISSIONS) selfie-vm.s
 	diff -q selfie.m selfie-vm.m
 	diff -q selfie.s selfie-vm.s
 
 # Self-compile on two virtual machines on fully mapped virtual memory
 min: selfie.m selfie.s
 	./selfie -l selfie.m -min 15 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-min.m -s selfie-min.s
+	chmod $(XPERMISSIONS) selfie-min.m
+	chmod $(RPERMISSIONS) selfie-min.s
 	diff -q selfie.m selfie-min.m
 	diff -q selfie.s selfie-min.s
 
@@ -65,24 +93,32 @@ mob: selfie
 # Self-compile with conservative garbage collector in mipster
 gib: selfie selfie.m selfie.s
 	./selfie -c selfie.c -gc -m 1 -c selfie.c -o selfie-gib.m -s selfie-gib.s
+	chmod $(XPERMISSIONS) selfie-gib.m
+	chmod $(RPERMISSIONS) selfie-gib.s
 	diff -q selfie.m selfie-gib.m
 	diff -q selfie.s selfie-gib.s
 
 # Self-compile with conservative garbage collector in hypster
 hyb: selfie selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -gc -y 1 -c selfie.c -o selfie-hyb.m -s selfie-hyb.s
+	chmod $(XPERMISSIONS) selfie-hyb.m
+	chmod $(RPERMISSIONS) selfie-hyb.s
 	diff -q selfie.m selfie-hyb.m
 	diff -q selfie.s selfie-hyb.s
 
 # Self-compile with conservative garbage collector as library
 gclib: selfie selfie.h selfie.m selfie.s
 	./selfie -gc -c selfie.h tools/gc.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
+	chmod $(XPERMISSIONS) selfie-gclib.m
+	chmod $(RPERMISSIONS) selfie-gclib.s
 	diff -q selfie.m selfie-gclib.m
 	diff -q selfie.s selfie-gclib.s
 
 # Self-compile with self-collecting garbage collectors
 giblib: selfie selfie.h selfie.m selfie.s
 	./selfie -gc -c selfie.h tools/gc.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
+	chmod $(XPERMISSIONS) selfie-giblib.m
+	chmod $(RPERMISSIONS) selfie-giblib.s
 	diff -q selfie.m selfie-giblib.m
 	diff -q selfie.s selfie-giblib.s
 
@@ -114,8 +150,10 @@ mon: monster selfie.h selfie
 # Translate *.c including selfie.c into SMT-LIB model
 %-35.smt: %-35.c monster
 	./monster -c $< - 0 35 --merge-enabled
+	chmod $(RPERMISSIONS) $@
 %-10.smt: %-10.c monster
 	./monster -c $< - 0 10 --merge-enabled
+	chmod $(RPERMISSIONS) $@
 
 # Gather symbolic execution example files as .smt files
 smts-1 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-1-*.c))
@@ -140,6 +178,7 @@ mod: modeler selfie.h selfie
 # Translate *.c including selfie.c into BTOR2 model
 %.btor2: %.c modeler
 	./modeler -c $< - 0 --check-block-access
+	chmod $(RPERMISSIONS) $@
 
 # Gather symbolic execution example files as .btor2 files
 btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
@@ -147,53 +186,47 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 # Run modeler on *.c files in symbolic and even on selfie
 btor2: $(btor2s) selfie.btor2
 
-# Compile riscv-2-x86.c with selfie.h as library into riscv-2-x86 executable
-riscv-2-x86: tools/riscv-2-x86.c selfie.h
-	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+# Consider these targets as targets, not files
+.PHONY: spike qemu assemble 32-bit boolector btormc extras
 
-# Run RISC-V-to-x86 translator natively and as RISC-U executable
-selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
-	./riscv-2-x86 -c selfie.c
-	mv selfie.x86 selfie1.x86
-	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
-	diff -q selfie.x86 selfie1.x86
-
-# Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 selfie-2-x86
-
-# Test autograder
-grader: selfie
-	cd grader && python3 -m unittest discover -v
-
-# Run autograder
-grade:
-	grader/self.py self-compile
-
-# Assemble RISC-U with GNU toolchain for RISC-V
-assemble: selfie.s
-	riscv64-linux-gnu-as selfie.s -o a.out
-	rm -f a.out
+# Run everything that requires non-standard tools
+extras: spike qemu assemble 32-bit boolector btormc
 
 # Run selfie on spike
 spike: selfie.m selfie.s
 	spike pk selfie.m -c selfie.c -o selfie-spike.m -s selfie-spike.s -m 1
+	chmod $(XPERMISSIONS) selfie-spike.m
+	chmod $(RPERMISSIONS) selfie-spike.s
 	diff -q selfie.m selfie-spike.m
 	diff -q selfie.s selfie-spike.s
 
 # Run selfie on qemu usermode emulation
 qemu: selfie.m selfie.s
-	chmod +x selfie.m
 	qemu-riscv64-static selfie.m -c selfie.c -o selfie-qemu.m -s selfie-qemu.s -m 1
+	chmod $(XPERMISSIONS) selfie-qemu.m
+	chmod $(RPERMISSIONS) selfie-qemu.s
 	diff -q selfie.m selfie-qemu.m
 	diff -q selfie.s selfie-qemu.s
 
-x86: selfie-2-x86 selfie.m selfie.s selfie.h
-	chmod +x selfie.x86
-	./selfie.x86 -c selfie.c -o selfie-x86.m -s selfie-x86.s
-	diff -q selfie.m selfie-x86.m
-	diff -q selfie.s selfie-x86.s
-	./selfie.x86 -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie-x86.m
-	diff -q selfie.x86 selfie-x86.x86
+# Assemble RISC-U with GNU toolchain for RISC-V
+assemble: selfie.s
+	riscv64-linux-gnu-as selfie.s
+
+# Self-self-compile, self-execute, self-host 32-bit selfie
+32-bit: selfie-32
+	./selfie-32 -c selfie.c -o selfie-32.m -s selfie-32.s -m 2 -c selfie.c -o selfie-32-2-32.m -s selfie-32-2-32.s
+	chmod $(XPERMISSIONS) selfie-32.m selfie-32-2-32.m
+	chmod $(RPERMISSIONS) selfie-32.s selfie-32-2-32.s
+	diff -q selfie-32.m selfie-32-2-32.m
+	diff -q selfie-32.s selfie-32-2-32.s
+	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -m 1
+	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -y 1 -l selfie-32.m -y 1
+	qemu-riscv32-static selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
+	chmod $(XPERMISSIONS) selfie-qemu-32.m
+	chmod $(RPERMISSIONS) selfie-qemu-32.s
+	diff -q selfie-32.m selfie-qemu-32.m
+	diff -q selfie-32.s selfie-qemu-32.s
+	riscv64-linux-gnu-as selfie-32.s
 
 # Run boolector SMT solver on SMT-LIB files generated by monster
 boolector: smt
@@ -205,6 +238,12 @@ boolector: smt
 btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file) &&) true
 
+# Consider these targets as targets, not files
+.PHONY: validator grader grade pythons
+
+# Run everything that requires python
+pythons: validator grader grade
+
 # files where validator fails (e.g. timeout) and succeeds
 failingFiles := $(wildcard examples/symbolic/*-fail-*.c)
 succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
@@ -214,10 +253,18 @@ validator: selfie modeler
 	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
 	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
 
-# Run everything that requires non-standard tools
-extras: assemble spike qemu x86 boolector btormc validator grader grade
+# Test autograder
+grader: selfie
+	cd grader && python3 -m unittest discover -v
 
-# Run everything
+# Run autograder
+grade:
+	grader/self.py self-compile
+
+# Consider these targets as targets, not files
+.PHONY: everything clean
+
+# Run everything, except anything that requires python
 everything: all extras
 
 # Clean up
@@ -226,9 +273,8 @@ clean:
 	rm -f *.s
 	rm -f *.smt
 	rm -f *.btor2
-	rm -f *.x86
-	rm -f selfie selfie.h selfie.exe
-	rm -f babysat gc monster modeler riscv-2-x86
+	rm -f selfie selfie-32 selfie.h selfie.exe
+	rm -f babysat monster modeler
 	rm -f examples/*.m
 	rm -f examples/*.s
 	rm -f examples/symbolic/*.smt

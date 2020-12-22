@@ -10,53 +10,39 @@ compiler:
   - clang
   - gcc
 
-script: travis_wait 60 make all
+script: travis_wait 60 make -j all
 
 stages:
   - test
-  - make-grade
-  - docker-all
-  - docker-extras
+  - grade
+  - docker
   - name: deploy
-    # disabling deploy, see github docker workflow
-    if: false AND branch = master AND type = push AND fork = false
-  - name: run
     # disabling deploy, see github docker workflow
     if: false AND branch = master AND type = push AND fork = false
 
 jobs:
   include:
-    - stage: make-grade
+    - stage: grade
       language: python
       python:
         - "3.7"
       os: linux
       dist: bionic
       script: make grade
-    - stage: docker-all
+    - stage: docker
       services: docker
       os: linux
       script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make all
-    - stage: docker-extras
-      services: docker
-      os: linux
-      script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make extras
+        - docker build -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make -j -O everything
+        - docker run cksystemsteaching/selfie make pythons
     - stage: deploy
       services: docker
       os: linux
       script:
-        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker build -t cksystemsteaching/selfie .
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         - docker push cksystemsteaching/selfie
-    - stage: run
-      services: docker
-      os: linux
-      script:
-        - docker run cksystemsteaching/selfie make everything
 
 notifications:
   email: false
