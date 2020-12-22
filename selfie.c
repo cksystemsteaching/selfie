@@ -1140,6 +1140,7 @@ void     save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+// Indicates whether the machine has a cache or not.
 uint64_t L1_CACHE_ENABLED = 1;
 
 uint64_t L1_CACHE_COHERENCY = 1;
@@ -1161,6 +1162,13 @@ uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
 // pointers to L1 caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// Indicates if the cache is currently activated.
+// Changes if the cache is turned off temporarily (during
+// context switching).
+uint64_t l1_cache_on;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -6543,7 +6551,7 @@ void implement_read(uint64_t* context) {
     if (is_valid_virtual_address(vbuffer))
       if (is_valid_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(table, vbuffer)) {
-          if (L1_CACHE_ENABLED) {
+          if (l1_cache_on) {
             dcache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer, 1);
 
             if (get_valid_flag(dcache_block) == 0) {
@@ -6561,7 +6569,7 @@ void implement_read(uint64_t* context) {
 
           actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
 
-          if (L1_CACHE_ENABLED) {
+          if (l1_cache_on) {
             flush_cache_block(dcache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
 
             if (L1_CACHE_COHERENCY) {
@@ -6699,7 +6707,7 @@ void implement_write(uint64_t* context) {
     if (is_valid_virtual_address(vbuffer))
       if (is_valid_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          if (L1_CACHE_ENABLED) {
+          if (l1_cache_on) {
             cache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer, 1);
 
             if (get_valid_flag(cache_block) == 0) {
@@ -7105,6 +7113,10 @@ void implement_switch() {
   uint64_t* to_context;
   uint64_t timeout;
 
+  if (l1_cache_on)
+    flush_all_caches();
+  l1_cache_on = 0;
+
   if (debug_syscalls) {
     print("(switch): ");
     print_register_hexadecimal(REG_A0);
@@ -7129,14 +7141,28 @@ void implement_switch() {
     print_register_hexadecimal(REG_A6);
     println();
   }
+
+  l1_cache_on = L1_CACHE_ENABLED;
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
+  if (l1_cache_on)
+    flush_all_caches();
+  l1_cache_on = 0;
+
   current_context = do_switch(current_context, to_context, timeout);
+
+  l1_cache_on = L1_CACHE_ENABLED;
 
   run_until_exception();
 
+  if (l1_cache_on)
+    flush_all_caches();
+  l1_cache_on = 0;
+
   save_context(current_context);
+
+  l1_cache_on = L1_CACHE_ENABLED;
 
   return current_context;
 }
@@ -7229,38 +7255,26 @@ uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size
 
 void flush_cache(uint64_t* cache) {
   uint64_t* cache_memory;
-  uint64_t associativity;
-  uint64_t cache_set_size;
-  uint64_t sets;
-  uint64_t index;
+  uint64_t no_of_cache_blocks;
   uint64_t i;
   uint64_t* cache_block;
 
   cache_memory = get_cache_memory(cache);
 
-  associativity = get_associativity(cache);
-
-  cache_set_size = get_cache_set_size(cache);
-
-  sets = get_cache_size(cache) / cache_set_size;
-
-  index = 0;
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_line_size(cache);
 
   i = 0;
 
-  while (index < sets) {
-    while (i < associativity) {
-      cache_block = (uint64_t*) *(cache_memory + (index * associativity + i));
+  while (i < no_of_cache_blocks) {
+    cache_block = (uint64_t*) *(cache_memory + i);
 
-      set_valid_flag(cache_block, 0);
+    set_valid_flag(cache_block, 0);
+    set_timestamp(cache_block, 0);
 
-      i = i + 1;
-    }
-
-    i = 0;
-
-    index = index + 1;
+    i = i + 1;
   }
+
+  set_cache_timer(cache, 0);
 }
 
 void flush_all_caches() {
@@ -7609,7 +7623,7 @@ uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
   // assert: is_valid_virtual_address(vaddr) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  if (L1_CACHE_ENABLED)
+  if (l1_cache_on)
     return load_data_from_cache(table, vaddr);
   else
     return load_physical_memory(tlb(table, vaddr));
@@ -7619,7 +7633,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_valid_virtual_address(vaddr) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  if (L1_CACHE_ENABLED)
+  if (l1_cache_on)
     save_data_into_cache(table, vaddr, data);
   else
     store_physical_memory(tlb(table, vaddr), data);
@@ -9138,7 +9152,7 @@ void fetch() {
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
   if (is_valid_code_address(current_context, pc))
-    if (L1_CACHE_ENABLED)
+    if (l1_cache_on)
       if (pc % WORDSIZE == 0)
         ir = get_low_word(load_instruction_from_cache(pt, pc));
       else
@@ -10349,12 +10363,9 @@ uint64_t mipster(uint64_t* to_context) {
 }
 
 uint64_t hypster(uint64_t* to_context) {
-  uint64_t l1_prev_enabled;
   uint64_t* from_context;
 
-  l1_prev_enabled = L1_CACHE_ENABLED;
-
-  L1_CACHE_ENABLED = 0;
+  l1_cache_on = 0;
 
   print("hypster\n");
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
@@ -10369,7 +10380,7 @@ uint64_t hypster(uint64_t* to_context) {
       to_context = from_context;
   }
 
-  L1_CACHE_ENABLED = l1_prev_enabled;
+  l1_cache_on = L1_CACHE_ENABLED;
 }
 
 uint64_t mixter(uint64_t* to_context, uint64_t mix) {
@@ -10568,6 +10579,8 @@ uint64_t selfie_run(uint64_t machine) {
 
     return EXITCODE_BADARGUMENTS;
   }
+
+  l1_cache_on = L1_CACHE_ENABLED;
 
   reset_interpreter();
   reset_profiler();
