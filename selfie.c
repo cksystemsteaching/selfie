@@ -1141,7 +1141,7 @@ void     save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // Indicates whether the machine has a cache or not.
-uint64_t L1_CACHE_ENABLED = 1;
+uint64_t L1_CACHE_ENABLED = 0;
 
 uint64_t L1_CACHE_COHERENCY = 1;
 
@@ -9616,17 +9616,19 @@ void print_profile(uint64_t* context) {
     print_register_memory_profile();
   }
 
-  printf1("%s: L1-instruction-cache: ", selfie_name);
-  print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_hits(L1_ICACHE), "hits");
-  print(", ");
-  print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_misses(L1_ICACHE), "misses");
-  println();
+  if (L1_CACHE_ENABLED) {
+    printf1("%s: L1-instruction-cache: ", selfie_name);
+    print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_hits(L1_ICACHE), "hits");
+    print(", ");
+    print_counter_relative(get_cache_hits(L1_ICACHE) + get_cache_misses(L1_ICACHE), get_cache_misses(L1_ICACHE), "misses");
+    println();
 
-  printf1("%s: L1-data-cache: ", selfie_name);
-  print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_hits(L1_DCACHE), "hits");
-  print(", ");
-  print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_misses(L1_DCACHE), "misses");
-  println();
+    printf1("%s: L1-data-cache: ", selfie_name);
+    print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_hits(L1_DCACHE), "hits");
+    print(", ");
+    print_counter_relative(get_cache_hits(L1_DCACHE) + get_cache_misses(L1_DCACHE), get_cache_misses(L1_DCACHE), "misses");
+    println();
+  }
 
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
@@ -10370,8 +10372,6 @@ uint64_t mipster(uint64_t* to_context) {
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
-  l1_cache_on = 0;
-
   print("hypster\n");
   printf1("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
@@ -10384,8 +10384,6 @@ uint64_t hypster(uint64_t* to_context) {
       // TODO: scheduler should go here
       to_context = from_context;
   }
-
-  l1_cache_on = L1_CACHE_ENABLED;
 }
 
 uint64_t mixter(uint64_t* to_context, uint64_t mix) {
@@ -10585,8 +10583,6 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
-  l1_cache_on = L1_CACHE_ENABLED;
-
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
@@ -10747,7 +10743,12 @@ uint64_t selfie(uint64_t extras) {
       else if (extras == 0) {
         if (string_compare(argument, "-m"))
           return selfie_run(MIPSTER);
-        else if (string_compare(argument, "-d"))
+        else if (string_compare(argument, "-L1")) {
+          L1_CACHE_ENABLED = 1;
+          l1_cache_on = L1_CACHE_ENABLED;
+
+          return selfie_run(MIPSTER);
+        } else if (string_compare(argument, "-d"))
           return selfie_run(DIPSTER);
         else if (string_compare(argument, "-r"))
           return selfie_run(RIPSTER);
