@@ -6840,8 +6840,10 @@ void implement_read(uint64_t* context) {
             if (L1_CACHE_COHERENCY) {
               icache_block = retrieve_cache_block(L1_ICACHE, table, vbuffer, 0);
 
-              if (icache_block != (uint64_t*) 0)
+              if (icache_block != (uint64_t*) 0) {
                 set_valid_flag(icache_block, 0);
+                set_timestamp(icache_block, 0);
+              }
             }
           }
 
@@ -7733,8 +7735,10 @@ void save_data_into_cache(uint64_t* table, uint64_t vaddr, uint64_t data) {
     // Manual Volume 3, Chapter 11.6 Self-Modifying Code: "A write to a memory location in
     // a code segment that is currently cached in the processor causes the associated
     // cache line (or lines) to be invalidated")
-    if (cache_block != (uint64_t*) 0)
+    if (cache_block != (uint64_t*) 0) {
       set_valid_flag(cache_block, 0);
+      set_timestamp(cache_block, 0);
+    }
   }
 }
 
