@@ -266,7 +266,7 @@ def check_lock() -> List[Check]:
                         success_criteria='Hello World!    ' * 8) + \
         check_execution('./selfie -c <assignment>release-after-exit.c -m 128',
                         'Lock is granted to a process after a terminated process did not release its lock',
-                        success_criteria='Hello child!    Hello parent!   ')
+                        success_criteria='Hello child!    Hello parent!   ', timeout=5)
 
 
 def check_threads() -> List[Check]:
