@@ -16,8 +16,8 @@ class TestRobustness(TestCase):
     def setUp(self):
         rmtree(dst, ignore_errors=True)
 
-    def execute_mock(self, command):
-        ret_code, output, error_output = execute(command)
+    def execute_mock(self, command, timeout=60):
+        ret_code, output, error_output = execute(command, timeout)
 
         self.assertNotEqual(ret_code, EXITCODE_IOERROR)
 

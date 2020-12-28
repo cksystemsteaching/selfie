@@ -206,12 +206,12 @@ def check_assembler_instruction_format(instruction, file) -> List[Check]:
     return [Check(msg, execute_check)]
 
 
-def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False) -> List[Check]:
+def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=60) -> List[Check]:
     def execute_check() -> CheckResult:
         secure_command = insert_assignment_path(command)
 
         try:
-            returncode, output, error_output = execute(secure_command)
+            returncode, output, error_output = execute(secure_command, timeout)
 
             if returncode != 0 and len(output) == 0:
                 output = error_output
