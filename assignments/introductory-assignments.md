@@ -1216,7 +1216,7 @@ Finally, `addi $a7,$zero,214` is the instruction's human-readable assembly versi
 
 This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent. 
 
-The 32-bit word `0x0D600893` in binary stored at address `0x10 in memory is thus the only thing that the machine needs; the rest is for us to make it readable.
+The 32-bit word `0x0D600893` in binary stored at address `0x10` in memory is thus the only thing that the machine needs; the rest is for us to make it readable.
 
 ## RISC-V
 
@@ -1265,6 +1265,6 @@ The third operand is treated by `addi` as an integer value rather than, say, a n
 
 [Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode) An aspect of the instruction set architecture in most central processing unit (CPU) designs. The various addressing modes defined in a given instruction set architecture to define how machine language instructions in that architecture identify each instruction's operand(s).
 
-But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5=32 different registers of the machine. The seven bits for the opcode allow us to distinguish up to 2^6=64 different opcodes, but we do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. 
+But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^{5}=32 different registers of the machine. The seven bits for the opcode allow us to distinguish up to 2^{6}=64 different opcodes, but we do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. 
 
 Note that the value in register `$zero` is assumed to be 0 at all times. This is, in fact needed for initializing registers using the `addi` instruction. There exists RISC-V assembly in which such intention is made explicit by using pseudo instructions. Here, the pseudo instruction `movi $a7,214`, for example, could be used instead but would anyhow be a short version of `addi $a7,$zero,214`. The remaining thirteen instructions of RISC-U are introduced later.
