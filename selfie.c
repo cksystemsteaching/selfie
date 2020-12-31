@@ -2688,17 +2688,27 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
           i = i + 1;
         }
       } else if (load_character(s, i + 1) == '0') {
-      		if (load_character(s, i + 2) == '8') {
-				  	if (load_character(s, i + 3) == 'l') {
-				  		if (load_character(s, i + 4) == 'l') {
-				  			if (load_character(s, i + 5) == 'X') {
-				    			print_hexadecimal((uint64_t) a, SIZEOFUINT64STAR);
+        // for simplicity we support a single digit only
+        p = load_character(s, i + 2) - '0';
 
-				    			return i + 6;
-				    		}
-				    	}	
+        if (p < 10) {
+          // the character at i + 2 is in fact a digit
+          if (load_character(s, i + 3) == 'l') {
+            if (load_character(s, i + 4) == 'l') {
+              if (load_character(s, i + 5) == 'X')
+				    	  print_hexadecimal((uint64_t) a, p);
+              else
+                // padding support only for %llX
+				    	    return i + 6;
+				    	}
 				    }
-				  }
+				    return i + 6;	
+				 } else {
+          put_character(load_character(s, i));
+
+          i = i + 1;
+        }
+				 
       } else if (load_character(s, i + 1) == 'l') {
         if (load_character(s, i + 2) == 'l') {
           if (load_character(s, i + 3) == 'u') {
@@ -2710,10 +2720,6 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
             return i + 4;
           } else if (load_character(s, i + 3) == 'X') {
-            print_hexadecimal((uint64_t) a, 0);
-
-            return i + 4;
-          } else if (load_character(s, i + 3) == 'x') {
             print_hexadecimal((uint64_t) a, 0);
 
             return i + 4;
