@@ -4291,7 +4291,7 @@ uint64_t compile_call(char* procedure) {
     compile_expression();
   
     // TODO: check if types/number of parameters is correct
-  
+
     // allocate memory on stack for parameters; we do not know how many, fixup later
     allocate_memory_on_stack = code_size;
     emit_addi(REG_SP, REG_SP, 0);
