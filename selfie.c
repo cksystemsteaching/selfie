@@ -2805,7 +2805,7 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
           else if (load_character(s, i + 4) == 'd')
             print_integer((uint64_t) a / ten_to_the_power_of(p));
           else
-            // precision only supported for %llu and %lld
+            // precision only supported for %lu and %ld
             return i + 5;
 
           if (p > 0) {
@@ -2835,7 +2835,7 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
       if (load_character(s, i + 2) == 'l') {
         if (load_character(s, i + 3) == 'l') {
           if (load_character(s, i + 4) == 'X')
-            // padding support only for %llX
+            // padding support only for %lX
             print_hexadecimal((uint64_t) a, p);
         }
       }
@@ -3079,7 +3079,7 @@ void print_symbol(uint64_t symbol) {
 }
 
 void print_line_number(char* message, uint64_t line) {
-  printf("%s: %s in %s in line %llu: ", selfie_name, message, source_name, line);
+  printf("%s: %s in %s in line %lu: ", selfie_name, message, source_name, line);
 }
 
 void syntax_error_message(char* message) {
@@ -5773,22 +5773,22 @@ void selfie_compile() {
 
       compile_cstar();
 
-      printf("%s: %llu characters read in %llu lines and %llu comments\n", selfie_name,
+      printf("%s: %lu characters read in %lu lines and %lu comments\n", selfie_name,
         number_of_read_characters,
         line_number,
         number_of_comments);
 
-      printf("%s: with %llu(%.2llu%%) characters in %llu actual symbols\n", selfie_name,
+      printf("%s: with %lu(%.2lu%%) characters in %lu actual symbols\n", selfie_name,
         number_of_read_characters - number_of_ignored_characters,
         percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters),
         number_of_scanned_symbols);
 
-      printf("%s: %llu global variables, %llu procedures, %llu string literals\n", selfie_name,
+      printf("%s: %lu global variables, %lu procedures, %lu string literals\n", selfie_name,
         number_of_global_variables,
         number_of_procedures,
         number_of_strings);
 
-      printf("%s: %llu calls, %llu assignments, %llu while, %llu if, %llu return\n", selfie_name,
+      printf("%s: %lu calls, %lu assignments, %lu while, %lu if, %lu return\n", selfie_name,
         number_of_calls,
         number_of_assignments,
         number_of_while,
@@ -5809,11 +5809,11 @@ void selfie_compile() {
 
   ELF_header = encode_elf_header();
 
-  printf("%s: symbol table search time was %llu iterations on average and %llu in total\n", selfie_name,
+  printf("%s: symbol table search time was %lu iterations on average and %lu in total\n", selfie_name,
     total_search_time / number_of_searches,
     total_search_time);
 
-  printf("%s: %llu bytes generated with %llu instructions and %llu bytes of data\n", selfie_name,
+  printf("%s: %lu bytes generated with %lu instructions and %lu bytes of data\n", selfie_name,
     code_size + data_size,
     code_size / INSTRUCTIONSIZE,
     data_size);
@@ -5914,7 +5914,7 @@ void update_register_counters() {
 void check_immediate_range(uint64_t immediate, uint64_t bits) {
   if (is_signed_integer(immediate, bits) == 0) {
     print_line_number("encoding error", line_number);
-    printf("%lld expected between %lld and %lld\n",
+    printf("%ld expected between %ld and %ld\n",
       immediate,
       -two_to_the_power_of(bits - 1),
       two_to_the_power_of(bits - 1) - 1);
@@ -6218,7 +6218,7 @@ uint64_t get_total_number_of_nops() {
 }
 
 void print_instruction_counter(uint64_t counter, uint64_t ins) {
-  printf("%s: %llu(%.2llu%%)",
+  printf("%s: %lu(%.2lu%%)",
     get_mnemonic(ins),
     counter,
     percentage_format(get_total_number_of_instructions(), counter));
@@ -6228,7 +6228,7 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
   print_instruction_counter(counter, ins);
 
   if (run)
-    printf("[%.2llu%%]", percentage_format(counter, nops));
+    printf("[%.2lu%%]", percentage_format(counter, nops));
 }
 
 void print_instruction_counters() {
@@ -6790,7 +6790,7 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
-  printf("%s: %llu bytes with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu bytes with %lu instructions and %lu bytes of data written into %s\n", selfie_name,
     ELF_HEADER_SIZE + code_size + data_size,
     code_size / INSTRUCTIONSIZE,
     data_size,
@@ -6872,7 +6872,7 @@ void selfie_load() {
         if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            printf("%s: %llu bytes with %llu instructions and %llu bytes of data loaded from %s\n",
+            printf("%s: %lu bytes with %lu instructions and %lu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_SIZE + code_size + data_size,
               code_size / INSTRUCTIONSIZE,
@@ -6927,7 +6927,7 @@ void implement_exit(uint64_t* context) {
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
   printf("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
-  printf("%s: %s exiting with exit code %lld\n", selfie_name,
+  printf("%s: %s exiting with exit code %ld\n", selfie_name,
     get_name(context),
     sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
 }
@@ -6981,7 +6981,7 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    printf("%s: trying to read %llu bytes from file with descriptor %llu into buffer at virtual address 0x%08llX\n", selfie_name,
+    printf("%s: trying to read %lu bytes from file with descriptor %lu into buffer at virtual address 0x%08lX\n", selfie_name,
       size,
       fd,
       (uint64_t) vbuffer);
@@ -7021,21 +7021,21 @@ void implement_read(uint64_t* context) {
 
           size = 0;
 
-          printf("%s: reading into virtual address 0x%08llX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
+          printf("%s: reading into virtual address 0x%08lX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        printf("%s: reading into virtual address 0x%08llX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
+        printf("%s: reading into virtual address 0x%08lX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      printf("%s: reading into virtual address 0x%08llX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
+      printf("%s: reading into virtual address 0x%08lX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
     }
   }
 
@@ -7047,7 +7047,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf("%s: actually read %llu bytes from file with descriptor %llu\n", selfie_name, read_total, fd);
+    printf("%s: actually read %lu bytes from file with descriptor %lu\n", selfie_name, read_total, fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -7104,7 +7104,7 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    printf("%s: trying to write %llu bytes from buffer at virtual address 0x%08llX into file with descriptor %llu\n", selfie_name,
+    printf("%s: trying to write %lu bytes from buffer at virtual address 0x%08lX into file with descriptor %lu\n", selfie_name,
       size,
       (uint64_t) vbuffer,
       fd);
@@ -7144,21 +7144,21 @@ void implement_write(uint64_t* context) {
 
           size = 0;
 
-          printf("%s: writing from virtual address 0x%08llX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
+          printf("%s: writing from virtual address 0x%08lX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        printf("%s: writing from virtual address 0x%08llX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
+        printf("%s: writing from virtual address 0x%08lX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      printf("%s: writing from virtual address 0x%08llX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
+      printf("%s: writing from virtual address 0x%08lX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
     }
   }
 
@@ -7170,7 +7170,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf("%s: actually wrote %llu bytes into file with descriptor %llu\n", selfie_name, written_total, fd);
+    printf("%s: actually wrote %lu bytes into file with descriptor %lu\n", selfie_name, written_total, fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -7213,7 +7213,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         else {
-          printf("%s: opening file failed because the file name address 0x%08llX is unmapped\n", selfie_name, (uint64_t) vaddr);
+          printf("%s: opening file failed because the file name address 0x%08lX is unmapped\n", selfie_name, (uint64_t) vaddr);
 
           return 0;
         }
@@ -7234,18 +7234,18 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         // advance to the next word in our memory
         i = i + 1;
       } else {
-        printf("%s: opening file failed because the file name address 0x%08llX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
+        printf("%s: opening file failed because the file name address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
 
         return 0;
       }
     else {
-      printf("%s: opening file failed because the file name address 0x%08llX is invalid\n", selfie_name, (uint64_t) vaddr);
+      printf("%s: opening file failed because the file name address 0x%08lX is invalid\n", selfie_name, (uint64_t) vaddr);
 
       return 0;
     }
   }
 
-  printf("%s: opening file failed because the file name is too long at address 0x%08llX\n", selfie_name, (uint64_t) vaddr);
+  printf("%s: opening file failed because the file name is too long at address 0x%08lX\n", selfie_name, (uint64_t) vaddr);
 
   return 0;
 }
@@ -7292,7 +7292,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf("%s: opened file %s with flags 0x%llX and mode %llo returning file descriptor %llu\n", selfie_name,
+      printf("%s: opened file %s with flags 0x%lX and mode %lo returning file descriptor %lu\n", selfie_name,
         filename_buffer,
         flags,
         mode,
@@ -7385,7 +7385,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
   if (is_aligned_virtual_address(new_program_break, WORDSIZE))
     if (is_address_between_stack_and_heap(context, new_program_break)) {
       if (debug_brk)
-        printf("%s: setting program break to 0x%08llX\n", selfie_name, (uint64_t) new_program_break);
+        printf("%s: setting program break to 0x%08lX\n", selfie_name, (uint64_t) new_program_break);
 
       set_program_break(context, new_program_break);
 
@@ -7398,7 +7398,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
   // setting new program break failed, return current program break
 
   if (debug_brk)
-    printf("%s: retrieving current program break 0x%08llX\n", selfie_name, (uint64_t) current_program_break);
+    printf("%s: retrieving current program break 0x%08lX\n", selfie_name, (uint64_t) current_program_break);
 
   return current_program_break;
 }
@@ -7499,11 +7499,11 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   timer = timeout;
 
   if (debug_switch) {
-    printf("%s: switched from context 0x%08llX to context 0x%08llX", selfie_name,
+    printf("%s: switched from context 0x%08lX to context 0x%08lX", selfie_name,
       (uint64_t) from_context,
       (uint64_t) to_context);
     if (timer != TIMEROFF)
-      printf(" to execute %llu instructions", timer);
+      printf(" to execute %lu instructions", timer);
     println();
   }
 
@@ -7692,7 +7692,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb)
-    printf("%s: tlb access:\n vaddr: 0x%08llX\n page:  0x%08llX\n frame: 0x%08llX\n paddr: 0x%08llX\n", selfie_name,
+    printf("%s: tlb access:\n vaddr: 0x%08lX\n page:  0x%08lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
       (uint64_t) vaddr,
       (uint64_t) (page * PAGESIZE),
       (uint64_t) frame,
@@ -8263,29 +8263,29 @@ void gc_collect(uint64_t* context) {
 
 void print_gc_profile(uint64_t* context) {
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: gc:      %.2lluMB requested in %llu mallocs (%llu gced, %llu reuses)\n", selfie_name,
+  printf("%s: gc:      %.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
     ratio_format(gc_mem_mallocated, MEGABYTE),
     gc_num_mallocated,
     gc_num_gced_mallocs,
     gc_num_reused_mallocs);
-  printf("%s: gc:      %.2lluMB(%.2llu%%) reused in %llu reused mallocs\n", selfie_name,
+  printf("%s: gc:      %.2luMB(%.2lu%%) reused in %lu reused mallocs\n", selfie_name,
     ratio_format(gc_mem_reused, MEGABYTE),
     percentage_format(gc_mem_mallocated, gc_mem_reused),
     gc_num_reused_mallocs);
-  printf("%s: gc:      %.2lluMB collected in %llu gc runs\n", selfie_name,
+  printf("%s: gc:      %.2luMB collected in %lu gc runs\n", selfie_name,
     ratio_format(gc_mem_collected, MEGABYTE),
     gc_num_collects);
-  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu mallocs (%llu gced, %llu ungced)\n", selfie_name,
+  printf("%s: gc:      %.2luMB(%.2lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
     ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE),
     percentage_format(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
     gc_num_gced_mallocs + gc_num_ungced_mallocs,
     gc_num_gced_mallocs,
     gc_num_ungced_mallocs);
-  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu gced mallocs\n", selfie_name,
+  printf("%s: gc:      %.2luMB(%.2lu%%) allocated in %lu gced mallocs\n", selfie_name,
     ratio_format(gc_mem_objects, MEGABYTE),
     percentage_format(gc_mem_mallocated, gc_mem_objects),
     gc_num_gced_mallocs);
-  printf("%s: gc:      %.2lluMB(%.2llu%%) allocated in %llu ungced mallocs", selfie_name,
+  printf("%s: gc:      %.2luMB(%.2lu%%) allocated in %lu ungced mallocs", selfie_name,
     ratio_format(gc_mem_metadata, MEGABYTE),
     percentage_format(gc_mem_mallocated, gc_mem_metadata),
     gc_num_ungced_mallocs);
@@ -8318,14 +8318,14 @@ void gc_arguments() {
 
 void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0){
-    sprintf(string_buffer, "(~%llu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    sprintf(string_buffer, "(~%lu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
     direct_output(string_buffer);
   }
 }
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    sprintf(string_buffer,"%s: pc=0x%llX", binary_name, address);
+    sprintf(string_buffer,"%s: pc=0x%lX", binary_name, address);
     direct_output(string_buffer);
     print_code_line_number_for_instruction(address, code_start);
     if (symbolic)
@@ -8335,15 +8335,15 @@ void print_code_context_for_instruction(uint64_t address) {
       print(": ");
   } else {
     if (model) {
-      sprintf(string_buffer,"0x%llX", address);
+      sprintf(string_buffer,"0x%lX", address);
       direct_output(string_buffer);
       print_code_line_number_for_instruction(address, code_start);
       print(": ");
     } else if (disassemble_verbose) {
-      sprintf(string_buffer,"0x%llX", address);
+      sprintf(string_buffer,"0x%lX", address);
       direct_output(string_buffer);
       print_code_line_number_for_instruction(address, 0);
-      sprintf(string_buffer, ": 0x%08llX: ", (uint64_t) ir);
+      sprintf(string_buffer, ": 0x%08lX: ", (uint64_t) ir);
       direct_output(string_buffer);
     }
   }
@@ -8351,7 +8351,7 @@ void print_code_context_for_instruction(uint64_t address) {
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer,"%s %s,0x%llX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
+  sprintf(string_buffer,"%s %s,0x%lX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
   direct_output(string_buffer);
 }
 
@@ -8407,7 +8407,7 @@ void print_addi() {
         return;
       }
 
-  sprintf(string_buffer, "%s %s,%s,%lld", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), imm);
+  sprintf(string_buffer, "%s %s,%s,%ld", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), imm);
   direct_output(string_buffer);
 }
 
@@ -8606,7 +8606,7 @@ void do_sltu() {
 
 void print_load() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rd), imm, get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rd), imm, get_register_name(rs1));
   direct_output(string_buffer);
 }
 
@@ -8621,9 +8621,9 @@ void print_load_before() {
   if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        printf(",mem[0x%llX]=0x%llX |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%lX]=0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(",mem[0x%llX]=%lld |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%lX]=%ld |- ", vaddr, load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
@@ -8637,7 +8637,7 @@ void print_load_after(uint64_t vaddr) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
-      printf("=mem[0x%llX]", vaddr);
+      printf("=mem[0x%lX]", vaddr);
     }
 }
 
@@ -8698,7 +8698,7 @@ uint64_t do_load() {
 
 void print_store() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rs2), imm, get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rs2), imm, get_register_name(rs1));
   direct_output(string_buffer);
 }
 
@@ -8715,9 +8715,9 @@ void print_store_before() {
       print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        printf(" |- mem[0x%llX]=0x%llX", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%lX]=0x%lX", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(" |- mem[0x%llX]=%lld", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%lX]=%ld", vaddr, load_virtual_memory(pt, vaddr));
 
       return;
     }
@@ -8728,7 +8728,7 @@ void print_store_before() {
 void print_store_after(uint64_t vaddr) {
   if (is_aligned_virtual_address(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(" -> mem[0x%llX]=", vaddr);
+      printf(" -> mem[0x%lX]=", vaddr);
       print_register_value(rs2);
     }
 }
@@ -8792,10 +8792,10 @@ void undo_store() {
 
 void print_beq() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer, "%s %s,%s,%lld", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
+  sprintf(string_buffer, "%s %s,%s,%ld", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose) {
-    sprintf(string_buffer, "[0x%llX]", pc + imm);
+    sprintf(string_buffer, "[0x%lX]", pc + imm);
     direct_output(string_buffer);
   }
 }
@@ -8805,11 +8805,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  printf(" |- pc=0x%llX", pc);
+  printf(" |- pc=0x%lX", pc);
 }
 
 void print_beq_after() {
-  printf(" -> pc=0x%llX", pc);
+  printf(" -> pc=0x%lX", pc);
 }
 
 void record_beq() {
@@ -8835,10 +8835,10 @@ void do_beq() {
 
 void print_jal() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer, "%s %s,%lld", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
+  sprintf(string_buffer, "%s %s,%ld", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose){
-    sprintf(string_buffer,"[0x%llX]", pc + imm);
+    sprintf(string_buffer,"[0x%lX]", pc + imm);
     direct_output(string_buffer);
   }
 }
@@ -8849,7 +8849,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=0x%llX", pc);
+  printf("pc=0x%lX", pc);
 }
 
 void print_jal_jalr_after() {
@@ -8907,7 +8907,7 @@ void do_jal() {
 
 void print_jalr() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer, "%s %s,%lld(%s)", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  sprintf(string_buffer, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
   direct_output(string_buffer);
 }
 
@@ -8919,7 +8919,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=0x%llX", pc);
+  printf("pc=0x%lX", pc);
 }
 
 void do_jalr() {
@@ -9005,13 +9005,13 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0) {
-    sprintf(string_buffer, "(~%llu)", *(data_line_number + (pc - code_size) / SIZEOFUINT64));
+    sprintf(string_buffer, "(~%lu)", *(data_line_number + (pc - code_size) / SIZEOFUINT64));
     direct_output(string_buffer);
   }  
 }
 
 void print_data_context(uint64_t data) {
-  sprintf(string_buffer, "0x%llX", pc);
+  sprintf(string_buffer, "0x%lX", pc);
   direct_output(string_buffer);
 
   if (disassemble_verbose) {
@@ -9027,9 +9027,9 @@ void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
   if (IS64BITSYSTEM)
-    sprintf(string_buffer, ".8byte 0x%llX", data);
+    sprintf(string_buffer, ".8byte 0x%lX", data);
   else
-    sprintf(string_buffer, ".4byte 0x%llX", data);
+    sprintf(string_buffer, ".4byte 0x%lX", data);
   direct_output(string_buffer);
 }
 
@@ -9128,7 +9128,7 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-  printf("%s: %llu characters of assembly with %llu instructions and %llu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu characters of assembly with %lu instructions and %lu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
     code_size / INSTRUCTIONSIZE,
     data_size,
@@ -9197,35 +9197,35 @@ void replay_trace() {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  printf("%s=0x%llX", get_register_name(reg), *(registers + reg));
+  printf("%s=0x%lX", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
-  printf("%s=%llo", get_register_name(reg), *(registers + reg));
+  printf("%s=%lo", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    printf("%s=%lld(0x%llX)", get_register_name(reg), *(registers + reg), *(registers + reg));
+    printf("%s=%ld(0x%lX)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
   print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    printf(" at page 0x%08llX", (uint64_t) fault);
+    printf(" at page 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_SEGMENTATIONFAULT)
-    printf(" at address 0x%08llX", (uint64_t) fault);
+    printf(" at address 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_SYSCALL)
-    printf(" ID %llu", fault);
+    printf(" ID %lu", fault);
   else if (exception == EXCEPTION_DIVISIONBYZERO)
-    printf(" at address 0x%08llX", (uint64_t) fault);
+    printf(" at address 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_INVALIDADDRESS)
-    printf(" 0x%08llX", (uint64_t) fault);
+    printf(" 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
-    printf(" at address 0x%08llX", (uint64_t) fault);
+    printf(" at address 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
     print(" ");print_register_name(fault);
   }
@@ -9234,7 +9234,7 @@ void print_exception(uint64_t exception, uint64_t fault) {
 void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf("%s: context 0x%08llX throws exception: ", selfie_name, (uint64_t) current_context);
+      printf("%s: context 0x%08lX throws exception: ", selfie_name, (uint64_t) current_context);
       print_exception(exception, fault);
       print(" in presence of existing exception: ");
       print_exception(get_exception(current_context), get_fault(current_context));
@@ -9249,7 +9249,7 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   trap = 1;
 
   if (debug_exception) {
-    printf("%s: context 0x%08llX throws exception: ", selfie_name, (uint64_t) current_context);
+    printf("%s: context 0x%08lX throws exception: ", selfie_name, (uint64_t) current_context);
     print_exception(exception, fault);
     println();
   }
@@ -9353,7 +9353,7 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-      printf("%s: at address 0x%llX unknown instruction 0x%llX with opcode 0x%llX detected\n", selfie_name,
+      printf("%s: at address 0x%lX unknown instruction 0x%lX with opcode 0x%lX detected\n", selfie_name,
         pc,
         ir,
         opcode);
@@ -9600,7 +9600,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%llu(%.2llu%%)@0x%llX", c, percentage_format(total, c), a);
+    printf(",%lu(%.2lu%%)@0x%lX", c, percentage_format(total, c), a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -9612,7 +9612,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  printf("%s: %s%llu", selfie_name, message, total);
+  printf("%s: %s%lu", selfie_name, message, total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
@@ -9623,7 +9623,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       // may happen in read-only memory segments
       writes = 1;
 
-    printf("%s: %s%s%llu,%llu,%llu[%.2llu]\n", selfie_name, message, padding,
+    printf("%s: %s%s%lu,%lu,%lu[%.2lu]\n", selfie_name, message, padding,
       reads + writes, reads, writes, ratio_format(reads, writes));
   }
 }
@@ -9691,17 +9691,17 @@ void print_register_memory_profile() {
 
 void print_profile(uint64_t* context) {
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: summary: %llu executed instructions [%.2llu%% nops]\n", selfie_name,
+  printf("%s: summary: %lu executed instructions [%.2lu%% nops]\n", selfie_name,
     get_total_number_of_instructions(),
     percentage_format(get_total_number_of_instructions(), get_total_number_of_nops()));
-  printf("%s:          %.2lluMB allocated in %llu mallocs\n", selfie_name,
+  printf("%s:          %.2luMB allocated in %lu mallocs\n", selfie_name,
     ratio_format(mc_brk, MEGABYTE),
     sc_brk);
-  printf("%s:          %.2lluMB(%.2llu%% of %.2lluMB) actually accessed\n", selfie_name,
+  printf("%s:          %.2luMB(%.2lu%% of %.2luMB) actually accessed\n", selfie_name,
     ratio_format(mc_mapped_heap, MEGABYTE),
     percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
     ratio_format(mc_brk, MEGABYTE));
-  printf("%s:          %.2lluMB(%.2llu%% of %lluMB) mapped memory\n", selfie_name,
+  printf("%s:          %.2luMB(%.2lu%% of %luMB) mapped memory\n", selfie_name,
     ratio_format(pused(), MEGABYTE),
     percentage_format(total_page_frame_memory, pused()),
     total_page_frame_memory / MEGABYTE);
@@ -9865,7 +9865,7 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   init_context(context, parent, vctxt);
 
   if (debug_create)
-    printf("%s: parent context 0x%08llX created child context 0x%08llX\n", selfie_name,
+    printf("%s: parent context 0x%08lX created child context 0x%08lX\n", selfie_name,
       (uint64_t) parent,
       (uint64_t) used_contexts);
 
@@ -9967,7 +9967,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   if (debug_map) {
     printf("%s: page ", selfie_name);
     print_hexadecimal(page, 4);
-    printf(" mapped to frame 0x%08llX in context 0x%08llX\n", (uint64_t) frame, (uint64_t) context);
+    printf(" mapped to frame 0x%08lX in context 0x%08lX\n", (uint64_t) frame, (uint64_t) context);
   }
 }
 
@@ -10382,7 +10382,7 @@ uint64_t handle_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    printf("%s: unknown system call %llu\n", selfie_name, a7);
+    printf("%s: unknown system call %lu\n", selfie_name, a7);
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -10507,7 +10507,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf("mixter (%llu%% mipster/%llu%% hypster)\n", mix, 100 - mix);
+  printf("mixter (%lu%% mipster/%lu%% hypster)\n", mix, 100 - mix);
   printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   mslice = TIMESLICE;
@@ -10718,14 +10718,14 @@ uint64_t selfie_run(uint64_t machine) {
 
   run = 1;
 
-  printf("%s: selfie executing %s with %lluMB physical memory", selfie_name,
+  printf("%s: selfie executing %s with %luMB physical memory", selfie_name,
     binary_name,
     total_page_frame_memory / MEGABYTE);
 
   if (GC_ON) {
     gc_init(current_context);
 
-    printf(", gcing every %llu mallocs, ", GC_PERIOD);
+    printf(", gcing every %lu mallocs, ", GC_PERIOD);
     if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
   }
 
@@ -10764,7 +10764,7 @@ uint64_t selfie_run(uint64_t machine) {
   debug_syscalls = 0;
   debug          = 0;
 
-  printf("%s: selfie terminating %s with exit code %lld\n", selfie_name,
+  printf("%s: selfie terminating %s with exit code %ld\n", selfie_name,
     get_name(current_context),
     sign_extend(exit_code, SYSCALL_BITWIDTH));
 
@@ -10836,7 +10836,7 @@ uint64_t selfie(uint64_t extras) {
     return EXITCODE_NOARGUMENTS;
   else {
     printf("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
-    printf("%s: %llu-bit unsigned integers and %llu-bit pointers on boot level ", selfie_name,
+    printf("%s: %lu-bit unsigned integers and %lu-bit pointers on boot level ", selfie_name,
       SIZEOFUINT64INBITS,
       SIZEOFUINT64STARINBITS);
     if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
