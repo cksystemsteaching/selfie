@@ -2799,31 +2799,29 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
     if (p < 10) {
       // the character at i + 1 is in fact a digit
       if (load_character(s, i + 2) == 'l') {
-        if (load_character(s, i + 3) == 'l') {
-          if (load_character(s, i + 4) == 'u')
-            print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
-          else if (load_character(s, i + 4) == 'd')
-            print_integer((uint64_t) a / ten_to_the_power_of(p));
-          else
-            // precision only supported for %lu and %ld
-            return i + 5;
+        if (load_character(s, i + 3) == 'u')
+          print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+        else if (load_character(s, i + 3) == 'd')
+          print_integer((uint64_t) a / ten_to_the_power_of(p));
+        else
+          // precision only supported for %lu and %ld
+          return i + 4;
 
-          if (p > 0) {
-            // using integer_buffer here is ok since we are not using print_integer
-            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
-            p = p - string_length(integer_buffer);
+        if (p > 0) {
+          // using integer_buffer here is ok since we are not using print_integer
+          itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
+          p = p - string_length(integer_buffer);
 
-            put_character('.');
-            while (p > 0) {
-              put_character('0');
+          put_character('.');
+          while (p > 0) {
+            put_character('0');
 
-              p = p - 1;
-            }
-            print(integer_buffer);
+            p = p - 1;
           }
+          print(integer_buffer);
         }
       }
-      return i + 5;
+      return i + 4;
     } else
       return i;
   } else if (load_character(s, i) == '0') {
@@ -2833,33 +2831,29 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
     if (p < 10) {
       // the character at i + 1 is in fact a digit
       if (load_character(s, i + 2) == 'l') {
-        if (load_character(s, i + 3) == 'l') {
-          if (load_character(s, i + 4) == 'X')
+          if (load_character(s, i + 3) == 'X')
             // padding support only for %lX
             print_hexadecimal((uint64_t) a, p);
-        }
       }
-      return i + 5;
+      return i + 4;
     }
   } else if (load_character(s, i) == 'l') {
-    if (load_character(s, i + 1) == 'l') {
-      if (load_character(s, i + 2) == 'u') {
-        print_unsigned_integer((uint64_t) a);
+    if (load_character(s, i + 1) == 'u') {
+      print_unsigned_integer((uint64_t) a);
 
-        return i + 3;
-      } else if (load_character(s, i + 2) == 'd') {
-        print_integer((uint64_t) a);
+      return i + 2;
+    } else if (load_character(s, i + 1) == 'd') {
+      print_integer((uint64_t) a);
 
-        return i + 3;
-      } else if (load_character(s, i + 2) == 'X') {
-        print_hexadecimal((uint64_t) a, 0);
+      return i + 2;
+    } else if (load_character(s, i + 1) == 'X') {
+      print_hexadecimal((uint64_t) a, 0);
 
-        return i + 3;
-      } else if (load_character(s, i + 2) == 'o') {
-        print_octal((uint64_t) a, 0);
+      return i + 2;
+    } else if (load_character(s, i + 1) == 'o') {
+      print_octal((uint64_t) a, 0);
 
-        return i + 3;
-      }
+      return i + 2;
     }
   } else if (load_character(s, i) == 'b') {
     print_binary((uint64_t) a, 0);
@@ -2883,8 +2877,6 @@ void direct_output(char* buffer) {
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
-  uint64_t offset;
-  uint64_t placeholder_positions;
   uint64_t i;
 
   if (buffer) {
@@ -2894,9 +2886,6 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
     output_fd = fd;
 
   number_of_currently_written_bytes = 0;
-
-  offset = 0;
-  placeholder_positions = 0;
   i = 0;
 
   if (s != (char*) 0) {
