@@ -2696,14 +2696,14 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
           if (load_character(s, i + 3) == 'l') {
             if (load_character(s, i + 4) == 'l') {
               if (load_character(s, i + 5) == 'X')
-				    	  print_hexadecimal((uint64_t) a, p);
+                print_hexadecimal((uint64_t) a, p);
               else
                 // padding support only for %llX
-				    	    return i + 6;
-				    	}
-				    }
-				    return i + 6;	
-				 } else {
+                return i + 6;
+            }
+          }
+          return i + 6;	
+        } else {
           put_character(load_character(s, i));
 
           i = i + 1;
