@@ -2437,12 +2437,7 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
       store_character(s, i + 1, '0');
 
       i = i + 2;
-    } else if (b == 16) {
-      store_character(s, i, 'x'); // hexadecimal numbers start with 0x
-      store_character(s, i + 1, '0');
-
-      i = i + 2;
-    }
+    } 
   }
 
   store_character(s, i, 0); // null-terminated string
@@ -2692,11 +2687,28 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
           i = i + 1;
         }
-      } else if (load_character(s, i + 1) == 'p') {
-        print_hexadecimal((uint64_t) a, SIZEOFUINT64STAR);
+      } else if (load_character(s, i + 1) == '0') {
+        // for simplicity we support a single digit only
+        p = load_character(s, i + 2) - '0';
 
-        return i + 2;
+        if (p < 10) {
+          // the character at i + 2 is in fact a digit
+          if (load_character(s, i + 3) == 'l') {
+            if (load_character(s, i + 4) == 'l') {
+              if (load_character(s, i + 5) == 'X')
+				    	  print_hexadecimal((uint64_t) a, p);
+              else
+                // padding support only for %llX
+				    	    return i + 6;
+				    	}
+				    }
+				    return i + 6;	
+				 } else {
+          put_character(load_character(s, i));
 
+          i = i + 1;
+        }
+				 
       } else if (load_character(s, i + 1) == 'l') {
         if (load_character(s, i + 2) == 'l') {
           if (load_character(s, i + 3) == 'u') {
@@ -2707,7 +2719,7 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
             print_integer((uint64_t) a);
 
             return i + 4;
-          } else if (load_character(s, i + 3) == 'x') {
+          } else if (load_character(s, i + 3) == 'X') {
             print_hexadecimal((uint64_t) a, 0);
 
             return i + 4;
@@ -6747,10 +6759,10 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    printf("%s: trying to read %llu bytes from file with descriptor %llu into buffer at virtual address %p\n", selfie_name,
+    printf("%s: trying to read %llu bytes from file with descriptor %llu into buffer at virtual address 0x%08llX\n", selfie_name,
       size,
       fd,
-      (void*) vbuffer);
+      (uint64_t) vbuffer);
 
   read_total = 0;
 
@@ -6787,21 +6799,21 @@ void implement_read(uint64_t* context) {
 
           size = 0;
 
-          printf("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (void*) vbuffer);
+          printf("%s: reading into virtual address 0x%08llX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        printf("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (void*) vbuffer);
+        printf("%s: reading into virtual address 0x%08llX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      printf("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (void*) vbuffer);
+      printf("%s: reading into virtual address 0x%08llX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
     }
   }
 
@@ -6870,9 +6882,9 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    printf("%s: trying to write %llu bytes from buffer at virtual address %p into file with descriptor %llu\n", selfie_name,
+    printf("%s: trying to write %llu bytes from buffer at virtual address 0x%08llX into file with descriptor %llu\n", selfie_name,
       size,
-      (void*) vbuffer,
+      (uint64_t) vbuffer,
       fd);
 
   written_total = 0;
@@ -6910,21 +6922,21 @@ void implement_write(uint64_t* context) {
 
           size = 0;
 
-          printf("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (void*) vbuffer);
+          printf("%s: writing from virtual address 0x%08llX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        printf("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (void*) vbuffer);
+        printf("%s: writing from virtual address 0x%08llX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      printf("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (void*) vbuffer);
+      printf("%s: writing from virtual address 0x%08llX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
     }
   }
 
@@ -6979,7 +6991,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         else {
-          printf("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (void*) vaddr);
+          printf("%s: opening file failed because the file name address 0x%08llX is unmapped\n", selfie_name, (uint64_t) vaddr);
 
           return 0;
         }
@@ -7000,18 +7012,18 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         // advance to the next machine word in our memory
         i = i + 1;
       } else {
-        printf("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (void*) vaddr);
+        printf("%s: opening file failed because the file name address 0x%08llX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
 
         return 0;
       }
     else {
-      printf("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (void*) vaddr);
+      printf("%s: opening file failed because the file name address 0x%08llX is invalid\n", selfie_name, (uint64_t) vaddr);
 
       return 0;
     }
   }
 
-  printf("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (void*) vaddr);
+  printf("%s: opening file failed because the file name is too long at address 0x%08llX\n", selfie_name, (uint64_t) vaddr);
 
   return 0;
 }
@@ -7058,7 +7070,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf("%s: opened file %s with flags %llx and mode %llo returning file descriptor %llu\n", selfie_name,
+      printf("%s: opened file %s with flags 0x%llX and mode %llo returning file descriptor %llu\n", selfie_name,
         filename_buffer,
         flags,
         mode,
@@ -7152,7 +7164,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
     if (new_program_break >= current_program_break)
       if (new_program_break < *(get_regs(context) + REG_SP)) {
         if (debug_brk)
-          printf("%s: setting program break to %p\n", selfie_name, (void*) new_program_break);
+          printf("%s: setting program break to 0x%08llX\n", selfie_name, (uint64_t) new_program_break);
 
         set_program_break(context, new_program_break);
 
@@ -7165,7 +7177,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
   // setting new program break failed, return current program break
 
   if (debug_brk)
-    printf("%s: retrieving current program break %p\n", selfie_name, (void*) current_program_break);
+    printf("%s: retrieving current program break 0x%08llX\n", selfie_name, (uint64_t) current_program_break);
 
   return current_program_break;
 }
@@ -7237,10 +7249,11 @@ uint64_t is_boot_level_zero() {
 void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, binary_length);
 
-  emit_ld(REG_A0, REG_SP, 0); // context to which we switch
+  emit_ld(REG_A0, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
+  emit_ld(REG_A1, REG_SP, 0); // context to which we switch
+
   emit_addi(REG_SP, REG_SP, WORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
@@ -7248,7 +7261,7 @@ void emit_switch() {
   emit_ecall();
 
   // save context from which we are switching here in return register
-  emit_addi(REG_A0, REG_A6, 0);
+  emit_addi(REG_A1, REG_A6, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
@@ -7266,9 +7279,9 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   timer = timeout;
 
   if (debug_switch) {
-    printf("%s: switched from context %p to context %p", selfie_name,
-      (void*) from_context,
-      (void*) to_context);
+    printf("%s: switched from context 0x%08llX to context 0x%08llX", selfie_name,
+      (uint64_t) from_context,
+      (uint64_t) to_context);
     if (timer != TIMEROFF)
       printf(" to execute %llu instructions", timer);
     println();
@@ -7465,11 +7478,11 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb)
-    printf("%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfie_name,
-      (void*) vaddr,
-      (void*) (page * PAGESIZE),
-      (void*) frame,
-      (void*) paddr);
+    printf("%s: tlb access:\n vaddr: 0x%08llX\n page:  0x%08llX\n frame: 0x%08llX\n paddr: 0x%08llX\n", selfie_name,
+      (uint64_t) vaddr,
+      (uint64_t) (page * PAGESIZE),
+      (uint64_t) frame,
+      (uint64_t) paddr);
 
   return (uint64_t*) paddr;
 }
@@ -8096,7 +8109,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    sprintf(string_buffer,"%s: pc=%llx", binary_name, address);
+    sprintf(string_buffer,"%s: pc=0x%llX", binary_name, address);
     direct_output(string_buffer);
     print_code_line_number_for_instruction(address, entry_point);
     if (symbolic)
@@ -8106,15 +8119,15 @@ void print_code_context_for_instruction(uint64_t address) {
       print(": ");
   } else {
     if (model) {
-      sprintf(string_buffer,"%llx", address);
+      sprintf(string_buffer,"0x%llX", address);
       direct_output(string_buffer);
       print_code_line_number_for_instruction(address, entry_point);
       print(": ");
     } else if (disassemble_verbose) {
-      sprintf(string_buffer,"%llx", address);
+      sprintf(string_buffer,"0x%llX", address);
       direct_output(string_buffer);
       print_code_line_number_for_instruction(address, 0);
-      sprintf(string_buffer, ": %p: ", (void*) ir);
+      sprintf(string_buffer, ": 0x%08llX: ", (uint64_t) ir);
       direct_output(string_buffer);
     }
   }
@@ -8122,7 +8135,7 @@ void print_code_context_for_instruction(uint64_t address) {
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer,"lui %s,%llx", get_register_name(rd), sign_shrink(imm, 20));
+  sprintf(string_buffer,"lui %s,0x%llX", get_register_name(rd), sign_shrink(imm, 20));
   direct_output(string_buffer);
 }
 
@@ -8392,9 +8405,9 @@ void print_ld_before() {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        printf(",mem[%llx]=%llx |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%llX]=0x%llX |- ", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(",mem[%llx]=%lld |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%llX]=%lld |- ", vaddr, load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
@@ -8408,7 +8421,7 @@ void print_ld_after(uint64_t vaddr) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
-      printf("=mem[%llx]", vaddr);
+      printf("=mem[0x%llX]", vaddr);
     }
 }
 
@@ -8486,9 +8499,9 @@ void print_sd_before() {
       print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        printf(" |- mem[%llx]=%llx", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%llX]=0x%llX", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(" |- mem[%llx]=%lld", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%llX]=%lld", vaddr, load_virtual_memory(pt, vaddr));
 
       return;
     }
@@ -8499,7 +8512,7 @@ void print_sd_before() {
 void print_sd_after(uint64_t vaddr) {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(" -> mem[%llx]=", vaddr);
+      printf(" -> mem[0x%llX]=", vaddr);
       print_register_value(rs2);
     }
 }
@@ -8566,7 +8579,7 @@ void print_beq() {
   sprintf(string_buffer, "beq %s,%s,%lld", get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose) {
-    sprintf(string_buffer, "[%llx]", pc + imm);
+    sprintf(string_buffer, "[0x%llX]", pc + imm);
     direct_output(string_buffer);
   }
 }
@@ -8576,11 +8589,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  printf(" |- pc=%llx", pc);
+  printf(" |- pc=0x%llX", pc);
 }
 
 void print_beq_after() {
-  printf(" -> pc=%llx", pc);
+  printf(" -> pc=0x%llX", pc);
 }
 
 void record_beq() {
@@ -8609,7 +8622,7 @@ void print_jal() {
   sprintf(string_buffer, "jal %s,%lld", get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
   direct_output(string_buffer);
   if (disassemble_verbose){
-    sprintf(string_buffer,"[%llx]", pc + imm);
+    sprintf(string_buffer,"[0x%llX]", pc + imm);
     direct_output(string_buffer);
   }
 }
@@ -8620,7 +8633,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=%llx", pc);
+  printf("pc=0x%llX", pc);
 }
 
 void print_jal_jalr_after() {
@@ -8690,7 +8703,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=%llx", pc);
+  printf("pc=0x%llX", pc);
 }
 
 void do_jalr() {
@@ -8782,7 +8795,7 @@ void print_data_line_number() {
 }
 
 void print_data_context(uint64_t data) {
-  sprintf(string_buffer, "%llx", pc);
+  sprintf(string_buffer, "0x%llX", pc);
   direct_output(string_buffer);
 
   if (disassemble_verbose) {
@@ -8797,7 +8810,7 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-  sprintf(string_buffer, ".quad %llx", data);
+  sprintf(string_buffer, ".quad 0x%llX", data);
   direct_output(string_buffer);
 }
 
@@ -8961,7 +8974,7 @@ void replay_trace() {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  printf("%s=%llx", get_register_name(reg), *(registers + reg));
+  printf("%s=0x%llX", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
@@ -8972,24 +8985,24 @@ void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    printf("%s=%lld(%llx)", get_register_name(reg), *(registers + reg), *(registers + reg));
+    printf("%s=%lld(0x%llX)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
   print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    printf(" at page %p", (void*) fault);
+    printf(" at page 0x%08llX", (uint64_t) fault);
   else if (exception == EXCEPTION_SEGMENTATIONFAULT)
-    printf(" at address %p", (void*) fault);
+    printf(" at address 0x%08llX", (uint64_t) fault);
   else if (exception == EXCEPTION_SYSCALL)
     printf(" ID %llu", fault);
   else if (exception == EXCEPTION_DIVISIONBYZERO)
-    printf(" at address %p", (void*) fault);
+    printf(" at address 0x%08llX", (uint64_t) fault);
   else if (exception == EXCEPTION_INVALIDADDRESS)
-    printf(" %p", (void*) fault);
+    printf(" 0x%08llX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
-    printf(" at address %p", (void*) fault);
+    printf(" at address 0x%08llX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
     print(" ");print_register_name(fault);
   }
@@ -8998,7 +9011,7 @@ void print_exception(uint64_t exception, uint64_t fault) {
 void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf("%s: context %p throws exception: ", selfie_name, (void*) current_context);
+      printf("%s: context 0x%08llX throws exception: ", selfie_name, (uint64_t) current_context);
       print_exception(exception, fault);
       print(" in presence of existing exception: ");
       print_exception(get_exception(current_context), get_fault(current_context));
@@ -9013,7 +9026,7 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   trap = 1;
 
   if (debug_exception) {
-    printf("%s: context %p throws exception: ", selfie_name, (void*) current_context);
+    printf("%s: context 0x%08llX throws exception: ", selfie_name, (uint64_t) current_context);
     print_exception(exception, fault);
     println();
   }
@@ -9106,7 +9119,7 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-      printf("%s: unknown instruction with %llx opcode detected\n", selfie_name, opcode);
+      printf("%s: unknown instruction with 0x%llX opcode detected\n", selfie_name, opcode);
 
       exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
@@ -9350,7 +9363,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%llu(%.2llu%%)@%llx", c, fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), a);
+    printf(",%llu(%.2llu%%)@0x%llX", c, fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -9613,9 +9626,9 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   init_context(context, parent, vctxt);
 
   if (debug_create)
-    printf("%s: parent context %p created child context %p\n", selfie_name,
-      (void*) parent,
-      (void*) used_contexts);
+    printf("%s: parent context 0x%08llX created child context 0x%08llX\n", selfie_name,
+      (uint64_t) parent,
+      (uint64_t) used_contexts);
 
   return context;
 }
@@ -9715,7 +9728,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   if (debug_map) {
     printf("%s: page ", selfie_name);
     print_hexadecimal(page, 4);
-    printf(" mapped to frame %p in context %p\n", (void*) frame, (void*) context);
+    printf(" mapped to frame 0x%08llX in context 0x%08llX\n", (uint64_t) frame, (uint64_t) context);
   }
 }
 
