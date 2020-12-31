@@ -162,8 +162,7 @@ void print_hexadecimal(uint64_t n, uint64_t a);
 void print_octal(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);
 
-uint64_t print_format0(char* s, uint64_t i);
-uint64_t print_format1(char* s, uint64_t i, char* a);
+uint64_t print_format(char* s, uint64_t i, char* a);
 
 int printf(const char* format, ...);
 int sprintf(char* str, const char* format, ...);
@@ -2779,152 +2778,101 @@ void print_binary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, 0, a));
 }
 
-uint64_t print_format0(char* s, uint64_t i) {
-  // print string s from index i on
-  // ignore % formatting codes except for %%
-  if (s == (char*) 0)
-    return 0;
-  else {
-    while (load_character(s, i) != 0) {
-      if (load_character(s, i) != '%') {
-        put_character(load_character(s, i));
-
-        i = i + 1;
-      } else if (load_character(s, i + 1) == '%') {
-        // for %% print just one %
-        put_character('%');
-
-        i = i + 2;
-      } else {
-        put_character(load_character(s, i));
-
-        i = i + 1;
-      }
-    }
-
-    return i;
-  }
-}
-
-uint64_t print_format1(char* s, uint64_t i, char* a) {
-  // print string s from index i on until next % formatting code except for %%
-  // then print argument a according to the encountered % formatting code
+uint64_t print_format(char* s, uint64_t i, char* a) {
+  // print argument a according to the encountered % formatting code
+  // that start at position i
 
   uint64_t p;
 
-  if (s == (char*) 0)
-    return 0;
-  else {
-    while (load_character(s, i) != 0) {
-      if (load_character(s, i) != '%') {
-        put_character(load_character(s, i));
+  if (load_character(s, i) == 's') {
+    print(a);
 
-        i = i + 1;
-      } else if (load_character(s, i + 1) == 's') {
-        print(a);
+    return i + 1;
+  } else if (load_character(s, i) == 'c') {
+    put_character((uint64_t) a);
 
-        return i + 2;
-      } else if (load_character(s, i + 1) == 'c') {
-        put_character((uint64_t) a);
+    return i + 1;
+  } else if (load_character(s, i) == '.') {
+    // for simplicity we support a single digit only
+    p = load_character(s, i + 1) - '0';
 
-        return i + 2;
-      } else if (load_character(s, i + 1) == '.') {
-        // for simplicity we support a single digit only
-        p = load_character(s, i + 2) - '0';
+    if (p < 10) {
+      // the character at i + 1 is in fact a digit
+      if (load_character(s, i + 2) == 'l') {
+        if (load_character(s, i + 3) == 'l') {
+          if (load_character(s, i + 4) == 'u')
+            print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+          else if (load_character(s, i + 4) == 'd')
+            print_integer((uint64_t) a / ten_to_the_power_of(p));
+          else
+            // precision only supported for %llu and %lld
+            return i + 5;
 
-        if (p < 10) {
-          // the character at i + 2 is in fact a digit
-          if (load_character(s, i + 3) == 'l') {
-            if (load_character(s, i + 4) == 'l') {
-              if (load_character(s, i + 5) == 'u')
-                print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
-              else if (load_character(s, i + 5) == 'd')
-                print_integer((uint64_t) a / ten_to_the_power_of(p));
-              else
-                // precision only supported for %llu and %lld
-                return i + 6;
+          if (p > 0) {
+            // using integer_buffer here is ok since we are not using print_integer
+            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
+            p = p - string_length(integer_buffer);
 
-              if (p > 0) {
-                // using integer_buffer here is ok since we are not using print_integer
-                itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
-                p = p - string_length(integer_buffer);
+            put_character('.');
+            while (p > 0) {
+              put_character('0');
 
-                put_character('.');
-                while (p > 0) {
-                  put_character('0');
-
-                  p = p - 1;
-                }
-                print(integer_buffer);
-              }
+              p = p - 1;
             }
-          }
-
-          return i + 6;
-        } else {
-          put_character(load_character(s, i));
-
-          i = i + 1;
-        }
-      } else if (load_character(s, i + 1) == '0') {
-        // for simplicity we support a single digit only
-        p = load_character(s, i + 2) - '0';
-
-        if (p < 10) {
-          // the character at i + 2 is in fact a digit
-          if (load_character(s, i + 3) == 'l') {
-            if (load_character(s, i + 4) == 'l') {
-              if (load_character(s, i + 5) == 'X')
-                print_hexadecimal((uint64_t) a, p);
-              else
-                // padding support only for %llX
-                return i + 6;
-            }
-          }
-          return i + 6;
-        } else {
-          put_character(load_character(s, i));
-
-          i = i + 1;
-        }
-      } else if (load_character(s, i + 1) == 'l') {
-        if (load_character(s, i + 2) == 'l') {
-          if (load_character(s, i + 3) == 'u') {
-            print_unsigned_integer((uint64_t) a);
-
-            return i + 4;
-          } else if (load_character(s, i + 3) == 'd') {
-            print_integer((uint64_t) a);
-
-            return i + 4;
-          } else if (load_character(s, i + 3) == 'X') {
-            print_hexadecimal((uint64_t) a, 0);
-
-            return i + 4;
-          } else if (load_character(s, i + 3) == 'o') {
-            print_octal((uint64_t) a, 0);
-
-            return i + 4;
+            print(integer_buffer);
           }
         }
-      } else if (load_character(s, i + 1) == 'b') {
-        print_binary((uint64_t) a, 0);
+      }
+      return i + 5;
+    } else
+      return i;
+  } else if (load_character(s, i) == '0') {
+    // for simplicity we support a single digit only
+    p = load_character(s, i + 1) - '0';
 
-        return i + 2;
-      } else if (load_character(s, i + 1) == '%') {
-        // for %% print just one %
-        put_character('%');
+    if (p < 10) {
+      // the character at i + 1 is in fact a digit
+      if (load_character(s, i + 2) == 'l') {
+        if (load_character(s, i + 3) == 'l') {
+          if (load_character(s, i + 4) == 'X')
+            // padding support only for %llX
+            print_hexadecimal((uint64_t) a, p);
+        }
+      }
+      return i + 5;
+    }
+  } else if (load_character(s, i) == 'l') {
+    if (load_character(s, i + 1) == 'l') {
+      if (load_character(s, i + 2) == 'u') {
+        print_unsigned_integer((uint64_t) a);
 
-        i = i + 2;
-      } else {
-        put_character(load_character(s, i));
+        return i + 3;
+      } else if (load_character(s, i + 2) == 'd') {
+        print_integer((uint64_t) a);
 
-        i = i + 1;
+        return i + 3;
+      } else if (load_character(s, i + 2) == 'X') {
+        print_hexadecimal((uint64_t) a, 0);
+
+        return i + 3;
+      } else if (load_character(s, i + 2) == 'o') {
+        print_octal((uint64_t) a, 0);
+
+        return i + 3;
       }
     }
+  } else if (load_character(s, i) == 'b') {
+    print_binary((uint64_t) a, 0);
 
-    return i;
+    return i + 1;
+  } else if (load_character(s, i) == '%') {
+    // for %% print just one %
+    put_character('%');
+
+    i = i + 1;
   }
+
+  return i;
 }
 
 void direct_output(char* buffer) {
@@ -2951,26 +2899,29 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   placeholder_positions = 0;
   i = 0;
 
-  while (load_character(s, i) != 0) {
-    if (load_character(s, i) == '%') {
-      if (load_character(s, i + 1) == '%')
+  if (s != (char*) 0) {
+    while (load_character(s, i) != 0) {
+      if (load_character(s, i) == '%') {
+        if (load_character(s, i + 1) != '%') {
+          i = i + 1;
+
+          i = print_format(s, i, var_arg(args));
+        } else {
+          put_character('%');
+        
+          i = i + 2;
+        }
+      } else {
+        put_character(load_character(s, i));
+
         i = i + 1;
-      placeholder_positions = placeholder_positions + 1;
+      }
     }
-    i = i + 1;
+
+    // sprintf always null-terminates the buffer
+    if (buffer)
+      store_character(buffer, output_cursor, 0);
   }
-
-  while (placeholder_positions > 0) {
-    offset = print_format1(s, offset, var_arg(args));
-
-    placeholder_positions = placeholder_positions - 1;
-  }
-
-  print_format0(s, offset);
-
-  // sprintf always null-terminates the buffer
-  if (buffer)
-    store_character(buffer, output_cursor, 0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -8400,7 +8351,7 @@ void print_code_context_for_instruction(uint64_t address) {
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  sprintf(string_buffer,"%s %s,0x%llx", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
+  sprintf(string_buffer,"%s %s,0x%llX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
   direct_output(string_buffer);
 }
 
@@ -9076,9 +9027,9 @@ void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
   if (IS64BITSYSTEM)
-    sprintf(string_buffer, ".8byte 0x%llx", data);
+    sprintf(string_buffer, ".8byte 0x%llX", data);
   else
-    sprintf(string_buffer, ".4byte 0x%llx", data);
+    sprintf(string_buffer, ".4byte 0x%llX", data);
   direct_output(string_buffer);
 }
 
@@ -9402,7 +9353,7 @@ void decode() {
       //report the error on the console
       output_fd = 1;
 
-      printf("%s: at address 0x%llx unknown instruction 0x%llx with opcode 0x%llx detected\n", selfie_name,
+      printf("%s: at address 0x%llX unknown instruction 0x%llX with opcode 0x%llX detected\n", selfie_name,
         pc,
         ir,
         opcode);
@@ -9649,7 +9600,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%llu(%.2llu%%)@0x%llx", c, percentage_format(total, c), a);
+    printf(",%llu(%.2llu%%)@0x%llX", c, percentage_format(total, c), a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
