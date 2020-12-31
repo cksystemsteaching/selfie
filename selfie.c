@@ -2702,13 +2702,12 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
                 return i + 6;
             }
           }
-          return i + 6;	
+          return i + 6;
         } else {
           put_character(load_character(s, i));
 
           i = i + 1;
         }
-				 
       } else if (load_character(s, i + 1) == 'l') {
         if (load_character(s, i + 2) == 'l') {
           if (load_character(s, i + 3) == 'u') {
@@ -2750,10 +2749,10 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 }
 
 void direct_output(char* buffer) {
-	if(output_fd == 1)
-		printf("%s", buffer);
-	else
-		dprintf(output_fd, "%s", buffer);
+  if(output_fd == 1)
+    printf("%s", buffer);
+  else
+    dprintf(output_fd, "%s", buffer);
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
@@ -4216,9 +4215,9 @@ uint64_t compile_call(char* procedure) {
   number_of_calls = number_of_calls + 1;
   
   // deallocate variadic parameters
-	if(entry != (uint64_t*) 0)
-		if(get_variadic(entry))
-			emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
+  if(entry != (uint64_t*) 0)
+    if(get_variadic(entry))
+      emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
 
   // assert: allocated_temporaries == n
 
