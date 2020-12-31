@@ -205,8 +205,5 @@ WORKDIR /opt/selfie
 # build selfie
 RUN make selfie
 
-# build machine files
-RUN make --directory machine/
-
 # default command
 CMD /bin/bash
