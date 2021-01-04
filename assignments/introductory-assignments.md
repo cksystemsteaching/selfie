@@ -19,7 +19,7 @@ Welcome to the Introduction to Computer Science supplementary material. This doc
 - [Introductory Assignments](#introductory-assignments)
 	- [The following information is shared via the course's slack channel.](#the-following-information-is-shared-via-the-courses-slack-channel)
 	- [Resources](#resources)
-- [1) Introduction](#1-introduction)
+- [Introduction](#introduction)
 	- [Bit Representation](#bit-representation)
 		- [Examples](#examples)
 	- [Decimal System](#decimal-system)
@@ -71,7 +71,7 @@ Welcome to the Introduction to Computer Science supplementary material. This doc
 			- [Examples](#examples-13)
 			- [Exercises](#exercises-10)
 		- [Arithmetic overflow](#arithmetic-overflow)
-- [2) Architecture](#2-architecture)
+- [Architecture](#architecture)
 	- [Binary vs. Decimal](#binary-vs-decimal)
 	- [Von Neumann architecture](#von-neumann-architecture)
 		- [Central Processing Unit (CPU)](#central-processing-unit-cpu)
@@ -84,6 +84,7 @@ Welcome to the Introduction to Computer Science supplementary material. This doc
 		- [Memory-bus](#memory-bus)
 			- [Examples](#examples-16)
 	- [Code vs. Data](#code-vs-data)
+- [Compilers](#compilers)
 	- [Compiler](#compiler)
 	- [The Emulator](#the-emulator)
 	- [Instructions](#instructions)
@@ -91,7 +92,7 @@ Welcome to the Introduction to Computer Science supplementary material. This doc
 
 ---
 
-# 1) Introduction
+# Introduction
 
 ## Bit Representation
 
@@ -851,7 +852,7 @@ Arithmetic overflow nevertheless is the cause of numerous software bugs and even
 
 ---
 
-# 2) Architecture
+# Architecture
 
 ## Binary vs. Decimal
 
@@ -1073,6 +1074,8 @@ Which one provides higher throughput and which one lower latency? Surprisingly, 
 ## Code vs. Data
 
 A computer cannot distinguish between code and data. It all depends on the context. Something is interpreted as code if the program counterpoints the corresponding address in memory, and this word is loaded as instruction into the processor. It is interpreted as data when it gets processed as data. A machine word could be data and code at the same time. As already mentioned, this depends on how it is interpreted.
+
+# Compilers
 
 ## Compiler
 
