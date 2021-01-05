@@ -1,6 +1,21 @@
 #include "../selfie.h"
 #define uint64_t unsigned long long
 
+uint64_t opt_debug = 1; // debug output
+
+uint64_t opt_UNKNOWN = 52596306927616181;
+
+uint64_t opt_memtrack_region_begin = 0; // The memory address to start tracking at (usually gp)
+uint64_t opt_memtrack_region_end = 0;   // and end
+uint64_t opt_pc = 0;
+
+uint64_t access_in_tracked_region(uint64_t addr) {
+    printf3("begin: %x end: %x addr: %x\n", opt_memtrack_region_begin, opt_memtrack_region_end, addr);
+  if (addr != opt_UNKNOWN) {
+  }
+  return 0;
+}
+
 uint64_t *machine_states = (uint64_t *) 0;
 uint64_t *cached_machine_states = (uint64_t *) 0;
 
@@ -61,11 +76,7 @@ void set_reg(uint64_t *state, uint64_t reg, uint64_t value) {
 }
 
 void set_var_unknown(uint64_t *state, uint64_t var) {
-  *(get_vars(state) + var) = 52596306927616181; // TODO don't use magic number
-}
-
-uint64_t is_var_unknown(uint64_t *state, uint64_t var) {
-  return (uint64_t) (*(get_vars(state) + var) == 52596306927616181);
+  *(get_vars(state) + var) = opt_UNKNOWN; // TODO don't use magic number
 }
 
 void set_var(uint64_t *state, uint64_t var, uint64_t value) {
@@ -75,11 +86,26 @@ void set_var(uint64_t *state, uint64_t var, uint64_t value) {
 }
 
 uint64_t get_var(uint64_t *state, uint64_t var) {
-  if (is_var_unknown(state, var)) {
-    print("Attempted to get value of unknown register!");
-    exit(1);
-  }
   return *(get_vars(state) + var);
+}
+
+uint64_t is_var_unknown(uint64_t *state, uint64_t var) {
+  return get_var(state, var) == opt_UNKNOWN;
+}
+
+
+uint64_t count_nonzero_vars(uint64_t* state) {
+  uint64_t count;
+  uint64_t i;
+  i = 0;
+  count = 0;
+  while (i < 256) {
+    if (is_var_unknown(state, i) == 0) {
+      count = count + 1;
+    }
+    i = i + 1;
+  }
+  return count;
 }
 
 
@@ -92,7 +118,7 @@ uint64_t *new_machine_state() {
 
   unknown_regs = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
   reg_values = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
-  vars = malloc(2048 * SIZEOFUINT64);
+  vars = malloc(256 * SIZEOFUINT64);
 
   i = 0;
   while (i < NUMBEROFREGISTERS) {
@@ -106,8 +132,8 @@ uint64_t *new_machine_state() {
   }
 
   i = 0;
-  while (i < 2048) {
-    *(vars + i) = 0;
+  while (i < 256) {
+    *(vars + i) = opt_UNKNOWN;
     i = i + 1;
   }
 
@@ -116,6 +142,26 @@ uint64_t *new_machine_state() {
   set_reg_values(result, reg_values);
   set_vars(result, vars);
   return result;
+}
+
+void upload_data_segment(uint64_t* state) {
+  uint64_t current_address;
+  uint64_t current_var;
+
+  current_address = code_length;
+  current_var = 0;
+
+  if (binary == 0) {
+    print("Binary not yet loaded!");
+    exit(1);
+  }
+
+  while (current_address < code_length + 256 * SIZEOFUINT64) {
+    set_var(state, current_var, *(binary + current_address / SIZEOFUINT64));
+    //printf2("%x is %x\n", current_address, get_var(state, current_var));
+    current_address = current_address + SIZEOFUINT64;
+    current_var = current_var + 1;
+  }
 }
 
 uint64_t get_reg(uint64_t *state, uint64_t reg) {
@@ -139,10 +185,28 @@ void copy_state(uint64_t *source, uint64_t *dest) {
   }
 
   i = 0;
-  while (i < 2048) {
+  while (i < 256) {
     set_var(dest, i, get_var(source, i));
     i = i + 1;
   }
+}
+
+void print_state(uint64_t* machine_state) {
+  uint64_t i;
+
+  if (machine_state == 0)
+    return;
+
+  i = 0;
+  while (i < NUMBEROFREGISTERS) {
+    if (!is_reg_unknown(machine_state, i)) {
+      printf2("\t%s:\t%d\n", (char *) *(REGISTERS + i), (char *) get_reg(machine_state, i));
+    }
+
+    i = i + 1;
+  }
+
+  printf1("\tknown vars: %d\n", count_nonzero_vars(machine_state));
 }
 
 // Return 1 iff machine states a and b are equal
@@ -151,8 +215,8 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
   i = 0;
   
   while (i < NUMBEROFREGISTERS) {
-    if (is_reg_unknown(a, i) != 1) { // If a is known
-      if (is_reg_unknown(b, i) != 1) { // If b is known
+    if (is_reg_unknown(a, i) == 0) { // If a is known
+      if (is_reg_unknown(b, i) == 0) { // If b is known
         if (get_reg(a, i) != get_reg(b, i)) { // Check that states are same
           return 0;
         }
@@ -164,13 +228,42 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
 
     // Here, a is unknown, we need to check that b is too.
     } else {
-      if (is_reg_unknown(b, i) != 1) { 
+      if (is_reg_unknown(b, i) == 0) { 
         return 0;
       }
     }
 
     i = i + 1;
   }
+
+  // do basically the same again for global variables
+  i = 0;
+  while (i < 256) {
+    if (is_var_unknown(a, i) == 0) { // If a is known
+      if (is_var_unknown(b, i) == 0) { // If b is known
+        if (get_var(a, i) != get_var(b, i)) { // Check that states are same
+          return 0;
+        }
+
+      // If we're here, a is known but b isn't
+      } else {
+        return 0;
+      }
+
+    // Here, a is unknown, we need to check that b is too.
+    } else {
+      if (is_var_unknown(b, i) == 0) { 
+        return 0;
+      }
+    }
+    i = i + 1;
+  }
+
+  //print("states equal:\n");
+  //print("a:\n");
+  //print_state(a);
+  //print("b:\n");
+  //print_state(b);
 
   return 1;
 }
@@ -203,6 +296,26 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
     }
     i = i + 1;
   }
+
+  // do basically the same again for global variables
+  i = 0;
+  while (i < 256) {
+    if (is_var_unknown(source, i)) {
+      if (is_var_unknown(source, i) == 0) {
+        set_var_unknown(dest, i);
+        changed = changed + 1;
+      }
+
+    } else {
+      if (is_var_unknown(source, i) == 0) {
+        if (get_var(source, i) != get_var(dest, i)) {
+          set_var_unknown(dest, i);
+          changed = changed + 1;
+        }
+      }
+    }
+    i = i + 1;
+  }
   return changed;
 }
 
@@ -211,17 +324,46 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
 uint64_t apply_effects(uint64_t *state) {
   uint64_t *registers;
   uint64_t tracked_change;
+  uint64_t addr;
+  //uint64_t global_variable_number;
+
+  if (opt_debug) {
+    printf1("applying %x ", opt_pc);
+    print_instruction();
+    print(":\n");
+  }
+
   tracked_change = 0;
 
   registers = get_reg_values(state);
 
+  // This is only relevant for ld and sd.
+  // Their imm gives an offset like `-16`. this code flips that into `2` so it can be used like an index
+  //global_variable_number = 18446744073709551615 - imm + 1;
+  //global_variable_number = global_variable_number / SIZEOFUINT64STAR;
+
   if (is == ADDI) {
     if (!is_reg_unknown(state, rs1)) { // if the register's contents are not unknown
       set_reg(state, rd, *(registers + rs1) + imm); // do the addi
+
       tracked_change = 1;
+
+      // On first write to global pointer, also set the memory region to be tracked
+      if (rd == REG_GP) {
+        if (opt_memtrack_region_begin != 0)
+          if (opt_memtrack_region_begin != get_reg(state, rd)) {
+            print("gp is mutated!\n");
+            exit(1);
+          }
+
+        opt_memtrack_region_begin = get_reg(state, rd);
+        opt_memtrack_region_end = opt_memtrack_region_begin - 2048;
+      }
+
     } else { // else rd is now unknown too
       set_reg_unknown(state, rd);
     }
+
   } else if (is == LUI) {
     set_reg(state, rd, left_shift(imm, 12));
     tracked_change = 1;
@@ -230,7 +372,55 @@ uint64_t apply_effects(uint64_t *state) {
   // handle "weird" instructions
   else if (is == LD) {
     set_reg_unknown(state, rd);
-  } else if (is == SD) { /* ignore memory writes */ }
+
+    if (rs1 == REG_GP) printf3("%s is %d at %x\n", *(REGISTERS+rs1), is_reg_unknown(state,rs1), opt_pc); //debug
+
+    if (is_reg_unknown(state, rs1) == 0) {
+      addr = get_reg(state, rs1) + imm;
+
+      if (access_in_tracked_region(addr))
+        print("todo");
+
+      //debug
+      print_instruction();
+      print("\n");
+    }
+    //if (is_reg_unknown(state, REG_GP) == 0)
+    //  if (rs1 == REG_GP) {
+    //    if (get_var(state, global_variable_number) != opt_UNKNOWN)  {
+    //      print_instruction();
+    //      printf3(" -> %x (imm=%x, var=%d)\n", get_var(state, global_variable_number), imm, global_variable_number);
+    //      set_reg(state, rd, get_var(state, global_variable_number));
+    //      tracked_change = 1;
+    //    } 
+    //}
+
+  } else if (is == SD) { 
+    if (is_reg_unknown(state, rs1) == 0) {
+      addr = get_reg(state, rs1) + imm;
+      print_instruction();
+      print("\n");
+
+      if (access_in_tracked_region(addr))
+        print("todo");
+    }
+    //if (is_reg_unknown(state, REG_GP) == 0)
+    //  if (rs1 == REG_GP) {
+    //    // if we know the value being written
+    //    if (is_reg_unknown(state, rs2) == 0) {
+    //      // and if we can show it's written to some global var
+    //      //if (is_reg_unknown(state, rs1) == 0)
+    //          //if (get_reg(state, rs1) == get_reg(state, REG_GP)) {
+    //      print("storing: ");
+    //      print_instruction();
+    //      printf3(" -> %x (imm=%x, var=%d)\n", get_reg(state, rs2), imm, global_variable_number);
+    //      set_var(state, global_variable_number, get_reg(state, rs2));
+
+    //    } else {
+    //      set_var_unknown(state, imm);
+    //    }
+    //  }
+  }
   else if (is == BEQ) { /* nothing to do here, as control flow is handled by the recursive traversal function */ }
   else if (is == JAL) {
     set_reg_unknown(state, rd); // we currently don't keep track of the actual program counter
@@ -269,6 +459,12 @@ uint64_t apply_effects(uint64_t *state) {
       tracked_change = 1;
     }
   }
+
+  if (opt_debug) {
+    print_state(state);
+    print("\n");
+  }
+
 
   return tracked_change;
 }
@@ -552,10 +748,15 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       state = new_machine_state();
       set_state(pc, state);
       created_new_state = 1;
+
+      if (pc == 0) {
+        upload_data_segment(state);
+      }
     }
 
     if (prev_pc != (uint64_t) -1) { // can't apply effects if last pc is undefined/unknown
       copy_state(get_state(prev_pc), tmp_state);
+      opt_pc = prev_pc;
       apply_effects(tmp_state); // apply effects of current instruction to new machine state
       if (created_new_state) {
         copy_state(tmp_state, state);
@@ -572,6 +773,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
           return;
         }
       }
+      //printf4("%d known words at %x, prev_pc=%x, known=%d\n", count_nonzero_vars(state), pc, prev_pc, count_nonzero_vars(get_state(prev_pc)));
     }
 
     force_continue = 0;
@@ -877,21 +1079,6 @@ void selfie_traverse() {
   }
 }
 
-void print_state(uint64_t* machine_state) {
-  uint64_t i;
-
-  if (machine_state == 0)
-    return;
-
-  i = 0;
-  while (i < NUMBEROFREGISTERS) {
-    if (!is_reg_unknown(machine_state, i)) {
-      printf2("\t%s:\t%d\n", (char *) *(REGISTERS + i), (char *) get_reg(machine_state, i));
-    }
-
-    i = i + 1;
-  }
-}
 
 void print_livedead(uint64_t* livedead) {
   uint64_t i;
@@ -1201,20 +1388,21 @@ int main(int argc, char **argv) {
 
   // TODO un-unroll this
   selfie_traverse();
+  //print_states_and_livedeads();
   patch_enops();
   printf1("found %d enops\n", (char*) number_of_enops);
 
-  selfie_traverse();
-  patch_dead_ops();
-  printf1("pass 1: found %d dead ops\n", (char*) number_of_dead_ops);
+  //selfie_traverse();
+  //patch_dead_ops();
+  //printf1("pass 1: found %d dead ops\n", (char*) number_of_dead_ops);
 
-  selfie_traverse();
-  patch_dead_ops();
-  printf1("pass 2: found %d dead ops\n", (char*) number_of_dead_ops);
+  //selfie_traverse();
+  //patch_dead_ops();
+  //printf1("pass 2: found %d dead ops\n", (char*) number_of_dead_ops);
 
-  selfie_traverse();
-  patch_dead_ops();
-  printf1("pass 3: found %d dead ops\n", (char*) number_of_dead_ops);
+  //selfie_traverse();
+  //patch_dead_ops();
+  //printf1("pass 3: found %d dead ops\n", (char*) number_of_dead_ops);
 
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
