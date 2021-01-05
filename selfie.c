@@ -1163,7 +1163,7 @@ uint64_t debug_switch = 0;
 // | 4 | cache sets      | number of sets in the cache
 // | 5 | cache hits      | counter for cache hits
 // | 6 | cache misses    | counter for cache misses
-// | 7 | cache timer     | counter for replacement strategy
+// | 7 | cache timer     | counter for LRU replacement strategy
 // +---+-----------------+
 
 uint64_t* allocate_cache() {
@@ -1188,7 +1188,7 @@ void set_cache_hits(uint64_t* cache, uint64_t cache_hits)           { *(cache + 
 void set_cache_misses(uint64_t* cache, uint64_t cache_misses)       { *(cache + 6) = cache_misses; }
 void set_cache_timer(uint64_t* cache, uint64_t cache_timer)         { *(cache + 7) = cache_timer; }
 
-// L1-cache block struct:
+// cache block struct:
 // +---+------------+
 // | 0 | valid flag | flags whether the block is valid or not
 // | 1 | tag        | unique identifier within a set
@@ -1240,19 +1240,24 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name);
 // Indicates whether the machine has a cache or not.
 uint64_t L1_CACHE_ENABLED = 0;
 
+// machine-enforced coherency for self-modifying code
 uint64_t L1_CACHE_COHERENCY = 1;
 
 // L1-cache size in byte
+// assert: cache sizes are powers of 2
 uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
 uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
 
 // L1-cache associativity
 // assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY <= PAGESIZE
 // (this is necessary in order to prevent aliasing problems)
+// assert: associativities are powers of 2
 uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
 uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 
 // L1 cache-line size
+// assert: cache line sizes are powers of 2
+// assert: L1_xCACHE_LINE_SIZE >= WORDSIZE
 uint64_t L1_DCACHE_LINE_SIZE = 16; // in byte
 uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
 
@@ -6934,6 +6939,7 @@ void implement_write(uint64_t* context) {
   uint64_t* table;
   uint64_t* cache_block;
   uint64_t cache_line_size;
+  uint64_t word_offset;
 
   if (debug_syscalls) {
     print("(write): ");
@@ -6984,7 +6990,9 @@ void implement_write(uint64_t* context) {
               set_valid_flag(cache_block, 1);
             }
 
-            buffer = (uint64_t*) ((uint64_t) get_data(cache_block) + (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)));
+            word_offset = (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)) / WORDSIZE;
+
+            buffer = get_data(cache_block) + word_offset;
           } else
             buffer = tlb(get_pt(context), vbuffer);
 
