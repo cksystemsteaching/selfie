@@ -7473,7 +7473,7 @@ void init_cache_memory(uint64_t* cache) {
   uint64_t no_of_cache_blocks;
   uint64_t* cache_memory;
   uint64_t cache_line_size;
-  uint64_t* current_block;
+  uint64_t* cache_block;
   uint64_t i;
 
   no_of_cache_blocks = get_cache_size(cache) / get_cache_line_size(cache);
@@ -7485,13 +7485,13 @@ void init_cache_memory(uint64_t* cache) {
   cache_line_size = get_cache_line_size(cache);
 
   while (i < no_of_cache_blocks) {
-    current_block = allocate_cache_block();
+    cache_block = allocate_cache_block();
 
     // valid bit and timestamp are already initialized to 0
 
-    *(cache_memory + i) = (uint64_t) current_block;
+    *(cache_memory + i) = (uint64_t) cache_block;
 
-    set_data(current_block, smalloc(cache_line_size));
+    set_data(cache_block, smalloc(cache_line_size));
 
     i = i + 1;
   }
