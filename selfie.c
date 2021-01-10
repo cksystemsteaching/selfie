@@ -8959,10 +8959,11 @@ uint64_t do_store() {
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2)) {
           store_virtual_memory(pt, vaddr, *(registers + rs2));
 
-          // Since an sd instruction only causes one cache/memory access but both
-          // load_virtual_memory() and store_virtual_memory() emulate one cache access,
-          // a guaranteed additional cache hit has to be substracted.
-          set_cache_hits(L1_DCACHE, get_cache_hits(L1_DCACHE) - 1);
+          if (l1_cache_on)
+            // Since an sd instruction only causes one cache/memory access but both
+            // load_virtual_memory() and store_virtual_memory() emulate one cache access,
+            // a guaranteed additional cache hit has to be substracted.
+            set_cache_hits(L1_DCACHE, get_cache_hits(L1_DCACHE) - 1);
         } else
           nopc_store = nopc_store + 1;
 
