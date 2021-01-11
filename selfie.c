@@ -164,6 +164,8 @@ void print_binary(uint64_t n, uint64_t a);
 
 uint64_t print_format(char* s, uint64_t i, char* a);
 
+void direct_output(char* buffer);
+
 int printf(const char* format, ...);
 int sprintf(char* str, const char* format, ...);
 int dprintf(int fd, const char* format, ...);
