@@ -6776,11 +6776,6 @@ void implement_read(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_read;
-  uint64_t* table;
-  uint64_t* dcache_block;
-  uint64_t* icache_block;
-  uint64_t cache_line_size;
-  uint64_t word_offset;
 
   if (debug_syscalls) {
     print("(read): ");
@@ -6803,11 +6798,6 @@ void implement_read(uint64_t* context) {
       (char*) fd,
       (char*) vbuffer);
 
-  table = get_pt(context);
-
-  cache_line_size = get_cache_line_size(L1_DCACHE);
-  dcache_block = (uint64_t*) 0;
-
   read_total = 0;
 
   bytes_to_read = SIZEOFUINT64;
@@ -6820,37 +6810,10 @@ void implement_read(uint64_t* context) {
 
     if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
-        if (is_virtual_address_mapped(table, vbuffer)) {
-          if (l1_cache_on) {
-            dcache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer, 1);
-
-            if (get_valid_flag(dcache_block) == 0) {
-              // make sure that the entire block contains valid data since we will only read a maximum of one word
-              fill_cache_block(dcache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
-
-              set_valid_flag(dcache_block, 1);
-            }
-
-            word_offset = (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)) / WORDSIZE;
-
-            buffer = get_data(dcache_block) + word_offset;
-          } else
-            buffer = tlb(get_pt(context), vbuffer);
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          buffer = tlb(get_pt(context), vbuffer);
 
           actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
-          if (l1_cache_on) {
-            flush_cache_block(dcache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
-
-            if (L1_CACHE_COHERENCY) {
-              icache_block = retrieve_cache_block(L1_ICACHE, table, vbuffer, 0);
-
-              if (icache_block != (uint64_t*) 0) {
-                set_valid_flag(icache_block, 0);
-                set_timestamp(icache_block, 0);
-              }
-            }
-          }
 
           if (actually_read == bytes_to_read) {
             read_total = read_total + actually_read;
@@ -6936,10 +6899,6 @@ void implement_write(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_written;
-  uint64_t* table;
-  uint64_t* cache_block;
-  uint64_t cache_line_size;
-  uint64_t word_offset;
 
   if (debug_syscalls) {
     print("(write): ");
@@ -6962,11 +6921,6 @@ void implement_write(uint64_t* context) {
       (char*) vbuffer,
       (char*) fd);
 
-  table = get_pt(context);
-
-  cache_line_size = get_cache_line_size(L1_DCACHE);
-  cache_block = (uint64_t*) 0;
-
   written_total = 0;
 
   bytes_to_write = SIZEOFUINT64;
@@ -6980,21 +6934,7 @@ void implement_write(uint64_t* context) {
     if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          if (l1_cache_on) {
-            cache_block = retrieve_cache_block(L1_DCACHE, table, vbuffer, 1);
-
-            if (get_valid_flag(cache_block) == 0) {
-              // make sure that the entire block contains valid data since we will only write a maximum of one word
-              fill_cache_block(cache_block, cache_line_size, tlb(table, (vbuffer / cache_line_size) * cache_line_size));
-
-              set_valid_flag(cache_block, 1);
-            }
-
-            word_offset = (vbuffer - ((vbuffer / cache_line_size) * cache_line_size)) / WORDSIZE;
-
-            buffer = get_data(cache_block) + word_offset;
-          } else
-            buffer = tlb(get_pt(context), vbuffer);
+          buffer = tlb(get_pt(context), vbuffer);
 
           actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
