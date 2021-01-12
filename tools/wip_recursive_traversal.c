@@ -10,7 +10,7 @@ uint64_t opt_memtrack_region_end = 0;   // and end
 uint64_t opt_pc = 0;
 
 uint64_t access_in_tracked_region(uint64_t addr) {
-    printf3("begin: %x end: %x addr: %x\n", opt_memtrack_region_begin, opt_memtrack_region_end, addr);
+  printf3("begin: %x end: %x addr: %x\n", opt_memtrack_region_begin, opt_memtrack_region_end, addr);
   if (addr != opt_UNKNOWN) {
   }
   return 0;
@@ -20,6 +20,7 @@ uint64_t *machine_states = (uint64_t *) 0;
 uint64_t *cached_machine_states = (uint64_t *) 0;
 
 uint64_t *tmp_state = (uint64_t *) 0; // re-use this to avoid unnecessary allocations (since we can't free memory)
+uint64_t *unknown_state = (uint64_t *) 0; // used when setting state to unknown without having to allocate memory
 
 uint64_t *get_unknown_regs(uint64_t *state) { return (uint64_t *) *state; }
 
@@ -213,7 +214,7 @@ void print_state(uint64_t* machine_state) {
 uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
   uint64_t i;
   i = 0;
-  
+
   while (i < NUMBEROFREGISTERS) {
     if (is_reg_unknown(a, i) == 0) { // If a is known
       if (is_reg_unknown(b, i) == 0) { // If b is known
@@ -228,7 +229,7 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
 
     // Here, a is unknown, we need to check that b is too.
     } else {
-      if (is_reg_unknown(b, i) == 0) { 
+      if (is_reg_unknown(b, i) == 0) {
         return 0;
       }
     }
@@ -252,7 +253,7 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
 
     // Here, a is unknown, we need to check that b is too.
     } else {
-      if (is_var_unknown(b, i) == 0) { 
+      if (is_var_unknown(b, i) == 0) {
         return 0;
       }
     }
@@ -392,10 +393,10 @@ uint64_t apply_effects(uint64_t *state) {
     //      printf3(" -> %x (imm=%x, var=%d)\n", get_var(state, global_variable_number), imm, global_variable_number);
     //      set_reg(state, rd, get_var(state, global_variable_number));
     //      tracked_change = 1;
-    //    } 
+    //    }
     //}
 
-  } else if (is == SD) { 
+  } else if (is == SD) {
     if (is_reg_unknown(state, rs1) == 0) {
       addr = get_reg(state, rs1) + imm;
       print_instruction();
@@ -526,8 +527,8 @@ void update_cached_state(uint64_t address, uint64_t* new_state) {
   }
 }
 
-uint64_t* cfg;
-uint64_t* inverse_cfg;
+uint64_t* cfg = 0;
+uint64_t* inverse_cfg = 0;
 
 uint64_t* new_edge() {
   return malloc(SIZEOFUINT64STAR + SIZEOFUINT64);
@@ -576,6 +577,7 @@ void add_cfg_edge(uint64_t from_pc, uint64_t to_pc) {
 }
 
 uint64_t* cached_returns = (uint64_t*) 0;
+uint64_t* return_targets = (uint64_t*) 0;
 
 uint64_t* new_return() {
   return malloc(SIZEOFUINT64STAR + SIZEOFUINT64);
@@ -595,6 +597,14 @@ void set_returns(uint64_t function, uint64_t* returns) {
   *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) returns;
 }
 
+uint64_t is_return_target(uint64_t pc) {
+  return *(return_targets + pc/INSTRUCTIONSIZE);
+}
+
+void set_return_target(uint64_t pc) {
+  *(return_targets + pc/INSTRUCTIONSIZE) = 1;
+}
+
 uint64_t function_exits(uint64_t function) {
   return (uint64_t) ((uint64_t) get_returns(function) == -1);
 }
@@ -603,6 +613,11 @@ void set_function_exits(uint64_t function) {
   // assumption: a function that does an exit ecall does not have any returns in it
   *(cached_returns + function/INSTRUCTIONSIZE) = (uint64_t) -1;
 }
+
+uint64_t* ins_to_func = (uint64_t*) 0; // mapping from the address of an instruction to the address of the function it belongs to
+
+void set_ins_to_func(uint64_t ins, uint64_t func) { *(ins_to_func + ins/INSTRUCTIONSIZE) = func; }
+uint64_t get_ins_to_func(uint64_t ins)            { return *(ins_to_func + ins/INSTRUCTIONSIZE); }
 
 uint64_t add_return(uint64_t function, uint64_t ret_pc) {
   uint64_t* head;
@@ -670,6 +685,8 @@ void build_cfg_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_func) {
       return;
     }
 
+    set_ins_to_func(pc, current_func);
+
     prev_pc = pc;
 
     ir = load_instruction(pc);
@@ -707,7 +724,7 @@ void build_cfg_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_func) {
     } else if (is == JALR) {
       // for now: assume that every jalr returns from a function
       if (rd == REG_ZR) {
-        if (current_func == (uint64_t) -1) {
+        if (current_func == 0) {
           print("Error: tried to return from top level");
           exit(1);
         }
@@ -731,10 +748,7 @@ void build_cfg_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_func) {
 void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t created_new_state;
   uint64_t *state;
-  uint64_t force_continue;
   uint64_t i;
-
-  force_continue = 0;
 
   while (1) {
     if (pc >= code_length) {
@@ -761,22 +775,21 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       if (created_new_state) {
         copy_state(tmp_state, state);
       } else if (!merge_states(tmp_state, state)) { // merge current machine states
-        if (!force_continue) {
-          // if merge didn't result in any changes: return
-          if (current_ra != -1) {
-            if (get_cached_state(call_stack_peek()) != 0) {
-              if (!call_stack_recursion_check()) {
-                update_state(current_ra, get_cached_state(call_stack_peek()));
-              }
+        // if merge didn't result in any changes: return
+        if (current_ra != -1) {
+          if (get_cached_state(call_stack_peek()) != 0) {
+            if (call_stack_recursion_check()) {
+              update_state(current_ra, unknown_state);
+            }
+            else {
+              update_state(current_ra, get_cached_state(call_stack_peek()));
             }
           }
-          return;
         }
+        return;
       }
       //printf4("%d known words at %x, prev_pc=%x, known=%d\n", count_nonzero_vars(state), pc, prev_pc, count_nonzero_vars(get_state(prev_pc)));
     }
-
-    force_continue = 0;
 
     ir = load_instruction(pc);
     decode();
@@ -837,10 +850,6 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
         decode();
          */
 
-        // force continuation of execution along this path, even if the next iteration results in a merge with no change
-        // this is needed because the machine state at the next instruction got modified by the recursive call earlier
-        // but we still need to follow that path as the following machine states haven't been updated yet
-        force_continue = 1;
         prev_pc = (uint64_t) -1;
       }
       else if (rd == REG_ZR) { // "normal" jump
@@ -892,6 +901,7 @@ void add_return_edges() {
             current = get_next_return(current);
           }
         }
+        set_return_target(pc + INSTRUCTIONSIZE);
       }
     }
     pc = pc + INSTRUCTIONSIZE;
@@ -901,6 +911,7 @@ void add_return_edges() {
 uint64_t* livedeads = (uint64_t*) 0;
 
 uint64_t* tmp_livedead = (uint64_t*) 0;
+uint64_t* unknown_livedead = (uint64_t*) 0;
 
 uint64_t is_reg_live(uint64_t* livedead, uint64_t reg) { return *(livedead + reg); }
 
@@ -919,6 +930,21 @@ uint64_t* new_livedead() {
   return new;
 }
 
+uint64_t* new_unknown_livedead() {
+  uint64_t* new;
+  uint64_t i;
+
+  new = new_livedead();
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    set_reg_live(new, i);
+    i = i + 1;
+  }
+  return new;
+}
+
 uint64_t* get_livedead(uint64_t pc) { return (uint64_t*) *(livedeads + pc/INSTRUCTIONSIZE); }
 
 void set_livedead(uint64_t pc, uint64_t* livedead) { *(livedeads + pc/INSTRUCTIONSIZE) = (uint64_t) livedead; }
@@ -930,6 +956,9 @@ void copy_livedead(uint64_t* source, uint64_t* dest) {
   while (i < NUMBEROFREGISTERS) {
     if (is_reg_live(source, i)) {
       set_reg_live(dest, i);
+    }
+    else {
+      set_reg_dead(dest, i);
     }
     i = i + 1;
   }
@@ -952,6 +981,18 @@ uint64_t merge_livedead(uint64_t *source, uint64_t *dest) {
     i = i + 1;
   }
   return changed;
+}
+
+// merge or update
+// returns 0 if nothing changed, otherwise a number > 0
+uint64_t update_livedead(uint64_t address, uint64_t* new) {
+  if (get_livedead(address) == 0) {
+    set_livedead(address, new_livedead());
+    copy_livedead(new, get_livedead(address));
+    return 1;
+  } else {
+    return merge_livedead(new, get_livedead(address));
+  }
 }
 
 void apply_livedead_effects(uint64_t *livedead) {
@@ -1042,6 +1083,132 @@ void recursive_livedead(uint64_t pc, uint64_t prev_pc) {
   }
 }
 
+void recursive_livedead_function(uint64_t pc, uint64_t prev_pc, uint64_t call_pc) {
+  uint64_t* livedead;
+  uint64_t created_new;
+  uint64_t* current;
+  uint64_t force_continue;
+
+  force_continue = 0;
+
+  while (1) {
+    //printf2("depth=%d, pc=%x\n", call_stack_index, pc);
+    if (pc >= code_length) {
+      print("Error: pc went past end of code!");
+      exit(1);
+    }
+
+    created_new = 0;
+    livedead = get_livedead(pc);
+    if (livedead == (uint64_t *) 0) {
+      livedead = new_livedead();
+      set_livedead(pc, livedead);
+      created_new = 1;
+      // printf1("Created new livedead at pc=%x\n", pc);
+    }
+
+    ir = load_instruction(pc);
+    decode();
+
+    if (prev_pc != (uint64_t) -1) {
+      copy_livedead(get_livedead(prev_pc), tmp_livedead);
+    }
+    else {
+      copy_livedead(livedead, tmp_livedead);
+    }
+
+    apply_livedead_effects(tmp_livedead); // apply effects of current instruction to live/dead information
+    if (created_new) {
+      copy_livedead(tmp_livedead, livedead);
+    } else if (!merge_livedead(tmp_livedead, livedead)) { // merge current live/dead information
+      // if merge didn't result in any changes: return
+      if (!force_continue) {
+        if (call_pc != -1) {
+          if (call_stack_recursion_check()) {
+            update_livedead(call_pc, unknown_livedead);
+            // printf1("Updated livedead at call_pc=%x (set to unknown)\n", call_pc);
+          }
+          else if (get_livedead(get_ins_to_func(pc)) != 0) {
+            update_livedead(call_pc, get_livedead(get_ins_to_func(pc)));
+            // printf1("Updated livedead at call_pc=%x\n", call_pc);
+          }
+        }
+        if (prev_pc != (uint64_t) -1) {
+          return;
+        }
+      }
+    }
+
+    force_continue = 0;
+
+    if (pc == get_ins_to_func(pc)) {
+      // reached first instruction of the function
+      if (call_pc != -1) {
+        update_livedead(call_pc, livedead);
+        // printf1("Updated livedead at pc=%x (2)\n", call_pc);
+      }
+      // printf1("Exiting at pc=%x because we reached the top of the function\n", pc);
+      return;
+    } else {
+      current = get_edges(inverse_cfg, pc);
+
+      if (current == (uint64_t *) 0) {
+        printf1("Error! No in-edges at pc=%x", (char *) pc);
+        exit(1);
+      }
+
+      if (is_return_target(pc)) {
+        // procedure call
+
+        while (current != 0) {
+          call_stack_push(get_ins_to_func(get_to_pc(current)));
+          recursive_livedead_function(get_to_pc(current), pc, pc - INSTRUCTIONSIZE);
+          call_stack_pop();
+          current = get_next_edge(current);
+        }
+
+        // continue at the call instruction
+        prev_pc = (uint64_t) -1;
+        pc = pc - INSTRUCTIONSIZE;
+
+        force_continue = 1;
+      }
+      else {
+        while (get_next_edge(current) != 0) {
+          recursive_livedead_function(get_to_pc(current), pc, call_pc);
+          current = get_next_edge(current);
+        }
+
+        // traverse last edge without recursion to avoid a stack overflow
+        prev_pc = pc;
+        pc = get_to_pc(current);
+      }
+    }
+  }
+}
+
+void recursive_livedead_helper(uint64_t pc) {
+  uint64_t func;
+  uint64_t* parent;
+  uint64_t parent_pc;
+
+  func = get_ins_to_func(pc);
+
+  call_stack_push(func);
+  recursive_livedead_function(pc, -1, -1);
+  call_stack_pop();
+
+  parent = get_edges(inverse_cfg, func);
+
+  while (parent != (uint64_t*) 0) {
+    parent_pc = get_to_pc(parent);
+    if (update_livedead(parent_pc, get_livedead(func))) {
+      recursive_livedead_helper(parent_pc);
+    }
+    parent = get_next_edge(parent);
+  }
+}
+
 void selfie_traverse() {
   uint64_t num_instructions;
   uint64_t* exit;
@@ -1053,8 +1220,10 @@ void selfie_traverse() {
   // but we need O(n) memory with n = number of instructions anyway
   cached_machine_states = zalloc(SIZEOFUINT64STAR * num_instructions);
   cached_returns = zalloc(SIZEOFUINT64STAR * num_instructions);
+  return_targets = zalloc(SIZEOFUINT64 * num_instructions);
   cfg = zalloc(SIZEOFUINT64STAR * num_instructions);
   inverse_cfg = zalloc(SIZEOFUINT64STAR * num_instructions);
+  ins_to_func = zalloc(SIZEOFUINT64 * num_instructions);
   livedeads = zalloc(SIZEOFUINT64STAR * num_instructions);
   call_stack = malloc(SIZEOFUINT64STAR * num_instructions);
 
@@ -1065,16 +1234,21 @@ void selfie_traverse() {
 
   run = 0;
 
-  build_cfg_recursive(0, (uint64_t) -1, (uint64_t) -1);
+  build_cfg_recursive(0, (uint64_t) -1, 0);
 
   tmp_state = new_machine_state();
+  unknown_state = new_machine_state();
+
   traverse_recursive(0, (uint64_t) -1, (uint64_t) -1);
 
   add_return_edges();
 
+  tmp_livedead = new_livedead();
+  unknown_livedead = new_unknown_livedead();
+
   exit = exits;
   while (exit != (uint64_t) 0) {
-    recursive_livedead(get_exit_pc(exit), (uint64_t) -1);
+    recursive_livedead_helper(get_exit_pc(exit));
     exit = get_next_exit(exit);
   }
 }
@@ -1088,9 +1262,9 @@ void print_livedead(uint64_t* livedead) {
 
   i = 0;
 
-  print("\tlive:\t");
+  print("\tdead:\t");
   while (i < NUMBEROFREGISTERS) {
-    if (is_reg_live(livedead, i)) {
+    if (!is_reg_live(livedead, i)) {
       printf1("%s ", (char *) *(REGISTERS + i));
     }
 
@@ -1244,7 +1418,7 @@ uint64_t next_match(uint64_t from_pc) {
     }
 
     if (!did_break) {
-        return i - number_of_matched_instructions;
+      return i - number_of_matched_instructions;
     }
   }
 
@@ -1320,7 +1494,7 @@ uint64_t find_next_enop(uint64_t from_pc) {
       if (apply_effects(state) == 1) {
         if (test_states_equal(get_state(i), state)) {
           return i;
-        } 
+        }
       }
 
     // TODO move to find_dead_code or something
