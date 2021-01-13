@@ -51,7 +51,7 @@ $(eval $(call add-all-target-aliases))
 all: all-selfie-elf all-selfie-opensbi-elf
 
 include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
-	$(HOSTCC) -I. tools/asm_struct_macro_generator.c -o tools/asm_struct_macro_generator
+	$(HOSTCC) -Iinclude tools/asm_struct_macro_generator.c -o tools/asm_struct_macro_generator
 	tools/asm_struct_macro_generator > "$@"
 
 
