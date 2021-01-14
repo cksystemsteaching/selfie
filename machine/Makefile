@@ -8,7 +8,7 @@ OBJCOPY=$(PREFIX)objcopy
 QEMU=qemu-system-riscv64
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64d -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Wall -Wextra -MMD -MP
+CFLAGS=-mabi=lp64d -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Wall -Wextra -MMD -MP
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv --build-id=none
 QEMUFLAGS=-M virt -m 128M -nographic -bios none
@@ -87,7 +87,7 @@ opensbi:
 
 .PHONY: debug
 debug:
-	$(eval CFLAGS += -DDEBUG)
+	$(eval CFLAGS += -g3 -DDEBUG)
 	@echo "Enabled debug macro"
 
 
