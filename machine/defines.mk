@@ -136,7 +136,7 @@ endef
 define generate-target-combine-rule
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o: $$(TARGET_$(1)_$(2)_OBJS)
-	$$(LD) $$(LDFLAGS) $$^ -o $$@
+	$$(LD) $$(LDFLAGS_BIN) $$^ -o $$@
 
 endef
 
@@ -153,7 +153,7 @@ $$(TARGET_$(1)_$(2)_DIR)/selfie.ld:
 
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o | $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
-	$$(CC) $$(CFLAGS) -static-libgcc -lgcc $$^ -o $$@ -T $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
+	$$(CC) $$(CFLAGS) $$(LDFLAGS_ELF) $$^ -o $$@ -T $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie.bin: $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
 	$$(OBJCOPY) -S -O binary $$< $$@
