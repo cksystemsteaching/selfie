@@ -171,6 +171,9 @@ int sprintf(char* str, const char* format, ...);
 int dprintf(int fd, const char* format, ...);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
+
+// functions with the "internal_wrapped_" prefix are rewritten
+// to exclude the prefix while parsing for bootstrapping purposes
 uint64_t internal_wrapped_printf(char* format, ...);
 uint64_t internal_wrapped_sprintf(char *str, char *format, ...);
 uint64_t internal_wrapped_dprintf(uint64_t fd, char* format, ...);
@@ -5433,9 +5436,9 @@ void compile_cstar() {
   }
 }
 
-//
-// builtins
-//
+// -----------------------------------------------------------------
+// ---------------------------- MACROS -----------------------------
+// -----------------------------------------------------------------
 
 void builtin_var_start() {
   uint64_t* var_list_variable;
