@@ -44,7 +44,6 @@ endef
 define add-target
 $(call generate-target-vars,$(1),$(2))
 $(call generate-target-obj-rules,$(1),$(2))
-$(call generate-target-combine-rule,$(1),$(2))
 $(call generate-target-elf-bin,$(1),$(2))
 $(call generate-target-sbi-elf,$(1),$(2))
 endef
@@ -128,19 +127,6 @@ $$(TARGET_$(1)_$(2)_DIR)/selfie.o: $$(SELFIE_PATH)/selfie.c
 endef
 
 ###############################################################################
-# $(call generate-target-combine-rule,board,profile)
-#
-# - board         : The board
-# - profile       : The build profile
-#
-define generate-target-combine-rule
-
-$$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o: $$(TARGET_$(1)_$(2)_OBJS)
-	$$(LD) $$(LDFLAGS_BIN) $$^ -o $$@
-
-endef
-
-###############################################################################
 # $(call generate-target-elf-bin,board,profile)
 #
 # - board         : The board
@@ -152,8 +138,8 @@ $$(TARGET_$(1)_$(2)_DIR)/selfie.ld:
 	SBI_START=$$(BOARD_$(1)_PAYLOAD_START) PAYLOAD_OFFSET=$$(BOARD_$(1)_PAYLOAD_OFFSET) envsubst '$$$$SBI_START$$$$PAYLOAD_OFFSET' <payload_template.ld >$$@
 
 
-$$(TARGET_$(1)_$(2)_DIR)/selfie.elf: $$(TARGET_$(1)_$(2)_DIR)/selfie_bare_metal.o | $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
-	$$(CC) $$(CFLAGS) $$(LDFLAGS_ELF) $$^ -o $$@ -T $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
+$$(TARGET_$(1)_$(2)_DIR)/selfie.elf: $$(TARGET_$(1)_$(2)_OBJS) | $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
+	$$(CC) $$(CFLAGS) $$(LDFLAGS) $$^ -o $$@ -T $$(TARGET_$(1)_$(2)_DIR)/selfie.ld
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie.bin: $$(TARGET_$(1)_$(2)_DIR)/selfie.elf
 	$$(OBJCOPY) -S -O binary $$< $$@
