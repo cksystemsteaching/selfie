@@ -242,7 +242,7 @@ char* integer_buffer; // buffer for formatting integers
 
 uint64_t MAX_FILENAME_LENGTH = 128;
 
-uint64_t MAX_OUTPUT_LENGTH = 256;
+uint64_t MAX_OUTPUT_LENGTH = 32; // maximum number of bytes in string buffer at the same time
 
 char* filename_buffer; // buffer for opening files
 
@@ -2607,12 +2607,6 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
       i = i + 1;
     }
 
-    if (b == 8) {
-      store_character(s, i, 'o'); // octal numbers start with 0o
-      store_character(s, i + 1, '0');
-
-      i = i + 2;
-    } 
   }
 
   store_character(s, i, 0); // null-terminated string
@@ -7286,7 +7280,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf("%s: opened file %s with flags 0x%lX and mode %lo returning file descriptor %lu\n", selfie_name,
+      printf("%s: opened file %s with flags 0x%lX and mode 0o%lo returning file descriptor %lu\n", selfie_name,
         filename_buffer,
         flags,
         mode,
@@ -8396,7 +8390,8 @@ void print_addi() {
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
       if (imm == 0) {
-        print("nop");
+        sprintf(string_buffer, "nop");
+        direct_output(string_buffer);
 
         return;
       }
@@ -8947,7 +8942,8 @@ void do_jalr() {
 
 void print_ecall() {
   print_code_context_for_instruction(pc);
-  print(get_mnemonic(is));
+  sprintf(string_buffer, "%s", get_mnemonic(is));
+  direct_output(string_buffer);
 }
 
 void record_ecall() {
@@ -9195,7 +9191,7 @@ void print_register_hexadecimal(uint64_t reg) {
 }
 
 void print_register_octal(uint64_t reg) {
-  printf("%s=%lo", get_register_name(reg), *(registers + reg));
+  printf("%s=0o%lo", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_value(uint64_t reg) {
