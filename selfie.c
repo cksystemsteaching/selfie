@@ -532,7 +532,7 @@ void reset_symbol_tables();
 
 uint64_t hash(uint64_t* key);
 
-void create_symbol_table_entry(uint64_t which, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t variadic, uint64_t value, uint64_t address);
+void create_symbol_table_entry(uint64_t which, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
 uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
 uint64_t* search_global_symbol_table(char* string, uint64_t class);
@@ -548,14 +548,13 @@ uint64_t report_undefined_procedures();
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | variadic| PROCEDURE: is variadic procedure
-// |  6 | value   | VARIABLE: initial value, PROCEDURE: number of parameters
-// |  7 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  8 | scope   | REG_GP (global), REG_S0 (local)
+// |  5 | value   | VARIABLE: initial value, PROCEDURE: number of parameters: value < 0 -> procedure is variadic and absolute value is number of (static) parameters
+// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
+// |  7 | scope   | REG_GP (global), REG_S0 (local)
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
-  return smalloc(2 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
+  return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 }
 
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -563,20 +562,18 @@ char*     get_string(uint64_t* entry)      { return (char*)     *(entry + 1); }
 uint64_t  get_line_number(uint64_t* entry) { return             *(entry + 2); }
 uint64_t  get_class(uint64_t* entry)       { return             *(entry + 3); }
 uint64_t  get_type(uint64_t* entry)        { return             *(entry + 4); }
-uint64_t  get_variadic(uint64_t* entry)    { return             *(entry + 5); }
-uint64_t  get_value(uint64_t* entry)       { return             *(entry + 6); }
-uint64_t  get_address(uint64_t* entry)     { return             *(entry + 7); }
-uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 8); }
+uint64_t  get_value(uint64_t* entry)       { return             *(entry + 5); }
+uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
+uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
 
 void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
 void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
 void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
 void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
 void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
-void set_variadic(uint64_t* entry, uint64_t variadic)  { *(entry + 5) = variadic; }
-void set_value(uint64_t* entry, uint64_t value)        { *(entry + 6) = value; }
-void set_address(uint64_t* entry, uint64_t address)    { *(entry + 7) = address; }
-void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 8) = scope; }
+void set_value(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
+void set_address(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
+void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -3608,7 +3605,7 @@ uint64_t hash(uint64_t* key) {
   return (*key + (*key + (*key + (*key + (*key + *key / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) % HASH_TABLE_SIZE;
 }
 
-void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t variadic, uint64_t value, uint64_t address) {
+void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* new_entry;
   uint64_t* hashed_entry_address;
 
@@ -3618,7 +3615,6 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
   set_line_number(new_entry, line);
   set_class(new_entry, class);
   set_type(new_entry, type);
-  set_variadic(new_entry, variadic);
   set_value(new_entry, value);
   set_address(new_entry, address);
 
@@ -4118,7 +4114,7 @@ void load_integer(uint64_t value) {
     if (entry == (uint64_t*) 0) {
       data_size = data_size + WORDSIZE;
 
-      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, 0, value, -data_size);
+      create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
 
     load_variable_or_big_int(integer, BIGINT);
@@ -4136,7 +4132,7 @@ void load_string(char* string) {
 
   data_size = data_size + round_up(length, WORDSIZE);
 
-  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, 0, -data_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
 
   load_integer(-data_size);
 
@@ -4154,7 +4150,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure) {
     // default return type is "uint64_t"
     type = UINT64_T;
 
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, code_size);
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
 
     emit_jal(REG_RA, 0);
 
@@ -4334,8 +4330,8 @@ uint64_t compile_call(char* procedure) {
   
   // deallocate variadic parameters
   if(entry != (uint64_t*) 0)
-    if(get_variadic(entry))
-      emit_addi(REG_SP, REG_SP, ((number_of_parameters - get_value(entry)) * WORDSIZE));
+    if(signed_less_than(get_value(entry), 0))
+      emit_addi(REG_SP, REG_SP, ((number_of_parameters + get_value(entry)) * WORDSIZE));
 
   // assert: allocated_temporaries == n
 
@@ -5107,13 +5103,13 @@ void compile_variable(uint64_t offset) {
 
   if (symbol == SYM_IDENTIFIER) {
     // TODO: check if identifier has already been declared
-    create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, 0, offset);
+    create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, offset);
 
     get_symbol();
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
 
-    create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, 0, offset);
+    create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, offset);
   }
 }
 
@@ -5180,7 +5176,6 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_undefined;
   uint64_t number_of_parameters;
   uint64_t is_variadic;
-  uint64_t parameters;
   uint64_t number_of_local_variable_bytes;
   uint64_t* entry;
 
@@ -5202,6 +5197,13 @@ void compile_procedure(char* procedure, uint64_t type) {
       compile_variable(0);
 
       number_of_parameters = 1;
+      
+      entry = local_symbol_table;
+      
+      // 2 * WORDIZE offset to skip frame pointer and link
+      // additional (number_of_parameters - 1) * WORDSIZE offset due to the
+      // order of the parameters
+      set_address(entry, (number_of_parameters - 1) * WORDSIZE + 2 * WORDSIZE);
 
       while (is_possibly_parameter(is_variadic)) {
         get_symbol();
@@ -5214,22 +5216,11 @@ void compile_procedure(char* procedure, uint64_t type) {
           compile_variable(0);
 
           number_of_parameters = number_of_parameters + 1;
+          
+          entry = local_symbol_table;
+      
+          set_address(entry, (number_of_parameters - 1) * WORDSIZE + 2 * WORDSIZE);
         }
-      }
-
-      entry = local_symbol_table;
-
-      parameters = number_of_parameters;
-
-      while (parameters > 0) {
-        // 2 * WORDIZE offset to skip frame pointer and link
-        // additional (parameters - 1) * WORDSIZE offset due to the
-        // order of the parameters
-        set_address(entry, (parameters - 1) * WORDSIZE + 2 * WORDSIZE);
-
-        parameters = parameters - 1;
-
-        entry = get_next_entry(entry);
       }
 
       if (symbol == SYM_RPARENTHESIS)
@@ -5245,10 +5236,13 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
-    if (entry == (uint64_t*) 0)
+    if (entry == (uint64_t*) 0) {
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, is_variadic, number_of_parameters, 0);
-    else if (get_type(entry) != type)
+      if(is_variadic)
+        number_of_parameters = -number_of_parameters;
+        
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
+    } else if (get_type(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
       type_warning(get_type(entry), type);
@@ -5259,7 +5253,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, 0, code_size);
+      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, code_size);
     else {
       // procedure already called or declared or defined
       if (get_address(entry) != 0) {
@@ -5417,7 +5411,7 @@ void compile_cstar() {
           if (entry == (uint64_t*) 0) {
             data_size = data_size + WORDSIZE;
 
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, 0, initial_value, -data_size);
+            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
           } else {
             // global variable already declared or defined
             print_line_number("warning", current_line_number);
@@ -5441,7 +5435,7 @@ void builtin_var_start() {
   var_list_variable = (uint64_t*) 0;
   s0_offset = 0;
 
-  if (get_variadic(current_function) == 0)
+  if (signed_less_than(get_value(current_function), 0) == 0)
     syntax_error_message("'var_start' used in function with fixed args");
 
   if (symbol == SYM_IDENTIFIER) {
@@ -5452,7 +5446,7 @@ void builtin_var_start() {
       get_symbol();
 
       // skip the return address, frame pointer and fixed parameters
-      s0_offset = (get_value(current_function) + 2) * WORDSIZE;
+      s0_offset = (-get_value(current_function) + 2) * WORDSIZE;
 
       load_integer(s0_offset);
 
@@ -5500,7 +5494,7 @@ void builtin_var_arg() {
 }
 
 void builtin_var_end() {
-  if (get_variadic(current_function) == 0)
+  if (signed_less_than(get_value(current_function), 0) == 0)
     syntax_error_message("'var_end' used in function with fixed args");
 
   if (symbol == SYM_IDENTIFIER) {
@@ -5732,7 +5726,7 @@ void selfie_compile() {
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -6884,7 +6878,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -6921,7 +6915,7 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7045,7 +7039,7 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7168,7 +7162,7 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7300,11 +7294,11 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
@@ -7312,7 +7306,7 @@ void emit_malloc() {
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, 0, -data_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -data_size);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
@@ -7456,7 +7450,7 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7708,7 +7702,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
 
@@ -7716,7 +7710,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
 
@@ -7724,7 +7718,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, 0, code_size);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, code_size);
 
   // up to three instructions needed to load data segment size but is not yet known
 
