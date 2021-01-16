@@ -133,6 +133,19 @@ int absolute(int n) {
 ```
 
 ```
+int count(int n) {
+  int c;
+
+  c = 0;
+
+  while (c < n)
+    c = c + 1;
+
+  return c;
+}
+```
+
+```
 int factorial(int n) {
   int f;
 
