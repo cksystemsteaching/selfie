@@ -223,11 +223,12 @@ EBNF       = { production } .
 production = identifier "=" expression "." .
 expression = term { "|" term } .
 term       = factor { factor } .
-factor     = identifier | string .
+factor     = identifier | string_literal |
+             "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
-identifier = letter { letter | digit | "_" } .
-letter     = "a" | ... | "z" | "A" | ... | "Z" .
-string     = """ { printable_character } """ .
+identifier     = letter { letter | digit | "_" } .
+letter         = "a" | ... | "z" | "A" | ... | "Z" .
+string_literal = """ { printable_character } """ .
 ```
 
 ## Information
