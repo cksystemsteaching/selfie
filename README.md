@@ -121,6 +121,81 @@ Gödel, Escher, Bach by Douglas Hofstadter
 
 This book is mostly non-technical but still seminal work on fundamental concepts in mathematics and computer science. It uses formal languages and self-reference to explore how meaning is created through seemingly meaningless building blocks. You may want to consider this book to be the second book in your computer science library, and read it during your free time.
 
+## Language
+
+```
+int atoi(char* s) {
+  int n;
+
+  n = 0;
+
+  // loop until s is terminated
+  while (*s != 0) {
+    // use base 10, offset by '0'
+    n = n * 10 + *s - '0';
+
+    // go to next digit
+    s = s + 1;
+  }
+
+  return n;
+}
+```
+
+```
+0x150(~4): 0x00000293: addi t0,zero,0
+0x154(~4): 0xFE543C23: sd t0,-8(s0)
+0x158(~7): 0x01043283: ld t0,16(s0)
+0x15C(~7): 0x0002B283: ld t0,0(t0)
+0x160(~7): 0x00000313: addi t1,zero,0
+0x164(~7): 0x405302B3: sub t0,t1,t0
+0x168(~7): 0x005032B3: sltu t0,zero,t0
+0x16C(~7): 0x04028263: beq t0,zero,17[0x1B0]
+0x170(~9): 0xFF843283: ld t0,-8(s0)
+0x174(~9): 0x00A00313: addi t1,zero,10
+0x178(~9): 0x026282B3: mul t0,t0,t1
+0x17C(~9): 0x01043303: ld t1,16(s0)
+0x180(~9): 0x00033303: ld t1,0(t1)
+0x184(~9): 0x006282B3: add t0,t0,t1
+0x188(~9): 0x03000313: addi t1,zero,48
+0x18C(~9): 0x406282B3: sub t0,t0,t1
+0x190(~9): 0xFE543C23: sd t0,-8(s0)
+0x194(~12): 0x01043283: ld t0,16(s0)
+0x198(~12): 0x00100313: addi t1,zero,1
+0x19C(~12): 0x00800393: addi t2,zero,8
+0x1A0(~12): 0x02730333: mul t1,t1,t2
+0x1A4(~12): 0x006282B3: add t0,t0,t1
+0x1A8(~12): 0x00543823: sd t0,16(s0)
+0x1AC(~15): 0xFADFF06F: jal zero,-21[0x158]
+0x1B0(~15): 0xFF843283: ld t0,-8(s0)
+0x1B4(~15): 0x00028513: addi a0,t0,0
+0x1B8(~15): 0x0040006F: jal zero,1[0x1BC]
+```
+
+```
+decimal_number = digit { digit } .
+
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
+```
+
+```
+hexadecimal_number = "0x" hexadecimal_digit { hexadecimal_digit } .
+
+hexadecimal_digit = digit | "A" | "B" | "C" | "D" | "E" | "F" .
+```
+
+```
+EBNF       = { production } .
+production = identifier "=" expression "." .
+expression = term { "|" term } .
+term       = factor { factor } .
+factor     = identifier | string .
+
+identifier = letter { letter | digit | "_" } .
+letter     = "a" | ... | "z" | "A" | ... | "Z" .
+string     = """ { printable_character } """ .
+```
+
 ## Information
 
 Computer science is about the automation of everything. Think of something you would like to do but then not do it yourself but have a machine do it for you. Whether this is always possible is still being debated but not our concern here. Well, I believe that it is always possible but many people and thus companies often underestimate the enormous complexity involved in seemingly simple tasks such as driving a car. The issue is that whatever problem you are trying to solve you first need to *encode* the *information* involved in solving the problem in such a way that a machine can handle it. And then you need to tell the machine every single step of how to *manipulate* that information which is tedious even for extremely simple tasks. Finally, you need to *decode* the result back into something a human can experience.
