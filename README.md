@@ -171,22 +171,22 @@ int factorial(int n) {
 ```
 
 ```
-int atoi(char* s) {
-  int n;
-
-  n = 0;
-
-  // loop until s is terminated
-  while (*s != 0) {
-    // use base 10, offset by '0'
-    n = n * 10 + *s - '0';
-
-    // go to next digit
-    s = s + 1;
-  }
-
-  return n;
-}
+ 1 int atoi(char* s) {
+ 2   int n;
+ 3
+ 4   n = 0;
+ 5
+ 6   // loop until s is terminated
+ 7   while (*s != 0) {
+ 8     // use base 10, offset by '0'
+ 9     n = n * 10 + *s - '0';
+10
+11     // go to next digit
+12     s = s + 1;
+13   }
+14
+15   return n;
+16 }
 ```
 
 ```
