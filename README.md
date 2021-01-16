@@ -124,6 +124,40 @@ This book is mostly non-technical but still seminal work on fundamental concepts
 ## Language
 
 ```
+int absolute(int n) {
+  if (n >= 0)
+  	return n;
+  else
+  	return -n;
+}
+```
+
+```
+int factorial(int n) {
+  int f;
+
+  f = 1;
+
+  while (n > 1) {
+    f = f * n;
+
+    n = n - 1;
+  }
+
+  return f;
+}
+```
+
+```
+int factorial(int n) {
+  if (n <= 1)
+  	return 1;
+  else
+  	return n * factorial(n - 1);
+}
+```
+
+```
 int atoi(char* s) {
   int n;
 
