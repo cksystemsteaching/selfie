@@ -5450,8 +5450,10 @@ void non_zero_bootlevel_var_start() {
 
       load_integer(s0_offset);
 
+      // address of first variadic parameter is S0 + (#static parameters + 2) * WORDSIZE
       emit_add(current_temporary(), current_temporary(), REG_S0);
 
+      // store address in variable passed as macro argument
       emit_store(REG_S0, get_address(var_list_variable), current_temporary());
 
       tfree(1);
@@ -5478,10 +5480,13 @@ void non_zero_bootlevel_var_arg() {
 
       talloc();
 
+      // load variadic parameter at position pointed at by var_list_variable
       emit_load(current_temporary(), REG_S0, var_list_address);
 
+      // store variadic parameter as return value
       emit_load(REG_A0, current_temporary(), 0);
 
+      // increment var_list_variable pointer by one parameter size (=WORDSIZE)
       emit_addi(current_temporary(), current_temporary(), WORDSIZE);
 
       emit_store(REG_S0, var_list_address, current_temporary());
@@ -5493,6 +5498,9 @@ void non_zero_bootlevel_var_arg() {
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
+// implementation of va_start, va_arg, va_end is platform specific
+// for RISC-V va_end does nothing, it is implemented for completeness
+// and parity with standard C
 void non_zero_bootlevel_var_end() {
   if (signed_less_than(get_value(current_function), 0) == 0)
     syntax_error_message("'var_end' used in function with fixed args");
