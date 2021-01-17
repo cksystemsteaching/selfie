@@ -172,11 +172,11 @@ int dprintf(int fd, const char* format, ...);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
-// functions with the "internal_wrapped_" prefix are rewritten
+// functions with the "non_zero_bootlevel_" prefix are rewritten
 // to exclude the prefix while parsing for bootstrapping purposes
-uint64_t internal_wrapped_printf(char* format, ...);
-uint64_t internal_wrapped_sprintf(char *str, char *format, ...);
-uint64_t internal_wrapped_dprintf(uint64_t fd, char* format, ...);
+uint64_t non_zero_bootlevel_printf(char* format, ...);
+uint64_t non_zero_bootlevel_sprintf(char *str, char *format, ...);
+uint64_t non_zero_bootlevel_dprintf(uint64_t fd, char* format, ...);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -702,9 +702,9 @@ void  var_start(uint64_t* args) { *args = *args; }
 char* var_arg(uint64_t* args) { *args = *args; return ""; }
 void  var_end(uint64_t* args) { *args = *args; }
 
-void builtin_var_start();
-void builtin_var_arg();
-void builtin_var_end();
+void non_zero_bootlevel_var_start();
+void non_zero_bootlevel_var_arg();
+void non_zero_bootlevel_var_end();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2914,7 +2914,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   return number_of_currently_written_bytes;
 }
 
-uint64_t internal_wrapped_printf(char* format, ...) {
+uint64_t non_zero_bootlevel_printf(char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -2927,7 +2927,7 @@ uint64_t internal_wrapped_printf(char* format, ...) {
   return written_bytes;
 }
 
-uint64_t internal_wrapped_sprintf(char* buffer, char* format, ...) {
+uint64_t non_zero_bootlevel_sprintf(char* buffer, char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -2940,7 +2940,7 @@ uint64_t internal_wrapped_sprintf(char* buffer, char* format, ...) {
   return written_bytes;
 }
 
-uint64_t internal_wrapped_dprintf(uint64_t fd, char* format, ...) {
+uint64_t non_zero_bootlevel_dprintf(uint64_t fd, char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -4227,8 +4227,8 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
 }
 
 char* rewrite_wrapped_procedure(char* procedure) {
-  if (string_prefix_for("internal_wrapped_", procedure)) {
-    return string_sub(procedure, string_length("internal_wrapped_"), string_length(procedure));
+  if (string_prefix_for("non_zero_bootlevel_", procedure)) {
+    return string_sub(procedure, string_length("non_zero_bootlevel_"), string_length(procedure));
   }
 
   return procedure;
@@ -4240,13 +4240,13 @@ uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
 
 uint64_t compile_call_or_macro(char* procedure_or_macro) {
   if (macro_string_match(procedure_or_macro, MACRO_VAR_START)) {
-    builtin_var_start();
+    non_zero_bootlevel_var_start();
     return VOID_T;
   } else if (macro_string_match(procedure_or_macro, MACRO_VAR_ARG)) {
-    builtin_var_arg();
+    non_zero_bootlevel_var_arg();
     return VOID_T;
   } else if (macro_string_match(procedure_or_macro, MACRO_VAR_END)) {
-    builtin_var_end();
+    non_zero_bootlevel_var_end();
     return VOID_T;
   } else
     return compile_call(procedure_or_macro);
@@ -5428,7 +5428,7 @@ void compile_cstar() {
 // ---------------------------- MACROS -----------------------------
 // -----------------------------------------------------------------
 
-void builtin_var_start() {
+void non_zero_bootlevel_var_start() {
   uint64_t* var_list_variable;
   uint64_t s0_offset;
   
@@ -5460,7 +5460,7 @@ void builtin_var_start() {
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
-void builtin_var_arg() {
+void non_zero_bootlevel_var_arg() {
   uint64_t* var_list_variable;
   uint64_t  var_list_address;
   
@@ -5493,7 +5493,7 @@ void builtin_var_arg() {
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
-void builtin_var_end() {
+void non_zero_bootlevel_var_end() {
   if (signed_less_than(get_value(current_function), 0) == 0)
     syntax_error_message("'var_end' used in function with fixed args");
 
