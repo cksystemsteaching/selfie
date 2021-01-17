@@ -4273,7 +4273,7 @@ uint64_t compile_call(char* procedure) {
 
   if (is_expression()) {
     compile_expression();
-  
+
     // TODO: check if types/number of parameters is correct
 
     // allocate memory on stack for parameters; we do not know how many, fixup later
@@ -4308,7 +4308,7 @@ uint64_t compile_call(char* procedure) {
 
       type = procedure_call(entry, procedure);
     } else {
-     syntax_error_symbol(SYM_RPARENTHESIS);
+      syntax_error_symbol(SYM_RPARENTHESIS);
 
       type = UINT64_T;
     }
