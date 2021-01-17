@@ -7701,7 +7701,7 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name) {
     (char*) fixed_point_percentage(fixed_point_ratio(accesses, hits, 4), 4));
   print(", ");
   printf2("misses: %u(%.2u%%)",
-    (char*) hits,
+    (char*) misses,
     (char*) fixed_point_percentage(fixed_point_ratio(accesses, misses, 4), 4));
   println();
 }
