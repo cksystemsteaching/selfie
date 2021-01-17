@@ -1884,6 +1884,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * computation
 
+* conditional statement
+
 * contiguous memory block
 
 * control character
@@ -1960,6 +1962,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * full adder
 
+* function
+
 * grammar
 
 * half adder
@@ -1969,6 +1973,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * Hertz
 
 * hindu-arabic
+
+* `if-else` statement
 
 * image
 
@@ -1982,6 +1988,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * instruction
 
+* `int` type
+
 * integer
 
 * interpretation
@@ -1989,6 +1997,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * INT_MAX
 
 * INT_MIN
+
+* keyword
 
 * least-significant bit
 
@@ -2052,6 +2062,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * NOT
 
+* numerical function
+
 * NULL
 
 * NULL character
@@ -2094,6 +2106,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * printable character
 
+* procedure
+
 * profile
 
 * programming
@@ -2103,6 +2117,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * quotient
 
 * radix complement
+
+* range
 
 * raw format
 
@@ -2150,6 +2166,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * state
 
+* statement
+
 * still image
 
 * storage
@@ -2193,6 +2211,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * truth table
 
 * Turing-complete
+
+* type
 
 * UINT_MAX
 
