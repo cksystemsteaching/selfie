@@ -135,7 +135,7 @@ The third language is called EBNF which stands for *Extended Backus-Naur Form*. 
 
 In the following, we introduce a few code examples written in C\*, and then show you how some of that code translates to actual RISC-U assembly and even RISC-U binary code. We then show you how EBNF is used to define some of the C\* and RISC-U assembly syntax and finally the EBNF syntax itself.
 
-The following example is C\* code that implements a simple function:
+The following example is C\* code that implements a simple *numerical* function for calculating the *absolute* value of a given *whole number* or *integer* `n`:
 
 ```
 int absolute(int n) {
@@ -145,6 +145,12 @@ int absolute(int n) {
   	return n;
 }
 ```
+
+As intended by the designers of the programming language C, and in fact many other programming languages as well, the code can be read like a sentence in English: if `n` is less than zero, return the *negated* value of `n`. Otherwise, just return `n`. This is a *conditional* statement, which in C is called an `if-else` statement. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+
+First of all, the code needs to be written according to strict syntactic rules. We need to say `if`, `else`, and `return`, also called *keywords*, and even the parentheses, the braces, and the semicolons need to be where they are. But the code also contains information about how large the value of `n` as well as the absolute value of `n` can ever be using *int* as another keyword. Nothing on a computer can be arbitrarily large! In other words, the function you see here is not a mathematical function, it is code that instructs a machine to compute the absolute value of whole numbers within a given finite range.
+
+When I starting coding as teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer do something interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we look at numerical functions written in code first is simplicity since there is an immediate connection to something we know: elementary arithmetic!
 
 ```
 int count(int n) {
