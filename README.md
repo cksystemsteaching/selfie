@@ -1812,6 +1812,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * ASCII
 
+* assembly
+
 * audio
 
 * backwards-compatible
@@ -1821,6 +1823,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * base
 
 * big-endian
+
+* binary code
 
 * binary number
 
@@ -1841,6 +1845,10 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * byte
 
 * byte-addressed memory
+
+* C
+
+* C\*
 
 * carry bit
 
@@ -1888,6 +1896,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * discrete
 
+* EBNF
+
 * effective
 
 * efficient
@@ -1906,6 +1916,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * exponential growth
 
+* Extended Backus-Naur Form
+
 * factor
 
 * fetch
@@ -1920,6 +1932,12 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * folder
 
+* formal language
+
+* formal grammar
+
+* formal semantics
+
 * format
 
 * formula
@@ -1931,6 +1949,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * frame rate
 
 * full adder
+
+* grammar
 
 * half adder
 
@@ -2086,6 +2106,10 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * remainder
 
+* RISC-U
+
+* RISC-V
+
 * root
 
 * row-major
@@ -2133,6 +2157,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 * sum
 
 * synopis
+
+* syntax
 
 * tag
 
