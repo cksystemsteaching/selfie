@@ -672,7 +672,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure);
 void procedure_prologue(uint64_t number_of_local_variable_bytes);
 void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
-char* rewrite_wrapped_procedure(char* procedure);
+char* rewrite_non_zero_bootlevel_procedure(char* procedure);
 
 uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro);
 uint64_t compile_call_or_macro(char* procedure_or_macro);
@@ -4226,9 +4226,11 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-char* rewrite_wrapped_procedure(char* procedure) {
+char* rewrite_non_zero_bootlevel_procedure(char* procedure) {
+  // rewrite non-macro functions without their prefix
   if (string_prefix_for("non_zero_bootlevel_", procedure)) {
-    return string_sub(procedure, string_length("non_zero_bootlevel_"), string_length(procedure));
+    if (string_prefix_for("non_zero_bootlevel_macro_", procedure) == 0)
+      return string_sub(procedure, string_length("non_zero_bootlevel_"), string_length(procedure));
   }
 
   return procedure;
@@ -5179,7 +5181,7 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t number_of_local_variable_bytes;
   uint64_t* entry;
 
-  procedure = rewrite_wrapped_procedure(procedure);
+  procedure = rewrite_non_zero_bootlevel_procedure(procedure);
 
   // assuming procedure is undefined
   is_undefined = 1;
