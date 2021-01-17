@@ -1265,13 +1265,6 @@ uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
 
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-// Indicates if the cache is currently activated.
-// Changes if the cache is turned off temporarily (during
-// context switching).
-uint64_t l1_cache_on;
-
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
@@ -7327,10 +7320,6 @@ void implement_switch() {
   uint64_t* to_context;
   uint64_t timeout;
 
-  if (l1_cache_on)
-    flush_all_caches();
-  l1_cache_on = 0;
-
   if (debug_syscalls) {
     print("(switch): ");
     print_register_hexadecimal(REG_A0);
@@ -7355,28 +7344,14 @@ void implement_switch() {
     print_register_hexadecimal(REG_A6);
     println();
   }
-
-  l1_cache_on = L1_CACHE_ENABLED;
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
-  if (l1_cache_on)
-    flush_all_caches();
-  l1_cache_on = 0;
-
   current_context = do_switch(current_context, to_context, timeout);
-
-  l1_cache_on = L1_CACHE_ENABLED;
 
   run_until_exception();
 
-  if (l1_cache_on)
-    flush_all_caches();
-  l1_cache_on = 0;
-
   save_context(current_context);
-
-  l1_cache_on = L1_CACHE_ENABLED;
 
   return current_context;
 }
@@ -7849,20 +7824,14 @@ uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  if (l1_cache_on)
-    return load_data_from_cache(table, vaddr);
-  else
-    return load_physical_memory(tlb(table, vaddr));
+  return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  if (l1_cache_on)
-    save_data_into_cache(table, vaddr, data);
-  else
-    store_physical_memory(tlb(table, vaddr), data);
+  store_physical_memory(tlb(table, vaddr), data);
 }
 
 // -----------------------------------------------------------------
@@ -8807,7 +8776,10 @@ uint64_t do_load() {
 
         if (rd != REG_ZR) {
           // semantics of load (double) word
-          next_rd_value = load_virtual_memory(pt, vaddr);
+          if (L1_CACHE_ENABLED)
+            next_rd_value = load_data_from_cache(pt, vaddr);
+          else
+            next_rd_value = load_virtual_memory(pt, vaddr);
 
           if (*(registers + rd) != next_rd_value)
             *(registers + rd) = next_rd_value;
@@ -8897,15 +8869,17 @@ uint64_t do_store() {
 
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2)) {
-          store_virtual_memory(pt, vaddr, *(registers + rs2));
-
-          if (l1_cache_on)
-            // Since an sd instruction only causes one cache/memory access but both
-            // load_virtual_memory() and store_virtual_memory() emulate one cache access,
-            // a guaranteed additional cache hit has to be substracted.
-            set_cache_hits(L1_DCACHE, get_cache_hits(L1_DCACHE) - 1);
-        } else
+          if (L1_CACHE_ENABLED)
+            save_data_into_cache(pt, vaddr, *(registers + rs2));
+          else
+            store_virtual_memory(pt, vaddr, *(registers + rs2));
+        } else {
           nopc_store = nopc_store + 1;
+
+          if (L1_CACHE_ENABLED)
+            // effective nop still changes the cache state
+            save_data_into_cache(pt, vaddr, *(registers + rs2));
+        }
 
         // keep track of instruction address for profiling stores
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -9394,7 +9368,7 @@ void fetch() {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
-      if (l1_cache_on)
+      if (L1_CACHE_ENABLED)
         if (pc % WORDSIZE == 0)
           ir = get_low_instruction(load_instruction_from_cache(pt, pc));
         else
@@ -10196,6 +10170,9 @@ void restore_context(uint64_t* context) {
   pc        = get_pc(context);
   registers = get_regs(context);
   pt        = get_pt(context);
+
+  if (L1_CACHE_ENABLED)
+    flush_all_caches();
 }
 
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
@@ -11008,7 +10985,6 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(MIPSTER);
         else if (string_compare(argument, "-L1")) {
           L1_CACHE_ENABLED = 1;
-          l1_cache_on = L1_CACHE_ENABLED;
 
           return selfie_run(MIPSTER);
         } else if (string_compare(argument, "-d"))
