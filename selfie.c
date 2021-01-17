@@ -702,9 +702,9 @@ void  var_start(uint64_t* args) { *args = *args; }
 char* var_arg(uint64_t* args) { *args = *args; return ""; }
 void  var_end(uint64_t* args) { *args = *args; }
 
-void non_zero_bootlevel_var_start();
-void non_zero_bootlevel_var_arg();
-void non_zero_bootlevel_var_end();
+void non_zero_bootlevel_macro_var_start();
+void non_zero_bootlevel_macro_var_arg();
+void non_zero_bootlevel_macro_var_end();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -4240,13 +4240,13 @@ uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
 
 uint64_t compile_call_or_macro(char* procedure_or_macro) {
   if (macro_string_match(procedure_or_macro, MACRO_VAR_START)) {
-    non_zero_bootlevel_var_start();
+    non_zero_bootlevel_macro_var_start();
     return VOID_T;
   } else if (macro_string_match(procedure_or_macro, MACRO_VAR_ARG)) {
-    non_zero_bootlevel_var_arg();
+    non_zero_bootlevel_macro_var_arg();
     return VOID_T;
   } else if (macro_string_match(procedure_or_macro, MACRO_VAR_END)) {
-    non_zero_bootlevel_var_end();
+    non_zero_bootlevel_macro_var_end();
     return VOID_T;
   } else
     return compile_call(procedure_or_macro);
@@ -5428,7 +5428,7 @@ void compile_cstar() {
 // ---------------------------- MACROS -----------------------------
 // -----------------------------------------------------------------
 
-void non_zero_bootlevel_var_start() {
+void non_zero_bootlevel_macro_var_start() {
   uint64_t* var_list_variable;
   uint64_t s0_offset;
   
@@ -5462,7 +5462,7 @@ void non_zero_bootlevel_var_start() {
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
-void non_zero_bootlevel_var_arg() {
+void non_zero_bootlevel_macro_var_arg() {
   uint64_t* var_list_variable;
   uint64_t  var_list_address;
   
@@ -5501,7 +5501,7 @@ void non_zero_bootlevel_var_arg() {
 // implementation of va_start, va_arg, va_end is platform specific
 // for RISC-V va_end does nothing, it is implemented for completeness
 // and parity with standard C
-void non_zero_bootlevel_var_end() {
+void non_zero_bootlevel_macro_var_end() {
   if (signed_less_than(get_value(current_function), 0) == 0)
     syntax_error_message("'var_end' used in function with fixed args");
 
