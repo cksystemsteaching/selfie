@@ -1681,9 +1681,10 @@ void print_register_value(uint64_t reg);
 void print_exception(uint64_t exception, uint64_t fault);
 void throw_exception(uint64_t exception, uint64_t fault);
 
-void fetch();
-void decode();
-void execute();
+uint64_t load_instruction_word(uint64_t* table, uint64_t vaddr);
+void     fetch();
+void     decode();
+void     execute();
 
 void execute_record();
 void execute_undo();
@@ -9363,21 +9364,22 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   }
 }
 
+uint64_t load_instruction_word(uint64_t* table, uint64_t vaddr) {
+  if (L1_CACHE_ENABLED)
+    return load_instruction_from_cache(table, vaddr);
+  else
+    return load_virtual_memory(table, vaddr);
+}
+
 void fetch() {
   if (is_virtual_address_valid(pc, INSTRUCTIONSIZE)) {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
-      if (L1_CACHE_ENABLED)
-        if (pc % WORDSIZE == 0)
-          ir = get_low_instruction(load_instruction_from_cache(pt, pc));
-        else
-          ir = get_high_instruction(load_instruction_from_cache(pt, pc - INSTRUCTIONSIZE));
+      if (pc % WORDSIZE == 0)
+        ir = get_low_instruction(load_instruction_word(pt, pc));
       else
-        if (pc % WORDSIZE == 0)
-          ir = get_low_instruction(load_virtual_memory(pt, pc));
-        else
-          ir = get_high_instruction(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+        ir = get_high_instruction(load_instruction_word(pt, pc - INSTRUCTIONSIZE));
 
       return;
     } else
