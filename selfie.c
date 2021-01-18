@@ -1909,11 +1909,13 @@ void reset_segments_access_counters() {
 void reset_profiler() {
   reset_instruction_counters();
   reset_memory_counters();
-  reset_all_cache_counters();
   reset_nop_counters();
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
+
+  if (L1_CACHE_ENABLED)
+    reset_all_cache_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -10861,7 +10863,8 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
-  init_all_caches();
+  if (L1_CACHE_ENABLED)
+    init_all_caches();
 
   reset_interpreter();
   reset_profiler();
