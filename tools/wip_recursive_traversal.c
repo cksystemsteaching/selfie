@@ -320,6 +320,8 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
   return changed;
 }
 
+uint64_t gp_val = 0;
+
 // apply effects of current instruction to machine state
 // Return 1 iff the instruction had a quantifiable effect
 uint64_t apply_effects(uint64_t *state) {
@@ -346,6 +348,10 @@ uint64_t apply_effects(uint64_t *state) {
   if (is == ADDI) {
     if (!is_reg_unknown(state, rs1)) { // if the register's contents are not unknown
       set_reg(state, rd, *(registers + rs1) + imm); // do the addi
+
+      if (rd == REG_GP) {
+        gp_val = *(registers + rs1) + imm;
+      }
 
       tracked_change = 1;
 
@@ -777,13 +783,11 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       } else if (!merge_states(tmp_state, state)) { // merge current machine states
         // if merge didn't result in any changes: return
         if (current_ra != -1) {
-          if (get_cached_state(call_stack_peek()) != 0) {
-            if (call_stack_recursion_check()) {
-              update_state(current_ra, unknown_state);
-            }
-            else {
-              update_state(current_ra, get_cached_state(call_stack_peek()));
-            }
+          if (call_stack_recursion_check()) {
+            update_state(current_ra, unknown_state);
+            set_reg(get_state(current_ra), REG_GP, gp_val); // temporary workaround
+          } else if (get_cached_state(call_stack_peek()) != 0) {
+            update_state(current_ra, get_cached_state(call_stack_peek()));
           }
         }
         return;
@@ -862,10 +866,8 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     } else if (is == JALR) {
       // for now: assume that every jalr returns from a function
       if (rd == REG_ZR) {
-        if (!call_stack_recursion_check()) {
-          update_state(current_ra, state);
-          update_cached_state(call_stack_peek(), state);
-        }
+        update_state(current_ra, state);
+        update_cached_state(call_stack_peek(), state);
         return;
       } else {
         print("Error: jalr with non-zero destination register not supported!");
