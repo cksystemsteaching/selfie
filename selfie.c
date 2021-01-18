@@ -1217,8 +1217,6 @@ void init_cache_memory(uint64_t* cache);
 void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
 void init_all_caches();
 
-uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size, uint64_t tag, uint64_t index);
-
 void flush_cache(uint64_t* cache);
 void flush_all_caches();
 
@@ -7441,10 +7439,6 @@ uint64_t get_new_timestamp(uint64_t* cache) {
   set_cache_timer(cache, timestamp + 1);
 
   return timestamp;
-}
-
-uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size, uint64_t tag, uint64_t index) {
-  return (uint64_t*) (tag * cache_set_size + index * cache_line_size);
 }
 
 void flush_cache(uint64_t* cache) {
