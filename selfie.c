@@ -7380,11 +7380,8 @@ void reset_cache_counters(uint64_t* cache) {
 }
 
 void reset_all_cache_counters() {
-  if (L1_DCACHE != (uint64_t*) 0)
-    reset_cache_counters(L1_DCACHE);
-
-  if (L1_ICACHE != (uint64_t*) 0)
-    reset_cache_counters(L1_ICACHE);
+  reset_cache_counters(L1_DCACHE);
+  reset_cache_counters(L1_ICACHE);
 }
 
 void init_cache_memory(uint64_t* cache) {
@@ -10864,11 +10861,11 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
+  init_all_caches();
+
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
-
-  init_all_caches();
   init_memory(atoi(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
