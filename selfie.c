@@ -1222,10 +1222,14 @@ uint64_t* cache_entry_to_paddr(uint64_t cache_set_size, uint64_t cache_line_size
 void flush_cache(uint64_t* cache);
 void flush_all_caches();
 
-void      flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
+uint64_t  calculate_tag(uint64_t* cache, uint64_t* paddr);
+uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr);
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access);
+uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access);
 
 void     fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
+void     flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
 void     save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr);
 
@@ -7472,45 +7476,34 @@ void flush_all_caches() {
   flush_cache(L1_ICACHE);
 }
 
-void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
-  uint64_t words;
-  uint64_t* data;
-  uint64_t i;
-
-  words = cache_line_size / WORDSIZE;
-
-  data = get_data(cache_block);
-
-  i = 0;
-
-  while (i < words) {
-    store_physical_memory(start_paddr + i, *(data + i));
-
-    i = i + 1;
-  }
+uint64_t calculate_tag(uint64_t* cache, uint64_t* paddr) {
+  return (uint64_t) paddr / get_cache_set_size(cache);
 }
 
-uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
-  uint64_t most_significant_bits;
-  uint64_t tag;
-  uint64_t index;
+uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr) {
   uint64_t* set;
-  uint64_t i;
-  uint64_t* cache_block;
-  uint64_t* lru_block;
-  uint64_t cache_line_size;
+  uint64_t index;
+  uint64_t most_significant_bits;
   uint64_t cache_set_size;
-
-  cache_line_size = get_cache_line_size(cache);
 
   cache_set_size = get_cache_set_size(cache);
 
   most_significant_bits = (vaddr / cache_set_size) * cache_set_size;
 
-  tag = (uint64_t) paddr / cache_set_size;
-  index = (vaddr - most_significant_bits) / cache_line_size;
+  index = (vaddr - most_significant_bits) / get_cache_line_size(cache);
 
   set = get_cache_memory(cache) + index * get_associativity(cache);
+
+  return set;
+}
+
+uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access) {
+  uint64_t* set;
+  uint64_t i;
+  uint64_t* cache_block;
+  uint64_t* lru_block; // least-recently used block for replacement strategy
+
+  set = calculate_set(cache, vaddr);
 
   i = 0;
 
@@ -7540,18 +7533,37 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
 
   // cache miss
 
+  set_valid_flag(lru_block, 0);
+
+  return lru_block;
+}
+
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access) {
   if (is_access) {
     set_cache_misses(cache, get_cache_misses(cache) + 1);
 
-    set_valid_flag(lru_block, 0);
+    set_tag(cache_block, tag);
 
-    set_tag(lru_block, tag);
+    set_timestamp(cache_block, get_new_timestamp(cache));
 
-    set_timestamp(lru_block, get_new_timestamp(cache));
-
-    return lru_block;
+    return cache_block;
   } else
     return (uint64_t*) 0;
+}
+
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
+  uint64_t tag;
+  uint64_t* cache_block;
+
+  tag = calculate_tag(cache, paddr);
+
+  cache_block = cache_lookup(cache, vaddr, tag, is_access);
+
+  if (get_valid_flag(cache_block))
+    // cache hit
+    return cache_block;
+  else
+    return handle_cache_miss(cache, cache_block, tag, is_access);
 }
 
 void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
@@ -7567,6 +7579,24 @@ void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t*
 
   while (i < words) {
     *(data + i) = load_physical_memory(start_paddr + i);
+
+    i = i + 1;
+  }
+}
+
+void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
+  uint64_t words;
+  uint64_t* data;
+  uint64_t i;
+
+  words = cache_line_size / WORDSIZE;
+
+  data = get_data(cache_block);
+
+  i = 0;
+
+  while (i < words) {
+    store_physical_memory(start_paddr + i, *(data + i));
 
     i = i + 1;
   }
