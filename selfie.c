@@ -7555,6 +7555,21 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
   uint64_t tag;
   uint64_t* cache_block;
 
+  // vaddr
+  // +-----+-------+-------------+
+  // |     | index | byte offset |
+  // +-----+-------+-------------+
+  // 32    ^       ^             0
+  //       |       |
+  //       |  log(cache_line_size)
+  //       |
+  // log(cache_size / associativity)
+  //       |
+  // paddr v
+  // +-----+---------------------+
+  // | tag |                     |
+  // +-----+---------------------+
+
   tag = calculate_tag(cache, paddr);
 
   cache_block = cache_lookup(cache, vaddr, tag, is_access);
