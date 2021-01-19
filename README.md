@@ -135,22 +135,60 @@ The third language is called EBNF which stands for *Extended Backus-Naur Form*. 
 
 In the following, we introduce a few code examples written in C\*, and then show you how some of that code translates to actual RISC-U assembly and even RISC-U binary code. We then show you how EBNF is used to define some of the C\* and RISC-U assembly syntax and finally the EBNF syntax itself.
 
-The following example is C\* code that implements a simple *numerical* function for calculating the *absolute* value of a given *whole number* or *integer* `n`:
+The following example is C\* code that implements a simple *numerical* function called `double` for calculating the doubled value of a given *whole number* or *integer* represented by the *formal parameter* `n`:
 
 ```
-int absolute(int n) {
-  if (n < 0)
-  	return -n;
+int double(int n) {
+  return n + n;
+}
+```
+
+As intended by the designers of the programming language C, and in fact many other programming languages as well including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *expression* `n + n`. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+
+First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` function you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
+
+When I started coding as a teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer immediately do something more interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we first look at numerical functions written in code is simplicity since there is an immediate connection to something we all know and understand: elementary arithmetic! That helps understand the meaning of the code.
+
+So, let us try and use selfie to run the `double` procedure on some actual number. Here is the code to do that:
+
+```
+int double(int n) {
+  return n + n;
+}
+
+int main() {
+  return double(42);
+}
+```
+
+```
+./selfie -c double.c -m 1
+```
+
+```
+int double(int n) {
+  return 2 * n;
+}
+```
+
+```
+int square(int n) {
+  return n * n;
+}
+```
+
+```
+int max(int n, int m) {
+  if (n < m)
+  	return m;
   else
   	return n;
 }
 ```
 
-As intended by the designers of the programming language C, and in fact many other programming languages as well, the code can be read like a sentence in English: if `n` is less than zero, return the *negated* value of `n`. Otherwise, just return `n`. This is a *conditional* statement, which in C is called an `if-else` statement. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+If the value of `n` is less than the value of `m`, return the value of `m`. Otherwise, just return the value of `n`. This is a *conditional* statement, which in C is called an `if-else` statement.
 
-First of all, the code needs to be written according to strict syntactic rules. We need to say `if`, `else`, and `return`, also called *keywords*, and even the parentheses, the braces, and the semicolons need to be where they are. But the code also contains information about how large the value of the *parameter* `n` as well as its absolute value as returned by the *function* or *procedure* called `absolute` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `absolute` function you see here is not a mathematical function, it is code that instructs a machine to compute the absolute value of whole numbers within a given finite range.
-
-When I starting coding as teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer do something interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we look at numerical functions written in code first is simplicity since there is an immediate connection to something we know: elementary arithmetic!
+Here is another example written in C\* featuring a `while` loop over a *local* variable `c`:
 
 ```
 int count(int n) {
@@ -164,6 +202,10 @@ int count(int n) {
   return c;
 }
 ```
+
+Again, the code can be read like an English sentence: initialize `c` to `0` and then increment `c` by `1` as long as `c` is less than the value of the parameter `n`. When done, return the value of `c`.
+
+Let us analyze what this code really does. If the value of `n` is greater than or equal to `0`, the function returns, well, the value of `n`, after "counting" from `0` to `n`. However, if the value of `n` is less than `0`, the function returns `0`. In other words, `count(n)` is the *identity* function for all values of `n` greater than or equal to `0`. For all values of `n` less than `0`, count(n) is equal to `0`.
 
 ```
 int factorial(int n) {
