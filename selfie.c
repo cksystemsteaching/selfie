@@ -7552,7 +7552,7 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
   // +-----+-------+-------------+
   // |     | index | byte offset |
   // +-----+-------+-------------+
-  // 32    ^       ^             0
+  // 31    ^       ^             0
   //       |       |
   //       |  log(cache_line_size)
   //       |
