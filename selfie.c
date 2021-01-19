@@ -10869,6 +10869,7 @@ uint64_t selfie_run(uint64_t machine) {
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
+
   init_memory(atoi(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
