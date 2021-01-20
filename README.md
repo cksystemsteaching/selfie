@@ -62,15 +62,21 @@ For this purpose we have developed a software system called selfie that integrat
 
 In order to interact with selfie effectively and, more importantly, with joy, we ask you to do something that is already quite scary for many students, even though it is similar to using a chat app, just not for chatting with people but with a machine. In short, you need to learn how to use a terminal app. Most laptops have a terminal app pre-installed already but even if yours does not, you do not have to install one but just use a terminal in your web browser, which is in fact the easiest way to get access. The homepage of selfie tells you all about how to get started, just go to:
 
-`https://github.com/cksystemsteaching/selfie/tree/elementary-computer-science`
+`https://github.com/cksystemsteaching/selfie`
 
-Once you have a terminal with selfie up and running, type in the terminal:
+Once you have a terminal with selfie up and running in a directory called, say, `~/selfie`, type in the terminal:
+
+```
+cd ~/selfie
+```
+
+and then:
 
 ```
 make
 ```
 
-and then:
+and finally:
 
 ```
 ./selfie
