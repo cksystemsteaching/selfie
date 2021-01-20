@@ -149,11 +149,11 @@ int double(int n) {
 }
 ```
 
-As intended by the designers of the programming language C, and in fact many other programming languages as well including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *expression* `n + n`. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *expression* `n + n`. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
 
-First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` function you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
+First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` procedure you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
 
-When I started coding as a teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer immediately do something more interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we first look at numerical functions written in code is simplicity since there is an immediate connection to something we all know and understand: elementary arithmetic! That helps understand the meaning of the code.
+When I started coding as a teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer immediately do something more interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we first look at numerical functions written in code is simplicity since there is an immediate connection to something we all know and understand: elementary arithmetic! That helps understanding the true meaning of code.
 
 So, let us try and use selfie to run the `double` procedure on some actual number. Here is the code to do that:
 
@@ -167,9 +167,15 @@ int main() {
 }
 ```
 
+In the directory where your selfie installation is, create a file called `double.c` that contains the above code and then type in your terminal:
+
 ```
 ./selfie -c double.c -m 1
 ```
+
+Selfie responds with quite a bit of text but just look for `double.c exiting with exit code 84`. That's it! The above code instructs selfie to return the result of `double(42)` which is obviously `84`. The way this works is simple. Each program must contain a procedure called `main` to actually do anything useful. That procedure is always the first to run and everything follows from there. When `main` returns, program execution is finished and whatever `main` returns is shown as *exit code*.
+
+There are two important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` and its implementation in between curly braces. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double`on an *actual parameter* `42`. Importantly, there can only be one procedure definition per procedure name but as many procedure calls of the same procedure as you like. Makes sense? Ok, then let us try to change the definition or in fact implementation of `double`:
 
 ```
 int double(int n) {
