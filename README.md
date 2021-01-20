@@ -149,7 +149,7 @@ int double(int n) {
 }
 ```
 
-As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *expression* `n + n`. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the arithmetic *expression* `n + n`. The line `return n + n;` is called a `return` *statement*. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
 
 First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` procedure you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
 
@@ -183,9 +183,19 @@ int double(int n) {
 }
 ```
 
+This version of `double` obviously computes the same value as the previous version of `double`, just using multiplication rather than addition. We can, for example, easily implement a procedure that computes the square value of an integer `n`:
+
 ```
 int square(int n) {
   return n * n;
+}
+```
+
+In C\* there are also the usual arithmetic *operators* `-` and `/` for subtraction and division, respectively, as well as parentheses for *grouping* expressions to overrule the *precedence* of `*` and `/` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
+
+```
+int fancy(int n) {
+  return n * (n + 1) - n / 2 + 42;
 }
 ```
 
