@@ -1155,44 +1155,44 @@ uint64_t debug_switch = 0;
 // -----------------------------------------------------------------
 
 // cache struct
-// +---+-----------------+
-// | 0 | cache memory    | pointer to actual cache consisting of pointers to cache blocks
-// | 1 | cache size      | cache size in bytes
-// | 2 | associativity   | cache associativity
-// | 3 | cache-line size | cache-line size in bytes
-// | 4 | cache sets      | number of sets in the cache
-// | 5 | cache hits      | counter for cache hits
-// | 6 | cache misses    | counter for cache misses
-// | 7 | cache timer     | counter for LRU replacement strategy
-// +---+-----------------+
+// +---+------------------+
+// | 0 | cache memory     | pointer to actual cache consisting of pointers to cache blocks
+// | 1 | cache size       | cache size in bytes
+// | 2 | associativity    | cache associativity
+// | 3 | cache-block size | cache-block size in bytes
+// | 4 | cache sets       | number of sets in the cache
+// | 5 | cache hits       | counter for cache hits
+// | 6 | cache misses     | counter for cache misses
+// | 7 | cache timer      | counter for LRU replacement strategy
+// +---+------------------+
 
 uint64_t* allocate_cache() {
   return smalloc(1 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 }
 
-uint64_t* get_cache_memory(uint64_t* cache)    { return (uint64_t*) *cache; }
-uint64_t  get_cache_size(uint64_t* cache)      { return             *(cache + 1); }
-uint64_t  get_associativity(uint64_t* cache)   { return             *(cache + 2); }
-uint64_t  get_cache_line_size(uint64_t* cache) { return             *(cache + 3); }
-uint64_t  get_cache_set_size(uint64_t* cache)  { return             *(cache + 4); }
-uint64_t  get_cache_hits(uint64_t* cache)      { return             *(cache + 5); }
-uint64_t  get_cache_misses(uint64_t* cache)    { return             *(cache + 6); }
-uint64_t  get_cache_timer(uint64_t* cache)     { return             *(cache + 7); }
+uint64_t* get_cache_memory(uint64_t* cache)     { return (uint64_t*) *cache; }
+uint64_t  get_cache_size(uint64_t* cache)       { return             *(cache + 1); }
+uint64_t  get_associativity(uint64_t* cache)    { return             *(cache + 2); }
+uint64_t  get_cache_block_size(uint64_t* cache) { return             *(cache + 3); }
+uint64_t  get_cache_set_size(uint64_t* cache)   { return             *(cache + 4); }
+uint64_t  get_cache_hits(uint64_t* cache)       { return             *(cache + 5); }
+uint64_t  get_cache_misses(uint64_t* cache)     { return             *(cache + 6); }
+uint64_t  get_cache_timer(uint64_t* cache)      { return             *(cache + 7); }
 
-void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)      { *cache       = (uint64_t) cache_memory; }
-void set_cache_size(uint64_t* cache, uint64_t cache_size)           { *(cache + 1) = cache_size; }
-void set_associativity(uint64_t* cache, uint64_t associativity)     { *(cache + 2) = associativity; }
-void set_cache_line_size(uint64_t* cache, uint64_t cache_line_size) { *(cache + 3) = cache_line_size; }
-void set_cache_set_size(uint64_t* cache, uint64_t cache_set_size)   { *(cache + 4) = cache_set_size; }
-void set_cache_hits(uint64_t* cache, uint64_t cache_hits)           { *(cache + 5) = cache_hits; }
-void set_cache_misses(uint64_t* cache, uint64_t cache_misses)       { *(cache + 6) = cache_misses; }
-void set_cache_timer(uint64_t* cache, uint64_t cache_timer)         { *(cache + 7) = cache_timer; }
+void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)        { *cache       = (uint64_t) cache_memory; }
+void set_cache_size(uint64_t* cache, uint64_t cache_size)             { *(cache + 1) = cache_size; }
+void set_associativity(uint64_t* cache, uint64_t associativity)       { *(cache + 2) = associativity; }
+void set_cache_block_size(uint64_t* cache, uint64_t cache_block_size) { *(cache + 3) = cache_block_size; }
+void set_cache_set_size(uint64_t* cache, uint64_t cache_set_size)     { *(cache + 4) = cache_set_size; }
+void set_cache_hits(uint64_t* cache, uint64_t cache_hits)             { *(cache + 5) = cache_hits; }
+void set_cache_misses(uint64_t* cache, uint64_t cache_misses)         { *(cache + 6) = cache_misses; }
+void set_cache_timer(uint64_t* cache, uint64_t cache_timer)           { *(cache + 7) = cache_timer; }
 
 // cache block struct:
 // +---+------------+
 // | 0 | valid flag | flags whether the block is valid or not
 // | 1 | tag        | unique identifier within a set
-// | 2 | data       | pointer to cache-line data
+// | 2 | data       | pointer to cache-block data
 // | 3 | timestamp  | timestamp for replacement strategy
 // +---+------------+
 
@@ -1214,7 +1214,7 @@ void reset_cache_counters(uint64_t* cache);
 void reset_all_cache_counters();
 
 void init_cache_memory(uint64_t* cache);
-void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size);
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size);
 void init_all_caches();
 
 void flush_cache(uint64_t* cache);
@@ -1226,8 +1226,8 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
 uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access);
 uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access);
 
-void     fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
-void     flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr);
+void     fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
+void     flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
 void     save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr);
 
@@ -1257,11 +1257,11 @@ uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
 uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
 uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 
-// L1 cache-line size
-// assert: cache line sizes are powers of 2
-// assert: L1_xCACHE_LINE_SIZE >= WORDSIZE
-uint64_t L1_DCACHE_LINE_SIZE = 16; // in byte
-uint64_t L1_ICACHE_LINE_SIZE = 16; // in byte
+// L1 cache-block size
+// assert: cache-block sizes are powers of 2
+// assert: L1_xCACHE_BLOCK_SIZE >= WORDSIZE
+uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
+uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
 
 // pointers to L1 caches
 uint64_t* L1_ICACHE;
@@ -7389,17 +7389,17 @@ void reset_all_cache_counters() {
 void init_cache_memory(uint64_t* cache) {
   uint64_t no_of_cache_blocks;
   uint64_t* cache_memory;
-  uint64_t cache_line_size;
+  uint64_t cache_block_size;
   uint64_t* cache_block;
   uint64_t i;
 
-  no_of_cache_blocks = get_cache_size(cache) / get_cache_line_size(cache);
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
   i = 0;
 
   cache_memory = smalloc(no_of_cache_blocks * SIZEOFUINT64STAR);
   set_cache_memory(cache, cache_memory);
 
-  cache_line_size = get_cache_line_size(cache);
+  cache_block_size = get_cache_block_size(cache);
 
   while (i < no_of_cache_blocks) {
     cache_block = allocate_cache_block();
@@ -7408,16 +7408,16 @@ void init_cache_memory(uint64_t* cache) {
 
     *(cache_memory + i) = (uint64_t) cache_block;
 
-    set_data(cache_block, smalloc(cache_line_size));
+    set_data(cache_block, smalloc(cache_block_size));
 
     i = i + 1;
   }
 }
 
-void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_line_size) {
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size) {
   set_cache_size(cache, cache_size);
   set_associativity(cache, associativity);
-  set_cache_line_size(cache, cache_line_size);
+  set_cache_block_size(cache, cache_block_size);
   set_cache_set_size(cache, cache_size / associativity);
   init_cache_memory(cache);
   reset_cache_counters(cache);
@@ -7425,10 +7425,10 @@ void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, ui
 
 void init_all_caches() {
   L1_DCACHE = allocate_cache();
-  init_cache(L1_DCACHE, L1_DCACHE_SIZE, L1_DCACHE_ASSOCIATIVITY, L1_DCACHE_LINE_SIZE);
+  init_cache(L1_DCACHE, L1_DCACHE_SIZE, L1_DCACHE_ASSOCIATIVITY, L1_DCACHE_BLOCK_SIZE);
 
   L1_ICACHE = allocate_cache();
-  init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_LINE_SIZE);
+  init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_BLOCK_SIZE);
 }
 
 uint64_t get_new_timestamp(uint64_t* cache) {
@@ -7448,7 +7448,7 @@ void flush_cache(uint64_t* cache) {
 
   cache_memory = get_cache_memory(cache);
 
-  no_of_cache_blocks = get_cache_size(cache) / get_cache_line_size(cache);
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
 
   i = 0;
 
@@ -7483,7 +7483,7 @@ uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr) {
 
   most_significant_bits = (vaddr / cache_set_size) * cache_set_size;
 
-  index = (vaddr - most_significant_bits) / get_cache_line_size(cache);
+  index = (vaddr - most_significant_bits) / get_cache_block_size(cache);
 
   set = get_cache_memory(cache) + index * get_associativity(cache);
 
@@ -7554,7 +7554,7 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
   // +-----+-------+-------------+
   // 31    ^       ^             0
   //       |       |
-  //       |  log(cache_line_size)
+  //       |  log(cache_block_size)
   //       |
   // log(cache_size / associativity)
   //       |
@@ -7574,12 +7574,12 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
     return handle_cache_miss(cache, cache_block, tag, is_access);
 }
 
-void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
+void fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
   uint64_t words;
   uint64_t* data;
   uint64_t i;
 
-  words = cache_line_size / WORDSIZE;
+  words = cache_block_size / WORDSIZE;
 
   data = get_data(cache_block);
 
@@ -7592,12 +7592,12 @@ void fill_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t*
   }
 }
 
-void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t* start_paddr) {
+void flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
   uint64_t words;
   uint64_t* data;
   uint64_t i;
 
-  words = cache_line_size / WORDSIZE;
+  words = cache_block_size / WORDSIZE;
 
   data = get_data(cache_block);
 
@@ -7613,11 +7613,11 @@ void flush_cache_block(uint64_t* cache_block, uint64_t cache_line_size, uint64_t
 void save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data) {
   uint64_t* cache_block;
   uint64_t* cache_block_data;
-  uint64_t cache_line_size;
+  uint64_t cache_block_size;
   uint64_t byte_offset;
   uint64_t word_offset;
 
-  cache_line_size = get_cache_line_size(cache);
+  cache_block_size = get_cache_block_size(cache);
 
   cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
 
@@ -7625,42 +7625,42 @@ void save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t 
 
   if (get_valid_flag(cache_block) == 0) {
     // make sure that the entire block contains valid data since we will only write one word
-    fill_cache_block(cache_block, cache_line_size, (uint64_t*) (((uint64_t) paddr / cache_line_size) * cache_line_size));
+    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
 
     set_valid_flag(cache_block, 1);
   }
 
-  byte_offset = vaddr - ((vaddr / cache_line_size) * cache_line_size);
+  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
 
   // calculate word offset due to pointer arithmetic
   word_offset = byte_offset / WORDSIZE;
 
   *(cache_block_data + word_offset) = data;
 
-  flush_cache_block(cache_block, cache_line_size, (uint64_t*) (((uint64_t) paddr / cache_line_size) * cache_line_size));
+  flush_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
 }
 
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr) {
   uint64_t* cache_block;
   uint64_t* data;
-  uint64_t cache_line_size;
+  uint64_t cache_block_size;
   uint64_t byte_offset;
   uint64_t word_offset;
 
-  cache_line_size = get_cache_line_size(cache);
+  cache_block_size = get_cache_block_size(cache);
 
   cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
 
   // if we missed the cache, we receive a block whose data has been invalidated
   if (get_valid_flag(cache_block) == 0) {
-    fill_cache_block(cache_block, cache_line_size, (uint64_t*) (((uint64_t) paddr / cache_line_size) * cache_line_size));
+    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
 
     set_valid_flag(cache_block, 1);
   }
 
   data = get_data(cache_block);
 
-  byte_offset = vaddr - ((vaddr / cache_line_size) * cache_line_size);
+  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
 
   // calculate word offset due to pointer arithmetic
   word_offset = byte_offset / WORDSIZE;
