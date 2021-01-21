@@ -1223,8 +1223,9 @@ void flush_all_caches();
 uint64_t  calculate_tag(uint64_t* cache, uint64_t* paddr);
 uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr);
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
-uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access);
+uint64_t  get_new_timestamp(uint64_t* cache);
 uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access);
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access);
 
 void     fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
 void     flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
@@ -7433,15 +7434,6 @@ void init_all_caches() {
   init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_BLOCK_SIZE);
 }
 
-uint64_t get_new_timestamp(uint64_t* cache) {
-  uint64_t timestamp;
-
-  timestamp = get_cache_timer(cache);
-  set_cache_timer(cache, timestamp + 1);
-
-  return timestamp;
-}
-
 void flush_cache(uint64_t* cache) {
   uint64_t* cache_memory;
   uint64_t no_of_cache_blocks;
@@ -7490,6 +7482,15 @@ uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr) {
   set = get_cache_memory(cache) + index * get_associativity(cache);
 
   return set;
+}
+
+uint64_t get_new_timestamp(uint64_t* cache) {
+  uint64_t timestamp;
+
+  timestamp = get_cache_timer(cache);
+  set_cache_timer(cache, timestamp + 1);
+
+  return timestamp;
 }
 
 uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access) {
