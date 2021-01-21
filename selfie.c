@@ -1239,10 +1239,12 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-// Indicates whether the machine has a cache or not.
+// indicates whether the machine has a cache or not
 uint64_t L1_CACHE_ENABLED = 0;
 
 // machine-enforced coherency for self-modifying code
+// (selfie also works if this is turned off since there
+// is no code modification during runtime)
 uint64_t L1_CACHE_COHERENCY = 1;
 
 // L1-cache size in byte
@@ -1251,9 +1253,9 @@ uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
 uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
 
 // L1-cache associativity
+// assert: associativities are powers of 2
 // assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY <= PAGESIZE
 // (this is necessary in order to prevent aliasing problems)
-// assert: associativities are powers of 2
 uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
 uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 
