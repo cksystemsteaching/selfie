@@ -1228,12 +1228,12 @@ uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t i
 
 void     fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
 void     flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
-void     save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
+void     store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr);
 
 uint64_t load_instruction_from_cache(uint64_t* paddr, uint64_t vaddr);
 uint64_t load_data_from_cache(uint64_t* paddr, uint64_t vaddr);
-void     save_data_into_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data);
+void     store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data);
 
 void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name);
 
@@ -7612,7 +7612,7 @@ void flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_
   }
 }
 
-void save_into_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data) {
+void store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data) {
   uint64_t* cache_block;
   uint64_t* cache_block_data;
   uint64_t cache_block_size;
@@ -7684,13 +7684,13 @@ uint64_t load_data_from_cache(uint64_t* paddr, uint64_t vaddr) {
   return load_from_cache(L1_DCACHE, paddr, vaddr);
 }
 
-void save_data_into_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data) {
+void store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data) {
   uint64_t* cache_block;
 
   // assert: is_valid_virtual_address(vaddr) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  save_into_cache(L1_DCACHE, paddr, vaddr, data);
+  store_in_cache(L1_DCACHE, paddr, vaddr, data);
 
   if (L1_CACHE_COHERENCY) {
     cache_block = retrieve_cache_block(L1_ICACHE, paddr, vaddr, 0);
@@ -8917,7 +8917,7 @@ uint64_t do_store() {
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2)) {
           if (L1_CACHE_ENABLED)
-            save_data_into_cache(paddr, vaddr, *(registers + rs2));
+            store_data_in_cache(paddr, vaddr, *(registers + rs2));
           else
             store_virtual_memory(pt, vaddr, *(registers + rs2));
         } else {
@@ -8925,7 +8925,7 @@ uint64_t do_store() {
 
           if (L1_CACHE_ENABLED)
             // effective nop still changes the cache state
-            save_data_into_cache(paddr, vaddr, *(registers + rs2));
+            store_data_in_cache(paddr, vaddr, *(registers + rs2));
         }
 
         // keep track of instruction address for profiling stores
