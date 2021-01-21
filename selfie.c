@@ -7709,7 +7709,7 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name) {
 
   accesses = hits + misses;
 
-  printf2("%s: L1-%s-cache: ", selfie_name, cache_name);
+  printf2("%s: L1-%scache: ", selfie_name, cache_name);
   printf2("hits: %u(%.2u%%)",
     (char*) hits,
     (char*) fixed_point_percentage(fixed_point_ratio(accesses, hits, 4), 4));
@@ -9887,8 +9887,8 @@ void print_profile(uint64_t* context) {
   }
 
   if (L1_CACHE_ENABLED) {
-    print_cache_statistic(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "instruction");
-    print_cache_statistic(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "data");
+    print_cache_statistic(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "i");
+    print_cache_statistic(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "d");
   }
 
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
