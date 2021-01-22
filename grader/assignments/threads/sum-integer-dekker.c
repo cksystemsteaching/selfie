@@ -55,9 +55,9 @@ int main(int argc, char** argv) {
   tid = pthread_create();
 
   if (tid)
-      my_turn_id = 0;
+    my_turn_id = 0;
   else
-      my_turn_id = 1;
+    my_turn_id = 1;
 
   dekker_enter_critical_section(my_turn_id);
 
