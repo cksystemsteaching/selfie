@@ -280,7 +280,11 @@ def check_threads() -> List[Check]:
         check_mipster_execution('shared-heap.c', 42,
                                 'heap data is shared for threads on MIPSTER') + \
         check_hypster_execution('shared-heap.c', 42,
-                                'heap data is shared for threads on HYPSTER')
+                                'heap data is shared for threads on HYPSTER') + \
+        check_mipster_execution('sum-integer-dekker.c', 210,
+                                'two threads correctly calculate the sum from 1 to 20 with Dekker\'s algorithm on MIPSTER') +\
+        check_hypster_execution('sum-integer-dekker.c', 210,
+                                'two threads correctly calculate the sum from 1 to 20 with Dekker\'s algorithm on HYPSTER')
 
 
 def check_treiber_stack() -> List[Check]:
