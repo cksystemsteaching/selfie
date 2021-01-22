@@ -61,8 +61,8 @@ int main(int argc, char** argv) {
 
   dekker_enter_critical_section(my_turn_id);
 
-  // The main thread will sum up all  odd integers  : 1, 3, 5, 7,  9, 11, 13, 15, 17, 19
-  // The second thread will sum up even odd integers: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20
+  // The   main thread will sum up all  odd integers: 1, 3, 5, 7,  9, 11, 13, 15, 17, 19
+  // The second thread will sum up all even integers: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20
   while (i < 10) {
     sum = sum + (2*i + my_turn_id + 1);
     i = i + 1;
