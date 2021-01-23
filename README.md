@@ -149,7 +149,7 @@ int double(int n) {
 }
 ```
 
-As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the arithmetic *expression* `n + n`. The line `return n + n;` is called a `return` *statement*. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
+As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *arithmetic expression* `n + n`. The line `return n + n;` is called a `return` *statement*. However, the difference between C and English is that the C code is more succinct and much more precise than the sentence in English.
 
 First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` procedure you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
 
@@ -183,7 +183,7 @@ int double(int n) {
 }
 ```
 
-This version of `double` obviously computes the same value as the previous version of `double`, just using multiplication rather than addition. We can, for example, easily implement a procedure that computes the square value of an integer `n`:
+This version of `double` computes the same value as the previous version of `double`, just using multiplication rather than addition, that is, `2` times `n` or simply `2 * n` rather than `n + n`. We can obviously implement other procedures as well such as a procedure that computes the square value of an integer `n`:
 
 ```
 int square(int n) {
@@ -191,13 +191,15 @@ int square(int n) {
 }
 ```
 
-In C\* there are also the usual arithmetic *operators* `-` and `/` for subtraction and division, respectively, as well as parentheses for *grouping* expressions to overrule the *precedence* of `*` and `/` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
+In addition to `+` and `*`, there are also the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*` and `/` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
 
 ```
 int fancy(int n) {
   return n * (n + 1) - n / 2 + 42;
 }
 ```
+
+In C\* and many other programming languages, such arithmetic expressions are standard and widely used in practice. You may want to try a few others and see how selfie responds. Below we show you the exact rules, written in EBNF, for constructing arithmetic expressions.
 
 ```
 int max(int n, int m) {
@@ -316,6 +318,16 @@ hexadecimal_digit = digit | "A" | "B" | "C" | "D" | "E" | "F" .
 ```
 
 ```
+expression = term { ( "+" | "-" ) term } .
+term       = factor { ( "*" | "/" ) factor } .
+factor     = identifier | integer_literal | "(" expression ")" .
+
+identifier      = letter { letter | digit | "_" } .
+letter          = "a" | ... | "z" | "A" | ... | "Z" .
+integer_literal = decimal_number | hexadecimal_number .
+```
+
+```
 EBNF       = { production } .
 production = identifier "=" expression "." .
 expression = term { "|" term } .
@@ -323,9 +335,8 @@ term       = factor { factor } .
 factor     = identifier | string_literal |
              "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
-identifier     = letter { letter | digit | "_" } .
-letter         = "a" | ... | "z" | "A" | ... | "Z" .
-string_literal = """ { printable_character } """ .
+string_literal = """ { character } """ .
+character      = letter | digit | ... .
 ```
 
 ## Information
