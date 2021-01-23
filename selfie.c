@@ -1244,10 +1244,10 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name);
 // indicates whether the machine has a cache or not
 uint64_t L1_CACHE_ENABLED = 0;
 
-// machine-enforced coherency for self-modifying code
-// (selfie also works if this is turned off since there
-// is no code modification during runtime)
-uint64_t L1_CACHE_COHERENCY = 1;
+// machine-enforced coherency for self-modifying code (selfie also
+// works if this is turned off since there is no code modification
+// during runtime and stores in the code segment are illegal)
+uint64_t L1_CACHE_COHERENCY = 0;
 
 // example configurations:
 // +-------------------+---------------+-----------------------------+------------+
@@ -1283,6 +1283,10 @@ uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
 // pointers to VIPT n-way set-associative write-through L1-caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t L1_icache_coherency_invalidations = 0;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -7700,6 +7704,8 @@ void store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data) {
     if (cache_block != (uint64_t*) 0) {
       set_valid_flag(cache_block, 0);
       set_timestamp(cache_block, 0);
+
+      L1_icache_coherency_invalidations = L1_icache_coherency_invalidations + 1;
     }
   }
 }
@@ -7717,7 +7723,6 @@ void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name) {
   printf2("misses: %u(%.2u%%)",
     (char*) misses,
     (char*) fixed_point_percentage(fixed_point_ratio(accesses, misses, 4), 4));
-  println();
 }
 
 // -----------------------------------------------------------------
@@ -9887,8 +9892,13 @@ void print_profile(uint64_t* context) {
   }
 
   if (L1_CACHE_ENABLED) {
-    print_cache_statistic(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "i");
     print_cache_statistic(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "d");
+    println();
+
+    print_cache_statistic(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "i");
+    if (L1_CACHE_COHERENCY)
+      printf1(", coherency invalidations: %d", (char*) L1_icache_coherency_invalidations);
+    println();
   }
 
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
