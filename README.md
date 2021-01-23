@@ -201,6 +201,8 @@ int fancy(int n) {
 
 In C\* and many other programming languages, such arithmetic expressions are standard and widely used in practice. You may want to try a few others and see how selfie responds. Below we show you the exact rules, written in EBNF, for constructing arithmetic expressions.
 
+Let us now experiment with something that goes beyond arithmetic expressions. How about a procedure that returns the larger of two given values? Here is a procedure called `max` with two formal parameters `n` and `m`:
+
 ```
 int max(int n, int m) {
   if (n < m)
@@ -210,9 +212,9 @@ int max(int n, int m) {
 }
 ```
 
-If the value of `n` is less than the value of `m`, return the value of `m`. Otherwise, just return the value of `n`. This is a *conditional* statement, which in C is called an `if-else` statement.
+Again, the code can be read like a sentence in English: if the value of `n` is less than the value of `m`, return the value of `m`. Otherwise, just return the value of `n`. This is a *conditional* statement, which in C\* is called an `if-else` statement.
 
-Here is another example written in C\* featuring a `while` loop over a *local* variable `c`:
+Conditional statements are a powerful concept for controlling program execution. But there is an even more powerful concept called a *loop* statement. Here is an example written in C\* featuring a `while` loop over a *local variable* `c`:
 
 ```
 int count(int n) {
@@ -227,9 +229,9 @@ int count(int n) {
 }
 ```
 
-Again, the code can be read like an English sentence: initialize `c` to `0` and then increment `c` by `1` as long as `c` is less than the value of the parameter `n`. When done, return the value of `c`.
+Again, the code can be read like an English sentence: first, initialize `c` to `0`, and then increment `c` by `1` as long as `c` is less than the value of the parameter `n`. When done, return the value of `c`.
 
-Let us analyze what this code really does. If the value of `n` is greater than or equal to `0`, the function returns, well, the value of `n`, after "counting" from `0` to `n`. However, if the value of `n` is less than `0`, the function returns `0`. In other words, `count(n)` is the *identity* function for all values of `n` greater than or equal to `0`. For all values of `n` less than `0`, count(n) is equal to `0`.
+Let us analyze what this code really does. The procedure returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for all values of `n` greater than or equal to `0`. Let us ignore values of `n` less than `0` for now.
 
 ```
 int factorial(int n) {
