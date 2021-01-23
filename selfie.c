@@ -1249,6 +1249,18 @@ uint64_t L1_CACHE_ENABLED = 0;
 // is no code modification during runtime)
 uint64_t L1_CACHE_COHERENCY = 1;
 
+// example configurations:
+// +-------------------+---------------+-----------------------------+------------+
+// |              name |    cache size |               associativity | block size |
+// +===================+===============+=============================+============+
+// |       CORE-V CVA6 | dcache: 32 KB |                   dcache: 8 |       16 B |
+// |                   | icache: 16 KB |                   icache: 4 |            |
+// +-------------------+---------------+-----------------------------+------------+
+// |     direct-mapped |         2^x B |                           1 |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+// | fully associative |         2^x B | (cache size) / (block size) |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+
 // L1-cache size in byte
 // assert: cache sizes are powers of 2
 uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
