@@ -20,7 +20,7 @@ class TestRiscvInstruction(unittest.TestCase):
         self.instructions = list(
             map(lambda f: f[:-2], list_files('tests/instructions', extension='.s')))
 
-    def execute_mock(self, command):
+    def execute_mock(self, command, timeout=60):
         if '.tmp.bin' in command:
             for instruction in self.instructions:
                 if instruction in command:
