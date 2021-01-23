@@ -1280,7 +1280,7 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
 uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
 
-// pointers to L1 VIPT n-way set-associative write-through caches
+// pointers to VIPT n-way set-associative write-through L1-caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
 
