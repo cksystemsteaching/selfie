@@ -1222,12 +1222,13 @@ void flush_all_caches();
 
 uint64_t  calculate_tag(uint64_t* cache, uint64_t* paddr);
 uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr);
-uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
 uint64_t  get_new_timestamp(uint64_t* cache);
-uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access);
-uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access);
+uint64_t* cache_lookup(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
+void      fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t* paddr, uint64_t is_access);
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
 
-void     fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
+uint64_t calculate_word_offset(uint64_t cache_block_size, uint64_t vaddr);
 void     flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
 void     store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr);
@@ -7493,13 +7494,16 @@ uint64_t get_new_timestamp(uint64_t* cache) {
   return timestamp;
 }
 
-uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t is_access) {
+uint64_t* cache_lookup(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
   uint64_t* set;
+  uint64_t tag;
   uint64_t i;
   uint64_t* cache_block;
   uint64_t* lru_block; // least-recently used block for replacement strategy
 
   set = calculate_set(cache, vaddr);
+
+  tag = calculate_tag(cache, paddr);
 
   i = 0;
 
@@ -7534,13 +7538,40 @@ uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t tag, uint64_t i
   return lru_block;
 }
 
-uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag, uint64_t is_access) {
+void fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
+  uint64_t words;
+  uint64_t* data;
+  uint64_t i;
+
+  words = cache_block_size / WORDSIZE;
+
+  data = get_data(cache_block);
+
+  i = 0;
+
+  while (i < words) {
+    *(data + i) = load_physical_memory(start_paddr + i);
+
+    i = i + 1;
+  }
+}
+
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t* paddr, uint64_t is_access) {
+  uint64_t cache_block_size;
+
   if (is_access) {
     set_cache_misses(cache, get_cache_misses(cache) + 1);
 
-    set_tag(cache_block, tag);
+    cache_block_size = get_cache_block_size(cache);
+
+    // make sure the entire cache block contains valid data
+    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
+
+    set_tag(cache_block, calculate_tag(cache, paddr));
 
     set_timestamp(cache_block, get_new_timestamp(cache));
+
+    set_valid_flag(cache_block, 1);
 
     return cache_block;
   } else
@@ -7548,7 +7579,6 @@ uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t tag
 }
 
 uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
-  uint64_t tag;
   uint64_t* cache_block;
 
   // vaddr
@@ -7566,33 +7596,13 @@ uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr,
   // | tag |                     |
   // +-----+---------------------+
 
-  tag = calculate_tag(cache, paddr);
-
-  cache_block = cache_lookup(cache, vaddr, tag, is_access);
+  cache_block = cache_lookup(cache, paddr, vaddr, is_access);
 
   if (get_valid_flag(cache_block))
     // cache hit
     return cache_block;
   else
-    return handle_cache_miss(cache, cache_block, tag, is_access);
-}
-
-void fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
-  uint64_t words;
-  uint64_t* data;
-  uint64_t i;
-
-  words = cache_block_size / WORDSIZE;
-
-  data = get_data(cache_block);
-
-  i = 0;
-
-  while (i < words) {
-    *(data + i) = load_physical_memory(start_paddr + i);
-
-    i = i + 1;
-  }
+    return handle_cache_miss(cache, cache_block, paddr, is_access);
 }
 
 void flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
@@ -7613,32 +7623,26 @@ void flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_
   }
 }
 
+uint64_t calculate_word_offset(uint64_t cache_block_size, uint64_t vaddr) {
+  uint64_t byte_offset;
+
+  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
+
+  return byte_offset / WORDSIZE;
+}
+
 void store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data) {
   uint64_t* cache_block;
   uint64_t* cache_block_data;
   uint64_t cache_block_size;
-  uint64_t byte_offset;
-  uint64_t word_offset;
-
-  cache_block_size = get_cache_block_size(cache);
 
   cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
 
   cache_block_data = get_data(cache_block);
 
-  if (get_valid_flag(cache_block) == 0) {
-    // make sure that the entire block contains valid data since we will only write one word
-    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
+  cache_block_size = get_cache_block_size(cache);
 
-    set_valid_flag(cache_block, 1);
-  }
-
-  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
-
-  // calculate word offset due to pointer arithmetic
-  word_offset = byte_offset / WORDSIZE;
-
-  *(cache_block_data + word_offset) = data;
+  *(cache_block_data + calculate_word_offset(cache_block_size, vaddr)) = data;
 
   flush_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
 }
@@ -7646,29 +7650,12 @@ void store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t d
 uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr) {
   uint64_t* cache_block;
   uint64_t* data;
-  uint64_t cache_block_size;
-  uint64_t byte_offset;
-  uint64_t word_offset;
-
-  cache_block_size = get_cache_block_size(cache);
 
   cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
 
-  // if we missed the cache, we receive a block whose data has been invalidated
-  if (get_valid_flag(cache_block) == 0) {
-    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
-
-    set_valid_flag(cache_block, 1);
-  }
-
   data = get_data(cache_block);
 
-  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
-
-  // calculate word offset due to pointer arithmetic
-  word_offset = byte_offset / WORDSIZE;
-
-  return *(data + word_offset);
+  return *(data + calculate_word_offset(get_cache_block_size(cache), vaddr));
 }
 
 uint64_t load_instruction_from_cache(uint64_t* paddr, uint64_t vaddr) {
