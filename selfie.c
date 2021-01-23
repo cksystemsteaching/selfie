@@ -1160,7 +1160,7 @@ uint64_t debug_switch = 0;
 // | 1 | cache size       | cache size in bytes
 // | 2 | associativity    | cache associativity
 // | 3 | cache-block size | cache-block size in bytes
-// | 4 | cache sets       | number of sets in the cache
+// | 4 | cache set size   | size of sets in the cache
 // | 5 | cache hits       | counter for cache hits
 // | 6 | cache misses     | counter for cache misses
 // | 7 | cache timer      | counter for LRU replacement strategy
@@ -1276,6 +1276,7 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 // L1 cache-block size
 // assert: cache-block sizes are powers of 2
 // assert: L1_xCACHE_BLOCK_SIZE >= WORDSIZE
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY >= L1_xCACHE_BLOCK_SIZE
 uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
 uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
 
