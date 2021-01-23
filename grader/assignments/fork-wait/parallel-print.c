@@ -59,7 +59,7 @@ void parallel_print(uint64_t depth) {
 
     write(1, sorted_numbers + process_identity, 2);
   } else {
-    // save process id for a specifc depth
+    // save process id for a specific depth
     *(pids + depth) = fork();
 
     // parallel_print here is called 2 times
