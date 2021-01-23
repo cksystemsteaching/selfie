@@ -229,9 +229,19 @@ int count(int n) {
 }
 ```
 
-Again, the code can be read like an English sentence: first, initialize `c` to `0`, and then increment `c` by `1` as long as `c` is less than the value of the parameter `n`. When done, return the value of `c`.
+Again, the code can be read like an English sentence: first, initialize `c` to `0`, and then increment `c` by `1` as long as `c` is less than the value of the parameter `n`. When done, return the value of `c`. This code is our first example of a program that makes a computer do work that takes more or less time depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps.
 
-Let us analyze what this code really does. The procedure returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for all values of `n` greater than or equal to `0`. Let us ignore values of `n` less than `0` for now.
+Interestingly, the elements of C\* you have seen so far are enough to do anything any other programming language can do. In other words, if you take a program written in any other programming language, we can always rewrite it into a program written in C\* that computes exactly the same as the original. It may be cumbersome to do that but it is always possible. Hard to believe but true!
+
+Let us analyze what `count` really does. The procedure effectively returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for all values of `n` greater than or equal to `0`. Let us ignore values of `n` less than `0` for now. In other words, we could also implement `count` as follows:
+
+```
+int count(int n) {
+  return n;
+}
+```
+
+So, what is the difference between the two versions of `count`? Well, in terms of functionality there is no difference as long as we ignore values of `n` less than `0`. However, there is a significant difference in *performance* or *algorithmic complexity*. The first version of `count` with the `while` loop can actually become quite slow for large values of `n` whereas the second version always takes the same amount of time independently of the value of `n`. We say that the first version runs in *linear time* in `n`, since it takes as many "steps" to complete as the value of `n`, while the second version runs in *constant time*. While avoiding linear time here is easy using the second version, it may be more difficult to do so in other circumstances. We revisit that issue whenever appropriate.
 
 ```
 int factorial(int n) {
