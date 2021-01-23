@@ -1279,7 +1279,7 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
 uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
 
-// pointers to L1 caches
+// pointers to L1 VIPT n-way set-associative write-through caches
 uint64_t* L1_ICACHE;
 uint64_t* L1_DCACHE;
 
@@ -7672,14 +7672,12 @@ uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr) {
 
 uint64_t load_instruction_from_cache(uint64_t* paddr, uint64_t vaddr) {
   // assert: is_valid_virtual_address(vaddr) == 1
-  // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_from_cache(L1_ICACHE, paddr, vaddr);
 }
 
 uint64_t load_data_from_cache(uint64_t* paddr, uint64_t vaddr) {
   // assert: is_valid_virtual_address(vaddr) == 1
-  // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_from_cache(L1_DCACHE, paddr, vaddr);
 }
@@ -7688,7 +7686,6 @@ void store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data) {
   uint64_t* cache_block;
 
   // assert: is_valid_virtual_address(vaddr) == 1
-  // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_in_cache(L1_DCACHE, paddr, vaddr, data);
 
