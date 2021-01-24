@@ -1151,6 +1151,144 @@ uint64_t debug_switch = 0;
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+// cache struct
+// +---+------------------+
+// | 0 | cache memory     | pointer to actual cache consisting of pointers to cache blocks
+// | 1 | cache size       | cache size in bytes
+// | 2 | associativity    | cache associativity
+// | 3 | cache-block size | cache-block size in bytes
+// | 4 | cache set size   | size of sets in the cache
+// | 5 | cache hits       | counter for cache hits
+// | 6 | cache misses     | counter for cache misses
+// | 7 | cache timer      | counter for LRU replacement strategy
+// +---+------------------+
+
+uint64_t* allocate_cache() {
+  return smalloc(1 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
+}
+
+uint64_t* get_cache_memory(uint64_t* cache)     { return (uint64_t*) *cache; }
+uint64_t  get_cache_size(uint64_t* cache)       { return             *(cache + 1); }
+uint64_t  get_associativity(uint64_t* cache)    { return             *(cache + 2); }
+uint64_t  get_cache_block_size(uint64_t* cache) { return             *(cache + 3); }
+uint64_t  get_cache_set_size(uint64_t* cache)   { return             *(cache + 4); }
+uint64_t  get_cache_hits(uint64_t* cache)       { return             *(cache + 5); }
+uint64_t  get_cache_misses(uint64_t* cache)     { return             *(cache + 6); }
+uint64_t  get_cache_timer(uint64_t* cache)      { return             *(cache + 7); }
+
+void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)        { *cache       = (uint64_t) cache_memory; }
+void set_cache_size(uint64_t* cache, uint64_t cache_size)             { *(cache + 1) = cache_size; }
+void set_associativity(uint64_t* cache, uint64_t associativity)       { *(cache + 2) = associativity; }
+void set_cache_block_size(uint64_t* cache, uint64_t cache_block_size) { *(cache + 3) = cache_block_size; }
+void set_cache_set_size(uint64_t* cache, uint64_t cache_set_size)     { *(cache + 4) = cache_set_size; }
+void set_cache_hits(uint64_t* cache, uint64_t cache_hits)             { *(cache + 5) = cache_hits; }
+void set_cache_misses(uint64_t* cache, uint64_t cache_misses)         { *(cache + 6) = cache_misses; }
+void set_cache_timer(uint64_t* cache, uint64_t cache_timer)           { *(cache + 7) = cache_timer; }
+
+// cache block struct:
+// +---+------------+
+// | 0 | valid flag | flags whether the block is valid or not
+// | 1 | tag        | unique identifier within a set
+// | 2 | data       | pointer to cache-block data
+// | 3 | timestamp  | timestamp for replacement strategy
+// +---+------------+
+
+uint64_t* allocate_cache_block() {
+  return zmalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+}
+
+uint64_t  get_valid_flag(uint64_t* cache_block) { return             *cache_block; }
+uint64_t  get_tag(uint64_t* cache_block)        { return             *(cache_block + 1); }
+uint64_t* get_data(uint64_t* cache_block)       { return (uint64_t*) *(cache_block + 2); }
+uint64_t  get_timestamp(uint64_t* cache_block)  { return             *(cache_block + 3); }
+
+void set_valid_flag(uint64_t* cache_block, uint64_t valid)     { *cache_block       = valid; }
+void set_tag(uint64_t* cache_block, uint64_t tag)              { *(cache_block + 1) = tag; }
+void set_data(uint64_t* cache_block, uint64_t* data)           { *(cache_block + 2) = (uint64_t) data; }
+void set_timestamp(uint64_t* cache_block, uint64_t timestamp)  { *(cache_block + 3) = timestamp; }
+
+void reset_cache_counters(uint64_t* cache);
+void reset_all_cache_counters();
+
+void init_cache_memory(uint64_t* cache);
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size);
+void init_all_caches();
+
+void flush_cache(uint64_t* cache);
+void flush_all_caches();
+
+uint64_t  calculate_tag(uint64_t* cache, uint64_t* paddr);
+uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr);
+uint64_t  get_new_timestamp(uint64_t* cache);
+uint64_t* cache_lookup(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
+void      fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t* paddr, uint64_t is_access);
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access);
+
+uint64_t calculate_word_offset(uint64_t cache_block_size, uint64_t vaddr);
+void     flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr);
+void     store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data);
+uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr);
+
+uint64_t load_instruction_from_cache(uint64_t* paddr, uint64_t vaddr);
+uint64_t load_data_from_cache(uint64_t* paddr, uint64_t vaddr);
+void     store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data);
+
+void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// indicates whether the machine has a cache or not
+uint64_t L1_CACHE_ENABLED = 0;
+
+// machine-enforced coherency for self-modifying code (selfie also
+// works if this is turned off since there is no code modification
+// during runtime and stores in the code segment are illegal)
+uint64_t L1_CACHE_COHERENCY = 0;
+
+// example configurations:
+// +-------------------+---------------+-----------------------------+------------+
+// |              name |    cache size |               associativity | block size |
+// +===================+===============+=============================+============+
+// |       CORE-V CVA6 | dcache: 32 KB |                   dcache: 8 |       16 B |
+// |                   | icache: 16 KB |                   icache: 4 |            |
+// +-------------------+---------------+-----------------------------+------------+
+// |     direct-mapped |         2^x B |                           1 |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+// | fully associative |         2^x B | (cache size) / (block size) |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+
+// L1-cache size in byte
+// assert: cache sizes are powers of 2
+uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
+uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
+
+// L1-cache associativity
+// assert: associativities are powers of 2
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY <= PAGESIZE
+// (this is necessary in order to prevent aliasing problems)
+uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
+uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
+
+// L1 cache-block size
+// assert: cache-block sizes are powers of 2
+// assert: L1_xCACHE_BLOCK_SIZE >= WORDSIZE
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY >= L1_xCACHE_BLOCK_SIZE
+uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
+uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
+
+// pointers to VIPT n-way set-associative write-through L1-caches
+uint64_t* L1_ICACHE;
+uint64_t* L1_DCACHE;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t L1_icache_coherency_invalidations = 0;
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -1566,9 +1704,10 @@ void print_register_value(uint64_t reg);
 void print_exception(uint64_t exception, uint64_t fault);
 void throw_exception(uint64_t exception, uint64_t fault);
 
-void fetch();
-void decode();
-void execute();
+uint64_t load_instruction_word(uint64_t* table, uint64_t vaddr);
+void     fetch();
+void     decode();
+void     execute();
 
 void execute_record();
 void execute_undo();
@@ -1795,6 +1934,9 @@ void reset_profiler() {
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
+
+  if (L1_CACHE_ENABLED)
+    reset_all_cache_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -7252,6 +7394,338 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+void reset_cache_counters(uint64_t* cache) {
+  set_cache_hits(cache, 0);
+  set_cache_misses(cache, 0);
+}
+
+void reset_all_cache_counters() {
+  reset_cache_counters(L1_DCACHE);
+  reset_cache_counters(L1_ICACHE);
+}
+
+void init_cache_memory(uint64_t* cache) {
+  uint64_t no_of_cache_blocks;
+  uint64_t* cache_memory;
+  uint64_t cache_block_size;
+  uint64_t* cache_block;
+  uint64_t i;
+
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
+  i = 0;
+
+  cache_memory = smalloc(no_of_cache_blocks * SIZEOFUINT64STAR);
+  set_cache_memory(cache, cache_memory);
+
+  cache_block_size = get_cache_block_size(cache);
+
+  while (i < no_of_cache_blocks) {
+    cache_block = allocate_cache_block();
+
+    // valid bit and timestamp are already initialized to 0
+
+    *(cache_memory + i) = (uint64_t) cache_block;
+
+    set_data(cache_block, smalloc(cache_block_size));
+
+    i = i + 1;
+  }
+}
+
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size) {
+  set_cache_size(cache, cache_size);
+  set_associativity(cache, associativity);
+  set_cache_block_size(cache, cache_block_size);
+  set_cache_set_size(cache, cache_size / associativity);
+  init_cache_memory(cache);
+  reset_cache_counters(cache);
+}
+
+void init_all_caches() {
+  L1_DCACHE = allocate_cache();
+  init_cache(L1_DCACHE, L1_DCACHE_SIZE, L1_DCACHE_ASSOCIATIVITY, L1_DCACHE_BLOCK_SIZE);
+
+  L1_ICACHE = allocate_cache();
+  init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_BLOCK_SIZE);
+}
+
+void flush_cache(uint64_t* cache) {
+  uint64_t* cache_memory;
+  uint64_t no_of_cache_blocks;
+  uint64_t i;
+  uint64_t* cache_block;
+
+  cache_memory = get_cache_memory(cache);
+
+  no_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
+
+  i = 0;
+
+  while (i < no_of_cache_blocks) {
+    cache_block = (uint64_t*) *(cache_memory + i);
+
+    set_valid_flag(cache_block, 0);
+    set_timestamp(cache_block, 0);
+
+    i = i + 1;
+  }
+
+  set_cache_timer(cache, 0);
+}
+
+void flush_all_caches() {
+  flush_cache(L1_DCACHE);
+  flush_cache(L1_ICACHE);
+}
+
+uint64_t calculate_tag(uint64_t* cache, uint64_t* paddr) {
+  return (uint64_t) paddr / get_cache_set_size(cache);
+}
+
+uint64_t* calculate_set(uint64_t* cache, uint64_t vaddr) {
+  uint64_t* set;
+  uint64_t index;
+  uint64_t most_significant_bits;
+  uint64_t cache_set_size;
+
+  cache_set_size = get_cache_set_size(cache);
+
+  most_significant_bits = (vaddr / cache_set_size) * cache_set_size;
+
+  index = (vaddr - most_significant_bits) / get_cache_block_size(cache);
+
+  set = get_cache_memory(cache) + index * get_associativity(cache);
+
+  return set;
+}
+
+uint64_t get_new_timestamp(uint64_t* cache) {
+  uint64_t timestamp;
+
+  timestamp = get_cache_timer(cache);
+  set_cache_timer(cache, timestamp + 1);
+
+  return timestamp;
+}
+
+uint64_t* cache_lookup(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
+  uint64_t* set;
+  uint64_t tag;
+  uint64_t i;
+  uint64_t* cache_block;
+  uint64_t* lru_block; // least-recently used block for replacement strategy
+
+  set = calculate_set(cache, vaddr);
+
+  tag = calculate_tag(cache, paddr);
+
+  i = 0;
+
+  lru_block = (uint64_t*) *set;
+
+  while (i < get_associativity(cache)) {
+    cache_block = (uint64_t*) *(set + i);
+
+    if (get_timestamp(cache_block) < get_timestamp(lru_block))
+      lru_block = cache_block;
+
+    if (get_valid_flag(cache_block))
+      if (get_tag(cache_block) == tag) {
+        // cache hit
+
+        if (is_access) {
+          set_cache_hits(cache, get_cache_hits(cache) + 1);
+
+          set_timestamp(cache_block, get_new_timestamp(cache));
+        }
+
+        return cache_block;
+      }
+
+    i = i + 1;
+  }
+
+  // cache miss
+
+  set_valid_flag(lru_block, 0);
+
+  return lru_block;
+}
+
+void fill_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
+  uint64_t words;
+  uint64_t* data;
+  uint64_t i;
+
+  words = cache_block_size / WORDSIZE;
+
+  data = get_data(cache_block);
+
+  i = 0;
+
+  while (i < words) {
+    *(data + i) = load_physical_memory(start_paddr + i);
+
+    i = i + 1;
+  }
+}
+
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t* paddr, uint64_t is_access) {
+  uint64_t cache_block_size;
+
+  if (is_access) {
+    set_cache_misses(cache, get_cache_misses(cache) + 1);
+
+    cache_block_size = get_cache_block_size(cache);
+
+    // make sure the entire cache block contains valid data
+    fill_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
+
+    set_tag(cache_block, calculate_tag(cache, paddr));
+
+    set_timestamp(cache_block, get_new_timestamp(cache));
+
+    set_valid_flag(cache_block, 1);
+
+    return cache_block;
+  } else
+    return (uint64_t*) 0;
+}
+
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t is_access) {
+  uint64_t* cache_block;
+
+  // vaddr
+  // +-----+-------+-------------+
+  // |     | index | byte offset |
+  // +-----+-------+-------------+
+  // 31    ^       ^             0
+  //       |       |
+  //       |  log(cache_block_size)
+  //       |
+  // log(cache_size / associativity)
+  //       |
+  // paddr v
+  // +-----+---------------------+
+  // | tag |                     |
+  // +-----+---------------------+
+
+  cache_block = cache_lookup(cache, paddr, vaddr, is_access);
+
+  if (get_valid_flag(cache_block))
+    // cache hit
+    return cache_block;
+  else
+    return handle_cache_miss(cache, cache_block, paddr, is_access);
+}
+
+void flush_cache_block(uint64_t* cache_block, uint64_t cache_block_size, uint64_t* start_paddr) {
+  uint64_t words;
+  uint64_t* data;
+  uint64_t i;
+
+  words = cache_block_size / WORDSIZE;
+
+  data = get_data(cache_block);
+
+  i = 0;
+
+  while (i < words) {
+    store_physical_memory(start_paddr + i, *(data + i));
+
+    i = i + 1;
+  }
+}
+
+uint64_t calculate_word_offset(uint64_t cache_block_size, uint64_t vaddr) {
+  uint64_t byte_offset;
+
+  byte_offset = vaddr - ((vaddr / cache_block_size) * cache_block_size);
+
+  return byte_offset / WORDSIZE;
+}
+
+void store_in_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr, uint64_t data) {
+  uint64_t* cache_block;
+  uint64_t* cache_block_data;
+  uint64_t cache_block_size;
+
+  cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
+
+  cache_block_data = get_data(cache_block);
+
+  cache_block_size = get_cache_block_size(cache);
+
+  *(cache_block_data + calculate_word_offset(cache_block_size, vaddr)) = data;
+
+  flush_cache_block(cache_block, cache_block_size, (uint64_t*) (((uint64_t) paddr / cache_block_size) * cache_block_size));
+}
+
+uint64_t load_from_cache(uint64_t* cache, uint64_t* paddr, uint64_t vaddr) {
+  uint64_t* cache_block;
+  uint64_t* data;
+
+  cache_block = retrieve_cache_block(cache, paddr, vaddr, 1);
+
+  data = get_data(cache_block);
+
+  return *(data + calculate_word_offset(get_cache_block_size(cache), vaddr));
+}
+
+uint64_t load_instruction_from_cache(uint64_t* paddr, uint64_t vaddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  return load_from_cache(L1_ICACHE, paddr, vaddr);
+}
+
+uint64_t load_data_from_cache(uint64_t* paddr, uint64_t vaddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  return load_from_cache(L1_DCACHE, paddr, vaddr);
+}
+
+void store_data_in_cache(uint64_t* paddr, uint64_t vaddr, uint64_t data) {
+  uint64_t* cache_block;
+
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  store_in_cache(L1_DCACHE, paddr, vaddr, data);
+
+  if (L1_CACHE_COHERENCY) {
+    cache_block = retrieve_cache_block(L1_ICACHE, paddr, vaddr, 0);
+
+    // mimicing x86 behaviour (see Intel 64 and IA-32 Architectures Software Developer's
+    // Manual Volume 3, Chapter 11.6 Self-Modifying Code: "A write to a memory location in
+    // a code segment that is currently cached in the processor causes the associated
+    // cache line (or lines) to be invalidated")
+    if (cache_block != (uint64_t*) 0) {
+      set_valid_flag(cache_block, 0);
+      set_timestamp(cache_block, 0);
+
+      L1_icache_coherency_invalidations = L1_icache_coherency_invalidations + 1;
+    }
+  }
+}
+
+void print_cache_statistic(uint64_t hits, uint64_t misses, char* cache_name) {
+  uint64_t accesses;
+
+  accesses = hits + misses;
+
+  printf2("%s: L1-%scache: ", selfie_name, cache_name);
+  printf2("hits: %u(%.2u%%)",
+    (char*) hits,
+    (char*) fixed_point_percentage(fixed_point_ratio(accesses, hits, 4), 4));
+  print(", ");
+  printf2("misses: %u(%.2u%%)",
+    (char*) misses,
+    (char*) fixed_point_percentage(fixed_point_ratio(accesses, misses, 4), 4));
+}
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -8334,10 +8808,13 @@ uint64_t do_load() {
   uint64_t vaddr;
   uint64_t next_rd_value;
   uint64_t a;
+  uint64_t* paddr;
 
   // load (double) word
 
   vaddr = *(registers + rs1) + imm;
+
+  paddr = tlb(pt, vaddr);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
@@ -8346,7 +8823,10 @@ uint64_t do_load() {
 
         if (rd != REG_ZR) {
           // semantics of load (double) word
-          next_rd_value = load_virtual_memory(pt, vaddr);
+          if (L1_CACHE_ENABLED)
+            next_rd_value = load_data_from_cache(paddr, vaddr);
+          else
+            next_rd_value = load_virtual_memory(pt, vaddr);
 
           if (*(registers + rd) != next_rd_value)
             *(registers + rd) = next_rd_value;
@@ -8424,10 +8904,13 @@ void record_store() {
 uint64_t do_store() {
   uint64_t vaddr;
   uint64_t a;
+  uint64_t* paddr;
 
   // store (double) word
 
   vaddr = *(registers + rs1) + imm;
+
+  paddr = tlb(pt, vaddr);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
@@ -8435,10 +8918,18 @@ uint64_t do_store() {
         update_register_counters();
 
         // semantics of store (double) word
-        if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
-          store_virtual_memory(pt, vaddr, *(registers + rs2));
-        else
+        if (load_virtual_memory(pt, vaddr) != *(registers + rs2)) {
+          if (L1_CACHE_ENABLED)
+            store_data_in_cache(paddr, vaddr, *(registers + rs2));
+          else
+            store_virtual_memory(pt, vaddr, *(registers + rs2));
+        } else {
           nopc_store = nopc_store + 1;
+
+          if (L1_CACHE_ENABLED)
+            // effective nop still changes the cache state
+            store_data_in_cache(paddr, vaddr, *(registers + rs2));
+        }
 
         // keep track of instruction address for profiling stores
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -8922,15 +9413,22 @@ void throw_exception(uint64_t exception, uint64_t fault) {
   }
 }
 
+uint64_t load_instruction_word(uint64_t* table, uint64_t vaddr) {
+  if (L1_CACHE_ENABLED)
+    return load_instruction_from_cache(tlb(table, vaddr), vaddr);
+  else
+    return load_virtual_memory(table, vaddr);
+}
+
 void fetch() {
   if (is_virtual_address_valid(pc, INSTRUCTIONSIZE)) {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
       if (pc % WORDSIZE == 0)
-        ir = get_low_instruction(load_virtual_memory(pt, pc));
+        ir = get_low_instruction(load_instruction_word(pt, pc));
       else
-        ir = get_high_instruction(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+        ir = get_high_instruction(load_instruction_word(pt, pc - INSTRUCTIONSIZE));
 
       return;
     } else
@@ -9393,6 +9891,16 @@ void print_profile(uint64_t* context) {
     print_register_memory_profile();
   }
 
+  if (L1_CACHE_ENABLED) {
+    print_cache_statistic(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "d");
+    println();
+
+    print_cache_statistic(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "i");
+    if (L1_CACHE_COHERENCY)
+      printf1(", coherency invalidations: %d", (char*) L1_icache_coherency_invalidations);
+    println();
+  }
+
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
@@ -9718,6 +10226,9 @@ void restore_context(uint64_t* context) {
   pc        = get_pc(context);
   registers = get_regs(context);
   pt        = get_pt(context);
+
+  if (L1_CACHE_ENABLED)
+    flush_all_caches();
 }
 
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
@@ -10362,6 +10873,9 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
+  if (L1_CACHE_ENABLED)
+    init_all_caches();
+
   reset_interpreter();
   reset_profiler();
   reset_microkernel();
@@ -10527,7 +11041,11 @@ uint64_t selfie(uint64_t extras) {
       else if (extras == 0) {
         if (string_compare(argument, "-m"))
           return selfie_run(MIPSTER);
-        else if (string_compare(argument, "-d"))
+        else if (string_compare(argument, "-L1")) {
+          L1_CACHE_ENABLED = 1;
+
+          return selfie_run(MIPSTER);
+        } else if (string_compare(argument, "-d"))
           return selfie_run(DIPSTER);
         else if (string_compare(argument, "-r"))
           return selfie_run(RIPSTER);
