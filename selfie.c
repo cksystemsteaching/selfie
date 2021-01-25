@@ -431,7 +431,6 @@ uint64_t MACRO_VAR_ARG   = 1;
 uint64_t MACRO_VAR_END   = 2;
 
 uint64_t* SYMBOLS; // strings representing symbols
-uint64_t* MACROS;  // strings representing macro names
 
 uint64_t MAX_IDENTIFIER_LENGTH = 64;  // maximum number of characters in an identifier
 uint64_t MAX_INTEGER_LENGTH    = 20;  // maximum number of characters in an unsigned integer
@@ -502,12 +501,6 @@ void init_scanner () {
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
   *(SYMBOLS + SYM_CONST)    = (uint64_t) "const";
 
-  MACROS = smalloc((MACRO_VAR_END + 1) * SIZEOFUINT64STAR);
-
-  *(MACROS + MACRO_VAR_START) = (uint64_t) "var_start";
-  *(MACROS + MACRO_VAR_ARG)   = (uint64_t) "var_arg";
-  *(MACROS + MACRO_VAR_END)   = (uint64_t) "var_end";
-
   character = CHAR_EOF;
   symbol    = SYM_EOF;
 }
@@ -546,7 +539,7 @@ uint64_t report_undefined_procedures();
 // |  0 | next    | pointer to next entry
 // |  1 | string  | identifier string, big integer as string, string literal
 // |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
+// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE, MACRO
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value, PROCEDURE: number of parameters: value < 0 -> procedure is variadic and absolute value is number of (static) parameters
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
@@ -582,6 +575,7 @@ uint64_t VARIABLE  = 1;
 uint64_t BIGINT    = 2;
 uint64_t STRING    = 3;
 uint64_t PROCEDURE = 4;
+uint64_t MACRO     = 5;
 
 // types
 uint64_t UINT64_T     = 1;
@@ -592,6 +586,7 @@ uint64_t VOID_T       = 3;
 uint64_t GLOBAL_TABLE  = 1;
 uint64_t LOCAL_TABLE   = 2;
 uint64_t LIBRARY_TABLE = 3;
+uint64_t MACRO_TABLE   = 4;
 
 // hash table size for global symbol table
 uint64_t HASH_TABLE_SIZE = 1024;
@@ -602,6 +597,8 @@ uint64_t HASH_TABLE_SIZE = 1024;
 uint64_t* global_symbol_table  = (uint64_t*) 0;
 uint64_t* local_symbol_table   = (uint64_t*) 0;
 uint64_t* library_symbol_table = (uint64_t*) 0;
+uint64_t* macro_symbol_table   = (uint64_t*) 0;
+
 uint64_t* current_function     = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
@@ -617,6 +614,8 @@ void reset_symbol_tables() {
   global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
+  macro_symbol_table   = (uint64_t*) 0;
+
   current_function     = (uint64_t*) 0;
 
   number_of_global_variables = 0;
@@ -674,8 +673,7 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 char* rewrite_non_zero_bootlevel_procedure(char* procedure);
 
-uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro);
-uint64_t compile_call_or_macro(char* procedure_or_macro);
+uint64_t compile_macro(uint64_t* entry);
 uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
@@ -2396,7 +2394,7 @@ char* string_copy(char* s) {
 
   i = 0;
 
-  while (i <= l) {
+  while (i < l) {
     store_character(t, i, load_character(s, i));
 
     i = i + 1;
@@ -3637,11 +3635,15 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
     set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
     local_symbol_table = new_entry;
-  } else {
-    // library procedures
+  } else if (which_table == LIBRARY_TABLE) {
     set_scope(new_entry, REG_GP);
     set_next_entry(new_entry, library_symbol_table);
     library_symbol_table = new_entry;
+  } else {
+    // macros
+    set_scope(new_entry, REG_GP);
+    set_next_entry(new_entry, macro_symbol_table);
+    macro_symbol_table = new_entry;
   }
 }
 
@@ -3672,10 +3674,14 @@ uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
   if (class == VARIABLE)
     // local variables override global variables
     entry = search_symbol_table(local_symbol_table, string, VARIABLE);
-  else if (class == PROCEDURE)
-    // library procedures override declared or defined procedures
-    entry = search_symbol_table(library_symbol_table, string, PROCEDURE);
-  else
+  else if (class == PROCEDURE) {
+    // macros override library procedures
+    entry = search_symbol_table(macro_symbol_table, string, MACRO);
+
+    if (entry == (uint64_t*) 0)
+      // library procedures override declared or defined procedures
+      entry = search_symbol_table(library_symbol_table, string, PROCEDURE);
+  } else
     entry = (uint64_t*) 0;
 
   if (entry == (uint64_t*) 0)
@@ -4236,22 +4242,19 @@ char* rewrite_non_zero_bootlevel_procedure(char* procedure) {
   return procedure;
 }
 
-uint64_t macro_string_match(char* procedure_or_macro, uint64_t macro) {
-  return string_compare(procedure_or_macro, (char*) *(MACROS + macro));
-}
+uint64_t compile_macro(uint64_t* entry) {
+  uint64_t macro;
 
-uint64_t compile_call_or_macro(char* procedure_or_macro) {
-  if (macro_string_match(procedure_or_macro, MACRO_VAR_START)) {
+  macro = get_value(entry);
+
+  if (macro == MACRO_VAR_START)
     non_zero_bootlevel_macro_var_start();
-    return VOID_T;
-  } else if (macro_string_match(procedure_or_macro, MACRO_VAR_ARG)) {
+  else if (macro == MACRO_VAR_ARG)
     non_zero_bootlevel_macro_var_arg();
-    return VOID_T;
-  } else if (macro_string_match(procedure_or_macro, MACRO_VAR_END)) {
+  else if (macro == MACRO_VAR_END)
     non_zero_bootlevel_macro_var_end();
-    return VOID_T;
-  } else
-    return compile_call(procedure_or_macro);
+
+  return get_type(entry);
 }
 
 uint64_t compile_call(char* procedure) {
@@ -4264,6 +4267,11 @@ uint64_t compile_call(char* procedure) {
   // assert: n = allocated_temporaries
 
   entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
+
+  if (entry != (uint64_t*) 0)
+    if (get_class(entry) == MACRO)
+      // the procedure was actually a macro
+      return compile_macro(entry);
 
   number_of_temporaries = allocated_temporaries;
 
@@ -4421,7 +4429,7 @@ uint64_t compile_factor() {
       get_symbol();
 
       // procedure call: identifier "(" ... ")"
-      type = compile_call_or_macro(variable_or_procedure_name);
+      type = compile_call(variable_or_procedure_name);
 
       talloc();
 
@@ -4996,7 +5004,7 @@ void compile_statement() {
     if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
-      compile_call_or_macro(variable_or_procedure_name);
+      compile_call(variable_or_procedure_name);
 
       // reset return register to initial return value
       // for missing return expressions
@@ -5733,6 +5741,11 @@ void selfie_compile() {
 
     emit_fetch_data_segment_size_interface();
   }
+
+  // declare macros in their table
+  create_symbol_table_entry(MACRO_TABLE, string_copy("var_start"), 0, MACRO, VOID_T, MACRO_VAR_START, 0);
+  create_symbol_table_entry(MACRO_TABLE, string_copy("var_arg"), 0, MACRO, UINT64_T, MACRO_VAR_ARG, 0);
+  create_symbol_table_entry(MACRO_TABLE, string_copy("var_end"), 0, MACRO, VOID_T, MACRO_VAR_END, 0);
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed word to obtain unique hash
