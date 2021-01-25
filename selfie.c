@@ -2175,7 +2175,7 @@ char* string_copy(char* s) {
 
   i = 0;
 
-  while (i <= l) {
+  while (i < l) {
     store_character(t, i, load_character(s, i));
 
     i = i + 1;
