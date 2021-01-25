@@ -278,17 +278,17 @@ void implement_symbolic_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  print("\n(push 1)\n");
+  dprintf(output_fd, "\n(push 1)\n");
 
-  printf("(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
+  dprintf(output_fd, "(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
     path_condition,
     smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
   print_code_context_for_instruction(pc);
 
   if (debug_merge)
-    printf(" -> exiting context: %lu", (char*) context);
+    dprintf(output_fd, " -> exiting context: %lu", context);
 
-  print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+  dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 }
 
 void implement_symbolic_read(uint64_t* context) {
@@ -335,7 +335,7 @@ void implement_symbolic_read(uint64_t* context) {
           size = 0;
 
           use_stdout();
-          printf("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+          printf("%s: reading into virtual address %lX failed because the address is unmapped\n", selfie_name, vbuffer);
           use_file();
         }
       else {
@@ -344,7 +344,7 @@ void implement_symbolic_read(uint64_t* context) {
         size = 0;
 
         use_stdout();
-        printf("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
+        printf("%s: reading into virtual address %lX failed because the address is in an invalid segment\n", selfie_name, vbuffer);
         use_file();
       }
     else {
@@ -353,7 +353,7 @@ void implement_symbolic_read(uint64_t* context) {
       size = 0;
 
       use_stdout();
-      printf("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
+      printf("%s: reading into virtual address %lX failed because the address is invalid\n", selfie_name, vbuffer);
       use_file();
     }
   }
@@ -407,7 +407,7 @@ void implement_symbolic_write(uint64_t* context) {
           size = 0;
 
           use_stdout();
-          printf("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+          printf("%s: writing from virtual address %lX failed because the address is unmapped\n", selfie_name, vbuffer);
           use_file();
         }
       else {
@@ -416,7 +416,7 @@ void implement_symbolic_write(uint64_t* context) {
         size = 0;
 
         use_stdout();
-        printf("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
+        printf("%s: writing from virtual address %lX failed because the address is in an invalid segment\n", selfie_name, vbuffer);
         use_file();
       }
     else {
@@ -425,7 +425,7 @@ void implement_symbolic_write(uint64_t* context) {
       size = 0;
 
       use_stdout();
-      printf("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
+      printf("%s: writing from virtual address %lX failed because the address is invalid\n", selfie_name, vbuffer);
       use_file();
     }
   }
@@ -469,7 +469,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
             *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         } else {
           use_stdout();
-          printf("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (char*) vaddr);
+          printf("%s: opening file failed because the file name address %lX is unmapped\n", selfie_name, vaddr);
           use_file();
 
           return 0;
@@ -492,14 +492,14 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
         i = i + 1;
       } else {
         use_stdout();
-        printf("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
+        printf("%s: opening file failed because the file name address %lX is in an invalid segment\n", selfie_name, vaddr);
         use_file();
 
         return 0;
       }
     else {
       use_stdout();
-      printf("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (char*) vaddr);
+      printf("%s: opening file failed because the file name address %lX is invalid\n", selfie_name, vaddr);
       use_file();
 
       return 0;
@@ -507,7 +507,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
   }
 
   use_stdout();
-  printf("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (char*) vaddr);
+  printf("%s: opening file failed because the file name is too long at address %lX\n", selfie_name, vaddr);
   use_file();
 
   return 0;
@@ -597,7 +597,7 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, u
   else if (sym) {
     set_word_symbolic(sword, smt_variable("m", SIZEOFUINT64 * 8));
 
-    printf("(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym);
+    dprintf(output_fd, "(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym);
     print_code_context_for_instruction(pc);
     println();
   } else
@@ -647,9 +647,9 @@ uint64_t is_symbolic_value(uint64_t* sword) {
 
 void print_symbolic_memory(uint64_t* sword) {
   if (is_symbolic_value(sword))
-    print(get_word_symbolic(sword));
+    dprintf(output_fd, get_word_symbolic(sword));
 
-  printf("[%lX]@%lX\n", (char*) get_word_value(sword), (char*) get_word_address(sword));
+  dprintf(output_fd, "[%lX]@%lX\n", get_word_value(sword), get_word_address(sword));
 }
 
 // -----------------------------------------------------------------
@@ -692,9 +692,9 @@ void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
 
     // checking for division by zero
     if (string_compare(operator, "bvudiv")) {
-      print("(push 1)\n");
-      printf("(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)));
-      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+      dprintf(output_fd, "(push 1)\n");
+      dprintf(output_fd, "(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)));
+      dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
     }
   }
 }
@@ -716,7 +716,7 @@ void constrain_load() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    printf("%s: symbolic memory address in ld instruction at %lX", selfie_name, (char*) pc);
+    dprintf(output_fd, "%s: symbolic memory address in ld instruction at %lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
     println();
 
@@ -774,7 +774,7 @@ void constrain_store() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    printf("%s: symbolic memory address in sd instruction at %lX", selfie_name, (char*) pc);
+    dprintf(output_fd, "%s: symbolic memory address in sd instruction at %lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
     println();
 
@@ -833,13 +833,13 @@ void constrain_beq() {
 
   bvar = smt_variable("b", 1);
 
-  printf("(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2));
+  dprintf(output_fd, "(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2));
   print_code_context_for_instruction(pc);
   println();
 
   pvar = smt_variable("p", 1);
 
-  printf("(assert (= %s %s)); path condition in ", pvar, path_condition);
+  dprintf(output_fd, "(assert (= %s %s)); path condition in ", pvar, path_condition);
   print_code_context_for_instruction(pc);
   println();
 
@@ -864,7 +864,7 @@ void constrain_jalr() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    printf("%s: symbolic memory address in jalr instruction at %lX", selfie_name, (char*) pc);
+    dprintf(output_fd, "%s: symbolic memory address in jalr instruction at %lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
     println();
 
@@ -1067,9 +1067,9 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_call_stack(context, call_stack_tree);
 
   if (debug_create)
-    printf("%s: parent context %p created child context %p\n", selfie_name,
-      (char*) parent,
-      (char*) used_contexts);
+    printf("%s: parent context %lX created child context %lX\n", selfie_name,
+      (uint64_t) parent,
+      (uint64_t) used_contexts);
 
   return context;
 }
@@ -1100,7 +1100,7 @@ uint64_t handle_symbolic_system_call(uint64_t* context) {
     return EXIT;
   } else {
     use_stdout();
-    printf("%s: unknown system call %lu\n", selfie_name, (char*) a7);
+    printf("%s: unknown system call %lu\n", selfie_name, a7);
     use_file();
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
@@ -1115,9 +1115,9 @@ uint64_t handle_symbolic_division_by_zero(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   // check if this division by zero is reachable
-  print("(push 1)\n");
-  printf("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
-  print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+  dprintf(output_fd, "(push 1)\n");
+  dprintf(output_fd, "(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
+  dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
   // we terminate the execution of the context, because if the location is not reachable,
   // the rest of the path is not reachable either, and otherwise
@@ -1131,10 +1131,10 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (get_beq_counter(context) >= beq_limit) {
-    printf("; timeout in ", path_condition);
+    dprintf(output_fd, "; timeout in ", path_condition);
     print_code_context_for_instruction(pc);
     if (debug_merge)
-      printf(" -> timed out context: %d", (char*) context);
+      dprintf(output_fd, " -> timed out context: %ld", context);
     println();
 
     return EXIT;
@@ -1142,10 +1142,10 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
 
   if (max_execution_depth) {
     if (get_execution_depth(context) >= max_execution_depth) {
-      printf("; timeout in ", path_condition);
+      dprintf(output_fd, "; timeout in ", path_condition);
       print_code_context_for_instruction(pc);
       if (debug_merge)
-        printf(" -> timed out context: %d", (char*) context);
+        dprintf(output_fd, " -> timed out context: %ld", context);
       println();
 
       return EXIT;
@@ -1169,9 +1169,9 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return handle_symbolic_timer(context);
   else if (exception == EXCEPTION_INVALIDADDRESS) {
     // check if this invalid memory access is reachable
-    print("(push 1)\n");
-    printf("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
-    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+    dprintf(output_fd, "(push 1)\n");
+    dprintf(output_fd, "(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+    dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
@@ -1181,9 +1181,9 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return EXIT;
   } else if (exception == EXCEPTION_SEGMENTATIONFAULT) {
     // check if this memory access is reachable
-    print("(push 1)\n");
-    printf1("(assert %s); segmentation fault detected; check if this memory access is reachable", path_condition);
-    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+    dprintf(output_fd, "(push 1)\n");
+    dprintf(output_fd, "(assert %s); segmentation fault detected; check if this memory access is reachable", path_condition);
+    dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
@@ -1215,7 +1215,7 @@ char* bv_constant(uint64_t value) {
 
   string = string_alloc(5 + 20 + 4); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf(string, "(_ bv%lu 64)", (char*) value);
+  sprintf(string, "(_ bv%lu 64)", value);
 
   return string;
 }
@@ -1225,7 +1225,7 @@ char* bv_variable(uint64_t bits) {
 
   string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf(string, "(_ BitVec %lu)", (char*) bits);
+  sprintf(string, "(_ BitVec %lu)", bits);
 
   return string;
 }
@@ -1235,7 +1235,7 @@ char* bv_zero_extension(uint64_t bits) {
 
   string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf(string, "(_ zero_extend %lu)", (char*) (WORDSIZEINBITS - bits));
+  sprintf(string, "(_ zero_extend %lu)", WORDSIZEINBITS - bits);
 
   return string;
 }
@@ -1252,9 +1252,9 @@ char* smt_variable(char* prefix, uint64_t bits) {
 
   svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf(svar, "%s%lu", prefix, (char*) variable_version);
+  sprintf(svar, "%s%lu", prefix, variable_version);
 
-  printf("(declare-fun %s () (_ BitVec %lu)); variable for ", svar, (char*) bits);
+  dprintf(output_fd, "(declare-fun %s () (_ BitVec %lu)); variable for ", svar, bits);
   print_code_context_for_instruction(pc);
   println();
 
@@ -1324,11 +1324,11 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (merge_enabled == 0)
     return;
 
-  print("; merging two contexts at ");
+  dprintf(output_fd, "; merging two contexts at ");
   print_code_context_for_instruction(location);
 
   if (debug_merge)
-    printf(" -> active context: %lu, mergeable context: %lu", (char*) active_context, (char*) mergeable_context);
+    dprintf(output_fd, " -> active context: %lu, mergeable context: %lu", active_context, mergeable_context);
 
   println();
 
@@ -1835,17 +1835,17 @@ void monster(uint64_t* to_context) {
   if (debug_merge)
     from_context = (uint64_t*) 0;
 
-  printf("; %s\n\n", SELFIE_URL);
+  dprintf(output_fd, "; %s\n\n", SELFIE_URL);
 
-  printf("; SMT-LIB formulae generated by %s for\n", selfie_name);
-  printf("; RISC-V code obtained from %s with\n", binary_name);
-  if (max_execution_depth) printf("; %lu", (char*) max_execution_depth); else print("; unbounded");
-  printf(" execution depth, branching limit of %lu, and merging", (char*) beq_limit);
-  if (merge_enabled) print(" enabled\n\n"); else print(" disabled\n\n");
+  dprintf(output_fd, "; SMT-LIB formulae generated by %s for\n", selfie_name);
+  dprintf(output_fd, "; RISC-V code obtained from %s with\n", binary_name);
+  if (max_execution_depth) dprintf(output_fd, "; %lu", max_execution_depth); else dprintf(output_fd, "; unbounded");
+  dprintf(output_fd, " execution depth, branching limit of %lu, and merging", beq_limit);
+  if (merge_enabled) dprintf(output_fd, " enabled\n\n"); else dprintf(output_fd, " disabled\n\n");
 
-  print("(set-option :produce-models true)\n");
-  print("(set-option :incremental true)\n");
-  print("(set-logic QF_BV)\n\n");
+  dprintf(output_fd, "(set-option :produce-models true)\n");
+  dprintf(output_fd, "(set-option :incremental true)\n");
+  dprintf(output_fd, "(set-logic QF_BV)\n\n");
 
   timeout = 1;
 
@@ -1853,7 +1853,7 @@ void monster(uint64_t* to_context) {
 
     if (debug_merge)
       if (from_context != (uint64_t*) 0)
-        printf("; switching from context %lu to context %lu\n",
+        dprintf(output_fd, "; switching from context %lu to context %lu\n",
           (char*) from_context, (char*) to_context);
 
     from_context = mipster_symbolic_switch(to_context, timeout);
@@ -1882,13 +1882,13 @@ void monster(uint64_t* to_context) {
         if (to_context)
           timeout = 1;
         else {
-          print("\n(exit)");
+          dprintf(output_fd, "\n(exit)");
 
           output_name = (char*) 0;
           output_fd   = 1;
 
-          printf("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
-            (char*) number_of_written_characters,
+          printf("%s: %ld characters of SMT-LIB formulae written into %s\n", selfie_name,
+            number_of_written_characters,
             smt_name);
 
           return;
@@ -1976,7 +1976,7 @@ uint64_t selfie_run_symbolically() {
 
       printf("%s: monster symbolically executing %s with %luMB physical memory\n", selfie_name,
         binary_name,
-        (char*) (total_page_frame_memory / MEGABYTE));
+        total_page_frame_memory / MEGABYTE);
 
       use_file();
 
@@ -1995,7 +1995,7 @@ uint64_t selfie_run_symbolically() {
       run = 0;
 
       printf("%s: %lu characters of SMT-LIB formulae written into %s\n", selfie_name,
-        (char*) number_of_written_characters,
+        number_of_written_characters,
         smt_name);
 
       return EXITCODE_NOERROR;
