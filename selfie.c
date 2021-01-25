@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
+Copyright (c) 2015-2021, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
 
@@ -1002,14 +1002,12 @@ void emit_data_segment();
 uint64_t* allocate_elf_header();
 
 uint64_t* encode_elf_header();
-void      encode_elf_program_header(uint64_t* program_header);
 
-void encode_code_header(uint64_t* header);
-void decode_code_header(uint64_t* header);
-void encode_data_header(uint64_t* header);
-void decode_data_header(uint64_t* header);
+uint64_t get_elf_program_header_offset(uint64_t ph_index);
+void     encode_elf_program_header(uint64_t* header, uint64_t ph_index);
+void     decode_elf_program_header(uint64_t* header, uint64_t ph_index);
 
-uint64_t  validate_elf_header(uint64_t* header);
+uint64_t validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
 
@@ -1057,7 +1055,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 2; // number of program header entries (code and data segment)
+uint64_t e_phnum = 1; // number of program header entries (code and data segment; TODO: extend to 2)
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -1224,7 +1222,7 @@ uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 uint64_t get_page_of_virtual_address(uint64_t vaddr);
 uint64_t get_virtual_address_of_page_start(uint64_t page);
 
-uint64_t is_aligned_virtual_address(uint64_t vaddr, uint64_t alignment);
+uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment);
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr);
 
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
@@ -2175,9 +2173,18 @@ void init_system() {
     exit(EXITCODE_SYSTEMERROR);
 
   if (SIZEOFUINT64INBITS != 64) {
-    if (SIZEOFUINT64INBITS == 32)
+    if (SIZEOFUINT64INBITS == 32) {
       IS64BITSYSTEM = 0;
-    else
+
+      // configuring ELF32 file header
+
+      EI_CLASS = 1; // file class is 1 (ELFCLASS32)
+
+      e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
+
+      e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
+      e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+    } else
       // selfie only supports 32-bit and 64-bit systems
       exit(EXITCODE_SYSTEMERROR);
   }
@@ -5576,15 +5583,16 @@ void emit_bootstrapping() {
   uint64_t saved_code_size;
   uint64_t* entry;
 
+  // code segment starts at PK_CODE_START
+  code_start = PK_CODE_START;
+
   // code size must be word-aligned
   if (code_size % WORDSIZE != 0)
     emit_nop();
 
-  // code segment starts at PK_CODE_START
-  code_start = PK_CODE_START;
-
   // start of data segment must be page-aligned for ELF program header
-  data_start = round_up(code_start + code_size, p_align);
+  // TODO: data_start = round_up(code_start + code_size, p_align);
+  data_start = code_start + code_size;
 
   // calculate global pointer value
   gp_value = data_start + data_size;
@@ -6589,13 +6597,6 @@ uint64_t* encode_elf_header() {
                   + left_shift(e_shnum, 32)
                   + left_shift(e_shstrndx, 48);
   } else {
-    EI_CLASS = 1; // file class is 1 (ELFCLASS32)
-
-    e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
-
-    e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
-    e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
-
     // RISC-U ELF32 file header
     *(header + 0)  = EI_MAG0
                    + left_shift(EI_MAG1, 8)
@@ -6618,13 +6619,13 @@ uint64_t* encode_elf_header() {
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
   }
 
-  p_flags  = 1; // code segment attributes are X
+  p_flags  = 7; // code segment attributes are RWE (TODO: should be 5 for RE)
   p_offset = ELF_HEADER_SIZE; // must match binary format
   p_vaddr  = code_start;
-  p_filesz = code_size;
-  p_memsz  = code_size;
+  p_filesz = code_size + data_size; // TODO: should be code_size
+  p_memsz  = code_size + data_size; // TODO: should be code_size
 
-  encode_code_header(header);
+  encode_elf_program_header(header, 0);
 
   p_flags  = 6; // data segment attributes are RW
   p_offset = ELF_HEADER_SIZE + code_size; // must match binary format
@@ -6632,82 +6633,72 @@ uint64_t* encode_elf_header() {
   p_filesz = data_size;
   p_memsz  = data_size;
 
-  encode_data_header(header);
+  // TODO: currently ignored because e_phnum == 1
+  encode_elf_program_header(header, 1);
 
   return header;
 }
 
-void encode_elf_program_header(uint64_t* program_header) {
+uint64_t get_elf_program_header_offset(uint64_t ph_index) {
+  return (e_ehsize + e_phentsize * ph_index) / SIZEOFUINT64;
+}
+
+void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
+  uint64_t ph_offset;
+
+  ph_offset = get_elf_program_header_offset(ph_index);
+
   if (IS64BITSYSTEM) {
     // RISC-U ELF64 program header
-    *(program_header + 0) = p_type + left_shift(p_flags, 32);
-    *(program_header + 1) = p_offset;
-    *(program_header + 2) = p_vaddr;
-    *(program_header + 3) = p_paddr;
-    *(program_header + 4) = p_filesz;
-    *(program_header + 5) = p_memsz;
-    *(program_header + 6) = p_align;
+    *(header + ph_offset + 0) = p_type + left_shift(p_flags, 32);
+    *(header + ph_offset + 1) = p_offset;
+    *(header + ph_offset + 2) = p_vaddr;
+    *(header + ph_offset + 3) = p_paddr;
+    *(header + ph_offset + 4) = p_filesz;
+    *(header + ph_offset + 5) = p_memsz;
+    *(header + ph_offset + 6) = p_align;
   } else {
     // RISC-U ELF32 program header
-    *(program_header + 0) = p_type;
-    *(program_header + 1) = p_offset;
-    *(program_header + 2) = p_vaddr;
-    *(program_header + 3) = p_paddr;
-    *(program_header + 4) = p_filesz;
-    *(program_header + 5) = p_memsz;
-    *(program_header + 6) = p_flags;
-    *(program_header + 7) = p_align;
+    *(header + ph_offset + 0) = p_type;
+    *(header + ph_offset + 1) = p_offset;
+    *(header + ph_offset + 2) = p_vaddr;
+    *(header + ph_offset + 3) = p_paddr;
+    *(header + ph_offset + 4) = p_filesz;
+    *(header + ph_offset + 5) = p_memsz;
+    *(header + ph_offset + 6) = p_flags;
+    *(header + ph_offset + 7) = p_align;
   }
 }
 
-void encode_code_header(uint64_t* header) {
-  if (IS64BITSYSTEM)
-    encode_elf_program_header(header + 8);
-  else
-    encode_elf_program_header(header + 13);
-}
-
-void decode_code_header(uint64_t* header) {
-  if (IS64BITSYSTEM)
-    p_filesz = *(header + 8 + 4);
-  else
-    p_filesz = *(header + 13 + 4);
-}
-
-void encode_data_header(uint64_t* header) {
-  if (IS64BITSYSTEM)
-    encode_elf_program_header(header + 15);
-  else
-    encode_elf_program_header(header + 21);
-}
-
-void decode_data_header(uint64_t* header) {
-  if (IS64BITSYSTEM)
-    p_filesz = *(header + 15 + 4);
-  else
-    p_filesz = *(header + 21 + 4);
+void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
+  p_filesz = *(header + get_elf_program_header_offset(ph_index) + 4);
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
+  uint64_t binary_size;
   uint64_t* valid_header;
-  uint64_t  i;
+  uint64_t i;
 
   // must match binary bootstrapping
   code_start = PK_CODE_START;
 
-  decode_code_header(header);
+  decode_elf_program_header(header, 0);
 
-  code_size = p_filesz;
+  // TODO: code_size = p_filesz;
+  binary_size = p_filesz;
+
+  decode_elf_program_header(header, 1);
+
+  data_size = p_filesz;
+
+  code_size = binary_size - data_size;
+
+  // must match binary bootstrapping
+  // TODO: data_start = round_up(code_start + code_size, p_align);
+  data_start = code_start + code_size;
 
   if (code_size > MAX_CODE_SIZE)
     return 0;
-
-  // must match binary bootstrapping
-  data_start = round_up(code_start + code_size, p_align);
-
-  decode_data_header(header);
-
-  data_size = p_filesz;
 
   if (data_size > MAX_DATA_SIZE)
     return 0;
@@ -7001,7 +6992,7 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7124,7 +7115,7 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_aligned_virtual_address(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7213,7 +7204,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_aligned_virtual_address(vaddr, WORDSIZE))
+    if (is_virtual_address_valid(vaddr, WORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
@@ -7387,7 +7378,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
   current_program_break = get_program_break(context);
 
-  if (is_aligned_virtual_address(new_program_break, WORDSIZE))
+  if (is_virtual_address_valid(new_program_break, WORDSIZE))
     if (is_address_between_stack_and_heap(context, new_program_break)) {
       if (debug_brk)
         printf("%s: setting program break to 0x%08lX\n", selfie_name, (uint64_t) new_program_break);
@@ -7665,7 +7656,7 @@ uint64_t get_virtual_address_of_page_start(uint64_t page) {
   return page * PAGESIZE;
 }
 
-uint64_t is_aligned_virtual_address(uint64_t vaddr, uint64_t alignment) {
+uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
   // is address virtual?
   if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - alignment)
     // is address aligned?
@@ -7676,7 +7667,7 @@ uint64_t is_aligned_virtual_address(uint64_t vaddr, uint64_t alignment) {
 }
 
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
-  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
 
   return is_page_mapped(table, get_page_of_virtual_address(vaddr));
 }
@@ -7686,7 +7677,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   uint64_t frame;
   uint64_t paddr;
 
-  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   page = get_page_of_virtual_address(vaddr);
@@ -7707,14 +7698,14 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 }
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
-  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
-  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
@@ -7985,7 +7976,7 @@ uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
-    // assert: is_aligned_virtual_address(address, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       return load_virtual_memory(get_pt(context), address);
     else
@@ -7996,7 +7987,7 @@ void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
   if (is_gc_library(context))
     *((uint64_t*) address) = value;
   else
-    // assert: is_aligned_virtual_address(address, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       store_virtual_memory(get_pt(context), address, value);
 }
@@ -8130,7 +8121,7 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
   // get word at address and check if it may be a pointer
   address = gc_load_memory(context, address);
 
-  if (is_aligned_virtual_address(address, WORDSIZE) == 0)
+  if (is_virtual_address_valid(address, WORDSIZE) == 0)
     return (uint64_t*) 0;
 
   // pointer below gced heap
@@ -8192,7 +8183,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
   // assert: segment is not heap
 
   while (segment_start <= segment_end - WORDSIZE) {
-    // assert: is_aligned_virtual_address(segment_start, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(segment_start, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
     mark_object(context, segment_start);
 
@@ -8624,7 +8615,7 @@ void print_load_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
         printf(",mem[0x%lX]=0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
@@ -8639,7 +8630,7 @@ void print_load_before() {
 }
 
 void print_load_after(uint64_t vaddr) {
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
@@ -8652,7 +8643,7 @@ void record_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(*(registers + rd));
 }
@@ -8666,7 +8657,7 @@ uint64_t do_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -8716,7 +8707,7 @@ void print_store_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(",");
       print_register_value(rs2);
@@ -8732,7 +8723,7 @@ void print_store_before() {
 }
 
 void print_store_after(uint64_t vaddr) {
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       printf(" -> mem[0x%lX]=", vaddr);
       print_register_value(rs2);
@@ -8744,7 +8735,7 @@ void record_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(load_virtual_memory(pt, vaddr));
 }
@@ -8757,7 +8748,7 @@ uint64_t do_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_aligned_virtual_address(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -9263,7 +9254,7 @@ void throw_exception(uint64_t exception, uint64_t fault) {
 }
 
 void fetch() {
-  if (is_aligned_virtual_address(pc, INSTRUCTIONSIZE)) {
+  if (is_virtual_address_valid(pc, INSTRUCTIONSIZE)) {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
@@ -10222,7 +10213,7 @@ void pfree(uint64_t* frame) {
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
-  // assert: is_aligned_virtual_address(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
 
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());

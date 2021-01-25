@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
+Copyright (c) 2015-2021, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is governed
 by a BSD license that can be found in the LICENSE file.
 
@@ -32,13 +32,13 @@ REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/master/'
 
 
 def check_self_compilation(mandatory=False) -> List[Check]:
-    return check_execution('make clean selfie', 'cc compiles selfie.c', mandatory=mandatory) + \
+    return check_execution('make self', 'selfie compiles selfie.c', mandatory=mandatory) + \
         check_compile_warnings(
             'selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
 def check_print_your_name() -> List[Check]:
-    return check_execution('./selfie -c selfie.c -m 128',
+    return check_execution('./selfie -c selfie.c -m 1',
                            'selfie prints first and second name',
                            success_criteria=lambda code, out: contains_name(out))
 
@@ -238,11 +238,16 @@ def check_fork_and_wait() -> List[Check]:
 
 
 def check_fork_wait_exit() -> List[Check]:
-    return check_compilable('sum-exit-code.c', 'fork and wait compiled') + \
-        check_mipster_execution('sum-exit-code.c', 28,
-                                'exit code is returned as status parameter from wait with MIPSTER') + \
+    return check_mipster_execution('sum-exit-code.c', 28,
+                                   'exit code is returned as status parameter from wait with MIPSTER') + \
         check_hypster_execution('sum-exit-code.c', 28,
-                                'exit code is returned as status parameter from wait with HYPSTER')
+                                'exit code is returned as status parameter from wait with HYPSTER') + \
+        check_mipster_execution('unmapped-page-wait.c', 42,
+                                'wait system call maps page to unmapped virtual address') + \
+        check_mipster_execution('invalid-address.c', 42,
+                                'wait system call correctly handles invalid addresses') + \
+        check_mipster_execution('null-ptr.c', 42,
+                                'wait system call returns PID when NULL is passed');
 
 
 def check_lock() -> List[Check]:
@@ -257,7 +262,10 @@ def check_lock() -> List[Check]:
                         success_criteria='Hello World!    ' * 8) + \
         check_execution('./selfie -c selfie.c -m 128 -c <assignment>print-with-lock.c -y 10',
                         '16 processes are printing in sequential order with the use of locks on HYPSTER',
-                        success_criteria='Hello World!    ' * 8)
+                        success_criteria='Hello World!    ' * 8) + \
+        check_execution('./selfie -c <assignment>release-after-exit.c -m 128',
+                        'Lock is granted to a process after a terminated process did not release its lock',
+                        success_criteria='Hello child!    Hello parent!   ', timeout=5)
 
 
 def check_threads() -> List[Check]:
@@ -272,7 +280,11 @@ def check_threads() -> List[Check]:
         check_mipster_execution('shared-heap.c', 42,
                                 'heap data is shared for threads on MIPSTER') + \
         check_hypster_execution('shared-heap.c', 42,
-                                'heap data is shared for threads on HYPSTER')
+                                'heap data is shared for threads on HYPSTER') + \
+        check_mipster_execution('sum-integer-dekker.c', 210,
+                                'two threads correctly calculate the sum from 1 to 20 with Dekker\'s algorithm on MIPSTER') +\
+        check_hypster_execution('sum-integer-dekker.c', 210,
+                                'two threads correctly calculate the sum from 1 to 20 with Dekker\'s algorithm on HYPSTER')
 
 
 def check_treiber_stack() -> List[Check]:
