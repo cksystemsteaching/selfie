@@ -2665,14 +2665,7 @@ uint64_t ratio_format_integer(uint64_t a) {
 }
 
 uint64_t ratio_format_fractional(uint64_t a) {
-  uint64_t b;
-
-  b = a % ten_to_the_power_of(2);
-
-  if (b < 10)
-    return b * 10;
-  else
-    return b;
+ return a % ten_to_the_power_of(2);
 }
 
 void put_character(uint64_t c) {
@@ -2812,26 +2805,25 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 
     return i + 1;
   } else if (load_character(s, i) == '.') {
+    // for integer specifiers, precision specifies the minimum number of digits to be written
     // for simplicity we support a single digit only
     p = load_character(s, i + 1) - '0';
 
     if (p < 10) {
       // the character at i + 1 is in fact a digit
       if (load_character(s, i + 2) == 'l') {
+        // using integer_buffer here is ok since we are not using print_integer
         if (load_character(s, i + 3) == 'u')
-          print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+          itoa((uint64_t) a, integer_buffer, 10, 0, 0);
         else if (load_character(s, i + 3) == 'd')
-          print_integer((uint64_t) a / ten_to_the_power_of(p));
+          itoa((uint64_t) a, integer_buffer, 10, 1, 0);
         else
           // precision only supported for %lu and %ld
           return i + 4;
 
         if (p > 0) {
-          // using integer_buffer here is ok since we are not using print_integer
-          itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
           p = p - string_length(integer_buffer);
 
-          put_character('.');
           while (p > 0) {
             put_character('0');
 
@@ -5809,7 +5801,7 @@ void selfie_compile() {
         line_number,
         number_of_comments);
 
-      printf("%s: with %lu(%lu.%lu%%) characters in %lu actual symbols\n", selfie_name,
+      printf("%s: with %lu(%lu.%.2lu%%) characters in %lu actual symbols\n", selfie_name,
         number_of_read_characters - number_of_ignored_characters,
         ratio_format_integer(percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters)),
         ratio_format_fractional(percentage_format(number_of_read_characters, number_of_read_characters - number_of_ignored_characters)),
@@ -6250,7 +6242,7 @@ uint64_t get_total_number_of_nops() {
 }
 
 void print_instruction_counter(uint64_t counter, uint64_t ins) {
-  printf("%s: %lu(%lu.%lu%%)",
+  printf("%s: %lu(%lu.%.2lu%%)",
     get_mnemonic(ins),
     counter,
     ratio_format_integer(percentage_format(get_total_number_of_instructions(), counter)),
@@ -6261,7 +6253,7 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
   print_instruction_counter(counter, ins);
 
   if (run)
-    printf("[%lu.%lu%%]",
+    printf("[%lu.%.2lu%%]",
       ratio_format_integer(percentage_format(counter, nops)),
       ratio_format_fractional(percentage_format(counter, nops)));
 }
@@ -8281,23 +8273,23 @@ void gc_collect(uint64_t* context) {
 
 void print_gc_profile(uint64_t* context) {
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: gc:      %lu.%luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_mallocated, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_mallocated, MEGABYTE)),
     gc_num_mallocated,
     gc_num_gced_mallocs,
     gc_num_reused_mallocs);
-  printf("%s: gc:      %lu.%luMB(%lu.%lu%%) reused in %lu reused mallocs\n", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) reused in %lu reused mallocs\n", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_reused, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_reused, MEGABYTE)),
     ratio_format_integer(percentage_format(gc_mem_mallocated, gc_mem_reused)),
     ratio_format_fractional(percentage_format(gc_mem_mallocated, gc_mem_reused)),
     gc_num_reused_mallocs);
-  printf("%s: gc:      %lu.%luMB collected in %lu gc runs\n", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB collected in %lu gc runs\n", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_collected, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_collected, MEGABYTE)),
     gc_num_collects);
-  printf("%s: gc:      %lu.%luMB(%lu.%lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_objects + gc_mem_metadata, MEGABYTE)),
     ratio_format_integer(percentage_format(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata)),
@@ -8305,13 +8297,13 @@ void print_gc_profile(uint64_t* context) {
     gc_num_gced_mallocs + gc_num_ungced_mallocs,
     gc_num_gced_mallocs,
     gc_num_ungced_mallocs);
-  printf("%s: gc:      %lu.%luMB(%lu.%lu%%) allocated in %lu gced mallocs\n", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu gced mallocs\n", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_objects, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_objects, MEGABYTE)),
     ratio_format_integer(percentage_format(gc_mem_mallocated, gc_mem_objects)),
     ratio_format_fractional(percentage_format(gc_mem_mallocated, gc_mem_objects)),
     gc_num_gced_mallocs);
-  printf("%s: gc:      %lu.%luMB(%lu.%lu%%) allocated in %lu ungced mallocs", selfie_name,
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu ungced mallocs", selfie_name,
     ratio_format_integer(ratio_format(gc_mem_metadata, MEGABYTE)),
     ratio_format_fractional(ratio_format(gc_mem_metadata, MEGABYTE)),
     ratio_format_integer(percentage_format(gc_mem_mallocated, gc_mem_metadata)),
@@ -9630,7 +9622,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%lu(%lu.%lu%%)@0x%lX", 
+    printf(",%lu(%lu.%.2lu%%)@0x%lX", 
       c,
       ratio_format_integer(percentage_format(total, c)),
       ratio_format_fractional(percentage_format(total, c)),
@@ -9657,7 +9649,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       // may happen in read-only memory segments
       writes = 1;
 
-    printf("%s: %s%s%lu,%lu,%lu[%lu.%lu]\n", selfie_name, message, padding,
+    printf("%s: %s%s%lu,%lu,%lu[%lu.%.2lu]\n", selfie_name, message, padding,
       reads + writes, reads, writes, 
       ratio_format_integer(ratio_format(reads, writes)),
       ratio_format_fractional(ratio_format(reads, writes)));
@@ -9727,22 +9719,22 @@ void print_register_memory_profile() {
 
 void print_profile(uint64_t* context) {
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: summary: %lu executed instructions [%lu.%lu%% nops]\n", selfie_name,
+  printf("%s: summary: %lu executed instructions [%lu.%.2lu%% nops]\n", selfie_name,
     get_total_number_of_instructions(),
     ratio_format_integer(percentage_format(get_total_number_of_instructions(), get_total_number_of_nops())),
     ratio_format_fractional(percentage_format(get_total_number_of_instructions(), get_total_number_of_nops())));
-  printf("%s:          %lu.%luMB allocated in %lu mallocs\n", selfie_name,
+  printf("%s:          %lu.%.2luMB allocated in %lu mallocs\n", selfie_name,
     ratio_format_integer(ratio_format(mc_brk, MEGABYTE)),
     ratio_format_fractional(ratio_format(mc_brk, MEGABYTE)),
     sc_brk);
-  printf("%s:          %lu.%luMB(%lu.%lu%% of %lu.%luMB) actually accessed\n", selfie_name,
+  printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %lu.%.2luMB) actually accessed\n", selfie_name,
     ratio_format_integer(ratio_format(mc_mapped_heap, MEGABYTE)),
     ratio_format_fractional(ratio_format(mc_mapped_heap, MEGABYTE)),
     ratio_format_integer(percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap)),
     ratio_format_fractional(percentage_format(round_up(mc_brk, PAGESIZE), mc_mapped_heap)),
     ratio_format_integer(ratio_format(mc_brk, MEGABYTE)),
     ratio_format_fractional(ratio_format(mc_brk, MEGABYTE)));
-  printf("%s:          %lu.%luMB(%lu.%lu%% of %luMB) mapped memory\n", selfie_name,
+  printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %luMB) mapped memory\n", selfie_name,
     ratio_format_integer(ratio_format(pused(), MEGABYTE)),
     ratio_format_fractional(ratio_format(pused(), MEGABYTE)),
     ratio_format_integer(percentage_format(total_page_frame_memory, pused())),
