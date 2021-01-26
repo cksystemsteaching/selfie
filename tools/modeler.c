@@ -191,91 +191,91 @@ uint64_t ecall_flow_nid = 10;
 void model_syscalls() {
   uint64_t kernel_mode_flow_nid;
 
-  dprintf(output_fd,  "%lu constd 2 %lu ; SYSCALL_EXIT\n", current_nid, SYSCALL_EXIT);
-  dprintf(output_fd,  "%lu constd 2 %lu ; SYSCALL_READ\n", (current_nid + 1), SYSCALL_READ);
-  dprintf(output_fd,  "%lu constd 2 %lu ; SYSCALL_WRITE\n", (current_nid + 2), SYSCALL_WRITE);
-  dprintf(output_fd,  "%lu constd 2 %lu ; SYSCALL_OPENAT\n", (current_nid + 3), SYSCALL_OPENAT);
-  dprintf(output_fd,  "%lu constd 2 %lu ; SYSCALL_BRK\n\n", (current_nid + 4), SYSCALL_BRK);
+  dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_EXIT\n", current_nid, SYSCALL_EXIT);
+  dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_READ\n", (current_nid + 1), SYSCALL_READ);
+  dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_WRITE\n", (current_nid + 2), SYSCALL_WRITE);
+  dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_OPENAT\n", (current_nid + 3), SYSCALL_OPENAT);
+  dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_BRK\n\n", (current_nid + 4), SYSCALL_BRK);
 
-  dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a7 == SYSCALL_EXIT\n",
+  dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_EXIT\n",
     (current_nid + 10),  // nid of this line
     (reg_nids + REG_A7), // nid of current value of $a7 register
     current_nid);        // nid of SYSCALL_EXIT
-  dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a7 == SYSCALL_READ\n",
+  dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_READ\n",
     (current_nid + 11),  // nid of this line
     (reg_nids + REG_A7), // nid of current value of $a7 register
     (current_nid + 1));  // nid of SYSCALL_READ
-  dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a7 == SYSCALL_WRITE\n",
+  dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_WRITE\n",
     (current_nid + 12),  // nid of this line
     (reg_nids + REG_A7), // nid of current value of $a7 register
     (current_nid + 2));  // nid of SYSCALL_WRITE
-  dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a7 == SYSCALL_OPENAT\n",
+  dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_OPENAT\n",
     (current_nid + 13),  // nid of this line
     (reg_nids + REG_A7), // nid of current value of $a7 register
     (current_nid + 3));  // nid of SYSCALL_OPENAT
-  dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a7 == SYSCALL_BRK\n\n",
+  dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_BRK\n\n",
     (current_nid + 14),  // nid of this line
     (reg_nids + REG_A7), // nid of current value of $a7 register
     (current_nid + 4));  // nid of SYSCALL_BRK
 
-  dprintf(output_fd,  "%lu not 1 %lu ; $a7 != SYSCALL_EXIT\n",
+  dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_EXIT\n",
     (current_nid + 20),  // nid of this line
     (current_nid + 10)); // nid of $a7 == SYSCALL_EXIT
-  dprintf(output_fd,  "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_READ\n",
+  dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_READ\n",
     (current_nid + 21),  // nid of this line
     (current_nid + 11),  // nid of $a7 == SYSCALL_READ
     (current_nid + 20)); // nid of preceding line
-  dprintf(output_fd,  "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_WRITE\n",
+  dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_WRITE\n",
     (current_nid + 22),  // nid of this line
     (current_nid + 12),  // nid of $a7 == SYSCALL_WRITE
     (current_nid + 21)); // nid of preceding line
-  dprintf(output_fd,  "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_OPENAT\n",
+  dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_OPENAT\n",
     (current_nid + 23),  // nid of this line
     (current_nid + 13),  // nid of $a7 == SYSCALL_OPENAT
     (current_nid + 22)); // nid of preceding line
-  dprintf(output_fd,  "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_BRK (invalid syscall id in $a7 detected)\n\n",
+  dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_BRK (invalid syscall id in $a7 detected)\n\n",
     (current_nid + 24),  // nid of this line
     (current_nid + 14),  // nid of $a7 == SYSCALL_BRK
     (current_nid + 23)); // nid of preceding line
 
   // if any ecall is active check if $a7 register contains invalid syscall id
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; ecall is active for invalid syscall id\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; ecall is active for invalid syscall id\n",
     (current_nid + 30),  // nid of this line
     ecall_flow_nid,      // nid of most recent update of ecall activation
     (current_nid + 24)); // nid of invalid syscall id check
-  dprintf(output_fd,  "%lu bad %lu ; ecall invalid syscall id\n\n",
+  dprintf(output_fd, "%lu bad %lu ; ecall invalid syscall id\n\n",
     (current_nid + 31),  // nid of this line
     (current_nid + 30)); // nid of preceding line
 
 
   // if exit ecall is active check if exit code in $a0 register is not 0
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; exit ecall is active\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active\n",
     (current_nid + 1000), // nid of this line
     ecall_flow_nid,       // nid of most recent update of ecall activation
     (current_nid + 10));  // nid of $a7 == SYSCALL_EXIT
   if (bad_exit_code == 0)
-    dprintf(output_fd,  "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
+    dprintf(output_fd, "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
       (current_nid + 1002), // nid of this line
       (reg_nids + REG_A0)); // nid of current value of $a0 register
   else {
-    dprintf(output_fd,  "%lu constd 2 %ld ; bad exit code\n",
+    dprintf(output_fd, "%lu constd 2 %ld ; bad exit code\n",
       (current_nid + 1001), // nid of this line
       bad_exit_code);       // value of bad exit code
-    dprintf(output_fd,  "%lu eq 1 %lu %lu ; $a0 == bad non-zero exit code\n",
+    dprintf(output_fd, "%lu eq 1 %lu %lu ; $a0 == bad non-zero exit code\n",
       (current_nid + 1002),  // nid of this line
       (reg_nids + REG_A0),   // nid of current value of $a0 register
       (current_nid + 1001)); // nid of value of bad non-zero exit code
   }
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; exit ecall is active with non-zero exit code\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active with non-zero exit code\n",
     (current_nid + 1003),  // nid of this line
     (current_nid + 1000),  // nid of exit ecall is active
     (current_nid + 1002)); // nid of non-zero exit code
-  dprintf(output_fd,  "%lu bad %lu ; non-zero exit code\n",
+  dprintf(output_fd, "%lu bad %lu ; non-zero exit code\n",
     (current_nid + 1004),  // nid of this line
     (current_nid + 1003)); // nid of preceding line
 
   // if exit ecall is active stay in kernel mode indefinitely
-  dprintf(output_fd,  "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
+  dprintf(output_fd, "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
     (current_nid + 1050),  // nid of this line
     (current_nid + 10),    // nid of $a7 == SYSCALL_EXIT
     (current_nid + 1000)); // nid of exit ecall is active
@@ -284,13 +284,13 @@ void model_syscalls() {
 
 
   // read ecall
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; read ecall is active\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; read ecall is active\n",
     (current_nid + 1100), // nid of this line
     ecall_flow_nid,       // nid of most recent update of ecall activation
     (current_nid + 11));  // nid of $a7 == SYSCALL_READ
 
   // if read ecall is active record $a1 register for checking address validity
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 is start address of write buffer for checking address validity\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of write buffer for checking address validity\n",
     (current_nid + 1101),   // nid of this line
     (current_nid + 1100),   // nid of read ecall is active
     (reg_nids + REG_A1),    // nid of current value of $a1 register
@@ -300,28 +300,28 @@ void model_syscalls() {
 
   // if read ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
   // $a1 otherwise, as address for checking address validity
-  dprintf(output_fd,  "%lu dec 2 %lu ; $a2 - 1\n",
+  dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
     (current_nid + 1102), // nid of this line
     (reg_nids + REG_A2)); // nid of current value of $a2 register
-  dprintf(output_fd,  "%lu not 2 27 ; not 7\n",
+  dprintf(output_fd, "%lu not 2 27 ; not 7\n",
     (current_nid + 1103)); // nid of this line
-  dprintf(output_fd,  "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
+  dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
     (current_nid + 1104),  // nid of this line
     (current_nid + 1102),  // nid of $a2 - 1
     (current_nid + 1103)); // nid of not 7
-  dprintf(output_fd,  "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
+  dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
     (current_nid + 1105),  // nid of this line
     (reg_nids + REG_A1),   // nid of current value of $a1 register
     (current_nid + 1104)); // nid of (($a2 - 1) / 8) * 8
-  dprintf(output_fd,  "%lu ugt 1 %lu 20 ; $a2 > 0\n",
+  dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
     (current_nid + 1106), // nid of this line
     (reg_nids + REG_A2)); // nid of current value of $a2 register
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
     (current_nid + 1107), // nid of this line
     (current_nid + 1106), // nid of $a2 > 0
     (current_nid + 1105), // nid of $a1 + (($a2 - 1) / 8) * 8
     (reg_nids + REG_A1)); // nid of current value of $a1 register
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of write buffer for checking address validity\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of write buffer for checking address validity\n",
     (current_nid + 1108), // nid of this line
     (current_nid + 1100), // nid of read ecall is active
     (current_nid + 1107), // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
@@ -335,7 +335,7 @@ void model_syscalls() {
   // TODO: check file descriptor validity, return error codes
 
   // if read ecall is active go into kernel mode
-  dprintf(output_fd,  "%lu ite 1 %lu 11 %lu ; go into kernel mode if read ecall is active\n",
+  dprintf(output_fd, "%lu ite 1 %lu 11 %lu ; go into kernel mode if read ecall is active\n",
     (current_nid + 1150),  // nid of this line
     (current_nid + 1100),  // nid of read ecall is active
     kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
@@ -343,7 +343,7 @@ void model_syscalls() {
   kernel_mode_flow_nid = current_nid + 1150;
 
   // if read ecall is active set $a0 (number of read bytes) = 0 bytes
-  dprintf(output_fd,  "%lu ite 2 %lu 20 %lu ; set $a0 = 0 bytes if read ecall is active\n",
+  dprintf(output_fd, "%lu ite 2 %lu 20 %lu ; set $a0 = 0 bytes if read ecall is active\n",
     (current_nid + 1151),       // nid of this line
     (current_nid + 1100),       // nid of read ecall is active
     *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
@@ -351,101 +351,101 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1151;
 
   // determine number of bytes to read in next step
-  dprintf(output_fd,  "%lu sub 2 %lu %lu ; $a2 - $a0\n",
+  dprintf(output_fd, "%lu sub 2 %lu %lu ; $a2 - $a0\n",
     (current_nid + 1160), // nid of this line
     (reg_nids + REG_A2),  // nid of current value of $a2 register
     (reg_nids + REG_A0)); // nid of current value of $a0 register
-  dprintf(output_fd,  "%lu ugte 1 %lu 28 ; $a2 - $a0 >= 8 bytes\n",
+  dprintf(output_fd, "%lu ugte 1 %lu 28 ; $a2 - $a0 >= 8 bytes\n",
     (current_nid + 1161),  // nid of this line
     (current_nid + 1160)); // nid of $a2 - $a0
-  dprintf(output_fd,  "%lu ite 2 %lu 28 %lu ; read 8 bytes if $a2 - $a0 >= 8 bytes, or else $a2 - $a0 bytes\n",
+  dprintf(output_fd, "%lu ite 2 %lu 28 %lu ; read 8 bytes if $a2 - $a0 >= 8 bytes, or else $a2 - $a0 bytes\n",
     (current_nid + 1162),  // nid of this line
     (current_nid + 1161),  // nid of $a2 - $a0 >= 8 bytes
     (current_nid + 1160)); // nid of $a2 - $a0
 
   // compute unsigned-extended input
-  dprintf(output_fd,  "%lu eq 1 %lu 22 ; increment == 2\n",
+  dprintf(output_fd, "%lu eq 1 %lu 22 ; increment == 2\n",
     (current_nid + 1170),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 92 91 ; unsigned-extended 2-byte input if increment == 2, or else unsigned-extended 1-byte input\n",
+  dprintf(output_fd, "%lu ite 2 %lu 92 91 ; unsigned-extended 2-byte input if increment == 2, or else unsigned-extended 1-byte input\n",
     (current_nid + 1171),  // nid of this line
     (current_nid + 1170)); // nid of increment == 2
-  dprintf(output_fd,  "%lu eq 1 %lu 23 ; increment == 3\n",
+  dprintf(output_fd, "%lu eq 1 %lu 23 ; increment == 3\n",
     (current_nid + 1172),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 93 %lu ; unsigned-extended 3-byte input if increment == 3\n",
+  dprintf(output_fd, "%lu ite 2 %lu 93 %lu ; unsigned-extended 3-byte input if increment == 3\n",
     (current_nid + 1173),  // nid of this line
     (current_nid + 1172),  // nid of increment == 3
     (current_nid + 1171)); // nid of unsigned-extended 2-byte input
-  dprintf(output_fd,  "%lu eq 1 %lu 24 ; increment == 4\n",
+  dprintf(output_fd, "%lu eq 1 %lu 24 ; increment == 4\n",
     (current_nid + 1174),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 94 %lu ; unsigned-extended 4-byte input if increment == 4\n",
+  dprintf(output_fd, "%lu ite 2 %lu 94 %lu ; unsigned-extended 4-byte input if increment == 4\n",
     (current_nid + 1175),  // nid of this line
     (current_nid + 1174),  // nid of increment == 4
     (current_nid + 1173)); // nid of unsigned-extended 3-byte input
-  dprintf(output_fd,  "%lu eq 1 %lu 25 ; increment == 5\n",
+  dprintf(output_fd, "%lu eq 1 %lu 25 ; increment == 5\n",
     (current_nid + 1176),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 95 %lu ; unsigned-extended 5-byte input if increment == 5\n",
+  dprintf(output_fd, "%lu ite 2 %lu 95 %lu ; unsigned-extended 5-byte input if increment == 5\n",
     (current_nid + 1177),  // nid of this line
     (current_nid + 1176),  // nid of increment == 5
     (current_nid + 1175)); // nid of unsigned-extended 4-byte input
-  dprintf(output_fd,  "%lu eq 1 %lu 26 ; increment == 6\n",
+  dprintf(output_fd, "%lu eq 1 %lu 26 ; increment == 6\n",
     (current_nid + 1178),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 96 %lu ; unsigned-extended 6-byte input if increment == 6\n",
+  dprintf(output_fd, "%lu ite 2 %lu 96 %lu ; unsigned-extended 6-byte input if increment == 6\n",
     (current_nid + 1179),  // nid of this line
     (current_nid + 1178),  // nid of increment == 6
     (current_nid + 1177)); // nid of unsigned-extended 5-byte input
-  dprintf(output_fd,  "%lu eq 1 %lu 27 ; increment == 7\n",
+  dprintf(output_fd, "%lu eq 1 %lu 27 ; increment == 7\n",
     (current_nid + 1180),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 97 %lu ; unsigned-extended 7-byte input if increment == 7\n",
+  dprintf(output_fd, "%lu ite 2 %lu 97 %lu ; unsigned-extended 7-byte input if increment == 7\n",
     (current_nid + 1181),  // nid of this line
     (current_nid + 1180),  // nid of increment == 7
     (current_nid + 1179)); // nid of unsigned-extended 6-byte input
-  dprintf(output_fd,  "%lu eq 1 %lu 28 ; increment == 8\n",
+  dprintf(output_fd, "%lu eq 1 %lu 28 ; increment == 8\n",
     (current_nid + 1182),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu 98 %lu ; 8-byte input if increment == 8\n",
+  dprintf(output_fd, "%lu ite 2 %lu 98 %lu ; 8-byte input if increment == 8\n",
     (current_nid + 1183),  // nid of this line
     (current_nid + 1182),  // nid of increment == 8
     (current_nid + 1181)); // nid of unsigned-extended 7-byte input
 
   // write input to memory at address $a1 + $a0
-  dprintf(output_fd,  "%lu add 2 %lu %lu ; $a1 + $a0\n",
+  dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + $a0\n",
     (current_nid + 1184), // nid of this line
     (reg_nids + REG_A1),  // nid of current value of $a1 register
     (reg_nids + REG_A0)); // nid of current value of $a0 register
-  dprintf(output_fd,  "%lu write 3 %lu %lu %lu ; memory[$a1 + $a0] = input\n",
+  dprintf(output_fd, "%lu write 3 %lu %lu %lu ; memory[$a1 + $a0] = input\n",
     (current_nid + 1185),  // nid of this line
     memory_nid,            // nid of memory
     (current_nid + 1184),  // nid of $a1 + $a0
     (current_nid + 1183)); // nid of input
 
   // read ecall is in kernel mode and not done yet
-  dprintf(output_fd,  "%lu ult 1 %lu %lu ; $a0 < $a2\n",
+  dprintf(output_fd, "%lu ult 1 %lu %lu ; $a0 < $a2\n",
     (current_nid + 1190), // nid of this line
     (reg_nids + REG_A0),  // nid of current value of $a0 register
     (reg_nids + REG_A2)); // nid of current value of $a2 register
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; $a7 == SYSCALL_READ and $a0 < $a2\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; $a7 == SYSCALL_READ and $a0 < $a2\n",
     (current_nid + 1191),  // nid of this line
     (current_nid + 11),    // nid of $a7 == SYSCALL_READ
     (current_nid + 1190)); // nid of $a0 < $a2
-  dprintf(output_fd,  "%lu and 1 60 %lu ; read ecall is in kernel mode and not done yet\n",
+  dprintf(output_fd, "%lu and 1 60 %lu ; read ecall is in kernel mode and not done yet\n",
     (current_nid + 1192),  // nid of this line
     (current_nid + 1191)); // nid of $a7 == SYSCALL_READ and $a0 < $a2
 
   // if read ecall is in kernel mode and not done yet write input to memory at address $a1 + $a0
-  dprintf(output_fd,  "%lu ugt 1 %lu 20 ; increment > 0\n",
+  dprintf(output_fd, "%lu ugt 1 %lu 20 ; increment > 0\n",
     (current_nid + 1193),  // nid of this line
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; read ecall is in kernel mode and not done yet and increment > 0\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; read ecall is in kernel mode and not done yet and increment > 0\n",
     (current_nid + 1194),  // nid of this line
     (current_nid + 1192),  // nid of read ecall is in kernel mode and not done yet
     (current_nid + 1193)); // nid of increment > 0
-  dprintf(output_fd,  "%lu ite 3 %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
+  dprintf(output_fd, "%lu ite 3 %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
     (current_nid + 1195), // nid of this line
     (current_nid + 1194), // nid of read ecall is in kernel mode and not done yet and increment > 0
     (current_nid + 1185), // nid of memory[$a1 + $a0] = input
@@ -454,11 +454,11 @@ void model_syscalls() {
   memory_flow_nid = current_nid + 1195;
 
   // if read ecall is in kernel mode and not done yet increment number of bytes read
-  dprintf(output_fd,  "%lu add 2 %lu %lu ; $a0 + increment\n",
+  dprintf(output_fd, "%lu add 2 %lu %lu ; $a0 + increment\n",
     (current_nid + 1196),  // nid of this line
     (reg_nids + REG_A0),   // nid of current value of $a0 register
     (current_nid + 1162)); // nid of increment
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; set $a0 = $a0 + increment if read ecall is in kernel mode and not done yet\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = $a0 + increment if read ecall is in kernel mode and not done yet\n",
     (current_nid + 1197),       // nid of this line
     (current_nid + 1192),       // nid of read ecall is in kernel mode and not done yet
     (current_nid + 1196),       // nid of $a0 + increment
@@ -467,7 +467,7 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1197;
 
   // if read ecall is in kernel mode and not done yet stay in kernel mode
-  dprintf(output_fd,  "%lu ite 1 %lu 11 %lu ; stay in kernel mode if read ecall is in kernel mode and not done yet\n\n",
+  dprintf(output_fd, "%lu ite 1 %lu 11 %lu ; stay in kernel mode if read ecall is in kernel mode and not done yet\n\n",
     (current_nid + 1198),  // nid of this line
     (current_nid + 1192),  // nid of read ecall is in kernel mode and not done yet
     kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
@@ -476,13 +476,13 @@ void model_syscalls() {
 
 
   // write ecall
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; write ecall is active\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; write ecall is active\n",
     (current_nid + 1200), // nid of this line
     ecall_flow_nid,       // nid of most recent update of ecall activation
     (current_nid + 12));  // nid of $a7 == SYSCALL_WRITE
 
   // if write ecall is active record $a1 register for checking address validity
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 is start address of read buffer for checking address validity\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of read buffer for checking address validity\n",
     (current_nid + 1201),   // nid of this line
     (current_nid + 1200),   // nid of write ecall is active
     (reg_nids + REG_A1),    // nid of current value of $a1 register
@@ -492,28 +492,28 @@ void model_syscalls() {
 
   // if write ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
   // $a1 otherwise, as address for checking address validity
-  dprintf(output_fd,  "%lu dec 2 %lu ; $a2 - 1\n",
+  dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
     (current_nid + 1202), // nid of this line
     (reg_nids + REG_A2)); // nid of current value of $a2 register
-  dprintf(output_fd,  "%lu not 2 27 ; not 7\n",
+  dprintf(output_fd, "%lu not 2 27 ; not 7\n",
     (current_nid + 1203)); // nid of this line
-  dprintf(output_fd,  "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
+  dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
     (current_nid + 1204),  // nid of this line
     (current_nid + 1202),  // nid of $a2 - 1
     (current_nid + 1203)); // nid of not 7
-  dprintf(output_fd,  "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
+  dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
     (current_nid + 1205),  // nid of this line
     (reg_nids + REG_A1),   // nid of current value of $a1 register
     (current_nid + 1204)); // nid of (($a2 - 1) / 8) * 8
-  dprintf(output_fd,  "%lu ugt 1 %lu 20 ; $a2 > 0\n",
+  dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
     (current_nid + 1206), // nid of this line
     (reg_nids + REG_A2)); // nid of current value of $a2 register
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
     (current_nid + 1207), // nid of this line
     (current_nid + 1206), // nid of $a2 > 0
     (current_nid + 1205), // nid of $a1 + (($a2 - 1) / 8) * 8
     (reg_nids + REG_A1)); // nid of current value of $a1 register
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of read buffer for checking address validity\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of read buffer for checking address validity\n",
     (current_nid + 1208), // nid of this line
     (current_nid + 1200), // nid of write ecall is active
     (current_nid + 1207), // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
@@ -527,7 +527,7 @@ void model_syscalls() {
   // TODO: check file descriptor validity, return error codes
 
   // if write ecall is active set $a0 (written number of bytes) = $a2 (size)
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; set $a0 = $a2 if write ecall is active\n\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = $a2 if write ecall is active\n\n",
     (current_nid + 1250),       // nid of this line
     (current_nid + 1200),       // nid of write ecall is active
     (reg_nids + REG_A2),        // nid of current value of $a2 register
@@ -537,13 +537,13 @@ void model_syscalls() {
 
 
   // openat ecall
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; openat ecall is active\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; openat ecall is active\n",
     (current_nid + 1300), // nid of this line
     ecall_flow_nid,       // nid of most recent update of ecall activation
     (current_nid + 13));  // nid of $a7 == SYSCALL_OPENAT
 
   // if openat ecall is active record $a1 register for checking address validity
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; $a1 is start address of filename for checking address validity\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of filename for checking address validity\n",
     (current_nid + 1301),   // nid of this line
     (current_nid + 1300),   // nid of openat ecall is active
     (reg_nids + REG_A1),    // nid of current value of $a1 register
@@ -556,25 +556,25 @@ void model_syscalls() {
 
   // TODO: check address validity of whole filename, flags and mode arguments
 
-  dprintf(output_fd,  "%lu state 2 fd-bump\n", (current_nid + 1350));
-  dprintf(output_fd,  "%lu init 2 %lu 21 ; initial fd-bump is 1 (file descriptor bump pointer)\n",
+  dprintf(output_fd, "%lu state 2 fd-bump\n", (current_nid + 1350));
+  dprintf(output_fd, "%lu init 2 %lu 21 ; initial fd-bump is 1 (file descriptor bump pointer)\n",
     (current_nid + 1351),  // nid of this line
     (current_nid + 1350)); // nid of fd-bump
 
   // if openat ecall is active set $a0 (file descriptor) = fd-bump + 1 (next file descriptor)
-  dprintf(output_fd,  "%lu inc 2 %lu\n",
+  dprintf(output_fd, "%lu inc 2 %lu\n",
     (current_nid + 1352),  // nid of this line
     (current_nid + 1350)); // nid of fd-bump
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; fd-bump + 1 if openat ecall is active\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; fd-bump + 1 if openat ecall is active\n",
     (current_nid + 1353),  // nid of this line
     (current_nid + 1300),  // nid of openat ecall is active
     (current_nid + 1352),  // nid of fd-bump + 1
     (current_nid + 1350)); // nid of fd-bump
-  dprintf(output_fd,  "%lu next 2 %lu %lu ; increment fd-bump if openat ecall is active\n",
+  dprintf(output_fd, "%lu next 2 %lu %lu ; increment fd-bump if openat ecall is active\n",
     (current_nid + 1354),  // nid of this line
     (current_nid + 1350),  // nid of fd-bump
     (current_nid + 1353)); // nid of fd-bump + 1
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
     (current_nid + 1355),       // nid of this line
     (current_nid + 1300),       // nid of openat ecall is active
     (current_nid + 1352),       // nid of fd-bump + 1
@@ -584,63 +584,63 @@ void model_syscalls() {
 
 
   // is brk ecall is active?
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; brk ecall is active\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active\n",
     (current_nid + 1400), // nid of this line
     ecall_flow_nid,       // nid of most recent update of ecall activation
     (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
-  dprintf(output_fd,  "%lu state 2 brk\n", (current_nid + 1450));
-  dprintf(output_fd,  "%lu init 2 %lu 31 ; initial program break\n",
+  dprintf(output_fd, "%lu state 2 brk\n", (current_nid + 1450));
+  dprintf(output_fd, "%lu init 2 %lu 31 ; initial program break\n",
     (current_nid + 1451),  // nid of this line
     (current_nid + 1450)); // nid of brk
 
   // if brk ecall is active and $a0 is valid set brk = $a0
   // $a0 is valid if brk <= $a0 < $sp and $a0 is word-aligned
-  dprintf(output_fd,  "%lu ulte 1 %lu %lu ; brk <= $a0\n",
+  dprintf(output_fd, "%lu ulte 1 %lu %lu ; brk <= $a0\n",
     (current_nid + 1452), // nid of this line
     (current_nid + 1450), // nid of brk
     (reg_nids + REG_A0)); // nid of current value of $a0 register
-  dprintf(output_fd,  "%lu ult 1 %lu %lu ; $a0 < $sp\n",
+  dprintf(output_fd, "%lu ult 1 %lu %lu ; $a0 < $sp\n",
     (current_nid + 1453), // nid of this line
     (reg_nids + REG_A0),  // nid of current value of $a0 register
     (reg_nids + REG_SP)); // nid of current value of $sp register
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; brk <= $a0 < $sp\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; brk <= $a0 < $sp\n",
     (current_nid + 1454),  // nid of this line
     (current_nid + 1452),  // nid of brk <= $a0
     (current_nid + 1453)); // nid of $a0 < $sp
-  dprintf(output_fd,  "%lu and 2 %lu 27 ; reset all but 3 LSBs of $a0\n",
+  dprintf(output_fd, "%lu and 2 %lu 27 ; reset all but 3 LSBs of $a0\n",
     (current_nid + 1455), // nid of this line
     (reg_nids + REG_A0)); // nid of current value of $a0 register
-  dprintf(output_fd,  "%lu eq 1 %lu 20 ; 3 LSBs of $a0 == 0 ($a0 is word-aligned)\n",
+  dprintf(output_fd, "%lu eq 1 %lu 20 ; 3 LSBs of $a0 == 0 ($a0 is word-aligned)\n",
     (current_nid + 1456),  // nid of this line
     (current_nid + 1455)); // nid of 3 LSBs of current value of $a0 register
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; brk <= $a0 < $sp and $a0 is word-aligned ($a0 is valid)\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; brk <= $a0 < $sp and $a0 is word-aligned ($a0 is valid)\n",
     (current_nid + 1457),  // nid of this line
     (current_nid + 1454),  // nid of brk <= $a0 < $sp
     (current_nid + 1456)); // nid of $a0 is word-aligned
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; brk ecall is active and $a0 is valid\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active and $a0 is valid\n",
     (current_nid + 1458),  // nid of this line
     (current_nid + 1400),  // nid of brk ecall is active
     (current_nid + 1457)); // nid of $a0 is valid
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; brk = $a0 if brk ecall is active and $a0 is valid\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; brk = $a0 if brk ecall is active and $a0 is valid\n",
     (current_nid + 1459),  // nid of this line
     (current_nid + 1458),  // nid of brk ecall is active and $a0 is valid
     (reg_nids + REG_A0),   // nid of current value of $a0 register
     (current_nid + 1450)); // nid of brk
-  dprintf(output_fd,  "%lu next 2 %lu %lu ; set brk = $a0 if brk ecall is active and $a0 is valid\n",
+  dprintf(output_fd, "%lu next 2 %lu %lu ; set brk = $a0 if brk ecall is active and $a0 is valid\n",
     (current_nid + 1460),  // nid of this line
     (current_nid + 1450),  // nid of brk
     (current_nid + 1459)); // nid of preceding line
 
   // if brk ecall is active and $a0 is invalid set $a0 = brk
-  dprintf(output_fd,  "%lu not 1 %lu ; $a0 is invalid\n",
+  dprintf(output_fd, "%lu not 1 %lu ; $a0 is invalid\n",
     (current_nid + 1461),  // nid of this line
     (current_nid + 1457)); // nid of $a0 is valid
-  dprintf(output_fd,  "%lu and 1 %lu %lu ; brk ecall is active and $a0 is invalid\n",
+  dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active and $a0 is invalid\n",
     (current_nid + 1462),  // nid of this line
     (current_nid + 1400),  // nid of brk ecall is active
     (current_nid + 1461)); // nid of $a0 is invalid
-  dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
+  dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
     (current_nid + 1463),       // nid of this line
     (current_nid + 1462),       // nid of brk ecall is active and $a0 is invalid
     (current_nid + 1450),       // nid of brk
@@ -649,7 +649,7 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1463;
 
   if (check_block_access) {
-    dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
+    dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
       (current_nid + 1464),                 // nid of this line
       (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
       (current_nid + 1450),                 // nid of brk
@@ -657,7 +657,7 @@ void model_syscalls() {
 
     *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1464;
 
-    dprintf(output_fd,  "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
+    dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
       (current_nid + 1465),                 // nid of this line
       (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
       (reg_nids + REG_A0),                  // nid of current value of $a0 register
@@ -665,14 +665,14 @@ void model_syscalls() {
 
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1465;
 
-    dprintf(output_fd,  "%lu ite 2 %lu 30 %lu ; lower bound on $t1 = start of data segment if brk ecall is active and $a0 is invalid\n",
+    dprintf(output_fd, "%lu ite 2 %lu 30 %lu ; lower bound on $t1 = start of data segment if brk ecall is active and $a0 is invalid\n",
       (current_nid + 1466),                 // nid of this line
       (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
       *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
     *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1466;
 
-    dprintf(output_fd,  "%lu ite 2 %lu 50 %lu ; upper bound on $t1 = 4GB of memory addresses if brk ecall is active and $a0 is invalid\n",
+    dprintf(output_fd, "%lu ite 2 %lu 50 %lu ; upper bound on $t1 = 4GB of memory addresses if brk ecall is active and $a0 is invalid\n",
       (current_nid + 1467),                 // nid of this line
       (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
       *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
@@ -680,7 +680,7 @@ void model_syscalls() {
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1467;
   }
 
-  dprintf(output_fd,  "\n%lu next 1 60 %lu ; update kernel-mode flag\n",
+  dprintf(output_fd, "\n%lu next 1 60 %lu ; update kernel-mode flag\n",
     (current_nid + 1500),  // nid of this line
     kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
 }
@@ -751,7 +751,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   //report the error on the console
   output_fd = 1;
 
-  printf("%s: invalid instruction address %lX detected\n", selfie_name, to_address);
+  printf("%s: invalid instruction address 0x0x%lX detected\n", selfie_name, to_address);
 
   exit(EXITCODE_MODELINGERROR);
 }
@@ -784,7 +784,7 @@ void model_lui() {
   if (rd != REG_ZR) {
     reset_bounds();
 
-    dprintf(output_fd, "%lu constd 2 %ld ; %lX << 12\n", current_nid, left_shift(imm, 12), imm);
+    dprintf(output_fd, "%lu constd 2 %ld ; 0x0x%lX << 12\n", current_nid, left_shift(imm, 12), imm);
 
     // if this instruction is active set $rd = imm << 12
     dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
@@ -836,7 +836,7 @@ void model_addi() {
     if (imm == 0)
       result_nid = reg_nids + rs1;
     else {
-      dprintf(output_fd, "%lu constd 2 %ld ; %lX\n", current_nid, imm, imm);
+      dprintf(output_fd, "%lu constd 2 %ld ; 0x0x%lX\n", current_nid, imm, imm);
 
       if (rs1 == REG_ZR) {
         result_nid = current_nid;
@@ -1163,7 +1163,7 @@ uint64_t compute_address() {
   if (imm == 0)
     return reg_nids + rs1; // nid of current value of $rs1 register
   else {
-    dprintf(output_fd, "%lu constd 2 %ld ; %lX\n", current_nid, imm, imm);
+    dprintf(output_fd, "%lu constd 2 %ld ; 0x0x%lX\n", current_nid, imm, imm);
 
     // compute $rs1 + imm
     dprintf(output_fd, "%lu add 2 %lu %lu\n",
@@ -1354,7 +1354,7 @@ void model_beq() {
 void model_jal() {
   if (rd != REG_ZR) {
     // address of next instruction used here and in returning jalr instruction
-    dprintf(output_fd, "%lu constd 2 %lu ; %lX\n",
+    dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
       current_nid,             // nid of this line
       pc + INSTRUCTIONSIZE,  // address of next instruction
       pc + INSTRUCTIONSIZE); // address of next instruction
@@ -1399,7 +1399,7 @@ void model_jalr() {
   //report the error on the console
   output_fd = 1;
 
-  printf("%s: unsupported jalr at address %lX with estimated address %lX detected\n", selfie_name, pc, estimated_return);
+  printf("%s: unsupported jalr at address 0x%lX with estimated address 0x%lX detected\n", selfie_name, pc, estimated_return);
 
   exit(EXITCODE_MODELINGERROR);
 }
@@ -1585,21 +1585,21 @@ void modeler() {
   dprintf(output_fd, "; word-aligned end of code segment in memory\n\n");
 
   // start of data segment for checking address validity
-  dprintf(output_fd, "30 constd 2 %lu ; %lX\n\n", data_start, data_start);
+  dprintf(output_fd, "30 constd 2 %lu ; 0x%lX\n\n", data_start, data_start);
 
   dprintf(output_fd, "; word-aligned end of data segment in memory (initial program break)\n\n");
 
   // initial program break
-  dprintf(output_fd, "31 constd 2 %lu ; %lX\n\n", get_program_break(current_context), get_program_break(current_context));
+  dprintf(output_fd, "31 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context));
 
   dprintf(output_fd, "; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
   // value in register $sp from boot loader
-  dprintf(output_fd, "40 constd 2 %lu ; %lX\n\n", *(registers + REG_SP), *(registers + REG_SP));
+  dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP));
 
   dprintf(output_fd, "; 4GB of memory\n\n");
 
-  dprintf(output_fd, "50 constd 2 %lu ; %lX\n\n", (VIRTUALMEMORYSIZE * GIGABYTE), (VIRTUALMEMORYSIZE * GIGABYTE));
+  dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", (VIRTUALMEMORYSIZE * GIGABYTE), (VIRTUALMEMORYSIZE * GIGABYTE));
 
   dprintf(output_fd, "; kernel-mode flag\n\n");
 
@@ -1663,12 +1663,12 @@ void modeler() {
       *(reg_flow_nids + i) = reg_nids + i;
 
       if (i == LO_FLOW)
-        dprintf(output_fd, "\n%lu constd 2 %lu ; %lX\n",
+        dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX\n",
           *(reg_flow_nids + i),      // nid of this line
           code_start + code_size,  // end of code segment
           code_start + code_size); // end of code segment
       else if (i == UP_FLOW)
-        dprintf(output_fd, "\n%lu constd 2 %lu ; %lX\n",
+        dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX\n",
           *(reg_flow_nids + i), // nid of this line
           VIRTUALMEMORYSIZE * GIGABYTE,  // 4GB of memory addresses
           VIRTUALMEMORYSIZE * GIGABYTE); // 4GB of memory addresses
@@ -1778,7 +1778,7 @@ void modeler() {
     }
 
     // address in data segment or stack
-    dprintf(output_fd, "%lu constd 2 %lu ; %lX\n",
+    dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
       current_nid,     // nid of this line
       pc, pc); // address of current machine word
 
@@ -1794,7 +1794,7 @@ void modeler() {
       data_flow_nid = current_nid + 1;
     } else {
       // load non-zero machine word, use sign
-      dprintf(output_fd, "%lu constd 2 %ld ; %lX\n",
+      dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
         current_nid + 1,                   // nid of this line
         machine_word, machine_word); // value of machine word at current address
       dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
@@ -1902,7 +1902,7 @@ void modeler() {
 
       if (from_instruction == BEQ) {
         // is beq active and its condition true or false?
-        dprintf(output_fd, "%lu and 1 %lu %lu ; beq %lu[%lX]",
+        dprintf(output_fd, "%lu and 1 %lu %lu ; beq %lu[0x%lX]",
           current_nid,                         // nid of this line
           pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
           condition_nid,                       // nid of true or false beq condition
@@ -1918,7 +1918,7 @@ void modeler() {
 
         if (jalr_address != 0) {
           // is value of $ra register with LSB reset equal to address of this instruction?
-          dprintf(output_fd, "%lu not 2 21 ; jalr %lu[%lX]",
+          dprintf(output_fd, "%lu not 2 21 ; jalr %lu[0x%lX]",
             current_nid,                         // nid of this line
             jalr_address, jalr_address); // address of instruction proceeding here
           print_code_line_number_for_instruction(jalr_address, code_start);println();
@@ -1944,13 +1944,13 @@ void modeler() {
         } else {
           // no jalr returning from jal found
 
-          dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[%lX]", from_address, from_address);
+          dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[0x%lX]", from_address, from_address);
           print_code_line_number_for_instruction(from_address, code_start);println();
 
           // this instruction may stay deactivated if there is no more in-edges
         }
       } else if (from_instruction == ECALL) {
-        dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[%lX]",
+        dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[0x%lX]",
           current_nid,                         // nid of this line
           from_address, from_address); // address of instruction proceeding here
         print_code_line_number_for_instruction(from_address, code_start);println();
@@ -1979,7 +1979,7 @@ void modeler() {
         control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
       } else {
         if (from_instruction == JAL) dprintf(output_fd, "; jal "); else dprintf(output_fd, "; ");
-        dprintf(output_fd, "%lu[%lX]", from_address, from_address);
+        dprintf(output_fd, "%lu[0x%lX]", from_address, from_address);
         print_code_line_number_for_instruction(from_address, code_start);println();
 
         // activate this instruction if instruction proceeding here is active
@@ -1990,7 +1990,7 @@ void modeler() {
     }
 
     // update pc flag of current instruction
-    dprintf(output_fd, "%lu next 1 %lu %lu ; ->%lu[%lX]",
+    dprintf(output_fd, "%lu next 1 %lu %lu ; ->%lu[0x%lX]",
       current_nid,         // nid of this line
       pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
       control_flow_nid,    // nid of most recently processed in-edge
@@ -2008,7 +2008,7 @@ void modeler() {
       //report the error on the console
       output_fd = 1;
 
-      printf("%s: too many in-edges at instruction address %lX detected\n", selfie_name, pc);
+      printf("%s: too many in-edges at instruction address 0x%lX detected\n", selfie_name, pc);
 
       exit(EXITCODE_MODELINGERROR);
     }
