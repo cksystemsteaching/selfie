@@ -784,7 +784,7 @@ void model_lui() {
   if (rd != REG_ZR) {
     reset_bounds();
 
-    dprintf(output_fd, "%lu constd 2 %ld ; 0x0x%lX << 12\n", current_nid, left_shift(imm, 12), imm);
+    dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX << 12\n", current_nid, left_shift(imm, 12), imm);
 
     // if this instruction is active set $rd = imm << 12
     dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
@@ -1747,12 +1747,12 @@ void modeler() {
       // set pc here by initializing pc flag of instruction at address 0 to true
       dprintf(output_fd, "%lu init 1 %lu 11 ; initial program counter\n",
         current_nid + 1, // nid of this line
-        current_nid);      // nid of pc flag of current instruction
+        current_nid);    // nid of pc flag of current instruction
     else
       // initialize all other pc flags to false
       dprintf(output_fd, "%lu init 1 %lu 10\n",
         current_nid + 1, // nid of this line
-        current_nid);      // nid of pc flag of current instruction
+        current_nid);    // nid of pc flag of current instruction
 
     pc = pc + INSTRUCTIONSIZE;
   }
