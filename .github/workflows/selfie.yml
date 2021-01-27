@@ -52,15 +52,3 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  make-all-of-selfie-on-windows:
-    name: Make all of selfie on Windows
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout selfie
-      uses: actions/checkout@v2
-    - name: Make all
-      env:
-        CC: gcc
-      run: make -j -O all
-    # python3 does not work here
