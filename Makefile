@@ -148,7 +148,6 @@ gclibtest: selfie selfie.h examples/gc-test.c
 
 gcboehmtest: selfie selfie-gc.h tools/boehm-gc.c examples/boehm-gc-test.c
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
-	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc-test.c -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
 
 # Compile babysat.c with selfie.h as library into babysat executable
