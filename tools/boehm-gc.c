@@ -572,6 +572,9 @@ void gc_init_boehm(uint64_t* context) {
 }
 
 uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+  if (size == 0)
+    return allocate_memory_selfie(context, size); // delegate to selfie gc
+  
   if (size > GC_CHUNK_MAX_SMALL_OBJECT_SIZE)
     return allocate_memory_selfie(context, size); // delegate to selfie gc
 
