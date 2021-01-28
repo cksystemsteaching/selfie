@@ -32,6 +32,14 @@ RPERMISSIONS := +r,u+w
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
+selfie-gc.h: selfie.c
+	sed 's/gc_init(uint64_t\* context) {/gc_init_deleted(uint64_t\* context) {/' selfie.c > selfie.h
+	sed 's/allocate_memory(uint64_t\* context, uint64_t size) {/allocate_memory_deleted(uint64_t\* context, uint64_t size) {/' selfie.h > selfie.h1
+	sed 's/mark_object(uint64_t\* context, uint64_t address) {/mark_object_deleted(uint64_t\* context, uint64_t address) {/' selfie.h1 > selfie.h
+	sed 's/sweep(uint64_t\* context) {/sweep_deleted(uint64_t\* context) {/' selfie.h > selfie.h1
+	rm -f selfie.h
+	mv selfie.h1 selfie-gc.h
+
 # Consider these targets as targets, not files
 .PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
 
@@ -108,7 +116,7 @@ hyb: selfie selfie.m selfie.s
 
 # Self-compile with conservative garbage collector as library
 gclib: selfie selfie.h selfie.m selfie.s
-	./selfie -gc -c selfie.h tools/gc.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
+	./selfie -gc -c selfie.h tools/gc-lib.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
 	chmod $(XPERMISSIONS) selfie-gclib.m
 	chmod $(RPERMISSIONS) selfie-gclib.s
 	diff -q selfie.m selfie-gclib.m
@@ -116,15 +124,31 @@ gclib: selfie selfie.h selfie.m selfie.s
 
 # Self-compile with self-collecting garbage collectors
 giblib: selfie selfie.h selfie.m selfie.s
-	./selfie -gc -c selfie.h tools/gc.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
+	./selfie -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
 	chmod $(XPERMISSIONS) selfie-giblib.m
 	chmod $(RPERMISSIONS) selfie-giblib.s
 	diff -q selfie.m selfie-giblib.m
 	diff -q selfie.s selfie-giblib.s
 
+gcboehm: selfie selfie-gc.h
+	./selfie -c selfie-gc.h tools/boehm-gc.c -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+
+gcboehm-32: selfie-32 selfie-gc.h
+	./selfie-32 -c selfie-gc.h tools/boehm-gc.c -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+
+gcboehmlib: selfie selfie-gc.h selfie.m selfie.s
+	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -m 3 -c selfie.c -o selfie-boehm-gclib.m -s selfie-boehm-gclib.s
+	diff -q selfie.m selfie-boehm-gclib.m
+	diff -q selfie.s selfie-boehm-gclib.s
+
 # Test garbage collector as library
-gclibtest: selfie selfie.h examples/garbage_collector_test.c
-	./selfie -gc -c selfie.h examples/garbage_collector_test.c -m 1
+gclibtest: selfie selfie.h examples/gc-test.c
+	./selfie -gc -c selfie.h examples/gc-test.c -m 1
+
+gcboehmtest: selfie selfie-gc.h tools/boehm-gc.c examples/boehm-gc-test.c
+	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
 
 # Compile babysat.c with selfie.h as library into babysat executable
 babysat: tools/babysat.c selfie.h
@@ -273,7 +297,7 @@ clean:
 	rm -f *.s
 	rm -f *.smt
 	rm -f *.btor2
-	rm -f selfie selfie-32 selfie.h selfie.exe
+	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat monster modeler
 	rm -f examples/*.m
 	rm -f examples/*.s
