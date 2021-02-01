@@ -57,7 +57,9 @@ ssize_t kread(int fd, char* buf, size_t nbytes, FILEDESC* open_files, size_t num
     if (num_read > max_readable)
       num_read = max_readable;
 
-    memcpy(buf, desc->file->data, num_read);
+    const char* fileDataOffset = desc->file->data + desc->pos;
+
+    memcpy(buf, fileDataOffset, num_read);
     desc->pos += num_read;
 
     return num_read;
