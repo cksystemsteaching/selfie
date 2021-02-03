@@ -143,7 +143,7 @@ The third language is called EBNF which stands for *Extended Backus-Naur Form*. 
 
 In the following, we introduce a few code examples written in C\*, and then show you how some of that code translates to actual RISC-U assembly and even RISC-U binary code. We then show you how EBNF is used to define some of the C\* and RISC-U assembly syntax and finally the EBNF syntax itself.
 
-The following example is C\* code that implements a simple *numerical* function called `double` for calculating the doubled value of a given *whole number* or *integer* represented by the *formal parameter* `n`:
+The following example is C\* code that implements a simple *numerical* function in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
 
 ```
 int double(int n) {
@@ -151,9 +151,9 @@ int double(int n) {
 }
 ```
 
-As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: given an integer value for `n`, return the value of the *arithmetic expression* `n + n`. The line `return n + n;` is called a `return` *statement*. However, the difference between C and English is that C code is more succinct and, more importantly, its meaning is precisely defined, as opposed to the meaning of a sentence in English.
+As intended by the designers of the programming language C, and in fact many other programming languages including C\*, the code can be read like a sentence in English: *define* a procedure `double` with a formal parameter `n` as follows. Given an integer value for `n`, return the value to which the *arithmetic expression* `n + n` evaluates. The line `return n + n;` is called a `return` *statement*. However, the difference between C and English is that C code is more succinct and, more importantly, its meaning is precisely defined, as opposed to the meaning of a sentence in English.
 
-First of all, the code needs to be written according to strict syntactic rules. We need to say `return` exactly as is, also called a *keyword*, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by the *procedure* called `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` procedure you see here is not a mathematical function, it is code that instructs a machine to compute the doubled value of whole numbers within a given finite range.
+First of all, the code needs to be written according to strict syntactic rules. We need to say `int` and `return`, also called *keywords*, exactly as is, and even the parentheses, the braces, and the semicolon need to be where they are. But the code also contains information about how large the value of `n` as well as its doubled value as returned by `double` can ever be. This is done using the `int` keyword which specifies the *range* or *type* of the involved values. Nothing on a computer can be arbitrarily large! In other words, the `double` procedure you see here is not a mathematical function on arbitrarily large numerical values. It is code that instructs a machine to compute the doubled value of whole numbers within a given finite range. This is a big difference!
 
 When I started coding as teenager, I was confronted with lots of these numerical functions written in code. It took me a long time to understand why I had to study those, instead of writing code that makes my computer immediately do something more interesting like a game I can talk about with normal people like my parents. If you feel like that, bear with me. We will get there. The reason why we first look at numerical functions written in code is because such code has an immediate connection to something we all know and understand: elementary arithmetic! That helps understanding the true meaning of code early on.
 
@@ -203,7 +203,7 @@ int fancy(int n) {
 
 In C\* and many other programming languages, such arithmetic expressions are standard and widely used in practice. You may want to try a few others and see how selfie responds. Below we show you the exact rules, written in EBNF, for constructing arithmetic expressions.
 
-Let us now experiment with something that goes beyond arithmetic expressions. How about a procedure that returns the larger of two given values? Here is a procedure called `max` with two formal parameters `n` and `m`:
+Let us now experiment with something that goes beyond arithmetic expressions. How about a procedure that returns the larger of two given values? Here is a procedure called `max` that does exactly that:
 
 ```
 int max(int n, int m) {
@@ -214,7 +214,7 @@ int max(int n, int m) {
 }
 ```
 
-Again, the code can be read like a sentence in English: if the value of `n` is less than the value of `m`, return the value of `m`. Otherwise, just return the value of `n`. This is a *conditional* statement, which in C\* is called an `if-else` statement.
+Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional* statement, which in C\* is called an `if-else` statement.
 
 Conditional statements are a powerful concept for controlling program execution. But there is an even more powerful concept called a *loop* statement. Here is an example written in C\* featuring a `while` loop over a *variable* `c`:
 
@@ -231,7 +231,7 @@ int count(int n) {
 }
 ```
 
-Again, the code can be read like an English sentence: first, *declare* a variable `c` and then *initialize* its value to `0`. After that, if the value of `c` is less than the value of the parameter `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. In that case, return the value of `c`. This code is our first example of a program that makes a computer do work that takes more or less time depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
+Again, the code can be read like an English sentence: define a procedure `count` with a formal parameter `n` as follows. First, *declare* a variable `c` and then *initialize* the value of `c` to `0`. After that, given an integer value for `n`, if the value of `c` is less than the value of `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. When this happens, return the value of `c`. This code is our first example of a program that makes a computer do work that takes more or less time depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
 
 Interestingly, the elements of C\* you have seen so far are enough to do anything any other programming language can do. In other words, if you take a program written in any other programming language, we can always rewrite it into a program written in C\* that computes exactly the same as the original. It may be cumbersome to do that but it is always possible. Hard to believe but true!
 
@@ -265,7 +265,7 @@ int factorial(int n) {
 
 Remember, the factorial of a positive integer `n` is the product of all positive values less than or equal to `n`, that is, `factorial(n)` is equal to `n * (n - 1) * ... * 2 * 1`. For example, `factorial(4)` is equal to `4 * 3 * 2 * 1` which is obviously `24`. Also, `factorial(1)` and `factorial(0)` are both equal to `1`, the latter by convention.
 
-The above code reads in English as follows: declare a variable `f` and initialize its value to `1`. Then, if the value of `n` is greater than `1`, multiply the value of `f` with the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. In that case, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact, here just because of the special case that `1` is the multiplicative identity.
+The above code reads in English as follows: define a procedure `factorial` with a formal parameter `n` as follows. First, declare a variable `f` and then initialize the value of `f` to `1`. Then, given an integer value for `n`, if the value of `n` is greater than `1`, multiply the value of `f` with the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. When this happens, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact here, just because of the special case that `1` is the multiplicative identity.
 
 ```
 int factorial(int n) {
