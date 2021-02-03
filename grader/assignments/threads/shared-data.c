@@ -17,10 +17,10 @@ int main(int argc, char** argv) {
   if (tid)
     pthread_join(status);
   else {
-    global_variable = 42;
+    global_variable = 32;
 
-    pthread_exit(0);
+    pthread_exit(10);
   }
 
-  return global_variable;
+  return *status + global_variable;
 }
