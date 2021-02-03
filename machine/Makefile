@@ -7,7 +7,7 @@ OBJCOPY=$(PREFIX)objcopy
 QEMU=qemu-system-riscv64
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-mabi=lp64d -march=rv64imafdc -mcmodel=medany -ffreestanding -Iinclude -Wall -Wextra -MMD -MP
+CFLAGS=-mabi=lp64d -march=rv64imafdc -mcmodel=medany -ffreestanding -Iinclude -Wall -Wextra -MMD -MP -O3
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-nostdlib -lgcc -Wl,--build-id=none
 QEMUFLAGS=-M virt -m 128M -nographic -bios none
@@ -21,7 +21,7 @@ OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
 SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_package.c syscalls.c asm/crt.S diag.c sbi_ecall.c
-SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c
+SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c asm/mem.S
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
@@ -86,7 +86,7 @@ opensbi:
 
 .PHONY: debug
 debug:
-	$(eval CFLAGS += -g3 -DDEBUG)
+	$(eval CFLAGS += -O0 -g3 -DDEBUG)
 	@echo "Enabled debug macro"
 
 
