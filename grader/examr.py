@@ -163,7 +163,7 @@ def compute_similarity(message, strings, emails, old_strings, old_emails):
                     print(f'{emails[x]} ({students[emails[x]].firstname} {students[emails[x]].lastname})')
                     print(f'{all_emails[y]}', end='')
                     if y <= len(strings):
-                        print(f' ({students[emails[x]].firstname} {students[emails[x]].lastname})')
+                        print(f' ({students[emails[y]].firstname} {students[emails[y]].lastname})')
                     else:
                         print(" (old)")
                     print(f'<<<\n{strings[x]}\n---\n{all_strings[y]}\n>>>\n')
