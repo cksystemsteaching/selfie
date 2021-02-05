@@ -56,9 +56,11 @@ class Student:
 import csv
 
 def read_old_qas(responses_files):
-    emails    = []
-    questions = []
-    answers   = []
+    emails     = []
+    firstnames = []
+    lastnames  = []
+    questions  = []
+    answers    = []
 
     for responses_file in responses_files:
         with open(responses_file, mode='r') as csv_file:
@@ -71,7 +73,14 @@ def read_old_qas(responses_files):
                 questions.append(row['Ask Question'])
                 answers.append(row['Answer Question'])
 
-    return emails, questions, answers
+                if 'Firstname' in csv_reader.fieldnames and 'Lastname' in csv_reader.fieldnames:
+                    firstnames.append(row['Firstname'])
+                    lastnames.append(row['Lastname'])
+                else:
+                    firstnames.append("")
+                    lastnames.append("")
+
+    return emails, firstnames, lastnames, questions, answers
 
 def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
@@ -146,9 +155,8 @@ def write_results(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(students, emails, message, strings, old_strings, old_emails):
+def compute_similarity(students, emails, message, strings, old_strings, old_emails, old_firstnames, old_lastnames):
     all_strings = strings + old_strings
-    all_emails  = emails + old_emails
 
     vectors = get_vectors(all_strings)
 
@@ -163,11 +171,10 @@ def compute_similarity(students, emails, message, strings, old_strings, old_emai
                 if similarity[x][y] > 0.95:
                     print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:')
                     print(f'{emails[x]} ({students[emails[x]].firstname} {students[emails[x]].lastname})')
-                    print(f'{all_emails[y]}', end='')
                     if y <= len(strings):
-                        print(f' ({students[emails[y]].firstname} {students[emails[y]].lastname})')
+                        print(f'{emails[y]} ({students[emails[y]].firstname} {students[emails[y]].lastname})')
                     else:
-                        print(" (old)")
+                        print(f'{old_emails[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
                     print(f'<<<\n{strings[x]}\n---\n{all_strings[y]}\n>>>\n')
             elif x > y:
                 similarity[x][y] = similarity[y][x]
@@ -193,12 +200,12 @@ def assign_similarity(students, emails, old_emails, q_similarity, a_similarity):
             student.a_similarity /= len(all_emails) - 1
 
 def process_files(old_responses_files, responses_file, analysis_file):
-    old_emails, old_questions, old_answers = read_old_qas(old_responses_files)
+    old_emails, old_firstnames, old_lastnames, old_questions, old_answers = read_old_qas(old_responses_files)
 
     students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(responses_file)
 
-    q_similarity = compute_similarity(students, emails, "Question", questions, old_questions, old_emails)
-    a_similarity = compute_similarity(students, emails, "Answer", answers, old_answers, old_emails)
+    q_similarity = compute_similarity(students, emails, "Question", questions, old_questions, old_emails, old_firstnames, old_lastnames)
+    a_similarity = compute_similarity(students, emails, "Answer", answers, old_answers, old_emails, old_firstnames, old_lastnames)
 
     assign_similarity(students, emails, old_emails, q_similarity, a_similarity)
 
