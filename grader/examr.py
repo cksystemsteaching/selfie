@@ -71,6 +71,8 @@ def read_old_qas(responses_files):
                 questions.append(row['Ask Question'])
                 answers.append(row['Answer Question'])
 
+    return emails, questions, answers
+
 def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
 
@@ -144,7 +146,7 @@ def write_results(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(message, strings, emails, old_strings, old_emails):
+def compute_similarity(students, emails, message, strings, old_strings, old_emails):
     all_strings = strings + old_strings
     all_emails  = emails + old_emails
 
@@ -195,8 +197,8 @@ def process_files(old_responses_files, responses_file, analysis_file):
 
     students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(responses_file)
 
-    q_similarity = compute_similarity("Question", questions, emails, old_questions, old_emails)
-    a_similarity = compute_similarity("Answer", answers, emails, old_answers, old_emails)
+    q_similarity = compute_similarity(students, emails, "Question", questions, old_questions, old_emails)
+    a_similarity = compute_similarity(students, emails, "Answer", answers, old_answers, old_emails)
 
     assign_similarity(students, emails, old_emails, q_similarity, a_similarity)
 
