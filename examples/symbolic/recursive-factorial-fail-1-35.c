@@ -21,6 +21,8 @@ uint64_t main() {
 
   x = malloc(8);
 
+  *x = 0; // touch memory
+
   read(0, x, 1);
 
   *x = *x - 39;

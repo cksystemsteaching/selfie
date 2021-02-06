@@ -15,6 +15,8 @@ uint64_t main() {
   a = 31;
   x = malloc(8);
 
+  *x = 0; // touch memory
+
   read(0, x, 1);
 
   while (*x < 60) {

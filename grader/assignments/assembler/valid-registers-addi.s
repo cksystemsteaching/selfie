@@ -29,4 +29,4 @@ addi ra,ra,0
 addi sp,sp,0
 addi gp,gp,0
 addi tp,tp,0
-.quad 0x6F57206F6C6C6548
+.8byte 0x6F57206F6C6C6548
