@@ -1,0 +1,27 @@
+# Dockerfile for examr.py
+# Installs pip, numpy, sklearn, torch and textdistance from the distro repository
+# plus langid and laserembeddings using pip
+
+# Build using: `sudo docker build -t examr -f Dockerexamr .`
+# Run using: `sudo docker -it --rm -v $PWD:/examr/host examr`
+# which mounts the current directory into the container as `/examr/host`
+# The shell starts at `/examr`, where `examr.py` is located in
+
+FROM archlinux:latest
+
+WORKDIR /examr
+
+RUN \
+    pacman -Syu --noconfirm \
+        python-pip \
+        python-numpy \
+        python-scikit-learn \
+        python-pytorch \
+        python-textdistance && \
+    pip install langid laserembeddings && \
+    python -m laserembeddings download-models && \
+    pacman -Scc --noconfirm && \
+    curl -L https://github.com/cksystemsteaching/selfie/raw/master/grader/examr.py -O && \
+    chmod +x examr.py
+
+CMD [ "/bin/bash" ]
