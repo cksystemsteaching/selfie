@@ -1286,6 +1286,9 @@ void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
 void set_gc_enabled_gc(uint64_t* context);
 
+void gc_init_selfie(uint64_t* context);
+
+// Hook interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
 void gc_init(uint64_t* context);
 
 // this function performs first-fit retrieval of free memory in O(n) where n is memory size
@@ -1298,15 +1301,22 @@ void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
 
 void zero_object(uint64_t* context, uint64_t* metadata);
 
-uint64_t* allocate_memory(uint64_t* context, uint64_t size);
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size);
 uint64_t* reuse_memory(uint64_t* context, uint64_t size);
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
+
+// Hook interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
+uint64_t* allocate_memory(uint64_t* context, uint64_t size);
 
 // this function performs an O(n) list search where n is memory size
 // TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address);
+uint64_t* get_metadata_if_address_valid(uint64_t* context, uint64_t address);
 
+// Hook interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
 void mark_object(uint64_t* context, uint64_t address);
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address);
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
 
 // this function scans the heap from two roots (data segment and stack) in O(n^2)
@@ -1315,7 +1325,11 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 void mark(uint64_t* context);
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
+
+// Hook interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
 void sweep(uint64_t* context);
+
+void sweep_selfie(uint64_t* context);
 
 void gc_collect(uint64_t* context);
 
@@ -7514,7 +7528,7 @@ uint64_t is_gc_library(uint64_t* context) {
 
 uint64_t* allocate_metadata(uint64_t* context) {
   if (is_gc_library(context))
-    return allocate_memory(context, GC_METADATA_SIZE);
+    return allocate_new_memory(context, GC_METADATA_SIZE);
   else
     return smalloc(GC_METADATA_SIZE);
 }
@@ -7624,8 +7638,15 @@ void set_gc_enabled_gc(uint64_t* context) {
 }
 
 void gc_init(uint64_t* context) {
+  gc_init_selfie(context);
+}
+
+void gc_init_selfie(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
+
+  // Calculate metadata size using actual width of integers/pointers
+  GC_METADATA_SIZE =  SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
 
   set_data_and_heap_segments_gc(context);
 
@@ -7700,7 +7721,7 @@ void zero_object(uint64_t* context, uint64_t* metadata) {
   }
 }
 
-uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size) {
   uint64_t object;
   uint64_t new_program_break;
 
@@ -7744,7 +7765,11 @@ uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
   return (uint64_t*) 0;
 }
 
-uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+  return allocate_memory_selfie(context, size);
+}
+
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
   uint64_t* object;
   uint64_t* metadata;
 
@@ -7754,16 +7779,6 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   // this, we set these variables to 0.
   object   = (uint64_t*) 0;
   metadata = (uint64_t*) 0;
-
-  // garbage collect
-  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
-    gc_collect(context);
-
-    set_gcs_in_period_gc(context, 0);
-  } else
-    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
-
-  size = round_up(size, SIZEOFUINT64);
 
   gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
@@ -7779,7 +7794,7 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   }
 
   // allocate new object memory if there is no reusable memory
-  object = allocate_memory(context, size);
+  object = allocate_new_memory(context, size);
 
   if (object != (uint64_t*) 0) {
     // allocate metadata for managing object
@@ -7807,15 +7822,23 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   return object;
 }
 
-uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) {
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+  // garbage collect
+  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
+    gc_collect(context);
+
+     set_gcs_in_period_gc(context, 0);
+  } else
+    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
+
+   size = round_up(size, SIZEOFUINT64);
+
+   return allocate_memory(context, size);
+}
+
+uint64_t* get_metadata_if_address_valid(uint64_t* context, uint64_t address) {
   uint64_t* node;
   uint64_t  object;
-
-  // get word at address and check if it may be a pointer
-  address = gc_load_memory(context, address);
-
-  if (is_virtual_address_valid(address, WORDSIZE) == 0)
-    return (uint64_t*) 0;
 
   // pointer below gced heap
   if (address < get_heap_seg_start_gc(context))
@@ -7847,11 +7870,22 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
 }
 
 void mark_object(uint64_t* context, uint64_t address) {
+  uint64_t gc_address;
+
+  gc_address = gc_load_memory(context, address);
+
+  mark_object_selfie(context, gc_address);
+}
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t* metadata;
   uint64_t object_start;
   uint64_t object_end;
 
-  metadata = find_metadata_of_word_at_address(context, address);
+  if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
+    return;
+
+  metadata = get_metadata_if_address_valid(context, gc_address);
 
   if (metadata == (uint64_t*) 0)
     // address is not a pointer to a gced object
@@ -7875,10 +7909,14 @@ void mark_object(uint64_t* context, uint64_t address) {
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap
 
-  while (segment_start <= segment_end - WORDSIZE) {
+  // prevent wrap-around overflows by subtracting SIZEOFUINT64 from index
+  segment_start = segment_start - SIZEOFUINT64;
+  
+  while (segment_start < segment_end - WORDSIZE) {
     // assert: is_virtual_address_valid(segment_start, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
-    mark_object(context, segment_start);
+    // reverse index offset before marking address
+    mark_object(context, (segment_start + SIZEOFUINT64));
 
     segment_start = segment_start + SIZEOFUINT64;
   }
@@ -7918,6 +7956,10 @@ void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata)
 }
 
 void sweep(uint64_t* context) {
+  sweep_selfie(context);
+}
+
+void sweep_selfie(uint64_t* context) {
   uint64_t* prev_node;
   uint64_t* node;
   uint64_t* next_node;
