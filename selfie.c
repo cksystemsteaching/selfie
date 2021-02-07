@@ -1288,11 +1288,11 @@ void set_gc_enabled_gc(uint64_t* context);
 
 void gc_init_selfie(uint64_t* context);
 
-// Hook interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
+// interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
 void gc_init(uint64_t* context);
 
 // this function performs first-fit retrieval of free memory in O(n) where n is memory size
-// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
@@ -1306,14 +1306,14 @@ uint64_t* reuse_memory(uint64_t* context, uint64_t size);
 uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
 
-// Hook interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
+// interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
 uint64_t* allocate_memory(uint64_t* context, uint64_t size);
 
 // this function performs an O(n) list search where n is memory size
-// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* get_metadata_if_address_valid(uint64_t* context, uint64_t address);
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address);
 
-// Hook interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
+// interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
 void mark_object(uint64_t* context, uint64_t address);
 
 void mark_object_selfie(uint64_t* context, uint64_t gc_address);
@@ -1321,12 +1321,12 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 
 // this function scans the heap from two roots (data segment and stack) in O(n^2)
 // where n is memory size; checking if a value is a pointer takes O(n), see above
-// TODO: push O(n^2) down to O(n)
+// improvement: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
 
-// Hook interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
+// interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
 void sweep(uint64_t* context);
 
 void sweep_selfie(uint64_t* context);
@@ -7836,7 +7836,7 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
    return allocate_memory(context, size);
 }
 
-uint64_t* get_metadata_if_address_valid(uint64_t* context, uint64_t address) {
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
   uint64_t* node;
   uint64_t  object;
 
@@ -7885,7 +7885,7 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
     return;
 
-  metadata = get_metadata_if_address_valid(context, gc_address);
+  metadata = get_metadata_if_address_is_valid(context, gc_address);
 
   if (metadata == (uint64_t*) 0)
     // address is not a pointer to a gced object
@@ -7909,14 +7909,14 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap
 
-  // prevent wrap-around overflows by subtracting SIZEOFUINT64 from index
+  // prevent (32-bit) overflow by subtracting SIZEOFUINT64 from index
   segment_start = segment_start - SIZEOFUINT64;
-  
+
   while (segment_start < segment_end - WORDSIZE) {
     // assert: is_virtual_address_valid(segment_start, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
-    // reverse index offset before marking address
-    mark_object(context, (segment_start + SIZEOFUINT64));
+    // undo index offset before marking address
+    mark_object(context, segment_start + SIZEOFUINT64);
 
     segment_start = segment_start + SIZEOFUINT64;
   }
