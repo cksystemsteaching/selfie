@@ -183,7 +183,7 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
       set_coso_list_entry_next(it, gc_chunk_free_list);
 
       gc_chunk_free_list = it;
-      
+
       it = (uint64_t*)0;
     } else {
       prev_it = it;
@@ -355,11 +355,11 @@ void refurbish_chunk(uint64_t* entry) {
 
 uint64_t calculate_number_of_object_for_object_bits(uint64_t object_size) {
   uint64_t num_words_object_bits;
-  
+
   num_words_object_bits = calculate_chunk_payload_offset_words(object_size);
   num_words_object_bits = num_words_object_bits - GC_STATIC_HEADER_SIZE_IN_WORDS; // subtract static part of header (chunk list pointer, object size fields)
   num_words_object_bits = num_words_object_bits / 2; // dynamic part of header consists of alloc and mark bits
-  
+
   return num_words_object_bits;
 }
 
@@ -472,7 +472,7 @@ uint64_t* allocate_object(uint64_t* context, uint64_t size) {
     fill_small_object_free_list(context, allocate_chunk(context, size));
 
   ret = (uint64_t*)*(small_object_free_list); // ret points to head of small object free list
-  
+
   *(small_object_free_list) = (uint64_t)get_coso_list_entry_next(ret); // set head to next entry
   ret = get_coso_list_entry_memory(ret); // ret points to address of object (vaddr)
 
@@ -559,7 +559,7 @@ void gc_init_boehm(uint64_t* context) {
 
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE; // object size in order to fit 2 objects into one chunk
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_MAX_SMALL_OBJECT_SIZE / 2;
-  
+
   gc_small_object_free_lists = zalloc(GC_CHUNK_MAX_SMALL_OBJECT_SIZE); // collector not initialised -> allocate using bump pointer allocator
   align_chunk_allocator(context); // note: chunk heap needs to be aligned!
 
@@ -574,7 +574,7 @@ void gc_init_boehm(uint64_t* context) {
 uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
   if (size == 0)
     return allocate_memory_selfie(context, size); // delegate to selfie gc
-  
+
   if (size > GC_CHUNK_MAX_SMALL_OBJECT_SIZE)
     return allocate_memory_selfie(context, size); // delegate to selfie gc
 
