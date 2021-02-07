@@ -7645,7 +7645,7 @@ void gc_init_selfie(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
 
-  // Calculate metadata size using actual width of integers/pointers
+  // calculate metadata size using actual width of integers/pointers
   GC_METADATA_SIZE =  SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
 
   set_data_and_heap_segments_gc(context);
@@ -7776,7 +7776,7 @@ uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
   // stack is not zeroed! using two successive gc_malloc calls (library variant)
   // leads to having the same variables as with the previous call and therefore
   // we might have a reachable pointer which is not actually reachable. to fix
-  // this, we set these variables to 0.
+  // this, we set these variables to 0:
   object   = (uint64_t*) 0;
   metadata = (uint64_t*) 0;
 
@@ -7823,17 +7823,19 @@ uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
 }
 
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
-  // garbage collect
+  // first, garbage collect
   if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
     gc_collect(context);
 
-     set_gcs_in_period_gc(context, 0);
+    set_gcs_in_period_gc(context, 0);
   } else
     set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
 
-   size = round_up(size, SIZEOFUINT64);
+  // then, allocate memory
 
-   return allocate_memory(context, size);
+  size = round_up(size, SIZEOFUINT64);
+
+  return allocate_memory(context, size);
 }
 
 uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
