@@ -7776,13 +7776,6 @@ uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
   uint64_t* object;
   uint64_t* metadata;
 
-  // stack is not zeroed! using two successive gc_malloc calls (library variant)
-  // leads to having the same variables as with the previous call and therefore
-  // we might have a reachable pointer which is not actually reachable. to fix
-  // this, we set these variables to 0:
-  object   = (uint64_t*) 0;
-  metadata = (uint64_t*) 0;
-
   gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
 
