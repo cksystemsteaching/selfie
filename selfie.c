@@ -516,16 +516,16 @@ uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t report_undefined_procedures();
 
 // symbol table entry:
-// +----+---------+
-// |  0 | next    | pointer to next entry
-// |  1 | string  | identifier string, big integer as string, string literal
-// |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
-// |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | value   | VARIABLE: initial value
-// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP (global), REG_S0 (local)
-// +----+---------+
+// +---+---------+
+// | 0 | next    | pointer to next entry
+// | 1 | string  | identifier string, big integer as string, string literal
+// | 2 | line#   | source line number
+// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
+// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T
+// | 5 | value   | VARIABLE: initial value
+// | 6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
+// | 7 | scope   | REG_GP (global), REG_S0 (local)
+// +---+---------+
 
 uint64_t* allocate_symbol_table_entry() {
   return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
@@ -1292,7 +1292,7 @@ void gc_init_selfie(uint64_t* context);
 void gc_init(uint64_t* context);
 
 // this function performs first-fit retrieval of free memory in O(n) where n is memory size
-// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact-fit
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
@@ -3266,6 +3266,9 @@ void get_symbol() {
     if (symbol != SYM_DIVISION) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
+
+      // start state of finite state machine
+      // for recognizing C* symbols is here
       if (is_character_letter()) {
         // accommodate identifier and null for termination
         identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
@@ -4127,7 +4130,7 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // restore return address
   emit_load(REG_RA, REG_SP, 0);
 
-  // deallocate memory for return address and parameters
+  // deallocate memory for return address and actual parameters
   emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
 
   // return
@@ -9468,7 +9471,7 @@ uint64_t* new_context() {
 void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // some fields are set in boot loader or when context switching
 
-  // allocate zeroed memory for general purpose registers
+  // allocate zeroed memory for general-purpose registers
   // TODO: reuse memory
   set_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
