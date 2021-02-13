@@ -62,21 +62,33 @@ n/a
 7. What is your opinion of the proposed manuscript’s level, style, organization, and length? Based on the writing sample, will the manuscript require extensive copyediting to improve its readability?
 The manuscript is very well-written. The language is conversational yet unambiguous- technical content is handled well. I gather that the author is not a native English speaker, but his English usage is perfect.
 
+CK: That's right. Thank you!
+
 8. Please list any technical or mathematical errors you encountered.
 I didn’t notice any errors.
 
 One specific comment I had is that the author uses the phrases “high level” and “low level” the way a computer scientist uses them, which are opposite from common usage. For example on page 9 I read: “The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level”. [“examples” should be “example”] Here “high level” is intended to mean “vague” or “basic level”, which is common usage in the field. But a non-technical audience will interpret “high level” as meaning “very detailed” or some such, which is the opposite meaning. The author also discusses “high-level” and “low-level” programming languages- this is standard terminology so I don’t suggest changing the words, but some clarification would help.
 
+CK: Interesting! I was not aware of that and will fix it.
+
 On page 45 there is a list of file extensions- some of these may be unfamiliar. But everybody will recognize PDF, and probably JPG and GIF (young people see GIF all the time in social media memes, which are often referred to simply as GIFs)
 
+CK: I will mention PDF and GIFs as well.
+
 Here is a picky point which I guess maybe is an error: at the bottom of page 3 I see: “The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits.” That’s not really accurate, is it? They are not “computationally universal” because of their storage capacity and efficiency of bit manipulation. Their universality comes from the nature of the manipulations that they can carry out. A Universal Machine need not be efficient at all, and a high-storage machine need not be universal. (I’m sure the author knows this)
+
+CK: Correct! I already fixed that.
 
 9. How could this project be improved? Can you cite specific sections or chapters that should be added or reconsidered?
 I am most intrigued by the highlighting of self-reference in the introduction, and the use of selfie as a basis for the book. The manuscript so far unfortunately doesn’t really talk about self-reference very much, but maybe this has been saved for the later sections. I think it is really a great idea to use self-reference as a theme throughout the entire presentation. (Typically in my experience, self-reference is something that is only discussed in more advanced courses, but it’s a great idea to integrate it even at the level of this book.)
 
+CK: Thank you so much for your encouragement! Yes, self-referentiality will become quite prominent in later chapters.
+
 10. Based on the limited content available, are there any chapters/sections that stand out as being particularly weak or particularly strong?
 
 I like all of the content so far, though the stuff on RISC instructions is a bit hard to work through. It is suddenly far more technical than the material preceding it, and I wonder if the detail is worth it. Maybe this is representative of the material to come, but I can’t tell yet. To me it stands out as a bit uneven in terms of the level of detail, and this kind of unevenness can be hard to handle in a textbook. But this is just a small portion of the manuscript so I don’t have a great handle on the overall pace that the book will have.
+
+CK: I am still working on the RISC part and try to smoothen the transition from "Information" to "Machine".
 
 11. What is your overall reaction to the proposal?
 
@@ -92,18 +104,26 @@ Second, I believe his approach will interest some people, but not all people. Th
 
 AS A FIRST COURSE FOR ALL is misplaced, and I don’t think it will be widely successful. The reason is a difference in philosophy. The author wants to use a bottom-up approach “What we do here is presenting the basics we believe are essential in a bottom-up approach with a strong systems focus.”. I believe a top-down approach that emphasizes problem solving and systematic design while learning key high-level abstractions and idioms of a language is a more effective approach. I believe that you can talk about bits and bytes and binary numbers and hardware, but leave the underlying details until later, for students who will be computer science majors and who will need to care.
 
+CK: I agree. This might be a key weakness. I therefore started working on a top-down "Language" chapter that I already mentioned above in my response to reviewer 1. My hope is that that chapter generates enough motivation for readers to go into the bottom-up material that follows.
+
  Are you currently teaching a course for which this book might be used as a core text, or have you taught such a course in the recent past? (list course name, how often it is offered, level and typical enrollment)
 Yes I do. Fundamentals of Programming, offered every semester and in summers, with an enrollment of about 400 students per semester in 10 sections.
 
 3. Is the work original and the scholarship sound?
 I believe that the work is original, that the scholarship is sound. For many years of teaching, and using many textbooks, I followed a bottom-up approach in introducing computer science, which is very common and traditional among computer science curriculums written by engineers who became computer scientists. So I do believe there is a market for this book, even though I would not use it in a first course.
 
+CK: I will try hard to address that issue and make it accessible to as many readers as possible.
+
 5. What are the best textbooks already published on the subject, and how does this work compare with them?
 It is difficult to say what are the best introductory books, because there are so many. Most focus on teaching a particular language, from which key concepts and systematic design are extracted. Some texts try to be language-agnostic, but then also introduce a notation of their own, which begs the issue in my opinion. This book is comparable to other texts, but I don’t think it is best as an introductory text, from what I see. It is best as a support for a 2nd-year computer architecture course or 3rd-year compiler course.
+
+CK: See above.
 
 6. What textbook(s) are you using for this course? What are the strengths and weaknesses of this book relative to those you are using?
 I would prefer not to answer what book I am using in my first course, but I will say that it is a Python book. I think this author starts from a different perspective than most introductory books. I think the main weakness is that only computer engineers and some CS really care about the hardware or compilers—everyone else really wants to learn how to solve problems they are interested in from
 say, biology, physics, chemistry, mathematics, finance. If they can’t see how to do that, the other stuff doesn’t matter so much.
+
+CK: One idea to address that discrepancy is buy mentioning top-down programming books at the end of the new "Language" chapter and put my book into context. I will also emphasize that a comprehensive CS introduction may require using a top-down and a bottom-up book like mine simultaneously, depending on the background of the reader.
 
 7. What is your opinion of the proposed manuscript’s level, style, organization, and length? Based on the writing sample, will the manuscript require extensive copyediting to improve its readability?
 What I see looks like a partial manuscript with several sections not filled in, and mainly focused on the key material relating to the Selfie tool. It does not yet look like a finished product. The author writes well, and what is there should not require extensive copy editing to be readable.
