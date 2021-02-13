@@ -15,6 +15,8 @@ Selfie is implemented in a single (!) file and kept minimal for simplicity. Ther
 
 Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
+Selfie is a 64-bit system and requires as such a 64-bit system to run. However, selfie also compiles on 32-bit systems (and 64-bit systems that support compiling and executing 32-bit binaries). In that case, selfie becomes a 32-bit system that generates and executes 32-bit binaries out-of-the-box. This is possible because the implementation of selfie carefully avoids 32-bit overflows throughout the system.
+
 ## Support
 
 1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
@@ -54,7 +56,7 @@ The next step is to produce a selfie binary. To do that `cd` to the selfie folde
 cc -Wall -Wextra -O3 -m64 -Duint64_t='unsigned long long' selfie.c -o selfie
 ```
 
-and then compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-Wall` and `-Wextra` options enable all compiler warnings which is useful during further development of selfie. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-Duint64_t='unsigned long long'` option is needed to bootstrap the code. It defines the data type `uint64_t` which would otherwise be undefined since C\* does not support including the necessary definitions.
+and then compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-Wall` and `-Wextra` options enable all compiler warnings which is useful during further development of selfie. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-Duint64_t='unsigned long long'` option is needed to bootstrap the code. It defines the data type `uint64_t` which would otherwise be undefined since C\* does not support including the necessary definitions. If your systems supports compiling and executing 32-bit binaries you may also try `make selfie-32` which will produce a 32-bit system that in turn generates and executes 32-bit binaries.
 
 ## Running Selfie
 
