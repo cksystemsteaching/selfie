@@ -1,0 +1,121 @@
+CK: I would like to thank all reviewers for their valuable feedback and suggestions. I believe all suggestions can be accommodated and I already started working on that in the latest version of the book. Below, I respond to each request individually (using "CK:" as prefix to distinguish my responses from the reviewers' feedback).
+
+Review #1
+
+1. 	What are the authors setting out to accomplish, and to what extent do you believe they will achieve this?
+	The authors desire to describe the foundations and generalities of computer science without diving into the formalism of programming and computer logic.  Specifically, they wish to do so through addressing the challenge of self-referentiality.  There is also a desire to connect with readers in a more casual and personal way through less technical writing and reach an audience that extends beyond traditional computer science students and researchers.
+
+	I believe that in general the authors are on the right track to write a book that reaches an audience with little to no experience with computers.  During my review, I strived to read from the perspective of a high school junior or senior who was interested in learning about computers, but hadn’t yet decided on pursuing programming or computer engineering.  I believe that with some modifications to the presentation of information within the text, specially through visuals to supplement the reading, this goal will be accomplished.
+
+CK: Better visualization is indeed something I am working on.
+
+	I do not believe the goal of addressing the challenge of self-referentiality was achieved but this is most likely addressed in the sections of the book that have not yet been fully written, and that I did not review.
+
+CK: Self-referentiality will be featured in its various forms later in the book. However, in the meantime I have started working on an overview chapter called "Language" right after the introduction and the "Selfie" chapter before the first chapter on "Information". The "Language" chapter introduces all three formal languages used in the book by example: the programming language C*, the machine language RISC-U, and the grammar language EBNF. The latter can be used to define the grammar of EBNF in EBNF which is the first and arguably simplest example of self-referentiality which now appears early before any other material. The overall idea of the "Language" chapter is to motivate the technical material of the book by showing and explaining simple C* code examples, and even some RISC-U assembly that implements these examples. There are also simple EBNF grammar rules for explaining how we formalize C* and RISC-U assembly syntax later.
+
+2.	Will this book make a significant contribution to the discourse on this topic?
+Yes I do believe the book would allow for productive discourse in the field of computer science.  I think texts like this are necessary because, based on my experience, most computer science texts dive straight into programming and focus on how to make computers “do” things.  There is not a huge focus on helping students understand how computers actually behave or function until upper division undergraduate or even graduate level courses at a college or university.  Many high schoolers these days are very interested in various aspects of computers, and many even study programming on their own without the formal guidance of a teacher.  I could see this book being used in a high school setting as a supplemental resource.
+
+CK: Thank you for your encouragement. This is much appreciated!
+
+3. 	Will this book appeal to an educated, non-specialist readership? To your knowledge, are there particular audiences to which the work is particularly well suited?
+I began to address this above, but I do believe that students in late high school would benefit from a text like this.  There is even a relatively new course offered by the College Board in their Advanced Placement series called Computer Science Principles.  This course does not go deep into programming and instead focuses on the fundamentals of computer science.  I think this book would be a good resource for teachers of that course or any similar, non College Board courses that want to branch out from the traditional programming focused courses.
+
+CK: Thank you for the reference!
+
+4. 	What, to your knowledge, are the best books already published on the subject, and how will this work compare with them?
+	I can not properly answer this question because I have not personally read through many books related to this subject.  I do think the section of the book I read provides a very good overview of important concepts related to how computers handle “information” in all its forms.
+
+6.	What is your opinion of the manuscript’s level, style, organization, and length?
+	I think that high school and early college students will get lost in the radix complement calculation example used to describe how computers complete subtraction calculations in the “Negative Numbers” section.  It is unclear why using the diminished radix complement is easier for a computer.  To a newer reader those lines of computational reasoning seem dramatically more complicated than simply taking 85-7.
+
+CK: You are right. I am still working on that. It is material that should in my opinion not be avoided but there is still room for improvement.
+
+	Otherwise I think the level, style, organization, and length are appropriate.  There was a very clear progression of complexity beginning with bits and bytes eventually ending with video and audio.  Similar to my comments on this document as well as the Google Doc comments I included, visuals supplements of the reading are immensely important especially to late high school or early college students.  They need to be aesthetically pleasing and clear.  Ideally this is done through a digital design environment.
+
+CK: Indeed, I hope to get some help for developing aesthetically pleasing and clear visualizations. This is work in progress.
+
+7.	How could the project be improved?  If applicable, can you cite specific areas of the review material that need more attention?
+	See above for the section about “Negative Numbers.”  All of the images would be much more supportive of the text if they were very clear digitally produced pictures instead of scans of hand drawn diagrams.
+
+8. 	What is your overall reaction to the project/manuscript?
+I recommend publication, provided the revisions suggested in this review are satisfactorily made.
+
+Review #2
+
+What is the author hoping to accomplish, and to what extent do you believe the work will be successful, based on submitted material?
+This looks to be a very broad introduction to computer science intended for a non-technical student audience. I have not seen a book like this, and it is an intriguing concept to me. Without assuming any special knowledge other than a “digital native” audience, the book presents basic concepts of computer hardware, data storage, and software. The idea is to present what a computer is, and how it works “under the hood” for people who use computers every day but don’t really think closely about what they are.
+The material submitted so far does well towards accomplishing its goals, so I think it will be successful.
+
+Are you currently teaching a course for which this book might be used as a core text, or have you taught such a course in the recent past? (list course name, how often it is offered, level and typical enrollment)
+No, although I do teach an “Explorations in Mathematics” course for nontechnical majors, and this book has given me some ideas for possible computational topics that I could include in that course. (But this wouldn’t be a “core text” for such a course)
+
+Is the work original and the scholarship sound?
+Yes
+
+What are the best textbooks already published on the subject, and how does this work compare with them?
+Unfortunately I am not very knowledgeable about other books of this kind. I don’t know of any, though that’s not saying much.
+
+6. What textbook(s) are you using for this course? What are the strengths and weaknesses of this book relative to those you are using?
+n/a
+
+7. What is your opinion of the proposed manuscript’s level, style, organization, and length? Based on the writing sample, will the manuscript require extensive copyediting to improve its readability?
+The manuscript is very well-written. The language is conversational yet unambiguous- technical content is handled well. I gather that the author is not a native English speaker, but his English usage is perfect.
+
+8. Please list any technical or mathematical errors you encountered.
+I didn’t notice any errors.
+
+One specific comment I had is that the author uses the phrases “high level” and “low level” the way a computer scientist uses them, which are opposite from common usage. For example on page 9 I read: “The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level”. [“examples” should be “example”] Here “high level” is intended to mean “vague” or “basic level”, which is common usage in the field. But a non-technical audience will interpret “high level” as meaning “very detailed” or some such, which is the opposite meaning. The author also discusses “high-level” and “low-level” programming languages- this is standard terminology so I don’t suggest changing the words, but some clarification would help.
+
+On page 45 there is a list of file extensions- some of these may be unfamiliar. But everybody will recognize PDF, and probably JPG and GIF (young people see GIF all the time in social media memes, which are often referred to simply as GIFs)
+
+Here is a picky point which I guess maybe is an error: at the bottom of page 3 I see: “The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits.” That’s not really accurate, is it? They are not “computationally universal” because of their storage capacity and efficiency of bit manipulation. Their universality comes from the nature of the manipulations that they can carry out. A Universal Machine need not be efficient at all, and a high-storage machine need not be universal. (I’m sure the author knows this)
+
+9. How could this project be improved? Can you cite specific sections or chapters that should be added or reconsidered?
+I am most intrigued by the highlighting of self-reference in the introduction, and the use of selfie as a basis for the book. The manuscript so far unfortunately doesn’t really talk about self-reference very much, but maybe this has been saved for the later sections. I think it is really a great idea to use self-reference as a theme throughout the entire presentation. (Typically in my experience, self-reference is something that is only discussed in more advanced courses, but it’s a great idea to integrate it even at the level of this book.)
+
+10. Based on the limited content available, are there any chapters/sections that stand out as being particularly weak or particularly strong?
+
+I like all of the content so far, though the stuff on RISC instructions is a bit hard to work through. It is suddenly far more technical than the material preceding it, and I wonder if the detail is worth it. Maybe this is representative of the material to come, but I can’t tell yet. To me it stands out as a bit uneven in terms of the level of detail, and this kind of unevenness can be hard to handle in a textbook. But this is just a small portion of the manuscript so I don’t have a great handle on the overall pace that the book will have.
+
+11. What is your overall reaction to the proposal?
+
+These options don’t really fit me since I don’t teach a course for which this book would be appropriate. But I really like this book concept and I would recommend that the manuscript move forward and eventually be published.
+
+Review #3
+
+What is the author hoping to accomplish, and to what extent do you believe the work will be successful, based on submitted material?
+
+This is really two questions. First, the author states in the Introduction that his idea is to explain the basics of computer science to develop a fundamental understanding of what software is and how it works on any hardware. He says it is an introduction to elementary computer science, similar to
+how elementary math is taught in secondary schools.
+Second, I believe his approach will interest some people, but not all people. The author says his key observation is that understanding computer science and software in particular can only be achieved by understanding how software translates all the way down to the machine. While this is true, the vast majority of people who write software aren’t interested in the details of how the machine works, instead their focus is on solving a problem they are interested in, and in running a business. I think that his idea of teaching language construction and a compiler
+
+AS A FIRST COURSE FOR ALL is misplaced, and I don’t think it will be widely successful. The reason is a difference in philosophy. The author wants to use a bottom-up approach “What we do here is presenting the basics we believe are essential in a bottom-up approach with a strong systems focus.”. I believe a top-down approach that emphasizes problem solving and systematic design while learning key high-level abstractions and idioms of a language is a more effective approach. I believe that you can talk about bits and bytes and binary numbers and hardware, but leave the underlying details until later, for students who will be computer science majors and who will need to care.
+
+ Are you currently teaching a course for which this book might be used as a core text, or have you taught such a course in the recent past? (list course name, how often it is offered, level and typical enrollment)
+Yes I do. Fundamentals of Programming, offered every semester and in summers, with an enrollment of about 400 students per semester in 10 sections.
+
+3. Is the work original and the scholarship sound?
+I believe that the work is original, that the scholarship is sound. For many years of teaching, and using many textbooks, I followed a bottom-up approach in introducing computer science, which is very common and traditional among computer science curriculums written by engineers who became computer scientists. So I do believe there is a market for this book, even though I would not use it in a first course.
+
+5. What are the best textbooks already published on the subject, and how does this work compare with them?
+It is difficult to say what are the best introductory books, because there are so many. Most focus on teaching a particular language, from which key concepts and systematic design are extracted. Some texts try to be language-agnostic, but then also introduce a notation of their own, which begs the issue in my opinion. This book is comparable to other texts, but I don’t think it is best as an introductory text, from what I see. It is best as a support for a 2nd-year computer architecture course or 3rd-year compiler course.
+
+6. What textbook(s) are you using for this course? What are the strengths and weaknesses of this book relative to those you are using?
+I would prefer not to answer what book I am using in my first course, but I will say that it is a Python book. I think this author starts from a different perspective than most introductory books. I think the main weakness is that only computer engineers and some CS really care about the hardware or compilers—everyone else really wants to learn how to solve problems they are interested in from
+say, biology, physics, chemistry, mathematics, finance. If they can’t see how to do that, the other stuff doesn’t matter so much.
+
+7. What is your opinion of the proposed manuscript’s level, style, organization, and length? Based on the writing sample, will the manuscript require extensive copyediting to improve its readability?
+What I see looks like a partial manuscript with several sections not filled in, and mainly focused on the key material relating to the Selfie tool. It does not yet look like a finished product. The author writes well, and what is there should not require extensive copy editing to be readable.
+
+8. Please list any technical or mathematical errors you encountered.
+I didn’t see a table of contents. Sections and subsections are not numbered. Many sections are left blank in my copy.
+
+9. How could this project be improved? Can you cite specific sections or chapters that should be added or reconsidered?
+I believe I answered that in previous answers.
+
+10. Based on the limited content available, are there any chapters/sections that stand out as being particularly weak or particularly strong?
+No. It’s fine content.
+
+11. What is your overall reaction to the proposal?
+I recommend publication, but I would not adopt this book for my course, as outlined in previous answers.
