@@ -12,7 +12,7 @@
 .text
 
   .section .entry, "ax", %progbits
-  .p2align 3
+  .p2align 2
   .global _start
 _start:
   /* Set up the Global Pointer */
@@ -51,7 +51,7 @@ _start_warm:
   j hang_machine
 
   .section .entry, "ax", %progbits
-  .p2align 3
+  .p2align 2
   .global hang_machine
 hang_machine:
   wfi
