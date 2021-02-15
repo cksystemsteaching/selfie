@@ -648,7 +648,7 @@ So, 93 represents -7 here. If we were to support 3 digits the tens complement of
 1000 - 7 = 993
 ```
 
-and so on. The only issue is that calculating the tens complement is not much easier than subtraction itself. But, calculating the *diminished radix complement* is! The diminished tens complement or *nines complement* of 7 is:
+and so on. The only issue is that calculating the tens complement is not much easier than subtraction itself. But, calculating the *diminished radix complement* is! The diminished tens complement or *nines complement* of 7 with a maximum of 2 digits is:
 
 ```
 99 - 7 = 92
@@ -684,13 +684,13 @@ The two subtractions, 99 - 7, that is, 99 - 07 as well as 85 + (...) - 100 are b
 85 + (99 - 07 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
 ```
 
-Who would have thought that subtraction can in fact be reduced to digit-by-digit subtraction and addition? Try that with bigger numbers such as:
+Who would have thought that subtraction can in fact be reduced to digit-by-digit subtraction and addition? Of course, going through the above calculation may still appear to be more complicated to you than just calculating `85 - 7` in one step. However, the difference is that each individual step of the above calculation is easier than subtracting two arbitrary numbers in one step. That becomes more evident with bigger numbers. Just try calculating:
 
 ```
 2345 - 432
 ```
 
-Here we need 4 digits to calculate the result:
+in one step versus using tens complement via nines complement. For the latter we need 4 digits here to calculate the result:
 
 ```
 2345 + (10000 - 432) - 10000 = 2345 + (10000 - 1 - 432 + 1) - 10000 = 2345 + (9999 - 432 + 1) - 10000
