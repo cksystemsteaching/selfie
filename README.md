@@ -231,7 +231,7 @@ int count(int n) {
 }
 ```
 
-Again, the code can be read like an English sentence: define a procedure `count` with a formal parameter `n` as follows. First, *declare* a variable `c` and then *initialize* the value of `c` to `0`. After that, given an integer value for `n`, if the value of `c` is less than the value of `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. When this happens, return the value of `c`. This code is our first example of a program that makes a computer do work that takes more or less time depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
+Again, the code can be read like an English sentence: define a procedure `count` with a formal parameter `n` as follows. First, *declare* a variable `c` and then *initialize* the value of `c` to `0`. After that, given an integer value for `n`, if the value of `c` is less than the value of `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. When this happens, return the value of `c`. This code is our first example of a program that makes a computer solve a problem *iteratively* which takes more or less time depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
 
 Interestingly, the elements of C\* you have seen so far are enough to do anything any other programming language can do. In other words, if you take a program written in any other programming language, we can always rewrite it into a program written in C\* that computes exactly the same as the original. It may be cumbersome to do that but it is always possible. Hard to believe but true!
 
@@ -267,12 +267,30 @@ Remember, the factorial of a positive integer `n` is the product of all positive
 
 The above code reads in English as follows: define a procedure `factorial` with a formal parameter `n` as follows. First, declare a variable `f` and then initialize the value of `f` to `1`. Then, given an integer value for `n`, if the value of `n` is greater than `1`, multiply the value of `f` with the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. When this happens, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact here, just because of the special case that `1` is the multiplicative identity.
 
+assignment versus equality
+imperative versus functional
+iterative versus recursive
+
 ```
 int factorial(int n) {
   if (n > 1)
   	return n * factorial(n - 1);
   else
   	return 1;
+}
+```
+
+```
+int d;
+
+void double(int n) {
+  d = n + n;
+}
+
+int main() {
+  double(42);
+
+  return d;
 }
 ```
 
