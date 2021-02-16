@@ -163,8 +163,8 @@ babysat: tools/babysat.c selfie.h
 
 # Run babysat, the naive SAT solver, natively and as RISC-U executable
 sat: babysat selfie selfie.h
-	./babysat examples/rivest.cnf
-	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
+	./babysat examples/sat/rivest.cnf
+	./selfie -c selfie.h tools/babysat.c -m 1 examples/sat/rivest.cnf
 
 # Compile monster.c with selfie.h as library into monster executable
 monster: tools/monster.c selfie.h
