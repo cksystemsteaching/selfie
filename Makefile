@@ -147,6 +147,11 @@ boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c e
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
 
+# Run cache access-pattern examples
+cache: selfie examples/cache/dcache-access-[01].c
+	./selfie -c examples/cache/dcache-access-0.c -L1 32
+	./selfie -c examples/cache/dcache-access-1.c -L1 32
+
 # Compile babysat.c with selfie.h as library into babysat executable
 babysat: tools/babysat.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@

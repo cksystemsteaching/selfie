@@ -8,6 +8,8 @@ uint64_t get_return_value() {
 
 void patch_return_value() {
   // requires write access to the code segment
+  // (i.e. is_valid_segment_write() must be
+  // modified to return 1 for code addresses)
   *(e_entry + instructions_word_offset) = patched_addi;
 }
 
