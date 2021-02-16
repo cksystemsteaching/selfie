@@ -45,10 +45,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2
 
 # Self-compile selfie
 self: selfie
@@ -147,8 +147,13 @@ boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c e
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
 
-# Run cache access-pattern examples
-cache: selfie examples/cache/dcache-access-[01].c
+# Self-compile with L1 cache and test L1 data cache
+cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
+	./selfie -c selfie.c -L1 2 -c selfie.c -o selfie-L1.m -s selfie-L1.s
+	chmod $(XPERMISSIONS) selfie-L1.m
+	chmod $(RPERMISSIONS) selfie-L1.s
+	diff -q selfie.m selfie-L1.m
+	diff -q selfie.s selfie-L1.s
 	./selfie -c examples/cache/dcache-access-0.c -L1 32
 	./selfie -c examples/cache/dcache-access-1.c -L1 32
 
