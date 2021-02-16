@@ -139,13 +139,13 @@ gclibtest: selfie selfie.h examples/gc-test.c
 	./selfie -gc -c selfie.h examples/gc-test.c -m 1
 
 # Self-compile with Boehm garbage collector
-boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/boehm-gc-test.c
+boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c
 	./selfie -c selfie-gc.h tools/boehm-gc.c -o selfie-boehm-gc.m -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
 	chmod $(XPERMISSIONS) selfie-boehm-gc.m
 	./selfie -l selfie-boehm-gc.m -m 3 -l selfie-boehm-gc.m -gc -y 1 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -m 3 -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
-	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
 
 # Self-compile with L1 cache and test L1 data cache
 cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c

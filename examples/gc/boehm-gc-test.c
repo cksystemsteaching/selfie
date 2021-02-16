@@ -1,13 +1,12 @@
-// small test of selfie's boehm gc tool
+// simple test of selfie's boehm gc tool
 
 // needs to be compiled using selfie's gc library and boehm-gc tool:
-// e.g. ./selfie -gc selfie-gc.h tools/boehm-gc.c examples/boehm-gc-test.c -m 1
+// e.g. ./selfie -gc selfie-gc.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
 
 int main(int argc, char** argv) {
-
   uint64_t* x;
   uint64_t* y;
-  
+
   init_library();
 
   turn_on_gc_library(0, " boehm-gc-test");
@@ -30,6 +29,4 @@ int main(int argc, char** argv) {
 
   if((uint64_t) y <= (uint64_t) gc_heap_seg_start)
     exit(1);
-
-
 }
