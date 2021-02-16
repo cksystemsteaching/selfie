@@ -135,8 +135,8 @@ giblib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 	diff -q selfie.s selfie-giblib.s
 
 # Test garbage collector as library
-gclibtest: selfie selfie.h examples/gc-test.c
-	./selfie -gc -c selfie.h examples/gc-test.c -m 1
+gclibtest: selfie selfie.h examples/gc/gc-test.c
+	./selfie -gc -c selfie.h examples/gc/gc-test.c -m 1
 
 # Self-compile with Boehm garbage collector
 boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c

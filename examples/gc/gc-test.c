@@ -1,7 +1,7 @@
 // testing selfie's garbage collector
 
 // to compile the garbage collector as library use flag "-gc" with selfie.h
-// e.g. ./selfie -gc selfie.h examples/gc-test.c -m 1
+// e.g. ./selfie -gc selfie.h examples/gc/gc-test.c -m 1
 
 // since selfie implements a conservative garbage collector
 // we disguise pointers for validation as integers with an offset
