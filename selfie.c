@@ -1007,7 +1007,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 1; // number of program header entries (code and data segment; TODO: extend to 2)
+uint64_t e_phnum = 2; // number of program header entries (code and data segment)
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -1018,7 +1018,7 @@ uint64_t e_shstrndx  = 0; // section header offset
 uint64_t p_type  = 1; // type of segment is PT_LOAD
 uint64_t p_flags = 0; // segment attributes
 
-uint64_t p_offset = 0; // segment offset in file (must be page-aligned)
+uint64_t p_offset = 0; // segment offset in file (must be a multiple of p_align)
 
 uint64_t p_vaddr = 0; // start of segment in virtual memory
 uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
@@ -5468,11 +5468,13 @@ void emit_bootstrapping() {
     emit_nop();
 
   // start of data segment must be page-aligned for ELF program header
-  // TODO: data_start = round_up(code_start + code_size, p_align);
-  data_start = code_start + code_size;
+  data_start = round_up(code_start + code_size, p_align);
 
   // calculate global pointer value
   gp_value = data_start + data_size;
+
+  // further allocations in the data segment are not allowed at this point,
+  // because it would increase data_size and therefore lead to a false gp_value
 
   // set code emission to program entry
   saved_code_size = code_size;
@@ -5488,6 +5490,7 @@ void emit_bootstrapping() {
     // avoid sign extension that would result in an additional sub instruction
     if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
       // assert: generates no more than two instructions
+      // assert: no data segment allocations in load_integer for gp_value
       load_integer(gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
@@ -6479,21 +6482,24 @@ uint64_t* encode_elf_header() {
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
   }
 
-  p_flags  = 7; // code segment attributes are RWE (TODO: should be 5 for RE)
+  // start of segments have to be aligned in the binary file
+  
+  // assert: ELF_HEADER_SIZE % p_align == 0
+
+  p_flags  = 5; // code segment attributes are RE
   p_offset = ELF_HEADER_SIZE; // must match binary format
   p_vaddr  = code_start;
-  p_filesz = code_size + data_size; // TODO: should be code_size
-  p_memsz  = code_size + data_size; // TODO: should be code_size
+  p_filesz = code_size;
+  p_memsz  = code_size;
 
   encode_elf_program_header(header, 0);
 
   p_flags  = 6; // data segment attributes are RW
-  p_offset = ELF_HEADER_SIZE + code_size; // must match binary format
+  p_offset = ELF_HEADER_SIZE + round_up(code_size, p_align); // must match binary format
   p_vaddr  = data_start;
   p_filesz = data_size;
   p_memsz  = data_size;
 
-  // TODO: currently ignored because e_phnum == 1
   encode_elf_program_header(header, 1);
 
   return header;
@@ -6535,7 +6541,6 @@ void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t binary_size;
   uint64_t* valid_header;
   uint64_t i;
 
@@ -6544,18 +6549,14 @@ uint64_t validate_elf_header(uint64_t* header) {
 
   decode_elf_program_header(header, 0);
 
-  // TODO: code_size = p_filesz;
-  binary_size = p_filesz;
+  code_size = p_filesz;
 
   decode_elf_program_header(header, 1);
 
   data_size = p_filesz;
 
-  code_size = binary_size - data_size;
-
   // must match binary bootstrapping
-  // TODO: data_start = round_up(code_start + code_size, p_align);
-  data_start = code_start + code_size;
+  data_start = round_up(code_start + code_size, p_align);
 
   if (code_size > MAX_CODE_SIZE)
     return 0;
@@ -6600,6 +6601,7 @@ uint64_t open_write_only(char* name) {
 
 void selfie_output(char* filename) {
   uint64_t fd;
+  uint64_t code_size_with_padding;
 
   binary_name = filename;
 
@@ -6628,10 +6630,14 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
+  code_size_with_padding = round_up(code_size, p_align);
+
+  touch(code_binary, code_size_with_padding);
+
   // assert: code_binary is mapped
 
-  // then write code
-  if (write(fd, code_binary, code_size) != code_size) {
+  // then write code with padding bytes
+  if (write(fd, code_binary, code_size_with_padding) != code_size_with_padding) {
     printf2("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -6688,6 +6694,7 @@ uint64_t* touch(uint64_t* memory, uint64_t bytes) {
 void selfie_load() {
   uint64_t fd;
   uint64_t number_of_read_bytes;
+  uint64_t code_size_with_padding;
 
   binary_name = get_argument();
 
@@ -6720,9 +6727,11 @@ void selfie_load() {
 
   if (number_of_read_bytes == ELF_HEADER_SIZE) {
     if (validate_elf_header(ELF_header)) {
-      number_of_read_bytes = sign_extend(read(fd, code_binary, code_size), SYSCALL_BITWIDTH);
+      code_size_with_padding = round_up(code_size, p_align);
 
-      if (number_of_read_bytes == code_size) {
+      number_of_read_bytes = sign_extend(read(fd, code_binary, code_size_with_padding), SYSCALL_BITWIDTH);
+
+      if (number_of_read_bytes == code_size_with_padding) {
         number_of_read_bytes = sign_extend(read(fd, data_binary, data_size), SYSCALL_BITWIDTH);
 
         if (number_of_read_bytes == data_size) {
