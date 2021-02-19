@@ -13,7 +13,7 @@ files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 
 	@# Create a mapping to all packaged files
-	@echo "static const KFILE file_defs[] = {" >>$@;
+	@echo "const KFILE files[] = {" >>$@;
 	@for file in $^;\
 	do \
 		BASENAME=`basename $$file` ;\
@@ -23,7 +23,6 @@ files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 	@echo "  {\"\", (const char*) NULL, 0}," >>$@;
 	@echo "};" >>$@;
-	@echo "const KFILE* files = file_defs;" >>$@;
 
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 	$(MAKE) -C$(SELFIE_PATH) selfie.m
