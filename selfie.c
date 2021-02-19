@@ -5489,8 +5489,8 @@ void emit_bootstrapping() {
   } else {
     // avoid sign extension that would result in an additional sub instruction
     if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
-      // assert: generates no more than two instructions
-      // assert: no data segment allocations in load_integer for gp_value
+      // assert: generates no more than two instructions and
+      // no data segment allocations in load_integer for gp_value
       load_integer(gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
@@ -6483,7 +6483,7 @@ uint64_t* encode_elf_header() {
   }
 
   // start of segments have to be aligned in the binary file
-  
+
   // assert: ELF_HEADER_SIZE % p_align == 0
 
   p_flags  = 5; // code segment attributes are RE
