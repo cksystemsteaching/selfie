@@ -40,7 +40,7 @@ bool fd_is_opened(int fd, FILEDESC* open_files, size_t num_fds) {
 }
 
 
-ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_fds) {
+ssize_t kread(int fd, char* buf, size_t nbytes, FILEDESC* open_files, size_t num_fds) {
   if (!fd_is_valid(fd, num_fds))
     return -1;
 
@@ -52,17 +52,16 @@ ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_
     if (!fd_entry_is_opened(desc))
       return -1;
 
-    uint64_t num_read = 0;
-    while (count) {
-      if (desc->pos >= desc->file->length)
-          break;
+    uint64_t num_read = nbytes;
+    uint64_t max_readable = desc->file->length - desc->pos;
+    if (num_read > max_readable)
+      num_read = max_readable;
 
-      *(buf++) = desc->file->data[desc->pos];
+    const char* fileDataOffset = desc->file->data + desc->pos;
 
-      --count;
-      num_read++;
-      desc->pos++;
-    }
+    memcpy(buf, fileDataOffset, num_read);
+    desc->pos += num_read;
+
     return num_read;
   }
 }

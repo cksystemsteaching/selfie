@@ -32,11 +32,23 @@ RPERMISSIONS := +r,u+w
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
+# Generate selfie library with gc interface as selfie-gc.h
+selfie-gc.h: selfie.c
+	sed 's/gc_init(uint64_t\* context) {/gc_init_deleted(uint64_t\* context) {/' selfie.c > selfie-gc-intermediate.h
+	sed 's/allocate_memory(uint64_t\* context, uint64_t size) {/allocate_memory_deleted(uint64_t\* context, uint64_t size) {/' selfie-gc-intermediate.h > selfie-gc.h
+	sed 's/mark_object(uint64_t\* context, uint64_t address) {/mark_object_deleted(uint64_t\* context, uint64_t address) {/' selfie-gc.h > selfie-gc-intermediate.h
+	sed 's/sweep(uint64_t\* context) {/sweep_deleted(uint64_t\* context) {/' selfie-gc-intermediate.h > selfie-gc.h
+	rm -f selfie-gc-intermediate.h
+
+# Generate selfie library with gc interface as selfie-gc-nomain.h
+selfie-gc-nomain.h: selfie-gc.h
+	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
+
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest sat mon smt mod btor2
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2
 
 # Self-compile selfie
 self: selfie
@@ -90,7 +102,7 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
-# Self-compile with conservative garbage collector in mipster
+# Self-compile with garbage collector in mipster
 gib: selfie selfie.m selfie.s
 	./selfie -c selfie.c -gc -m 1 -c selfie.c -o selfie-gib.m -s selfie-gib.s
 	chmod $(XPERMISSIONS) selfie-gib.m
@@ -98,7 +110,7 @@ gib: selfie selfie.m selfie.s
 	diff -q selfie.m selfie-gib.m
 	diff -q selfie.s selfie-gib.s
 
-# Self-compile with conservative garbage collector in hypster
+# Self-compile with garbage collector in hypster
 hyb: selfie selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -gc -y 1 -c selfie.c -o selfie-hyb.m -s selfie-hyb.s
 	chmod $(XPERMISSIONS) selfie-hyb.m
@@ -106,25 +118,44 @@ hyb: selfie selfie.m selfie.s
 	diff -q selfie.m selfie-hyb.m
 	diff -q selfie.s selfie-hyb.s
 
-# Self-compile with conservative garbage collector as library
-gclib: selfie selfie.h selfie.m selfie.s
-	./selfie -gc -c selfie.h tools/gc.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
+# Self-compile with garbage collector as library
+gclib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
+	./selfie -gc -c selfie.h tools/gc-lib.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
 	chmod $(XPERMISSIONS) selfie-gclib.m
 	chmod $(RPERMISSIONS) selfie-gclib.s
 	diff -q selfie.m selfie-gclib.m
 	diff -q selfie.s selfie-gclib.s
 
 # Self-compile with self-collecting garbage collectors
-giblib: selfie selfie.h selfie.m selfie.s
-	./selfie -gc -c selfie.h tools/gc.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
+giblib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
+	./selfie -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
 	chmod $(XPERMISSIONS) selfie-giblib.m
 	chmod $(RPERMISSIONS) selfie-giblib.s
 	diff -q selfie.m selfie-giblib.m
 	diff -q selfie.s selfie-giblib.s
 
 # Test garbage collector as library
-gclibtest: selfie selfie.h examples/garbage_collector_test.c
-	./selfie -gc -c selfie.h examples/garbage_collector_test.c -m 1
+gclibtest: selfie selfie.h examples/gc/gc-test.c
+	./selfie -gc -c selfie.h examples/gc/gc-test.c -m 1
+
+# Self-compile with Boehm garbage collector
+boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c
+	./selfie -c selfie-gc.h tools/boehm-gc.c -o selfie-boehm-gc.m -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+	chmod $(XPERMISSIONS) selfie-boehm-gc.m
+	./selfie -l selfie-boehm-gc.m -m 3 -l selfie-boehm-gc.m -gc -y 1 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -m 3 -c selfie.c -gc -m 1
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
+	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
+
+# Self-compile with L1 cache and test L1 data cache
+cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
+	./selfie -c selfie.c -L1 2 -c selfie.c -o selfie-L1.m -s selfie-L1.s
+	chmod $(XPERMISSIONS) selfie-L1.m
+	chmod $(RPERMISSIONS) selfie-L1.s
+	diff -q selfie.m selfie-L1.m
+	diff -q selfie.s selfie-L1.s
+	./selfie -c examples/cache/dcache-access-0.c -L1 32
+	./selfie -c examples/cache/dcache-access-1.c -L1 32
 
 # Compile babysat.c with selfie.h as library into babysat executable
 babysat: tools/babysat.c selfie.h
@@ -132,8 +163,8 @@ babysat: tools/babysat.c selfie.h
 
 # Run babysat, the naive SAT solver, natively and as RISC-U executable
 sat: babysat selfie selfie.h
-	./babysat examples/rivest.cnf
-	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
+	./babysat examples/sat/rivest.cnf
+	./selfie -c selfie.h tools/babysat.c -m 1 examples/sat/rivest.cnf
 
 # Compile monster.c with selfie.h as library into monster executable
 monster: tools/monster.c selfie.h
@@ -212,8 +243,8 @@ qemu: selfie.m selfie.s
 assemble: selfie.s
 	riscv64-linux-gnu-as selfie.s
 
-# Self-self-compile, self-execute, self-host 32-bit selfie
-32-bit: selfie-32
+# Self-self-compile, self-execute, self-host, self-gc 32-bit selfie
+32-bit: selfie-32 selfie.h selfie-gc.h tools/boehm-gc.c
 	./selfie-32 -c selfie.c -o selfie-32.m -s selfie-32.s -m 2 -c selfie.c -o selfie-32-2-32.m -s selfie-32-2-32.s
 	chmod $(XPERMISSIONS) selfie-32.m selfie-32-2-32.m
 	chmod $(RPERMISSIONS) selfie-32.s selfie-32-2-32.s
@@ -221,6 +252,10 @@ assemble: selfie.s
 	diff -q selfie-32.s selfie-32-2-32.s
 	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -m 1
 	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -y 1 -l selfie-32.m -y 1
+	./selfie-32 -l selfie-32.m -gc -m 1 -c selfie.c
+	./selfie-32 -l selfie-32.m -m 3 -l selfie-32.m -gc -y 1 -c selfie.c
+	./selfie-32 -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c
+	./selfie-32 -c selfie-gc.h tools/boehm-gc.c -gc -m 1 -c selfie.c
 	qemu-riscv32-static selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
 	chmod $(XPERMISSIONS) selfie-qemu-32.m
 	chmod $(RPERMISSIONS) selfie-qemu-32.s
@@ -273,7 +308,7 @@ clean:
 	rm -f *.s
 	rm -f *.smt
 	rm -f *.btor2
-	rm -f selfie selfie-32 selfie.h selfie.exe
+	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat monster modeler
 	rm -f examples/*.m
 	rm -f examples/*.s

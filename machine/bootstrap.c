@@ -1,6 +1,7 @@
 #include "bootstrap.h"
 #include "config.h"
 #include "console.h"
+#include "diag.h"
 #include "tinycstd.h"
 
 int main(int argc, char** argv);
@@ -36,5 +37,8 @@ void bootstrap() {
   }
   printf("    <END>\n\n");
 
-  start_init_process(argc, args);
+  uint64_t result = start_init_process(argc, args);
+
+  printf("\nInit process terminated with exit code %d\n", result);
+  shutdown();
 }

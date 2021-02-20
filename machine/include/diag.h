@@ -4,7 +4,9 @@
 #include <stdarg.h>
 
 void panic(const char* diagnostic_message, ...);
-void shutdown();
+void shutdown() __attribute__((noreturn));
+
+extern void hang_machine() __attribute__((noreturn));
 
 #ifdef DEBUG
 #define assert(x) if (!(x)) panic("Assertion failed: " __FILE__ ":%u: " #x, __LINE__)
