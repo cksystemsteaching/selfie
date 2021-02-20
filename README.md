@@ -143,6 +143,8 @@ The third language is called EBNF which stands for *Extended Backus-Naur Form*. 
 
 In the following, we introduce a few code examples written in C\*, and then show you how some of that code translates to actual RISC-U assembly and even RISC-U binary code. We then show you how EBNF is used to define some of the C\* and RISC-U assembly syntax and finally the EBNF syntax itself.
 
+### Programming Language C\*
+
 The following example is C\* code that implements a simple *numerical* function in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
 
 ```
@@ -320,6 +322,8 @@ int main() {
 16 }
 ```
 
+### RISC-U Machine Code
+
 ```
 0x150(~4): 0x00000293: addi t0,zero,0
 0x154(~4): 0xFE543C23: sd t0,-8(s0)
@@ -349,6 +353,8 @@ int main() {
 0x1B4(~15): 0x00028513: addi a0,t0,0
 0x1B8(~15): 0x0040006F: jal zero,1[0x1BC]
 ```
+
+### EBNF Grammar
 
 ```
 decimal_number = digit { digit } .
@@ -383,6 +389,20 @@ factor     = identifier | string_literal |
 string_literal = """ { character } """ .
 character      = letter | digit | ... .
 ```
+
+### Recommended Readings
+
+The C Programming Language by Brian W. Kernighan and Dennis M. Ritchie
+
+This book is seminal work introducing the programming language C. It is a must have for anyone not just interested in C but also more modern programming languages whose design has likely been influenced by C.
+
+Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
+
+This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model ([RISC-V](https://riscv.org)) we introduce in the machine chapter and use throughout the book.
+
+Foundations of Computer Science by Alfred V. Aho and Jeffrey D. Ullman
+
+This book is also seminal work and the de-facto standard introduction to the theory of computer science. EBNF is mentioned in this book in its original Backus-Naur Form (BNF). You may want to have this book in your computer science library as well.
 
 ## Information
 
@@ -1479,10 +1499,6 @@ We have only scratched the surface of how Boolean Algebra and digital circuits a
 Information Theory: A Tutorial Introduction by James V. Stone
 
 This is a book that takes the topic of this chapter a lot further. If you are interested in the fundamentals of information and are not afraid of mathematical formulae, add it to your computer science library and reading list.
-
-Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
-
-This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model (RISC-V) we introduce in the following chapter and use throughout the book.
 
 ----
 
