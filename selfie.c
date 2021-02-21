@@ -264,6 +264,8 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
+uint64_t O_CREAT_TRUNC_WRONLY = 0; // write-only flags for HOSTOS initialised in init_system()
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
@@ -412,6 +414,7 @@ uint64_t SYM_GEQ          = 27; // >=
 uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
+uint64_t SYM_HOSTOS   = 31; // HOSTOS
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -447,7 +450,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_HOSTOS + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -481,6 +484,7 @@ void init_scanner () {
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
+  *(SYMBOLS + SYM_HOSTOS)   = (uint64_t) "HOSTOS";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -1101,8 +1105,6 @@ void     implement_openat(uint64_t* context);
 void     emit_malloc();
 uint64_t try_brk(uint64_t* context, uint64_t new_program_break);
 void     implement_brk(uint64_t* context);
-
-uint64_t is_boot_level_zero();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1750,6 +1752,8 @@ void print_register_memory_profile();
 
 void print_profile(uint64_t* context);
 
+void print_host_os();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t INSTRUCTIONSIZE       = 4;  // in bytes
@@ -2270,9 +2274,13 @@ void turn_on_gc_library(uint64_t period, char* name);
 
 char* selfie_name = (char*) 0; // name of running selfie executable
 
-uint64_t BOOTLEVELZERO = 0; // flag for indicating boot level
-
-uint64_t WINDOWS = 0; // indicates if we are likely running on Windows
+// enumeration of values for HOSTOS, which indicates
+// the operating system we are nunning on
+uint64_t SELFIE = 0;
+uint64_t LINUX = 1;
+uint64_t MACOS = 2;
+uint64_t WINDOWS = 3;
+uint64_t BAREMETAL = 4;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2305,14 +2313,13 @@ void init_system() {
       exit(EXITCODE_SYSTEMERROR);
   }
 
-  if (is_boot_level_zero()) {
-    BOOTLEVELZERO = 1;
-
-    // caution: the name of the executable must not have an extension to make this work
-    // try opening executable with zeroed flags which likely fails but just on Windows
-    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
-      WINDOWS = 1;
-  }
+	if (HOSTOS == WINDOWS)
+    O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
+	else if (HOSTOS == MACOS)
+    O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
+	else
+    // Linux flags are the default for Selfie, Linux and bare-metal hosts
+    O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -3402,7 +3409,12 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
-  else
+  else if (identifier_string_match(SYM_HOSTOS)) {
+    // selfie bootstraps HOSTOS to SELFIE (0)
+    literal = SELFIE;
+
+    return SYM_INTEGER;
+  } else
     return SYM_IDENTIFIER;
 }
 
@@ -6579,24 +6591,7 @@ uint64_t validate_elf_header(uint64_t* header) {
 }
 
 uint64_t open_write_only(char* name) {
-  // we try opening write-only files using platform-specific flags
-  // to make selfie platform-independent, this may nevertheless
-  // not always work and require intervention
-  uint64_t fd;
-
-  if (WINDOWS)
-    // use Windows flags
-    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-  else {
-    // try Mac flags first as default
-    fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-
-    if (signed_less_than(fd, 0))
-      // then try Linux flags
-      fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-  }
-
-  return fd;
+  return sign_extend(open(name, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 }
 
 void selfie_output(char* filename) {
@@ -7148,11 +7143,11 @@ void implement_openat(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A3);
 
   if (down_load_string(context, vfilename, filename_buffer)) {
-    if (flags == MAC_O_CREAT_TRUNC_WRONLY)
-      // default for opening write-only files
-      fd = open_write_only(filename_buffer);
-    else
-      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+    if (flags == LINUX_O_CREAT_TRUNC_WRONLY)
+      // use right flags for host operating system
+      flags = O_CREAT_TRUNC_WRONLY;
+    
+    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
@@ -7306,26 +7301,6 @@ void implement_brk(uint64_t* context) {
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-}
-
-uint64_t is_boot_level_zero() {
-  // C99 malloc(0) returns either a null pointer or a unique pointer,
-  // see http://pubs.opengroup.org/onlinepubs/9699919799
-  // in contrast, selfie's malloc(0) returns the same not null address,
-  // if malloc(0) is called consecutively.
-  uint64_t first_malloc;
-  uint64_t second_malloc;
-
-  first_malloc = (uint64_t) malloc(0);
-  second_malloc = (uint64_t) malloc(0);
-
-  if (first_malloc == 0)
-    return 1;
-  if (first_malloc != second_malloc)
-    return 1;
-
-  // it is selfie's malloc, so it cannot be boot level zero.
-  return 0;
 }
 
 // -----------------------------------------------------------------
@@ -9971,6 +9946,22 @@ void print_profile(uint64_t* context) {
   printf1("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
+void print_host_os() {
+   if (HOSTOS == SELFIE)
+     print("selfie");
+   else if (HOSTOS == LINUX)
+     print("linux");
+   else if (HOSTOS == MACOS)
+     print("macos");
+   else if (HOSTOS == WINDOWS)
+     print("windows");
+   else if (HOSTOS == BAREMETAL)
+     print("bare metal");
+   else
+     print("unknown");
+ }
+
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ----------------------    R U N T I M E    ----------------------
@@ -10986,7 +10977,7 @@ uint64_t selfie_run(uint64_t machine) {
     print(", replay");
     machine = MIPSTER;
   } else if (machine == HYPSTER) {
-    if (BOOTLEVELZERO)
+    if (HOSTOS != SELFIE)
       // no hypster on boot level zero
       machine = MIPSTER;
   }
@@ -11081,10 +11072,11 @@ uint64_t selfie(uint64_t extras) {
     return EXITCODE_NOARGUMENTS;
   else {
     printf2("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
-    printf3("%s: %u-bit unsigned integers and %u-bit pointers on boot level ", selfie_name,
+    printf3("%s: %u-bit unsigned integers and %u-bit pointers hosted on ", selfie_name,
       (char*) SIZEOFUINT64INBITS,
       (char*) SIZEOFUINT64STARINBITS);
-    if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
+    print_host_os();
+    println();
 
     init_scanner();
     init_register();
