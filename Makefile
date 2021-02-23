@@ -142,7 +142,7 @@ gclibtest: selfie selfie.h examples/gc/gc-test.c
 boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c
 	./selfie -c selfie-gc.h tools/boehm-gc.c -o selfie-boehm-gc.m -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
 	chmod $(XPERMISSIONS) selfie-boehm-gc.m
-	./selfie -l selfie-boehm-gc.m -m 3 -l selfie-boehm-gc.m -gc -y 1 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+	./selfie -l selfie-boehm-gc.m -m 6 -l selfie-boehm-gc.m -gc -y 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 2
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -m 3 -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
