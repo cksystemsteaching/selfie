@@ -45,10 +45,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2
 
 # Self-compile selfie
 self: selfie
