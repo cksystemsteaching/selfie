@@ -6,6 +6,84 @@
 
 This book is the result of many years of teaching and working with students and colleagues around the world. I am grateful to my group of students and faculty in Salzburg who, over the years, helped me with refining and deepening my understanding of computer science. I am also particularly grateful to my colleague Professor Raja Sengupta at UC Berkeley who challenged me to the point that made me start developing the Selfie Project which is the foundation of this book. The design of the Selfie compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich. The design of the Selfie microkernel is inspired by microkernels of Professor Jochen Liedtke from University of Karlsruhe.
 
+## Table of Content
+
+1. Introduction
+
+2. Selfie
+2.1. Recommended Readings
+
+3. Language
+3.1. Programming Language C\*
+3.2. RISC-U Machine Code
+3.3. EBNF Grammar
+3.4. Recommended Readings
+
+4. Information
+4.1. Bits
+4.2. Numbers
+4.3. Boolean Algebra
+4.4. Negative Numbers
+4.5. Integers
+4.6. Overflows
+4.7. Characters
+4.8. Bytes
+4.9. Memory
+4.10. Text
+4.11. Files
+4.12. Images
+4.13. Video
+4.14. Audio
+4.15. Code
+4.16. Apps
+4.17. Summary
+4.18. Recommended Readings
+
+5. Machine
+5.1 Model
+5.2. Processor
+5.3. Memory
+5.4. Input/Output
+5.5. Instructions
+5.6. Performance
+5.7. Algorithms
+5.8. Recommended Readings
+
+6. Programming
+6.1. Variable
+6.2. Expression
+6.3. Assignment
+6.4. Conditional
+6.5. Loop
+6.6. Procedure
+6.7. Algorithms
+6.8. Memory
+6.9. Libraries
+6.10. Apps
+6.11. Recommended Readings
+
+7. Tools
+7.1. Regular Expressions
+7.2. Finite State Machines
+7.3. Scanning
+7.4. Parsing
+7.5. Typing
+7.6. Code Generation
+7.7. Interpretation
+7.8. Recommended Readings
+
+8. Computing
+8.1. Emulation
+8.2. Spatial Isolation
+8.2. Virtual Memory
+8.3. Time Sharing
+8.4. Virtual Processor
+8.5. Computing as Utility
+8.6. Cloud Computing
+8.7. Recommended Readings
+
+9. Glossary
+
 ## Introduction
 
 Computer science is a mystery to so many and yet more and more people use computers every day in one form or another. There are increasingly many people with all kinds of backgrounds other than computer science that may even code every day in one way or another. At schools, colleges, universities, and companies around the world there is hardly anyone left who is not confronted with the machine and its code. But even for people just using the machine in their hands, on their desks, and in the cloud there is often that unsatisfactory experience of not understanding what is really going on. This book will empower you to turn your smartphone, tablet, and laptop into what they are supposed to be: the most fascinating and powerful tools ever created rather than the seemingly unavoidable nightmare of so many people, amateurs and professionals alike.
@@ -1878,7 +1956,7 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 ### Algorithms
 
-### Recommended Reading
+### Recommended Readings
 
 ## Programming
 
@@ -1902,25 +1980,35 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 ### Apps
 
-### Recommended Reading
+### Recommended Readings
 
 ## Tools
+
+### Regular Expressions
+
+### Finite State Machines
 
 ### Scanning
 
 ### Parsing
 
+### Typing
+
 ### Code Generation
 
 ### Interpretation
 
-### Recommended Reading
+### Recommended Readings
 
 ## Computing
 
 ### Emulation
 
+### Spatial Isolation
+
 ### Virtual Memory
+
+### Time Sharing
 
 ### Virtual Processor
 
@@ -1928,7 +2016,7 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 ### Cloud Computing
 
-### Recommended Reading
+### Recommended Readings
 
 ## Glossary
 
