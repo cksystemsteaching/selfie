@@ -1,12 +1,25 @@
+# Give Selfie information about the operating system ($OS is defined in Windows only)
+ifeq ($(OS),Windows_NT)
+	HOSTOS := 3
+else
+	ifeq ($(shell uname -s),Darwin)
+		HOSTOS := 2
+	else ifeq ($(shell uname -s),Linux)
+		HOSTOS := 1
+	else
+		$(error operating system is not supported to build Selfie)
+	endif
+endif
+
 # Compiler flags
-CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
+CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long' -D'HOSTOS=$(HOSTOS)'
 
 # Bootstrap selfie.c into selfie executable
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # 32-bit compiler flags
-32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long'
+32-BIT-CFLAGS := -Wall -Wextra -Wno-builtin-declaration-mismatch -O3 -m32 -D'uint64_t=unsigned long' -D'HOSTOS=$(HOSTOS)'
 
 # Bootstrap selfie.c into 32-bit selfie executable, requires 32-bit compiler support
 selfie-32: selfie.c
