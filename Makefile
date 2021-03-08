@@ -1,4 +1,4 @@
-# Give Selfie information about the operating system ($OS is defined in Windows only)
+# Determine operating system ($OS is defined in Windows only)
 ifeq ($(OS),Windows_NT)
 	HOSTOS := 3
 else
@@ -7,7 +7,7 @@ else
 	else ifeq ($(shell uname -s),Linux)
 		HOSTOS := 1
 	else
-		$(error operating system is not supported to build Selfie)
+		$(error unsupported operating system)
 	endif
 endif
 
