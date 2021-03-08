@@ -259,12 +259,13 @@ uint64_t LINUX_O_CREAT_TRUNC_WRONLY = 577;
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
 uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
+// initialized in init_system
+uint64_t O_CREAT_TRUNC_WRONLY = 0; // write-only flags for host operating system
+
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
-
-uint64_t O_CREAT_TRUNC_WRONLY = 0; // write-only flags for HOSTOS initialised in init_system()
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2274,12 +2275,12 @@ void turn_on_gc_library(uint64_t period, char* name);
 
 char* selfie_name = (char*) 0; // name of running selfie executable
 
-// enumeration of values for HOSTOS, which indicates
-// the operating system we are nunning on
-uint64_t SELFIE = 0;
-uint64_t LINUX = 1;
-uint64_t MACOS = 2;
-uint64_t WINDOWS = 3;
+// IDs for host operating system (HOSTOS)
+
+uint64_t SELFIE    = 0;
+uint64_t LINUX     = 1;
+uint64_t MACOS     = 2;
+uint64_t WINDOWS   = 3;
 uint64_t BAREMETAL = 4;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -2318,7 +2319,7 @@ void init_system() {
 	else if (HOSTOS == MACOS)
     O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
 	else
-    // Linux flags are the default for Selfie, Linux and bare-metal hosts
+    // Linux flags are the default for Linux, selfie, and bare-metal hosts
     O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
 }
 
@@ -7144,9 +7145,9 @@ void implement_openat(uint64_t* context) {
 
   if (down_load_string(context, vfilename, filename_buffer)) {
     if (flags == LINUX_O_CREAT_TRUNC_WRONLY)
-      // use right flags for host operating system
+      // use correct flags for host operating system
       flags = O_CREAT_TRUNC_WRONLY;
-    
+
     fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
@@ -9947,20 +9948,19 @@ void print_profile(uint64_t* context) {
 }
 
 void print_host_os() {
-   if (HOSTOS == SELFIE)
-     print("selfie");
-   else if (HOSTOS == LINUX)
-     print("linux");
-   else if (HOSTOS == MACOS)
-     print("macos");
-   else if (HOSTOS == WINDOWS)
-     print("windows");
-   else if (HOSTOS == BAREMETAL)
-     print("bare metal");
-   else
-     print("unknown");
- }
-
+  if (HOSTOS == SELFIE)
+    print("selfie");
+  else if (HOSTOS == LINUX)
+    print("Linux");
+  else if (HOSTOS == MACOS)
+    print("macOS");
+  else if (HOSTOS == WINDOWS)
+    print("Windows");
+  else if (HOSTOS == BAREMETAL)
+    print("bare metal");
+  else
+    print("unknown");
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
