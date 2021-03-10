@@ -263,10 +263,15 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // initialized in init_system
 uint64_t O_CREAT_TRUNC_WRONLY = 0; // write-only flags for host operating system
 
-// flags for rw-r--r-- file permissions
+// flags for rw-r--r-- (text) file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+
+// flags for rwxr-xr-x (binary) file permissions
+// 493 = 00755 = S_IRUSR_IWUSR_IRGRP_IROTH | S_IXUSR (00100) | S_IXGRP (00010) | S_IXOTH (00001)
+// these flags also seem to be working for LINUX, MAC, and WINDOWS
+uint64_t S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH = 493;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -707,6 +712,8 @@ void emit_bootstrapping();
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
+uint64_t open_read_only(char* name);
+
 void selfie_compile();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -969,7 +976,7 @@ void     decode_elf_program_header(uint64_t* header, uint64_t ph_index);
 
 uint64_t validate_elf_header(uint64_t* header);
 
-uint64_t open_write_only(char* name);
+uint64_t open_write_only(char* name, uint64_t mode);
 
 void selfie_output(char* filename);
 
@@ -5612,6 +5619,10 @@ void emit_bootstrapping() {
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
+uint64_t open_read_only(char* name) {
+  return sign_extend(open(name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+}
+
 void selfie_compile() {
   uint64_t link;
   uint64_t number_of_source_files;
@@ -5684,7 +5695,7 @@ void selfie_compile() {
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+      source_fd = open_read_only(source_name);
 
       if (signed_less_than(source_fd, 0)) {
         printf2("%s: could not open input file %s\n", selfie_name, source_name);
@@ -6613,8 +6624,8 @@ uint64_t validate_elf_header(uint64_t* header) {
   return 1;
 }
 
-uint64_t open_write_only(char* name) {
-  return sign_extend(open(name, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+uint64_t open_write_only(char* name, uint64_t mode) {
+  return sign_extend(open(name, O_CREAT_TRUNC_WRONLY, mode), SYSCALL_BITWIDTH);
 }
 
 void selfie_output(char* filename) {
@@ -6631,7 +6642,7 @@ void selfie_output(char* filename) {
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = open_write_only(binary_name);
+  fd = open_write_only(binary_name, S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH);
 
   if (signed_less_than(fd, 0)) {
     printf2("%s: could not create binary output file %s\n", selfie_name, binary_name);
@@ -6718,7 +6729,7 @@ void selfie_load() {
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  fd = open_read_only(binary_name);
 
   if (signed_less_than(fd, 0)) {
     printf2("%s: could not open input file %s\n", selfie_name, binary_name);
@@ -9314,7 +9325,7 @@ void selfie_disassemble(uint64_t verbose) {
 
   // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  assembly_fd = open_write_only(assembly_name);
+  assembly_fd = open_write_only(assembly_name, S_IRUSR_IWUSR_IRGRP_IROTH);
 
   if (signed_less_than(assembly_fd, 0)) {
     printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
