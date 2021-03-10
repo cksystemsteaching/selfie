@@ -95,8 +95,8 @@ void exit(int code);
 uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 
-// selfie bootstraps char to uint64_t!
-uint64_t open(char* filename, uint64_t flags, uint64_t mode);
+// selfie bootstraps char to uint64_t and ignores ellipsis!
+uint64_t open(char* filename, uint64_t flags, ...);
 
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
@@ -230,6 +230,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+uint64_t CHAR_DOT          = '.'; // for bootstrapping ellipsis ...
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 
@@ -415,7 +416,8 @@ uint64_t SYM_GEQ          = 27; // >=
 uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
-uint64_t SYM_HOSTOS   = 31; // HOSTOS
+uint64_t SYM_ELLIPSIS = 31; // ...
+uint64_t SYM_HOSTOS   = 32; // HOSTOS
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -485,6 +487,7 @@ void init_scanner () {
   *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
+  *(SYMBOLS + SYM_ELLIPSIS) = (uint64_t) "...";
   *(SYMBOLS + SYM_HOSTOS)   = (uint64_t) "HOSTOS";
 
   character = CHAR_EOF;
@@ -3646,6 +3649,21 @@ void get_symbol() {
         } else
           symbol = SYM_GT;
 
+      } else if (character == CHAR_DOT) {
+        get_character();
+
+        if (character == CHAR_DOT) {
+          get_character();
+
+          if (character == CHAR_DOT)
+            get_character();
+          else
+            syntax_error_character(CHAR_DOT);
+        } else
+          syntax_error_character(CHAR_DOT);
+
+        symbol = SYM_ELLIPSIS;
+
       } else {
         print_line_number("syntax error", line_number);
         print("found unknown character ");
@@ -5209,9 +5227,13 @@ void compile_procedure(char* procedure, uint64_t type) {
       while (symbol == SYM_COMMA) {
         get_symbol();
 
-        compile_variable(0);
+        if (symbol != SYM_ELLIPSIS) {
+          compile_variable(0);
 
-        number_of_parameters = number_of_parameters + 1;
+          number_of_parameters = number_of_parameters + 1;
+        } else
+          // ignore ellipsis ...
+          get_symbol();
       }
 
       entry = local_symbol_table;
