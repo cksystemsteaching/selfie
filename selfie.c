@@ -251,17 +251,17 @@ uint64_t* binary_buffer; // buffer for binary I/O
 uint64_t O_RDONLY = 32768;
 
 // flags for opening write-only files
-// MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
-uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
-
 // LINUX: 577 = 0x0241 = O_CREAT (0x0040) | O_TRUNC (0x0200) | O_WRONLY (0x0001)
 uint64_t LINUX_O_CREAT_TRUNC_WRONLY = 577;
+
+// MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
 
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
 uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
-// initialized in init_system
-uint64_t O_CREAT_TRUNC_WRONLY = 0; // write-only flags for host operating system
+// default is LINUX, re-initialized in init_system
+uint64_t O_CREAT_TRUNC_WRONLY = 577; // write-only flags for host operating system
 
 // flags for rw-r--r-- (text) file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
@@ -422,7 +422,6 @@ uint64_t SYM_INT      = 28; // int
 uint64_t SYM_CHAR     = 29; // char
 uint64_t SYM_UNSIGNED = 30; // unsigned
 uint64_t SYM_ELLIPSIS = 31; // ...
-uint64_t SYM_HOSTOS   = 32; // HOSTOS
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -458,7 +457,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_HOSTOS + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_ELLIPSIS + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -493,7 +492,6 @@ void init_scanner () {
   *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
   *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
   *(SYMBOLS + SYM_ELLIPSIS) = (uint64_t) "...";
-  *(SYMBOLS + SYM_HOSTOS)   = (uint64_t) "HOSTOS";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -1001,6 +999,8 @@ uint64_t EI_MAG1 = 'E'; // magic number part 1
 uint64_t EI_MAG2 = 'L'; // magic number part 2
 uint64_t EI_MAG3 = 'F'; // magic number part 3
 
+uint64_t MACHO_MAG0 = 207; // first byte of magic number of Mach-O executables
+
 uint64_t EI_CLASS   = 2; // file class is 2 (ELFCLASS64) or 1 (ELFCLASS32)
 uint64_t EI_DATA    = 1; // object file data structures endianness is 1 (ELFDATA2LSB)
 uint64_t EI_VERSION = 1; // version of the object file format
@@ -1116,6 +1116,8 @@ void     implement_openat(uint64_t* context);
 void     emit_malloc();
 uint64_t try_brk(uint64_t* context, uint64_t new_program_break);
 void     implement_brk(uint64_t* context);
+
+uint64_t is_boot_level_zero();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2285,13 +2287,17 @@ void turn_on_gc_library(uint64_t period, char* name);
 
 char* selfie_name = (char*) 0; // name of running selfie executable
 
-// IDs for host operating system (HOSTOS)
+// IDs for host operating systems
 
 uint64_t SELFIE    = 0;
 uint64_t LINUX     = 1;
 uint64_t MACOS     = 2;
 uint64_t WINDOWS   = 3;
 uint64_t BAREMETAL = 4;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t OS = 0; // default host operating system is selfie
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2303,6 +2309,8 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
 }
 
 void init_system() {
+  uint64_t selfie_fd;
+
   if (SIZEOFUINT64 != SIZEOFUINT64STAR)
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
@@ -2324,13 +2332,31 @@ void init_system() {
       exit(EXITCODE_SYSTEMERROR);
   }
 
-	if (HOSTOS == WINDOWS)
-    O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
-	else if (HOSTOS == MACOS)
-    O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
-	else
-    // Linux flags are the default for Linux, selfie, and bare-metal hosts
-    O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
+  // Linux file opening flags are the default for Linux, selfie, and bare-metal hosts
+  O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
+
+  if (is_boot_level_zero()) {
+    selfie_fd = open_read_only(selfie_name);
+
+    if (signed_less_than(selfie_fd, 0))
+      exit(EXITCODE_SYSTEMERROR);
+
+    // read first byte of magic number from selfie executable
+    read(selfie_fd, binary_buffer, 1);
+
+    if (*binary_buffer == EI_MAG0)
+      OS = LINUX;
+    else if (*binary_buffer == MACHO_MAG0) {
+      OS = MACOS;
+
+      O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
+    } else {
+      OS = WINDOWS;
+
+      O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
+    }
+  } else
+    OS = SELFIE;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -3420,12 +3446,7 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_UNSIGNED))
     // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
-  else if (identifier_string_match(SYM_HOSTOS)) {
-    // selfie bootstraps HOSTOS to SELFIE (0)
-    literal = SELFIE;
-
-    return SYM_INTEGER;
-  } else
+  else
     return SYM_IDENTIFIER;
 }
 
@@ -7337,6 +7358,26 @@ void implement_brk(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
+uint64_t is_boot_level_zero() {
+  // C99 malloc(0) returns either a null pointer or a unique pointer,
+  // see http://pubs.opengroup.org/onlinepubs/9699919799
+  // in contrast, selfie's malloc(0) returns the same not null address,
+  // if malloc(0) is called consecutively.
+  uint64_t first_malloc;
+  uint64_t second_malloc;
+
+  first_malloc  = (uint64_t) malloc(0);
+  second_malloc = (uint64_t) malloc(0);
+
+  if (first_malloc == 0)
+    return 1;
+  if (first_malloc != second_malloc)
+    return 1;
+
+  // selfie's malloc, cannot be boot level zero!
+  return 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -9981,15 +10022,15 @@ void print_profile(uint64_t* context) {
 }
 
 void print_host_os() {
-  if (HOSTOS == SELFIE)
+  if (OS == SELFIE)
     print("selfie");
-  else if (HOSTOS == LINUX)
+  else if (OS == LINUX)
     print("Linux");
-  else if (HOSTOS == MACOS)
+  else if (OS == MACOS)
     print("macOS");
-  else if (HOSTOS == WINDOWS)
+  else if (OS == WINDOWS)
     print("Windows");
-  else if (HOSTOS == BAREMETAL)
+  else if (OS == BAREMETAL)
     print("bare metal");
   else
     print("unknown");
@@ -11010,7 +11051,7 @@ uint64_t selfie_run(uint64_t machine) {
     print(", replay");
     machine = MIPSTER;
   } else if (machine == HYPSTER) {
-    if (HOSTOS != SELFIE)
+    if (OS != SELFIE)
       // no hypster on boot level zero
       machine = MIPSTER;
   }
