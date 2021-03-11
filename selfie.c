@@ -2332,31 +2332,34 @@ void init_system() {
       exit(EXITCODE_SYSTEMERROR);
   }
 
-  // Linux file opening flags are the default for Linux, selfie, and bare-metal hosts
-  O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
-
   if (is_boot_level_zero()) {
+    // try opening executable
     selfie_fd = open_read_only(selfie_name);
 
     if (signed_less_than(selfie_fd, 0))
-      exit(EXITCODE_SYSTEMERROR);
-
-    // read first byte of magic number from selfie executable
-    read(selfie_fd, binary_buffer, 1);
-
-    if (*binary_buffer == EI_MAG0)
-      OS = LINUX;
-    else if (*binary_buffer == MACHO_MAG0) {
-      OS = MACOS;
-
-      O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
-    } else {
+      // failure likely indicates Windows
       OS = WINDOWS;
+    else {
+      // read first byte of magic number
+      read(selfie_fd, binary_buffer, 1);
 
-      O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
+      if (*binary_buffer == EI_MAG0)
+        OS = LINUX;
+      else if (*binary_buffer == MACHO_MAG0)
+        OS = MACOS;
+      else
+        OS = WINDOWS;
     }
   } else
     OS = SELFIE;
+
+  if (OS == MACOS)
+    O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
+  else if (OS == WINDOWS)
+    O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
+  else
+    // Linux file opening flags are the default for Linux, selfie, and bare-metal hosts
+    O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
