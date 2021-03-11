@@ -11005,6 +11005,12 @@ uint64_t selfie_run(uint64_t machine) {
     printf1("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
+  } else if (machine == HYPSTER) {
+    if (OS != SELFIE) {
+      printf1("%s: hypster only runs on mipster\n", selfie_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
   }
 
   if (machine == CAPSTER) {
@@ -11053,11 +11059,8 @@ uint64_t selfie_run(uint64_t machine) {
     init_replay_engine();
     print(", replay");
     machine = MIPSTER;
-  } else if (machine == HYPSTER) {
-    if (OS != SELFIE)
-      // no hypster on boot level zero
-      machine = MIPSTER;
   }
+
   print(" on ");
 
   if (machine == MIPSTER)
