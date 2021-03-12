@@ -18,10 +18,10 @@ int main(int argc, char** argv) {
     pthread_join(status);
   else {
     heap_variable = malloc(8);
-    *heap_variable = 42;
+    *heap_variable = 30;
 
-    pthread_exit(0);
+    pthread_exit(12);
   }
 
-  return *heap_variable;
+  return *status + *heap_variable;
 }

@@ -24,7 +24,7 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode) {
 }
 
 
-
+extern void zero_mem(uint64_t* addr, uint64_t size);
 void* malloc(unsigned long long size) {
   void* return_ptr;
 
@@ -34,6 +34,8 @@ void* malloc(unsigned long long size) {
 #ifdef DEBUG
   printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, heap_head);
 #endif /* DEBUG */
+
+  zero_mem(return_ptr, size);
 
   return return_ptr;
 }

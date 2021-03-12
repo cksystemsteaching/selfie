@@ -17,7 +17,7 @@ virtual machine monitors. The common theme is to identify and
 resolve self-reference in systems code which is seen as the key
 challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 11-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -95,8 +95,8 @@ void exit(int code);
 uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 
-// selfie bootstraps char to uint64_t!
-uint64_t open(char* filename, uint64_t flags, uint64_t mode);
+// selfie bootstraps char to uint64_t and ignores ellipsis!
+uint64_t open(char* filename, uint64_t flags, ...);
 
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
@@ -260,19 +260,27 @@ uint64_t* binary_buffer; // buffer for binary I/O
 uint64_t O_RDONLY = 32768;
 
 // flags for opening write-only files
-// MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
-uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
-
 // LINUX: 577 = 0x0241 = O_CREAT (0x0040) | O_TRUNC (0x0200) | O_WRONLY (0x0001)
 uint64_t LINUX_O_CREAT_TRUNC_WRONLY = 577;
+
+// MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
 
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
 uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
-// flags for rw-r--r-- file permissions
+// default is LINUX, re-initialized in init_system
+uint64_t O_CREAT_TRUNC_WRONLY = 577; // write-only flags for host operating system
+
+// flags for rw-r--r-- (text) file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+
+// flags for rwxr-xr-x (binary) file permissions
+// 493 = 00755 = S_IRUSR_IWUSR_IRGRP_IROTH | S_IXUSR (00100) | S_IXGRP (00010) | S_IXOTH (00001)
+// these flags also seem to be working for LINUX, MAC, and WINDOWS
+uint64_t S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH = 493;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -328,7 +336,7 @@ void init_library() {
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
-  
+
   // allocate and touch to make sure memory is mapped
   string_buffer = string_alloc(MAX_OUTPUT_LENGTH);
 
@@ -424,10 +432,10 @@ uint64_t SYM_ELLIPSIS     = 28; // ...
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 28; // int
-uint64_t SYM_CHAR     = 29; // char
-uint64_t SYM_UNSIGNED = 30; // unsigned
-uint64_t SYM_CONST    = 31; // const
+uint64_t SYM_INT      = 29; // int
+uint64_t SYM_CHAR     = 30; // char
+uint64_t SYM_UNSIGNED = 31; // unsigned
+uint64_t SYM_CONST    = 32; // const
 
 uint64_t MACRO_VAR_START = 0;
 uint64_t MACRO_VAR_ARG   = 1;
@@ -538,16 +546,16 @@ uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t report_undefined_procedures();
 
 // symbol table entry:
-// +----+---------+
-// |  0 | next    | pointer to next entry
-// |  1 | string  | identifier string, big integer as string, string literal
-// |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE, MACRO
-// |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | value   | VARIABLE: initial value, PROCEDURE: number of parameters: value < 0 -> procedure is variadic and absolute value is number of (static) parameters
-// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP (global), REG_S0 (local)
-// +----+---------+
+// +---+---------+
+// | 0 | next    | pointer to next entry
+// | 1 | string  | identifier string, big integer as string, string literal
+// | 2 | line#   | source line number
+// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
+// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T
+// | 5 | value   | VARIABLE: initial value
+// | 6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
+// | 7 | scope   | REG_GP (global), REG_S0 (local)
+// +---+---------+
 
 uint64_t* allocate_symbol_table_entry() {
   return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
@@ -748,6 +756,8 @@ void emit_bootstrapping();
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
+
+uint64_t open_read_only(char* name);
 
 void selfie_compile();
 
@@ -1012,7 +1022,7 @@ void     decode_elf_program_header(uint64_t* header, uint64_t ph_index);
 
 uint64_t validate_elf_header(uint64_t* header);
 
-uint64_t open_write_only(char* name);
+uint64_t open_write_only(char* name, uint64_t mode);
 
 void selfie_output(char* filename);
 
@@ -1037,6 +1047,8 @@ uint64_t EI_MAG1 = 'E'; // magic number part 1
 uint64_t EI_MAG2 = 'L'; // magic number part 2
 uint64_t EI_MAG3 = 'F'; // magic number part 3
 
+uint64_t MACHO_MAG0 = 207; // first byte of magic number of Mach-O executables
+
 uint64_t EI_CLASS   = 2; // file class is 2 (ELFCLASS64) or 1 (ELFCLASS32)
 uint64_t EI_DATA    = 1; // object file data structures endianness is 1 (ELFDATA2LSB)
 uint64_t EI_VERSION = 1; // version of the object file format
@@ -1058,7 +1070,7 @@ uint64_t e_flags     = 0;  // ignored
 uint64_t e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64) or 52 bytes (ELFCLASS32)
 uint64_t e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64) or 32 bytes (ELFCLASS32)
 
-uint64_t e_phnum = 1; // number of program header entries (code and data segment; TODO: extend to 2)
+uint64_t e_phnum = 2; // number of program header entries (code and data segment)
 
 uint64_t e_shentsize = 0; // size of section header entry
 uint64_t e_shnum     = 0; // number of section header entries
@@ -1069,7 +1081,7 @@ uint64_t e_shstrndx  = 0; // section header offset
 uint64_t p_type  = 1; // type of segment is PT_LOAD
 uint64_t p_flags = 0; // segment attributes
 
-uint64_t p_offset = 0; // segment offset in file (must be page-aligned)
+uint64_t p_offset = 0; // segment offset in file (must be a multiple of p_align)
 
 uint64_t p_vaddr = 0; // start of segment in virtual memory
 uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
@@ -1202,6 +1214,148 @@ uint64_t debug_switch = 0;
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+// cache struct
+// +---+------------------+
+// | 0 | cache memory     | pointer to actual cache consisting of pointers to cache blocks
+// | 1 | cache size       | cache size in bytes
+// | 2 | associativity    | cache associativity
+// | 3 | cache-block size | cache-block size in bytes
+// | 4 | cache hits       | counter for cache hits
+// | 5 | cache misses     | counter for cache misses
+// | 6 | cache timer      | counter for LRU replacement strategy
+// +---+------------------+
+
+uint64_t* allocate_cache() {
+  return smalloc(1 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+}
+
+uint64_t* get_cache_memory(uint64_t* cache)     { return (uint64_t*) *cache; }
+uint64_t  get_cache_size(uint64_t* cache)       { return             *(cache + 1); }
+uint64_t  get_associativity(uint64_t* cache)    { return             *(cache + 2); }
+uint64_t  get_cache_block_size(uint64_t* cache) { return             *(cache + 3); }
+uint64_t  get_cache_hits(uint64_t* cache)       { return             *(cache + 4); }
+uint64_t  get_cache_misses(uint64_t* cache)     { return             *(cache + 5); }
+uint64_t  get_cache_timer(uint64_t* cache)      { return             *(cache + 6); }
+
+void set_cache_memory(uint64_t* cache, uint64_t* cache_memory)        { *cache       = (uint64_t) cache_memory; }
+void set_cache_size(uint64_t* cache, uint64_t cache_size)             { *(cache + 1) = cache_size; }
+void set_associativity(uint64_t* cache, uint64_t associativity)       { *(cache + 2) = associativity; }
+void set_cache_block_size(uint64_t* cache, uint64_t cache_block_size) { *(cache + 3) = cache_block_size; }
+void set_cache_hits(uint64_t* cache, uint64_t cache_hits)             { *(cache + 4) = cache_hits; }
+void set_cache_misses(uint64_t* cache, uint64_t cache_misses)         { *(cache + 5) = cache_misses; }
+void set_cache_timer(uint64_t* cache, uint64_t cache_timer)           { *(cache + 6) = cache_timer; }
+
+// cache block struct:
+// +---+------------+
+// | 0 | valid flag | valid block or not
+// | 1 | tag        | unique identifier within a set
+// | 2 | memory     | pointer to cache-block memory
+// | 3 | timestamp  | timestamp for replacement strategy
+// +---+------------+
+
+uint64_t* allocate_cache_block() {
+  return zmalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+}
+
+uint64_t  get_valid_flag(uint64_t* cache_block)   { return             *cache_block; }
+uint64_t  get_tag(uint64_t* cache_block)          { return             *(cache_block + 1); }
+uint64_t* get_block_memory(uint64_t* cache_block) { return (uint64_t*) *(cache_block + 2); }
+uint64_t  get_timestamp(uint64_t* cache_block)    { return             *(cache_block + 3); }
+
+void set_valid_flag(uint64_t* cache_block, uint64_t valid)     { *cache_block       = valid; }
+void set_tag(uint64_t* cache_block, uint64_t tag)              { *(cache_block + 1) = tag; }
+void set_block_memory(uint64_t* cache_block, uint64_t* memory) { *(cache_block + 2) = (uint64_t) memory; }
+void set_timestamp(uint64_t* cache_block, uint64_t timestamp)  { *(cache_block + 3) = timestamp; }
+
+void reset_cache_counters(uint64_t* cache);
+void reset_all_cache_counters();
+
+void init_cache_memory(uint64_t* cache);
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size);
+void init_all_caches();
+
+void flush_cache(uint64_t* cache);
+void flush_all_caches();
+
+uint64_t cache_set_size(uint64_t* cache);
+
+uint64_t cache_tag(uint64_t* cache, uint64_t address);
+uint64_t cache_index(uint64_t* cache, uint64_t address);
+uint64_t cache_block_address(uint64_t* cache, uint64_t address);
+uint64_t cache_byte_offset(uint64_t* cache, uint64_t address);
+
+uint64_t* cache_set(uint64_t* cache, uint64_t vaddr);
+
+uint64_t  get_new_timestamp(uint64_t* cache);
+uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t is_access);
+
+void      fill_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr);
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t paddr, uint64_t is_access);
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t is_access);
+
+void     flush_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr);
+uint64_t load_from_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr);
+void     store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t data);
+
+uint64_t load_instruction_from_cache(uint64_t vaddr, uint64_t paddr);
+uint64_t load_data_from_cache(uint64_t vaddr, uint64_t paddr);
+void     store_data_in_cache(uint64_t vaddr, uint64_t paddr, uint64_t data);
+
+void print_cache_profile(uint64_t hits, uint64_t misses, char* cache_name);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// indicates whether the machine has a cache or not
+uint64_t L1_CACHE_ENABLED = 0;
+
+// machine-enforced coherency for self-modifying code (selfie also
+// works if this is turned off since there is no code modification
+// during runtime and stores in the code segment are illegal)
+uint64_t L1_CACHE_COHERENCY = 0;
+
+// example configurations:
+// +-------------------+---------------+-----------------------------+------------+
+// |              name |    cache size |               associativity | block size |
+// +===================+===============+=============================+============+
+// |       CORE-V CVA6 | dcache: 32 KB |                   dcache: 8 |       16 B |
+// |                   | icache: 16 KB |                   icache: 4 |            |
+// +-------------------+---------------+-----------------------------+------------+
+// |     direct-mapped |         2^x B |                           1 |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+// | fully associative |         2^x B | (cache size) / (block size) |      2^y B |
+// +-------------------+---------------+-----------------------------+------------+
+
+// L1-cache size in byte
+// assert: cache sizes are powers of 2
+uint64_t L1_DCACHE_SIZE = 32768; // 32 KB data cache
+uint64_t L1_ICACHE_SIZE = 16384; // 16 KB instruction cache
+
+// L1-cache associativity
+// assert: associativities are powers of 2
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY <= PAGESIZE
+// (this is necessary in order to prevent aliasing problems)
+uint64_t L1_DCACHE_ASSOCIATIVITY = 8;
+uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
+
+// L1 cache-block size
+// assert: cache-block sizes are powers of 2
+// assert: L1_xCACHE_BLOCK_SIZE >= WORDSIZE
+// assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY >= L1_xCACHE_BLOCK_SIZE
+uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
+uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
+
+// pointers to VIPT n-way set-associative write-through L1-caches
+uint64_t* L1_ICACHE;
+uint64_t* L1_DCACHE;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t L1_icache_coherency_invalidations = 0;
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -1232,6 +1386,11 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr);
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr);
 void     store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data);
+
+uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr);
+void     store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data);
+
+uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1337,10 +1496,13 @@ void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
 void set_gc_enabled_gc(uint64_t* context);
 
+void gc_init_selfie(uint64_t* context);
+
+// interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
 void gc_init(uint64_t* context);
 
 // this function performs first-fit retrieval of free memory in O(n) where n is memory size
-// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact fit
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact-fit
 // see https://github.com/cksystemsgroup/compact-fit
 uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
@@ -1349,24 +1511,35 @@ void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
 
 void zero_object(uint64_t* context, uint64_t* metadata);
 
-uint64_t* allocate_memory(uint64_t* context, uint64_t size);
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size);
 uint64_t* reuse_memory(uint64_t* context, uint64_t size);
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
 
-// this function performs an O(n) list search where n is memory size
-// TODO: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address);
+// interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
+uint64_t* allocate_memory(uint64_t* context, uint64_t size);
 
+// this function performs an O(n) list search where n is memory size
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address);
+
+// interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
 void mark_object(uint64_t* context, uint64_t address);
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address);
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
 
 // this function scans the heap from two roots (data segment and stack) in O(n^2)
 // where n is memory size; checking if a value is a pointer takes O(n), see above
-// TODO: push O(n^2) down to O(n)
+// improvement: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
 void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
+
+// interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
 void sweep(uint64_t* context);
+
+void sweep_selfie(uint64_t* context);
 
 void gc_collect(uint64_t* context);
 
@@ -1640,6 +1813,8 @@ void print_register_memory_profile();
 
 void print_profile(uint64_t* context);
 
+void print_host_os();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t INSTRUCTIONSIZE       = 4;  // in bytes
@@ -1846,6 +2021,7 @@ void reset_profiler() {
   reset_source_profile();
   reset_register_access_counters();
   reset_segments_access_counters();
+  reset_all_cache_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2113,6 +2289,8 @@ uint64_t HYPSTER = 4;
 uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
 
+uint64_t CAPSTER = 7;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t next_page_frame = 0;
@@ -2157,9 +2335,17 @@ void turn_on_gc_library(uint64_t period, char* name);
 
 char* selfie_name = (char*) 0; // name of running selfie executable
 
-uint64_t BOOTLEVELZERO = 0; // flag for indicating boot level
+// IDs for host operating systems
 
-uint64_t WINDOWS = 0; // indicates if we are likely running on Windows
+uint64_t SELFIE    = 0;
+uint64_t LINUX     = 1;
+uint64_t MACOS     = 2;
+uint64_t WINDOWS   = 3;
+uint64_t BAREMETAL = 4;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t OS = 0; // default host operating system is selfie
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2171,6 +2357,8 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
 }
 
 void init_system() {
+  uint64_t selfie_fd;
+
   if (SIZEOFUINT64 != SIZEOFUINT64STAR)
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
@@ -2193,13 +2381,33 @@ void init_system() {
   }
 
   if (is_boot_level_zero()) {
-    BOOTLEVELZERO = 1;
+    // try opening executable
+    selfie_fd = open_read_only(selfie_name);
 
-    // caution: the name of the executable must not have an extension to make this work
-    // try opening executable with zeroed flags which likely fails but just on Windows
-    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
-      WINDOWS = 1;
-  }
+    if (signed_less_than(selfie_fd, 0))
+      // failure likely indicates Windows
+      OS = WINDOWS;
+    else {
+      // read first byte of magic number
+      read(selfie_fd, binary_buffer, 1);
+
+      if (*binary_buffer == EI_MAG0)
+        OS = LINUX;
+      else if (*binary_buffer == MACHO_MAG0)
+        OS = MACOS;
+      else
+        OS = WINDOWS;
+    }
+  } else
+    OS = SELFIE;
+
+  if (OS == MACOS)
+    O_CREAT_TRUNC_WRONLY = MAC_O_CREAT_TRUNC_WRONLY;
+  else if (OS == WINDOWS)
+    O_CREAT_TRUNC_WRONLY = WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY;
+  else
+    // Linux file opening flags are the default for Linux, selfie, and bare-metal hosts
+    O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -2682,7 +2890,7 @@ void put_character(uint64_t c) {
     // assert: character_buffer is mapped
 
     if (output_fd == 1) {
-      if (BOOTLEVELZERO)
+      if (OS != SELFIE)
         written_bytes = printf("%c", (char) c);
       else
         written_bytes = write(output_fd, character_buffer, 1);
@@ -2881,7 +3089,7 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 }
 
 void direct_output(char* buffer) {
-  if(output_fd == 1)
+  if (output_fd == 1)
     printf("%s", buffer);
   else
     dprintf(output_fd, "%s", buffer);
@@ -2908,7 +3116,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
           i = print_format(s, i, var_arg(args));
         } else {
           put_character('%');
-        
+
           i = i + 2;
         }
       } else {
@@ -3341,6 +3549,9 @@ void get_symbol() {
     if (symbol != SYM_DIVISION) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
+
+      // start state of finite state machine
+      // for recognizing C* symbols is here
       if (is_character_letter()) {
         // accommodate identifier and null for termination
         identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
@@ -3554,21 +3765,21 @@ void get_symbol() {
           symbol = SYM_GEQ;
         } else
           symbol = SYM_GT;
-    
+
       } else if (character == CHAR_DOT) {
         get_character();
 
         if (character == CHAR_DOT) {
           get_character();
-      
-          if (character == CHAR_DOT) {
+
+          if (character == CHAR_DOT)
             get_character();
-    
-            symbol = SYM_ELLIPSIS;
-          } else
+          else
             syntax_error_character(CHAR_DOT);
         } else
           syntax_error_character(CHAR_DOT);
+
+        symbol = SYM_ELLIPSIS;
 
       } else {
         print_line_number("syntax error", line_number);
@@ -4242,7 +4453,7 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // restore return address
   emit_load(REG_RA, REG_SP, 0);
 
-  // deallocate memory for return address and parameters
+  // deallocate memory for return address and actual parameters
   emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
 
   // return
@@ -4293,7 +4504,7 @@ uint64_t compile_call(char* procedure) {
   number_of_temporaries = allocated_temporaries;
 
   save_temporaries();
-  
+
   number_of_parameters = 0;
 
   // assert: allocated_temporaries == 0
@@ -4306,12 +4517,12 @@ uint64_t compile_call(char* procedure) {
     // allocate memory on stack for parameters; we do not know how many, fixup later
     allocate_memory_on_stack = code_size;
     emit_addi(REG_SP, REG_SP, 0);
-  
+
     // push first parameter onto the stack
     emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
-  
+
     tfree(1);
-  
+
     number_of_parameters = number_of_parameters + 1;
 
     while (symbol == SYM_COMMA) {
@@ -4321,12 +4532,12 @@ uint64_t compile_call(char* procedure) {
 
       // push more parameters onto stack
       emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
-  
+
       tfree(1);
-  
+
       number_of_parameters = number_of_parameters + 1;
     }
-  
+
     // now we know the number of parameters
     fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * WORDSIZE));
 
@@ -4354,11 +4565,11 @@ uint64_t compile_call(char* procedure) {
   restore_temporaries(number_of_temporaries);
 
   number_of_calls = number_of_calls + 1;
-  
+
   // deallocate variadic parameters
-  if(entry != (uint64_t*) 0)
-    if(signed_less_than(get_value(entry), 0))
-      emit_addi(REG_SP, REG_SP, ((number_of_parameters + get_value(entry)) * WORDSIZE));
+  if (entry != (uint64_t*) 0)
+    if (signed_less_than(get_value(entry), 0))
+      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * WORDSIZE);
 
   // assert: allocated_temporaries == n
 
@@ -5210,7 +5421,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   // assuming procedure is undefined
   is_undefined = 1;
-  
+
   //assuming procedure is not variadic
   is_variadic = 0;
 
@@ -5224,9 +5435,9 @@ void compile_procedure(char* procedure, uint64_t type) {
       compile_variable(0);
 
       number_of_parameters = 1;
-      
+
       entry = local_symbol_table;
-      
+
       // 2 * WORDIZE offset to skip frame pointer and link
       // additional (number_of_parameters - 1) * WORDSIZE offset due to the
       // order of the parameters
@@ -5243,9 +5454,9 @@ void compile_procedure(char* procedure, uint64_t type) {
           compile_variable(0);
 
           number_of_parameters = number_of_parameters + 1;
-          
+
           entry = local_symbol_table;
-      
+
           set_address(entry, (number_of_parameters - 1) * WORDSIZE + 2 * WORDSIZE);
         }
       }
@@ -5265,9 +5476,9 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0) {
       // procedure never called nor declared nor defined
-      if(is_variadic)
+      if (is_variadic)
         number_of_parameters = -number_of_parameters;
-        
+
       create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
     } else if (get_type(entry) != type)
       // procedure already called, declared, or even defined
@@ -5458,7 +5669,7 @@ void compile_cstar() {
 void non_zero_bootlevel_macro_var_start() {
   uint64_t* var_list_variable;
   uint64_t s0_offset;
-  
+
   var_list_variable = (uint64_t*) 0;
   s0_offset = 0;
 
@@ -5492,7 +5703,7 @@ void non_zero_bootlevel_macro_var_start() {
 void non_zero_bootlevel_macro_var_arg() {
   uint64_t* var_list_variable;
   uint64_t  var_list_address;
-  
+
   var_list_variable = (uint64_t*) 0;
   var_list_address = 0;
 
@@ -5601,11 +5812,13 @@ void emit_bootstrapping() {
     emit_nop();
 
   // start of data segment must be page-aligned for ELF program header
-  // TODO: data_start = round_up(code_start + code_size, p_align);
-  data_start = code_start + code_size;
+  data_start = round_up(code_start + code_size, p_align);
 
   // calculate global pointer value
   gp_value = data_start + data_size;
+
+  // further allocations in the data segment are not allowed at this point,
+  // because it would increase data_size and therefore lead to a false gp_value
 
   // set code emission to program entry
   saved_code_size = code_size;
@@ -5620,7 +5833,8 @@ void emit_bootstrapping() {
   } else {
     // avoid sign extension that would result in an additional sub instruction
     if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
-      // assert: generates no more than two instructions
+      // assert: generates no more than two instructions and
+      // no data segment allocations in load_integer for gp_value
       load_integer(gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
@@ -5736,6 +5950,10 @@ void emit_bootstrapping() {
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
+uint64_t open_read_only(char* name) {
+  return sign_extend(open(name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+}
+
 void selfie_compile() {
   uint64_t link;
   uint64_t number_of_source_files;
@@ -5813,7 +6031,7 @@ void selfie_compile() {
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+      source_fd = open_read_only(source_name);
 
       if (signed_less_than(source_fd, 0)) {
         printf("%s: could not open input file %s\n", selfie_name, source_name);
@@ -6663,21 +6881,24 @@ uint64_t* encode_elf_header() {
     *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
   }
 
-  p_flags  = 7; // code segment attributes are RWE (TODO: should be 5 for RE)
+  // start of segments have to be aligned in the binary file
+
+  // assert: ELF_HEADER_SIZE % p_align == 0
+
+  p_flags  = 5; // code segment attributes are RE
   p_offset = ELF_HEADER_SIZE; // must match binary format
   p_vaddr  = code_start;
-  p_filesz = code_size + data_size; // TODO: should be code_size
-  p_memsz  = code_size + data_size; // TODO: should be code_size
+  p_filesz = code_size;
+  p_memsz  = code_size;
 
   encode_elf_program_header(header, 0);
 
   p_flags  = 6; // data segment attributes are RW
-  p_offset = ELF_HEADER_SIZE + code_size; // must match binary format
+  p_offset = ELF_HEADER_SIZE + round_up(code_size, p_align); // must match binary format
   p_vaddr  = data_start;
   p_filesz = data_size;
   p_memsz  = data_size;
 
-  // TODO: currently ignored because e_phnum == 1
   encode_elf_program_header(header, 1);
 
   return header;
@@ -6719,7 +6940,6 @@ void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t binary_size;
   uint64_t* valid_header;
   uint64_t i;
 
@@ -6728,18 +6948,14 @@ uint64_t validate_elf_header(uint64_t* header) {
 
   decode_elf_program_header(header, 0);
 
-  // TODO: code_size = p_filesz;
-  binary_size = p_filesz;
+  code_size = p_filesz;
 
   decode_elf_program_header(header, 1);
 
   data_size = p_filesz;
 
-  code_size = binary_size - data_size;
-
   // must match binary bootstrapping
-  // TODO: data_start = round_up(code_start + code_size, p_align);
-  data_start = code_start + code_size;
+  data_start = round_up(code_start + code_size, p_align);
 
   if (code_size > MAX_CODE_SIZE)
     return 0;
@@ -6761,29 +6977,13 @@ uint64_t validate_elf_header(uint64_t* header) {
   return 1;
 }
 
-uint64_t open_write_only(char* name) {
-  // we try opening write-only files using platform-specific flags
-  // to make selfie platform-independent, this may nevertheless
-  // not always work and require intervention
-  uint64_t fd;
-
-  if (WINDOWS)
-    // use Windows flags
-    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-  else {
-    // try Mac flags first as default
-    fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-
-    if (signed_less_than(fd, 0))
-      // then try Linux flags
-      fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-  }
-
-  return fd;
+uint64_t open_write_only(char* name, uint64_t mode) {
+  return sign_extend(open(name, O_CREAT_TRUNC_WRONLY, mode), SYSCALL_BITWIDTH);
 }
 
 void selfie_output(char* filename) {
   uint64_t fd;
+  uint64_t code_size_with_padding;
 
   binary_name = filename;
 
@@ -6795,7 +6995,7 @@ void selfie_output(char* filename) {
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = open_write_only(binary_name);
+  fd = open_write_only(binary_name, S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH);
 
   if (signed_less_than(fd, 0)) {
     printf("%s: could not create binary output file %s\n", selfie_name, binary_name);
@@ -6812,10 +7012,14 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
+  code_size_with_padding = round_up(code_size, p_align);
+
+  touch(code_binary, code_size_with_padding);
+
   // assert: code_binary is mapped
 
-  // then write code
-  if (write(fd, code_binary, code_size) != code_size) {
+  // then write code with padding bytes
+  if (write(fd, code_binary, code_size_with_padding) != code_size_with_padding) {
     printf("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -6872,12 +7076,13 @@ uint64_t* touch(uint64_t* memory, uint64_t bytes) {
 void selfie_load() {
   uint64_t fd;
   uint64_t number_of_read_bytes;
+  uint64_t code_size_with_padding;
 
   binary_name = get_argument();
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  fd = open_read_only(binary_name);
 
   if (signed_less_than(fd, 0)) {
     printf("%s: could not open input file %s\n", selfie_name, binary_name);
@@ -6904,9 +7109,11 @@ void selfie_load() {
 
   if (number_of_read_bytes == ELF_HEADER_SIZE) {
     if (validate_elf_header(ELF_header)) {
-      number_of_read_bytes = sign_extend(read(fd, code_binary, code_size), SYSCALL_BITWIDTH);
+      code_size_with_padding = round_up(code_size, p_align);
 
-      if (number_of_read_bytes == code_size) {
+      number_of_read_bytes = sign_extend(read(fd, code_binary, code_size_with_padding), SYSCALL_BITWIDTH);
+
+      if (number_of_read_bytes == code_size_with_padding) {
         number_of_read_bytes = sign_extend(read(fd, data_binary, data_size), SYSCALL_BITWIDTH);
 
         if (number_of_read_bytes == data_size) {
@@ -7323,11 +7530,11 @@ void implement_openat(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A3);
 
   if (down_load_string(context, vfilename, filename_buffer)) {
-    if (flags == MAC_O_CREAT_TRUNC_WRONLY)
-      // default for opening write-only files
-      fd = open_write_only(filename_buffer);
-    else
-      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+    if (flags == LINUX_O_CREAT_TRUNC_WRONLY)
+      // use correct flags for host operating system
+      flags = O_CREAT_TRUNC_WRONLY;
+
+    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
@@ -7491,7 +7698,7 @@ uint64_t is_boot_level_zero() {
   uint64_t first_malloc;
   uint64_t second_malloc;
 
-  first_malloc = (uint64_t) malloc(0);
+  first_malloc  = (uint64_t) malloc(0);
   second_malloc = (uint64_t) malloc(0);
 
   if (first_malloc == 0)
@@ -7499,7 +7706,7 @@ uint64_t is_boot_level_zero() {
   if (first_malloc != second_malloc)
     return 1;
 
-  // it is selfie's malloc, so it cannot be boot level zero.
+  // selfie's malloc, cannot be boot level zero!
   return 0;
 }
 
@@ -7521,7 +7728,7 @@ void emit_switch() {
   emit_ecall();
 
   // save context from which we are switching here in return register
-  emit_addi(REG_A1, REG_A6, 0);
+  emit_addi(REG_A0, REG_A6, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
@@ -7601,6 +7808,338 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // -----------------    A R C H I T E C T U R E    -----------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ----------------------------- CACHE -----------------------------
+// -----------------------------------------------------------------
+
+void reset_cache_counters(uint64_t* cache) {
+  set_cache_hits(cache, 0);
+  set_cache_misses(cache, 0);
+}
+
+void reset_all_cache_counters() {
+  if (L1_CACHE_ENABLED) {
+    reset_cache_counters(L1_DCACHE);
+    reset_cache_counters(L1_ICACHE);
+  }
+}
+
+void init_cache_memory(uint64_t* cache) {
+  uint64_t number_of_cache_blocks;
+  uint64_t* cache_memory;
+  uint64_t i;
+  uint64_t* cache_block;
+
+  number_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
+
+  cache_memory = smalloc(number_of_cache_blocks * SIZEOFUINT64STAR);
+
+  set_cache_memory(cache, cache_memory);
+
+  i = 0;
+
+  while (i < number_of_cache_blocks) {
+    cache_block = allocate_cache_block();
+
+    // valid bit and timestamp are already initialized to 0
+
+    *(cache_memory + i) = (uint64_t) cache_block;
+
+    set_block_memory(cache_block, smalloc(get_cache_block_size(cache)));
+
+    i = i + 1;
+  }
+}
+
+void init_cache(uint64_t* cache, uint64_t cache_size, uint64_t associativity, uint64_t cache_block_size) {
+  set_cache_size(cache, cache_size);
+  set_associativity(cache, associativity);
+  set_cache_block_size(cache, cache_block_size);
+
+  init_cache_memory(cache);
+
+  reset_cache_counters(cache);
+}
+
+void init_all_caches() {
+  L1_DCACHE = allocate_cache();
+
+  init_cache(L1_DCACHE, L1_DCACHE_SIZE, L1_DCACHE_ASSOCIATIVITY, L1_DCACHE_BLOCK_SIZE);
+
+  L1_ICACHE = allocate_cache();
+
+  init_cache(L1_ICACHE, L1_ICACHE_SIZE, L1_ICACHE_ASSOCIATIVITY, L1_ICACHE_BLOCK_SIZE);
+}
+
+void flush_cache(uint64_t* cache) {
+  uint64_t number_of_cache_blocks;
+  uint64_t* cache_memory;
+  uint64_t i;
+  uint64_t* cache_block;
+
+  number_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
+
+  cache_memory = get_cache_memory(cache);
+
+  i = 0;
+
+  while (i < number_of_cache_blocks) {
+    cache_block = (uint64_t*) *(cache_memory + i);
+
+    set_valid_flag(cache_block, 0);
+    set_timestamp(cache_block, 0);
+
+    i = i + 1;
+  }
+
+  set_cache_timer(cache, 0);
+}
+
+void flush_all_caches() {
+  if (L1_CACHE_ENABLED) {
+    flush_cache(L1_DCACHE);
+    flush_cache(L1_ICACHE);
+  }
+}
+
+uint64_t cache_set_size(uint64_t* cache) {
+  return get_cache_size(cache) / get_associativity(cache);
+}
+
+// cache addressing:
+//
+// vaddr
+// +-----+-------+-------------+
+// |     | index | byte offset |
+// +-----+-------+-------------+
+// 31    ^       ^             0
+//       |       |
+//       |  log(cache_block_size)
+//       |
+// log(cache_size / associativity)
+//       |
+// paddr v
+// +-----+---------------------+
+// | tag |                     |
+// +-----+---------------------+
+
+uint64_t cache_tag(uint64_t* cache, uint64_t address) {
+  return address / cache_set_size(cache);
+}
+
+uint64_t cache_index(uint64_t* cache, uint64_t address) {
+  return (address - cache_tag(cache, address) * cache_set_size(cache)) / get_cache_block_size(cache);
+}
+
+uint64_t cache_block_address(uint64_t* cache, uint64_t address) {
+  return address / get_cache_block_size(cache) * get_cache_block_size(cache);
+}
+
+uint64_t cache_byte_offset(uint64_t* cache, uint64_t address) {
+  return address - cache_block_address(cache, address);
+}
+
+uint64_t* cache_set(uint64_t* cache, uint64_t vaddr) {
+  return get_cache_memory(cache) + cache_index(cache, vaddr) * get_associativity(cache);
+}
+
+uint64_t get_new_timestamp(uint64_t* cache) {
+  uint64_t timestamp;
+
+  timestamp = get_cache_timer(cache);
+
+  set_cache_timer(cache, timestamp + 1);
+
+  return timestamp;
+}
+
+uint64_t* cache_lookup(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t is_access) {
+  uint64_t tag;
+  uint64_t* set;
+  uint64_t i;
+  uint64_t* lru_block;
+  uint64_t* cache_block;
+
+  tag = cache_tag(cache, paddr);
+  set = cache_set(cache, vaddr);
+
+  i = 0;
+
+  lru_block = (uint64_t*) *set;
+
+  while (i < get_associativity(cache)) {
+    cache_block = (uint64_t*) *(set + i);
+
+    if (get_timestamp(cache_block) < get_timestamp(lru_block))
+      lru_block = cache_block;
+
+    if (get_valid_flag(cache_block))
+      if (get_tag(cache_block) == tag) {
+        // cache hit
+
+        if (is_access) {
+          set_cache_hits(cache, get_cache_hits(cache) + 1);
+
+          set_timestamp(cache_block, get_new_timestamp(cache));
+        }
+
+        return cache_block;
+      }
+
+    i = i + 1;
+  }
+
+  // cache miss
+
+  set_valid_flag(lru_block, 0);
+
+  return lru_block;
+}
+
+void fill_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
+  uint64_t number_of_words_in_cache_block;
+  uint64_t* block_memory;
+  uint64_t i;
+
+  number_of_words_in_cache_block = get_cache_block_size(cache) / WORDSIZE;
+
+  block_memory = get_block_memory(cache_block);
+
+  // align paddr to cache block
+  paddr = cache_block_address(cache, paddr);
+
+  i = 0;
+
+  while (i < number_of_words_in_cache_block) {
+    *(block_memory + i) = load_physical_memory((uint64_t*) paddr + i);
+
+    i = i + 1;
+  }
+}
+
+uint64_t* handle_cache_miss(uint64_t* cache, uint64_t* cache_block, uint64_t paddr, uint64_t is_access) {
+  if (is_access) {
+    set_cache_misses(cache, get_cache_misses(cache) + 1);
+
+    // make sure the entire cache block contains valid data
+    fill_cache_block(cache, cache_block, paddr);
+
+    set_tag(cache_block, cache_tag(cache, paddr));
+
+    set_timestamp(cache_block, get_new_timestamp(cache));
+
+    set_valid_flag(cache_block, 1);
+
+    return cache_block;
+  } else
+    return (uint64_t*) 0;
+}
+
+uint64_t* retrieve_cache_block(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t is_access) {
+  uint64_t* cache_block;
+
+  cache_block = cache_lookup(cache, vaddr, paddr, is_access);
+
+  if (get_valid_flag(cache_block))
+    // cache hit
+    return cache_block;
+  else
+    return handle_cache_miss(cache, cache_block, paddr, is_access);
+}
+
+void flush_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
+  uint64_t number_of_words_in_cache_block;
+  uint64_t* block_memory;
+  uint64_t i;
+
+  number_of_words_in_cache_block = get_cache_block_size(cache) / WORDSIZE;
+
+  block_memory = get_block_memory(cache_block);
+
+  // align paddr to cache block
+  paddr = cache_block_address(cache, paddr);
+
+  i = 0;
+
+  while (i < number_of_words_in_cache_block) {
+    store_physical_memory((uint64_t*) paddr + i, *(block_memory + i));
+
+    i = i + 1;
+  }
+}
+
+uint64_t load_from_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr) {
+  uint64_t* cache_block;
+  uint64_t* block_memory;
+
+  cache_block = retrieve_cache_block(cache, vaddr, paddr, 1);
+
+  block_memory = get_block_memory(cache_block);
+
+  return *(block_memory + cache_byte_offset(cache, vaddr) / WORDSIZE);
+}
+
+void store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t data) {
+  uint64_t* cache_block;
+  uint64_t* block_memory;
+
+  cache_block = retrieve_cache_block(cache, vaddr, paddr, 1);
+
+  block_memory = get_block_memory(cache_block);
+
+  *(block_memory + cache_byte_offset(cache, vaddr) / WORDSIZE) = data;
+
+  flush_cache_block(cache, cache_block, paddr);
+}
+
+uint64_t load_instruction_from_cache(uint64_t vaddr, uint64_t paddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  return load_from_cache(L1_ICACHE, vaddr, paddr);
+}
+
+uint64_t load_data_from_cache(uint64_t vaddr, uint64_t paddr) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  return load_from_cache(L1_DCACHE, vaddr, paddr);
+}
+
+void store_data_in_cache(uint64_t vaddr, uint64_t paddr, uint64_t data) {
+  uint64_t* cache_block;
+
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  store_in_cache(L1_DCACHE, vaddr, paddr, data);
+
+  if (L1_CACHE_COHERENCY) {
+    cache_block = retrieve_cache_block(L1_ICACHE, vaddr, paddr, 0);
+
+    // mimicking x86 behavior (see Intel 64 and IA-32 Architectures Software Developer's
+    // Manual Volume 3, Chapter 11.6 Self-Modifying Code: "A write to a memory location in
+    // a code segment that is currently cached in the processor causes the associated
+    // cache line (or lines) to be invalidated")
+    if (cache_block != (uint64_t*) 0) {
+      set_valid_flag(cache_block, 0);
+      set_timestamp(cache_block, 0);
+
+      L1_icache_coherency_invalidations = L1_icache_coherency_invalidations + 1;
+    }
+  }
+}
+
+void print_cache_profile(uint64_t hits, uint64_t misses, char* cache_name) {
+  uint64_t accesses;
+
+  accesses = hits + misses;
+
+  printf("%s: %s%lu,", selfie_name, cache_name, accesses);
+  printf("%lu(%.2lu%%),%lu(%.2lu%%)",
+    hits,
+    percentage_format(accesses, hits),
+    misses,
+    percentage_format(accesses, misses));
+}
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -7733,10 +8272,10 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 
   if (debug_tlb)
     printf("%s: tlb access:\n vaddr: 0x%08lX\n page:  0x%08lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
-      (uint64_t) vaddr,
-      (uint64_t) (page * PAGESIZE),
-      (uint64_t) frame,
-      (uint64_t) paddr);
+      vaddr,
+      page * PAGESIZE,
+      frame,
+      paddr);
 
   return (uint64_t*) paddr;
 }
@@ -7753,6 +8292,33 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
+}
+
+uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
+  if (L1_CACHE_ENABLED)
+    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_mapped(table, vaddr) == 1
+    return load_data_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
+  else
+    return load_virtual_memory(table, vaddr);
+}
+
+void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
+  if (L1_CACHE_ENABLED)
+    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_mapped(table, vaddr) == 1
+    store_data_in_cache(vaddr, (uint64_t) tlb(table, vaddr), data);
+  else
+    store_virtual_memory(table, vaddr, data);
+}
+
+uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
+  if (L1_CACHE_ENABLED)
+    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_mapped(table, vaddr) == 1
+    return load_instruction_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
+  else
+    return load_virtual_memory(table, vaddr);
 }
 
 // -----------------------------------------------------------------
@@ -7865,7 +8431,7 @@ uint64_t is_gc_library(uint64_t* context) {
 
 uint64_t* allocate_metadata(uint64_t* context) {
   if (is_gc_library(context))
-    return allocate_memory(context, GC_METADATA_SIZE);
+    return allocate_new_memory(context, GC_METADATA_SIZE);
   else
     return smalloc(GC_METADATA_SIZE);
 }
@@ -7975,8 +8541,15 @@ void set_gc_enabled_gc(uint64_t* context) {
 }
 
 void gc_init(uint64_t* context) {
+  gc_init_selfie(context);
+}
+
+void gc_init_selfie(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
+
+  // calculate metadata size using actual width of integers/pointers
+  GC_METADATA_SIZE =  SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
 
   set_data_and_heap_segments_gc(context);
 
@@ -8051,7 +8624,7 @@ void zero_object(uint64_t* context, uint64_t* metadata) {
   }
 }
 
-uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size) {
   uint64_t object;
   uint64_t new_program_break;
 
@@ -8095,26 +8668,13 @@ uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
   return (uint64_t*) 0;
 }
 
-uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+  return allocate_memory_selfie(context, size);
+}
+
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
   uint64_t* object;
   uint64_t* metadata;
-
-  // stack is not zeroed! using two successive gc_malloc calls (library variant)
-  // leads to having the same variables as with the previous call and therefore
-  // we might have a reachable pointer which is not actually reachable. to fix
-  // this, we set these variables to 0.
-  object   = (uint64_t*) 0;
-  metadata = (uint64_t*) 0;
-
-  // garbage collect
-  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
-    gc_collect(context);
-
-    set_gcs_in_period_gc(context, 0);
-  } else
-    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
-
-  size = round_up(size, SIZEOFUINT64);
 
   gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
@@ -8130,7 +8690,7 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   }
 
   // allocate new object memory if there is no reusable memory
-  object = allocate_memory(context, size);
+  object = allocate_new_memory(context, size);
 
   if (object != (uint64_t*) 0) {
     // allocate metadata for managing object
@@ -8158,15 +8718,25 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
   return object;
 }
 
-uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) {
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+  // first, garbage collect
+  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
+    gc_collect(context);
+
+    set_gcs_in_period_gc(context, 0);
+  } else
+    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
+
+  // then, allocate memory
+
+  size = round_up(size, SIZEOFUINT64);
+
+  return allocate_memory(context, size);
+}
+
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
   uint64_t* node;
   uint64_t  object;
-
-  // get word at address and check if it may be a pointer
-  address = gc_load_memory(context, address);
-
-  if (is_virtual_address_valid(address, WORDSIZE) == 0)
-    return (uint64_t*) 0;
 
   // pointer below gced heap
   if (address < get_heap_seg_start_gc(context))
@@ -8198,11 +8768,22 @@ uint64_t* find_metadata_of_word_at_address(uint64_t* context, uint64_t address) 
 }
 
 void mark_object(uint64_t* context, uint64_t address) {
+  uint64_t gc_address;
+
+  gc_address = gc_load_memory(context, address);
+
+  mark_object_selfie(context, gc_address);
+}
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t* metadata;
   uint64_t object_start;
   uint64_t object_end;
 
-  metadata = find_metadata_of_word_at_address(context, address);
+  if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
+    return;
+
+  metadata = get_metadata_if_address_is_valid(context, gc_address);
 
   if (metadata == (uint64_t*) 0)
     // address is not a pointer to a gced object
@@ -8226,10 +8807,14 @@ void mark_object(uint64_t* context, uint64_t address) {
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap
 
-  while (segment_start <= segment_end - WORDSIZE) {
+  // prevent (32-bit) overflow by subtracting SIZEOFUINT64 from index
+  segment_start = segment_start - SIZEOFUINT64;
+
+  while (segment_start < segment_end - WORDSIZE) {
     // assert: is_virtual_address_valid(segment_start, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(segment_start) == 1
-    mark_object(context, segment_start);
+    // undo index offset before marking address
+    mark_object(context, segment_start + SIZEOFUINT64);
 
     segment_start = segment_start + SIZEOFUINT64;
   }
@@ -8269,6 +8854,10 @@ void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata)
 }
 
 void sweep(uint64_t* context) {
+  sweep_selfie(context);
+}
+
+void sweep_selfie(uint64_t* context) {
   uint64_t* prev_node;
   uint64_t* node;
   uint64_t* next_node;
@@ -8718,7 +9307,7 @@ uint64_t do_load() {
 
         if (rd != REG_ZR) {
           // semantics of load (double) word
-          next_rd_value = load_virtual_memory(pt, vaddr);
+          next_rd_value = load_cached_virtual_memory(pt, vaddr);
 
           if (*(registers + rd) != next_rd_value)
             *(registers + rd) = next_rd_value;
@@ -8809,9 +9398,14 @@ uint64_t do_store() {
 
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
-          store_virtual_memory(pt, vaddr, *(registers + rs2));
-        else
+          store_cached_virtual_memory(pt, vaddr, *(registers + rs2));
+        else {
           nopc_store = nopc_store + 1;
+
+          if (L1_CACHE_ENABLED)
+            // effective nop still changes the cache state
+            store_cached_virtual_memory(pt, vaddr, *(registers + rs2));
+        }
 
         // keep track of instruction address for profiling stores
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -9059,7 +9653,7 @@ void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0) {
     sprintf(string_buffer, "(~%lu)", *(data_line_number + (pc - code_size) / SIZEOFUINT64));
     direct_output(string_buffer);
-  }  
+  }
 }
 
 void print_data_context(uint64_t data) {
@@ -9138,7 +9732,7 @@ void selfie_disassemble(uint64_t verbose) {
 
   // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  assembly_fd = open_write_only(assembly_name);
+  assembly_fd = open_write_only(assembly_name, S_IRUSR_IWUSR_IRGRP_IROTH);
 
   if (signed_less_than(assembly_fd, 0)) {
     printf("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
@@ -9313,9 +9907,9 @@ void fetch() {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
       if (pc % WORDSIZE == 0)
-        ir = get_low_instruction(load_virtual_memory(pt, pc));
+        ir = get_low_instruction(load_cached_instruction_word(pt, pc));
       else
-        ir = get_high_instruction(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+        ir = get_high_instruction(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
 
       return;
     } else
@@ -9652,7 +10246,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%lu(%lu.%.2lu%%)@0x%lX", 
+    printf(",%lu(%lu.%.2lu%%)@0x%lX",
       c,
       ratio_format_integer(percentage_format(total, c)),
       ratio_format_fractional(percentage_format(total, c)),
@@ -9680,7 +10274,7 @@ void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t
       writes = 1;
 
     printf("%s: %s%s%lu,%lu,%lu[%lu.%.2lu]\n", selfie_name, message, padding,
-      reads + writes, reads, writes, 
+      reads + writes, reads, writes,
       ratio_format_integer(ratio_format(reads, writes)),
       ratio_format_fractional(ratio_format(reads, writes)));
   }
@@ -9791,7 +10385,34 @@ void print_profile(uint64_t* context) {
     print_register_memory_profile();
   }
 
+  if (L1_CACHE_ENABLED) {
+    printf("%s: L1 caches:     accesses,hits,misses\n", selfie_name);
+
+    print_cache_profile(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "data:          ");
+    println();
+
+    print_cache_profile(get_cache_hits(L1_ICACHE), get_cache_misses(L1_ICACHE), "instruction:   ");
+    if (L1_CACHE_COHERENCY)
+      printf(" (coherency invalidations: %ld)", L1_icache_coherency_invalidations);
+    println();
+  }
+
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+}
+
+void print_host_os() {
+  if (OS == SELFIE)
+    print("selfie");
+  else if (OS == LINUX)
+    print("Linux");
+  else if (OS == MACOS)
+    print("macOS");
+  else if (OS == WINDOWS)
+    print("Windows");
+  else if (OS == BAREMETAL)
+    print("bare metal");
+  else
+    print("unknown");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -9829,7 +10450,7 @@ uint64_t* new_context() {
 void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // some fields are set in boot loader or when context switching
 
-  // allocate zeroed memory for general purpose registers
+  // allocate zeroed memory for general-purpose registers
   // TODO: reuse memory
   set_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
@@ -10116,6 +10737,8 @@ void restore_context(uint64_t* context) {
   pc        = get_pc(context);
   registers = get_regs(context);
   pt        = get_pt(context);
+
+  flush_all_caches();
 }
 
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
@@ -10387,7 +11010,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push null value to terminate env table
   map_and_store(context, SP, 0);
-  
+
   // allocate memory for termination of argv table
   SP = SP - WORDSIZE;
 
@@ -10762,6 +11385,20 @@ uint64_t selfie_run(uint64_t machine) {
     printf("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
+  } else if (machine == HYPSTER) {
+    if (OS != SELFIE) {
+      printf("%s: hypster only runs on mipster\n", selfie_name);
+
+      return EXITCODE_BADARGUMENTS;
+    }
+  }
+
+  if (machine == CAPSTER) {
+    init_all_caches();
+
+    L1_CACHE_ENABLED = 1;
+
+    machine = MIPSTER;
   }
 
   reset_interpreter();
@@ -10802,11 +11439,8 @@ uint64_t selfie_run(uint64_t machine) {
     init_replay_engine();
     print(", replay");
     machine = MIPSTER;
-  } else if (machine == HYPSTER) {
-    if (BOOTLEVELZERO)
-      // no hypster on boot level zero
-      machine = MIPSTER;
   }
+
   print(" on ");
 
   if (machine == MIPSTER)
@@ -10898,10 +11532,11 @@ uint64_t selfie(uint64_t extras) {
     return EXITCODE_NOARGUMENTS;
   else {
     printf("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
-    printf("%s: %lu-bit unsigned integers and %lu-bit pointers on boot level ", selfie_name,
+    printf("%s: %lu-bit unsigned integers and %lu-bit pointers hosted on ", selfie_name,
       SIZEOFUINT64INBITS,
       SIZEOFUINT64STARINBITS);
-    if (BOOTLEVELZERO) print("0\n"); else print(">0\n");
+    print_host_os();
+    println();
 
     init_scanner();
     init_register();
@@ -10939,6 +11574,8 @@ uint64_t selfie(uint64_t extras) {
           return selfie_run(MINSTER);
         else if (string_compare(argument, "-mob"))
           return selfie_run(MOBSTER);
+        else if (string_compare(argument, "-L1"))
+          return selfie_run(CAPSTER);
         else
           return EXITCODE_BADARGUMENTS;
       } else

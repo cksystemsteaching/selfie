@@ -21,4 +21,7 @@ void panic(const char* diagnostic_message, ...) {
 
 void shutdown() {
   sbi_ecall_sbi_shutdown();
+
+  printf("shutdown failed - hanging machine...\n");
+  hang_machine();
 }

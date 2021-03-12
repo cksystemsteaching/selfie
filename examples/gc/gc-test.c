@@ -1,7 +1,7 @@
 // testing selfie's garbage collector
 
 // to compile the garbage collector as library use flag "-gc" with selfie.h
-// e.g. ./selfie -gc selfie.h examples/garbage_collector_test.c -m 1
+// e.g. ./selfie -gc selfie.h examples/gc/gc-test.c -m 1
 
 // since selfie implements a conservative garbage collector
 // we disguise pointers for validation as integers with an offset
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
   // --- test 1 ---
   x = gc_malloc(8); // object 1
   if (((uint64_t) x) != validation_address_1 - check_offset) {
-    printf2("%d - %d\n", (char*) ((uint64_t) x), (char*) (validation_address_1 - check_offset));
+    printf("%lu - %lu\n", (uint64_t) x, validation_address_1 - check_offset);
     print("test 1 failed!\n");
     exit(1);
   }
