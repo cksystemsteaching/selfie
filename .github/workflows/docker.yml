@@ -31,7 +31,7 @@ jobs:
       run: docker build -t cksystemsteaching/selfie .
     - name: Test selfie in docker image
       run: |
-        docker run cksystemsteaching/selfie make -j -O all
+        docker run cksystemsteaching/selfie make -j -O everything
         docker run cksystemsteaching/selfie make pythons
     # requires secrets named DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in the github repository's Settings -> Secrets
     - name: Deploy docker image
