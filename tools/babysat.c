@@ -319,7 +319,7 @@ void selfie_load_dimacs() {
 
   // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  source_fd = open_read_only(source_name);
 
   if (signed_less_than(source_fd, 0)) {
     printf("%s: could not open input file %s\n", selfie_name, source_name);

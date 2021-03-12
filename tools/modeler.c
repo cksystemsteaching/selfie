@@ -2125,7 +2125,7 @@ uint64_t selfie_model() {
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      model_fd = open_write_only(model_name);
+      model_fd = open_write_only(model_name, S_IRUSR_IWUSR_IRGRP_IROTH);
 
       if (signed_less_than(model_fd, 0)) {
         printf("%s: could not create model file %s\n", selfie_name, model_name);

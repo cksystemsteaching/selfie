@@ -60,7 +60,7 @@ void zero_chunk_allocbits(uint64_t* entry);
 
 void refurbish_chunk(uint64_t* entry);
 
-uint64_t calculate_number_of_object_for_object_bits(uint64_t object_size);
+uint64_t calculate_number_of_words_for_object_bits(uint64_t object_size);
 
 uint64_t calculate_chunk_payload_offset_bytes(uint64_t object_size);
 uint64_t calculate_chunk_payload_offset_words(uint64_t object_size);
@@ -256,7 +256,7 @@ uint64_t get_chunk_object_markbit(uint64_t* entry, uint64_t object_index) {
 uint64_t get_chunk_object_allocbit(uint64_t* entry, uint64_t object_index) {
   uint64_t num_words_object_bits;
 
-  num_words_object_bits = calculate_number_of_object_for_object_bits(get_chunk_object_size(entry));
+  num_words_object_bits = calculate_number_of_words_for_object_bits(get_chunk_object_size(entry));
 
   // assert: object_index is in bounds
   // assert: page containing vaddr is mapped
@@ -301,7 +301,7 @@ void set_chunk_object_allocbit(uint64_t* entry, uint64_t object_index, uint64_t 
   // assert: object_index is in bounds
   // assert: page containing vaddr is mapped
 
-  num_words_object_bits = calculate_number_of_object_for_object_bits(get_chunk_object_size(entry));
+  num_words_object_bits = calculate_number_of_words_for_object_bits(get_chunk_object_size(entry));
 
   // Recall - chunk header:
   // -------------------------------------------------------------
@@ -319,7 +319,7 @@ void zero_chunk_markbits(uint64_t* entry) {
   // assert: object_index is in bounds
   // assert: page containing vaddr is mapped
 
-  num_words_object_bits = calculate_number_of_object_for_object_bits(get_chunk_object_size(entry));
+  num_words_object_bits = calculate_number_of_words_for_object_bits(get_chunk_object_size(entry));
 
   // Recall - chunk header:
   // -------------------------------------------------------------
@@ -327,7 +327,7 @@ void zero_chunk_markbits(uint64_t* entry) {
   // -------------------------------------------------------------
   word_containing_bit = entry + GC_STATIC_HEADER_SIZE_IN_WORDS;
 
-  zero_memory(word_containing_bit, num_words_object_bits);
+  zero_memory(word_containing_bit, num_words_object_bits * SIZEOFUINT64);
 }
 
 void zero_chunk_allocbits(uint64_t* entry) {
@@ -337,7 +337,7 @@ void zero_chunk_allocbits(uint64_t* entry) {
   // assert: object_index is in bounds
   // assert: page containing vaddr is mapped
 
-  num_words_object_bits = calculate_number_of_object_for_object_bits(get_chunk_object_size(entry));
+  num_words_object_bits = calculate_number_of_words_for_object_bits(get_chunk_object_size(entry));
 
   // Recall - chunk header:
   // -------------------------------------------------------------
@@ -345,7 +345,7 @@ void zero_chunk_allocbits(uint64_t* entry) {
   // -------------------------------------------------------------
   word_containing_bit = entry + GC_STATIC_HEADER_SIZE_IN_WORDS + num_words_object_bits;
 
-  zero_memory(word_containing_bit, num_words_object_bits);
+  zero_memory(word_containing_bit, num_words_object_bits * SIZEOFUINT64);
 }
 
 void refurbish_chunk(uint64_t* entry) {
@@ -353,7 +353,7 @@ void refurbish_chunk(uint64_t* entry) {
   zero_chunk_allocbits(entry);
 }
 
-uint64_t calculate_number_of_object_for_object_bits(uint64_t object_size) {
+uint64_t calculate_number_of_words_for_object_bits(uint64_t object_size) {
   uint64_t num_words_object_bits;
 
   num_words_object_bits = calculate_chunk_payload_offset_words(object_size);
@@ -535,7 +535,7 @@ uint64_t* allocate_coso_list_entry(uint64_t* context) {
   if(is_gc_library(context))
     return allocate_new_memory(context, GC_COSO_LIST_ENTRY_SIZE);
   else
-    return smalloc(GC_COSO_LIST_ENTRY_SIZE);
+    return smalloc_system(GC_COSO_LIST_ENTRY_SIZE);
 }
 
 uint64_t* get_chunk_list_entry_memory(uint64_t* context, uint64_t* entry) {
@@ -587,9 +587,9 @@ uint64_t* allocate_memory_boehm(uint64_t* context, uint64_t size) {
   object = allocate_object(context, size);
 
   if(is_gc_library(context) == 0)
-    zero_memory(tlb(get_pt(context), (uint64_t)object), (size / SIZEOFUINT64));
+    zero_memory(tlb(get_pt(context), (uint64_t)object), size);
   else
-    zero_memory(object, (size / SIZEOFUINT64));
+    zero_memory(object, size);
 
   return object;
 }
@@ -649,6 +649,7 @@ void sweep(uint64_t* context) {
 
 void sweep_boehm(uint64_t* context) {
   uint64_t* prev_node;
+  uint64_t* next_node;
   uint64_t* node;
   uint64_t* chunk;
   uint64_t num_objects;
@@ -669,11 +670,13 @@ void sweep_boehm(uint64_t* context) {
       i = i + 1;
     }
 
+    next_node = get_coso_list_entry_next(node);
+
     if(is_chunk_referenced(chunk) == 0)
       free_chunk(context, chunk);
 
     zero_chunk_markbits(chunk);
 
-    node = get_coso_list_entry_next(node);
+    node = next_node;
   }
 }
