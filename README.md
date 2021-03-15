@@ -331,7 +331,7 @@ int count(int n) {
 
 So, what is the difference between the two versions of `count`? Well, in terms of functionality there is no difference as long as we ignore negative values of `n`. However, there is a significant difference in *performance* or *algorithmic complexity*. The first version of `count` with the `while` loop can actually become quite slow for large values of `n` whereas the second version always takes the same amount of time independently of the value of `n`. We say that the first version runs in *linear time* in the value of `n`, since it takes as many "steps" to complete as the value of `n`, while the second version runs in *constant time*. While avoiding linear time here is easy using the second version, it may be more difficult to do so in other circumstances.
 
-Here is a code example that runs in linear time in the value of `n` and is not so easy to make faster while producing the same result. It computes the *factorial* of a positive integer `n`:
+Here is a code example that runs in linear time in the value of `n` and is not so easy to make faster while producing the same result. It computes the *factorial* of a positive integer `n` iteratively in a loop:
 
 ```
 int factorial(int n) {
@@ -353,10 +353,7 @@ Remember, the factorial of a positive integer `n` is the product of all positive
 
 The above code reads in English as follows: define a procedure `factorial` with a formal parameter `n` as follows. First, declare a variable `f` and then initialize the value of `f` to `1`. Then, given an integer value for `n`, if the value of `n` is greater than `1`, multiply the value of `f` with the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. When this happens, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact here, just because of the special case that `1` is the multiplicative identity.
 
-There is a few things here that require some more attention.
-
-imperative versus functional
-iterative versus recursive
+Now, there is one more thing that is truly remarkable. Instead of computing the factorial iteratively in a loop, we may also compute it *recursively* using code that is not only more compact but also looks quite different and yet computes exactly the same result as the iterative implementation:
 
 ```
 int factorial(int n) {
@@ -366,6 +363,8 @@ int factorial(int n) {
   	return 1;
 }
 ```
+
+imperative versus functional
 
 ```
 int d;
