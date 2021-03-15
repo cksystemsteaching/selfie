@@ -185,7 +185,7 @@ Now we can write the value from down-up with the leading MSB as 101010.
 
 ## MSB & LSB
 
-The most significant bit on the far-left in the binary representation represents the greatest value. The least significant bit on the right-most can show if a number is even or odd. If the LSB is 1, then it is an even number, and if the LSB is 0, the number is odd.
+The most significant bit on the far-left in the binary representation represents the greatest value. The least significant bit on the right-most can show if a number is even or odd. If the LSB is 0, then it is an even number, and if the LSB is 1, the number is odd.
 
 ### Examples
 
