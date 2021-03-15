@@ -380,56 +380,9 @@ int main() {
 }
 ```
 
-```
- 1 int atoi(char* s) {
- 2   int n;
- 3
- 4   n = 0;
- 5
- 6   // loop until s is terminated
- 7   while (*s != 0) {
- 8     // use base 10, offset by '0'
- 9     n = n * 10 + *s - '0';
-10
-11     // go to next digit
-12     s = s + 1;
-13   }
-14
-15   return n;
-16 }
-```
+pointers
 
 ### RISC-U Machine Code
-
-```
-0x150(~4): 0x00000293: addi t0,zero,0
-0x154(~4): 0xFE543C23: sd t0,-8(s0)
-0x158(~7): 0x01043283: ld t0,16(s0)
-0x15C(~7): 0x0002B283: ld t0,0(t0)
-0x160(~7): 0x00000313: addi t1,zero,0
-0x164(~7): 0x405302B3: sub t0,t1,t0
-0x168(~7): 0x005032B3: sltu t0,zero,t0
-0x16C(~7): 0x04028263: beq t0,zero,17[0x1B0]
-0x170(~9): 0xFF843283: ld t0,-8(s0)
-0x174(~9): 0x00A00313: addi t1,zero,10
-0x178(~9): 0x026282B3: mul t0,t0,t1
-0x17C(~9): 0x01043303: ld t1,16(s0)
-0x180(~9): 0x00033303: ld t1,0(t1)
-0x184(~9): 0x006282B3: add t0,t0,t1
-0x188(~9): 0x03000313: addi t1,zero,48
-0x18C(~9): 0x406282B3: sub t0,t0,t1
-0x190(~9): 0xFE543C23: sd t0,-8(s0)
-0x194(~12): 0x01043283: ld t0,16(s0)
-0x198(~12): 0x00100313: addi t1,zero,1
-0x19C(~12): 0x00800393: addi t2,zero,8
-0x1A0(~12): 0x02730333: mul t1,t1,t2
-0x1A4(~12): 0x006282B3: add t0,t0,t1
-0x1A8(~12): 0x00543823: sd t0,16(s0)
-0x1AC(~15): 0xFADFF06F: jal zero,-21[0x158]
-0x1B0(~15): 0xFF843283: ld t0,-8(s0)
-0x1B4(~15): 0x00028513: addi a0,t0,0
-0x1B8(~15): 0x0040006F: jal zero,1[0x1BC]
-```
 
 ### EBNF Grammar
 
