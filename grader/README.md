@@ -39,7 +39,7 @@ If you subsequently invoke the autograder in bulk mode on `student-repos` again,
 
 ## Submitting Solutions for Grading
 
-Solutions of assignments must be submitted as git commit links to a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](https://github.com/ckirsch).
+Solutions of assignments must be submitted as git commit links to a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](https://github.com/ckirsch) and the teaching assistant.
 
 ### Creating a private clone of selfie
 
