@@ -317,6 +317,8 @@ Before we take another look at the `while` loop, let us for just a moment focus 
 
 In fact, after the assignment, evaluating `c + 1` again would result in a different value than the value of `c`! This is because `c` also occurs in the expression. But even if it does not, as in the `c = 0` assignment for example, where the value of `c` is actually equal to `0` after the assignment, an assignment is still a different statement than asserting equality because `c` may very well have a different value than `0` before the assignment. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to assert or just check equality from now on.
 
+The presence of assignments: imperative programming.
+
 The `count` procedure is our first example of a program that makes a computer solve a problem *iteratively* in a loop which takes more or less time to finish depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
 
 Interestingly, the elements of C\* you have seen so far are enough to do anything any other programming language can do. In other words, if you take a program written in any other programming language, we can always rewrite it into a program written in C\* that computes exactly the same as the original. It may be cumbersome to do that but it is always possible. Hard to believe but true!
@@ -364,13 +366,17 @@ int factorial(int n) {
 }
 ```
 
-This time the code reads in English a lot shorter: define a procedure `factorial` with a formal parameter `n` as follows. Given an integer value for `n`, if the value of `n` is greater than `1`, return the value of `n` multiplied by the value of `factorial(n - 1)`. Otherwise, return `1`. This is brilliant! The code is not only more compact but also does not even require any additional language elements. In fact, it requires less, in particular no assignments. Just using procedures without assignments is a *programming paradigm* called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials. However, it uses *recursion* which is something that takes time to understand.
+This time the code is even in English a lot shorter: define a procedure `factorial` with a formal parameter `n` as follows. Given an integer value for `n`, if the value of `n` is greater than `1`, return the value of `n` multiplied by the value of `factorial(n - 1)`. Otherwise, return `1`. This is brilliant! The code is not only more compact but also does not even require any additional language elements. In fact, it requires less, in particular no assignments. Just using procedures without assignments is a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials.
+
+But what is the catch? Well, the code uses *recursion* which is something that takes time and effort to understand. We explain the concept here but also revisit it again later. Recursion is a method for solving a problem using solutions to smaller instances of the problem through *self-reference*. In our example, the `factorial` procedure, given an integer value for `n`, calls *itself* on the value of `n - 1` which is obviously smaller than the value of `n`. Similar to the iterative version of `factorial`,
 
 `n * ((n - 1) * ( ... * (2 * 1)))`
 
 4 * (3 * (2 * 1))
 
-imperative versus functional
+correctness, termination
+
+The key to understanding recursion is to understand the difference between the *definition* of a procedure such as `int factorial(int n) { ... }` and the use of a procedure such as `factorial(n - 1)`. Design time, runtime.
 
 ```
 int d;
