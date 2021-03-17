@@ -5783,9 +5783,10 @@ void emit_program_entry() {
 
   i = 0;
 
-  // allocate space for machine initialization code,
-  // emit exactly 20 NOPs with source code line 1
-  while (i < 20) {
+  // allocate memory for machine initialization code
+
+  // emit exactly 22 NOPs with source code line 1
+  while (i < 22) {
     emit_nop();
 
     i = i + 1;
@@ -5824,7 +5825,7 @@ void emit_bootstrapping() {
   saved_code_size = code_size;
   code_size       = 0;
 
-  // assert: emitting no more than 20 instructions
+  // assert: emitting no more than 22 instructions, see emit_program_entry
 
   if (report_undefined_procedures()) {
     // if there are undefined procedures just exit
