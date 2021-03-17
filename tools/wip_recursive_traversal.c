@@ -1,17 +1,24 @@
 #include "../selfie.h"
 #define uint64_t unsigned long long
 
-uint64_t opt_debug = 1; // debug output
-
+uint64_t opt_debug = 0; // debug output. levels = {0,1,2}
 uint64_t opt_UNKNOWN = 52596306927616181;
-
-uint64_t opt_memtrack_region_begin = 0; // The memory address to start tracking at (usually gp)
-uint64_t opt_memtrack_region_end = 0;   // and end
 uint64_t opt_pc = 0;
 
+uint64_t opt_memtrack_ld_enable = 0;
+uint64_t opt_memtrack_sd_enable = 0;
+// Track memory from address BEGIN to (BEGIN - BYTES)
+uint64_t opt_memtrack_region_begin = 0; // The memory address to start tracking at (usually gp)
+uint64_t opt_memtrack_region_bytes = 4096; // TODO set this to data segment size instead of hardcoded size
+uint64_t opt_memtrack_region_words = 512;  //  "
+
+
 uint64_t access_in_tracked_region(uint64_t addr) {
-  printf3("begin: %x end: %x addr: %x\n", opt_memtrack_region_begin, opt_memtrack_region_end, addr);
+  //printf3("\tbegin: %x addr: %x end %x", opt_memtrack_region_begin, addr, opt_memtrack_region_begin - opt_memtrack_region_bytes);
   if (addr != opt_UNKNOWN) {
+    if (addr <= opt_memtrack_region_begin)
+      if (addr > opt_memtrack_region_begin - opt_memtrack_region_bytes)
+        return 1;
   }
   return 0;
 }
@@ -33,6 +40,8 @@ void set_unknown_regs(uint64_t *state, uint64_t *unknown_regs) { *state = (uint6
 void set_reg_values(uint64_t *state, uint64_t *reg_values) { *(state + 1) = (uint64_t) reg_values; }
 
 void set_vars(uint64_t *state, uint64_t *vars) { *(state + 2) = (uint64_t) vars; }
+
+uint64_t get_reg(uint64_t *state, uint64_t reg);
 
 uint64_t *get_state(uint64_t pc) {
   if (machine_states == (uint64_t*) 0) {
@@ -60,8 +69,23 @@ void set_cached_state(uint64_t pc, uint64_t *state) {
   *(cached_machine_states + pc / INSTRUCTIONSIZE) = (uint64_t) state;
 }
 
+uint64_t is_reg_known(uint64_t *state, uint64_t reg) {
+  return (uint64_t) (*(get_unknown_regs(state) + reg) == 0);
+}
+
 uint64_t is_reg_unknown(uint64_t *state, uint64_t reg) {
   return (uint64_t) (*(get_unknown_regs(state) + reg) == 1);
+}
+
+uint64_t is_gp_known(uint64_t *state) { 
+  return (uint64_t) (*(get_unknown_regs(state) + REG_GP) == 0);
+}
+
+uint64_t gp(uint64_t* state) {
+  if (is_reg_unknown(state, REG_GP))
+    return opt_UNKNOWN;
+  else
+    return get_reg(state, REG_GP);
 }
 
 void set_reg_unknown(uint64_t *state, uint64_t reg) {
@@ -76,21 +100,37 @@ void set_reg(uint64_t *state, uint64_t reg, uint64_t value) {
   }
 }
 
+
+// map address to variable *index*
+uint64_t addrmap(uint64_t addr) {
+  addr = opt_memtrack_region_begin - addr;
+  return addr / REGISTERSIZE;
+}
+
+void memtrack_boundschk(uint64_t var) {
+  if (var >= opt_memtrack_region_words) {
+    printf2("attempt to access var %d out of %d tracked", (char*) var, (char*) opt_memtrack_region_words);
+    exit(1);
+  }
+}
+
 void set_var_unknown(uint64_t *state, uint64_t var) {
+  memtrack_boundschk(var);
   *(get_vars(state) + var) = opt_UNKNOWN; // TODO don't use magic number
 }
 
 void set_var(uint64_t *state, uint64_t var, uint64_t value) {
+  memtrack_boundschk(var);
   *(get_vars(state) + var) = value;
-  // TODO
-  //*(get_unknown_regs(state) + reg) = 0;
 }
 
 uint64_t get_var(uint64_t *state, uint64_t var) {
+  memtrack_boundschk(var);
   return *(get_vars(state) + var);
 }
 
 uint64_t is_var_unknown(uint64_t *state, uint64_t var) {
+  memtrack_boundschk(var);
   return get_var(state, var) == opt_UNKNOWN;
 }
 
@@ -100,7 +140,7 @@ uint64_t count_nonzero_vars(uint64_t* state) {
   uint64_t i;
   i = 0;
   count = 0;
-  while (i < 256) {
+  while (i < opt_memtrack_region_words) {
     if (is_var_unknown(state, i) == 0) {
       count = count + 1;
     }
@@ -119,7 +159,7 @@ uint64_t *new_machine_state() {
 
   unknown_regs = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
   reg_values = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
-  vars = malloc(256 * SIZEOFUINT64);
+  vars = malloc(opt_memtrack_region_words * SIZEOFUINT64);
 
   i = 0;
   while (i < NUMBEROFREGISTERS) {
@@ -133,7 +173,7 @@ uint64_t *new_machine_state() {
   }
 
   i = 0;
-  while (i < 256) {
+  while (i < opt_memtrack_region_words) {
     *(vars + i) = opt_UNKNOWN;
     i = i + 1;
   }
@@ -148,19 +188,25 @@ uint64_t *new_machine_state() {
 void upload_data_segment(uint64_t* state) {
   uint64_t current_address;
   uint64_t current_var;
-
-  current_address = code_length;
-  current_var = 0;
+  uint64_t region_begin;
+  uint64_t region_end;
 
   if (binary == 0) {
     print("Binary not yet loaded!");
     exit(1);
   }
 
-  while (current_address < code_length + 256 * SIZEOFUINT64) {
+  region_begin = binary_length;
+  region_end = region_begin - opt_memtrack_region_words * SIZEOFUINT64;
+
+  // current_address is *decreasing* while current_var is *increasing*
+  current_address = region_begin;
+  current_var = 0;
+
+  while (current_address > region_end) {
     set_var(state, current_var, *(binary + current_address / SIZEOFUINT64));
     //printf2("%x is %x\n", current_address, get_var(state, current_var));
-    current_address = current_address + SIZEOFUINT64;
+    current_address = current_address - SIZEOFUINT64;
     current_var = current_var + 1;
   }
 }
@@ -186,7 +232,7 @@ void copy_state(uint64_t *source, uint64_t *dest) {
   }
 
   i = 0;
-  while (i < 256) {
+  while (i < opt_memtrack_region_words) {
     set_var(dest, i, get_var(source, i));
     i = i + 1;
   }
@@ -208,6 +254,12 @@ void print_state(uint64_t* machine_state) {
   }
 
   printf1("\tknown vars: %d\n", count_nonzero_vars(machine_state));
+  //print("\tsample:");
+  //i = 0;
+  //while (i < 10) {
+  //  printf2("\t\tvar %d: %x\n", i, get_var(machine_state, i));
+  //  i = i + 1;
+  //}
 }
 
 // Return 1 iff machine states a and b are equal
@@ -239,7 +291,7 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
 
   // do basically the same again for global variables
   i = 0;
-  while (i < 256) {
+  while (i < opt_memtrack_region_words) {
     if (is_var_unknown(a, i) == 0) { // If a is known
       if (is_var_unknown(b, i) == 0) { // If b is known
         if (get_var(a, i) != get_var(b, i)) { // Check that states are same
@@ -273,9 +325,24 @@ uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
 uint64_t merge_states(uint64_t *source, uint64_t *dest) {
   uint64_t i;
   uint64_t changed;
+  uint64_t gp_known; // debugging var
 
   changed = 0;
   i = 0;
+
+  if (opt_debug == 2) {
+    gp_known = 0;
+    if (is_reg_known(source, REG_GP))
+      gp_known = 1;
+    if (is_reg_known(dest, REG_GP))
+      gp_known = 1;
+
+    print("Merging ---\n");
+    print("Source:\n");
+    print_state(source);
+    print("dest:\n");
+    print_state(dest);
+  }
 
   while (i < NUMBEROFREGISTERS) {
     // merging unknown register always results in unknown register
@@ -298,11 +365,19 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
     i = i + 1;
   }
 
+  if (opt_debug == 2)
+    if (gp_known)
+      if (is_reg_unknown(dest, REG_GP)) {
+        print("Merge resulted in unknown gp!\n");
+        print("merged:\n");
+        print_state(dest);
+      }
+
   // do basically the same again for global variables
   i = 0;
-  while (i < 256) {
+  while (i < opt_memtrack_region_words) {
     if (is_var_unknown(source, i)) {
-      if (is_var_unknown(source, i) == 0) {
+      if (is_var_unknown(dest, i) == 0) {
         set_var_unknown(dest, i);
         changed = changed + 1;
       }
@@ -328,9 +403,8 @@ uint64_t apply_effects(uint64_t *state) {
   uint64_t *registers;
   uint64_t tracked_change;
   uint64_t addr;
-  //uint64_t global_variable_number;
 
-  if (opt_debug) {
+  if (opt_debug == 2) {
     printf1("applying %x ", opt_pc);
     print_instruction();
     print(":\n");
@@ -340,13 +414,8 @@ uint64_t apply_effects(uint64_t *state) {
 
   registers = get_reg_values(state);
 
-  // This is only relevant for ld and sd.
-  // Their imm gives an offset like `-16`. this code flips that into `2` so it can be used like an index
-  //global_variable_number = 18446744073709551615 - imm + 1;
-  //global_variable_number = global_variable_number / SIZEOFUINT64STAR;
-
   if (is == ADDI) {
-    if (!is_reg_unknown(state, rs1)) { // if the register's contents are not unknown
+    if (is_reg_known(state, rs1)) { // if the register's contents are known
       set_reg(state, rd, *(registers + rs1) + imm); // do the addi
 
       if (rd == REG_GP) {
@@ -364,7 +433,6 @@ uint64_t apply_effects(uint64_t *state) {
           }
 
         opt_memtrack_region_begin = get_reg(state, rd);
-        opt_memtrack_region_end = opt_memtrack_region_begin - 2048;
       }
 
     } else { // else rd is now unknown too
@@ -378,55 +446,44 @@ uint64_t apply_effects(uint64_t *state) {
 
   // handle "weird" instructions
   else if (is == LD) {
-    set_reg_unknown(state, rd);
+    if (opt_memtrack_ld_enable) {
+      if (is_reg_known(state, rs1)) {
+        addr = get_reg(state, rs1) + imm;
 
-    if (rs1 == REG_GP) printf3("%s is %d at %x\n", *(REGISTERS+rs1), is_reg_unknown(state,rs1), opt_pc); //debug
-
-    if (is_reg_unknown(state, rs1) == 0) {
-      addr = get_reg(state, rs1) + imm;
-
-      if (access_in_tracked_region(addr))
-        print("todo");
-
-      //debug
-      print_instruction();
-      print("\n");
+        if (access_in_tracked_region(addr)) {
+          printf2("\t%x\tTRACKED load %d", opt_pc, addrmap(addr));
+          if (get_var(state, addrmap(addr)) != opt_UNKNOWN)  {
+            set_reg(state, rd, get_var(state, addrmap(addr)));
+            tracked_change = 1;
+          }
+          printf1(" -> %x\n", get_var(state, addrmap(addr)));
+        }
+      }
     }
-    //if (is_reg_unknown(state, REG_GP) == 0)
-    //  if (rs1 == REG_GP) {
-    //    if (get_var(state, global_variable_number) != opt_UNKNOWN)  {
-    //      print_instruction();
-    //      printf3(" -> %x (imm=%x, var=%d)\n", get_var(state, global_variable_number), imm, global_variable_number);
-    //      set_reg(state, rd, get_var(state, global_variable_number));
-    //      tracked_change = 1;
-    //    }
-    //}
 
-  } else if (is == SD) {
-    if (is_reg_unknown(state, rs1) == 0) {
-      addr = get_reg(state, rs1) + imm;
-      print_instruction();
-      print("\n");
+    if (tracked_change == 0) 
+      set_reg_unknown(state, rd);
+  } 
 
-      if (access_in_tracked_region(addr))
-        print("todo");
+  else if (is == SD) {
+    if (opt_memtrack_sd_enable) {
+      if (is_reg_known(state, rs1)) {
+          addr = get_reg(state, rs1) + imm;
+
+          if (access_in_tracked_region(addr)) {
+            printf2("\t%x\tTRACKED save %d", opt_pc, addrmap(addr));
+            printf1("\t = %x", get_var(state, addrmap(addr)));
+
+            if (is_reg_known(state, rs2)) {
+              set_var(state, addrmap(addr), get_reg(state, rs2));
+              tracked_change = 1;
+            } else
+              set_var_unknown(state, addrmap(addr));
+
+            printf1(" -> %x\n", get_var(state, addrmap(addr)));
+          }
+      }
     }
-    //if (is_reg_unknown(state, REG_GP) == 0)
-    //  if (rs1 == REG_GP) {
-    //    // if we know the value being written
-    //    if (is_reg_unknown(state, rs2) == 0) {
-    //      // and if we can show it's written to some global var
-    //      //if (is_reg_unknown(state, rs1) == 0)
-    //          //if (get_reg(state, rs1) == get_reg(state, REG_GP)) {
-    //      print("storing: ");
-    //      print_instruction();
-    //      printf3(" -> %x (imm=%x, var=%d)\n", get_reg(state, rs2), imm, global_variable_number);
-    //      set_var(state, global_variable_number, get_reg(state, rs2));
-
-    //    } else {
-    //      set_var_unknown(state, imm);
-    //    }
-    //  }
   }
   else if (is == BEQ) { /* nothing to do here, as control flow is handled by the recursive traversal function */ }
   else if (is == JAL) {
@@ -467,7 +524,7 @@ uint64_t apply_effects(uint64_t *state) {
     }
   }
 
-  if (opt_debug) {
+  if (opt_debug == 2) {
     print_state(state);
     print("\n");
   }
@@ -756,6 +813,10 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
   uint64_t *state;
   uint64_t i;
 
+  if (opt_debug == 2) {
+    printf3("CALLED with prev_pc=%x, pc=%x, ra=%x\n", prev_pc, pc, current_ra);
+  }
+
   while (1) {
     if (pc >= code_length) {
       print("Error: pc went past end of code!");
@@ -774,9 +835,19 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
       }
     }
 
+    if (opt_debug == 2) {
+      printf4("traverse_recursive iter: prev_pc=%x, pc=%x, ra=%x, gp=%x\n", prev_pc, pc, current_ra, gp(tmp_state));
+      printf1("\tstate %x:\n", prev_pc);
+      print_state(get_state(prev_pc));
+    }
+
     if (prev_pc != (uint64_t) -1) { // can't apply effects if last pc is undefined/unknown
       copy_state(get_state(prev_pc), tmp_state);
       opt_pc = prev_pc;
+      if (debug) {
+        printf1("copied from %x:\n", prev_pc);
+        print_state(tmp_state);
+      }
       apply_effects(tmp_state); // apply effects of current instruction to new machine state
       if (created_new_state) {
         copy_state(tmp_state, state);
@@ -1332,7 +1403,7 @@ uint64_t number_of_matched_instructions = 0;
 uint64_t current_pattern = 0;
 
 uint64_t PATTERN_NONE = 0;
-uint64_t POINTLESS_JAL = 1;
+uint64_t PATTERN_JAL_NOP = 1;
 
 
 // ----------------------------------------------------------------------------
@@ -1341,16 +1412,16 @@ uint64_t POINTLESS_JAL = 1;
 
 
 // jal which only goes to next instruction
-void pattern_pointless_jal() {
+void pattern_pointless_jal(uint64_t matched_instructions) {
   number_of_instructions_in_pattern = 1;
 
   // 4194415 = 0x0040006F = jal zero,1
   match_ir = 4194415;
 }
 
-void set_pattern() {
-  if (current_pattern == POINTLESS_JAL)
-    pattern_pointless_jal();
+void update_pattern(uint64_t matched_instructions) {
+  if (current_pattern == PATTERN_JAL_NOP)
+    pattern_pointless_jal(matched_instructions);
 }
 
 // ----------------------------------------------------------------------------
@@ -1368,8 +1439,21 @@ void reset_pattern_matcher() {
   match_ir = 0;
 }
 
-// Match currently decoded instruction against current pattern
-uint64_t match_current() {
+void print_pattern_state() {
+  print("current pattern state:");
+  printf1("\tmatch_opcode: %x\n", (char*) match_opcode);
+  printf1("\tmatch_rs1   : %x\n", (char*) match_rs1);
+  printf1("\tmatch_rs2   : %x\n", (char*) match_rs2);
+  printf1("\tmatch_rd    : %x\n", (char*) match_rd);
+  printf1("\tmatch_imm   : %x\n", (char*) match_imm);
+  printf1("\tmatch_funct3: %x\n", (char*) match_funct3);
+  printf1("\tmatch_funct7: %x\n", (char*) match_funct7);
+  printf1("\tmatch_ir    : %x\n", (char*) match_ir);
+}
+
+// Match currently decoded instruction against current pattern's instruction
+uint64_t instruction_matches() {
+  // match_ir overrides
   if (match_ir != ANY) {
     if (match_ir == ir)
       return 1;
@@ -1381,7 +1465,29 @@ uint64_t match_current() {
     if (match_opcode != opcode)
       return 0;
 
-  //... TODO match everything else
+  if (match_rs1 != ANY)
+    if (match_rs1 != rs1)
+      return 0;
+
+  if (match_rs2 != ANY)
+    if (match_rs2 != rs2)
+      return 0;
+
+  if (match_rd != ANY)
+    if (match_rd != rd)
+      return 0;
+
+  if (match_imm != ANY)
+    if (match_imm != imm)
+      return 0;
+
+  if (match_funct3 != ANY)
+    if (match_funct3 != funct3)
+      return 0;
+
+  if (match_funct7 != ANY)
+    if (match_funct7 != funct7)
+      return 0;
 
   if (match_rd != ANY)
     if (match_rd != ANY_TEMPORARY) {
@@ -1397,40 +1503,41 @@ uint64_t match_current() {
 // Return first pc after from_pc that matches the current pattern, or -1
 uint64_t next_match(uint64_t from_pc) {
   uint64_t i;
-  uint64_t did_break = 0;
+  uint64_t did_break;
 
   i = from_pc + INSTRUCTIONSIZE;
   number_of_matched_instructions = 0;
 
   while (i < code_length) {
+    did_break = 0;
+
     // match each instruction in the pattern
-    while (number_of_matched_instructions != number_of_instructions_in_pattern) {
+    while (number_of_matched_instructions < number_of_instructions_in_pattern) {
       ir = load_instruction(i);
       decode();
 
-      if (match_current()) {
+      if (instruction_matches()) {
         number_of_matched_instructions = number_of_matched_instructions + 1;
-        set_pattern(); // go to pattern's next instruction
+        update_pattern(number_of_matched_instructions); // go to pattern's next instruction
         i = i + INSTRUCTIONSIZE;
+
       } else {
         did_break = 1;
-        i = i - number_of_matched_instructions;
-        number_of_matched_instructions = number_of_instructions_in_pattern;
+        i = i - (number_of_matched_instructions * INSTRUCTIONSIZE);
+        number_of_matched_instructions = number_of_instructions_in_pattern; // break out of this loop
       }
     }
 
     if (!did_break) {
-      return i - number_of_matched_instructions;
+      return i - (number_of_matched_instructions * INSTRUCTIONSIZE);
     }
+
+    i = i + INSTRUCTIONSIZE;
+    number_of_matched_instructions = 0;
   }
 
   return (uint64_t) -1;
 }
-
-uint64_t eliminate_matches() {
-  // care: after eliming n instructions, move pc n instructions further
-}
-
 
 // ----------------------------------------------------------------------------
 // ----------------------------- TRANSFORMATIONS ------------------------------
@@ -1439,6 +1546,46 @@ uint64_t eliminate_matches() {
 void insert_nop(uint64_t position) {
   store_instruction(position, encode_i_format(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM));
 }
+
+void insert_nops(uint64_t position, uint64_t n) {
+  uint64_t i;
+  i = 0;
+
+  while (i < n) {
+    insert_nop(position + (i * INSTRUCTIONSIZE));
+    i = i + 1;
+  }
+}
+
+
+
+uint64_t number_of_matches;
+
+// peephole transformations
+void patch_peephole(uint64_t pattern) {
+  uint64_t last_match;
+
+  current_pattern = pattern;
+
+  update_pattern(0);
+  print_pattern_state();
+  last_match = next_match(0);
+
+  number_of_matches = 0;
+
+  while (last_match != -1) {
+    printf1("%x\tmatches: ", last_match);
+    print_instruction();
+    print("\n");
+    number_of_matches = number_of_matches + 1;
+    insert_nops(last_match, number_of_instructions_in_pattern);
+    last_match = last_match + number_of_instructions_in_pattern;
+    update_pattern(0);
+    last_match = next_match(last_match);
+  }
+}
+
+
 
 
 uint64_t find_next_dead_op(uint64_t from_pc) {
@@ -1492,6 +1639,15 @@ uint64_t find_next_enop(uint64_t from_pc) {
 
       ir = load_instruction(i);
       decode();
+
+      if (opt_debug) {
+        printf1("%x ", i);
+        print_instruction();
+        print("\n");
+        print_state(state);
+        print("\n");
+      }
+
 
       if (apply_effects(state) == 1) {
         if (test_states_equal(get_state(i), state)) {
@@ -1565,7 +1721,9 @@ int main(int argc, char **argv) {
   // TODO un-unroll this
   selfie_traverse();
   //print_states_and_livedeads();
-  patch_enops();
+  //patch_enops();
+  patch_peephole(PATTERN_JAL_NOP);
+  printf1("found %d JAL_NOP\n", (char*) number_of_matches);
   printf1("found %d enops\n", (char*) number_of_enops);
 
   //selfie_traverse();
