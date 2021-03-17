@@ -1579,7 +1579,7 @@ void patch_peephole(uint64_t pattern) {
     print("\n");
     number_of_matches = number_of_matches + 1;
     insert_nops(last_match, number_of_instructions_in_pattern);
-    last_match = last_match + number_of_instructions_in_pattern;
+    last_match = last_match + (number_of_instructions_in_pattern * INSTRUCTIONSIZE);
     update_pattern(0);
     last_match = next_match(last_match);
   }
