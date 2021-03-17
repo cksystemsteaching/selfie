@@ -5871,26 +5871,56 @@ void emit_bootstrapping() {
 
     // assert: stack is set up with argv pointer still missing
     //
-    //    sp
-    //     |
-    //     V
-    // | argc |      | argv[0] | argv[1] | ... | argv[n]
+    //           sp
+    //            |
+    //            V
+    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
 
     talloc();
 
-    // first obtain pointer to argv
+    // first copy value of argc
     //
-    //            sp + 2 *WORDSIZE
+    //           sp
+    //            |
+    //            V
+    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
+    emit_load(current_temporary(), REG_SP, 0);
+
+    talloc();
+
+    // then obtain pointer to argv
+    //
+    //            sp + WORDSIZE
     //                    |
     //                    V
-    // | argc |      | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, 2 * WORDSIZE);
+    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
+    emit_addi(current_temporary(), REG_SP, WORDSIZE);
 
-    // then put argv pointer onto the stack
-    //             ________
-    //            |        V
+    // write &argv onto the stack
+    //
+    //           sp
+    //            |
+    //            V
+    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
+    emit_store(REG_SP, 0, current_temporary());
+
+    tfree(1);
+
+    // allocate memory for argc
+    //
+    //     sp
+    //     |
+    //     V
+    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
+    emit_addi(REG_SP, REG_SP, -WORDSIZE);
+
+    // write argc onto the stack
+    //
+    //     sp
+    //     |
+    //     V
     // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
-    emit_store(REG_SP, WORDSIZE, current_temporary());
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
 
@@ -10951,7 +10981,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
       SP
       |
       V
-   | argc |      | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
 
      with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
   uint64_t SP;
@@ -10999,9 +11029,6 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
     // push argv table entry
     map_and_store(context, SP, *(vargv + i));
   }
-
-  // allocate memory for &argv
-  SP = SP - WORDSIZE;
 
   // allocate memory for argc
   SP = SP - WORDSIZE;
