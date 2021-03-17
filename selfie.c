@@ -5870,59 +5870,36 @@ void emit_bootstrapping() {
     emit_addi(REG_A0, REG_ZR, 0);
 
     // assert: stack is set up with argv pointer still missing
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
+
+    //   sp
+    //    |
+    //    V
+    // | argc | argv[0] | argv[1] | ... | argv[n]
+
+    // first push argc again (!) onto stack
 
     talloc();
 
-    // first copy value of argc
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
     emit_load(current_temporary(), REG_SP, 0);
-
-    talloc();
-
-    // then obtain pointer to argv
-    //
-    //            sp + WORDSIZE
-    //                    |
-    //                    V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, WORDSIZE);
-
-    // write &argv onto the stack
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
-    emit_store(REG_SP, 0, current_temporary());
-
-    tfree(1);
-
-    // allocate memory for argc
-    //
-    //     sp
-    //     |
-    //     V
-    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
-
-    // write argc onto the stack
-    //
-    //     sp
-    //     |
-    //     V
-    // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
     emit_store(REG_SP, 0, current_temporary());
 
+    //   sp  sp+WORDSIZE  sp+2*WORDSIZE
+    //    |      |        |
+    //    V      V        V
+    // | argc | argc | argv[0] | argv[1] | ... | argv[n]
+
+    // then overwrite below-top argc with &argv
+
+    emit_addi(current_temporary(), REG_SP, 2 * WORDSIZE);
+    emit_store(REG_SP, WORDSIZE, current_temporary());
+
     tfree(1);
+
+    //   sp
+    //    |        _______
+    //    V       |       V
+    // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
 
     // assert: global, _bump, and stack pointers are set up
     //         with all other non-temporary registers zeroed
