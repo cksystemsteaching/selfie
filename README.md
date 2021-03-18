@@ -223,7 +223,7 @@ In the following, we introduce a few code examples written in C\*, and then show
 
 ### Programming Language C\*
 
-The following example is C\* code that implements a simple *numerical* function in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
+The following example is C\* code that implements a simple *numerical function* in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
 
 ```
 int double(int n) {
@@ -294,9 +294,9 @@ int max(int n, int m) {
 }
 ```
 
-Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional* statement, which in C\* is called an `if-else` statement.
+Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional statement*, which in C\* is called an `if` *statement*. The *comparison* or *logical expression* `n < m` is called an `if` *condition*.
 
-Conditional statements are a powerful concept for controlling program execution. But there is an even more powerful concept called a *loop* statement. Here is an example written in C\* featuring a `while` loop over a *variable* `c`:
+Conditional statements are a powerful concept for controlling program execution. But there is an even more powerful concept called a *loop statement*. Here is an example written in C\* featuring a `while` *loop* over a *variable* `c`:
 
 ```
 int count(int n) {
@@ -311,17 +311,17 @@ int count(int n) {
 }
 ```
 
-Again, the code can be read like an English sentence: define a procedure `count` with a formal parameter `n` as follows. First, *declare* a variable `c` and then *initialize* the value of `c` to `0`. After that, given an integer value for `n`, if the value of `c` is less than the value of `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. When this happens, return the value of `c`.
+Again, the code can be read like an English sentence: define a procedure `count` with a formal parameter `n` as follows. First, *declare* a variable `c` and then *initialize* the value of `c` to `0`. After that, given an integer value for `n`, if the value of `c` is less than the value of `n`, increment the value of `c` by `1`, and keep doing that until the value of `c` is not less than the value of `n` anymore. When this happens, return the value of `c`. The comparison `c < n` is called a `while` *condition* or *loop condition*.
 
-Before we take another look at the `while` loop, let us first focus on the statement `c = c + 1` which is called an *assignment*. Here, most importantly, `=` does not denote equality in a mathematical sense. Instead, here and in many other circumstances in computer science, especially code, `=` denotes an assignment of a value to a variable. With `c = c + 1` we do not assert equality between `c` and `c + 1` but rather denote the process of assigning to the variable `c` the value to which the arithmetic expression `c + 1` evaluates *before* the assignment is actually done.
+Before we take another look at the `while` loop, let us first focus on the statement `c = c + 1` which is called an *assignment*. Here, most importantly, `=` does not denote *equality* in a mathematical sense. Instead, here and in many other circumstances in computer science, especially code, `=` denotes an assignment of a value to a variable. With `c = c + 1` we do not assert equality between `c` and `c + 1` but rather denote the process of assigning to the variable `c` the value to which the arithmetic expression `c + 1` evaluates *before* the assignment is actually done.
 
-In fact, *after* the assignment is done, evaluating `c + 1` again would result in a different value than the value of `c`! This is because `c` also occurs in the expression. But even if it does not, as in the `c = 0` assignment for example, where the value of `c` is actually equal to `0` *after* the assignment is done, an assignment is still a different statement than asserting equality because `c` may very well have a different value than `0` *before* the assignment is done. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to assert or just check equality from now on.
+In fact, *after* the assignment is done, evaluating `c + 1` again would result in a different value than the value of `c`! This is because `c` also occurs in the expression. But even if it does not, as in the `c = 0` assignment for example, where the value of `c` is actually equal to `0` *after* the assignment is done, an assignment is still a different statement than asserting equality because `c` may very well have a different value than `0` *before* the assignment is done. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to assert or just check equality from now on. In C\*, besides `==`, `<`, and `>`, of course, there is also `!=` for checking *inequality*, `<=` for checking *less-than-or-equal-to*, and `>=` for checking *greater-than-or-equal-to*.
 
 The presence of assignments in a programming language indicates that the language supports a *programming paradigm* called *imperative programming* in which a computer is told what to do in a sequence of statements, especially assignments, that are in a *before-and-after* relationship. The `count` procedure is our first example of such a program. Moreover, `count` makes a computer solve a problem *iteratively* in a loop which takes more or less time to finish depending on the input of the program. To some extent this is also possible just using conditional statements. However, loops are a different story. They can even loop forever which means that programs with loops may not *terminate*. Thus showing that a program computes the desired result generally requires showing that it computes the result in *finitely* many steps. That can actually become quite tricky even with proper training.
 
 Interestingly, the elements of C\* you have seen so far are enough to do anything any other programming language can do. In other words, if you take a program written in any other programming language, we can always rewrite it into a program written in C\* that computes exactly the same as the original. It may be cumbersome to do that but it is always possible. Hard to believe but true!
 
-Let us analyze what `count` really does. The procedure effectively returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for all *positive* values of `n`, that is, all values greater than `0`. Let us ignore *negative* values of `n`, that is, values less than `0`, for now. In that case, we could also implement `count` as follows:
+Let us analyze what `count` really does. The procedure effectively returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for `n == 0` and for all *positive* values of `n`, that is, all values greater than `0`. Let us ignore *negative* values of `n`, that is, values less than `0`, for now. In that case, we could also implement `count` as follows:
 
 ```
 int count(int n) {
@@ -349,9 +349,9 @@ int factorial(int n) {
 }
 ```
 
-Remember, the factorial of a positive integer `n` is the product of all positive values less than or equal to `n`, that is, `factorial(n)` is equal to `n * (n - 1) * ... * 2 * 1`. For example, `factorial(4)` is equal to `4 * 3 * 2 * 1` which is obviously `24`. Also, `factorial(1)` and `factorial(0)` are both equal to `1`, the latter by convention.
+Remember, the factorial of a positive integer `n` is the product of all positive values less than or equal to `n`, that is, the factorial of `n` is equal to `n * (n - 1) * ... * 2 * 1` for all `n > 0`. For example, the factorial of `4` is equal to `4 * 3 * 2 * 1` which is obviously `24`. The factorial of `1` and even the factorial of `0` are both equal to `1`, the latter by convention.
 
-The above code reads in English as follows: define a procedure `factorial` with a formal parameter `n` as follows. First, declare a variable `f` and then initialize the value of `f` to `1`. Then, given an integer value for `n`, if the value of `n` is greater than `1`, multiply the value of `f` by the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. When this happens, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact here, just because of the special case that `1` is the multiplicative identity.
+The above code reads in English as follows: define a procedure `factorial` with a formal parameter `n` as follows. First, declare a variable `f` and then initialize the value of `f` to `1`. Then, given an integer value for `n`, if the value of `n` is greater than `1`, multiply the value of `f` by the value of `n` and then decrement the value of `n` by `1`, and keep doing that until the value of `n` is not greater than `1` anymore. When this happens, return the value of `f`. So, the code actually computes `1 * n * (n - 1) * ... * 2` which is obviously equal to `n * (n - 1) * ... * 2 * 1` due to the *associativity* of multiplication or, in fact here, just because of the special case that `1` is the multiplicative identity. Also, the code always terminates because the loop condition `n > 1` always eventually, that is, in finitely many iterations of the `while` loop, becomes false since the value of `n` is decremented in each iteration. Note that the code also works for `n == 0`.
 
 Now, there is one more thing that is truly remarkable. Instead of computing the factorial iteratively in a loop, we may also compute it *recursively* using code that looks quite different and yet computes exactly the same result as the iterative implementation:
 
@@ -364,17 +364,17 @@ int factorial(int n) {
 }
 ```
 
-This time the code is even in English a lot shorter: define a procedure `factorial` with a formal parameter `n` as follows. Given an integer value for `n`, if the value of `n` is greater than `1`, return the value of `n` multiplied by the value of `factorial(n - 1)`. Otherwise, return `1`. This is brilliant! The code is not only more compact but also does not even require any additional language elements. In fact, it requires less, in particular no assignments. Just using procedures without assignments is a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials.
+This time the code is even in English a lot shorter: define a procedure `factorial` with a formal parameter `n` as follows. Given an integer value for `n`, if the value of `n` is greater than `1`, return the value of `n` multiplied by the value of `factorial(n - 1)`. Otherwise, return `1`. This is brilliant! The code is not only more compact but also does not even require any additional language elements. In fact, it requires less, in particular no assignments. In contrast to imperative programming, just using procedures without assignments follows a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials.
 
-But what is the catch? Well, the code uses *recursion* which is something that takes time and effort to understand. We explain the concept here but also revisit it again later. Recursion is a method for solving a problem using solutions to smaller instances of the problem through *self-reference*. In our example, the `factorial` procedure, given an integer value for `n`, calls *itself* on the value of `n - 1` which is obviously smaller than the value of `n`. Similar to the iterative version of `factorial`,
+But what is the catch? Well, the code uses *recursion* which is something that takes time and effort to understand. We explain the concept here but also revisit it again later. Recursion is a method for solving a problem using solutions to smaller instances of the problem through *self-reference*. In our example, the `factorial` procedure, given an integer value for `n`, calls *itself* on the value of `n - 1` which is obviously smaller than the value of `n`. This may sound strange but it still works because the *definition* of a procedure such as `int factorial(int n) { ... }` (with a formal parameter `int n`) and the *use* of a procedure such as `factorial(n - 1)` (with an actual parameter `n - 1`) are two entirely different concepts that take effect at different times. Code is defined *before* it is executed whereas code is used *when* it is executed.
 
-`n * ((n - 1) * ( ... * (2 * 1)))`
+Nevertheless, similar to the iterative version of `factorial`, we still need to argue that this version of `factorial` also computes the factorial of a positive integer `n` in finitely many steps. For simplicity, let us do that just for a given integer value of `n`, say, `4` by looking at the execution of the code as follows:
 
-4 * (3 * (2 * 1))
+```
+factorial(4) == 4 * factorial(3) == 4 * (3 * factorial(2)) == 4 * (3 * (2 * factorial(1))) == 4 * (3 * (2 * 1))
+```
 
-correctness, termination
-
-The key to understanding recursion is to understand the difference between the *definition* of a procedure such as `int factorial(int n) { ... }` and the use of a procedure such as `factorial(n - 1)`. Design time, runtime.
+where `4 * (3 * (2 * 1))` is obviously equal to `4 * 3 * 2 * 1`, again due to the associativity of multiplication. In general, we would need to use *structural induction* to argue that the *inductive step* `factorial(n) == n * factorial(n - 1)` for all `n > 1` as asserted by the `if` or *termination* condition `n > 1` together with the *base case* `factorial(1) == 1` do indeed compute the factorial of a positive integer `n`. The key intuition for showing termination is that the procedure recurses on instances of the problem whose size is *monotonically* decreasing, similar to the iterative version, and that there exists a *smallest* instance, which is the value `1` here. Note that the code again works for `n == 0` as well.
 
 ```
 int d;
@@ -2164,7 +2164,7 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 * hindu-arabic
 
-* `if-else` statement
+* `if` statement
 
 * image
 
