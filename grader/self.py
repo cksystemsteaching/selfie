@@ -28,7 +28,7 @@ from lib.system import (AND_INSTRUCTION, LR_INSTRUCTION, NOT_INSTRUCTION,
                         OR_INSTRUCTION, SC_INSTRUCTION, SLL_INSTRUCTION,
                         SRL_INSTRUCTION)
 
-REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/master/'
+REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/main/'
 
 
 def check_self_compilation(mandatory=False) -> List[Check]:
