@@ -374,7 +374,7 @@ Nevertheless, similar to the iterative version of `factorial`, we still need to 
 factorial(4) == 4 * factorial(3) == 4 * (3 * factorial(2)) == 4 * (3 * (2 * factorial(1))) == 4 * (3 * (2 * 1))
 ```
 
-where `4 * (3 * (2 * 1))` is obviously equal to `4 * 3 * 2 * 1`, again due to the associativity of multiplication. In general, we would need to use *structural induction* to argue that the *inductive step* `factorial(n) == n * factorial(n - 1)` for all `n > 1` as asserted by the `if` or *termination* condition `n > 1` together with the *base case* `factorial(1) == 1` do indeed compute the factorial of a positive integer `n`. The key intuition for showing termination is that the procedure recurses on instances of the problem whose size is *monotonically* decreasing, similar to the iterative version, and that there exists a *smallest* instance, which is the value `1` here. Note that the code again works for `n == 0` as well.
+where `4 * (3 * (2 * 1))` is obviously equal to `4 * 3 * 2 * 1`, again due to the associativity of multiplication. In general, we would need to use *structural induction* to argue that the *inductive step* `factorial(n) == n * factorial(n - 1)` for all `n > 1` as asserted by the `if` or *termination* condition `n > 1` together with the *base case* `factorial(1) == 1` do indeed compute the factorial of a positive integer `n`. The key intuition for showing termination is that the procedure recurses on instances of the problem whose size is *monotonically* decreasing (here `n - 1`), similar to the iterative version, and that there exists a *smallest* instance that is thus always eventually reached (here value `1`). Note that the code again works for `n == 0` as well.
 
 ```
 int tail_recursive_factorial(int f, int n) {
