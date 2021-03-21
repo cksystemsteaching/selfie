@@ -390,6 +390,26 @@ int factorial(int n) {
 ```
 
 ```
+int f; // global variable (!)
+
+void tail_recursive_factorial(int n) {
+  if (n > 1) {                       // while (n > 1) {
+  	f = f * n;                       //   f = f * n;
+                                     //
+  	tail_recursive_factorial(n - 1); //   n = n - 1;
+  }                                  // }
+}
+
+int factorial(int n) {
+  f = 1;
+
+  tail_recursive_factorial(n); // while (n > 1) { f = f * n; n = n - 1; }
+
+  return f;
+}
+```
+
+```
 int d;
 
 void double(int n) {
