@@ -377,49 +377,35 @@ factorial(4) == 4 * factorial(3) == 4 * (3 * factorial(2)) == 4 * (3 * (2 * fact
 where `4 * (3 * (2 * 1))` is obviously equal to `4 * 3 * 2 * 1`, again due to the associativity of multiplication. In general, we would need to use *structural induction* to argue that the *inductive step* `factorial(n) == n * factorial(n - 1)` for all `n > 1` as asserted by the `if` or *termination* condition `n > 1` together with the *base case* `factorial(1) == 1` do indeed compute the factorial of a positive integer `n`. The key intuition for showing termination is that the procedure recurses on instances of the problem whose size is *monotonically* decreasing (here `n - 1`), similar to the iterative version, and that there exists a *smallest* instance that is thus always eventually reached (here value `1`). Note that the code again works for `n == 0` as well.
 
 ```
-int tail_recursive_factorial(int f, int n) {
+int tail_recursive(int f, int n) {
   if (n > 1)
-  	return tail_recursive_factorial(f * n, n - 1);
+  	return tail_recursive(f * n, n - 1);
   else
   	return f;
 }
 
 int factorial(int n) {
-  return tail_recursive_factorial(1, n);
+  return tail_recursive(1, n);
 }
 ```
 
 ```
 int f; // global variable (!)
 
-void tail_recursive_factorial(int n) {
-  if (n > 1) {                       // while (n > 1) {
-  	f = f * n;                       //   f = f * n;
-                                     //
-  	tail_recursive_factorial(n - 1); //   n = n - 1;
-  }                                  // }
+void tail_recursive(int n) {
+  if (n > 1) {             // while (n > 1) {
+  	f = f * n;             //   f = f * n;
+                           //
+  	tail_recursive(n - 1); //   n = n - 1;
+  }                        // }
 }
 
 int factorial(int n) {
   f = 1;
 
-  tail_recursive_factorial(n); // while (n > 1) { f = f * n; n = n - 1; }
+  tail_recursive(n); // while (n > 1) { f = f * n; n = n - 1; }
 
   return f;
-}
-```
-
-```
-int d;
-
-void double(int n) {
-  d = n + n;
-}
-
-int main() {
-  double(42);
-
-  return d;
 }
 ```
 
