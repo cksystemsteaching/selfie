@@ -257,7 +257,7 @@ In the directory where your selfie installation is, create a file called `double
 
 Selfie responds with quite a bit of text but just look for `double.c exiting with exit code 84`. That's it! The above code instructs selfie to return the result of `double(42)` which is obviously `84`. The way this works is simple. Each program must contain a procedure called `main` to actually do anything useful. That procedure is always the first to run and everything follows from there. When `main` returns, program execution is finished and whatever `main` returns is shown as *exit code*.
 
-There are two important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` and its implementation in between curly braces. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double`on an *actual parameter* `42`. Importantly, there can only be one procedure definition per procedure name but as many procedure calls of the same procedure as you like. Makes sense? Ok, then let us try to change the definition or in fact implementation of `double`:
+There are two important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter ` n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. The code of the procedure is in between the curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`. Importantly, there can only be one procedure definition per procedure name but as many procedure calls of the same procedure as you like. Makes sense? Ok, then let us try to change the definition or in fact implementation of `double`:
 
 ```
 int double(int n) {
@@ -419,7 +419,12 @@ int factorial(int n) {
 }
 ```
 
-So, what is the difference betweeen a global and a local variable?
+So, first of all, what is the difference betweeen a global and a local variable? It is the *scope* of the variable, that is, where in the code the variable can be used and where not, and it is the *memory* for the value of the variable, that is, where in memory the value is stored. A global variable is declared outside of any procedure body, can be used in all procedures, and its value is stored in memory only once. In short, it can be used everywhere and it only has one value. In the above code, `f` in `tail_recursive` and `factorial` refers to the same global variable `f`. Thus, instead of returning values, `tail_recursive` may operate directly on `f` and thus communicate with other procedures such as `factorial` implicitly through `f`. In fact, the return type of `tail_recursive` is not `int` but `void` which means that `tail_recursive` neither returns any value explicitly nor can be called by a `return` statement.
+
+loop condition versus termination condition
+termination condition plus tail-recursive call equal to while loop
+
+In contrast, a local variable can only be used in the procedure in which it is declared. Moreover, the value of a local variable...
 
 pointers
 
