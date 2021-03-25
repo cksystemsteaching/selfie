@@ -397,7 +397,7 @@ A recursive procedure is *tail-recursive* if every procedure call done by the pr
 factorial(4) == tail_recursive(1, 4) == tail_recursive(1 * 4, 3) == tail_recursive(4 * 3, 2) == tail_recursive(12 * 2, 1) == 24
 ```
 
-That looks quite similar to what the iterative version does! It computes `1 * 4 * 3 * 2`, just like the iterative version, instead of `4 * (3 * (2 * 1))`, as done by the recursive version. Tail recursion combines the advantages of iteration (memory usage) and recursion (functional correctness) but not all problems can be solved using tail recursion, namely those that intrinsically require non-constant space. However, in that case even iteration requires non-constant space.
+That looks quite similar to what the iterative version does! It computes `1 * 4 * 3 * 2`, just like the iterative version, instead of `4 * (3 * (2 * 1))`, as done by the recursive version. Tail recursion combines the advantages of iteration (memory usage) and recursion (functional correctness) but not all problems can be solved using tail recursion, namely those that intrinsically require non-constant space. However, in that case even iteration requires non-constant space. Before moving on, we take another look at iteration versus recursion. The following code is yet another implementation of factorial revealing that iteration and tail-recursion is essentially the same thing. It involves the use of a *global variable* `f`, in contrast to a *local variable* `f` as in the iterative version. The text to the right of any double slashes `//` is called a *comment* and just meant to help us understand the code and the point we are trying to make. Comments are completely ignored by the machine. For the machine, it is as if they are not there:
 
 ```
 int f; // global variable (!)
@@ -418,6 +418,8 @@ int factorial(int n) {
   return f;
 }
 ```
+
+So, what is the difference betweeen a global and a local variable?
 
 pointers
 
