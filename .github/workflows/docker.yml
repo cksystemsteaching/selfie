@@ -33,8 +33,10 @@ jobs:
       run: |
         docker run cksystemsteaching/selfie make -j -O everything
         docker run cksystemsteaching/selfie make pythons
-    # requires secrets named DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in the github repository's Settings -> Secrets
     - name: Deploy docker image
+      environment: docker
+      # requires DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD secrets from docker environment
+      # see github repository's Settings -> Environments
       run: |
         echo '${{ secrets.DOCKERHUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push cksystemsteaching/selfie
