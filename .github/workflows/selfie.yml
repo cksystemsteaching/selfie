@@ -20,7 +20,7 @@ on:
     - cron: '0 0 * * 5'
 
 jobs:
-  make-all-of-selfie-on-linux:
+  make-all-on-linux:
     name: Make all of selfie on Linux
     runs-on: ubuntu-latest
 
@@ -36,7 +36,7 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  make-all-of-selfie-on-macos:
+  make-all-on-macos:
     name: Make all of selfie on macOS
     runs-on: macos-latest
 
@@ -52,7 +52,7 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  make-all-of-selfie-on-windows:
+  make-all-on-windows:
     name: Make all of selfie on Windows
     runs-on: windows-latest
 
@@ -64,3 +64,17 @@ jobs:
         CC: gcc
       run: make -j -O all
     # python3 does not work here
+
+  make-everything-on-docker:
+    name: Build and run selfie on docker
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Build docker image
+      run: docker build -t cksystemsteaching/selfie .
+    - name: Run selfie in docker image
+      run: |
+        docker run cksystemsteaching/selfie make -j -O everything
+        docker run cksystemsteaching/selfie make pythons
