@@ -66,7 +66,7 @@ jobs:
     # python3 does not work here
 
   make-everything-on-docker:
-    name: Build and run selfie on docker
+    name: Make everything of selfie on docker
     runs-on: ubuntu-latest
 
     steps:
@@ -74,7 +74,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Build docker image
       run: docker build -t cksystemsteaching/selfie .
-    - name: Run selfie in docker image
+    - name: Make everything
       run: |
         docker run cksystemsteaching/selfie make -j -O everything
         docker run cksystemsteaching/selfie make pythons
