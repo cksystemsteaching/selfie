@@ -23,13 +23,15 @@ from lib.output_processing import is_interleaved_output, is_permutation_of, cont
 from lib.checks import (check_assembler_instruction_format, check_compilable,
                         check_compile_warnings, check_execution,
                         check_hypster_execution, check_interleaved_output,
-                        check_mipster_execution, check_riscv_instruction)
+                        check_mipster_execution, check_riscv_instruction, check_bootstrapping_compile_warnigns)
 from lib.system import (AND_INSTRUCTION, LR_INSTRUCTION, NOT_INSTRUCTION,
                         OR_INSTRUCTION, SC_INSTRUCTION, SLL_INSTRUCTION,
                         SRL_INSTRUCTION)
 
 REPO_BLOB_BASE_URI = 'https://github.com/cksystemsteaching/selfie/blob/master/'
 
+def check_bootstrapping() -> List[Check]:
+    return check_bootstrapping_compile_warnigns('bootstrapping works without warnings', mandatory=False)
 
 def check_self_compilation(mandatory=False) -> List[Check]:
     return check_execution('make self', 'selfie compiles selfie.c', mandatory=mandatory) + \
@@ -298,11 +300,12 @@ def check_treiber_stack() -> List[Check]:
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
-baseline_assignment = Assignment(
-    'self-compile', 'General', '', '', check_self_compilation)
+baseline_assignments = {
+    Assignment('bootstrapping', 'General', '', '', check_bootstrapping),
+    Assignment('self-compile', 'General', '', '', check_self_compilation)
+}
 
-assignments: Set[Assignment] = {
-    baseline_assignment,
+assignments: Set[Assignment] = baseline_assignments.union({
     Assignment('print-your-name', 'General', '',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-print-your-name',
                check_print_your_name),
@@ -357,11 +360,11 @@ assignments: Set[Assignment] = {
     Assignment('treiber-stack', 'Systems', 'treiber-stack',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
                check_treiber_stack)
-}
+})
 
 
 def main(args: List[str]) -> None:
-    process_arguments(args, assignments, baseline_assignment)
+    process_arguments(args, assignments, baseline_assignments)
 
 
 if __name__ == "__main__":
