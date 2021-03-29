@@ -100,15 +100,15 @@ def execute_with_output(check: Check) -> CheckResult:
     return result
 
 
-def check_assignment(assignment: Assignment, baseline: Assignment) -> Tuple[int, List[str]]:
+def check_assignment(assignment: Assignment, baseline: Set[Assignment]) -> Tuple[int, List[str]]:
     def check(a: Assignment):
         return list(map(execute_with_output, a.create_checks()))
 
     def change_result_to_mandatory(r: CheckResult):
         return CheckResult(r.result, r.msg, r.output, r.warning, r.should_succeed, r.command, True)
 
-    if assignment != baseline:
-        baseline_results = list(map(change_result_to_mandatory, check(baseline)))
+    if assignment in baseline:
+        baseline_results = list(map(change_result_to_mandatory, check(assignment)))
     else:
         baseline_results = [ ]
 
@@ -161,7 +161,7 @@ def parse_commit_url(url) -> Optional[Dict]:
         }
 
 
-def do_bulk_grading(assignment: Optional[Assignment], base_test: Assignment):
+def do_bulk_grading(assignment: Optional[Assignment], baseline: Set[Assignment]):
     if not os.path.exists(bulk_grade_directory):
         os.mkdir(bulk_grade_directory)
 
@@ -210,7 +210,7 @@ def do_bulk_grading(assignment: Optional[Assignment], base_test: Assignment):
                     print_message('updated', loud=True)
                 else:
                     print_message('')
-                    check_assignment(assignment, base_test)
+                    check_assignment(assignment, baseline)
                     print_message('', loud=True)
             else:
                 print_message(
@@ -237,7 +237,7 @@ def reset_state():
     reset_truncate()
 
 
-def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Assignment):
+def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Set[Assignment]):
     def curried_parse_assignment(assignment: str) -> Optional[Assignment]:
         return parse_assignment(assignment, assignments)
 
