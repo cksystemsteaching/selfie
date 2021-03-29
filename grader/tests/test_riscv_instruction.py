@@ -32,7 +32,7 @@ class TestRiscvInstruction(unittest.TestCase):
                     copyfile('tests/instructions/' +
                              instruction + '.s', '.tmp.s')
 
-        return (0, '', '')
+        return (0, '')
 
     def check_encoding_results(self, result, msg):
         if 'RISC-V encoding' in msg:
