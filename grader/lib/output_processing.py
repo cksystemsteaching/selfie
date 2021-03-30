@@ -105,3 +105,19 @@ def has_no_compile_warnings(return_value, output):
 
     return (succeeded, warning)
 
+
+def has_no_bootstrapping_compile_warnings(return_value, output):
+    if return_value != 0:
+        warning = 'bootstrapping compiler terminates with an error code of {}'.format(return_value)
+        succeeded = False
+    else:
+        warning_matcher = re.search(r'^.+:[0-9]+:[0-9]+: warning: .*$', output, re.MULTILINE)
+
+        if warning_matcher != None:
+            warning = 'bootstrapping compiler showed warnings'
+            succeeded = False
+        else:
+            warning = None
+            succeeded = True
+
+    return (succeeded, warning)
