@@ -30,7 +30,8 @@ selfie-gc.h: selfie.c
 	sed 's/allocate_memory(uint64_t\* context, uint64_t size) {/allocate_memory_deleted(uint64_t\* context, uint64_t size) {/' selfie-gc-intermediate.h > selfie-gc.h
 	sed 's/mark_object(uint64_t\* context, uint64_t address) {/mark_object_deleted(uint64_t\* context, uint64_t address) {/' selfie-gc.h > selfie-gc-intermediate.h
 	sed 's/sweep(uint64_t\* context) {/sweep_deleted(uint64_t\* context) {/' selfie-gc-intermediate.h > selfie-gc.h
-	rm -f selfie-gc-intermediate.h
+	sed 's/allocate_context() {/allocate_context_deleted() {/' selfie-gc.h > selfie-gc-intermediate.h
+	mv selfie-gc-intermediate.h selfie-gc.h
 
 # Generate selfie library with gc interface as selfie-gc-nomain.h
 selfie-gc-nomain.h: selfie-gc.h
