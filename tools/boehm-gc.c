@@ -20,12 +20,52 @@ to the Selfie GC. Just like the Selfie GC, the Boehm GC is available
 in both syscall and library variants.
 */
 
-// boehm hook implementations
+// --- boehm hook implementations ---
 
 void gc_init_boehm(uint64_t* context);
 uint64_t* allocate_memory_boehm(uint64_t* context, uint64_t size);
 uint64_t mark_object_boehm(uint64_t* context, uint64_t gc_address);
 void sweep_boehm(uint64_t* context);
+
+// --- boehm gc context extension ---
+
+// +----+-------------------------+
+// | 25 | chunk heap start        | start of the chunk heap segment
+// | 26 | chunk heap bump         | bump pointer of chunk heap segment
+// | 27 | chunk used list head    | pointer to head of the chunk used list
+// | 28 | chunk free list head    | pointer to head of the chunk free list
+// | 29 | small object free lists | pointer to array containing all small object free lists
+// +----+-------------------------+
+
+uint64_t* allocate_context() {
+  return smalloc(14 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
+}
+
+uint64_t* get_chunk_heap_start(uint64_t* context)           { return (uint64_t*) *(context + 25); }
+uint64_t* get_chunk_heap_bump(uint64_t* context)            { return (uint64_t*) *(context + 26); }
+uint64_t* get_chunk_used_list_head(uint64_t* context)       { return (uint64_t*) *(context + 27); }
+uint64_t* get_chunk_free_list_head(uint64_t* context)       { return (uint64_t*) *(context + 28); }
+uint64_t* get_small_object_free_lists(uint64_t* context)    { return (uint64_t*) *(context + 29); }
+
+void set_chunk_heap_start(uint64_t* context, uint64_t* chunk_heap_start)                { *(context + 25) = (uint64_t) chunk_heap_start; }
+void set_chunk_heap_bump(uint64_t* context, uint64_t* chunk_heap_bump)                  { *(context + 26) = (uint64_t) chunk_heap_bump; }
+void set_chunk_used_list_head(uint64_t* context, uint64_t* chunk_used_list_head)        { *(context + 27) = (uint64_t) chunk_used_list_head; }
+void set_chunk_free_list_head(uint64_t* context, uint64_t* chunk_free_list_head)        { *(context + 28) = (uint64_t) chunk_free_list_head; }
+void set_small_object_free_lists(uint64_t* context, uint64_t* small_object_free_lists)  { *(context + 29) = (uint64_t) small_object_free_lists; }
+
+// getters and setters with different access in library/kernel
+
+uint64_t* get_chunk_heap_start_gc(uint64_t* context);
+uint64_t* get_chunk_heap_bump_gc(uint64_t* context);
+uint64_t* get_chunk_used_list_head_gc(uint64_t* context);
+uint64_t* get_chunk_free_list_head_gc(uint64_t* context);
+uint64_t* get_small_object_free_lists_gc(uint64_t* context);
+
+void set_chunk_heap_start_gc(uint64_t* context, uint64_t* chunk_heap_start);
+void set_chunk_heap_bump_gc(uint64_t* context, uint64_t* chunk_heap_bump);
+void set_chunk_used_list_head_gc(uint64_t* context, uint64_t* chunk_used_list_head);
+void set_chunk_free_list_head_gc(uint64_t* context, uint64_t* chunk_free_list_head);
+void set_small_object_free_lists_gc(uint64_t* context, uint64_t* small_object_free_lists);
 
 // boehm chunks
 
@@ -44,13 +84,13 @@ void align_chunk_allocator(uint64_t* context);
 void init_chunk(uint64_t* context, uint64_t* chunk_list_entry);
 
 uint64_t* get_chunk_list_pointer(uint64_t* entry) { return (uint64_t*) *entry; }
-uint64_t  get_chunk_object_size(uint64_t* entry) { return *(entry + 1); }
+uint64_t  get_chunk_object_size(uint64_t* entry)  { return             *(entry + 1); }
 
 uint64_t get_chunk_object_markbit(uint64_t* entry, uint64_t object_index);
 uint64_t get_chunk_object_allocbit(uint64_t* entry, uint64_t object_index);
 
-void set_chunk_list_pointer(uint64_t* entry, uint64_t* list_pointer) { *entry = (uint64_t)list_pointer; }
-void set_chunk_object_size(uint64_t* entry, uint64_t object_size) { *(entry + 1) = object_size; }
+void set_chunk_list_pointer(uint64_t* entry, uint64_t* list_pointer) { *entry       = (uint64_t) list_pointer; }
+void set_chunk_object_size(uint64_t* entry, uint64_t object_size)    { *(entry + 1) = object_size; }
 
 void set_chunk_object_markbit(uint64_t* entry, uint64_t object_index, uint64_t markbit);
 void set_chunk_object_allocbit(uint64_t* entry, uint64_t object_index, uint64_t allocbit);
@@ -83,11 +123,11 @@ uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object)
 
 uint64_t* allocate_coso_list_entry(uint64_t* context);
 
-uint64_t* get_coso_list_entry_next(uint64_t* entry) { return (uint64_t*)*entry; }
-uint64_t* get_coso_list_entry_memory(uint64_t* entry) { return (uint64_t*)*(entry + 1); }
+uint64_t* get_coso_list_entry_next(uint64_t* entry)   { return (uint64_t*) *entry; }
+uint64_t* get_coso_list_entry_memory(uint64_t* entry) { return (uint64_t*) *(entry + 1); }
 
-void set_coso_list_entry_next(uint64_t* entry, uint64_t* next) { *entry = (uint64_t)next; }
-void set_coso_list_entry_memory(uint64_t* entry, uint64_t* memory) { *(entry + 1) = (uint64_t)memory; }
+void set_coso_list_entry_next(uint64_t* entry, uint64_t* next)     { *entry       = (uint64_t) next; }
+void set_coso_list_entry_memory(uint64_t* entry, uint64_t* memory) { *(entry + 1) = (uint64_t) memory; }
 
 uint64_t* get_chunk_list_entry_memory(uint64_t* context, uint64_t* entry);
 
@@ -104,15 +144,85 @@ uint64_t GC_CHUNK_MAX_SMALL_OBJECT_SIZE = 2032;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* gc_chunk_heap_start = (uint64_t*)0;
-uint64_t* gc_chunk_heap_bump = (uint64_t*)0;
-uint64_t* gc_chunk_heap_end = (uint64_t*)0;
+uint64_t* gc_chunk_heap_start = (uint64_t*) 0;
+uint64_t* gc_chunk_heap_bump  = (uint64_t*) 0;
 
-uint64_t* gc_chunk_used_list = (uint64_t*)0;
-uint64_t* gc_chunk_free_list = (uint64_t*)0;
-uint64_t* gc_small_object_free_lists = (uint64_t*)0;
+uint64_t* gc_chunk_used_list         = (uint64_t*) 0;
+uint64_t* gc_chunk_free_list         = (uint64_t*) 0;
+uint64_t* gc_small_object_free_lists = (uint64_t*) 0;
+
 
 // Definition
+
+uint64_t* get_chunk_heap_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_chunk_heap_start;
+  else
+    return get_chunk_heap_start(context);
+}
+
+uint64_t* get_chunk_heap_bump_gc(uint64_t* context) {
+    if (is_gc_library(context))
+    return gc_chunk_heap_bump;
+  else
+    return get_chunk_heap_bump(context);
+}
+
+uint64_t* get_chunk_used_list_head_gc(uint64_t* context) {
+    if (is_gc_library(context))
+    return gc_chunk_used_list;
+  else
+    return get_chunk_used_list_head(context);
+}
+
+uint64_t* get_chunk_free_list_head_gc(uint64_t* context) {
+    if (is_gc_library(context))
+    return gc_chunk_free_list;
+  else
+    return get_chunk_free_list_head(context);
+}
+
+uint64_t* get_small_object_free_lists_gc(uint64_t* context) {
+    if (is_gc_library(context))
+    return gc_small_object_free_lists;
+  else
+    return get_small_object_free_lists(context);
+}
+
+void set_chunk_heap_start_gc(uint64_t* context, uint64_t* chunk_heap_start) {
+  if (is_gc_library(context))
+    gc_chunk_heap_start = chunk_heap_start;
+  else
+    set_chunk_heap_start(context, chunk_heap_start);
+}
+
+void set_chunk_heap_bump_gc(uint64_t* context, uint64_t* chunk_heap_bump) {
+  if (is_gc_library(context))
+    gc_chunk_heap_bump = chunk_heap_bump;
+  else
+    set_chunk_heap_bump(context, chunk_heap_bump);
+}
+
+void set_chunk_used_list_head_gc(uint64_t* context, uint64_t* chunk_used_list_head) {
+  if (is_gc_library(context))
+    gc_chunk_used_list = chunk_used_list_head;
+  else
+    set_chunk_used_list_head(context, chunk_used_list_head);
+}
+
+void set_chunk_free_list_head_gc(uint64_t* context, uint64_t* chunk_free_list_head) {
+  if (is_gc_library(context))
+    gc_chunk_free_list = chunk_free_list_head;
+  else
+    set_chunk_free_list_head(context, chunk_free_list_head);
+}
+
+void set_small_object_free_lists_gc(uint64_t* context, uint64_t* small_object_free_lists) {
+  if (is_gc_library(context))
+    gc_small_object_free_lists = small_object_free_lists;
+  else
+    set_small_object_free_lists(context, small_object_free_lists);
+}
 
 uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
   uint64_t* chunk_list_entry;
@@ -122,15 +232,15 @@ uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
 
   // assert: chunk size is always GC_CHUNK_SIZE (since we do not support large objects)
 
-  chunk_list_entry = gc_chunk_free_list;
+  chunk_list_entry = get_chunk_free_list_head_gc(context);
 
-  if(chunk_list_entry == (uint64_t*)0) {
+  if (chunk_list_entry == (uint64_t*) 0) {
     chunk_list_entry = allocate_coso_list_entry(context);
 
-    set_coso_list_entry_memory(chunk_list_entry, gc_chunk_heap_bump);
-    gc_chunk_heap_bump = gc_chunk_heap_bump + GC_CHUNK_SIZE / SIZEOFUINT64;
+    set_coso_list_entry_memory(chunk_list_entry, get_chunk_heap_bump_gc(context));
+    set_chunk_heap_bump_gc(context, get_chunk_heap_bump_gc(context) + GC_CHUNK_SIZE / SIZEOFUINT64);
 
-    if((uint64_t)gc_chunk_heap_bump >= (uint64_t)gc_chunk_heap_end) {
+    if ((uint64_t) get_chunk_heap_bump_gc(context) >= ((uint64_t) get_chunk_heap_start_gc(context) + GC_CHUNK_HEAP_SIZE)) {
       printf("%s: chunk heap size exceeded\n", selfie_name);
 
       exit(EXITCODE_OUTOFVIRTUALMEMORY);
@@ -138,10 +248,10 @@ uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
 
     init_chunk(context, chunk_list_entry);
   } else
-    gc_chunk_free_list = get_coso_list_entry_next(chunk_list_entry);
+    set_chunk_free_list_head_gc(context, get_coso_list_entry_next(chunk_list_entry));
 
-  set_coso_list_entry_next(chunk_list_entry, gc_chunk_used_list);
-  gc_chunk_used_list = chunk_list_entry;
+  set_coso_list_entry_next(chunk_list_entry, get_chunk_used_list_head_gc(context));
+  set_chunk_used_list_head_gc(context, chunk_list_entry);
 
   // 2. Handle chunk header
 
@@ -171,20 +281,20 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
 
   // 1. remove chunk from used list
 
-  prev_it = (uint64_t*)0;
-  it = gc_chunk_used_list;
-  while(it != (uint64_t*)0) {
-    if(it == coso_entry) {
-      if(prev_it == (uint64_t*)0)
-        gc_chunk_used_list = get_coso_list_entry_next(it);
+  prev_it = (uint64_t*) 0;
+  it = get_chunk_used_list_head_gc(context);
+  while (it != (uint64_t*) 0) {
+    if (it == coso_entry) {
+      if (prev_it == (uint64_t*) 0)
+        set_chunk_used_list_head_gc(context, get_coso_list_entry_next(it));
       else
         set_coso_list_entry_next(prev_it, get_coso_list_entry_next(it));
 
-      set_coso_list_entry_next(it, gc_chunk_free_list);
+      set_coso_list_entry_next(it, get_chunk_free_list_head_gc(context));
 
-      gc_chunk_free_list = it;
+      set_chunk_free_list_head_gc(context, it);
 
-      it = (uint64_t*)0;
+      it = (uint64_t*) 0;
     } else {
       prev_it = it;
 
@@ -194,20 +304,20 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
 
   // 2. remove all small object list entries
 
-  prev_it = (uint64_t*)0;
-  small_object_list_head_ptr = gc_small_object_free_lists + (object_size - 1);
+  prev_it = (uint64_t*) 0;
+  small_object_list_head_ptr = get_small_object_free_lists_gc(context) + (object_size - 1);
   it = (uint64_t*)*(small_object_list_head_ptr);
-  while(it != (uint64_t*)0) {
-    if(is_address_valid_chunk_object_of_specific_chunk(context, (uint64_t)get_coso_list_entry_memory(it), coso_entry)) {
-      if(prev_it == (uint64_t*)0)
-        *(small_object_list_head_ptr) = (uint64_t)get_coso_list_entry_next(it);
+  while (it != (uint64_t*) 0) {
+    if (is_address_valid_chunk_object_of_specific_chunk(context, (uint64_t) get_coso_list_entry_memory(it), coso_entry)) {
+      if (prev_it == (uint64_t*) 0)
+        *(small_object_list_head_ptr) = (uint64_t) get_coso_list_entry_next(it);
       else
         set_coso_list_entry_next(prev_it, get_coso_list_entry_next(it));
 
       next_it = get_coso_list_entry_next(it);
 
-      set_coso_list_entry_next(it, (uint64_t*)0);
-      set_coso_list_entry_memory(it, (uint64_t*)0);
+      set_coso_list_entry_next(it, (uint64_t*) 0);
+      set_coso_list_entry_memory(it, (uint64_t*) 0);
 
       it = next_it;
     } else {
@@ -221,14 +331,14 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
 void align_chunk_allocator(uint64_t* context) {
   uint64_t pb;
 
-  if(is_gc_library(context))
-    pb = (uint64_t)smalloc_system(0);
+  if (is_gc_library(context))
+    pb = (uint64_t) smalloc_system(0);
   else
     pb = get_program_break(context);
 
   pb = pb % GC_CHUNK_SIZE;
 
-  if(pb == 0)
+  if (pb == 0)
     return;
 
   pb = GC_CHUNK_SIZE - pb;
@@ -239,12 +349,12 @@ void align_chunk_allocator(uint64_t* context) {
 void init_chunk(uint64_t* context, uint64_t* chunk_list_entry) {
   uint64_t chunk_vaddr;
 
-  chunk_vaddr = (uint64_t)get_coso_list_entry_memory(chunk_list_entry);
+  chunk_vaddr = (uint64_t) get_coso_list_entry_memory(chunk_list_entry);
 
   // mapping the page of a chunk is required before being able to write to it (only required for syscall)
-  if(is_gc_library(context) == 0)
-    if(is_virtual_address_mapped(get_pt(context), chunk_vaddr) == 0)
-      map_page(context, get_page_of_virtual_address(chunk_vaddr), (uint64_t)palloc());
+  if (is_gc_library(context) == 0)
+    if (is_virtual_address_mapped(get_pt(context), chunk_vaddr) == 0)
+      map_page(context, get_page_of_virtual_address(chunk_vaddr), (uint64_t) palloc());
 }
 
 uint64_t get_chunk_object_markbit(uint64_t* entry, uint64_t object_index) {
@@ -264,10 +374,10 @@ uint64_t get_chunk_object_allocbit(uint64_t* entry, uint64_t object_index) {
 }
 
 uint64_t set_bit(uint64_t val, uint64_t at, uint64_t bit) {
-  if(bit > 1)
+  if (bit > 1)
     bit = 1;
 
-  if(at > (SIZEOFUINT64INBITS - 1))
+  if (at > (SIZEOFUINT64INBITS - 1))
     return val;
 
   // assert: at in bounds (0-(SIZEOFUINT64INBITS - 1))
@@ -276,10 +386,10 @@ uint64_t set_bit(uint64_t val, uint64_t at, uint64_t bit) {
   //   - at == 0                        -> "left shift calculation" would overflow power two table
   //   - at == (SIZEOFUINT64INBITS - 1) -> "right shift calculation" would overflow power two table
 
-  if(at == 0)
+  if (at == 0)
     return bit + left_shift(right_shift(val, 1), 1);
   else {
-    if(at == (SIZEOFUINT64INBITS - 1))
+    if (at == (SIZEOFUINT64INBITS - 1))
       return right_shift(left_shift(val, SIZEOFUINT64INBITS - at), SIZEOFUINT64INBITS - at) + left_shift(bit, at);
     else
       return right_shift(left_shift(val, SIZEOFUINT64INBITS - at), SIZEOFUINT64INBITS - at) + left_shift(bit, at) + left_shift(right_shift(val, at + 1), at + 1);
@@ -358,7 +468,7 @@ uint64_t calculate_number_of_words_for_object_bits(uint64_t object_size) {
 
   num_words_object_bits = calculate_chunk_payload_offset_words(object_size);
   num_words_object_bits = num_words_object_bits - GC_STATIC_HEADER_SIZE_IN_WORDS; // subtract static part of header (chunk list pointer, object size fields)
-  num_words_object_bits = num_words_object_bits / 2; // dynamic part of header consists of alloc and mark bits
+  num_words_object_bits = num_words_object_bits / 2;                              // dynamic part of header consists of alloc and mark bits
 
   return num_words_object_bits;
 }
@@ -366,12 +476,12 @@ uint64_t calculate_number_of_words_for_object_bits(uint64_t object_size) {
 uint64_t calculate_chunk_payload_offset_bytes(uint64_t object_size) {
   uint64_t ret;
 
-  ret = (GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE); // -> max possible payload size
-  ret = ret / object_size; // max payload size -> #objects in payload (= #markbits)
+  ret = (GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE);             // -> max possible payload size
+  ret = ret / object_size;                                      // max payload size -> #objects in payload (= #markbits)
   ret = round_up(ret, SIZEOFUINT64INBITS) / SIZEOFUINT64INBITS; // #objects -> #words containing markbits
-  ret = ret * SIZEOFUINT64; // #words -> #bytes
-  ret = ret * 2; // alloc and mark bits (dynamic part of header)
-  ret = ret + (SIZEOFUINT64 * GC_STATIC_HEADER_SIZE_IN_WORDS); // add static part of header
+  ret = ret * SIZEOFUINT64;                                     // #words -> #bytes
+  ret = ret * 2;                                                // alloc and mark bits (dynamic part of header)
+  ret = ret + (SIZEOFUINT64 * GC_STATIC_HEADER_SIZE_IN_WORDS);  // add static part of header
 
   return ret;
 }
@@ -385,19 +495,19 @@ uint64_t is_address_valid_chunk_object_of_specific_chunk(uint64_t* context, uint
   uint64_t chunk_payload;
   uint64_t chunk_fragmentation_start;
 
-  object_size = get_chunk_object_size(get_chunk_list_entry_memory(context, chunk_list_entry)); // object size in bytes
-  chunk_payload = calculate_chunk_payload_offset_bytes(object_size); // payload offset in bytes
-  chunk_fragmentation_start = (GC_CHUNK_SIZE - chunk_payload); // payload size
-  chunk_fragmentation_start = chunk_fragmentation_start / object_size; // number of objects in chunk
-  chunk_fragmentation_start = chunk_fragmentation_start * object_size; // size of all objects in chunk
-  chunk_fragmentation_start = chunk_fragmentation_start + chunk_payload; // actual fragmentation offset
-  chunk_payload = chunk_payload + (uint64_t)get_coso_list_entry_memory(chunk_list_entry); // + vaddr offset of chunk
-  chunk_fragmentation_start = chunk_fragmentation_start + (uint64_t)get_coso_list_entry_memory(chunk_list_entry); // + vaddr offset of chunk
+  object_size = get_chunk_object_size(get_chunk_list_entry_memory(context, chunk_list_entry));                      // object size in bytes
+  chunk_payload = calculate_chunk_payload_offset_bytes(object_size);                                                // payload offset in bytes
+  chunk_fragmentation_start = (GC_CHUNK_SIZE - chunk_payload);                                                      // payload size
+  chunk_fragmentation_start = chunk_fragmentation_start / object_size;                                              // number of objects in chunk
+  chunk_fragmentation_start = chunk_fragmentation_start * object_size;                                              // size of all objects in chunk
+  chunk_fragmentation_start = chunk_fragmentation_start + chunk_payload;                                            // actual fragmentation offset
+  chunk_payload = chunk_payload + (uint64_t) get_coso_list_entry_memory(chunk_list_entry);                          // + vaddr offset of chunk
+  chunk_fragmentation_start = chunk_fragmentation_start + (uint64_t) get_coso_list_entry_memory(chunk_list_entry);  // + vaddr offset of chunk
 
-  if((uint64_t)address >= chunk_fragmentation_start)
+  if ((uint64_t) address >= chunk_fragmentation_start)
     return 0;
 
-  if((uint64_t)address < chunk_payload)
+  if ((uint64_t) address < chunk_payload)
     return 0;
 
   return 1;
@@ -407,15 +517,15 @@ uint64_t is_chunk_referenced(uint64_t* entry) {
   uint64_t markbits_iterator;
   uint64_t markbits_end;
 
-  markbits_end = calculate_chunk_payload_offset_words(get_chunk_object_size(entry)); // end of chunk header (in words)
-  markbits_end = markbits_end - GC_STATIC_HEADER_SIZE_IN_WORDS; // - static part of header -> only dynamic part remaining (i.e. mark, alloc bits)
-  markbits_end = markbits_end / 2; // ... number of markbits (in words)
-  markbits_end = markbits_end + GC_STATIC_HEADER_SIZE_IN_WORDS; // end of markbits ... static header + num markbit words
+  markbits_end = calculate_chunk_payload_offset_words(get_chunk_object_size(entry));  // end of chunk header (in words)
+  markbits_end = markbits_end - GC_STATIC_HEADER_SIZE_IN_WORDS;                       // - static part of header -> only dynamic part remaining (i.e. mark, alloc bits)
+  markbits_end = markbits_end / 2;                                                    // ... number of markbits (in words)
+  markbits_end = markbits_end + GC_STATIC_HEADER_SIZE_IN_WORDS;                       // end of markbits ... static header + num markbit words
 
   markbits_iterator = GC_STATIC_HEADER_SIZE_IN_WORDS;
 
-  while(markbits_iterator < markbits_end) {
-    if(*(entry + markbits_iterator) != 0)
+  while (markbits_iterator < markbits_end) {
+    if (*(entry + markbits_iterator) != 0)
       return 1;
 
     markbits_iterator = markbits_iterator + 1;
@@ -437,7 +547,7 @@ void fill_small_object_free_list(uint64_t* context, uint64_t* chunk_list_entry) 
 
   object_size = get_chunk_object_size(get_chunk_list_entry_memory(context, chunk_list_entry)); // object size in bytes
   payload_offset = calculate_chunk_payload_offset_bytes(object_size);
-  small_object_list_ptr = gc_small_object_free_lists + (object_size / SIZEOFUINT64 - 1);
+  small_object_list_ptr = get_small_object_free_lists_gc(context) + (object_size / SIZEOFUINT64 - 1);
   object_count = (GC_CHUNK_SIZE - payload_offset);
   object_count = object_count / object_size;
 
@@ -446,13 +556,13 @@ void fill_small_object_free_list(uint64_t* context, uint64_t* chunk_list_entry) 
   object_size = object_size / SIZEOFUINT64;
 
   i = 0;
-  while(i < object_count) {
+  while (i < object_count) {
     coso_entry = allocate_coso_list_entry(context);
 
     set_coso_list_entry_next(coso_entry, (uint64_t*)(*(small_object_list_ptr)));
     set_coso_list_entry_memory(coso_entry, chunk_vaddr + payload_offset + (i * object_size));
 
-    *(small_object_list_ptr) = (uint64_t)coso_entry;
+    *(small_object_list_ptr) = (uint64_t) coso_entry;
 
     i = i + 1;
   }
@@ -464,25 +574,25 @@ uint64_t* allocate_object(uint64_t* context, uint64_t size) {
   uint64_t* small_object_free_list;
   uint64_t object_index;
 
-  small_object_free_list = gc_small_object_free_lists + (size / SIZEOFUINT64 - 1);
+  small_object_free_list = get_small_object_free_lists_gc(context) + (size / SIZEOFUINT64 - 1);
 
   // assert: size is a multiple of WORDSIZE and given in bytes
 
-  if(*(small_object_free_list) == 0)
+  if (*(small_object_free_list) == 0)
     fill_small_object_free_list(context, allocate_chunk(context, size));
 
-  ret = (uint64_t*)*(small_object_free_list); // ret points to head of small object free list
+  ret = (uint64_t*)*(small_object_free_list);                           // ret points to head of small object free list
 
-  *(small_object_free_list) = (uint64_t)get_coso_list_entry_next(ret); // set head to next entry
-  ret = get_coso_list_entry_memory(ret); // ret points to address of object (vaddr)
+  *(small_object_free_list) = (uint64_t) get_coso_list_entry_next(ret); // set head to next entry
+  ret = get_coso_list_entry_memory(ret);                                // ret points to address of object (vaddr)
 
   // set alloc bit of object
-  chunk = (uint64_t*)left_shift(right_shift((uint64_t)ret, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
+  chunk = (uint64_t*) left_shift(right_shift((uint64_t) ret, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
 
   object_index = calculate_chunk_small_object_index(context, ret);
 
-  if(is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t)chunk);
+  if (is_gc_library(context) == 0)
+    chunk = tlb(get_pt(context), (uint64_t) chunk);
 
   set_chunk_object_allocbit(chunk, object_index, 1);
 
@@ -496,20 +606,20 @@ void free_chunk_object(uint64_t* context, uint64_t* object) {
 
   // assert: object as vaddr (syscall)
 
-  chunk = (uint64_t*)(left_shift(right_shift((uint64_t)object, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2));
+  chunk = (uint64_t*)(left_shift(right_shift((uint64_t) object, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2));
 
   object_index = calculate_chunk_small_object_index(context, object);
 
-  if(is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t)chunk);
+  if (is_gc_library(context) == 0)
+    chunk = tlb(get_pt(context), (uint64_t) chunk);
 
   set_chunk_object_allocbit(chunk, object_index, 0);
 
   small_object_list_entry = allocate_coso_list_entry(context);
-  set_coso_list_entry_next(small_object_list_entry, (uint64_t*)(*(gc_small_object_free_lists + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1))));
+  set_coso_list_entry_next(small_object_list_entry, (uint64_t*)(*(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1))));
   set_coso_list_entry_memory(small_object_list_entry, object);
 
-  *(gc_small_object_free_lists + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1)) = (uint64_t)small_object_list_entry;
+  *(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1)) = (uint64_t) small_object_list_entry;
 }
 
 uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object) {
@@ -518,12 +628,12 @@ uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object)
 
   // object as vaddr
 
-  chunk = (uint64_t*)left_shift(right_shift((uint64_t)object, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
+  chunk = (uint64_t*) left_shift(right_shift((uint64_t) object, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
 
-  object_index = (uint64_t)object - (uint64_t)chunk; // offset in chunk
+  object_index = (uint64_t) object - (uint64_t) chunk; // offset in chunk
 
-  if(is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t)chunk);
+  if (is_gc_library(context) == 0)
+    chunk = tlb(get_pt(context), (uint64_t) chunk);
 
   object_index = object_index - calculate_chunk_payload_offset_bytes(get_chunk_object_size(chunk)); // offset in chunk payload
   object_index = object_index / get_chunk_object_size(chunk);
@@ -532,17 +642,17 @@ uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object)
 }
 
 uint64_t* allocate_coso_list_entry(uint64_t* context) {
-  if(is_gc_library(context))
+  if (is_gc_library(context))
     return allocate_new_memory(context, GC_COSO_LIST_ENTRY_SIZE);
   else
     return smalloc_system(GC_COSO_LIST_ENTRY_SIZE);
 }
 
 uint64_t* get_chunk_list_entry_memory(uint64_t* context, uint64_t* entry) {
-  if(is_gc_library(context))
+  if (is_gc_library(context))
     return get_coso_list_entry_memory(entry);
   else
-    return tlb(get_pt(context), (uint64_t)get_coso_list_entry_memory(entry));
+    return tlb(get_pt(context), (uint64_t) get_coso_list_entry_memory(entry));
 }
 
 // Hook Overrides
@@ -560,15 +670,16 @@ void gc_init_boehm(uint64_t* context) {
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE; // object size in order to fit 2 objects into one chunk
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_MAX_SMALL_OBJECT_SIZE / 2;
 
-  gc_small_object_free_lists = zalloc(GC_CHUNK_MAX_SMALL_OBJECT_SIZE); // collector not initialised -> allocate using bump pointer allocator
+  set_small_object_free_lists_gc(context, smalloc_system(GC_CHUNK_MAX_SMALL_OBJECT_SIZE)); // collector not initialised -> allocate using bump pointer allocator
+  zero_memory(get_small_object_free_lists_gc(context), GC_CHUNK_MAX_SMALL_OBJECT_SIZE);
+
   align_chunk_allocator(context); // note: chunk heap needs to be aligned!
 
-  gc_chunk_heap_start = allocate_new_memory(context, GC_CHUNK_HEAP_SIZE);
-  if(gc_chunk_heap_start == (uint64_t*)0)
-    printf("%s: could not initialize gc (chunk heap allocation)\n", selfie_name);
+  set_chunk_heap_start_gc(context, allocate_new_memory(context, GC_CHUNK_HEAP_SIZE));
+  if (get_chunk_heap_start_gc(context) == (uint64_t*) 0)
+    printf("%s: could not initialise gc (chunk heap allocation)\n", (uint64_t) get_chunk_heap_start_gc(context));
 
-  gc_chunk_heap_bump = gc_chunk_heap_start;
-  gc_chunk_heap_end = gc_chunk_heap_start + GC_CHUNK_HEAP_SIZE / SIZEOFUINT64;
+  set_chunk_heap_bump_gc(context, get_chunk_heap_start_gc(context));
 }
 
 uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
@@ -586,8 +697,8 @@ uint64_t* allocate_memory_boehm(uint64_t* context, uint64_t size) {
 
   object = allocate_object(context, size);
 
-  if(is_gc_library(context) == 0)
-    zero_memory(tlb(get_pt(context), (uint64_t)object), size);
+  if (is_gc_library(context) == 0)
+    zero_memory(tlb(get_pt(context), (uint64_t) object), size);
   else
     zero_memory(object, size);
 
@@ -599,13 +710,13 @@ void mark_object(uint64_t* context, uint64_t address) {
 
   gc_address = gc_load_memory(context, address);
 
-  if(gc_address >= (uint64_t)gc_chunk_heap_start) {
-    if(gc_address < (uint64_t)gc_chunk_heap_bump)
+  if (gc_address >= (uint64_t) get_chunk_heap_start_gc(context)) {
+    if (gc_address < (uint64_t) get_chunk_heap_bump_gc(context))
       mark_object_boehm(context, gc_address);
     else
       mark_object_selfie(context, gc_address); // delegate to selfie gc
   } else
-    mark_object_selfie(context, gc_address); // delegate to selfie gc
+    mark_object_selfie(context, gc_address);   // delegate to selfie gc
 }
 
 uint64_t mark_object_boehm(uint64_t* context, uint64_t gc_address) {
@@ -616,23 +727,23 @@ uint64_t mark_object_boehm(uint64_t* context, uint64_t gc_address) {
 
   chunk = left_shift(right_shift(gc_address, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
 
-  if(is_gc_library(context) == 0)
+  if (is_gc_library(context) == 0)
     chunk_paddr = tlb(get_pt(context), chunk);
   else
-    chunk_paddr = (uint64_t*)chunk;
+    chunk_paddr = (uint64_t*) chunk;
 
-  if(is_address_valid_chunk_object_of_specific_chunk(context, gc_address, get_chunk_list_pointer(chunk_paddr))) {
-    if(get_chunk_object_markbit(chunk_paddr, calculate_chunk_small_object_index(context, (uint64_t*)gc_address)) == GC_MARKBIT_UNREACHABLE)
-      set_chunk_object_markbit(chunk_paddr, calculate_chunk_small_object_index(context, (uint64_t*)gc_address), GC_MARKBIT_REACHABLE);
+  if (is_address_valid_chunk_object_of_specific_chunk(context, gc_address, get_chunk_list_pointer(chunk_paddr))) {
+    if (get_chunk_object_markbit(chunk_paddr, calculate_chunk_small_object_index(context, (uint64_t*) gc_address)) == GC_MARKBIT_UNREACHABLE)
+      set_chunk_object_markbit(chunk_paddr, calculate_chunk_small_object_index(context, (uint64_t*) gc_address), GC_MARKBIT_REACHABLE);
     else
       return 1;
   } else
     return 1;
 
-  object_start = chunk + calculate_chunk_payload_offset_bytes(get_chunk_object_size(chunk_paddr)) + calculate_chunk_small_object_index(context, (uint64_t*)gc_address) * get_chunk_object_size(chunk_paddr);
+  object_start = chunk + calculate_chunk_payload_offset_bytes(get_chunk_object_size(chunk_paddr)) + calculate_chunk_small_object_index(context, (uint64_t*) gc_address) * get_chunk_object_size(chunk_paddr);
   object_end = object_start + get_chunk_object_size(chunk_paddr);
 
-  while(object_start < object_end) {
+  while (object_start < object_end) {
     mark_object(context, object_start);
 
     object_start = object_start + SIZEOFUINT64;
@@ -655,16 +766,16 @@ void sweep_boehm(uint64_t* context) {
   uint64_t num_objects;
   uint64_t i;
 
-  prev_node = (uint64_t*)0;
-  node = gc_chunk_used_list;
-  while(node != (uint64_t*)0) {
+  prev_node = (uint64_t*) 0;
+  node = get_chunk_used_list_head_gc(context);
+  while (node != (uint64_t*) 0) {
     chunk = get_chunk_list_entry_memory(context, node);
 
     i = 0;
     num_objects = (GC_CHUNK_SIZE - calculate_chunk_payload_offset_bytes(get_chunk_object_size(chunk))) / get_chunk_object_size(chunk);
-    while(i < num_objects) {
-      if(get_chunk_object_allocbit(chunk, i) == 1)
-        if(get_chunk_object_markbit(chunk, i) == GC_MARKBIT_UNREACHABLE)
+    while (i < num_objects) {
+      if (get_chunk_object_allocbit(chunk, i) == 1)
+        if (get_chunk_object_markbit(chunk, i) == GC_MARKBIT_UNREACHABLE)
           free_chunk_object(context, get_coso_list_entry_memory(node) + calculate_chunk_payload_offset_words(get_chunk_object_size(chunk)) + i * (get_chunk_object_size(chunk) / SIZEOFUINT64));
 
       i = i + 1;
@@ -672,7 +783,7 @@ void sweep_boehm(uint64_t* context) {
 
     next_node = get_coso_list_entry_next(node);
 
-    if(is_chunk_referenced(chunk) == 0)
+    if (is_chunk_referenced(chunk) == 0)
       free_chunk(context, chunk);
 
     zero_chunk_markbits(chunk);
