@@ -116,10 +116,10 @@ void free_chunk_object(uint64_t* context, uint64_t* object);
 uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object);
 
 // chunk and small object (coso) list entry:
-// +----+--------+
-// |  0 | next   | pointer to next entry
-// |  1 | memory | pointer to allocated memory (syscall: virtual address)
-// +----+--------+
+// +---+--------+
+// | 0 | next   | pointer to next entry
+// | 1 | memory | pointer to allocated memory (syscall: virtual address)
+// +---+--------+
 
 uint64_t* allocate_coso_list_entry(uint64_t* context);
 

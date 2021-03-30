@@ -2073,9 +2073,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
-// CAUTION: contexts are extended in the symbolic execution engine and the boehm garbage collector!
-
-uint64_t* allocate_context();
+// CAUTION: contexts are extended in the symbolic execution engine and the Boehm garbage collector!
 
 uint64_t* allocate_context() {
   return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
