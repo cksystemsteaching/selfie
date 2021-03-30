@@ -5,7 +5,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter, ArgumentTypeEr
 from io import StringIO
 from pathlib import Path
 from subprocess import run, DEVNULL
-from typing import Callable, Optional, List, Tuple, Dict, Set
+from typing import Callable, Optional, List, Tuple, Dict
 
 from lib.functional import flatmap
 from lib.model import Assignment, Check, CheckResult
@@ -56,7 +56,7 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
     return stream.getvalue()
 
 
-def parse_assignment(args: str, assignments: Set[Assignment]) -> Optional[Assignment]:
+def parse_assignment(args: str, assignments: List[Assignment]) -> Optional[Assignment]:
     if not args:
         return None
 
@@ -100,15 +100,15 @@ def execute_with_output(check: Check) -> CheckResult:
     return result
 
 
-def check_assignment(assignment: Assignment, baseline: Set[Assignment]) -> Tuple[int, List[str]]:
+def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tuple[int, List[str]]:
     def check(a: Assignment):
         return list(map(execute_with_output, a.create_checks()))
 
     def change_result_to_mandatory(r: CheckResult):
         return CheckResult(r.result, r.msg, r.output, r.warning, r.should_succeed, r.command, True)
 
-    if assignment in baseline:
-        baseline_results = list(map(change_result_to_mandatory, check(assignment)))
+    if not assignment in baseline:
+        baseline_results = list(flatmap(lambda a: map(change_result_to_mandatory, check(a)), baseline))
     else:
         baseline_results = [ ]
 
@@ -161,7 +161,7 @@ def parse_commit_url(url) -> Optional[Dict]:
         }
 
 
-def do_bulk_grading(assignment: Optional[Assignment], baseline: Set[Assignment]):
+def do_bulk_grading(assignment: Optional[Assignment], baseline: List[Assignment]):
     if not os.path.exists(bulk_grade_directory):
         os.mkdir(bulk_grade_directory)
 
@@ -237,12 +237,14 @@ def reset_state():
     reset_truncate()
 
 
-def process_arguments(argv: List[str], assignments: Set[Assignment], baseline: Set[Assignment]):
+def process_arguments(argv: List[str], assignments: List[Assignment], baseline: List[Assignment]):
+    all_assignments = baseline + assignments
+
     def curried_parse_assignment(assignment: str) -> Optional[Assignment]:
-        return parse_assignment(assignment, assignments)
+        return parse_assignment(assignment, all_assignments)
 
     parser = ArgumentParser(argv[0], formatter_class=RawDescriptionHelpFormatter,
-            description=GRADER_SYNOPSIS, epilog=list_assignments_str(assignments))
+            description=GRADER_SYNOPSIS, epilog=list_assignments_str(all_assignments))
 
     parser.add_argument('-q', action='store_true', default=False,
             help='print grade only', dest='quiet')
