@@ -112,6 +112,8 @@ With your solution committed into the main branch of your `myselfie` repository 
 2. Copy the link and make sure that the link is in the form `https://github.com/<yourusername>/myselfie/commit/<commithash>`.
 3. Submit the link along with the grade reported by the autograder to your teacher as discussed in class.
 
-If the autograder reports grade 2, you may submit grade 1 provided, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.
+If the autograder reports grade 2, you may submit grade 1 provided that, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.
 
-Solutions of assignments must be submitted before the deadline stated in class or online. Late submissions will be failed.
+For each assignment we provide a summary of the results to all students. If you have not received any individual feedback from us by that time, your grade is the grade you submitted!
+
+Solutions of assignments must be submitted before the deadline stated in class or online. Moreover, submitted commit links must refer to a private repository that is accessible to you and us (teacher and teaching assistant) and no one else throughout the semester. Late submissions or submissions that violate these rules will be failed.
