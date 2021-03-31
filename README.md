@@ -439,9 +439,66 @@ By now, you have seen all features of C\* except pointers. We have shown you wha
 
 ### RISC-U Machine Code
 
-Source code such as the above code examples is nice and, most importantly, readable by humans but that code is actually not what is running on a computer. To a machine, source code is just text like any other, a mere sequence of characters with no meaning. So, how do we run that code on a computer? Essentially, there are only two different techniques: *translation* and *interpretation*. In analogy to natural languages, translation refers to the process of translating source code from one language to another. If the target language is a machine language, and the source language is not, we speak of *compilation* rather than translation.
+Source code such as the above code examples is nice and, most importantly, readable by humans but that code is actually not what is running on a computer. To a machine, source code is just text like any other, a mere sequence of characters with no meaning. So, how do we run that code on a computer? Essentially, there are only two different techniques: *translation* and *interpretation*. In analogy to natural languages, translation refers to the process of translating source code from one language to another. If the target language is a machine language, and the source language is not, we speak of *compilation* rather than translation. For example, C\* source code is compiled to RISC-U machine code by a *compiler* such as the selfie compiler which is a tool written in software.
 
-While translation is optional and only needed for improving performance, interpretation is always needed, even if we were just writing machine code. Fundamentally, a computer is an *interpreter* of machine code.
+Interpretation refers to the process of executing source and even machine code in small steps according to rules precisely defined at the level of individual statements or even parts of a statement, down to individual *machine instructions* in case of machine code. While translation is optional and only needed for improving performance, interpretation is always needed, even if we were just writing machine code. Fundamentally, a computer or in fact the *processor* of a computer is an *interpreter* of machine code in hardware. In other words, running code always involves at least one interpreter which is the processor, no matter if the code is source or machine code. For many programming languages, however, there do exist interpreters written in software. A prominent example is Python!
+
+So, how do we run a program written in C\*?
+
+```
+1 int double(int n) {
+2   return n + n;
+3 }
+4
+5 int main() {
+6   return double(42);
+7 }
+```
+
+```
+...
+0x140(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
+0x144(~2): 0x00113023: sd ra,0(sp)
+0x148(~2): 0xFF810113: addi sp,sp,-8
+0x14C(~2): 0x00813023: sd s0,0(sp)
+0x150(~2): 0x00010413: addi s0,sp,0
+---
+0x154(~2): 0x01043283: ld t0,16(s0)      // return n + n;
+0x158(~2): 0x01043303: ld t1,16(s0)
+0x15C(~2): 0x006282B3: add t0,t0,t1
+0x160(~2): 0x00028513: addi a0,t0,0
+0x164(~2): 0x0040006F: jal zero,1[0x168]
+---
+0x168(~5): 0x00040113: addi sp,s0,0      // }
+0x16C(~5): 0x00013403: ld s0,0(sp)
+0x170(~5): 0x00810113: addi sp,sp,8
+0x174(~5): 0x00013083: ld ra,0(sp)
+0x178(~5): 0x01010113: addi sp,sp,16
+0x17C(~5): 0x00008067: jalr zero,0(ra)
+---
+0x180(~6): 0xFF810113: addi sp,sp,-8     // int main() {
+0x184(~6): 0x00113023: sd ra,0(sp)
+0x188(~6): 0xFF810113: addi sp,sp,-8
+0x18C(~6): 0x00813023: sd s0,0(sp)
+0x190(~6): 0x00010413: addi s0,sp,0
+---
+0x194(~6): 0x02A00293: addi t0,zero,42   // return double(42);
+0x198(~6): 0xFF810113: addi sp,sp,-8
+0x19C(~6): 0x00513023: sd t0,0(sp)
+0x1A0(~6): 0xFA1FF0EF: jal ra,-24[0x140]
+0x1A4(~6): 0x00050293: addi t0,a0,0
+0x1A8(~6): 0x00000513: addi a0,zero,0
+0x1AC(~6): 0x00028513: addi a0,t0,0
+0x1B0(~6): 0x0040006F: jal zero,1[0x1B4]
+---
+0x1B4(~7): 0x00040113: addi sp,s0,0      // }
+0x1B8(~7): 0x00013403: ld s0,0(sp)
+0x1BC(~7): 0x00810113: addi sp,sp,8
+0x1C0(~7): 0x00013083: ld ra,0(sp)
+0x1C4(~7): 0x00810113: addi sp,sp,8
+0x1C8(~7): 0x00008067: jalr zero,0(ra)
+...
+```
 
 ### EBNF Grammar
 
