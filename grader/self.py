@@ -10,8 +10,7 @@ information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
-This is the automatic grader of the selfie project.
-Students may use the grader for self-grading their solutions.
+This is the automatic grader of the selfie system.
 """
 
 import sys
