@@ -300,12 +300,12 @@ def check_treiber_stack() -> List[Check]:
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
-baseline_assignments = {
+baseline_assignments: List[Assignment] = [
     Assignment('bootstrapping', 'General', '', '', check_bootstrapping),
     Assignment('self-compile', 'General', '', '', check_self_compilation)
-}
+]
 
-assignments: Set[Assignment] = baseline_assignments.union({
+assignments: List[Assignment] = [
     Assignment('print-your-name', 'General', '',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-print-your-name',
                check_print_your_name),
@@ -360,7 +360,7 @@ assignments: Set[Assignment] = baseline_assignments.union({
     Assignment('treiber-stack', 'Systems', 'treiber-stack',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
                check_treiber_stack)
-})
+]
 
 
 def main(args: List[str]) -> None:
