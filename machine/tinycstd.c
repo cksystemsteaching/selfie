@@ -1,11 +1,13 @@
 #include "tinycstd.h"
 
-#include <stdarg.h>
-#include <stdint.h>
-
 #include "console.h"
 #include "diag.h"
 #include "syscalls.h"
+#include "compiler-utils.h"
+
+// Format string handling
+typedef ssize_t (*put_handler)(const char* buffer, ssize_t len, void** context);
+int handle_format_string(const char* format, va_list args, put_handler handler, void* context);
 
 // Function required by libgcc for a freestanding environment
 
@@ -136,8 +138,18 @@ int dprintf(int fd, const char* format, ...) {
   return ret;
 }
 
+ssize_t printf_puts(const char* str, ssize_t len, void** ctxt) {
+  UNUSED_VAR(ctxt);
+  return console_puts(str, len);
+}
+
 int va_printf(const char* format, va_list args) {
+  return handle_format_string(format, args, printf_puts, NULL);
+}
+
+int handle_format_string(const char* format, va_list args, put_handler handler, void* context) {
   int written = 0;
+  size_t len;
   const char* fmt_pos;
 
   while (1) {
@@ -145,22 +157,23 @@ int va_printf(const char* format, va_list args) {
 
     if (fmt_pos == NULL) {
       // Found no format specifier - print rest and return
-      puts(format);
-      return written + strlen(format);
+      len = strlen(format);
+      handler(format, len, &context);
+      return written + len;
     } else {
       // Found format specifier - print everything before it and handle specifier
-      console_puts(format, fmt_pos - format);
+      handler(format, fmt_pos - format, &context);
       written += (fmt_pos - format);
       format = fmt_pos + 1;
       switch (*format) {
         case '%':
-          putc('%');
+          handler("%", 1, &context);
           written++;
           format++;
           break;
         case 'c': {
           char c = va_arg(args, int); // char is "promoted" to int by variable args
-          putc(c);
+          handler(&c, 1, &context);
           written++;
           format++;
           break;
@@ -169,16 +182,18 @@ int va_printf(const char* format, va_list args) {
         case 'i': {
           int i = va_arg(args, int);
           char* buf = itoa_ext(i, 10, sizeof(int) * 8, true);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handler(buf, len, &context);
+          written += len;
           format++;
           break;
         }
         case 'u': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 10, sizeof(uintmax_t) * 8, false);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handler(buf, len, &context);
+          written += len;
           format++;
           break;
         }
@@ -186,8 +201,9 @@ int va_printf(const char* format, va_list args) {
         case 'X': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 16, sizeof(uintmax_t) * 8, false);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handler(buf, len, &context);
+          written += len;
           format++;
           break;
         }
@@ -198,25 +214,27 @@ int va_printf(const char* format, va_list args) {
           // One hex number is a nibble (4 bits) -> two represent one byte
           size_t filldiff = (sizeof(void*) * 2) - strlen(buf);
           while (filldiff != 0) {
-            putc('0');
+            handler("0", 1, &context);
             filldiff--;
           }
 
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handler(buf, len, &context);
+          written += len;
           format++;
           break;
         }
         case 's': {
           const char* s = va_arg(args, const char*);
-          puts(s);
-          written += strlen(s);
+          len = strlen(s);
+          handler(s, len, &context);
+          written += len;
           format++;
           break;
         }
         default:
-          putc('%');
-          putc(*format);
+          handler("%", 1, &context);
+          handler(format, 1, &context);
           written += 2;
           format++;
           break;
