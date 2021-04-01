@@ -2,7 +2,9 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+
 #include "console.h"
+#include "diag.h"
 #include "syscalls.h"
 
 // Function required by libgcc for a freestanding environment
@@ -109,6 +111,21 @@ int printf(const char* format, ...) {
   va_end(args);
 
   return result;
+}
+
+int dprintf(int fd, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret;
+
+  if (fd_is_stdio(fd))
+    ret = va_printf(format, args);
+  else
+    panic("dprintf called with non-stdio descriptor (no write support on files)");
+
+  va_end(args);
+
+  return ret;
 }
 
 int va_printf(const char* format, va_list args) {

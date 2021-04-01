@@ -24,6 +24,9 @@ int printf(const char* format, ...);
 void puts(const char* s);
 void putc(char c);
 
+// POSIX.1-2008
+int dprintf(int fd, const char* format, ...);
+
 int va_printf(const char* format, va_list args);
 
 #endif /* KERN_TINYCSTD */
