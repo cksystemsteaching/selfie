@@ -441,9 +441,11 @@ By now, you have seen all features of C\* except pointers. We have shown you wha
 
 Source code such as the above code examples is nice and, most importantly, readable by humans but that code is actually not what is running on a computer. To a machine, source code is just text like any other, a mere sequence of characters with no meaning. So, how do we run that code on a computer? Essentially, there are only two different techniques: *translation* and *interpretation*. In analogy to natural languages, translation refers to the process of translating source code from one language to another. If the target language is a machine language, and the source language is not, we speak of *compilation* rather than translation. For example, C\* source code is compiled to RISC-U machine code by a *compiler* such as the selfie compiler which is a tool written in software.
 
-Interpretation refers to the process of executing source and even machine code in small steps according to rules precisely defined at the level of individual statements or even parts of a statement, down to individual *machine instructions* in case of machine code. While translation is optional and only needed for improving performance, interpretation is always needed, even if we were just writing machine code. Fundamentally, a computer or in fact the *processor* of a computer is an *interpreter* of machine code in hardware. In other words, running code always involves at least one interpreter which is the processor, no matter if the code is source or machine code. For many programming languages, however, there do exist interpreters written in software. A prominent example is Python!
+Interpretation refers to the process of executing source and even machine code in small steps according to rules precisely defined at the level of individual statements or even parts of a statement, down to individual *machine instructions* in case of machine code. While translation is optional and only needed for improving performance, interpretation is always needed, even if we were just writing machine code. Fundamentally, a computer or in fact the *processor* of a computer is an *interpreter* of machine code in hardware. In other words, running code always involves at least one interpreter which is the processor, independently of whether the original code is source or machine code. For many programming languages, however, there do exist interpreters written in software. A prominent example is Python!
 
-So, how do we run a program written in C\*?
+If you are interested in Python, check out the automatic *grader* of the selfie system which is written in Python. Students of my classes on selfie use it for self-grading to determine their grades on programming assignments with selfie before submitting any solutions. Code and documentation of the *autograder* is available on the homepage of selfie.
+
+So, how do we run a program written in C\*? Let us have a closer look at the above example of running the `double` procedure stored in a file called `double.c`:
 
 ```
 1 int double(int n) {
@@ -454,6 +456,24 @@ So, how do we run a program written in C\*?
 6   return double(42);
 7 }
 ```
+
+using selfie as follows:
+
+```
+./selfie -c double.c -m 1
+```
+
+This time we show *line numbers* 1 to 7 of the code as a way to refer to individual lines. Please ignore them when creating `double.c`.
+
+Selfie follows a workflow that is standard for programming languages such as C. It first compiles a program written in C\* to RISC-U machine code. This is done by the `-c` option, that is, by `./selfie -c double.c`. We could then take the machine code and run it on a RISC-U processor. Such processors exist but you are unlikely to have access to a computer with such a processor. Therefore, selfie also features an interpreter of RISC-U machine code which is invoked by the `-m 1` option. In other words, `./selfie -c double.c -m 1` instructs selfie to compile the source code in `double.c` to RISC-U machine code and then execute it right away using its builtin RISC-U interpreter.
+
+Ok, that is all very nice and cool but how can we see what is actually going on during code execution? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`:
+
+```
+./selfie -c double.c -S double.s
+```
+
+Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s` also works but generates less information. The relevant part of `double.s` looks as follows, with some code omitted (`...`) and some comments (`//`) and formatting (`---`) added by us:
 
 ```
 ...
@@ -497,6 +517,23 @@ So, how do we run a program written in C\*?
 0x1C0(~7): 0x00013083: ld ra,0(sp)
 0x1C4(~7): 0x00810113: addi sp,sp,8
 0x1C8(~7): 0x00008067: jalr zero,0(ra)
+...
+```
+
+Before we explain the code, try the second way as well which also shows the machine code but during actual execution:
+
+```
+./selfie -c double.c -d 1
+```
+
+Lots of information will fly by in your terminal. Here is an interesting snippet:
+
+```
+...
+double.c: pc=0x1014C(~2): ld t0,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t0=42(0x2A) -> t0=42(0x2A)=mem[0xFFFFFFB0]
+double.c: pc=0x10150(~2): ld t1,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t1=0(0x0) -> t1=42(0x2A)=mem[0xFFFFFFB0]
+double.c: pc=0x10154(~2): add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
+double.c: pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
 ...
 ```
 
