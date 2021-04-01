@@ -113,6 +113,14 @@ int printf(const char* format, ...) {
   return result;
 }
 
+void puts(const char* s) {
+  console_puts(s, strlen(s));
+}
+
+void putc(char c) {
+  console_putc(c);
+}
+
 int dprintf(int fd, const char* format, ...) {
   va_list args;
   va_start(args, format);
@@ -215,14 +223,6 @@ int va_printf(const char* format, va_list args) {
       }
     }
   }
-}
-
-void puts(const char* s) {
-  console_puts(s, strlen(s));
-}
-
-void putc(char c) {
-  console_putc(c);
 }
 
 
