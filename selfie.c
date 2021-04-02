@@ -2312,6 +2312,7 @@ void init_system() {
   uint64_t selfie_fd;
 
   if (SIZEOFUINT64 != SIZEOFUINT64STAR)
+    // selfie requires an LP64 or ILP32 data model
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
 

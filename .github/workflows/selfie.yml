@@ -59,14 +59,14 @@ jobs:
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
-    - name: Use gcc from cygwin
+    - name: Use gcc from cygwin for LP64 data model (not LLP64 with mingw)
       run: |
         choco upgrade cygwin -y --no-progress
         choco install gcc-core make -y --no-progress --source=cygwin
         echo 'C:\tools\cygwin\bin' >> $env:GITHUB_PATH
     - name: Make all
       run: make -j -O all
-    # python3 does not work here
+    # TODO: python3 does not work here
 
   make-everything-on-docker:
     name: Make everything of selfie on docker
