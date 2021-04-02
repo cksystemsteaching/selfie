@@ -164,9 +164,14 @@ int va_printf(const char* format, va_list args) {
   return handle_format_string(format, args, printf_puts, NULL);
 }
 
+// TODO: This function mingles signed and unsigned characters of various sizes (32bit and 64bit).
+//       As long as the format operation does not exceed 2147483647 characters
+//       (2^31 - 1 due to the sign bit), it should work.
+//       However, this is still unclean and must be handled correctly
 int handle_format_string(const char* format, va_list args, put_handler handler, void* context) {
   int written = 0;
   size_t len;
+  ssize_t handled;
   const char* fmt_pos;
 
   while (1) {
@@ -175,23 +180,23 @@ int handle_format_string(const char* format, va_list args, put_handler handler, 
     if (fmt_pos == NULL) {
       // Found no format specifier - print rest and return
       len = strlen(format);
-      handler(format, len, &context);
-      return written + len;
+      handled = handler(format, len, &context);
+      return written + handled;
     } else {
       // Found format specifier - print everything before it and handle specifier
-      handler(format, fmt_pos - format, &context);
-      written += (fmt_pos - format);
+      handled = handler(format, fmt_pos - format, &context);
+      written += handled;
       format = fmt_pos + 1;
       switch (*format) {
         case '%':
-          handler("%", 1, &context);
-          written++;
+          handled = handler("%", 1, &context);
+          written += handled;
           format++;
           break;
         case 'c': {
           char c = va_arg(args, int); // char is "promoted" to int by variable args
-          handler(&c, 1, &context);
-          written++;
+          handled = handler(&c, 1, &context);
+          written += handled;
           format++;
           break;
         }
@@ -200,8 +205,8 @@ int handle_format_string(const char* format, va_list args, put_handler handler, 
           int i = va_arg(args, int);
           char* buf = itoa_ext(i, 10, sizeof(int) * 8, true);
           len = strlen(buf);
-          handler(buf, len, &context);
-          written += len;
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
@@ -209,8 +214,8 @@ int handle_format_string(const char* format, va_list args, put_handler handler, 
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 10, sizeof(uintmax_t) * 8, false);
           len = strlen(buf);
-          handler(buf, len, &context);
-          written += len;
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
@@ -219,8 +224,8 @@ int handle_format_string(const char* format, va_list args, put_handler handler, 
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 16, sizeof(uintmax_t) * 8, false);
           len = strlen(buf);
-          handler(buf, len, &context);
-          written += len;
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
@@ -231,28 +236,29 @@ int handle_format_string(const char* format, va_list args, put_handler handler, 
           // One hex number is a nibble (4 bits) -> two represent one byte
           size_t filldiff = (sizeof(void*) * 2) - strlen(buf);
           while (filldiff != 0) {
-            handler("0", 1, &context);
+            handled = handler("0", 1, &context);
+            written += handled;
             filldiff--;
           }
 
           len = strlen(buf);
-          handler(buf, len, &context);
-          written += len;
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
         case 's': {
           const char* s = va_arg(args, const char*);
           len = strlen(s);
-          handler(s, len, &context);
-          written += len;
+          handled = handler(s, len, &context);
+          written += handled;
           format++;
           break;
         }
         default:
-          handler("%", 1, &context);
-          handler(format, 1, &context);
-          written += 2;
+          handled = handler("%", 1, &context);
+          handled += handler(format, 1, &context);
+          written += handled;
           format++;
           break;
       }
