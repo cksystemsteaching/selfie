@@ -467,7 +467,7 @@ This time we show *line numbers* 1 to 7 of the code as a way to refer to individ
 
 Selfie follows a workflow that is standard for programming languages such as C. It first compiles a program written in C\* to RISC-U machine code. This is done by the `-c` option, that is, by `./selfie -c double.c`. We could then take the machine code and run it on a RISC-U processor. Such processors exist but you are unlikely to have access to a computer with such a processor. Therefore, selfie also features an interpreter of RISC-U machine code which is invoked by the `-m 1` option. In other words, `./selfie -c double.c -m 1` instructs selfie to compile the source code in `double.c` to RISC-U machine code and then execute it right away using its builtin RISC-U interpreter.
 
-Ok, that is all very nice and cool but how can we see what is actually going on during code execution? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`:
+Ok, that is all very nice and cool but how can we see what is actually going on during code execution? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`, or we can have selfie execute the compiled code and output in our terminal every single machine instruction that it actually executes. Let us try generating the assembly file first:
 
 ```
 ./selfie -c double.c -S double.s
@@ -477,6 +477,7 @@ Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s`
 
 ```
 ...
+---
 0x140(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
 0x144(~2): 0x00113023: sd ra,0(sp)
 0x148(~2): 0xFF810113: addi sp,sp,-8
@@ -517,10 +518,17 @@ Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s`
 0x1C0(~7): 0x00013083: ld ra,0(sp)
 0x1C4(~7): 0x00810113: addi sp,sp,8
 0x1C8(~7): 0x00008067: jalr zero,0(ra)
+---
 ...
 ```
 
-Before we explain the code, try the second way as well which also shows the machine code but during actual execution:
+Assembly might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `140`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`. The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x154` to `0x164`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
+
+There exists such a correspondence for all C\* code which makes reading machine code compiled by selfie easier. Readers familiar with machine code may notice that the compiled code is generally inefficient. For example, the machine instruction at `0x164` is redundant and could be removed. However, doing that in general is not easy. Selfie generates unoptimized code to keep things simple. We nevertheless get back to that point in subsequent chapters.
+
+TODO: explain an instruction
+
+Let us now have selfie show the compiled code but during actual execution:
 
 ```
 ./selfie -c double.c -d 1
