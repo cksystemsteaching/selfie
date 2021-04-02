@@ -4,6 +4,7 @@
 #include "diag.h"
 #include "syscalls.h"
 #include "compiler-utils.h"
+#include <stdarg.h>
 
 // Format string handling
 typedef ssize_t (*put_handler)(const char* buffer, ssize_t len, void** context);
@@ -113,6 +114,22 @@ int printf(const char* format, ...) {
   va_end(args);
 
   return result;
+}
+
+ssize_t sprintf_put(const char* str, ssize_t len, void** ctxt) {
+  strlcpy((*ctxt)+1, str, len+1); // len+1 due to \0
+  return len;
+}
+int sprintf(char* buf, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  int ret = handle_format_string(format, args, sprintf_put, buf);
+  // No need for explicitly setting \0 at the end - strlcpy in sprintf_put already does the job
+
+  va_end(args);
+
+  return ret;
 }
 
 void puts(const char* s) {

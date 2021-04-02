@@ -21,6 +21,7 @@ size_t strlcpy(char* dest, const char* src, size_t n);
 
 // <stdio.h> I/O functions
 int printf(const char* format, ...);
+int sprintf(char* str, const char* format, ...);
 void puts(const char* s);
 void putc(char c);
 
