@@ -122,7 +122,7 @@ $$(TARGET_$(1)_$(2)_DIR)/%.o: %.S | $$(TARGET_$(1)_$(2)_OUT_TREE)
 	$$(AS) -c $$(ASFLAGS) $$(PROFILE_$(2)_DEFINES) $$< -o $$@
 
 $$(TARGET_$(1)_$(2)_DIR)/selfie.o: $$(SELFIE_PATH)/selfie.c
-	$$(CC) $$(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long long int' -c $$^ -o $$@
+	$$(CC) $$(CFLAGS) -Wno-return-type -D'uint64_t = unsigned long int' -c $$^ -o $$@
 
 endef
 
