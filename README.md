@@ -526,7 +526,7 @@ Assembly code might look scary or at least cryptic to you but once you get the i
 
 There exists such a correspondence for all C\* code which makes reading machine code compiled by selfie easier. Readers familiar with machine code may notice that the compiled code shown here is inefficient. For example, the machine instruction at `0x164` is redundant and could be removed. However, selfie generates unoptimized code on purpose to keep things simple and maintain the immediate correspondence between C\* and its selfie-compiled machine code. We nevertheless get back to that point in subsequent chapters.
 
-Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get an idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
+Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get the basic idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
 
 ```
 0x15C(~2): 0x006282B3: add t0,t0,t1
@@ -534,7 +534,13 @@ Instead of explaining all of the assembly code we see here, let us focus on just
 
 We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x15C(~2)` refers to the address `0x15C` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
 
-Both `0x15C` and `0x006282B3` are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different symbols per digit, that is, `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, and `9` as well as `A`, `B`, `C`, `D`, `E`, and `F` where `A` stands for `10` in decimal notation, `B` for `11`, `C` for `12`, `D` for `13`, `E` for `14`, and `F` for `15`. Moreover, each digit of a hexadecimal number represents 16- rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for `348` in decimal notation because `(1 * 16 + 5) * 16 + 12` is equal to `348`.
+So, what does `add t0,t0,t1` do? It instructs the processor to add the values stored in its *registers* `t0` and `t1`, then store the result in `t0`, and finally move on to the next instruction at address `0x160`. In other words, `add t0,t0,t1` is similar to an assignment `t0 = t0 + t1` but involving registers, not variables. Registers are the memory of a processor. There are usually only a few registers but those are the fastest memory in a computer. For example, `t0` and `t1` are 2 out of a total of 32 registers of a RISC-U processor. If the value of `t0` and `t1` is the value of `n` right before executing the instruction, then the value of `t0` is the value of `n + n` right after executing the instruction. Exactly what we need before returning to the `main` procedure!
+
+But you are right! We could have done the same thing using `add t0,t0,t0` and not even involve `t1` at all. But, again, this is optimized code which is not easy to generate by a system designed for simplicity. So, we leave it at that for now.
+
+What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, and `9` as well as `A`, `B`, `C`, `D`, `E`, and `F` where `A` stands for the value `10` in decimal notation, `B` for `11`, `C` for `12`, `D` for `13`, `E` for `14`, and `F` for `15`. Moreover, each digit of a hexadecimal number represents 16- rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for `348` in decimal notation because `(1 * 16 + 5) * 16 + 12` is equal to `348`.
+
+Why do we use hexadecimal notation?
 
 Let us now instruct selfie to show us the compiled code during actual execution:
 
