@@ -5559,20 +5559,19 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     return_type = 0;
 
-    if (symbol == SYM_RBRACE)
+    if (symbol == SYM_RBRACE) {
+      fixlink_relative(return_branches, code_size);
+
+      return_branches = 0;
+
+      procedure_epilogue(number_of_parameters * WORDSIZE);
+
       get_symbol();
-    else {
+    } else {
       syntax_error_symbol(SYM_RBRACE);
 
       exit(EXITCODE_PARSERERROR);
     }
-
-    fixlink_relative(return_branches, code_size);
-
-    return_branches = 0;
-
-    procedure_epilogue(number_of_parameters * WORDSIZE);
-
   } else
     syntax_error_unexpected();
 
