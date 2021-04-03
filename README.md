@@ -524,9 +524,17 @@ Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s`
 
 Assembly code might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `140`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`. The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x154` to `0x164`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
 
-There exists such a correspondence for all C\* code which makes reading machine code compiled by selfie easier. Readers familiar with machine code may notice that the compiled code shown here is inefficient. For example, the machine instruction at `0x164` is redundant and could be removed. However, selfie generates unoptimized code on purpose to keep things simple and maintain the correspondence between C\* and its selfie-compiled machine code. We nevertheless get back to that point in subsequent chapters.
+There exists such a correspondence for all C\* code which makes reading machine code compiled by selfie easier. Readers familiar with machine code may notice that the compiled code shown here is inefficient. For example, the machine instruction at `0x164` is redundant and could be removed. However, selfie generates unoptimized code on purpose to keep things simple and maintain the immediate correspondence between C\* and its selfie-compiled machine code. We nevertheless get back to that point in subsequent chapters.
 
-TODO: explain an instruction
+Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get an idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
+
+```
+0x15C(~2): 0x006282B3: add t0,t0,t1
+```
+
+We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x15C(~2)` refers to the address `0x15C` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
+
+Both `0x15C` and `0x006282B3` are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different symbols per digit, that is, `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, and `9` as well as `A`, `B`, `C`, `D`, `E`, and `F` where `A` stands for `10` in decimal notation, `B` for `11`, `C` for `12`, `D` for `13`, `E` for `14`, and `F` for `15`. Moreover, each digit of a hexadecimal number represents 16- rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for `348` in decimal notation because `(1 * 16 + 5) * 16 + 12` is equal to `348`.
 
 Let us now instruct selfie to show us the compiled code during actual execution:
 
