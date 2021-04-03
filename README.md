@@ -490,12 +490,12 @@ Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s`
 0x160(~2): 0x00028513: addi a0,t0,0
 0x164(~2): 0x0040006F: jal zero,1[0x168]
 ---
-0x168(~5): 0x00040113: addi sp,s0,0      // }
-0x16C(~5): 0x00013403: ld s0,0(sp)
-0x170(~5): 0x00810113: addi sp,sp,8
-0x174(~5): 0x00013083: ld ra,0(sp)
-0x178(~5): 0x01010113: addi sp,sp,16
-0x17C(~5): 0x00008067: jalr zero,0(ra)
+0x168(~3): 0x00040113: addi sp,s0,0      // }
+0x16C(~3): 0x00013403: ld s0,0(sp)
+0x170(~3): 0x00810113: addi sp,sp,8
+0x174(~3): 0x00013083: ld ra,0(sp)
+0x178(~3): 0x01010113: addi sp,sp,16
+0x17C(~3): 0x00008067: jalr zero,0(ra)
 ---
 0x180(~6): 0xFF810113: addi sp,sp,-8     // int main() {
 0x184(~6): 0x00113023: sd ra,0(sp)
