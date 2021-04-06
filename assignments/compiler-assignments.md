@@ -38,7 +38,8 @@ So instead of printing:
 
 Implement support of hexadecimal integer literals.
 
-- Do not modify any files other than **selfie.c**.
+- Before coding, extend the C\* grammar with hexadecimal integer literals.
+- Do not modify any files other than **grammar.md** and **selfie.c**.
 - Use the `hex-literal` target in the grader to determine your grade.
 
 
