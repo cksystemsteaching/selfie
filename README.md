@@ -538,17 +538,23 @@ So, what does `add t0,t0,t1` do? It instructs the processor to add the values st
 
 But you are right! We could have done the same thing using `add t0,t0,t0` and not even involve `t1` at all. But, again, this is optimized code which is not easy to generate by a system designed for simplicity. So, we leave it at that for now. It is an exciting topic to study though and there is still a lot of research going on about how to do this best. After all, we want our code to be as fast and use as few instructions as possible.
 
-What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value `10`, `B` for `11`, `C` for `12`, `D` for `13`, `E` for `14`, and `F` for `15`. Moreover, each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value `348` because `(1 * 16 + 5) * 16 + 12` is equal to `348`.
+What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15. Moreover, each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value 348 because (**1** * 16 + **5**) * 16 + **12** is equal to 348 where **12** is represented by `C`. We say that hexadecimal notation uses *base* 16 whereas decimal notation uses base 10, that is, `0x15C` is just a shortcut for (**1** * 16 + **5**) * 16 + **12** and 348 is just a shortcut for (**3** * 10 + **4**) * 10 + **8**.
 
-Why do we use hexadecimal notation? There are two reasons, both based on the need to talk about *binary numbers* rather than decimal numbers. Everything on a computer is encoded in *bits* including memory addresses and machine code.
+Why do we use hexadecimal rather than decimal notation? There are two reasons, both rooted in the need to talk about *binary numbers* a lot. Everything in a computer is encoded in *bits* including memory addresses and machine code. The hexadecimal number `0x15C`, for example, corresponds to the following sequence of bits which effectively constitutes a binary number:
 
 ```
 0001 0101 1100
 ```
 
+Binary notation uses base 2 since it supports just 2 characters per digit or in fact bit, that is, `0` and `1`. The beauty of hexadecimal numbers is that each hexadecimal digit corresponds to exactly 4 bits called a *nibble* hence our spacing! Here, `0001` stands for 1, `0101` for 5, and `1100` for 12 represented by `C`. In analogy to hexadecimal and decimal notation, each digit or bit of a binary number represents 2-times more value than the bit to its immediate right. Thus `1100`, for example, is a shortcut for ((**1** * 2 + **1**) * 2 + **0**) * 2 + **0** which evaluates to 12.
+
+In sum, *conversion* between hexadecimal and binary numbers is easy, which is the first reason, and hexadecimal notation is 4-times more *compact* than binary notation, which is the second reason. Mathematically speaking, this is because (base) 16 is a power of (base) 2, namely, 2 to the power of (factor) 4. In contrast, using decimal notation to represent binary numbers is cumbersome because (base) 10 is not a power of (base) 2. The information chapter has more on that!
+
 ```
 0000 0000 0110 0010 1000 0010 1011 0011
 ```
+
+TODO: binary code...
 
 Let us now instruct selfie to show us the compiled code during actual execution:
 
