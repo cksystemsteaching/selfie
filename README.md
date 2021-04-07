@@ -540,23 +540,27 @@ But you are right! We could have done the same thing using `add t0,t0,t0` and no
 
 What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15.
 
-Moreover, each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value 348 because (**1** * 16 + **5**) * 16 + **12** is equal to 348 where **12** is represented by `C`. We say that hexadecimal notation uses *base* 16 whereas decimal notation uses base 10, that is, `0x15C` is just a shortcut for (**1** * 16 + **5**) * 16 + **12** and 348 in fact is just a shortcut for (**3** * 10 + **4**) * 10 + **8**.
+Moreover, each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value 348 because (**1** * 16 + **5**) * 16 + **12** is equal to 348 where **12** is represented by `C`. We say that hexadecimal notation uses *base* 16 whereas decimal notation uses base 10, that is, `0x15C` is just a shortcut for (**1** * 16 + **5**) * 16 + **12** and 348 is in fact just a shortcut for (**3** * 10 + **4**) * 10 + **8**.
 
-Why do we use hexadecimal rather than decimal notation? There are two reasons, both rooted in the need to talk about *binary numbers* a lot. Everything in a computer is encoded in *bits* including memory addresses and machine code. The hexadecimal number `0x15C`, for example, corresponds to the following sequence of bits which effectively constitutes a binary number:
+Why do we use hexadecimal rather than decimal notation? There are two reasons, both rooted in the need to talk about *binary numbers* a lot. Everything in a computer is encoded in *bits* including memory addresses and machine code. The hexadecimal number `0x15C`, for example, represents the following sequence of bits which effectively constitutes a binary number:
 
 ```
 0001 0101 1100
 ```
 
-Binary notation uses base 2 since it supports just 2 characters per digit or in fact bit, that is, `0` and `1`. The beauty of hexadecimal numbers is that each hexadecimal digit corresponds to exactly 4 bits called a *nibble* hence our spacing! Here, `0001` stands for 1, `0101` for 5, and `1100` for 12 represented by `C`. In analogy to hexadecimal and decimal notation, each digit or bit of a binary number represents 2-times more value than the bit to its immediate right. Thus `1100`, for example, is a shortcut for ((**1** * 2 + **1**) * 2 + **0**) * 2 + **0** which evaluates to 12.
+Binary notation uses base 2 since it supports just 2 characters per digit or in fact bit, that is, `0` and `1`. The beauty of hexadecimal numbers is that each hexadecimal digit corresponds to exactly 4 bits called a *nibble* hence our spacing! Here, `0001` stands for the `1` in `0x15C`, `0101` for the `5`, and `1100` for the `C`. In analogy to hexadecimal and decimal notation, each digit or bit of a binary number represents 2-times more value than the bit to its immediate right. Thus `1100`, for example, is a shortcut for ((**1** * 2 + **1**) * 2 + **0**) * 2 + **0** which evaluates to 12 represented by `C`.
 
-In sum, *conversion* between hexadecimal and binary numbers is easy, which is one of the two reasons for the popularity of hexadecimal notation in computer science. The other is that hexadecimal notation is 4-times more *compact* than binary notation. Mathematically speaking, this is because (base) 16 is a power of (base) 2, namely, 2 to the power of (factor) 4. In contrast, using decimal notation to represent binary numbers is cumbersome because (base) 10 is not a power of (base) 2. The information chapter has more on that!
+In sum, *conversion* between hexadecimal and binary numbers is easy, which is one of the two reasons as to why hexadecimal notation is popular in computer science. The other is that hexadecimal notation is 4-times more *compact* than binary notation. Mathematically speaking, hexadecimal is popular because (base) 16 is a power of (base) 2, namely, 2 to the power of (factor) 4. In contrast, using decimal notation to represent binary numbers is cumbersome because (base) 10 is not a power of 2. When dealing with computers, binary encoding is the reason why we are often confronted with powers of 2 such as 2, 4, 8, 16, 32, 64, 128, 256, 512, and so on, in contrast to powers of 10 such as 10, 100, 1000, et cetera. The information chapter has more on that!
+
+Before we move on, let us have a quick look at the binary code `0x006282B3` of the above machine instruction spelled out in binary:
 
 ```
 0000 0000 0110 0010 1000 0010 1011 0011
 ```
 
-TODO: binary code...
+What you see here is what the processor sees when executing `add t0,t0,t1`. We have reached the bottom of the ocean. Well, we could look at how the processor circuits work but computer scientists generally look up from the level of bits rather than down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal to assembly code and finally C\* code. Each level is an *abstraction* of the levels below.
+
+TODO: abstraction and top-down versus bottom-up.
 
 Let us now instruct selfie to show us the compiled code during actual execution:
 
