@@ -2900,12 +2900,7 @@ void put_character(uint64_t c) {
 
     // try to write 1 character from character_buffer
     // into file with output_fd file descriptor
-    if (written_bytes == 1) {
-      if (output_fd != 1)
-        // count number of characters written to a file,
-        // not the console which has file descriptor 1
-        number_of_written_characters = number_of_written_characters + 1;
-    } else {
+    if (written_bytes != 1) {
       // write failed
       if (output_fd != 1) {
         // failed write was not to the console which has file descriptor 1
@@ -3090,10 +3085,13 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 }
 
 void direct_output(char* buffer) {
+  uint64_t c;
   if (output_fd == 1)
     printf("%s", buffer);
-  else
-    dprintf(output_fd, "%s", buffer);
+  else {
+    c = dprintf(output_fd, "%s", buffer);
+    number_of_written_characters =  number_of_written_characters + c;
+  }
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
@@ -3117,7 +3115,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
           i = print_format(s, i, var_arg(args));
         } else {
           put_character('%');
-
+        
           i = i + 2;
         }
       } else {
