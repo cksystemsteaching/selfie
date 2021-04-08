@@ -21,7 +21,7 @@ RUN \
     pip install langid laserembeddings && \
     python -m laserembeddings download-models && \
     pacman -Scc --noconfirm && \
-    curl -L https://github.com/cksystemsteaching/selfie/raw/master/grader/examr.py -O && \
+    curl -L https://github.com/cksystemsteaching/selfie/raw/main/grader/examr.py -O && \
     chmod +x examr.py
 
 CMD [ "/bin/bash" ]

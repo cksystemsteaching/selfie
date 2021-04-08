@@ -6,7 +6,7 @@ The Selfie Project provides an educational platform for teaching undergraduate a
 
 Selfie is a self-contained 64-bit, 11-KLOC C implementation of:
 
-1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
+1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/main/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/main/riscu.md),
 2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C* library called libcstar utilized by selfie.
@@ -15,13 +15,13 @@ Selfie is implemented in a single (!) file and kept minimal for simplicity. Ther
 
 Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
-Selfie is a 64-bit system and requires as such a 64-bit system to run. However, selfie also compiles on 32-bit systems (and 64-bit systems that support compiling and executing 32-bit binaries). In that case, selfie becomes a 32-bit system that generates and executes 32-bit binaries out-of-the-box. This is possible because the implementation of selfie carefully avoids 32-bit overflows throughout the system.
+Selfie is designed as 64-bit system and requires as such a 64-bit system to run (LP64 data model). However, selfie also compiles on systems that support compiling and executing 32-bit binaries (ILP32 data model). In that case, selfie becomes a 32-bit system that generates and executes 32-bit binaries out-of-the-box. This is possible because the implementation of selfie carefully avoids 32-bit overflows throughout the system.
 
 ## Support
 
 1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
 2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
-3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/master/grader/README.md) with compiler and operating systems assignments.
+3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
 4. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
 5. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
 6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
@@ -30,23 +30,23 @@ Selfie is a 64-bit system and requires as such a 64-bit system to run. However, 
 
 ## Extras
 
-1. Garbage collection: In addition to the conservative but O(n^2) garbage collector in selfie, there is an implementation of an O(n) [Boehm](https://github.com/cksystemsteaching/selfie/blob/master/tools/boehm-gc.c) garbage collector for small memory blocks with fall-back to the garbage collector in selfie for large memory blocks.
-2. Symbolic execution: There is a self-executing symbolic execution engine called [monster](https://github.com/cksystemsteaching/selfie/blob/master/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
-3. Bounded model checking: There is a self-translating modeling engine called [modeler](https://github.com/cksystemsteaching/selfie/blob/master/tools/modeler.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
-4. SAT solving: There is a naive SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/master/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
+1. Garbage collection: In addition to the conservative but O(n^2) garbage collector in selfie, there is an implementation of an O(n) [Boehm](https://github.com/cksystemsteaching/selfie/blob/main/tools/boehm-gc.c) garbage collector for small memory blocks with fall-back to the garbage collector in selfie for large memory blocks.
+2. Symbolic execution: There is a self-executing symbolic execution engine called [monster](https://github.com/cksystemsteaching/selfie/blob/main/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
+3. Bounded model checking: There is a self-translating modeling engine called [modeler](https://github.com/cksystemsteaching/selfie/blob/main/tools/modeler.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
+4. SAT solving: There is a naive SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/main/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
 5. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/riscv-2-x86-unsupported/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
 
 ## Installing Selfie
 
-Selfie runs in the cloud and natively on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
+Selfie runs in the cloud and natively on Linux, macOS, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
 
 There are at least three ways to install and run selfie, from real simple to a bit more difficult:
 
 1. In the cloud: if you only have access to a web browser, just click [here](https://repl.it/github/cksystemsteaching/selfie). Alternatively, create a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
-2. In docker on your machine: if you have access to a Mac, Linux, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box on your machine but also on QEMU as well as on spike. Both emulators and the SMT solver boolector are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
+2. In docker on your machine: if you have access to a Linux, macOS, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box on your machine but also on QEMU as well as on spike. Both emulators and the SMT solver boolector are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
 
-3. Natively on your machine: instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip), and then open a terminal window to run selfie natively on your machine. However, for this to work you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org).
+3. Natively on your machine: instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/main.zip), and then open a terminal window to run selfie natively on your machine. However, for this to work you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org) (with [cygwin](https://www.cygwin.com) on Windows).
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
