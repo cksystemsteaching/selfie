@@ -2073,7 +2073,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
-// CAUTION: contexts are extended in the symbolic execution engine!
+// CAUTION: contexts are extended in the symbolic execution engine and the Boehm garbage collector!
 
 uint64_t* allocate_context() {
   return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
@@ -2360,6 +2360,7 @@ void init_system() {
   uint64_t selfie_fd;
 
   if (SIZEOFUINT64 != SIZEOFUINT64STAR)
+    // selfie requires an LP64 or ILP32 data model
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
 
@@ -5558,20 +5559,19 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     return_type = 0;
 
-    if (symbol == SYM_RBRACE)
+    if (symbol == SYM_RBRACE) {
+      fixlink_relative(return_branches, code_size);
+
+      return_branches = 0;
+
+      procedure_epilogue(number_of_parameters * WORDSIZE);
+
       get_symbol();
-    else {
+    } else {
       syntax_error_symbol(SYM_RBRACE);
 
       exit(EXITCODE_PARSERERROR);
     }
-
-    fixlink_relative(return_branches, code_size);
-
-    return_branches = 0;
-
-    procedure_epilogue(number_of_parameters * WORDSIZE);
-
   } else
     syntax_error_unexpected();
 
@@ -5783,9 +5783,10 @@ void emit_program_entry() {
 
   i = 0;
 
-  // allocate space for machine initialization code,
-  // emit exactly 20 NOPs with source code line 1
-  while (i < 20) {
+  // allocate memory for machine initialization code
+
+  // emit exactly 22 NOPs with source code line 1
+  while (i < 22) {
     emit_nop();
 
     i = i + 1;
@@ -5824,7 +5825,7 @@ void emit_bootstrapping() {
   saved_code_size = code_size;
   code_size       = 0;
 
-  // assert: emitting no more than 20 instructions
+  // assert: emitting no more than 22 instructions, see emit_program_entry
 
   if (report_undefined_procedures()) {
     // if there are undefined procedures just exit
@@ -5870,59 +5871,36 @@ void emit_bootstrapping() {
     emit_addi(REG_A0, REG_ZR, 0);
 
     // assert: stack is set up with argv pointer still missing
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
+
+    //   sp
+    //    |
+    //    V
+    // | argc | argv[0] | argv[1] | ... | argv[n]
+
+    // first push argc again (!) onto stack
 
     talloc();
 
-    // first copy value of argc
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
     emit_load(current_temporary(), REG_SP, 0);
-
-    talloc();
-
-    // then obtain pointer to argv
-    //
-    //            sp + WORDSIZE
-    //                    |
-    //                    V
-    // |      | argc  | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, WORDSIZE);
-
-    // write &argv onto the stack
-    //
-    //           sp
-    //            |
-    //            V
-    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
-    emit_store(REG_SP, 0, current_temporary());
-
-    tfree(1);
-
-    // allocate memory for argc
-    //
-    //     sp
-    //     |
-    //     V
-    // |      | &argv | argv[0] | argv[1] | ... | argv[n]
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
-
-    // write argc onto the stack
-    //
-    //     sp
-    //     |
-    //     V
-    // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
     emit_store(REG_SP, 0, current_temporary());
 
+    //   sp  sp+WORDSIZE  sp+2*WORDSIZE
+    //    |      |        |
+    //    V      V        V
+    // | argc | argc | argv[0] | argv[1] | ... | argv[n]
+
+    // then overwrite below-top argc with &argv
+
+    emit_addi(current_temporary(), REG_SP, 2 * WORDSIZE);
+    emit_store(REG_SP, WORDSIZE, current_temporary());
+
     tfree(1);
+
+    //   sp
+    //    |        _______
+    //    V       |       V
+    // | argc | &argv | argv[0] | argv[1] | ... | argv[n]
 
     // assert: global, _bump, and stack pointers are set up
     //         with all other non-temporary registers zeroed
