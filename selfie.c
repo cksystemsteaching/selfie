@@ -285,7 +285,7 @@ uint64_t S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH = 493;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
-uint64_t number_of_currently_written_bytes = 0;
+uint64_t number_of_put_characters     = 0;
 
 char*    output_name = (char*) 0;
 uint64_t output_fd   = 1; // 1 is file descriptor of standard output
@@ -2916,7 +2916,7 @@ void put_character(uint64_t c) {
     // character_buffer has not been successfully allocated yet
     exit(EXITCODE_IOERROR);
 
-  number_of_currently_written_bytes = number_of_currently_written_bytes + 1;
+  number_of_put_characters = number_of_put_characters + 1;
 }
 
 void print(char* s) {
@@ -3085,12 +3085,20 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 }
 
 void direct_output(char* buffer) {
-  uint64_t c;
+  uint64_t number_of_dprinted_characters;
+
   if (output_fd == 1)
     printf("%s", buffer);
   else {
-    c = dprintf(output_fd, "%s", buffer);
-    number_of_written_characters =  number_of_written_characters + c;
+    number_of_dprinted_characters = dprintf(output_fd, "%s", buffer);
+
+    if (signed_less_than(number_of_dprinted_characters, 0)) {
+      printf("%s: could not write buffer to output file %s\n", selfie_name, output_name);
+
+      exit(EXITCODE_IOERROR);
+    }
+
+    number_of_written_characters =  number_of_written_characters + number_of_dprinted_characters;
   }
 }
 
@@ -3103,7 +3111,8 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   } else
     output_fd = fd;
 
-  number_of_currently_written_bytes = 0;
+  number_of_put_characters = 0;
+
   i = 0;
 
   if (s != (char*) 0) {
@@ -3115,7 +3124,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
           i = print_format(s, i, var_arg(args));
         } else {
           put_character('%');
-        
+
           i = i + 2;
         }
       } else {
@@ -3133,7 +3142,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   output_buffer = (char*) 0;
   output_cursor = 0;
 
-  return number_of_currently_written_bytes;
+  return number_of_put_characters;
 }
 
 uint64_t non_zero_bootlevel_printf(char* format, ...) {
