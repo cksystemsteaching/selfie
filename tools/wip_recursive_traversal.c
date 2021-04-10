@@ -1379,10 +1379,12 @@ void print_states_and_livedeads() {
 
 uint64_t ANY = (uint64_t) -1; // matches anything
 uint64_t ANY_TEMPORARY = (uint64_t) -2; // use selfies is_temporary_register
+uint64_t REPLACE = (uint64_t) -3;
 
 // The patter matcher will match the currently decoded instruction against these variables
 // if it's not set to ANY, the instruction has to match it.
 // For registers (e.g. rd) setting ANY_TEMPORARY will match t0-t6
+uint64_t match_is     = 0;
 uint64_t match_opcode = 0;
 uint64_t match_rs1    = 0;
 uint64_t match_rs2    = 0;
@@ -1402,41 +1404,30 @@ uint64_t number_of_matched_instructions = 0;
 
 uint64_t current_pattern = 0;
 
-uint64_t PATTERN_NONE = 0;
-uint64_t PATTERN_JAL_NOP = 1;
-
-
-// ----------------------------------------------------------------------------
-// ----------------------------- PATTERN LIBRARY ------------------------------
-// ----------------------------------------------------------------------------
-
-
-// jal which only goes to next instruction
-void pattern_pointless_jal(uint64_t matched_instructions) {
-  number_of_instructions_in_pattern = 1;
-
-  // 4194415 = 0x0040006F = jal zero,1
-  match_ir = 4194415;
-}
-
-void update_pattern(uint64_t matched_instructions) {
-  if (current_pattern == PATTERN_JAL_NOP)
-    pattern_pointless_jal(matched_instructions);
-}
-
 // ----------------------------------------------------------------------------
 // ----------------------------- PATTERN MATCHER ------------------------------
 // ----------------------------------------------------------------------------
 
+// The general workflow works like so:
+// * iterate over all instructions
+// * try to match each against a pattern:
+//   * decode instruction
+//   * match it against the pattern's current instruction
+//   * if it matches, move pc and pattern to the next instruction
+//   * else, reset the pattern and go back n-1 steps
+
+void update_pattern(uint64_t matched_instructions);
+
 void reset_pattern_matcher() {
-  match_opcode = 0;
-  match_rs1    = 0;
-  match_rs2    = 0;
-  match_rd     = 0;
-  match_imm    = 0;
-  match_funct3 = 0;
-  match_funct7 = 0;
-  match_ir = 0;
+  match_is     = ANY;
+  match_opcode = ANY;
+  match_rs1    = ANY;
+  match_rs2    = ANY;
+  match_rd     = ANY;
+  match_imm    = ANY;
+  match_funct3 = ANY;
+  match_funct7 = ANY;
+  match_ir     = ANY;
 }
 
 void print_pattern_state() {
@@ -1449,6 +1440,7 @@ void print_pattern_state() {
   printf1("\tmatch_funct3: %x\n", (char*) match_funct3);
   printf1("\tmatch_funct7: %x\n", (char*) match_funct7);
   printf1("\tmatch_ir    : %x\n", (char*) match_ir);
+  printf1("\tmatch_is    : %x\n", (char*) match_is);
 }
 
 // Match currently decoded instruction against current pattern's instruction
@@ -1461,20 +1453,36 @@ uint64_t instruction_matches() {
       return 0;
   }
 
+  if (match_rs1 != ANY) {
+    if (match_rs1 == ANY_TEMPORARY) {
+      if (!is_temporary_register(rs1))
+        return 0;
+    } else if (match_rs1 != rs1)
+      return 0;
+  }
+
+  if (match_rs2 != ANY) {
+    if (match_rs2 == ANY_TEMPORARY) {
+      if (!is_temporary_register(rs2))
+        return 0;
+    } else if (match_rs2 != rs2)
+      return 0;
+  }
+
+  if (match_rd != ANY) {
+    if (match_rd == ANY_TEMPORARY) {
+      if (!is_temporary_register(rd))
+        return 0;
+    } else if (match_rd != rd)
+      return 0;
+  }
+
+  if (match_is != ANY)
+    if (match_is != is)
+      return 0;
+
   if (match_opcode != ANY)
     if (match_opcode != opcode)
-      return 0;
-
-  if (match_rs1 != ANY)
-    if (match_rs1 != rs1)
-      return 0;
-
-  if (match_rs2 != ANY)
-    if (match_rs2 != rs2)
-      return 0;
-
-  if (match_rd != ANY)
-    if (match_rd != rd)
       return 0;
 
   if (match_imm != ANY)
@@ -1489,14 +1497,6 @@ uint64_t instruction_matches() {
     if (match_funct7 != funct7)
       return 0;
 
-  if (match_rd != ANY)
-    if (match_rd != ANY_TEMPORARY) {
-      if (!is_temporary_register(rd))
-        return 0;
-      else if (match_rd != rd)
-        return 0;
-    }
-
   return 1;
 }
 
@@ -1510,6 +1510,7 @@ uint64_t next_match(uint64_t from_pc) {
 
   while (i < code_length) {
     did_break = 0;
+    update_pattern(0); // go to pattern's next instruction
 
     // match each instruction in the pattern
     while (number_of_matched_instructions < number_of_instructions_in_pattern) {
@@ -1517,8 +1518,10 @@ uint64_t next_match(uint64_t from_pc) {
       decode();
 
       if (instruction_matches()) {
+        // We call this twice because it's the simplest way to get the API described in PATTERN LIBRARY
+        update_pattern(number_of_matched_instructions); 
         number_of_matched_instructions = number_of_matched_instructions + 1;
-        update_pattern(number_of_matched_instructions); // go to pattern's next instruction
+        update_pattern(number_of_matched_instructions); 
         i = i + INSTRUCTIONSIZE;
 
       } else {
@@ -1538,6 +1541,107 @@ uint64_t next_match(uint64_t from_pc) {
 
   return (uint64_t) -1;
 }
+
+// ----------------------------------------------------------------------------
+// ----------------------------- PATTERN LIBRARY ------------------------------
+// ----------------------------------------------------------------------------
+
+uint64_t PATTERN_NONE = 0;
+uint64_t PATTERN_JAL_NOP = 1;
+uint64_t PATTERN_POINTER = 2;
+
+// variables to hold state specific to a pattern, required to perform the substitution
+uint64_t PATTERN_POINTER_VAL1 = 0;
+uint64_t PATTERN_POINTER_VAL2 = 0;
+uint64_t PATTERN_POINTER_RD1 = 0;
+uint64_t PATTERN_POINTER_RD2 = 0;
+uint64_t PATTERN_POINTER_RD3 = 0;
+
+
+// The "API" exposed here is simple:
+// A function registered in update_pattern is called and passed a `matched_instructions` parameter.
+// This gives the number of instructions that have previously been matched; for example:
+//
+// 0x908(~512): 0x00300313: addi t1,zero,3
+// 0x90C(~512): 0x00800393: addi t2,zero,8    <--- If we are here, matched_instructions is 1.
+// 0x910(~512): 0x02730333: mul t1,t1,t2
+// 0x914(~512): 0x006282B3: add t0,t0,t1
+//
+// Functions can assume that they will eventually be called with the current instruction decoded into selfie's is, rd, rs1, imm, ... variables.
+// That is, in the above example, is=ADDI, rd=REG_T2, rs1=REG_ZR, imm=8
+// This isn't guaranteed to happen in the first call to e.g. pattern_pointer(1), but in a subsequent call.
+
+
+// jal which only goes to next instruction
+void pattern_jal_nop(uint64_t matched_instructions) {
+  number_of_instructions_in_pattern = 1;
+
+  // 4194415 = 0x0040006F = jal zero,1
+  match_ir = 4194415;
+}
+
+// Example:
+//
+// 0x908(~512): 0x00300313: addi t1,zero,3
+// 0x90C(~512): 0x00800393: addi t2,zero,8
+// 0x910(~512): 0x02730333: mul t1,t1,t2
+// 0x914(~512): 0x006282B3: add t0,t0,t1
+//
+// to
+//
+// 0x87C(~510): 0x006282B3: addi t0,t0,24
+//
+// Also: check if t1, t2 are dead; plus no jumps to those instructions
+void pattern_pointer(uint64_t matched_instructions) {
+  number_of_instructions_in_pattern = 4;
+
+  reset_pattern_matcher();
+
+  if (matched_instructions == 0) {
+    match_is = ADDI;
+    match_rd = ANY_TEMPORARY;
+    match_rs1 = REG_ZR;
+    PATTERN_POINTER_VAL1 = imm;
+    PATTERN_POINTER_RD1 = rd;
+
+  } else if (matched_instructions == 1) {
+    match_is = ADDI;
+    match_rd = ANY_TEMPORARY;
+    match_rs1 = REG_ZR;
+    PATTERN_POINTER_VAL2 = imm;
+    PATTERN_POINTER_RD2 = rd;
+
+  } else if (matched_instructions == 2) {
+    match_is = MUL;
+    match_rd = PATTERN_POINTER_RD1;
+    match_rs1 = PATTERN_POINTER_RD1;
+    match_rs2 = PATTERN_POINTER_RD2;
+
+  } else if (matched_instructions == 3) {
+    match_is = ADD;
+    match_rd = ANY_TEMPORARY;
+    match_rs1 = ANY_TEMPORARY;
+    match_rs2 = PATTERN_POINTER_RD1;
+    PATTERN_POINTER_RD3 = rd;
+  } 
+}
+
+void pattern_pointer_replace(uint64_t position) {
+  store_instruction(position, encode_i_format(PATTERN_POINTER_VAL1 * PATTERN_POINTER_VAL2, PATTERN_POINTER_RD3, F3_ADDI, PATTERN_POINTER_RD3, OP_IMM));
+}
+
+void update_pattern(uint64_t matched_instructions) {
+  if (current_pattern == PATTERN_JAL_NOP)
+    pattern_jal_nop(matched_instructions);
+  else if (current_pattern == PATTERN_POINTER)
+    pattern_pointer(matched_instructions);
+}
+
+void replace_pattern(uint64_t position) {
+  if (current_pattern == PATTERN_POINTER)
+    pattern_pointer_replace(position);
+}
+
 
 // ----------------------------------------------------------------------------
 // ----------------------------- TRANSFORMATIONS ------------------------------
@@ -1567,20 +1671,19 @@ void patch_peephole(uint64_t pattern) {
 
   current_pattern = pattern;
 
-  update_pattern(0);
-  print_pattern_state();
   last_match = next_match(0);
 
   number_of_matches = 0;
 
   while (last_match != -1) {
-    printf1("%x\tmatches: ", last_match);
+    printf1("%x\tmatches: ", (char*) last_match);
     print_instruction();
     print("\n");
     number_of_matches = number_of_matches + 1;
     insert_nops(last_match, number_of_instructions_in_pattern);
+    replace_pattern(last_match);
+    // move on past the last instruction in this pattern
     last_match = last_match + (number_of_instructions_in_pattern * INSTRUCTIONSIZE);
-    update_pattern(0);
     last_match = next_match(last_match);
   }
 }
@@ -1722,9 +1825,13 @@ int main(int argc, char **argv) {
   selfie_traverse();
   //print_states_and_livedeads();
   //patch_enops();
-  patch_peephole(PATTERN_JAL_NOP);
-  printf1("found %d JAL_NOP\n", (char*) number_of_matches);
-  printf1("found %d enops\n", (char*) number_of_enops);
+
+  //patch_peephole(PATTERN_JAL_NOP);
+  //printf1("found %d JAL_NOP\n", (char*) number_of_matches);
+  //printf1("found %d enops\n", (char*) number_of_enops);
+
+  patch_peephole(PATTERN_POINTER);
+  printf1("found %d POINTER\n", (char*) number_of_matches);
 
   //selfie_traverse();
   //patch_dead_ops();
