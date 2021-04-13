@@ -17,11 +17,11 @@ class TestRobustness(TestCase):
         rmtree(dst, ignore_errors=True)
 
     def execute_mock(self, command, timeout=60):
-        ret_code, output, error_output = execute(command, timeout)
+        ret_code, output = execute(command, timeout)
 
         self.assertNotEqual(ret_code, EXITCODE_IOERROR)
 
-        return (ret_code, output, error_output)
+        return (ret_code, output)
 
     def insert_assignment_path(self, command):
         return command.replace("<assignment>", "grader/assignments/hex-literal/")

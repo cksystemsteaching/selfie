@@ -57,8 +57,7 @@ class TestGrading(TestCase):
 
     @patch('lib.cli.print_grade')
     def test_default_grade(self, mock):
-        without_baseline = grader.assignments.difference({ grader.baseline_assignment })
-        assignments = map(lambda a: a.name, without_baseline)
+        assignments = map(lambda a: a.name, grader.assignments)
 
         mock.side_effect = self.print_grade
 

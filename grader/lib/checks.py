@@ -7,17 +7,17 @@ from typing import List, Tuple
 
 from .model import Check, CheckResult
 from .output_processing import (filter_status_messages, has_compiled,
-                                has_no_compile_warnings, is_interleaved_output,
-                                is_permutation_of)
+                                has_no_compile_warnings, has_no_bootstrapping_compile_warnings, 
+                                is_interleaved_output, is_permutation_of)
 from .print import print_processing, print_warning, stop_processing_spinner
 from .system import INSTRUCTIONSIZE, WORDSIZE, read_data, read_instruction
 
 if sys.version_info < (3, 3):
-    from subprocess import Popen, PIPE
+    from subprocess import Popen, PIPE, STDOUT
     print_warning('python V3.3 or newer is recommended\n' +
                   'mipster execution timeout is disabled with this python version\n')
 else:
-    from subprocess import Popen, TimeoutExpired, PIPE
+    from subprocess import Popen, TimeoutExpired, PIPE, STDOUT
 
 assignment_name = ''
 
@@ -33,12 +33,12 @@ def set_home_path(path):
 
 
 class TimeoutException(Exception):
-    def __init__(self, command, timeout, output, error_output):
+    def __init__(self, command, timeout, output): # , error_output):
         Exception.__init__(self, 'The command \"' + command +
                            '\" has timed out after ' + str(timeout) + 's')
 
         self.output = output
-        self.error_output = error_output
+        # self.error_output = error_output
 
 
 def insert_assignment_path(command):
@@ -81,28 +81,31 @@ def set_up():
 
 
 def execute(command, timeout=60):
-    process = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
+    # combine stdout and stderr in one output
+    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
 
     timedout = False
 
     if sys.version_info < (3, 3):
-        stdoutdata, stderrdata = process.communicate()
+        stdoutdata, _ = process.communicate()
     else:
         try:
-            stdoutdata, stderrdata = process.communicate(timeout=timeout)
+            stdoutdata, _ = process.communicate(timeout=timeout)
         except TimeoutExpired:
             process.kill()
-            stdoutdata, stderrdata = process.communicate()
+            stdoutdata, _ = process.communicate()
 
             timedout = True
 
     output = stdoutdata.decode(sys.stdout.encoding)
-    error_output = stderrdata.decode(sys.stderr.encoding)
+    # error_output = stderrdata.decode(sys.stderr.encoding)
 
     if timedout:
-        raise TimeoutException(command, timeout, output, error_output)
+        raise TimeoutException(command, timeout, output)
+                # , error_output)
 
-    return (process.returncode, output, error_output)
+    return (process.returncode, output)
+            # , error_output)
 
 
 def check_instruction_encoding(instruction, file) -> List[Check]:
@@ -113,7 +116,7 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
         command = insert_assignment_path(command)
 
         try:
-            exit_code, output, _ = execute(command)
+            exit_code, output = execute(command)
 
             instruction_value = instruction[1]
             instruction_mask = instruction[2]
@@ -174,7 +177,7 @@ def check_assembler_instruction_format(instruction, file) -> List[Check]:
         command = insert_assignment_path(command)
 
         try:
-            exit_code, output, _ = execute(command)
+            exit_code, output = execute(command)
 
             if exit_code == 0:
                 exit_code = 1
@@ -211,10 +214,10 @@ def check_execution(command, msg, success_criteria=True, should_succeed=True, ma
         secure_command = insert_assignment_path(command)
 
         try:
-            returncode, output, error_output = execute(secure_command, timeout)
+            returncode, output = execute(secure_command, timeout)
 
-            if returncode != 0 and len(output) == 0:
-                output = error_output
+            # if returncode != 0 and len(output) == 0:
+                # output = error_output
 
             if type(success_criteria) is bool:
                 if should_succeed:
@@ -281,3 +284,8 @@ def check_interleaved_output(command, interleaved_msg, number_of_interleaved, ms
 def check_compile_warnings(file, msg, mandatory=False) -> List[Check]:
     return check_execution('./selfie -c {}'.format(file), msg,
                           success_criteria=has_no_compile_warnings, mandatory=mandatory)
+
+def check_bootstrapping_compile_warnigns(msg, mandatory=False) -> List[Check]:
+    execute('make clean')
+    return check_execution('make selfie', msg, 
+                        success_criteria=has_no_bootstrapping_compile_warnings, mandatory=mandatory)

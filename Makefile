@@ -1,3 +1,15 @@
+# Copyright (c) 2015-2021, the Selfie Project authors. All rights reserved.
+# Please see the AUTHORS file for details. Use of this source code is governed
+# by a BSD license that can be found in the LICENSE file.
+
+# Selfie is a project of the Computational Systems Group at the Department of
+# Computer Sciences of the University of Salzburg in Austria. For further
+# information and code please refer to:
+
+# http://selfie.cs.uni-salzburg.at
+
+# This is the Makefile of the selfie system.
+
 # Compiler flags
 CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 
@@ -12,21 +24,13 @@ selfie: selfie.c
 selfie-32: selfie.c
 	$(CC) $(32-BIT-CFLAGS) $< -o $@
 
-# Permission flags for selfie-generated executables
-XPERMISSIONS := +rx,u+w
-
 # Compile *.c including selfie.c into RISC-U *.m executable
 %.m: %.c selfie
 	./selfie -c $< -o $@
-	chmod $(XPERMISSIONS) $@
-
-# Permission flags for selfie-generated text files
-RPERMISSIONS := +r,u+w
 
 # Compile *.c including selfie.c into RISC-U *.s assembly
 %.s: %.c selfie
 	./selfie -c $< -s $@
-	chmod $(RPERMISSIONS) $@
 
 # Generate selfie library as selfie.h
 selfie.h: selfie.c
@@ -38,17 +42,18 @@ selfie-gc.h: selfie.c
 	sed 's/allocate_memory(uint64_t\* context, uint64_t size) {/allocate_memory_deleted(uint64_t\* context, uint64_t size) {/' selfie-gc-intermediate.h > selfie-gc.h
 	sed 's/mark_object(uint64_t\* context, uint64_t address) {/mark_object_deleted(uint64_t\* context, uint64_t address) {/' selfie-gc.h > selfie-gc-intermediate.h
 	sed 's/sweep(uint64_t\* context) {/sweep_deleted(uint64_t\* context) {/' selfie-gc-intermediate.h > selfie-gc.h
-	rm -f selfie-gc-intermediate.h
+	sed 's/allocate_context() {/allocate_context_deleted() {/' selfie-gc.h > selfie-gc-intermediate.h
+	mv selfie-gc-intermediate.h selfie-gc.h
 
 # Generate selfie library with gc interface as selfie-gc-nomain.h
 selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest cache sat mon smt mod btor2
+all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2
 
 # Self-compile selfie
 self: selfie
@@ -57,8 +62,6 @@ self: selfie
 # Self-self-compile selfie and check fixed point of self-compilation
 self-self: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
-	chmod $(XPERMISSIONS) selfie1.m selfie2.m
-	chmod $(RPERMISSIONS) selfie1.s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
@@ -85,16 +88,12 @@ os: selfie.m
 # Self-compile on two virtual machines
 vm: selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-vm.m -s selfie-vm.s
-	chmod $(XPERMISSIONS) selfie-vm.m
-	chmod $(RPERMISSIONS) selfie-vm.s
 	diff -q selfie.m selfie-vm.m
 	diff -q selfie.s selfie-vm.s
 
 # Self-compile on two virtual machines on fully mapped virtual memory
 min: selfie.m selfie.s
 	./selfie -l selfie.m -min 15 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-min.m -s selfie-min.s
-	chmod $(XPERMISSIONS) selfie-min.m
-	chmod $(RPERMISSIONS) selfie-min.s
 	diff -q selfie.m selfie-min.m
 	diff -q selfie.s selfie-min.s
 
@@ -105,32 +104,24 @@ mob: selfie
 # Self-compile with garbage collector in mipster
 gib: selfie selfie.m selfie.s
 	./selfie -c selfie.c -gc -m 1 -c selfie.c -o selfie-gib.m -s selfie-gib.s
-	chmod $(XPERMISSIONS) selfie-gib.m
-	chmod $(RPERMISSIONS) selfie-gib.s
 	diff -q selfie.m selfie-gib.m
 	diff -q selfie.s selfie-gib.s
 
 # Self-compile with garbage collector in hypster
 hyb: selfie selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -gc -y 1 -c selfie.c -o selfie-hyb.m -s selfie-hyb.s
-	chmod $(XPERMISSIONS) selfie-hyb.m
-	chmod $(RPERMISSIONS) selfie-hyb.s
 	diff -q selfie.m selfie-hyb.m
 	diff -q selfie.s selfie-hyb.s
 
 # Self-compile with garbage collector as library
 gclib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 	./selfie -gc -c selfie.h tools/gc-lib.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
-	chmod $(XPERMISSIONS) selfie-gclib.m
-	chmod $(RPERMISSIONS) selfie-gclib.s
 	diff -q selfie.m selfie-gclib.m
 	diff -q selfie.s selfie-gclib.s
 
 # Self-compile with self-collecting garbage collectors
 giblib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 	./selfie -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
-	chmod $(XPERMISSIONS) selfie-giblib.m
-	chmod $(RPERMISSIONS) selfie-giblib.s
 	diff -q selfie.m selfie-giblib.m
 	diff -q selfie.s selfie-giblib.s
 
@@ -141,8 +132,7 @@ gclibtest: selfie selfie.h examples/gc/gc-test.c
 # Self-compile with Boehm garbage collector
 boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c
 	./selfie -c selfie-gc.h tools/boehm-gc.c -o selfie-boehm-gc.m -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
-	chmod $(XPERMISSIONS) selfie-boehm-gc.m
-	./selfie -l selfie-boehm-gc.m -m 3 -l selfie-boehm-gc.m -gc -y 1 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
+	./selfie -l selfie-boehm-gc.m -m 6 -l selfie-boehm-gc.m -gc -y 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 2
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -m 3 -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
@@ -150,8 +140,6 @@ boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c e
 # Self-compile with L1 cache and test L1 data cache
 cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 	./selfie -c selfie.c -L1 2 -c selfie.c -o selfie-L1.m -s selfie-L1.s
-	chmod $(XPERMISSIONS) selfie-L1.m
-	chmod $(RPERMISSIONS) selfie-L1.s
 	diff -q selfie.m selfie-L1.m
 	diff -q selfie.s selfie-L1.s
 	./selfie -c examples/cache/dcache-access-0.c -L1 32
@@ -181,10 +169,8 @@ mon: monster selfie.h selfie
 # Translate *.c including selfie.c into SMT-LIB model
 %-35.smt: %-35.c monster
 	./monster -c $< - 0 35 --merge-enabled
-	chmod $(RPERMISSIONS) $@
 %-10.smt: %-10.c monster
 	./monster -c $< - 0 10 --merge-enabled
-	chmod $(RPERMISSIONS) $@
 
 # Gather symbolic execution example files as .smt files
 smts-1 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-1-*.c))
@@ -209,7 +195,6 @@ mod: modeler selfie.h selfie
 # Translate *.c including selfie.c into BTOR2 model
 %.btor2: %.c modeler
 	./modeler -c $< - 0 --check-block-access
-	chmod $(RPERMISSIONS) $@
 
 # Gather symbolic execution example files as .btor2 files
 btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
@@ -226,16 +211,12 @@ extras: spike qemu assemble 32-bit boolector btormc
 # Run selfie on spike
 spike: selfie.m selfie.s
 	spike pk selfie.m -c selfie.c -o selfie-spike.m -s selfie-spike.s -m 1
-	chmod $(XPERMISSIONS) selfie-spike.m
-	chmod $(RPERMISSIONS) selfie-spike.s
 	diff -q selfie.m selfie-spike.m
 	diff -q selfie.s selfie-spike.s
 
 # Run selfie on qemu usermode emulation
 qemu: selfie.m selfie.s
 	qemu-riscv64-static selfie.m -c selfie.c -o selfie-qemu.m -s selfie-qemu.s -m 1
-	chmod $(XPERMISSIONS) selfie-qemu.m
-	chmod $(RPERMISSIONS) selfie-qemu.s
 	diff -q selfie.m selfie-qemu.m
 	diff -q selfie.s selfie-qemu.s
 
@@ -246,8 +227,6 @@ assemble: selfie.s
 # Self-self-compile, self-execute, self-host, self-gc 32-bit selfie
 32-bit: selfie-32 selfie.h selfie-gc.h tools/boehm-gc.c
 	./selfie-32 -c selfie.c -o selfie-32.m -s selfie-32.s -m 2 -c selfie.c -o selfie-32-2-32.m -s selfie-32-2-32.s
-	chmod $(XPERMISSIONS) selfie-32.m selfie-32-2-32.m
-	chmod $(RPERMISSIONS) selfie-32.s selfie-32-2-32.s
 	diff -q selfie-32.m selfie-32-2-32.m
 	diff -q selfie-32.s selfie-32-2-32.s
 	./selfie-32 -l selfie-32.m -m 2 -l selfie-32.m -m 1
@@ -257,8 +236,6 @@ assemble: selfie.s
 	./selfie-32 -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c
 	./selfie-32 -c selfie-gc.h tools/boehm-gc.c -gc -m 1 -c selfie.c
 	qemu-riscv32-static selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
-	chmod $(XPERMISSIONS) selfie-qemu-32.m
-	chmod $(RPERMISSIONS) selfie-qemu-32.s
 	diff -q selfie-32.m selfie-qemu-32.m
 	diff -q selfie-32.s selfie-qemu-32.s
 	riscv64-linux-gnu-as selfie-32.s
