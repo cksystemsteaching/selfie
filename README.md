@@ -379,7 +379,7 @@ So, what is the difference between the two versions of `count`? Well, in terms o
 
 The first version of `count` with the `while` loop can actually become quite slow for large values of `n` whereas the second version always takes the same amount of time independently of the value of `n`. We say that the first version runs in *linear time* in the value of `n`, since it takes as many loop iterations to complete as the value of `n`, while the second version runs in *constant time*. In short, their algorithmic complexity is linear and constant, respectively.
 
-Their performance may nevertheless be similar for small values of `n` because computers can go through a few loop iterations very fast. However, the second version will certainly be noticibly faster than the first version for large values of `n`. Algorithmic complexity is essentially the performance of a program as a (unitless) function of the size of the input to the program. It tells you about a performance trend but not actual performance which can only be measured by running the program on some machine and input. We get back to algorithmic complexity and performance in subsequent chapters.
+Their performance may nevertheless be similar for small values of `n` because computers can go through a few loop iterations very fast. However, the second version will certainly be noticeably faster than the first version for large values of `n`. Algorithmic complexity is essentially the performance of a program as a (unitless) function of the size of the input to the program. It tells you about a performance trend but not actual performance which can only be measured by running the program on some machine and input. We get back to algorithmic complexity and performance in subsequent chapters.
 
 While avoiding linear time here is easy using the second version, it may be more difficult to do so in other circumstances. Here is a code example that runs in linear time in the value of `n` and is not so easy to make faster while producing the same result. It computes the *factorial* of a positive integer `n` iteratively in a loop:
 
@@ -664,21 +664,13 @@ Before we move on, let us have a quick look at the binary code `0x006282B3` of t
 
 What you see here is what the processor sees when executing `add t0,t0,t1`. It sees just these bits and nothing else. If you change a single bit, the machine will do something else. Why are machine instructions encoded like that? Time and space! We need to *encode* machine instructions in as few bits as possible to save space (memory) and the processor needs to *decode* those bits again as fast as possible to save time. There is more on that in the machine chapter.
 
-So, it feels like we have reached the bottom of the ocean, right? Well, we could look at how the processor circuits actually work but computer scientists generally look up from the level of bits rather than down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal notation to assembly code and finally C\* code. Each level is an *abstraction* of the levels below and an attempt to stay focused by ignoring irrelevant details. For example, variables in C\* allow us to focus on numerical calculations rather than figuring out where to store variable values in memory and which registers to use in the calculations. We then use compilers such as the selfie compilter to deal with the details.
-
-Here is an important note on terminology. In computer science, people speak of *high-level* programming languages such as C\* and *low-level* machine languages such as RISC-U. Here, high level means more abstract, low level means less abstract. This may be confused with a high level of understanding something complicated where high means deep, but not so here! For example, variables and statements in C\* are high-level concepts since they are more abstract than registers and machine instructions in RISC-U.
-
-Abstraction is a key concept in computer science and many other fields for dealing with complexity.
-
-TODO: abstraction and top-down versus bottom-up.
-
 Let us now instruct selfie to show us the compiled code during actual execution:
 
 ```
 ./selfie -c double.c -d 1
 ```
 
-Lots of information will fly by in your terminal. Here is an interesting snippet:
+Lots of information will fly by in your terminal. Here is an interesting snippet that involves the `add t0,t0,t1` instruction:
 
 ```
 ...
@@ -688,6 +680,20 @@ double.c: pc=0x10154(~2): add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -
 double.c: pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
 ...
 ```
+
+TODO: explain output
+
+So, it feels like we have reached the bottom of the ocean, right? Well, we could look at how the processor circuits actually work but computer scientists generally look up from the level of bits rather than further down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal notation to assembly code and finally C\* code. Each level is an *abstraction* of the levels below and an attempt to stay focused by ignoring irrelevant details. For example, variables in C\* allow us to focus on numerical calculations rather than figuring out where to store variable values in memory and which registers to use in calculations. We then use compilers such as the selfie compiler to deal with the details.
+
+> High-level programming languages versus low-level machine code
+
+Here is an important note on terminology. In computer science, people speak of *high-level* programming languages such as C\* and *low-level* machine code such as RISC-U. Here, high level means more abstract, low level means less abstract. This may be confused with a *high level* of understanding something complicated where high means deep, but not so here! For example, variables and statements in C\* are high-level concepts not because they are particularly deep ideas but because they are more abstract concepts than registers and machine instructions in RISC-U.
+
+> Abstraction is key
+
+Abstraction is a key concept in computer science and many other fields for dealing with complexity. The abstractions we see here have been developed over many years and are widely accepted among computer scientists and developers. There is, however, disagreement in how to teach and learn about them. For example, some believe it is sufficient to learn how to program simply by programming, similar to learning a new language by just speaking it. We call that the top-down approach. Others believe learning how to program requires understanding the mathematical and technical foundation of programming languages. We refer to that as the bottom-up approach.
+
+The truth probably lies, as so often, somewhere in the middle...
 
 ### EBNF Grammar
 
