@@ -664,7 +664,11 @@ Before we move on, let us have a quick look at the binary code `0x006282B3` of t
 
 What you see here is what the processor sees when executing `add t0,t0,t1`. It sees just these bits and nothing else. If you change a single bit, the machine will do something else. Why are machine instructions encoded like that? Time and space! We need to *encode* machine instructions in as few bits as possible to save space (memory) and the processor needs to *decode* those bits again as fast as possible to save time. There is more on that in the machine chapter.
 
-So, it feels like we have reached the bottom of the ocean, right? Well, we could look at how the processor circuits actually work but computer scientists generally look up from the level of bits rather than down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal notation to assembly code and finally C\* code. Each level is an *abstraction* of the levels below.
+So, it feels like we have reached the bottom of the ocean, right? Well, we could look at how the processor circuits actually work but computer scientists generally look up from the level of bits rather than down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal notation to assembly code and finally C\* code. Each level is an *abstraction* of the levels below and an attempt to stay focused by ignoring irrelevant details. For example, variables in C\* allow us to focus on numerical calculations rather than figuring out where to store variable values in memory and which registers to use in the calculations. We then use compilers such as the selfie compilter to deal with the details.
+
+Here is an important note on terminology. In computer science, people speak of *high-level* programming languages such as C\* and *low-level* machine languages such as RISC-U. Here, high level means more abstract, low level means less abstract. This may be confused with a high level of understanding something complicated where high means deep, but not so here! For example, variables and statements in C\* are high-level concepts since they are more abstract than registers and machine instructions in RISC-U.
+
+Abstraction is a key concept in computer science and many other fields for dealing with complexity.
 
 TODO: abstraction and top-down versus bottom-up.
 
