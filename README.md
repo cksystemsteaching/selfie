@@ -96,7 +96,7 @@ While a book about elementary computer science may sound appealing it actually r
 
 This book is based on the [Selfie Project](http://selfie.cs.uni-salzburg.at), an educational software system that has grown out of many years of teaching undergraduate and graduate classes in computer science. The key observation is that understanding computer science and software in particular can only be achieved by understanding how software translates all the way down to the machine. Selfie shows how to do that. This may sound difficult but can actually be done in systematic and well-founded fashion with a strong focus on basic principles.
 
-Selfie is *self-referential* software that translates software including *itself* to code that can be executed by a computer. Selfie can even mimic the very computer that can execute the code of selfie. This means selfie cannot only translate itself but also execute its own translation to translate itself again and so on. By now your mind might be spinning but you at least understand why selfie is called selfie.
+Selfie is *self-referential* software that translates software including *itself* to code that can be *run* or, as computer scientists say, *executed* by a computer. Selfie can even mimic the very computer that can execute the code of selfie. This means selfie cannot only translate itself but also execute its own translation to translate itself again and so on. By now your mind might be spinning but you at least understand why selfie is called selfie.
 
 Why is the *self* so important? Because it shows how meaning is created systematically on a machine. Selfie is software written in some programming language. However, selfie also defines the meaning of that language which implies that selfie defines its own meaning. This is very similar to an English dictionary written in English. The only difference is that selfie defines meaning *formally* in such a way that a machine can run selfie and thus any software written in the language in which selfie is written. Understanding that will completely change what you think of computer science and possibly many other things in life.
 
@@ -681,20 +681,38 @@ double.c: pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
 ...
 ```
 
-TODO: explain output
+We focus on this part in particular:
 
-So, it feels like we have reached the bottom of the ocean, right? Well, we could look at how the processor circuits actually work but computer scientists generally look up from the level of bits rather than further down. We have come down here all the way from C\* code. Going back up takes us from machine code in binary and hexadecimal notation to assembly code and finally C\* code. Each level is an *abstraction* of the levels below and an attempt to stay focused by ignoring irrelevant details. For example, variables in C\* allow us to focus on numerical calculations rather than figuring out where to store variable values in memory and which registers to use in calculations. We then use compilers such as the selfie compiler to deal with the details.
+```
+... add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
+```
+
+When executing a machine instruction such as `add t0,t0,t1`, selfie reports, to the left of the symbol `|-`, the *machine state* on which the instruction depends before executing it, and, to the right of the symbol `->`, how the state changed after executing the instruction. Here, the state on which the instruction depends are the values of registers `t0` and `t1` which are both `42` in decimal and `0x2A` in hexadecimal. After executing the instruction the machine state has changed with the value of `t0` set to `84` in decimal and `0x54` in hexadecimal, which is the result of adding the values of `t0` and `t1`. In between `|-` and `->`, selfie reports, before executing the instruction, the machine state that the instruction actually changes, which is obviously the value of `t0`.
+
+> A computer changes from one machine state to another by executing one machine instruction after another
+
+It may be hard to believe but all a computer does is execute one machine instruction after another in a seemingly endless chain of instructions. Using the above output of selfie we can even reconstruct every single step the machine has taken and how its state has evolved over time.
+
+> A computer is in exactly one machine state at any given time
+
+What is very important here is to realize that a computer can only be in one machine state at any given time. That state is essentially all bits the machine can store in all of its memory including its registers. By executing one instruction that state changes but only by very few bits. Yet all you see your laptop and smartphone does is the result of executing one instruction after another.
+
+> Computers can do magical things just because they can store billions of bits and can execute billions of instructions per second with very little energy
+
+So, where does the magic come from? Simple. It is just about being able to store lots of bits and change them very fast and very efficiently. But that point of view makes us feel like we have reached the bottom of a very deep ocean, right? Well, we could go even deeper and look at how the electronic circuits of a computer actually work. However, computer scientists generally look up from the level of bits rather than further down, and we do that too.
+
+Notice that we have come down here all the way from C\* code. Going back up would takes us from the level of machine code in binary and hexadecimal notation to assembly code and finally back to C\* code. Each level is an *abstraction* of the levels below and an attempt to stay focused by ignoring irrelevant details. For example, variables in C\* allow us to focus on numerical calculations rather than having to figure out where to store variable values in memory and which registers to use in calculations. Instead, we use compilers such as the selfie compiler to deal with such details.
 
 > High-level programming languages versus low-level machine code
 
-Here is an important note on terminology. In computer science, people speak of *high-level* programming languages such as C\* and *low-level* machine code such as RISC-U. Here, high level means more abstract, low level means less abstract. This may be confused with a *high level* of understanding something complicated where high means deep, but not so here! For example, variables and statements in C\* are high-level concepts not because they are particularly deep ideas but because they are more abstract concepts than registers and machine instructions in RISC-U.
+In computer science, people speak of *high-level* programming languages such as C\* and *low-level* machine code such as RISC-U where high level means more abstract and low level means less abstract. This may be confused with a *high-level* understanding of something complicated where high means deep, but not so here! For example, variables and statements in C\* are high-level concepts not because they are particularly deep ideas but because they are more abstract concepts than registers and machine instructions in RISC-U.
 
-> Abstraction is key
+> Abstraction is how computer scientists deal with complexity
 
 Abstraction is a key concept in computer science and many other fields for dealing with complexity. The abstractions we see here have been developed over many years and are widely accepted among computer scientists and developers. There is, however, disagreement in how to teach and learn about them. For example, some believe it is sufficient to learn how to program simply by programming, similar to learning a new language by just speaking it. We call that the top-down approach. Others believe learning how to program requires understanding the mathematical and technical foundation of programming languages. We refer to that as the bottom-up approach.
 
 The truth probably lies, as so often, somewhere in the middle...
-
+...
 ### EBNF Grammar
 
 ```
