@@ -316,11 +316,7 @@ Again, the code can be read like a sentence in English: define a procedure `max`
 
 > Conditional: if this is true do that else do that
 
-Conditional statements are a powerful concept for controlling program execution.
-
-TODO: more on conditionals
-
-But there is an even more powerful concept called a *loop statement*. Here is an example written in C\* featuring a `while` *loop* over a *variable* `c`:
+Conditional statements are a powerful concept for controlling program execution. They allow us to make a choice on anything we are interested in and we can use any number of them to form a whole sequence of choices. However, any such sequence must be finite because programs are finite artifacts. But what if we would like to do something where we do not know how much work is involved and in particular how many choices need to be made at the time of writing the program? The concept that allows us to do that is called a *loop statement* which is even more powerful than a conditional statement. Here is an example written in C\* featuring a `while` *loop* over a *variable* `c`:
 
 ```
 int count(int n) {
@@ -341,7 +337,9 @@ Again, the code can be read like an English sentence: define a procedure `count`
 
 The comparison `c < n` is called a `while` *condition* or *loop condition*. If the condition evaluates to true, the `while` *body* or *loop body*, here `c = c + 1`, is executed once and then the condition is evaluated again, and so on. If the condition evaluates to false, the loop body is not executed, effectively terminating the loop, and instead the statement after the loop, here `return c`, is executed.
 
-> TODO: Loops subsume conditionals
+> Loops subsume conditionals
+
+Interestingly, loops are strictly more expressive than conditionals. In other words, a program containing conditionals can always be rewritten into a program without conditionals just using loops instead. Those loops will be a bit strange because they will only loop at most once to mimic conditionals properly. The other way around is of course not possible. Loops can in general not be replaced by conditionals. So, why do we have conditionals? Well, just making choices without looping is a common sight in programs and deserves a dedicated language element to make the code more readable but also more efficient. Figuring out that a loop always operates like a conditional is not easy for a machine and even impossible in general.
 
 > Assignment is not equality!
 
@@ -711,8 +709,10 @@ In computer science, people speak of *high-level* programming languages such as 
 
 Abstraction is a key concept in computer science and many other fields for dealing with complexity. The abstractions we see here have been developed over many years and are widely accepted among computer scientists and developers. There is, however, disagreement in how to teach and learn about them. For example, some believe it is sufficient to learn how to program simply by programming, similar to learning a new language by just speaking it. We call that the top-down approach. Others believe learning how to program requires understanding the mathematical and technical foundation of programming languages. We refer to that as the bottom-up approach.
 
-The truth probably lies, as so often, somewhere in the middle...
-...
+The truth probably lies, as so often, somewhere in the middle, and also depends on what your goals are. In this chapter we apply the top-down approach, on purpose, of course. However, in the rest of the book we follow the bottom-up approach but from a systems perspective. This means that we show you how things can be put together to form something bigger than the sum of its individual parts. The reason is that we would like you, not just to know how to program, but to understand the basic principles of computer science and how those combine to true magic. True programming skills and other skills beyond just programming derive from that, not the other way around.
+
+Let us give you an example of a formal language whose goal is not to develop code but instead to describe the *syntactic* structure of other formal languages, in particular programming languages and even assembly. This is computer science beyond just programming!
+
 ### EBNF Grammar
 
 ```
