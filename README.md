@@ -755,30 +755,37 @@ Why would we do that? It is harder to read for sure. Well, on the other hand, it
 decimal_number = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" { "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" } .
 ```
 
-But this is not the reason. We squeeze everything into a single EBNF rule because, if we can, we know that we are dealing with a particularly interesting subset of grammars called *regular grammars* or *regular expressions* which define *regular languages* such as the language of decimal and hexadecimal numbers. Those are interesting because...
+But this is not the reason. We try squeezing everything into a single EBNF rule because, if we succeed, we know that we are dealing with a particularly interesting subset of grammars called *regular grammars* or *regular expressions* which define *regular languages* such as the language of decimal and hexadecimal numbers. Regular expressions are interesting because they are easy to implement using a *model of computation* even simpler than that of a processor called *finite state machine* (FSM). For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The tool chapter has more on that.
 
-There are, however, grammars that cannot be expressed in a single EBNF rule and are therefore not regular. Those are called *context-free*. We show you examples below. Regularity is interesting...
+There are, however, grammars that cannot be expressed in a single EBNF rule and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF rule. For simplicity, we show you here a context-free grammar that defines a subset of arithmetic C\* expressions:
 
 ```
+assignment = variable "=" expression .
 expression = term { ( "+" | "-" ) term } .
 term       = factor { ( "*" | "/" ) factor } .
-factor     = identifier | integer_literal | "(" expression ")" .
+factor     = variable | value | "(" expression ")" .
 
-identifier      = letter { letter | digit | "_" } .
-letter          = "a" | ... | "z" | "A" | ... | "Z" .
-integer_literal = decimal_number | hexadecimal_number .
+variable = letter { letter | digit | "_" } .
+value    = decimal_number | hexadecimal_number .
+
+letter = "a" | ... | "z" | "A" | ... | "Z" .
 ```
 
+Why does substitution into a single rule fail? Counting...FSM + stack...
+
 ```
-EBNF       = { production } .
-production = identifier "=" expression "." .
+EBNF = { production } .
+
+production = non_terminal "=" expression "." .
 expression = term { "|" term } .
 term       = factor { factor } .
-factor     = identifier | string_literal |
+factor     = non_terminal | terminal |
              "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
-string_literal = """ { character } """ .
-character      = letter | digit | ... .
+non-terminal = variable .
+terminal     = """ { character } """ .
+
+character = letter | digit | ... .
 ```
 
 ### Recommended Readings
