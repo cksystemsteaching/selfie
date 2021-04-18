@@ -662,13 +662,13 @@ Before we move on, let us have a quick look at the binary code `0x006282B3` of t
 
 What you see here is what the processor sees when executing `add t0,t0,t1`. It sees just these bits and nothing else. If you change a single bit, the machine will do something else. Why are machine instructions encoded like that? Time and space! We need to *encode* machine instructions in as few bits as possible to save space (memory) and the processor needs to *decode* those bits again as fast as possible to save time. There is more on that in the machine chapter.
 
-Let us now instruct selfie to show us the compiled code during actual execution:
+Let us now instruct selfie to show us the compiled code during actual execution using the `-d 1` option which invokes the system's *debugger*:
 
 ```
 ./selfie -c double.c -d 1
 ```
 
-Lots of information will fly by in your terminal. Here is an interesting snippet that involves the `add t0,t0,t1` instruction:
+A debugger is a software tool for finding flaws in software called *bugs*. Lots of information will fly by in your terminal. Here is an interesting snippet that involves the `add t0,t0,t1` instruction:
 
 ```
 ...
@@ -719,7 +719,9 @@ Designing and then using formal languages comes with a number of fundamental cha
 
 Specifying the syntax of a formal language and efficiently checking whether some sequence of characters is a sentence according to that syntax are prerequisites of constructing semantics. This may sound very complicated but computer scientists have figured out an elegant and efficient way for doing that. Here it is!
 
-How do we specify what, say, a decimal number is?
+Let us begin with something simple. How do we specify what, say, a decimal number is? It is easy in English: a decimal number is a sequence of decimal digits with at least one digit. But how do we say that formally? There are formal languages called grammars that have been designed exactly for this purpose. We use Extended Backus-Naur Form (EBNF) which was originally proposed by computer scientists John Warner Backus and Peter Naur, and later extended with repetition and optionality operators by Niklaus Wirth.
+
+In EBNF, a decimal number, or in fact the *language of decimal numbers* is defined by the following grammar:
 
 ```
 decimal_number = digit { digit } .
@@ -727,11 +729,35 @@ decimal_number = digit { digit } .
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
 ```
 
+Similar to C\* code, EBNF reads like a sentence in English: a decimal number is a digit followed by any number of digits, as indicated by the repetition operator `{ }`, which includes zero repetitions, and a digit is either `0` or `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9`, as indicated by the choice operator `|`. That was easy, right? Well, there is a tiny mistake in there. Can you spot it?
+
+The above grammar actually says that even a sequence of just `0`s is a decimal number, for example, `00000`. We call that a *bug*, just like a bug in software. Well, we do not want bugs in our grammar, but leave it up to you to fix, that is, *debug* it as an exercise. Hint: you need to define what a non-zero digit is and then use that in the right place.
+
+Here is a bit of terminology and background. Each line in EBNF is called a *production* where the left-hand side (LHS) of the production operator `=` is called a *non-terminal* such as `digit`, for example, which is similar to a variable. Their counterpart are *terminals* in double quotes such as `"0"`, for example, which are similar to a value. Anything between double quotes is meant to be part of the *vocabulary* of the language defined by the grammar while non-terminals can be named anything as long as there is not more than one production rule per non-terminal. The right-hand side (RHS) of `=` is an EBNF *expression* of non-terminals, terminals, and EBNF operators such as `{ }` and `|`, followed by a dot `.` at the end. There are a few more operators that we introduce below along with the exact structure of EBNF expressions, using EBNF, of course.
+
+So, how about defining what a hexadecimal number is? Here is the EBNF for that:
+
 ```
 hexadecimal_number = "0x" hexadecimal_digit { hexadecimal_digit } .
 
 hexadecimal_digit = digit | "A" | "B" | "C" | "D" | "E" | "F" .
 ```
+
+Not so hard either, right? There is one thing that the grammars for decimal and hexadecimal numbers have in common. They can both be reduced to a single EBNF rule by something we call *substitution*. We just take the second rule and substitute it into the RHS of the first rule in all places where its non-terminal occurs. The result for the grammar of decimal numbers, for example, is:
+
+```
+decimal_number = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" { "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" } .
+```
+
+Why would we do that? It is harder to read for sure. Well, on the other hand, it is now easy to fix the `00000` bug by just saying:
+
+```
+decimal_number = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" { "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" } .
+```
+
+But this is not the reason. We squeeze everything into a single EBNF rule because, if we can, we know that we are dealing with a particularly interesting subset of grammars called *regular grammars* or *regular expressions* which define *regular languages* such as the language of decimal and hexadecimal numbers. Those are interesting because...
+
+There are, however, grammars that cannot be expressed in a single EBNF rule and are therefore not regular. Those are called *context-free*. We show you examples below. Regularity is interesting...
 
 ```
 expression = term { ( "+" | "-" ) term } .
