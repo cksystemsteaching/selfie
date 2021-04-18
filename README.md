@@ -709,11 +709,17 @@ In computer science, people speak of *high-level* programming languages such as 
 
 Abstraction is a key concept in computer science and many other fields for dealing with complexity. The abstractions we see here have been developed over many years and are widely accepted among computer scientists and developers. There is, however, disagreement in how to teach and learn about them. For example, some believe it is sufficient to learn how to program simply by programming, similar to learning a new language by just speaking it. We call that the top-down approach. Others believe learning how to program requires understanding the mathematical and technical foundation of programming languages. We refer to that as the bottom-up approach.
 
-The truth probably lies, as so often, somewhere in the middle, and also depends on what your goals are. In this chapter we apply the top-down approach, on purpose, of course. However, in the rest of the book we follow the bottom-up approach but from a systems perspective. This means that we show you how things can be put together to form something bigger than the sum of its individual parts. The reason is that we would like you, not just to know how to program, but to understand the basic principles of computer science and how those combine to true magic. True programming skills and other skills beyond just programming derive from that, not the other way around.
+The truth probably lies, as so often, somewhere in the middle, and also depends on what your goals are. In this chapter we apply the top-down approach, on purpose, of course. However, in the rest of the book we follow the bottom-up approach but from a systems perspective. This means that we begin with the absolute basics and then show you how things can be put together to form something bigger than the mere sum of its individual parts. The reason is that we would like you to know, well, how to program, but far beyond that to understand the basic principles of computer science and how those combine to true magic. Programming skills and other skills beyond just programming derive from that, not the other way around.
 
-Let us give you an example of a formal language whose goal is not to develop code but instead to describe the *syntactic* structure of other formal languages, in particular programming languages and even assembly. This is computer science beyond just programming!
+Let us give you an example by focusing on a formal language whose goal is not to develop code but instead describe the *syntactic* structure of other formal languages, in particular programming languages and even assembly. This is computer science beyond just programming!
 
 ### EBNF Grammar
+
+Designing and then using formal languages comes with a number of fundamental challenges related to their *syntax* and their *semantics*. However, before we can even talk about their semantics, that is, their meaning we need to say what exactly a *sentence* in a formal language is in terms of its syntax regardless of its actual meaning. This is a *specification* problem. Moreover, reliably checking whether some possibly long sequence of characters is a sentence in a formal language requires constructing software that is able to do that for us. For example, whenever we write a program we would like to use a computer to check as fast as possible if the program is in fact, say, a C\* program never mind its actual meaning. This is an *implementation* problem.
+
+Specifying the syntax of a formal language and efficiently checking whether some sequence of characters is a sentence according to that syntax are prerequisites of constructing semantics. This may sound very complicated but computer scientists have figured out an elegant and efficient way for doing that. Here it is!
+
+How do we specify what, say, a decimal number is?
 
 ```
 decimal_number = digit { digit } .
