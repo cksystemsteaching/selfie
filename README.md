@@ -715,7 +715,7 @@ Let us give you an example by introducing a formal language whose purpose is not
 
 ### EBNF Grammar
 
-Inventing and then using formal languages comes with a number of fundamental challenges related to their *syntax* and their *semantics*. However, before we can even talk about their semantics, that is, their meaning we need to say what exactly a *sentence* in a formal language is in terms of its syntax regardless of its actual meaning. This is a *specification* problem. Moreover, reliably checking whether some possibly long sequence of characters is a sentence in a formal language requires constructing software that is able to do that for us. For example, whenever we write a program we would like to use a computer to check as fast as possible if the program is in fact, say, a C\* program never mind its actual meaning. This is an *implementation* problem.
+Inventing and then using formal languages comes with a number of fundamental challenges related to their *syntax* and their *semantics*. However, before we can even talk about their semantics, that is, their actual meaning we need to say what exactly a *sentence* in a formal language is in terms of its syntax regardless of its meaning. This is a *specification* problem. Moreover, reliably checking whether some possibly long sequence of characters is a sentence in a formal language requires constructing software that is able to do that for us. For example, whenever we write a program we would like to use a computer to check as fast as possible if the program is in fact, say, a C\* program never mind its actual meaning. This is an *implementation* problem.
 
 > Syntax is a prerequisite for semantics
 
@@ -737,11 +737,11 @@ The above grammar actually says that even a sequence of just `0`s is a decimal n
 
 > A non-terminal is like a variable, a terminal is like a value
 
-Here is a bit of terminology and background. Each line in EBNF is called a *production* where the left-hand side (LHS) of the production operator `=` is called a *non-terminal* such as `digit`, for example, which is similar to a variable. Their counterpart are *terminals* in double quotes such as `"0"`, for example, which are similar to a value. Anything between double quotes is meant to be part of the *vocabulary* of the language defined by the grammar while non-terminals can be named anything as long as there is not more than one production per non-terminal.
+Here is a bit of terminology and background. Each line in EBNF is called a *production* where the left-hand side (LHS) of the production operator `=` is called a *non-terminal* such as `digit`, for example, which is similar to a variable. Their counterpart is a *terminal* in double quotes such as `"0"`, for example, which is similar to a value. Anything between two double quotes is meant to be part of the *vocabulary* of the language defined by the grammar while non-terminals can be named anything as long as there is not more than one production per non-terminal.
 
 > A production is similar to an assignment in C\*
 
-The right-hand side (RHS) of `=` is an EBNF *expression* of non-terminals, terminals, and EBNF operators such as `{ }` and `|`, followed by a dot `.` at the end. Syntactically, EBNF productions and expressions are somewhat similar to assignments and arithmetic expressions in C\*, which we point out below. There is also two more EBNF operators that we introduce below along with the exact structure of EBNF expressions, using EBNF, of course.
+The right-hand side (RHS) of `=` is an EBNF *expression* of non-terminals, terminals, and EBNF operators such as `{ }` and `|`, followed by a dot `.` at the end. EBNF productions and expressions are similar to assignments and arithmetic expressions in C\*, which we point out below. There is also two more EBNF operators that we introduce below along with the exact structure of EBNF expressions, using EBNF, of course.
 
 So, how about defining what a hexadecimal number is? Here is the EBNF for that:
 
@@ -767,9 +767,13 @@ But this is still not the reason. We try squeezing everything into a single EBNF
 
 > A regular expression is an EBNF production with no non-terminals in its RHS
 
-Our definition of regular expressions is just one out of many possible definitions that are nevertheless all equivalent. Regular expressions are interesting because they are easy to implement using a *model of computation* even simpler than that of a processor called *finite state machine* (FSM). For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The tool chapter has more on that.
+Our definition of regular expressions is just one out of many possible definitions that are nevertheless all equivalent. Regular expressions are interesting because they are easy to implement using a *model of computation* even simpler than that of a RISC-U processor called *finite state machine* (FSM).
 
-There are, however, grammars that cannot be expressed in a single EBNF production and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF production. For simplicity, we show you here a context-free grammar in EBNF that defines C\* assignments involving just a subset of all possible arithmetic C\* expressions:
+> Specification by regular expression, implementation by finite state machine
+
+For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The tool chapter has more on that.
+
+There are, however, grammars that cannot be expressed in a single EBNF production and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF production. For simplicity, we show you here a context-free grammar in EBNF that defines C\* assignments involving just a subset of all possible arithmetic C\* expressions which nevertheless still require a context-free grammar:
 
 ```
 assignment = variable "=" expression .
@@ -786,7 +790,7 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 
 Let us first look at the productions for `letter`, and then `value` and `variable`. The production for `letter` is obviously intended to define the (regular) language of lowercase and uppercase letters. The dots `...` are not EBNF, they are just there to save space.
 
-A `value` is either a decimal or a hexadecimal number. A `variable` or better a `variable` name is bit more interesting. It is supposed to start with a letter which may be followed by any number of letters, digits, and underscores `_`, including none at all which would make it a single-letter name such as `x`, for example. By the way, there is a good reason why we want variable names to start with a letter. It allows us to know upon seeing the first character in a sequence of characters whether we are dealing with a variable or a value. This makes reading code easier for the machine, and maybe even for us.
+A `value` is either a decimal or a hexadecimal number. A `variable` or better a `variable` name is a bit more interesting. It is supposed to start with a letter which may be followed by any number of letters, digits, and underscores `_`, including none at all which would make it a single-letter name such as `x`, for example. By the way, there is a good reason why we want variable names to start with a letter. It allows us to know upon seeing the first character in a sequence of characters whether we are dealing with a variable or a value. This makes reading code easier for the machine, and maybe even for us.
 
 The language of variables and values are both regular. Try to check for yourself by transforming their productions into productions with no non-terminals in their RHSs! They get quite long but it is possible.
 
