@@ -4235,6 +4235,7 @@ void load_integer(uint64_t value) {
     entry = search_global_symbol_table(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
+      // allocate memory for big integer in data segment
       data_size = data_size + WORDSIZE;
 
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
@@ -4436,7 +4437,7 @@ uint64_t compile_factor() {
       get_symbol();
   }
 
-  // optional: [ cast ]
+  // optional: cast
   if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
 
@@ -5451,6 +5452,7 @@ void compile_cstar() {
             // global variable declaration
             get_symbol();
 
+            // uninitialized global variables are initialized to 0
             initial_value = 0;
           } else
             // type identifier "=" ...
@@ -5460,6 +5462,7 @@ void compile_cstar() {
           entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
+            // allocate memory for global variable in data segment
             data_size = data_size + WORDSIZE;
 
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
