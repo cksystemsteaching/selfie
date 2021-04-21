@@ -33,14 +33,16 @@ def print_grade(grade):
     println('\033[0m')
 
 
-def print_passed(msg):
+def print_passed(msg, command):
     println("\033[92m[PASSED]\033[0m " + msg)
+    if command != None:
+        print_command(command)
 
 
 def print_failed(msg, warning, output: str, command):
     println("\033[91m[FAILED]\033[0m " + msg)
     if command != None:
-        println(command)
+        print_command(command)
     if warning != None:
         println("\033[93m > " + warning + " <\033[0m")
 
@@ -61,6 +63,10 @@ def print_failed(msg, warning, output: str, command):
 
 
     println(' >> ' + output[:-1].replace('\n', '\n >> '))
+
+
+def print_command(command):
+    println("\033[33m" + command + "\033[0m")
 
 
 def print_message(message, end='\n', loud=False):
