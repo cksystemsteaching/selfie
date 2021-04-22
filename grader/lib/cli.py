@@ -13,7 +13,7 @@ from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
 from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
                        print_message, print_warning, print_grade, print_processing,
-                       stop_processing_spinner, print_passed, print_failed,
+                       stop_processing_spinner, print_passed, print_failed, print_command,
                        reset_truncate, set_truncate)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
@@ -85,6 +85,9 @@ def validate_options_for(assignment: Optional[Assignment]):
 
 
 def execute_with_output(check: Check) -> CheckResult:
+    if check.command:
+        print_command(check.command)
+
     print_processing(check.msg)
 
     try:
