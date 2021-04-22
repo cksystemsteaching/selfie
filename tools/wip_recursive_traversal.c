@@ -1378,7 +1378,7 @@ void print_states_and_livedeads() {
 // ---------------------------------------------------------------------------------
 
 uint64_t ANY = (uint64_t) -1; // matches anything
-uint64_t ANY_TEMPORARY = (uint64_t) -2; // use selfies is_temporary_register
+uint64_t ANY_TEMPORARY = (uint64_t) -2;
 uint64_t REPLACE = (uint64_t) -3;
 
 // The patter matcher will match the currently decoded instruction against these variables
@@ -1445,6 +1445,11 @@ void print_pattern_state() {
 
 // Match currently decoded instruction against current pattern's instruction
 uint64_t instruction_matches() {
+  // check that there are no in-edges
+  if (get_edges(inverse_cfg, pc)!= (uint64_t*) 0) {
+    return 0;
+  }
+
   // match_ir overrides
   if (match_ir != ANY) {
     if (match_ir == ir)
@@ -1453,6 +1458,7 @@ uint64_t instruction_matches() {
       return 0;
   }
 
+  // finally, check for a match
   if (match_rs1 != ANY) {
     if (match_rs1 == ANY_TEMPORARY) {
       if (!is_temporary_register(rs1))
@@ -1567,12 +1573,22 @@ uint64_t PATTERN_POINTER_RD3 = 0;
 // 0x910(~512): 0x02730333: mul t1,t1,t2
 // 0x914(~512): 0x006282B3: add t0,t0,t1
 //
-// Functions can assume that they will eventually be called with the current instruction decoded into selfie's is, rd, rs1, imm, ... variables.
+// Functions can assume that they will *eventually* be called with the current instruction decoded into selfie's is, rd, rs1, imm, ... variables.
 // That is, in the above example, is=ADDI, rd=REG_T2, rs1=REG_ZR, imm=8
 // This isn't guaranteed to happen in the first call to e.g. pattern_pointer(1), but in a subsequent call.
 
 
-// jal which only goes to next instruction
+
+// PATTERN: jal which only goes to next instruction
+//
+// Example:
+//
+// 0x800(~506): 0x0040006F: jal zero,1[0x804]
+//
+// to:
+//
+// 0x800(~506): 0x00000013: nop
+//
 void pattern_jal_nop(uint64_t matched_instructions) {
   number_of_instructions_in_pattern = 1;
 
@@ -1580,6 +1596,10 @@ void pattern_jal_nop(uint64_t matched_instructions) {
   match_ir = 4194415;
 }
 
+
+
+// PATTERN: Pointer dereference
+//
 // Example:
 //
 // 0x908(~512): 0x00300313: addi t1,zero,3
@@ -1589,7 +1609,7 @@ void pattern_jal_nop(uint64_t matched_instructions) {
 //
 // to
 //
-// 0x87C(~510): 0x006282B3: addi t0,t0,24
+// 0x908(~512): 0x006282B3: addi t0,t0,24
 //
 // Also: check if t1, t2 are dead; plus no jumps to those instructions
 void pattern_pointer(uint64_t matched_instructions) {
@@ -1676,13 +1696,18 @@ void patch_peephole(uint64_t pattern) {
   number_of_matches = 0;
 
   while (last_match != -1) {
-    printf1("%x\tmatches: ", (char*) last_match);
-    print_instruction();
-    print("\n");
+
+    if (opt_debug == 2) {
+      printf1("%x\tmatches: ", (char*) last_match);
+      print_instruction();
+      print("\n");
+    }
+
     number_of_matches = number_of_matches + 1;
     insert_nops(last_match, number_of_instructions_in_pattern);
     replace_pattern(last_match);
-    // move on past the last instruction in this pattern
+
+    // move past the last instruction in this pattern
     last_match = last_match + (number_of_instructions_in_pattern * INSTRUCTIONSIZE);
     last_match = next_match(last_match);
   }
@@ -1716,6 +1741,18 @@ uint64_t find_next_dead_op(uint64_t from_pc) {
 
 uint64_t number_of_dead_ops;
 
+
+// not in use - broken in weird ways. otherwise; add this code in main()
+//print("patching DEAD_OP... ");
+//selfie_traverse();
+//patch_dead_ops();
+//printf1("found %d", (char*) number_of_dead_ops);
+//selfie_traverse();
+//patch_dead_ops();
+//printf1(" + %d", (char*) number_of_dead_ops);
+//selfie_traverse();
+//patch_dead_ops();
+//printf1(" + %d instances\n", (char*) number_of_dead_ops);
 void patch_dead_ops() {
   uint64_t last_dead_op;
   last_dead_op = find_next_dead_op(0);
@@ -1821,32 +1858,26 @@ int main(int argc, char **argv) {
   // OPTIMIZATION PASSES //
   /////////////////////////
 
-  // TODO un-unroll this
+  print("patching JAL_NOP... ");
   selfie_traverse();
-  //print_states_and_livedeads();
-  //patch_enops();
+  patch_peephole(PATTERN_JAL_NOP);
+  printf1("found %d instances\n", (char*) number_of_matches);
 
-  //patch_peephole(PATTERN_JAL_NOP);
-  //printf1("found %d JAL_NOP\n", (char*) number_of_matches);
-  //printf1("found %d enops\n", (char*) number_of_enops);
-
+  print("patching POINTER_DEREF... ");
+  selfie_traverse();
   patch_peephole(PATTERN_POINTER);
-  printf1("found %d POINTER\n", (char*) number_of_matches);
+  printf1("found %d instances\n", (char*) number_of_matches);
 
-  //selfie_traverse();
-  //patch_dead_ops();
-  //printf1("pass 1: found %d dead ops\n", (char*) number_of_dead_ops);
-
-  //selfie_traverse();
-  //patch_dead_ops();
-  //printf1("pass 2: found %d dead ops\n", (char*) number_of_dead_ops);
-
-  //selfie_traverse();
-  //patch_dead_ops();
-  //printf1("pass 3: found %d dead ops\n", (char*) number_of_dead_ops);
+  // needs to go after peephole optimizations
+  print("patching ENOP... ");
+  selfie_traverse();
+  patch_enops();
+  printf1("found %d instances\n", (char*) number_of_enops);
 
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  print("passes completed!\n");
 
   binary_name = replace_extension(binary_name, "opt");
   selfie_output(binary_name);
