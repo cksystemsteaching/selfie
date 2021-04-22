@@ -1444,6 +1444,7 @@ void print_pattern_state() {
 }
 
 // Match currently decoded instruction against current pattern's instruction
+// TODO: check that non-ANY registers are dead
 uint64_t instruction_matches() {
   // check that there are no in-edges
   if (get_edges(inverse_cfg, pc)!= (uint64_t*) 0) {
@@ -1552,16 +1553,22 @@ uint64_t next_match(uint64_t from_pc) {
 // ----------------------------- PATTERN LIBRARY ------------------------------
 // ----------------------------------------------------------------------------
 
-uint64_t PATTERN_NONE = 0;
+uint64_t PATTERN_NONE    = 0;
 uint64_t PATTERN_JAL_NOP = 1;
 uint64_t PATTERN_POINTER = 2;
+uint64_t PATTERN_RETC    = 3;
+uint64_t PATTERN_RELOAD  = 4;
+
 
 // variables to hold state specific to a pattern, required to perform the substitution
+
 uint64_t PATTERN_POINTER_VAL1 = 0;
 uint64_t PATTERN_POINTER_VAL2 = 0;
 uint64_t PATTERN_POINTER_RD1 = 0;
 uint64_t PATTERN_POINTER_RD2 = 0;
 uint64_t PATTERN_POINTER_RD3 = 0;
+
+uint64_t PATTERN_RETC_VAL = 0;
 
 
 // The "API" exposed here is simple:
@@ -1598,6 +1605,74 @@ void pattern_jal_nop(uint64_t matched_instructions) {
 
 
 
+// PATTERN: return constant. Avoid using a temporary
+//
+// Example:
+//
+// 0x6874(~2615): 0x00100293: addi t0,zero,1
+// 0x6878(~2615): 0x00028513: addi a0,t0,0
+//
+// to:
+//
+// 0x6878(~2615): 0x00028513: addi a0,zero,1
+//
+void pattern_retc(uint64_t matched_instructions) {
+  number_of_instructions_in_pattern = 2;
+
+  if (matched_instructions == 0) {
+    match_is = ADDI;
+    match_rd = REG_T0;
+    match_rs1 = REG_ZR;
+    PATTERN_RETC_VAL = imm;
+
+  } else if (matched_instructions == 1) {
+    match_is = ADDI;
+    match_rd = REG_A0;
+    match_rs1 = REG_T0;
+    match_imm = 0;
+  }
+}
+
+void pattern_retc_replace(uint64_t position) {
+  store_instruction(position, encode_i_format(PATTERN_RETC_VAL, REG_ZR, F3_ADDI, REG_A0, OP_IMM));
+}
+
+
+
+// PATTERN: load/unload. selfie seems to emit a few useless instructions here
+//
+// Example:
+//
+// 0x7F4(~506): 0x00050293: addi t0,a0,0
+// 0x7F8(~506): 0x00000513: addi a0,zero,0
+// 0x7FC(~506): 0x00028513: addi a0,t0,0
+//
+void pattern_reload(uint64_t matched_instructions) {
+  number_of_instructions_in_pattern = 3;
+
+  if (matched_instructions == 0) {
+    match_is = ADDI;
+    match_rd = REG_T0;
+    match_rs1 = REG_A0;
+    match_imm = 0;
+
+  } else if (matched_instructions == 1) {
+    match_is = ADDI;
+    match_rd = REG_A0;
+    match_rs1 = REG_ZR;
+    match_imm = 0;
+
+  } else if (matched_instructions == 2) {
+    match_is = ADDI;
+    match_rd = REG_A0;
+    match_rs1 = REG_T0;
+    match_imm = 0;
+
+  }
+}
+
+
+
 // PATTERN: Pointer dereference
 //
 // Example:
@@ -1611,11 +1686,8 @@ void pattern_jal_nop(uint64_t matched_instructions) {
 //
 // 0x908(~512): 0x006282B3: addi t0,t0,24
 //
-// Also: check if t1, t2 are dead; plus no jumps to those instructions
 void pattern_pointer(uint64_t matched_instructions) {
   number_of_instructions_in_pattern = 4;
-
-  reset_pattern_matcher();
 
   if (matched_instructions == 0) {
     match_is = ADDI;
@@ -1651,15 +1723,23 @@ void pattern_pointer_replace(uint64_t position) {
 }
 
 void update_pattern(uint64_t matched_instructions) {
+  reset_pattern_matcher();
+
   if (current_pattern == PATTERN_JAL_NOP)
     pattern_jal_nop(matched_instructions);
   else if (current_pattern == PATTERN_POINTER)
     pattern_pointer(matched_instructions);
+  else if (current_pattern == PATTERN_RETC)
+    pattern_retc(matched_instructions);
+  else if (current_pattern == PATTERN_RELOAD)
+    pattern_reload(matched_instructions);
 }
 
 void replace_pattern(uint64_t position) {
   if (current_pattern == PATTERN_POINTER)
     pattern_pointer_replace(position);
+  else if (current_pattern == PATTERN_RETC)
+    pattern_retc_replace(position);
 }
 
 
@@ -1840,7 +1920,7 @@ void patch_enops() {
 // -----------------------------------------------------------------
 
 int main(int argc, char **argv) {
-  uint64_t enop;
+  uint64_t total = 0;
 
   init_selfie((uint64_t) argc, (uint64_t *) argv);
 
@@ -1858,27 +1938,42 @@ int main(int argc, char **argv) {
   // OPTIMIZATION PASSES //
   /////////////////////////
 
+  print("patching RELOAD... ");
+  selfie_traverse();
+  patch_peephole(PATTERN_RELOAD);
+  total = total + number_of_matches;
+  printf1("%d hits\n", (char*) number_of_matches);
+
+  print("patching RETC... ");
+  selfie_traverse();
+  patch_peephole(PATTERN_RETC);
+  total = total + number_of_matches;
+  printf1("%d hits\n", (char*) number_of_matches);
+
   print("patching JAL_NOP... ");
   selfie_traverse();
   patch_peephole(PATTERN_JAL_NOP);
-  printf1("found %d instances\n", (char*) number_of_matches);
+  total = total + number_of_matches;
+  printf1("%d hits\n", (char*) number_of_matches);
 
   print("patching POINTER_DEREF... ");
   selfie_traverse();
   patch_peephole(PATTERN_POINTER);
-  printf1("found %d instances\n", (char*) number_of_matches);
+  total = total + number_of_matches;
+  printf1("%d hits\n", (char*) number_of_matches);
 
   // needs to go after peephole optimizations
   print("patching ENOP... ");
   selfie_traverse();
   patch_enops();
-  printf1("found %d instances\n", (char*) number_of_enops);
+  // number_of_enops also counts previously replaces instructions, so we discount it here
+  printf1("%d hits\n", (char*) (number_of_enops - total));
 
+  
+
+  printf1("passes completed! total: %d hits\n", (char*) number_of_enops);
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  print("passes completed!\n");
-
   binary_name = replace_extension(binary_name, "opt");
   selfie_output(binary_name);
   selfie_disassemble(1);
