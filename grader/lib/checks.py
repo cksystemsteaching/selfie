@@ -9,7 +9,7 @@ from .model import Check, CheckResult
 from .output_processing import (filter_status_messages, has_compiled,
                                 has_no_compile_warnings, has_no_bootstrapping_compile_warnings, 
                                 is_interleaved_output, is_permutation_of)
-from .print import print_processing, print_warning, stop_processing_spinner, print_command
+from .print import print_processing, print_warning, stop_processing_spinner
 from .system import INSTRUCTIONSIZE, WORDSIZE, read_data, read_instruction
 
 if sys.version_info < (3, 3):

@@ -61,10 +61,6 @@ def print_failed(msg, warning, output: str, command):
     println(' >> ' + output[:-1].replace('\n', '\n >> '))
 
 
-def print_command(command):
-    println("\033[33m" + command + "\033[0m")
-
-
 def print_message(message, end='\n', loud=False):
     println(message, end=end, loud=loud)
 
@@ -105,8 +101,11 @@ class SpinnerThread(threading.Thread):
 spinner_thread = None
 
 
-def print_processing(msg):
+def print_processing(msg, command=''):
     global spinner_thread
+
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
 
     spinner_thread = SpinnerThread(msg)
     spinner_thread.daemon = True  # die when parent dies
