@@ -794,19 +794,21 @@ Let us first look at the productions for `letter`, and then `value` and `variabl
 
 A `value` is either a decimal or a hexadecimal number. A `variable` or better a `variable` name is a bit more interesting. It is supposed to start with a letter which may be followed by any number of letters, digits, and underscores `_`, including none at all which would make it a single-letter name such as `x`, for example. By the way, there is a good reason why we want variable names to start with a letter. It allows us to know upon seeing the first character in a sequence of characters whether we are dealing with a variable or a value. This makes reading code easier for the machine, and maybe even for us.
 
-The language of variables and values are both regular. Check yourself by transforming their productions into productions with no non-terminals in their RHSs! They get quite long but it is possible.
+The language of variables and values are both regular. You may want to follow up on that and check their regularity by transforming their productions into productions with no non-terminals in their RHSs! They get quite long but it is possible.
 
 So, how does a language look like that is not regular? The language of arithmetic expressions is an example, and as a consequence of that, the language of assignments as well since an `assignment` is obviously a `variable` followed by the assignment operator `=` followed by an `expression`.
 
-Let us go through the EBNF of an `expression` step by step. An `expression` is a `term` possibly followed by any number of either an addition operator `+` or a subtraction operator `-` followed by another `term`. In turn, a `term` is a `factor` possibly followed by any number of either a multiplication operator `*` or a division operator `/` followed by another `factor`. Finally, a `factor` is either a `variable` or a `value` or, and this where it gets interesting, a left parenthesis `(` followed by an `expression` followed by a right parenthesis `)`.
+Let us go through the EBNF of an `expression` step by step. An `expression` is a `term` possibly followed by any number of either an addition operator `+` or a subtraction operator `-` followed by another `term`. In turn, a `term` is a `factor` possibly followed by any number of either a multiplication operator `*` or a division operator `/` followed by another `factor`. Finally, a `factor` is either a `variable` or a `value` or, and this where it gets interesting, a left parenthesis `(` followed by, well, an `expression` followed by a right parenthesis `)`.
 
-The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. But we do want the recursion because it allows us to *structure* expressions using parenthesis as grouping operators for overruling the precedence of arithmetic operators. Recall the above procedure `fancy` which involves such an expression:
+The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. But we do want the recursion because it allows us to *structure* expressions using parenthesis as grouping operators for overruling the precedence of arithmetic operators. Recall the above procedure `fancy` which involves such an expression:
 
 ```
 int fancy(int n) {
   return n * (n + 1) - n / 2 + 42;
 }
 ```
+
+Without grouping `n + 1` in `n * (n + 1) - n / 2 + 42` the meaning of the expression would be different, namely `(n * n) + 1 - n / 2 + 42`, or even more explicitly `(n * n) + 1 - (n / 2) + 42`. Multiplication and division operators usually have precedence over addition and subtraction operators. Thus `(n * n) + 1 - n / 2 + 42` and `(n * n) + 1 - (n / 2) + 42` and even `n * n + 1 - n / 2 + 42` are all *semantically* equivalent.
 
 TODO: Why is it called context-free? Counting...FSM + stack...
 
