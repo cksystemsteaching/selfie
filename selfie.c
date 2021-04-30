@@ -4981,6 +4981,7 @@ void compile_statement() {
   char* variable_or_procedure_name;
   uint64_t* entry;
   uint64_t offset;
+  uint64_t pointer_is_expression;
 
   // assert: allocated_temporaries == 0
 
@@ -4997,80 +4998,58 @@ void compile_statement() {
   if (symbol == SYM_ASTERISK) {
     get_symbol();
 
-    // "*" variable
-    if (symbol == SYM_IDENTIFIER) {
-      ltype = load_variable_or_big_int(identifier, VARIABLE);
-
-      if (ltype != UINT64STAR_T)
-        type_warning(UINT64STAR_T, ltype);
-
+    // "*" "(" expression ")"
+    if (symbol == SYM_LPARENTHESIS) { // we've seen parenthesis
       get_symbol();
+      pointer_is_expression = 1;
+    } else {
+      // or "*" variable
+      pointer_is_expression = 0;
 
-      // "*" variable "="
-      if (symbol == SYM_ASSIGN) {
-        get_symbol();
+      // neither "*" variable nor "*" "(" expression ")"
+      if (symbol != SYM_IDENTIFIER)
+        syntax_error_symbol(SYM_LPARENTHESIS);
+    }
 
-        rtype = compile_expression();
+    // *x == *(x + 0)
+    ltype = compile_expression();
 
-        if (rtype != UINT64_T)
-          type_warning(UINT64_T, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
-
-        tfree(2);
-
-        number_of_assignments = number_of_assignments + 1;
-      } else {
-        syntax_error_symbol(SYM_ASSIGN);
-
-        tfree(1);
-      }
-
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+    if (ltype != UINT64STAR_T)
+      type_warning(UINT64STAR_T, ltype);
 
     // "*" "(" expression ")"
-    } else if (symbol == SYM_LPARENTHESIS) {
+    if (pointer_is_expression) {
+      if (symbol != SYM_RPARENTHESIS) 
+        syntax_error_symbol(SYM_RPARENTHESIS);
+      else
+        get_symbol();
+    }
+
+    // "*" "(" expression ")" "=" or "*" variable "="
+    if (symbol == SYM_ASSIGN) {
       get_symbol();
 
-      ltype = compile_expression();
+      rtype = compile_expression();
 
-      if (ltype != UINT64STAR_T)
-        type_warning(UINT64STAR_T, ltype);
+      if (rtype != UINT64_T)
+        type_warning(UINT64_T, rtype);
 
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
+      emit_store(previous_temporary(), 0, current_temporary());
 
-        // "*" "(" expression ")" "="
-        if (symbol == SYM_ASSIGN) {
-          get_symbol();
+      tfree(2);
 
-          rtype = compile_expression();
+      number_of_assignments = number_of_assignments + 1;
+    } else {
+      syntax_error_symbol(SYM_ASSIGN);
 
-          if (rtype != UINT64_T)
-            type_warning(UINT64_T, rtype);
+      tfree(1);
+    }
 
-          emit_store(previous_temporary(), 0, current_temporary());
+    if (symbol == SYM_SEMICOLON)
+      get_symbol();
+    else
+      syntax_error_symbol(SYM_SEMICOLON);
 
-          tfree(2);
-
-          number_of_assignments = number_of_assignments + 1;
-        } else {
-          syntax_error_symbol(SYM_ASSIGN);
-
-          tfree(1);
-        }
-
-        if (symbol == SYM_SEMICOLON)
-          get_symbol();
-        else
-          syntax_error_symbol(SYM_SEMICOLON);
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
   }
   // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
