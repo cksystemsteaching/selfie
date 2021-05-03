@@ -41,7 +41,7 @@ class TestExecution(TestCase):
 
             return CheckResult(True, "", "", "")
         
-        return [Check("execution_mock", execution)]
+        return [Check("execution_mock", "", execution)]
 
 
     @patch('self.check_mipster_execution')

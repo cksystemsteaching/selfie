@@ -85,7 +85,7 @@ def validate_options_for(assignment: Optional[Assignment]):
 
 
 def execute_with_output(check: Check) -> CheckResult:
-    print_processing(check.msg)
+    print_processing(check.msg, check.command)
 
     try:
         result = check.execute()
@@ -93,7 +93,7 @@ def execute_with_output(check: Check) -> CheckResult:
         stop_processing_spinner()
 
     if result.result == result.should_succeed:
-        print_passed(check.msg)
+        print_passed(check.msg, result.command)
     else:
         print_failed(check.msg, result.warning, result.output, result.command)
 
