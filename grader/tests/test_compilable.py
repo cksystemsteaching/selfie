@@ -29,7 +29,7 @@ class TestCompilable(unittest.TestCase):
                                  'compiling ' + file + ' with gcc leads to no error')
             return CheckResult(True, "unittest", "", "")
 
-        return [Check("compilable_check_mock", execute)]
+        return [Check("compilable_check_mock", "", execute)]
 
     def save_assignment(self, assignment):
         self.assignment = assignment.category

@@ -45,7 +45,7 @@ class TestCli(unittest.TestCase):
 
             return CheckResult(True, '', '', '')
 
-        return [Check('', lambda: assert_order(n_th_baseline))]
+        return [Check('', '', lambda: assert_order(n_th_baseline))]
 
     def check_assignment_mock(self) -> List[Check]:
         def assert_executed_after_baseline() -> CheckResult:
@@ -53,7 +53,7 @@ class TestCli(unittest.TestCase):
 
             return CheckResult(True, '', '', '')
 
-        return [Check('', assert_executed_after_baseline)]
+        return [Check('', '', assert_executed_after_baseline)]
 
     def test_baseline_execution_order(self):
         with CaptureOutput():
