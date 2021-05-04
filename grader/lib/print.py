@@ -34,10 +34,14 @@ def print_grade(grade):
 
 
 def print_passed(msg, command):
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
     println("\033[92m[PASSED]\033[0m " + msg)
 
 
 def print_failed(msg, warning, output: str, command):
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
     println("\033[91m[FAILED]\033[0m " + msg)
     if warning != None:
         println("\033[93m > " + warning + " <\033[0m")
