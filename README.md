@@ -798,7 +798,7 @@ The language of variables and values are both regular. You may want to follow up
 
 So, how does a language look like that is not regular? The language of arithmetic expressions is an example, and as a consequence of that, the language of assignments as well since an `assignment` is obviously a `variable` followed by the assignment operator `=` followed by an `expression`.
 
-Let us go through the EBNF of an `expression` step by step. An `expression` is a `term` possibly followed by any number of either an addition operator `+` or a subtraction operator `-` followed by another `term`. In turn, a `term` is a `factor` possibly followed by any number of either a multiplication operator `*` or a division operator `/` followed by another `factor`. Finally, a `factor` is either a `variable` or a `value` or, and this where it gets interesting, a left parenthesis `(` followed by, well, an `expression` followed by a right parenthesis `)`.
+Let us go through the EBNF of an `expression` step by step. An `expression` is a `term` possibly followed by any number of either an addition operator `+` or a subtraction operator `-` followed by another `term`. In turn, a `term` is a `factor` possibly followed by any number of either a multiplication operator `*` or a division operator `/` followed by another `factor`. Finally, a `factor` is either a `variable` or a `value` or, and this is where it gets interesting, a left parenthesis `(` followed by, well, an `expression` followed by a right parenthesis `)`.
 
 The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. But we do want the recursion because it allows us to *structure* expressions using parenthesis as grouping operators for overruling the precedence of arithmetic operators. Recall the above procedure `fancy` which involves such an expression:
 
@@ -808,7 +808,58 @@ int fancy(int n) {
 }
 ```
 
-Without grouping `n + 1` in `n * (n + 1) - n / 2 + 42` the meaning of the expression would be different, namely `(n * n) + 1 - n / 2 + 42`, or even more explicitly `(n * n) + 1 - (n / 2) + 42`. Multiplication and division operators usually have precedence over addition and subtraction operators. Thus `(n * n) + 1 - n / 2 + 42` and `(n * n) + 1 - (n / 2) + 42` and even `n * n + 1 - n / 2 + 42` are all *semantically* equivalent.
+Without grouping `n + 1` in `n * (n + 1) - n / 2 + 42`, the meaning of the expression would be different, namely `(n * n) + 1 - n / 2 + 42`, or even more explicitly `(n * n) + 1 - (n / 2) + 42`. Multiplication and division operators usually have precedence over addition and subtraction operators. Thus `(n * n) + 1 - n / 2 + 42` and `(n * n) + 1 - (n / 2) + 42` and even `n * n + 1 - n / 2 + 42` are all *semantically* equivalent.
+
+```
+             _____________
+             |       |   |
+expression: "+"     "-" "+"
+            / \       \   \
+term:     "*"  \     "/"   \
+          / \   \    / \    \
+factor:  n   n   1  n   2    42
+```
+
+```
+psh: expression:                                         n * n + 1 - n / 2 + 42
+psh: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
+psh: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
+app: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
+psh: { ("+" | "-") term }:                               + 1 - n / 2 + 42
+pop: term { ("+" | "-") term }:                          1 - n / 2 + 42
+psh: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
+psh: { ("+" | "-") term }:                               - n / 2 + 42
+pop: term { ("+" | "-") term }:                          n / 2 + 42
+psh: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
+pop: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
+pop: { ("+" | "-") term }:                               42
+psh: term { ("+" | "-") term }:                          42
+psh: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
+pop: { ("*" | "/") factor } { ("+" | "-") term }:
+pop: { ("+" | "-") term }:
+pop: :
+```
+
+```
+             ___________
+             |         |
+expression: "-"       "+"
+            / \____     \
+term:     "*"      "/"   \
+          / \      / \    \
+factor:  n "( )"  n   2    42
+             |
+expression: "+"
+            / \
+term:      /   \
+          /     \
+factor:  n       1
+```
 
 TODO: Why is it called context-free? Counting...FSM + stack...
 
