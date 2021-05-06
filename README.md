@@ -800,7 +800,10 @@ So, how does a language look like that is not regular? The language of arithmeti
 
 Let us go through the EBNF of an `expression` step by step. An `expression` is a `term` possibly followed by any number of either an addition operator `+` or a subtraction operator `-` followed by another `term`. In turn, a `term` is a `factor` possibly followed by any number of either a multiplication operator `*` or a division operator `/` followed by another `factor`. Finally, a `factor` is either a `variable` or a `value` or, and this is where it gets interesting, a left parenthesis `(` followed by, well, an `expression` followed by a right parenthesis `)`.
 
-The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. But we do want the recursion because it allows us to *structure* expressions using parenthesis as grouping operators for overruling the precedence of arithmetic operators. Recall the above procedure `fancy` which involves such an expression:
+> Recursion in EBNF enables arbitrarily nested structures
+
+The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested* subexpressions and not just terms of factors.
+Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
 
 ```
 int fancy(int n) {
@@ -808,7 +811,7 @@ int fancy(int n) {
 }
 ```
 
-Without grouping `n + 1` in `n * (n + 1) - n / 2 + 42`, the meaning of the expression would be different, namely `(n * n) + 1 - n / 2 + 42`, or even more explicitly `(n * n) + 1 - (n / 2) + 42`. Multiplication and division operators usually have precedence over addition and subtraction operators. Thus `(n * n) + 1 - n / 2 + 42` and `(n * n) + 1 - (n / 2) + 42` and even `n * n + 1 - n / 2 + 42` are all *semantically* equivalent.
+The subexpression `(n + 1)` in `n * (n + 1) - n / 2 + 42` may in fact be any arithmetic expression which is only possible because of recursion in the EBNF for expressions. Without recursion we can only say something like `n * n + 1 - n / 2 + 42`, for example, which is *semantically* equivalent to `(n * n) + 1 - (n / 2) + 42` since multiplication and division operators have precedence over addition and subtraction operators. This is even more apparent when looking at the *structure* of `n * n + 1 - n / 2 + 42` in its *derivation tree*, here using a text-based form of picture called ASCII art:
 
 ```
              _____________
@@ -818,6 +821,30 @@ expression: "+"     "-" "+"
 term:     "*"  \     "/"   \
           / \   \    / \    \
 factor:  n   n   1  n   2    42
+```
+
+The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. By the way, trees in computer science are generally shown upside down with the root at the top and the leaves at the bottom. With the derivation tree it is easy to calculate the value of the expression. Given a value for `n`, say, `4`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. The result is `57`.
+
+> Grammars define syntax but may also have an effect on semantics
+
+What if we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange "+" and "*" as well as "-" and "/" in the EBNF for expressions. In other words, grammars may have an effect on semantics, not just syntax!
+
+Fortunately, recursion in EBNF even allows us to control the structure of expressions in order to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example.
+
+```
+             ___________
+             |         |
+expression: "-"       "+"
+            / \____     \
+term:     "*"      "/"   \
+          / \      / \    \
+factor:  n "( )"  n   2    42
+             |
+expression: "+"
+            / \
+term:      /   \
+          /     \
+factor:  n       1
 ```
 
 ```
@@ -844,22 +871,6 @@ POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
 POP: { ("*" | "/") factor } { ("+" | "-") term }:
 POP: { ("+" | "-") term }:
      :
-```
-
-```
-             ___________
-             |         |
-expression: "-"       "+"
-            / \____     \
-term:     "*"      "/"   \
-          / \      / \    \
-factor:  n "( )"  n   2    42
-             |
-expression: "+"
-            / \
-term:      /   \
-          /     \
-factor:  n       1
 ```
 
 TODO: Why is it called context-free? Counting...FSM + stack...
