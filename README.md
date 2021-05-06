@@ -821,28 +821,29 @@ factor:  n   n   1  n   2    42
 ```
 
 ```
-psh: expression:                                         n * n + 1 - n / 2 + 42
-psh: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
-psh: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
-app: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
-psh: { ("+" | "-") term }:                               + 1 - n / 2 + 42
-pop: term { ("+" | "-") term }:                          1 - n / 2 + 42
-psh: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
-psh: { ("+" | "-") term }:                               - n / 2 + 42
-pop: term { ("+" | "-") term }:                          n / 2 + 42
-psh: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
-pop: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
-pop: { ("+" | "-") term }:                               42
-psh: term { ("+" | "-") term }:                          42
-psh: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
-pop: { ("*" | "/") factor } { ("+" | "-") term }:
-pop: { ("+" | "-") term }:
-pop: :
+PSH: :                                                   n * n + 1 - n / 2 + 42
+PSH: expression:                                         n * n + 1 - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
+PSH: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
+PSH: { ("+" | "-") term }:                               + 1 - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
+PSH: { ("+" | "-") term }:                               - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
+PSH: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
+PSH: { ("+" | "-") term }:                               + 42
+PSH: term { ("+" | "-") term }:                          42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:
+POP: { ("+" | "-") term }:
+     :
 ```
 
 ```
