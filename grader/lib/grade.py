@@ -3,21 +3,6 @@ from lib.model import CheckResult
 from lib.print import (print_failed, print_grade, print_loud, print_passed,
                        print_warning, stop_processing_spinner)
 
-
-def record_result(result, msg, output, warning, should_succeed=True, command=None, mandatory=False):
-    print("blaaaaa")
-    global results
-
-    stop_processing_spinner()
-
-    # results.append((result, should_succeed, mandatory))
-
-    if result == should_succeed:
-        print_passed(msg)
-    else:
-        print_failed(msg, command, output, warning)
-
-
 def grade(results: List[CheckResult]) -> Tuple[int, List[str]]:
     if len(results) == 0:
         return
