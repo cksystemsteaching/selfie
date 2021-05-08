@@ -126,20 +126,26 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
 
                 try:
                     with open('.tmp.bin', 'rb') as f:
-                        ignored_elf_header_size = 14 * WORDSIZE
+                        # Read the code start/length out of the program header
+                        # (p_filesz in the ELF program header)
+                        # -> Ignore 12 words
+                        #    (8 ELF header + 1 partial ELF program header)
+                        # CAUTION: These offset values do currently work with
+                        #          Selfie's ELF64 binaries, only!
+                        ignored_elf_header_size = 9 * WORDSIZE
 
-                        f.read(ignored_elf_header_size)
+                        # Between code start and length, fields p_vaddr
+                        # and p_paddr are located
+                        ignored_elf_pheader_seek = 2 * WORDSIZE
+
+                        f.seek(ignored_elf_header_size)
 
                         code_start = read_data(f)
+                        f.read(ignored_elf_pheader_seek)
                         code_length = read_data(f)
 
                         # ignore all pading bytes
-                        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * WORDSIZE
-
-                        if no_of_bytes_until_code < 0:
-                            no_of_bytes_until_code = 0
-
-                        f.read(no_of_bytes_until_code)
+                        f.seek(code_start)
 
                         # read all RISC-V instructions from binary
                         read_instructions = map(lambda x: read_instruction(
