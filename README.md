@@ -731,7 +731,7 @@ decimal_number = digit { digit } .
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
 ```
 
-Similar to C\* code, EBNF reads like a sentence in English: a decimal number is a digit followed by any number of digits, as indicated by the *repetition* operator `{ }`, which includes zero repetitions, and a digit is either `0` or `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9`, as indicated by the choice operator `|`. That was easy, right? Well, there is a tiny mistake in there. Can you spot it?
+Similar to C\* code, EBNF reads like a sentence in English: a decimal number is a digit followed by any number of digits, as indicated by the *repetition* operator `{ }`, which includes zero repetitions, and a digit is either `0` or `1` or `2` or `3` or `4` or `5` or `6` or `7` or `8` or `9`, as indicated by the *choice* operator `|`. That was easy, right? Well, there is a tiny mistake in there. Can you spot it?
 
 The above grammar actually says that even a sequence of just `0`s is a decimal number, for example, `00000`. We call that a *bug*, just like a bug in software. Well, we do not want bugs in our grammar, but leave it up to you to fix, that is, *debug* it as an exercise. Hint: you need to define what a non-zero digit is and then use that in the right place.
 
@@ -767,11 +767,11 @@ But this is still not the reason. We try squeezing everything into a single EBNF
 
 > A regular expression is an EBNF production with no non-terminals in its RHS
 
-Our definition of regular expressions is just one out of many possible definitions that are nevertheless all equivalent. Regular expressions are interesting because they are easy to implement using a *model of computation* even simpler than that of a RISC-U processor called *finite state machine* (FSM).
+Our definition of regular expressions is just one out of many possible definitions that are nevertheless all equivalent. Regular expressions are interesting because they are easy to implement using an abstract *model of computation* called *finite state machine* (FSM) which is even simpler than that of a processor but still capable of doing useful work.
 
 > Specification by regular expression, implementation by finite state machine
 
-For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The tool chapter has more on that.
+For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The key idea is to match those characters with terminals in the regular expression which is exactly what an FSM can do, not more but also not less. The tool chapter has more on that.
 
 There are, however, grammars that cannot be expressed in a single EBNF production and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF production. For simplicity, we show you here a context-free grammar in EBNF that defines C\* assignments involving just a subset of all possible arithmetic C\* expressions which nevertheless still require a context-free grammar:
 
@@ -802,7 +802,7 @@ Let us go through the EBNF of an `expression` step by step. An `expression` is a
 
 > Recursion in EBNF enables arbitrarily nested structures
 
-The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested* subexpressions and not just terms of factors.
+The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors.
 Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
 
 ```
@@ -811,7 +811,7 @@ int fancy(int n) {
 }
 ```
 
-The subexpression `(n + 1)` in `n * (n + 1) - n / 2 + 42` may in fact be any arithmetic expression which is only possible because of recursion in the EBNF for expressions. Without recursion we can only say something like `n * n + 1 - n / 2 + 42`, for example, which is *semantically* equivalent to `(n * n) + 1 - (n / 2) + 42` since multiplication and division operators have precedence over addition and subtraction operators. This is even more apparent when looking at the *structure* of `n * n + 1 - n / 2 + 42` in its *derivation tree*, here using a text-based form of picture called ASCII art:
+The subexpression `(n + 1)` in `n * (n + 1) - n / 2 + 42` may in fact be any arithmetic expression which is only possible because of recursion in the EBNF of expressions. Without recursion we can only say something like `n * n + 1 - n / 2 + 42`, for example, which is *semantically* equivalent to `(n * n) + 1 - (n / 2) + 42` since multiplication and division operators have precedence over addition and subtraction operators. This is even more apparent when looking at the *structure* of `n * n + 1 - n / 2 + 42` in its *derivation tree*, here using a text-based form of pictures called ASCII art:
 
 ```
              _____________
@@ -827,9 +827,9 @@ The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. B
 
 > Grammars define syntax but may also have an effect on semantics
 
-What if we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange "+" and "*" as well as "-" and "/" in the EBNF for expressions. In other words, grammars may have an effect on semantics, not just syntax!
+What if for some reason we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange "+" and "*" as well as "-" and "/" in the EBNF of expressions. In other words, grammars may have an effect on semantics, not just syntax!
 
-Fortunately, recursion in EBNF even allows us to control the structure of expressions in order to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example.
+Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
 
 ```
              ___________
@@ -847,33 +847,17 @@ term:      /   \
 factor:  n       1
 ```
 
-```
-PSH: :                                                   n * n + 1 - n / 2 + 42
-PSH: expression:                                         n * n + 1 - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
-PSH: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
-PSH: { ("+" | "-") term }:                               + 1 - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
-PSH: { ("+" | "-") term }:                               - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
-PSH: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
-PSH: { ("+" | "-") term }:                               + 42
-PSH: term { ("+" | "-") term }:                          42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:
-POP: { ("+" | "-") term }:
-     :
-```
+To calculate the value of the expression, again with `4` as value for `n`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. This time the result is `60`.
 
-TODO: Why is it called context-free? Counting...FSM + stack...
+> Specification by context-free grammar, implementation by pushdown automaton
+
+Before moving on, we would like to answer an important question: is there a model of computation similar to finite state machines that can implement context-free grammars? The answer is yes. Any context-free grammar can be implemented by a *pushdown automaton* (PDA) which is a model of computation that can do just a bit more than a finite state machine but is still simpler than that of a processor.
+
+> A pushdown automaton is a finite state machine with a stack
+
+More precisely, a PDA is a finite state machine plus a *stack*. Similar to regular expressions and finite state machines, there is a PDA to check if a sequence of characters is an arithmetic expression or not, for example. Again, the key idea is to match those characters with terminals in the grammar. However, a PDA also needs to make sure that there are as many right parentheses as there are left parentheses, for example. For this purpose, it pushes each left parenthesis down onto its stack and pops one off the stack with each right parenthesis. When it is done, an empty stack indicates success. This is a limited form of counting which is fundamental in recognizing nested structure. Again, the tool chapter has more on that.
+
+There is one thing that is important to realize here. All we do with these grammars and machines is formalizing the process of reading that we as humans do without even noticing what is happening. By going through this exercise of formalization we not only enable us to build software that can do this for us incredibly fast and efficiently but also sharpen our own understanding of notation and its meaning. Here is the final step demonstrating that. How about defining the syntax of EBNF using EBNF? The following EBNF does exactly that:
 
 ```
 EBNF = { production } .
@@ -881,7 +865,7 @@ EBNF = { production } .
 production = non_terminal "=" expression "." .
 
 expression = term { "|" term } .
-term       = factor { factor } .
+term       = factor { ` ` factor } .
 factor     = non_terminal | terminal |
              "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
@@ -890,6 +874,12 @@ terminal     = """ { character } """ .
 
 character = letter | digit | ... .
 ```
+
+By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator ` ` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to.
+
+The final question in this chapter is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. But we do not want to go there.
+
+TODO: final words
 
 ### Recommended Readings
 
@@ -2414,6 +2404,32 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 ### Scanning
 
 ### Parsing
+
+```
+PSH: :                                                   n * n + 1 - n / 2 + 42
+PSH: expression:                                         n * n + 1 - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
+PSH: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
+PSH: { ("+" | "-") term }:                               + 1 - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          1 - n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
+PSH: { ("+" | "-") term }:                               - n / 2 + 42
+PSH: term { ("+" | "-") term }:                          n / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
+PSH: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
+PSH: { ("+" | "-") term }:                               + 42
+PSH: term { ("+" | "-") term }:                          42
+POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
+POP: { ("*" | "/") factor } { ("+" | "-") term }:
+POP: { ("+" | "-") term }:
+     :
+```
 
 ### Typing
 
