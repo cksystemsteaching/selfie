@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from .model import Check, CheckResult
-from .output_processing import (filter_status_messages, has_compiled,
+from .output_processing import (filter_status_messages,
                                 has_no_compile_warnings, has_no_bootstrapping_compile_warnings, 
                                 is_interleaved_output, is_permutation_of)
 from .print import print_processing, print_warning, stop_processing_spinner
@@ -98,14 +98,11 @@ def execute(command, timeout=60):
             timedout = True
 
     output = stdoutdata.decode(sys.stdout.encoding)
-    # error_output = stderrdata.decode(sys.stderr.encoding)
 
     if timedout:
         raise TimeoutException(command, timeout, output)
-                # , error_output)
 
     return (process.returncode, output)
-            # , error_output)
 
 
 def check_instruction_encoding(instruction, file) -> List[Check]:
@@ -264,7 +261,7 @@ def check_execution(command, msg, success_criteria=True, should_succeed=True, ma
 
 def check_compilable(file, msg, should_succeed=True) -> List[Check]:
     return check_execution('./selfie -c <assignment>{}'.format(file), msg, success_criteria=lambda code,
-                          out: has_compiled(code, out), should_succeed=should_succeed)
+                          out: has_no_compile_warnings(code, out), should_succeed=should_succeed)
 
 
 def check_riscv_instruction(instruction, file) -> List[Check]:

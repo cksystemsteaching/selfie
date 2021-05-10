@@ -5,6 +5,8 @@ import os
 from typing import List
 
 from self import main, assignments
+from lib.checks import check_execution
+from lib.output_processing import has_no_compile_warnings
 from lib.model import Check, CheckResult
 from tests.utils import compile_with_gcc, run_compilable_assignments
 
@@ -39,6 +41,12 @@ class TestCompilable(unittest.TestCase):
         check_compilable_mock.side_effect = self.compilable_mock
 
         run_compilable_assignments(self.save_assignment)
+
+    def test_self_compilation_without_warnings(self):
+        os.system("cd .. && make -s selfie")
+
+        check_execution('../selfie -c ../selfie.c', '', success_criteria=lambda code,
+                          out: has_no_compile_warnings(code, out), should_succeed=True)
 
 
 if __name__ == '__main__':
