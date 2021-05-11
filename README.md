@@ -827,7 +827,7 @@ The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. B
 
 > Grammars define syntax but may also have an effect on semantics
 
-What if for some reason we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange "+" and "*" as well as "-" and "/" in the EBNF of expressions. In other words, grammars may have an effect on semantics, not just syntax!
+What if for some reason we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange `"+"` and `"*"` as well as `"-"` and `"/"` in the EBNF of expressions. In other words, grammars may have an effect on semantics, not just syntax!
 
 Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
 
@@ -865,7 +865,7 @@ EBNF = { production } .
 production = non_terminal "=" expression "." .
 
 expression = term { "|" term } .
-term       = factor { ` ` factor } .
+term       = factor { " " factor } .
 factor     = non_terminal | terminal |
              "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
@@ -875,7 +875,7 @@ terminal     = """ { character } """ .
 character = letter | digit | ... .
 ```
 
-By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator ` ` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to.
+By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to.
 
 The final question in this chapter is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. But we do not want to go there.
 
