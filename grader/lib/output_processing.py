@@ -73,20 +73,9 @@ def is_permutation_of(output, numbers):
     return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {}'.format(numbers))
 
 
-def has_compiled(returncode, output):
-    match = re.search('(syntax error [^\n]*)', output)
-
-    if match != None:
-        return (False, match.group(0))
-    elif returncode != 0:
-        return (False, 'compiler returned status {}'.format(returncode))
-
-    return (True, None)
-
-
 def has_no_compile_warnings(return_value, output):
     if return_value != 0:
-        warning = 'selfie terminates with an error code of {} during self-compilation'.format(
+        warning = 'selfie terminates with an error code of {} during compilation'.format(
             return_value)
         succeeded = False
     else:
