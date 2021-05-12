@@ -130,7 +130,7 @@ These days are mostly gone. Math teachers and computer science professors have r
 
 The challenge is to keep students motivated and not fall asleep before the gatekeeper does. Missing just one step may for some already be too much to compensate for later. As math tutor in school I quickly realized that many students struggling with math had sometimes not understood just one tiny detail and then got lost at some point much later. For example, many struggling students had not understood the algebraic concept of a variable as a placeholder, not just for values, but, more importantly, for whole expressions, and therefore checked out by the time we got into calculus, if not earlier. Once I managed to make some of them understand variables, they almost fainted when realizing that even calculus is in fact not such a big deal, as the wizards say.
 
-Teaching computer science has similar issues with one important difference. It is by far a much younger field than mathematics while being subject to a much higher demand for wizardry. Nobody really knows what the absolute basics of computer science even are and what the best way of putting them together actually is. What we do here is presenting the basics we believe are essential in a bottom-up approach with a strong systems focus. This means that we first explain what bits and bytes are and then move on to show how increasingly complex systems can be constructed from just that all the way to mobile computing on smartphones and even servers in the cloud.
+Teaching computer science has similar issues with one important difference. It is by far a much younger field than mathematics while being subject to a much higher demand for wizardry. Nobody really knows what the absolute basics of computer science even are and what the best way of putting them together actually is. Our approach is to present the basics we believe are essential in bottom-up fashion with a strong systems focus. This means that we first explain what bits and bytes are and then move on to show how increasingly complex systems can be constructed from just that all the way to mobile computing on smartphones and even servers in the cloud.
 
 For this purpose we have developed a software system called selfie that integrates the absolute basics into a minimalistic yet still realistic and representative package for demonstrating how software and its meaning is constructed on a mindless machine. In this book, we use selfie in at least three different ways:
 
@@ -144,10 +144,10 @@ In order to interact with selfie effectively and, more importantly, with joy, we
 
 `https://github.com/cksystemsteaching/selfie`
 
-Once you have a terminal with selfie up and running in a directory called, say, `~/selfie`, type in the terminal:
+Once you have a terminal with selfie up and running in a directory called, say, `selfie`, type in the terminal:
 
 ```
-cd ~/selfie
+cd selfie
 ```
 
 and then:
@@ -169,7 +169,7 @@ synopis: ./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary
 
 ```
 
-The synopis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to fully control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
+The synopis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
 
 ```
 ./selfie -c selfie.c
