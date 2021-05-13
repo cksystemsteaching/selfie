@@ -186,7 +186,7 @@ more selfie.c
 Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. By the way, the best way to read, and eventually write code is to use an advanced text editor. We recommend to use the *Atom* text editor, which is free, or the *Sublime Text* editor, which is not free. Selfie and this book was written on Sublime Text. Now, let us try something really cool:
 
 ```
-./selfie -c selfie.c -m 2 -c selfie.c
+./selfie -c selfie.c -m 3 -c selfie.c
 ```
 
 This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
@@ -1686,7 +1686,7 @@ If `hexdump` is not available on your machine, you can use a so-called *hex edit
 
 ```
 00000000  2f 2a 0a 43 6f 70 79 72  69 67 68 74 20 28 63 29  |/*.Copyright (c)|
-00000010  20 32 30 31 35 2d 32 30  32 30 2c 20 74 68 65 20  | 2015-2020, the |
+00000010  20 32 30 31 35 2d 32 30  32 31 2c 20 74 68 65 20  | 2015-2021, the |
 00000020  53 65 6c 66 69 65 20 50  72 6f 6a 65 63 74 20 61  |Selfie Project a|
 00000030  75 74 68 6f 72 73 2e 20  41 6c 6c 20 72 69 67 68  |uthors. All righ|
 00000040  74 73 20 72 65 73 65 72  76 65 64 2e 0a 50 6c 65  |ts reserved..Ple|
@@ -1741,20 +1741,25 @@ So, in addition to encoding unsigned and signed integers as well as characters i
 Selfie simulates a 32-bit main memory address space and up to 4GB of main memory storage. Try selfie's self-compilation from the selfie chapter:
 
 ```
-./selfie -c selfie.c -m 2 -c selfie.c
+./selfie -c selfie.c -m 3 -c selfie.c
 ```
 
 Here, the relevant part of the output should be similar to this:
 
 ```
-./selfie: selfie executing selfie.c with 2MB physical memory on mipster
 ...
-./selfie: selfie.c exiting with exit code 0 and 2.65MB mallocated memory
+./selfie: selfie executing selfie.c with 3MB physical memory on mipster
 ...
-./selfie: summary: 251119021 executed instructions [21.13% nops] and 1.75MB(87.69%) mapped memory
+./selfie: selfie.c exiting with exit code 0
+...
+./selfie: summary: 332282271 executed instructions [20.94% nops]
+./selfie:          2.38MB allocated in 23870 mallocs
+./selfie:          2.10MB(88.19% of 2.38MB) actually accessed
+./selfie:          2.29MB(76.56% of 3MB) mapped memory
+...
 ```
 
-We configured selfie (using the `-m` option) with 2MB of main memory storage (physical memory) and then self-compiled selfie which took addresses for 2.65MB of main memory (mallocated memory), that is, 0.65MB more than the available storage. However, selfie ended up using only 1.75MB main memory storage (mapped memory), that is, 87.69% of the 2MB of available storage (physical memory).
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 2.38MB of main memory but ended up *accessing* only 2.10MB, that is, using only 88.19% of the 2.38MB in storage. Moreover, selfie needed an additional 0.19MB of storage for its code, that is, in sum 2.29MB of (mapped) memory which is 76.56% of the 3MB available storage (physical memory).
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -1934,8 +1939,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x000322B7: lui t0,0x32
-0x4(~1): 0x75828293: addi t0,t0,1880
+0x0(~1): 0x0003D2B7: lui t0,0x3D
+0x4(~1): 0x64828293: addi t0,t0,1608
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -1951,11 +1956,11 @@ The output should be similar to this:
 0x38(~1): 0x00810293: addi t0,sp,8
 0x3C(~1): 0xFF810113: addi sp,sp,-8
 0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x5F11F0EF: jal ra,32636[0x1FE34]
+0x44(~1): 0x571290EF: jal ra,42844[0x29DB4]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 32000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 43000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 So, when you turn on a computer, the only thing the machine does is *fetch* an instruction, that is, 32 bits from memory, *decode* the instruction, that is, figure out which instruction it is and what the parameters and arguments are, and finally *execute* the instruction, that is, perform what the instruction tells the machine to do. When the machine is done, it fetches the next instruction, as told by the current instruction, decodes it, executes it, and so on. That's all there is until you cut power. Everything you see on your screen and you hear on your speakers and so on is the result of the machine doing that at probably a few billion instructions per second. The only reason why computers have become so important is because they can execute these instructions so fast with little power consumption and have lots of memory to do so. However, each individual instruction executed by a computer is incredibly simple. Machine instructions are so simple that anyone can understand what they do.
 
