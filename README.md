@@ -2122,18 +2122,18 @@ The relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: 141144 bytes generated with 32708 instructions and 10312 bytes of data
-./selfie: init:    lui: 1829(5.59%), addi: 11776(36.00%)
-./selfie: memory:  ld: 5468(16.71%), sd: 5091(15.56%)
-./selfie: compute: add: 2525(7.71%), sub: 641(1.95%), mul: 364(1.11%)
-./selfie: compute: divu: 73(0.22%), remu: 29(0.08%)
-./selfie: compare: sltu: 606(1.85%)
-./selfie: control: beq: 782(2.39%), jal: 3094(9.45%), jalr: 422(1.29%)
-./selfie: system:  ecall: 8(0.02%)
-./selfie: 1444400 characters of assembly with 32708 instructions and 10312 bytes of data written into selfie.s
+./selfie: 185520 bytes generated with 42906 instructions and 13896 bytes of data
+./selfie: init:    lui: 2448(5.70%), addi: 15493(36.11%)
+./selfie: memory:  ld: 7286(16.98%), sd: 6718(15.65%)
+./selfie: compute: add: 3381(7.88%), sub: 726(1.69%), mul: 518(1.20%)
+./selfie: compute: divu: 83(0.19%), remu: 28(0.06%)
+./selfie: compare: sltu: 706(1.64%)
+./selfie: control: beq: 955(2.22%), jal: 3955(9.21%), jalr: 601(1.40%)
+./selfie: system:  ecall: 8(0.01%)
+./selfie: 1908683 characters of assembly with 42906 instructions and 13896 bytes of data written into selfie.s
 ```
 
-Selfie reports that it generated 32708 instructions as well as 10312 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36% the most common instruction here. Selfie also generated a more human-readable form of the machine code in assembly in the `selfie.s` file. Have a look by typing:
+Selfie reports that it generated 42906 instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction here. Selfie also generated a more human-readable form of the machine code in assembly in the `selfie.s` file. Have a look by typing:
 
 ```
 more selfie.s
@@ -2142,8 +2142,8 @@ more selfie.s
 As in the information chapter, the output should be similar to this:
 
 ```
-0x0(~1): 0x000322B7: lui t0,0x32
-0x4(~1): 0x75828293: addi t0,t0,1880
+0x0(~1): 0x0003D2B7: lui t0,0x3D
+0x4(~1): 0x64828293: addi t0,t0,1608
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2159,11 +2159,11 @@ As in the information chapter, the output should be similar to this:
 0x38(~1): 0x00810293: addi t0,sp,8
 0x3C(~1): 0xFF810113: addi sp,sp,-8
 0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x5F11F0EF: jal ra,32636[0x1FE34]
+0x44(~1): 0x571290EF: jal ra,42844[0x29DB4]
 ...
 ```
 
-We use the code shown here as running example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there are more than 30000 instructions in `selfie.s` to choose from.
+We use the code shown here as running example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there are more than 40000 instructions in `selfie.s` to choose from.
 
 #### Initialization
 
@@ -2257,14 +2257,14 @@ When executed, the instruction makes the CPU copy the value in register `t0` to 
 Using the `-d` option, selfie executes the self-compiled code, similar to the `-m` option, but additionally outputs every instruction it executes. The 'd' stands for *debugger* which is a software tool for finding bugs in code. Look for the following line at the beginning of the debugger's output:
 
 ```
-pc=0x10008(~1): addi gp,t0,0: t0=206680(0x32758) |- gp=0x0 -> gp=0x32758
+pc=0x10008(~1): addi gp,t0,0: t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648
 ```
 
 Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x8`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
 
-Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=206680(0x32758) |- gp=0x0 -> gp=0x32758` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `206680(0x32758)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x32758`, the value in `t0` has obviously been copied to `gp`.
+Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `251464(0x3D648)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x3D648`, the value in `t0` has obviously been copied to `gp`.
 
-Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=206680(0x32758) |- gp=0x0 -> gp=0x32758`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in main memory. That's all!
 
@@ -2278,26 +2278,26 @@ In computer science *bitwise shifting* is a standard operation. Left-shifting ad
 
 Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
-Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x32758` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x32758` into the 8 MSBs `0x32` and the 12 LSBs `0x758` (which is 1880 in decimal) and then do what the first three instructions in the running example do:
+Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x3D648` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x3D648` into the 8 MSBs `0x3D` and the 12 LSBs `0x648` (which is 1608 in decimal) and then do what the first three instructions in the running example do:
 
 ```
-0x0(~1): 0x000322B7: lui t0,0x32
-0x4(~1): 0x75828293: addi t0,t0,1880
+0x0(~1): 0x0003D2B7: lui t0,0x3D
+0x4(~1): 0x64828293: addi t0,t0,1608
 0x8(~1): 0x00028193: addi gp,t0,0
 ```
 
-Observe that `0x32` is encoded in 20 bits as immediate value `0x00032` in the binary code `0x000322B7` of the `lui t0,0x32` instruction. Also, `0x758` is encoded as immediate value in the binary code `0x75828293` of the `addi t0,t0,1880` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
+Observe that `0x3D` is encoded in 20 bits as immediate value `0x0003D` in the binary code `0x0003D2B7` of the `lui t0,0x3D` instruction. Also, `0x648` is encoded as immediate value in the binary code `0x64828293` of the `addi t0,t0,1608` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
 
 ```
-0x    0    0    0    3    2    2    B    7
- b 0000 0000 0000 0011 0010 0010 1011 0111
+0x    0    0    0    3    D    2    B    7
+ b 0000 0000 0000 0011 1101 0010 1011 0111
 ```
 
 After regrouping the bits (and the hexadecimal digits) you can spot register `t0`, that is, register number `5`:
 
 ```
-                   0x32     5    0x37
- b 00000000000000110010 00101 0110111
+                   0x3D     5    0x37
+ b 00000000000000111101 00101 0110111
 ```
 
 as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `0110111`. The `lui` instruction is encoded according to the so-called *U-Format* which is obviously different than the I-Format of the `addi` instruction. The U-Format encodes two parameters, a 20-bit immediate value and one register whereas the I-Format encodes three parameters, a 12-bit immediate value and two registers. What we find fascinating is how each RISC-V instruction is squeezed into 32 bits. There went a lot of thought into how to do that so that hardware can decode and execute binary code fast!
@@ -2305,12 +2305,12 @@ as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `011
 Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions, taken from the debugger's output:
 
 ```
-pc=0x10000(~1): lui t0,0x32: |- t0=0x0 -> t0=0x32000
-pc=0x10004(~1): addi t0,t0,1880: t0=204800(0x32000) |- t0=204800(0x32000) -> t0=206680(0x32758)
-pc=0x10008(~1): addi gp,t0,0: t0=206680(0x32758) |- gp=0x0 -> gp=0x32758
+pc=0x10000(~1): lui t0,0x3D: |- t0=0x0 -> t0=0x3D000
+pc=0x10004(~1): addi t0,t0,1608: t0=249856(0x3D000) |- t0=249856(0x3D000) -> t0=251464(0x3D648)
+pc=0x10008(~1): addi gp,t0,0: t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648
 ```
 
-Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x32000` which is the immediate value `0x32` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x758` right into these 12 bits so that `t0` contains `0x32758` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
+Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x3D000` which is the immediate value `0x3D` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x648` right into these 12 bits so that `t0` contains `0x3D648` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
 
 What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
 
@@ -2325,7 +2325,7 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 ```
 
 ```
-pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 -> mem[0x32750]=a0=206680(0x32758)
+pc=0x10030(~1): sd a0,-8(gp): gp=0x3D648,a0=253952(0x3E000) |- mem[0x3D640]=0 -> mem[0x3D640]=a0=253952(0x3E000)
 ```
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
