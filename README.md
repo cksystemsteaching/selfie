@@ -150,7 +150,15 @@ Once you have a terminal with selfie up and running in a directory called, say, 
 cd selfie
 ```
 
-and then:
+The next command is optional. It checks out the version of selfie we used when writing the book:
+
+```
+git checkout elementary-computer-science
+```
+
+Without that command you simply use the latest version of selfie where the output may differ from what you see here.
+
+Then type:
 
 ```
 make
