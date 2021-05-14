@@ -261,10 +261,10 @@ int main() {
 }
 ```
 
-In the directory where your selfie installation is, create a text file called `double.c` that contains the above code and then type in your terminal:
+We have prepared that code in a text file called `double.c` as part of the selfie system. So, just type in your terminal:
 
 ```
-./selfie -c double.c -m 1
+./selfie -c examples/double.c -m 1
 ```
 
 Selfie responds with quite a bit of text but just look for `double.c exiting with exit code 84`. That's it! The above code instructs selfie to return the result of `double(42)` which is obviously `84`. The way this works is simple. Each program must contain a procedure called `main` to actually do anything useful. That procedure is always the first to run and everything follows from there. When `main` returns, program execution is finished and whatever `main` returns is shown as *exit code*.
