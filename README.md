@@ -544,17 +544,17 @@ So, how do we run a program written in C\*? Let us have a closer look at the abo
 using selfie as follows:
 
 ```
-./selfie -c double.c -m 1
+./selfie -c examples/double.c -m 1
 ```
 
-This time we show *line numbers* 1 to 7 of the code as a way to refer to individual lines. Please ignore them when creating `double.c`.
+This time we show *line numbers* 1 to 7 of the code as a way to refer to individual lines.
 
 Selfie follows a workflow that is standard for programming languages such as C. It first compiles a program written in C\* to RISC-U machine code. This is done by the `-c` option, that is, by `./selfie -c double.c`. We could then take the machine code and run it on a RISC-U processor. Such processors exist but you are unlikely to have access to a computer with such a processor. Therefore, selfie also features an interpreter of RISC-U machine code which is invoked by the `-m 1` option. In other words, `./selfie -c double.c -m 1` instructs selfie to compile the source code in `double.c` to RISC-U machine code and then execute it right away using its builtin RISC-U interpreter.
 
 Ok, that is all very nice and cool but how can we see what is actually going on? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`, or we can have selfie execute the compiled code and output in our terminal every single machine instruction that it actually executes. Let us try generating the assembly file first:
 
 ```
-./selfie -c double.c -S double.s
+./selfie -c examples/double.c -S double.s
 ```
 
 Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s` also works but generates less information. The relevant part of `double.s` looks as follows, with some code omitted (`...`) and some comments (`//`) and formatting (`---`) added by us:
@@ -665,17 +665,17 @@ What you see here is what the processor sees when executing `add t0,t0,t1`. It s
 Let us now instruct selfie to show us the compiled code during actual execution using the `-d 1` option which invokes the system's *debugger*:
 
 ```
-./selfie -c double.c -d 1
+./selfie -c examples/double.c -d 1
 ```
 
 A debugger is a software tool for finding flaws in software called *bugs*. Lots of information will fly by in your terminal. Here is an interesting snippet that involves the `add t0,t0,t1` instruction:
 
 ```
 ...
-double.c: pc=0x1014C(~2): ld t0,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t0=42(0x2A) -> t0=42(0x2A)=mem[0xFFFFFFB0]
-double.c: pc=0x10150(~2): ld t1,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t1=0(0x0) -> t1=42(0x2A)=mem[0xFFFFFFB0]
-double.c: pc=0x10154(~2): add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
-double.c: pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
+... pc=0x1014C(~2): ld t0,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t0=42(0x2A) -> t0=42(0x2A)=mem[0xFFFFFFB0]
+... pc=0x10150(~2): ld t1,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t1=0(0x0) -> t1=42(0x2A)=mem[0xFFFFFFB0]
+... pc=0x10154(~2): add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
+... pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
 ...
 ```
 
