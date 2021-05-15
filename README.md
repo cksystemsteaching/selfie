@@ -2242,13 +2242,13 @@ The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing regis
 
 RISC-U instruction are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
-Let us take a look at what selfie tells us about those instructions when self-compiling, as we already did in the information chapter. First, try:
+Let us take another look at what selfie tells us about those instructions when self-compiling, as we already did in the language and information chapters. First, try:
 
 ```
-./selfie -c selfie.c -S selfie.s
+./selfie -c selfie.c
 ```
 
-The relevant part of the output should be similar to this:
+The relevant part of the output is this:
 
 ```
 ...
@@ -2260,20 +2260,37 @@ The relevant part of the output should be similar to this:
 ./selfie: compare: sltu: 706(1.64%)
 ./selfie: control: beq: 955(2.22%), jal: 3955(9.21%), jalr: 601(1.40%)
 ./selfie: system:  ecall: 8(0.01%)
-./selfie: 1908683 characters of assembly with 42906 instructions and 13896 bytes of data written into selfie.s
 ```
 
-Selfie reports that it generated 42906 instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction here. Selfie also generated a more human-readable form of the machine code in assembly in the `selfie.s` file. Have a look by typing:
+Selfie reports that it generated 42906 instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction here.
 
 ```
-more selfie.s
+./selfie -c examples/count.c -S count.s
 ```
 
-As in the information chapter, the output should be similar to this:
+```
+./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
+./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
+./selfie: selfie compiling examples/count.c with starc
+./selfie: 125 characters read in 14 lines and 0 comments
+./selfie: with 81(64.80%) characters in 42 actual symbols
+./selfie: 0 global variables, 2 procedures, 0 string literals
+./selfie: 2 calls, 2 assignments, 1 while, 0 if, 2 return
+./selfie: symbol table search time was 2 iterations on average and 40 in total
+./selfie: 504 bytes generated with 124 instructions and 8 bytes of data
+./selfie: init:    lui: 2(1.61%), addi: 57(45.96%)
+./selfie: memory:  ld: 22(17.74%), sd: 11(8.87%)
+./selfie: compute: add: 2(1.61%), sub: 2(1.61%), mul: 0(0.00%)
+./selfie: compute: divu: 0(0.00%), remu: 2(1.61%)
+./selfie: compare: sltu: 1(0.80%)
+./selfie: control: beq: 5(4.03%), jal: 5(4.03%), jalr: 7(5.64%)
+./selfie: system:  ecall: 8(6.45%)
+./selfie: 4532 characters of assembly with 124 instructions and 8 bytes of data written into count.s
+```
 
 ```
-0x0(~1): 0x0003D2B7: lui t0,0x3D
-0x4(~1): 0x64828293: addi t0,t0,1608
+0x0(~1): 0x000112B7: lui t0,0x11
+0x4(~1): 0x00828293: addi t0,t0,8
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2289,11 +2306,66 @@ As in the information chapter, the output should be similar to this:
 0x38(~1): 0x00810293: addi t0,sp,8
 0x3C(~1): 0xFF810113: addi sp,sp,-8
 0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x571290EF: jal ra,42844[0x29DB4]
+0x44(~1): 0x15C000EF: jal ra,87[0x1A0]
 ...
+0x138(~4): 0xFF810113: addi sp,sp,-8        // int count(int n) {
+0x13C(~4): 0x00113023: sd ra,0(sp)
+0x140(~4): 0xFF810113: addi sp,sp,-8
+0x144(~4): 0x00813023: sd s0,0(sp)
+0x148(~4): 0x00010413: addi s0,sp,0
+0x14C(~4): 0xFF810113: addi sp,sp,-8        // int c;
+---
+0x150(~4): 0x00000293: addi t0,zero,0       // c = 0;
+0x154(~4): 0xFE543C23: sd t0,-8(s0)
+---
+0x158(~6): 0xFF843283: ld t0,-8(s0)         // while (c < n) {
+0x15C(~6): 0x01043303: ld t1,16(s0)
+0x160(~6): 0x0062B2B3: sltu t0,t0,t1
+0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]
+---
+0x168(~7): 0xFF843283: ld t0,-8(s0)         //   c = c + 1;
+0x16C(~7): 0x00100313: addi t1,zero,1
+0x170(~7): 0x006282B3: add t0,t0,t1
+0x174(~7): 0xFE543C23: sd t0,-8(s0)
+---
+0x178(~9): 0xFE1FF06F: jal zero,-8[0x158]   // }
+---
+0x17C(~9): 0xFF843283: ld t0,-8(s0)
+0x180(~9): 0x00028513: addi a0,t0,0
+0x184(~9): 0x0040006F: jal zero,1[0x188]
+---
+0x188(~10): 0x00040113: addi sp,s0,0        // }
+0x18C(~10): 0x00013403: ld s0,0(sp)
+0x190(~10): 0x00810113: addi sp,sp,8
+0x194(~10): 0x00013083: ld ra,0(sp)
+0x198(~10): 0x01010113: addi sp,sp,16
+0x19C(~10): 0x00008067: jalr zero,0(ra)
+---
+0x1A0(~13): 0xFF810113: addi sp,sp,-8       // int main() {
+0x1A4(~13): 0x00113023: sd ra,0(sp)
+0x1A8(~13): 0xFF810113: addi sp,sp,-8
+0x1AC(~13): 0x00813023: sd s0,0(sp)
+0x1B0(~13): 0x00010413: addi s0,sp,0
+---
+0x1B4(~13): 0x000F42B7: lui t0,0xF4         // return count(1000000);
+0x1B8(~13): 0x24028293: addi t0,t0,576
+0x1BC(~13): 0xFF810113: addi sp,sp,-8
+0x1C0(~13): 0x00513023: sd t0,0(sp)
+0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138]
+0x1C8(~13): 0x00050293: addi t0,a0,0
+0x1CC(~13): 0x00000513: addi a0,zero,0
+0x1D0(~13): 0x00028513: addi a0,t0,0
+0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
+---
+0x1D8(~14): 0x00040113: addi sp,s0,0        // }
+0x1DC(~14): 0x00013403: ld s0,0(sp)
+0x1E0(~14): 0x00810113: addi sp,sp,8
+0x1E4(~14): 0x00013083: ld ra,0(sp)
+0x1E8(~14): 0x00810113: addi sp,sp,8
+0x1EC(~14): 0x00008067: jalr zero,0(ra)
 ```
 
-We use the code shown here as running example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there are more than 40000 instructions in `selfie.s` to choose from.
+We use the code shown here as running example in the following section, and later take more code as example from other parts in `count.s`. After all, there are 124 instructions in `count.s` to choose from.
 
 #### Initialization
 
