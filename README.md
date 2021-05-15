@@ -173,7 +173,7 @@ and finally:
 Selfie responds with what is called its *synopsis*. Just that synopsis is already written in a formal language called a *regular expression* that specifies exactly how you can invoke selfie:
 
 ```
-synopis: ./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+synopis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 
 ```
 
@@ -521,7 +521,42 @@ So, you might ask why all this matters. Well, there is an important lesson to be
 
 There is one more thing in C\* you have not seen yet. It is called *pointers*. They actually gave C\* its name because pointers in C are declared and *dereferenced* using the asterisk symbol `*`. They are the only means in C\* to construct any kind of *data structures* beyond mere integers. In other words, what you have seen of C\* so far only allows us to implement numerical functions, at least when using C\* as intended. Nevertheless, we would like to write code that handles not just numbers but any kind of information, of course. Pointers allow us to do that. However, understanding pointers requires a bit more background on how digital memory works. We therefore come back to the topic in subsequent chapters.
 
-By now, you have seen all features of C\* except pointers. We have shown you what C\* code looks like and what it means. But programming in C\*, or any other programming language, requires practice and curiosity. Try to verify your understanding of the language by writing small programs in C\*, similar to our code examples, and running them through selfie. Try to predict what your code does and then use selfie to see if it actually does that. If not, try to find out why by modifying your code. At some point you may get stuck which is the right time to look behind the scene and check out what is really happening. Read on!
+By now, you have seen all features of C\* except pointers. We have shown you what C\* code looks like and what it means. But programming in C\*, or any other programming language, requires practice and curiosity. Try to verify your understanding of the language by writing small programs in C\*, similar to our code examples, and running them through selfie. Try to predict what your code does and then use selfie to see if it actually does that. If not, try to find out why by modifying your code.
+
+Before moving on, let us have a look at the output of selfie when compiling itself to machine code:
+
+```
+./selfie -c selfie.c
+```
+
+The first few lines of output give you an idea of the size of the system in terms of the C\* language constructs we introduced above:
+
+```
+./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
+./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
+./selfie: selfie compiling selfie.c with starc
+./selfie: 323794 characters read in 11251 lines and 1540 comments
+./selfie: with 194508(60.07%) characters in 46859 actual symbols
+./selfie: 462 global variables, 601 procedures, 437 string literals
+./selfie: 2757 calls, 1297 assignments, 92 while, 859 if, 516 return
+...
+```
+
+For example, there are 462 global variables and 601 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+
+```
+...
+./selfie: 185520 bytes generated with 42906 instructions and 13896 bytes of data
+./selfie: init:    lui: 2448(5.70%), addi: 15493(36.11%)
+./selfie: memory:  ld: 7286(16.98%), sd: 6718(15.65%)
+./selfie: compute: add: 3381(7.88%), sub: 726(1.69%), mul: 518(1.20%)
+./selfie: compute: divu: 83(0.19%), remu: 28(0.06%)
+./selfie: compare: sltu: 706(1.64%)
+./selfie: control: beq: 955(2.22%), jal: 3955(9.21%), jalr: 601(1.40%)
+./selfie: system:  ecall: 8(0.01%)
+```
+
+What you see here is a *profile* of the generated machine instructions. For example, the system generated 3381 `add` instructions which is 7.88% of all generated instructions. In the following we explain what is going on here using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -719,7 +754,46 @@ Abstraction is a key concept in computer science and many other fields for deali
 
 The truth probably lies, as so often, somewhere in the middle, and also depends on what your goals are. In this chapter we apply the top-down approach, on purpose, of course. However, in the rest of the book we follow the bottom-up approach but from a systems perspective. This means that we begin with the absolute basics and then show you how things can be put together to form something bigger than the mere sum of its individual parts. The reason is that we would like you to know, well, how to program, but far beyond that to understand the basic principles of computer science and how those combine to true magic. Programming skills and other skills beyond just programming derive from that, not the other way around.
 
-Let us give you an example by introducing a formal language whose purpose is not to develop code but instead describe the *syntactic* structure of other formal languages, in particular programming languages and even assembly. This is computer science beyond just programming!
+In the following, we give you an example by introducing a formal language whose purpose is not to develop code but instead describe the *syntactic* structure of other formal languages, in particular programming languages and even assembly. We speak of EBNF, of course. This is computer science beyond just programming!
+
+Actually, we already saw EBNF before. Let us quickly go back to self-compiling selfie but this time also running selfie right after self-compilation:
+
+```
+./selfie -c selfie.c -m 1
+```
+
+The output of the selfie compiler is the same as before. The interesting part is the output of selfie after that when running itself:
+
+```
+./selfie: selfie executing selfie.c with 1MB physical memory on mipster
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+synopsis: selfie.c { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: selfie.c exiting with exit code 0
+./selfie: selfie terminating selfie.c with exit code 0
+```
+
+Selfie responds with its synopsis which is written in EBNF! But have a look at the rest of the output first:
+
+```
+...
+./selfie: ---------------------------------------------------------------------
+./selfie: summary: 59963 executed instructions [21.26% nops]
+./selfie:          0.00MB allocated in 5 mallocs
+./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
+./selfie:          0.19MB(19.53% of 1MB) mapped memory
+./selfie: ---------------------------------------------------------------------
+./selfie: init:    lui: 33(0.05%)[0.00%], addi: 23645(39.43%)[18.25%]
+./selfie: memory:  ld: 13909(23.19%)[14.36%], sd: 8200(13.67%)[45.15%]
+./selfie: compute: add: 1872(3.12%)[3.09%], sub: 913(1.52%)[5.47%], mul: 1422(2.37%)[7.17%]
+./selfie: compute: divu: 610(1.01%)[1.14%], remu: 622(1.03%)[9.64%]
+./selfie: compare: sltu: 1229(2.04%)[10.74%]
+./selfie: control: beq: 1492(2.48%)[56.83%], jal: 4101(6.83%)[36.04%], jalr: 1784(2.97%)[0.00%]
+./selfie: system:  ecall: 131(0.21%)
+...
+```
+
+Selfie reports how many instructions it took just to print its synopsis: 59963 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1872 times which is 3.12% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -883,9 +957,21 @@ terminal     = """ { character } """ .
 character = letter | digit | ... .
 ```
 
-By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to.
+By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, just type in your terminal:
 
-The final question in this chapter is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. But we do not want to go there.
+```
+./selfie
+```
+
+which responds:
+
+```
+synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+```
+
+Not using the optional part `[ ( -m | -d | -r | -y ) 0-4096 ... ]` simply allows us to invoke selfie as compiler without running any code. Try for yourself to invoke selfie with different options by just following the rules of its synopsis!
+
+The final question that often comes up in class is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. But we do not want to go there.
 
 The purpose of this chapter is to give you an idea of what it means to express your thoughts in formal languages rather than just English. Formalization is key in computer science and many other scientific fields. It may appear very cumbersome to do that at first but you probably already see the power of formalization.
 
