@@ -529,7 +529,7 @@ Before moving on, let us have a look at the output of selfie when compiling itse
 ./selfie -c selfie.c
 ```
 
-The first few lines of output give you an idea of the size of the system in terms of the C\* language constructs we introduced above:
+The first few lines of output give you an idea of the size of the system in terms of the C\* language constructs we just introduced:
 
 ```
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
@@ -556,7 +556,7 @@ For example, there are 462 global variables and 601 procedures in the source cod
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-What you see here is a *profile* of the generated machine instructions. For example, the system generated 3381 `add` instructions which is 7.88% of all generated instructions. In the following we explain what is going on here using the `double.c` example.
+What you see here is a *profile* of the generated machine instructions. For example, the system generated 3381 `add` instructions which is 7.88% of all generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -2038,7 +2038,7 @@ So far, we have seen at different levels of detail how integers, characters, str
 
 Everything done by a computer is encoded in bits including code. We heard that before but we anyway emphasize this again because it takes repetition and time to realize what that really means. Whatever we want a computer do needs to be broken down into the tiniest steps (code) of bit manipulation (data). Doing that makes people realize how complex even seemingly simple tasks often are.
 
-Code exists in very different forms. Whenever we talk about it we mean actual *machine code*, not *source code* like `selfie.c`, unless we say so. The difference is that machine code is a sequence of bytes that *instructs* a computer to perform computation with data by manipulating the bits encoding the data whereas source code is just text that still needs to be translated to machine code before it can instruct the machine to do anything. Machine code is for machines, source code is for humans. The machine chapter explains what machine code is and the programming chapter explains what source code is. For now, we focus on machine code and explain how it works intuitively.
+Code exists in very different forms such as *source code* like `selfie.c` or actual *machine code*. The latter is a sequence of bytes that *instructs* a computer to perform computation with data by manipulating the bits encoding the data whereas source code is just text that still needs to be translated to machine code before it can instruct the machine to do anything. Machine code is for machines, source code is for humans. The machine chapter explains what machine code is and the programming chapter explains what source code is. For now, we focus on machine code and explain how it works intuitively.
 
 ![Machine code encoded in 32 bits (4 bytes) per instruction and stored contiguously in memory instruction by instruction](figures/code.png "Code")
 
