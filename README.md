@@ -957,7 +957,7 @@ terminal     = """ { character } """ .
 character = letter | digit | ... .
 ```
 
-By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, just type in your terminal:
+By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, this time without self-compilation, just type in your terminal:
 
 ```
 ./selfie
@@ -971,9 +971,9 @@ synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binar
 
 Not using the optional part `[ ( -m | -d | -r | -y ) 0-4096 ... ]` simply allows us to invoke selfie as compiler without running any code as we did before. EBNF is a beautiful way of saying just that and lots of other things. Try for yourself to invoke selfie with different options by just following the rules of its synopsis!
 
-The final question about EBNF that often comes up in class is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. But we do not want to go there.
+The final question about EBNF that often comes up in class is why context-free grammars are called context-free. The answer is simple. Any non-terminal `N` in the RHS of an EBNF production `P` may be replaced by the RHS of the production `D` that defines the non-terminal, independently of the context in which `N` appears in `P`. This is because the LHS of a production must be a non-terminal, nothing else. We went through that exercise before when checking whether an EBNF is regular or not by trying to substitute all non-terminals occurring in any RHS with their definitions. As you can see here, this is not possible with the EBNF of EBNF because `expression` also occurs in the RHS of a production just like with arithmetic expressions which means that the EBNF of EBNF is context-free but not regular. Are there grammars that are not context-free? Yes, of course. Just surround the non-terminal in the LHS of a production with terminals. That would make your grammar *context-sensitive*. However, context-free grammars are all we need here, so we stick to that.
 
-The purpose of this chapter is to give you an idea of what it means to express your thoughts in formal languages rather than just English. Formalization is key in computer science and many other scientific fields. It may appear very cumbersome to do that at first but you probably already see the power of formalization.
+The purpose of this chapter was to give you an idea of what it means to express your thoughts in formal languages rather than just English. Formalization is key in computer science and many other scientific fields. It may appear very cumbersome to do that at first but you probably already see the power of formalization.
 
 We introduced the programming language C\* which allows you to develop code. The language is simple enough to understand its meaning completely down to every single detail. Then we introduced the machine language RISC-U which gives you an idea of how a computer actually works and executes code. We also showed you how C\* translates to RISC-U. This is important for understanding the true meaning of C\*. Finally, we introduced EBNF, a formal grammar for specifying the syntax of programming languages and other formal languages including itself. While EBNF is not executable on a computer, unlike C\* and RISC-U code, it can be implemented in C\* based on finite state machines and pushdown automata. The tool chapter shows how this works. Seeing a formal language like EBNF is nevertheless important for understanding that computer science is not just about programming but also about modeling complex structure such as the syntax of programming languages. There are lots of other formal languages in computer science intended for modeling rather than programming. EBNF is just one example.
 
@@ -2248,7 +2248,7 @@ Let us take another look at what selfie tells us about those instructions when s
 ./selfie -c selfie.c
 ```
 
-The relevant part of the output is this:
+The relevant part of the output should be similar to this:
 
 ```
 ...
@@ -2291,7 +2291,8 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 ```
 0x0(~1): 0x000112B7: lui t0,0x11
 0x4(~1): 0x00828293: addi t0,t0,8
-0x8(~1): 0x00028193: addi gp,t0,0
+0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
+---
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
 0x14(~1): 0x00000073: ecall
@@ -2302,52 +2303,68 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
-0x34(~1): 0x00000513: addi a0,zero,0
+0x34(~1): 0x00000513: addi a0,zero,0   // initialize malloc
+---
 0x38(~1): 0x00810293: addi t0,sp,8
 0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x15C000EF: jal ra,87[0x1A0]
+0x40(~1): 0x00513023: sd t0,0(sp)      // initialize call stack
+---
+0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main() procedure
+---
+0x48(~1): 0xFF810113: addi sp,sp,-8
+0x4C(~1): 0x00A13023: sd a0,0(sp)
+0x50(~1): 0x00013503: ld a0,0(sp)
+0x54(~1): 0x00810113: addi sp,sp,8
+0x58(~1): 0x05D00893: addi a7,zero,93
+0x5C(~1): 0x00000073: ecall            // exit
 ...
-0x138(~4): 0xFF810113: addi sp,sp,-8        // int count(int n) {
+```
+
+```
+...
+0x138(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
 0x13C(~4): 0x00113023: sd ra,0(sp)
 0x140(~4): 0xFF810113: addi sp,sp,-8
 0x144(~4): 0x00813023: sd s0,0(sp)
 0x148(~4): 0x00010413: addi s0,sp,0
-0x14C(~4): 0xFF810113: addi sp,sp,-8        // int c;
 ---
-0x150(~4): 0x00000293: addi t0,zero,0       // c = 0;
+0x14C(~4): 0xFF810113: addi sp,sp,-8      // int c;
+---
+0x150(~4): 0x00000293: addi t0,zero,0     // c = 0;
 0x154(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x158(~6): 0xFF843283: ld t0,-8(s0)         // while (c < n) {
+0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
 0x15C(~6): 0x01043303: ld t1,16(s0)
 0x160(~6): 0x0062B2B3: sltu t0,t0,t1
 0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]
 ---
-0x168(~7): 0xFF843283: ld t0,-8(s0)         //   c = c + 1;
+0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
 0x16C(~7): 0x00100313: addi t1,zero,1
 0x170(~7): 0x006282B3: add t0,t0,t1
 0x174(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x178(~9): 0xFE1FF06F: jal zero,-8[0x158]   // }
+0x178(~9): 0xFE1FF06F: jal zero,-8[0x158] // }
 ---
-0x17C(~9): 0xFF843283: ld t0,-8(s0)
+0x17C(~9): 0xFF843283: ld t0,-8(s0)       // return c;
 0x180(~9): 0x00028513: addi a0,t0,0
 0x184(~9): 0x0040006F: jal zero,1[0x188]
 ---
-0x188(~10): 0x00040113: addi sp,s0,0        // }
+0x188(~10): 0x00040113: addi sp,s0,0      // }
 0x18C(~10): 0x00013403: ld s0,0(sp)
 0x190(~10): 0x00810113: addi sp,sp,8
 0x194(~10): 0x00013083: ld ra,0(sp)
 0x198(~10): 0x01010113: addi sp,sp,16
 0x19C(~10): 0x00008067: jalr zero,0(ra)
----
-0x1A0(~13): 0xFF810113: addi sp,sp,-8       // int main() {
+```
+
+```
+0x1A0(~13): 0xFF810113: addi sp,sp,-8  // int main() {
 0x1A4(~13): 0x00113023: sd ra,0(sp)
 0x1A8(~13): 0xFF810113: addi sp,sp,-8
 0x1AC(~13): 0x00813023: sd s0,0(sp)
 0x1B0(~13): 0x00010413: addi s0,sp,0
 ---
-0x1B4(~13): 0x000F42B7: lui t0,0xF4         // return count(1000000);
+0x1B4(~13): 0x000F42B7: lui t0,0xF4    // return count(1000000);
 0x1B8(~13): 0x24028293: addi t0,t0,576
 0x1BC(~13): 0xFF810113: addi sp,sp,-8
 0x1C0(~13): 0x00513023: sd t0,0(sp)
@@ -2357,7 +2374,7 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 0x1D0(~13): 0x00028513: addi a0,t0,0
 0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
 ---
-0x1D8(~14): 0x00040113: addi sp,s0,0        // }
+0x1D8(~14): 0x00040113: addi sp,s0,0   // }
 0x1DC(~14): 0x00013403: ld s0,0(sp)
 0x1E0(~14): 0x00810113: addi sp,sp,8
 0x1E4(~14): 0x00013083: ld ra,0(sp)
@@ -2453,20 +2470,20 @@ The execution of an instruction such as `addi` changes the state of the machine 
 When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. To see that in action try:
 
 ```
-./selfie -c selfie.c -d 1 | more
+./selfie -c examples/count.c -d 1 | more
 ```
 
 Using the `-d` option, selfie executes the self-compiled code, similar to the `-m` option, but additionally outputs every instruction it executes. The 'd' stands for *debugger* which is a software tool for finding bugs in code. Look for the following line at the beginning of the debugger's output:
 
 ```
-pc=0x10008(~1): addi gp,t0,0: t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648
+pc=0x10008(~1): addi gp,t0,0: t0=69640(0x11008) |- gp=0x0 -> gp=0x11008
 ```
 
 Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x8`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
 
-Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `251464(0x3D648)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x3D648`, the value in `t0` has obviously been copied to `gp`.
+Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=69640(0x11008) |- gp=0x0 -> gp=0x11008` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `t0=69640(0x11008)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x11008`, the value in `t0` has obviously been copied to `gp`.
 
-Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=69640(0x11008) |- gp=0x0 -> gp=0x11008`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in main memory. That's all!
 
@@ -2480,26 +2497,26 @@ In computer science *bitwise shifting* is a standard operation. Left-shifting ad
 
 Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
-Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x3D648` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x3D648` into the 8 MSBs `0x3D` and the 12 LSBs `0x648` (which is 1608 in decimal) and then do what the first three instructions in the running example do:
+Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x11008` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x11008` into the 8 MSBs `0x11` and the 12 LSBs `0x008` (which is obviously 8 in decimal) and then do what the first three instructions in the running example do:
 
 ```
-0x0(~1): 0x0003D2B7: lui t0,0x3D
-0x4(~1): 0x64828293: addi t0,t0,1608
-0x8(~1): 0x00028193: addi gp,t0,0
+0x0(~1): 0x000112B7: lui t0,0x11
+0x4(~1): 0x00828293: addi t0,t0,8
+0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
 ```
 
-Observe that `0x3D` is encoded in 20 bits as immediate value `0x0003D` in the binary code `0x0003D2B7` of the `lui t0,0x3D` instruction. Also, `0x648` is encoded as immediate value in the binary code `0x64828293` of the `addi t0,t0,1608` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
+Observe that `0x11` is encoded in 20 bits as immediate value `0x00011` in the binary code `0x000112B7` of the `lui t0,0x11` instruction. Also, `0x008` is encoded as immediate value in the binary code `0x00828293` of the `addi t0,t0,8` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
 
 ```
-0x    0    0    0    3    D    2    B    7
- b 0000 0000 0000 0011 1101 0010 1011 0111
+0x    0    0    0    1    1    2    B    7
+ b 0000 0000 0000 0001 0001 0010 1011 0111
 ```
 
 After regrouping the bits (and the hexadecimal digits) you can spot register `t0`, that is, register number `5`:
 
 ```
-                   0x3D     5    0x37
- b 00000000000000111101 00101 0110111
+                   0x11     5    0x37
+ b 00000000000000010001 00101 0110111
 ```
 
 as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `0110111`. The `lui` instruction is encoded according to the so-called *U-Format* which is obviously different than the I-Format of the `addi` instruction. The U-Format encodes two parameters, a 20-bit immediate value and one register whereas the I-Format encodes three parameters, a 12-bit immediate value and two registers. What we find fascinating is how each RISC-V instruction is squeezed into 32 bits. There went a lot of thought into how to do that so that hardware can decode and execute binary code fast!
@@ -2507,12 +2524,12 @@ as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `011
 Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions, taken from the debugger's output:
 
 ```
-pc=0x10000(~1): lui t0,0x3D: |- t0=0x0 -> t0=0x3D000
-pc=0x10004(~1): addi t0,t0,1608: t0=249856(0x3D000) |- t0=249856(0x3D000) -> t0=251464(0x3D648)
-pc=0x10008(~1): addi gp,t0,0: t0=251464(0x3D648) |- gp=0x0 -> gp=0x3D648
+pc=0x10000(~1): lui t0,0x11: |- t0=0x0 -> t0=0x11000
+pc=0x10004(~1): addi t0,t0,8: t0=69632(0x11000) |- t0=69632(0x11000) -> t0=69640(0x11008)
+pc=0x10008(~1): addi gp,t0,0: t0=69640(0x11008) |- gp=0x0 -> gp=0x11008
 ```
 
-Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x3D000` which is the immediate value `0x3D` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x648` right into these 12 bits so that `t0` contains `0x3D648` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
+Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x11000` which is the immediate value `0x11` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x008` right into these 12 bits so that `t0` contains `0x11008` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
 
 What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
 
