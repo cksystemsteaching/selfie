@@ -2124,7 +2124,7 @@ This is a book that takes the topic of this chapter a lot further. If you are in
 
 ## Machine
 
-The machine and its code is a mystery to many even though the basic principles governing its design are surprisingly simple and accessible to everyone. But simplicity is not the only reason why we dedicate a whole chapter to the topic. Knowing how a computer does its magic through mere yet extremely fast manipulation of enormous amounts of bits is the key to understanding virtually everything else in computer science, in particular the motivation of why things are done in certain ways and not others.
+The machine and its code is a mystery to many even though the basic principles governing its design are surprisingly simple and accessible to everyone. But simplicity is not the only reason why we dedicate a whole chapter to the topic. Knowing how a computer does its magic through mere yet extremely fast manipulation of enormous amounts of bits is the key to understanding virtually everything else in computer science, in particular the motivation of why things are done in certain ways and not others, hence the name of the field!
 
 For many years, there has been a trend towards ignoring the machine when teaching people how to code. After all, high-level programming languages are designed to abstract from the low-level details of the machine. However, not knowing what they abstract from has made coding the most casual engineering discipline among all fields of engineering. The result is not just low code quality almost everywhere but also high tolerance for that among users and decision makers. Electrical, mechanical, and civil engineers would never get away with what software engineers are allowed to do. This is surprising given that learning about the machine and how it connects to everything else takes a fraction of the time it takes to learn a high-level programming language!
 
@@ -2238,7 +2238,7 @@ The lesson learned here is important. The fact that our machine can only execute
 
 Let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers numbered `0` to `31` and denoted `zero`, `ra`, `sp`, `gp`, `tp`, `t0`-`t2`, `s0`-`s1`, `a0`-`a7`, `s2`-`s11`, `t3`-`t6`, and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
 
-The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing registers, `ld` and `sd` for accessing memory, `add`, `sub`, `mul`, `divu`, and `remu` for arithmetic operations, `sltu` for comparing integers, `beq`, `jal`, and `jalr` for controlling the `pc`, and `ecall` for input/output.
+The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing registers, `ld` and `sd` for accessing memory, `add`, `sub`, `mul`, `divu`, and `remu` for arithmetic operations, `sltu` for comparing integers, `beq`, `jal`, and `jalr` for controlling the `pc`, and `ecall` for input/output, memory management, and other systems functionality.
 
 RISC-U instruction are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
@@ -2262,11 +2262,34 @@ The relevant part of the output should be similar to this:
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 42906 instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction here.
+Selfie reports that it generated 42906 RISC-U machine instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+
+In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count`:
+
+```
+int count(int n) {
+  int c;
+
+  c = 0;
+
+  while (c < n)
+    c = c + 1;
+
+  return c;
+}
+
+int main() {
+  return count(1000000);
+}
+```
+
+You can find the source code in a text file called `count.c` which is part of the selfie system. The human-readable assembly code for the program is obtained as before using:
 
 ```
 ./selfie -c examples/count.c -S count.s
 ```
+
+where selfie stores the assembly code in a text file called `count.s` and responds with the following profile:
 
 ```
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
@@ -2288,6 +2311,10 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 ./selfie: 4532 characters of assembly with 124 instructions and 8 bytes of data written into count.s
 ```
 
+The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
+
+Selfie generates 124 instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for IO and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
+
 ```
 0x0(~1): 0x000112B7: lui t0,0x11
 0x4(~1): 0x00828293: addi t0,t0,8
@@ -2302,16 +2329,16 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 0x24(~1): 0x40550533: sub a0,a0,t0
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
-0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
-0x34(~1): 0x00000513: addi a0,zero,0   // initialize malloc
+0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
+0x34(~1): 0x00000513: addi a0,zero,0
 ---
 0x38(~1): 0x00810293: addi t0,sp,8
 0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)      // initialize call stack
+0x40(~1): 0x00513023: sd t0,0(sp)      // initialize stack
 ---
-0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main() procedure
+0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main procedure
 ---
-0x48(~1): 0xFF810113: addi sp,sp,-8
+0x48(~1): 0xFF810113: addi sp,sp,-8    // main returns here
 0x4C(~1): 0x00A13023: sd a0,0(sp)
 0x50(~1): 0x00013503: ld a0,0(sp)
 0x54(~1): 0x00810113: addi sp,sp,8
@@ -2319,6 +2346,55 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 0x5C(~1): 0x00000073: ecall            // exit
 ...
 ```
+
+It may be hard to believe but after reading this chapter you are able to understand all of this code! Why are we doing this to you? Well, understanding the machine gives you a truly solid foundation on which your knowledge of computer science can rest for a long time. Virtually everything in computer science is a consequence of the nature of the machines we use.
+
+For now, let us focus on the `jal` instruction from the above code:
+
+```
+0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main procedure
+```
+
+As stated in the comment, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A0`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits as in shuts down. Here is the code that implements `main`:
+
+```
+0x1A0(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1A4(~13): 0x00113023: sd ra,0(sp)
+0x1A8(~13): 0xFF810113: addi sp,sp,-8
+0x1AC(~13): 0x00813023: sd s0,0(sp)
+0x1B0(~13): 0x00010413: addi s0,sp,0
+---
+0x1B4(~13): 0x000F42B7: lui t0,0xF4       // return count(1000000);
+0x1B8(~13): 0x24028293: addi t0,t0,576
+0x1BC(~13): 0xFF810113: addi sp,sp,-8
+0x1C0(~13): 0x00513023: sd t0,0(sp)
+0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count
+0x1C8(~13): 0x00050293: addi t0,a0,0
+0x1CC(~13): 0x00000513: addi a0,zero,0
+0x1D0(~13): 0x00028513: addi a0,t0,0
+0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
+---
+0x1D8(~14): 0x00040113: addi sp,s0,0      // }
+0x1DC(~14): 0x00013403: ld s0,0(sp)
+0x1E0(~14): 0x00810113: addi sp,sp,8
+0x1E4(~14): 0x00013083: ld ra,0(sp)
+0x1E8(~14): 0x00810113: addi sp,sp,8
+0x1EC(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+```
+
+The very last instruction of `main`:
+
+```
+0x1EC(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+```
+
+makes the processor return to the instruction that follows the `jal ra,87[0x1A0]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
+
+```
+0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count
+```
+
+calls the code for `count` at address `0x138` which is right here:
 
 ```
 ...
@@ -2354,35 +2430,20 @@ Selfie reports that it generated 42906 instructions as well as 13896 bytes of da
 0x190(~10): 0x00810113: addi sp,sp,8
 0x194(~10): 0x00013083: ld ra,0(sp)
 0x198(~10): 0x01010113: addi sp,sp,16
-0x19C(~10): 0x00008067: jalr zero,0(ra)
+0x19C(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
+And again, the very last instruction of `count`:
+
 ```
-0x1A0(~13): 0xFF810113: addi sp,sp,-8  // int main() {
-0x1A4(~13): 0x00113023: sd ra,0(sp)
-0x1A8(~13): 0xFF810113: addi sp,sp,-8
-0x1AC(~13): 0x00813023: sd s0,0(sp)
-0x1B0(~13): 0x00010413: addi s0,sp,0
----
-0x1B4(~13): 0x000F42B7: lui t0,0xF4    // return count(1000000);
-0x1B8(~13): 0x24028293: addi t0,t0,576
-0x1BC(~13): 0xFF810113: addi sp,sp,-8
-0x1C0(~13): 0x00513023: sd t0,0(sp)
-0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138]
-0x1C8(~13): 0x00050293: addi t0,a0,0
-0x1CC(~13): 0x00000513: addi a0,zero,0
-0x1D0(~13): 0x00028513: addi a0,t0,0
-0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
----
-0x1D8(~14): 0x00040113: addi sp,s0,0   // }
-0x1DC(~14): 0x00013403: ld s0,0(sp)
-0x1E0(~14): 0x00810113: addi sp,sp,8
-0x1E4(~14): 0x00013083: ld ra,0(sp)
-0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00008067: jalr zero,0(ra)
+0x19C(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
-We use the code shown here as running example in the following section, and later take more code as example from other parts in `count.s`. After all, there are 124 instructions in `count.s` to choose from.
+makes the processor return to the instruction that follows the `jal ra,-35[0x138]` instruction in `main`.
+
+Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. The reason for that is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
+
+In the following we explain each RISC-U machine instruction in detail and use examples from the above code.
 
 #### Initialization
 
