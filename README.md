@@ -2156,7 +2156,7 @@ In the end, there are pros and cons to both, RISC and CISC, and there are also h
 
 The ISA we use in selfie is called *RISC-U* where *U* stands for *unsigned*. The RISC-U ISA is a strict and, in fact, tiny subset of the 64-bit RISC-V ISA. This means that machine code that runs on a RISC-U machine also runs on a 64-bit RISC-V machine but not necessarily vice versa. RISC-U features 14 instructions out of the 40 RISC-V base instructions. All instructions are encoded in 32 bits each. The arithmetic RISC-U instructions only provide unsigned integer arithmetic hence the name RISC-U.
 
-Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 64-bit general-purpose registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is the *register address space* of the machine. Register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of register `zero` is to initialize other registers. We show how that works below.
+Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 general-purpose 64-bit registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is the *register address space* of the machine. Register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of register `zero` is to initialize other registers. We show how that works below.
 
 > The program counter of a CPU determines which bits are interpreted as code
 
@@ -2166,7 +2166,7 @@ The *program counter* of a CPU, and they all have one, is like a register but wi
 
 So, what exactly does a processor do? We briefly mentioned that in the information chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program pointer points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. Most importantly, all instructions have in common that they make the processor set the program counter to another memory address when done. Then the processor fetches the next instruction, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
 
-In addition to the program counter, some instructions make the processor change either the value of one of the 32 64-bit general-purpose registers or the value of a 64-bit machine word in memory. This means that a RISC-U processor, upon executing any instruction, changes no more than 128 bits: 64 bits of the program counter and possibly another 64 bits in a register or a machine word in memory. That's all!
+In addition to the program counter, some instructions make the processor change either the value of one of the 32 general-purpose 64-bit registers or the value of a 64-bit machine word in memory. This means that a RISC-U processor, upon executing any instruction, changes no more than 128 bits: 64 bits of the program counter and possibly another 64 bits in a register or a machine word in memory. That's all!
 
 > Computation is a seemingly endless sequence of state transitions
 
@@ -2176,7 +2176,7 @@ Before we move on to explaining memory, we should briefly mention what a *multic
 
 ### Memory
 
-The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory, as introduced in the information chapter. More specifically, a RISC-U machine has 4GB of byte-addressed *main memory* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
+The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory, as introduced in the information chapter. More specifically, a RISC-U machine has a 32-bit *main memory address space* with up to 4GB of byte-addressed *main memory storage* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
 
 Let us count how many bits a RISC-U machine can store. There are the 2112 bits of the registers and program counter plus 4\*2^30^\*8=34,359,738,368 bits of main memory which are 34,359,740,480 bits in total. This means that there are 2^34359740480^ different states in which a RISC-U machine can be which is an absolutely mind-blowing number, especially considering that your smartphone is likely to be quite similar to a RISC-U machine.
 
@@ -2602,14 +2602,18 @@ Notice that the `lui` instruction does not depend on the state of the machine. T
 
 What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
 
-However, before introducing arithmetic instructions we expand our initialization story from registers to main memory. Since we are now able to initialize registers to any value we like, the next question is how to do the same with main memory.
+However, before introducing arithmetic instructions we expand our initialization story from registers to main memory. Since we are now able to initialize registers to any value we like, the next question is how to do the same with main memory, and then use whatever we store in memory for computation.
 
 #### Memory
 
-The next two RISC-U instructions we introduce are the `ld` and `sd` instructions which allow us to access main memory. Again, all examples are real, executable code of the selfie system.
+The next two RISC-U instructions we introduce are the `ld` and `sd` instructions where `ld` stands for *load double word* and `sd` for *store double word*. Loading a double word means to copy a 64-bit machine word from memory to one of the 32 general-purpose 64-bit registers. Storing a double word just refers to the other direction from register to memory.
+
+While identifying a register is easy since there are only 32, identifying a memory address is not that easy, simply because there are so many. How many again? Our machine has a 32-bit main memory address space with up to 4GB of byte-addressed main memory storage. Thus there are 2^32^ memory addresses which means that we need 32 bits to encode an address.
+
+Well, the `lui` and `addi` instructions come to our rescue here. Just one of each allows us to initialize a register with any 32-bit value we like! We can then interpret the value in that register as memory address. That's exactly what `ld` and `sd` do. In fact, since they only need to identify two registers, similar to the `addi` instruction, there are 12 bits left for an immediate value which is interpreted as an offset relative to the address. Thus the addressing mode of `ld` and `sd` is called *register-relative addressing*. Let us take a look at an `sd` instruction from our running example:
 
 ```
-0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
+0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
 ```
 
 ```
