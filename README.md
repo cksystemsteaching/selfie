@@ -269,7 +269,7 @@ int main() {
 }
 ```
 
-We have prepared that code in a text file called `double.c` as part of the selfie system. So, just type in your terminal:
+We have prepared that code in a text file called `double.c` in the `examples` folder of the selfie system. So, just type in your terminal:
 
 ```
 ./selfie -c examples/double.c -m 1
@@ -2156,15 +2156,23 @@ In the end, there are pros and cons to both, RISC and CISC, and there are also h
 
 The ISA we use in selfie is called *RISC-U* where *U* stands for *unsigned*. The RISC-U ISA is a strict and, in fact, tiny subset of the 64-bit RISC-V ISA. This means that machine code that runs on a RISC-U machine also runs on a 64-bit RISC-V machine but not necessarily vice versa. RISC-U features 14 instructions out of the 40 RISC-V base instructions. All instructions are encoded in 32 bits each. The arithmetic RISC-U instructions only provide unsigned integer arithmetic hence the name RISC-U.
 
-Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 64-bit registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is the *register address space* of the machine. Register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of register `zero` is to initialize other registers. We show how that works below.
+Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 64-bit general-purpose registers and one 64-bit *program counter*, just like the 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is the *register address space* of the machine. Register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of register `zero` is to initialize other registers. We show how that works below.
 
 > The program counter of a CPU determines which bits are interpreted as code
 
-The *program counter* of a CPU, and they all have one, is like a register but with an important, dedicated purpose. It stores exactly one machine word which is interpreted as a pointer to memory, that is, a memory address where the next instruction to be fetched, decoded, and executed is stored in memory. The program counter is therefore the only way of knowing where code rather than data is stored in memory. Any hacker trying to break into a machine effectively attempts to control the program counter to have the machine run code that it would otherwise not run.
+The *program counter* of a CPU, and they all have one, is like a register but with an important, dedicated purpose. It stores exactly one machine word which is interpreted as a pointer to memory, that is, a memory address where the next instruction to be fetched, decoded, and executed is stored in memory. For the machine, the program counter is therefore the only way of knowing where code rather than data is stored in memory. Any hacker trying to break into a computer effectively attempts to control the program counter to have the machine run code that it would otherwise not run.
 
-Let us take a step back now and reflect on what we have here. The *state* of a processor are the bits stored in its registers and program counter. How many do we have in a RISC-U processor? Easy. 32\*64+1\*64=2112 bits. The *state space* of the processor is therefore 2^2112^ different states. How many is that? Well, there are around 2^267^ particles in the known universe. In other words, our little RISC-U processor, which, in a similar flavor, likely powers your smartphone, can already be in a lot more states than that. And we are not even counting memory which is our next topic.
+> All day long: fetch, decode, execute
 
-Before we go there, we should mention what a *multicore* machine is, which is probably something you have heard of and is in your pocket right now. Our RISC-U processor is a single core machine. However, making it, say, a dual core machine is simple. Just duplicate registers and program counter but not memory. In other words, each core has its own registers and program counter but shares memory with all other cores. Why is this cool? Because a multicore machine can execute the same or different code as many times in parallel as there are cores, at least in principle. Remember the von Neumann bottleneck? Since memory and in particular the memory bus is shared among all cores, the bottleneck becomes even more of an issue and may slow down all cores. Modern machines address the issue in fascinating and sophisticated ways but the fundamental problem is here to stay.
+So, what exactly does a processor do? We briefly mentioned that in the information chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program pointer points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. Most importantly, all instructions have in common that they make the processor set the program counter to another memory address when done. Then the processor fetches the next instruction, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
+
+In addition to the program counter, some instructions make the processor change either the value of one of the 32 64-bit general-purpose registers or the value of a 64-bit machine word in memory. This means that a RISC-U processor, upon executing any instruction, changes no more than 128 bits: 64 bits of the program counter and possibly another 64 bits in a register or a machine word in memory. That's all!
+
+> Computation is a seemingly endless sequence of state transitions
+
+Let us take a step back and reflect on what we have here. The *state* of a processor are the bits stored in its registers and program counter. How many do we have in a RISC-U processor? Easy. 32\*64+1\*64=2112 bits. The *state space* of the processor is therefore 2^2112^ different states. How many is that? Well, there are around 2^267^ particles in the known universe. In other words, our little RISC-U processor, which, in a similar flavor, likely powers your smartphone, can already be in a lot more states than that. And we are not even counting memory. So, all a RISC-U processor does is exploring its state space from one state to another by executing one instruction after another where each instruction makes the processor flip up to 128 bits in what is called a *state transition*. The number of bits involved in a state transition might be different for other types of processors but the principle is always the same. From the perspective of a processor, *computation* is a (possibly unbounded) sequence of state transitions where each transition is triggered by the execution of one machine instruction which usually affects a very small number of bits. Turns out your smartphone is not so smart after all. But the people who program it probably are.
+
+Before we move on to explaining memory, we should briefly mention what a *multicore* machine is, which is probably something you have heard of and is in your pocket right now. Our RISC-U processor is a single core machine. However, making it, say, a dual core machine is simple. Just duplicate registers and program counter but not memory. In other words, each core has its own registers and program counter but shares memory with all other cores. Why is this cool? Because a multicore machine can execute the same or different code as many times in parallel as there are cores, at least in principle. Remember the von Neumann bottleneck? Since memory and in particular the memory bus is shared among all cores, the bottleneck becomes even more of an issue and may slow down all cores. Modern machines address the issue in fascinating and sophisticated ways but the fundamental problem is here to stay.
 
 ### Memory
 
@@ -2240,9 +2248,9 @@ Let us take a look at the exact state of a RISC-U machine again but now using a 
 
 The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing registers, `ld` and `sd` for accessing memory, `add`, `sub`, `mul`, `divu`, and `remu` for arithmetic operations, `sltu` for comparing integers, `beq`, `jal`, and `jalr` for controlling the `pc`, and `ecall` for input/output, memory management, and other systems functionality.
 
-RISC-U instruction are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
+RISC-U instructions are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed by `ld` and `sd` at 64-bit double-word granularity. The `d` in `ld` and `sd` stands for double word.
 
-Let us take another look at what selfie tells us about those instructions when self-compiling, as we already did in the language and information chapters. First, try:
+Let us take another look at what selfie tells us about those 14 instructions when self-compiling. First, try:
 
 ```
 ./selfie -c selfie.c
@@ -2264,7 +2272,7 @@ The relevant part of the output should be similar to this:
 
 Selfie reports that it generated 42906 RISC-U machine instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
-In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count`:
+In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000`:
 
 ```
 int count(int n) {
@@ -2279,11 +2287,11 @@ int count(int n) {
 }
 
 int main() {
-  return count(1000000);
+  return count(10000);
 }
 ```
 
-You can find the source code in a text file called `count.c` which is part of the selfie system. The human-readable assembly code for the program is obtained as before using:
+You can find the source code in a text file called `count.c` in the `examples` folder of the selfie system. The human-readable assembly code for the program is obtained as before using:
 
 ```
 ./selfie -c examples/count.c -S count.s
@@ -2295,8 +2303,8 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
 ./selfie: selfie compiling examples/count.c with starc
-./selfie: 125 characters read in 14 lines and 0 comments
-./selfie: with 81(64.80%) characters in 42 actual symbols
+./selfie: 123 characters read in 14 lines and 0 comments
+./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
 ./selfie: 2 calls, 2 assignments, 1 while, 0 if, 2 return
 ./selfie: symbol table search time was 2 iterations on average and 40 in total
@@ -2347,7 +2355,7 @@ Selfie generates 124 instructions for the program of which we show only those in
 ...
 ```
 
-It may be hard to believe but after reading this chapter you are able to understand all of this code! Why are we doing this to you? Well, understanding the machine gives you a truly solid foundation on which your knowledge of computer science can rest for a long time. Virtually everything in computer science is a consequence of the nature of the machines we use.
+It may be hard to believe but after reading this chapter you will be able to understand all of this code! Why are we doing this to you? Well, understanding the machine gives you a truly solid foundation on which your knowledge of computer science can rest for a long time. Virtually everything in computer science ultimately depends on the nature of the machines we use.
 
 For now, let us focus on the `jal` instruction from the above code:
 
@@ -2355,7 +2363,7 @@ For now, let us focus on the `jal` instruction from the above code:
 0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main procedure
 ```
 
-As stated in the comment, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A0`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits as in shuts down. Here is the code that implements `main`:
+As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A0`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
 
 ```
 0x1A0(~13): 0xFF810113: addi sp,sp,-8     // int main() {
@@ -2364,12 +2372,12 @@ As stated in the comment, this instruction calls the `main` procedure by making 
 0x1AC(~13): 0x00813023: sd s0,0(sp)
 0x1B0(~13): 0x00010413: addi s0,sp,0
 ---
-0x1B4(~13): 0x000F42B7: lui t0,0xF4       // return count(1000000);
-0x1B8(~13): 0x24028293: addi t0,t0,576
+0x1B4(~13): 0x000022B7: lui t0,0x2        // return count(10000);
+0x1B8(~13): 0x71028293: addi t0,t0,1808
 0x1BC(~13): 0xFF810113: addi sp,sp,-8
 0x1C0(~13): 0x00513023: sd t0,0(sp)
-0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count
-0x1C8(~13): 0x00050293: addi t0,a0,0
+0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count procedure
+0x1C8(~13): 0x00050293: addi t0,a0,0      // count returns here
 0x1CC(~13): 0x00000513: addi a0,zero,0
 0x1D0(~13): 0x00028513: addi a0,t0,0
 0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
@@ -2391,7 +2399,7 @@ The very last instruction of `main`:
 makes the processor return to the instruction that follows the `jal ra,87[0x1A0]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
 ```
-0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count
+0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count procedure
 ```
 
 calls the code for `count` at address `0x138` which is right here:
@@ -2441,13 +2449,13 @@ And again, the very last instruction of `count`:
 
 makes the processor return to the instruction that follows the `jal ra,-35[0x138]` instruction in `main`.
 
-Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. The reason for that is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
+Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. This is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
 
-In the following we explain each RISC-U machine instruction in detail and use examples from the above code.
+In the following we explain each RISC-U machine instruction in detail using the running example as motivation.
 
 #### Initialization
 
-The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
+The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers. There are also use cases other than initialization which we mention below as well.
 
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
@@ -2514,7 +2522,7 @@ obviously makes the CPU *copy* the value in register `t0` to register `gp` while
 
 makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
 
-Here is the specification of the `addi` instruction taken from the official RISC-V ISA:
+Here is the specification of the `addi` instruction taken from the official RISC-V ISA. The parameters `rd` and `rs1` (and later `rs2`) may denote any of the 32 general-purpose registers. The parameter `imm` denotes an immediate value:
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
