@@ -8636,7 +8636,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    printf2("%s: pc=%x", binary_name, (char*) address);
+    printf2("%s: pc==%x", binary_name, (char*) address);
     print_code_line_number_for_instruction(address, code_start);
     if (symbolic)
       // skip further output
@@ -8924,9 +8924,9 @@ void print_load_before() {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        printf2(",mem[%x]=%x |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
+        printf2(",mem[%x]==%x |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       else
-        printf2(",mem[%x]=%d |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
+        printf2(",mem[%x]==%d |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
@@ -8940,7 +8940,7 @@ void print_load_after(uint64_t vaddr) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
-      printf1("=mem[%x]", (char*) vaddr);
+      printf1("==mem[%x]", (char*) vaddr);
     }
 }
 
@@ -9017,9 +9017,9 @@ void print_store_before() {
       print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        printf2(" |- mem[%x]=%x", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
+        printf2(" |- mem[%x]==%x", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       else
-        printf2(" |- mem[%x]=%d", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
+        printf2(" |- mem[%x]==%d", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
 
       return;
     }
@@ -9030,7 +9030,7 @@ void print_store_before() {
 void print_store_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      printf1(" -> mem[%x]=", (char*) vaddr);
+      printf1(" -> mem[%x]==", (char*) vaddr);
       print_register_value(rs2);
     }
 }
@@ -9109,11 +9109,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  printf1(" |- pc=%x", (char*) pc);
+  printf1(" |- pc==%x", (char*) pc);
 }
 
 void print_beq_after() {
-  printf1(" -> pc=%x", (char*) pc);
+  printf1(" -> pc==%x", (char*) pc);
 }
 
 void record_beq() {
@@ -9150,7 +9150,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf1("pc=%x", (char*) pc);
+  printf1("pc==%x", (char*) pc);
 }
 
 void print_jal_jalr_after() {
@@ -9219,7 +9219,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf1("pc=%x", (char*) pc);
+  printf1("pc==%x", (char*) pc);
 }
 
 void do_jalr() {
@@ -9493,18 +9493,18 @@ void replay_trace() {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  printf2("%s=%x", get_register_name(reg), (char*) *(registers + reg));
+  printf2("%s==%x", get_register_name(reg), (char*) *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
-  printf2("%s=%o", get_register_name(reg), (char*) *(registers + reg));
+  printf2("%s==%o", get_register_name(reg), (char*) *(registers + reg));
 }
 
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    printf3("%s=%d(%x)", get_register_name(reg), (char*) *(registers + reg), (char*) *(registers + reg));
+    printf3("%s==%d(%x)", get_register_name(reg), (char*) *(registers + reg), (char*) *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
