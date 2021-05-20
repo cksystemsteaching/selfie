@@ -173,11 +173,11 @@ and finally:
 Selfie responds with what is called its *synopsis*. Just that synopsis is already written in a formal language called a *regular expression* that specifies exactly how you can invoke selfie:
 
 ```
-synopis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 
 ```
 
-The synopis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
+The synopsis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
 
 ```
 ./selfie -c selfie.c
@@ -715,17 +715,17 @@ A debugger is a software tool for finding flaws in software called *bugs*. Lots 
 
 ```
 ...
-... pc=0x1014C(~2): ld t0,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t0=42(0x2A) -> t0=42(0x2A)=mem[0xFFFFFFB0]
-... pc=0x10150(~2): ld t1,16(s0): s0=0xFFFFFFA0,mem[0xFFFFFFB0]=42 |- t1=0(0x0) -> t1=42(0x2A)=mem[0xFFFFFFB0]
-... pc=0x10154(~2): add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
-... pc=0x10158(~2): addi a0,t0,0: t0=84(0x54) |- a0=0(0x0) -> a0=84(0x54)
+... pc==0x1014C(~2): ld t0,16(s0): s0==0xFFFFFFA0,mem[0xFFFFFFB0]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFB0]
+... pc==0x10150(~2): ld t1,16(s0): s0==0xFFFFFFA0,mem[0xFFFFFFB0]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFB0]
+... pc==0x10154(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
+... pc==0x10158(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
 ...
 ```
 
 We focus on this part in particular:
 
 ```
-... add t0,t0,t1: t0=42(0x2A),t1=42(0x2A) |- t0=42(0x2A) -> t0=84(0x54)
+... add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
 ```
 
 When executing a machine instruction such as `add t0,t0,t1`, selfie reports, to the left of the symbol `|-`, the *machine state* on which the instruction depends before executing it, and, to the right of the symbol `->`, how the state changed after executing the instruction. Here, the state on which the instruction depends are the values of registers `t0` and `t1` which are both `42` in decimal and `0x2A` in hexadecimal. After executing the instruction the machine state has changed with the value of `t0` set to `84` in decimal and `0x54` in hexadecimal, which is the result of adding the values of `t0` and `t1`. In between `|-` and `->`, selfie reports, before executing the instruction, the machine state that the instruction actually changes, which is obviously the value of `t0`.
@@ -3152,7 +3152,7 @@ POP: { ("+" | "-") term }:
 
 * sum
 
-* synopis
+* synopsis
 
 * syntax
 
