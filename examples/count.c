@@ -10,5 +10,5 @@ int count(int n) {
 }
 
 int main() {
-  return count(1000000);
+  return count(10000);
 }
