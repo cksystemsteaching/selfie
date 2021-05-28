@@ -1783,7 +1783,6 @@ uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
 uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
-uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 9; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // textual representation of exceptions
 
@@ -1883,7 +1882,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICSCHEDULE + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNINITIALIZEDREGISTER + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -1894,7 +1893,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
 }
 
 void reset_interpreter() {
@@ -2207,8 +2205,7 @@ uint64_t selfie_run(uint64_t machine);
 uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
-uint64_t EXIT      = 1;
-uint64_t SCHEDULE  = 2; // for symbolic execution
+uint64_t EXIT      = 1; // extended in symbolic execution engine
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 11; // leaving 1-10 for apps
@@ -2226,9 +2223,7 @@ uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 22;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 23;
 uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 24;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 25;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 26; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 27; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 28;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 26;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 

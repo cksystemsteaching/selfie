@@ -115,6 +115,8 @@ uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t EXITCODE_MODELINGERROR = 1;
+
 uint64_t LO_FLOW = 32; // offset of nids of lower bounds on addresses in registers
 uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registers
 
