@@ -451,7 +451,7 @@ uint64_t number_of_ignored_characters = 0;
 uint64_t number_of_comments           = 0;
 uint64_t number_of_scanned_symbols    = 0;
 
-uint64_t number_of_syntax_errors = 0; // the number of encountered syntax error
+uint64_t number_of_syntax_errors = 0; // the number of encountered syntax errors
 
 char*    source_name = (char*) 0; // name of source file
 uint64_t source_fd   = 0; // file descriptor of open source file
@@ -509,6 +509,7 @@ void reset_scanner() {
   number_of_ignored_characters = 0;
   number_of_comments           = 0;
   number_of_scanned_symbols    = 0;
+  number_of_syntax_errors = 0;
 }
 
 // -----------------------------------------------------------------
@@ -692,6 +693,7 @@ void reset_parser() {
   number_of_while       = 0;
   number_of_if          = 0;
   number_of_return      = 0;
+  number_of_syntax_errors = 0;
 
   get_symbol();
 }
@@ -5759,7 +5761,6 @@ void selfie_compile() {
         exit(EXITCODE_IOERROR);
       }
 
-      number_of_syntax_errors = 0;
       reset_scanner();
       reset_parser();
 
