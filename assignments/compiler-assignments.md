@@ -96,7 +96,7 @@ Implement support of and code generation for multi-dimensional arrays in C\* wit
 
 ## Assignment `struct-declaration`:
 
-Implement support of and code generation for struct declarations in C\*.
+Implement support of and code generation for struct declarations in C\* including internal representation of structs in the symbol table.
 
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
