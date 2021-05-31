@@ -133,7 +133,7 @@ char*    store_character(char* s, uint64_t i, uint64_t c);
 
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
-char*    string_copy(char* s);
+char*    string_shrink(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
@@ -704,13 +704,29 @@ void reset_parser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
+void init_bootstrapping();
+
 void emit_round_up(uint64_t reg, uint64_t m);
 void emit_multiply_by(uint64_t reg, uint64_t m);
-void emit_program_entry();
 
 // bootstrapping binary
 
+void emit_program_entry();
 void emit_bootstrapping();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+char* main_name = (char*) 0;
+char* bump_name = (char*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_bootstrapping() {
+  // caution: length of string literals must be multiples of WORDSIZE
+  // to avoid out-of-bound character-array access warnings
+  main_name = string_shrink("main   ");
+  bump_name = string_shrink("_bump  ");
+}
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -2560,12 +2576,21 @@ uint64_t string_length(char* s) {
   return i;
 }
 
-char* string_copy(char* s) {
+char* string_shrink(char* s) {
   uint64_t l;
-  char* t;
   uint64_t i;
+  char* t;
 
   l = string_length(s);
+
+  i = 0;
+
+  while (i < l)
+    if (load_character(s, i) == ' ')
+      // discard any characters to the right of a space
+      l = i;
+    else
+      i = i + 1;
 
   t = string_alloc(l);
 
@@ -5365,7 +5390,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         set_type(entry, type);
         set_address(entry, code_size);
 
-        if (string_compare(procedure, "main")) {
+        if (string_compare(procedure, main_name)) {
           // first source containing main procedure provides binary name
           binary_name = source_name;
 
@@ -5618,8 +5643,8 @@ void emit_bootstrapping() {
     emit_ecall();
 
     // look up global variable _bump for storing malloc's bump pointer
-    // copy "_bump" string into zeroed word to obtain unique hash
-    entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
+    // use bump_name string to obtain unique hash
+    entry = search_global_symbol_table(bump_name, VARIABLE);
 
     // store word-aligned program break in _bump
     emit_store(get_scope(entry), get_address(entry), REG_A0);
@@ -5656,10 +5681,10 @@ void emit_bootstrapping() {
     // assert: global, _bump, and stack pointers are set up
     //         with all other non-temporary registers zeroed
 
-    // copy "main" string into zeroed word to obtain unique hash
-    entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
+    // use main_name string to obtain unique hash
+    entry = get_scoped_symbol_table_entry(main_name, PROCEDURE);
 
-    procedure_call(entry, "main");
+    procedure_call(entry, main_name);
   }
 
   // we exit with exit code in return register pushed onto the stack
@@ -5738,8 +5763,8 @@ void selfie_compile() {
   }
 
   // implicitly declare main procedure in global symbol table
-  // copy "main" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
+  // use main_name string to obtain unique hash
+  create_symbol_table_entry(GLOBAL_TABLE, main_name, 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -7285,13 +7310,13 @@ void emit_malloc() {
   data_size = data_size + WORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
-  // copy "_bump" string into zeroed word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -data_size);
+  // use bump_name string to obtain unique hash
+  create_symbol_table_entry(GLOBAL_TABLE, bump_name, 1, VARIABLE, UINT64_T, 0, -data_size);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
 
-  entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
+  entry = search_global_symbol_table(bump_name, VARIABLE);
 
   // allocate register for size parameter
   talloc();
@@ -11203,6 +11228,8 @@ uint64_t selfie(uint64_t extras) {
     println();
 
     init_scanner();
+    init_bootstrapping();
+
     init_register();
     init_disassembler();
     init_interpreter();
