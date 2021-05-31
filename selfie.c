@@ -451,6 +451,8 @@ uint64_t number_of_ignored_characters = 0;
 uint64_t number_of_comments           = 0;
 uint64_t number_of_scanned_symbols    = 0;
 
+uint64_t number_of_syntax_errors = 0; // the number of encountered syntax errors
+
 char*    source_name = (char*) 0; // name of source file
 uint64_t source_fd   = 0; // file descriptor of open source file
 
@@ -507,6 +509,8 @@ void reset_scanner() {
   number_of_ignored_characters = 0;
   number_of_comments           = 0;
   number_of_scanned_symbols    = 0;
+
+  number_of_syntax_errors = 0;
 }
 
 // -----------------------------------------------------------------
@@ -690,6 +694,8 @@ void reset_parser() {
   number_of_while       = 0;
   number_of_if          = 0;
   number_of_return      = 0;
+
+  number_of_syntax_errors = 0;
 
   get_symbol();
 }
@@ -2216,14 +2222,15 @@ uint64_t EXITCODE_IOERROR                = 15;
 uint64_t EXITCODE_SCANNERERROR           = 16;
 uint64_t EXITCODE_PARSERERROR            = 17;
 uint64_t EXITCODE_COMPILERERROR          = 18;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 19;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 20;
-uint64_t EXITCODE_DIVISIONBYZERO         = 21;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 22;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 23;
-uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 24;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 25;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 26;
+uint64_t EXITCODE_SYNTAXERROR            = 19;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 20;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 21;
+uint64_t EXITCODE_DIVISIONBYZERO         = 22;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 23;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 24;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 25;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 26;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 27;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -3205,6 +3212,8 @@ void print_line_number(char* message, uint64_t line) {
 void syntax_error_message(char* message) {
   print_line_number("syntax error", line_number);
   printf1("%s\n", message);
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_character(uint64_t expected) {
@@ -3213,6 +3222,8 @@ void syntax_error_character(uint64_t expected) {
   print(" expected but ");
   print_character(character);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_identifier(char* expected) {
@@ -3221,6 +3232,8 @@ void syntax_error_identifier(char* expected) {
   print(" expected but ");
   print_string(identifier);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void get_character() {
@@ -3696,6 +3709,8 @@ void get_symbol() {
         print_character(character);
         println();
 
+        number_of_syntax_errors = number_of_syntax_errors + 1;
+
         exit(EXITCODE_SCANNERERROR);
       }
     }
@@ -3858,6 +3873,8 @@ uint64_t report_undefined_procedures() {
 
         print_line_number("syntax error", get_line_number(entry));
         printf1("procedure %s undefined\n", get_string(entry));
+
+        number_of_syntax_errors = number_of_syntax_errors + 1;
       }
 
       // keep looking
@@ -4083,6 +4100,8 @@ void syntax_error_symbol(uint64_t expected) {
   print(" expected but ");
   print_symbol(symbol);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_unexpected() {
@@ -4090,6 +4109,8 @@ void syntax_error_unexpected() {
   print("unexpected symbol ");
   print_symbol(symbol);
   print(" found\n");
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void print_type(uint64_t type) {
@@ -4160,6 +4181,8 @@ uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
     if (entry == (uint64_t*) 0) {
       print_line_number("syntax error", line_number);
       printf1("%s undeclared\n", variable_or_big_int);
+
+      number_of_syntax_errors = number_of_syntax_errors + 1;
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -5761,6 +5784,14 @@ void selfie_compile() {
         (char*) number_of_while,
         (char*) number_of_if,
         (char*) number_of_return);
+
+      if (number_of_syntax_errors != 0) {
+        printf3("%s: encountered %u syntax errors while compiling %s - omitting ELF output\n",
+                (char*) selfie_name,
+                (char*) number_of_syntax_errors,
+                (char*) source_name);
+        exit(EXITCODE_SYNTAXERROR);
+      }
     }
   }
 

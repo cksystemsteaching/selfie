@@ -239,9 +239,9 @@ def check_fork_and_wait() -> List[Check]:
 
 
 def check_fork_wait_exit() -> List[Check]:
-    return check_mipster_execution('sum-exit-code.c', 28,
+    return check_mipster_execution('sum-exit-code.c', 56,
                                    'exit code is returned as status parameter from wait with MIPSTER') + \
-        check_hypster_execution('sum-exit-code.c', 28,
+        check_hypster_execution('sum-exit-code.c', 56,
                                 'exit code is returned as status parameter from wait with HYPSTER') + \
         check_mipster_execution('unmapped-page-wait.c', 42,
                                 'wait system call maps page to unmapped virtual address') + \

@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   // prepare data to be printed
   i = 0;
   while (i < number_of_processes) {
-    *(sorted_numbers + i) = i;
+    *(sorted_numbers + i) = i*2;
 
     i = i + 1;
   }
