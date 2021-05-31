@@ -509,6 +509,7 @@ void reset_scanner() {
   number_of_ignored_characters = 0;
   number_of_comments           = 0;
   number_of_scanned_symbols    = 0;
+
   number_of_syntax_errors = 0;
 }
 
@@ -693,6 +694,7 @@ void reset_parser() {
   number_of_while       = 0;
   number_of_if          = 0;
   number_of_return      = 0;
+
   number_of_syntax_errors = 0;
 
   get_symbol();
