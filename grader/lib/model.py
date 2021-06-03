@@ -14,6 +14,7 @@ class CheckResult:
 @dataclass(frozen=True)
 class Check:
     msg: str
+    command: str
     execute: Callable[[], CheckResult]
 
 @dataclass(frozen=True)
