@@ -723,7 +723,7 @@ char* bump_name = (char*) 0;
 
 void init_bootstrapping() {
   // caution: length of string literals must be multiples of WORDSIZE
-  // to avoid out-of-bound character-array access warnings
+  // to avoid out-of-bound array access warnings, use space to fill
   main_name = string_shrink("main   ");
   bump_name = string_shrink("_bump  ");
 }
