@@ -96,7 +96,7 @@ Implement support of and code generation for multi-dimensional arrays in C\* wit
 
 ## Assignment `struct-declaration`:
 
-Implement support of and code generation for struct declarations in C\*.
+Implement support of and code generation for `struct` declarations in C\* including internal representation of structs in the symbol table.
 
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
@@ -106,7 +106,7 @@ Implement support of and code generation for struct declarations in C\*.
 
 ## Assignment `struct-execution`:
 
-Implement support of and code generation for struct access in C\*.
+Implement support of and code generation for `struct` access in C\*.
 
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
@@ -116,7 +116,7 @@ Implement support of and code generation for struct access in C\*.
 
 ## Assignment `for-loop`:
 
-Implement support of and code generation for for loops in C\*.
+Implement support of and code generation for `for` loops in C\*.
 
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
