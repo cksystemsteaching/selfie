@@ -6056,9 +6056,9 @@ void selfie_compile() {
   }
 
   // declare macros in their table
-  create_symbol_table_entry(MACRO_TABLE, string_copy("var_start"), 0, MACRO, VOID_T, MACRO_VAR_START, 0);
-  create_symbol_table_entry(MACRO_TABLE, string_copy("var_arg"), 0, MACRO, UINT64_T, MACRO_VAR_ARG, 0);
-  create_symbol_table_entry(MACRO_TABLE, string_copy("var_end"), 0, MACRO, VOID_T, MACRO_VAR_END, 0);
+  create_symbol_table_entry(MACRO_TABLE, "var_start", 0, MACRO, VOID_T, MACRO_VAR_START, 0);
+  create_symbol_table_entry(MACRO_TABLE, "var_arg", 0, MACRO, UINT64_T, MACRO_VAR_ARG, 0);
+  create_symbol_table_entry(MACRO_TABLE, "var_end", 0, MACRO, VOID_T, MACRO_VAR_END, 0);
 
   // implicitly declare main procedure in global symbol table
   // use main_name string to obtain unique hash
