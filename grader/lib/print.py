@@ -33,14 +33,16 @@ def print_grade(grade):
     println('\033[0m')
 
 
-def print_passed(msg):
+def print_passed(msg, command):
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
     println("\033[92m[PASSED]\033[0m " + msg)
 
 
 def print_failed(msg, warning, output: str, command):
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
     println("\033[91m[FAILED]\033[0m " + msg)
-    if command != None:
-        println(command)
     if warning != None:
         println("\033[93m > " + warning + " <\033[0m")
 
@@ -103,8 +105,11 @@ class SpinnerThread(threading.Thread):
 spinner_thread = None
 
 
-def print_processing(msg):
+def print_processing(msg, command=''):
     global spinner_thread
+
+    if command:
+        msg = msg + ": \033[33m$ " + command + "\033[0m"
 
     spinner_thread = SpinnerThread(msg)
     spinner_thread.daemon = True  # die when parent dies

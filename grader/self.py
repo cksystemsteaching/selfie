@@ -239,16 +239,16 @@ def check_fork_and_wait() -> List[Check]:
 
 
 def check_fork_wait_exit() -> List[Check]:
-    return check_mipster_execution('sum-exit-code.c', 28,
+    return check_mipster_execution('sum-exit-code.c', 56,
                                    'exit code is returned as status parameter from wait with MIPSTER') + \
-        check_hypster_execution('sum-exit-code.c', 28,
+        check_hypster_execution('sum-exit-code.c', 56,
                                 'exit code is returned as status parameter from wait with HYPSTER') + \
         check_mipster_execution('unmapped-page-wait.c', 42,
                                 'wait system call maps page to unmapped virtual address') + \
         check_mipster_execution('invalid-address.c', 42,
                                 'wait system call correctly handles invalid addresses') + \
         check_mipster_execution('null-ptr.c', 42,
-                                'wait system call returns PID when NULL is passed');
+                                'wait system call returns PID when NULL is passed')
 
 
 def check_lock() -> List[Check]:
@@ -320,9 +320,6 @@ assignments: List[Assignment] = [
     Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logic',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-and-or-not',
                check_bitwise_and_or_not),
-    Assignment('for-loop', 'Compiler', 'for-loop',
-               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
-               check_for_loop),
     Assignment('array', 'Compiler', 'array',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
                check_array),
@@ -335,6 +332,9 @@ assignments: List[Assignment] = [
     Assignment('struct-execution', 'Compiler', 'struct',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
                check_struct_execution),
+    Assignment('for-loop', 'Compiler', 'for-loop',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
+               check_for_loop),
     Assignment('assembler-parser', 'Systems', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
                check_assembler_parser),

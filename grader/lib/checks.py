@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from .model import Check, CheckResult
-from .output_processing import (filter_status_messages, has_compiled,
+from .output_processing import (filter_status_messages,
                                 has_no_compile_warnings, has_no_bootstrapping_compile_warnings, 
                                 is_interleaved_output, is_permutation_of)
 from .print import print_processing, print_warning, stop_processing_spinner
@@ -98,23 +98,20 @@ def execute(command, timeout=60):
             timedout = True
 
     output = stdoutdata.decode(sys.stdout.encoding)
-    # error_output = stderrdata.decode(sys.stderr.encoding)
 
     if timedout:
         raise TimeoutException(command, timeout, output)
-                # , error_output)
 
     return (process.returncode, output)
-            # , error_output)
 
 
 def check_instruction_encoding(instruction, file) -> List[Check]:
     msg = instruction[0] + ' has right RISC-V encoding'
 
-    def execute_check() -> CheckResult:
-        command = './selfie -c <assignment>{} -o .tmp.bin'.format(file)
-        command = insert_assignment_path(command)
+    command = './selfie -c <assignment>{} -o .tmp.bin'.format(file)
+    command = insert_assignment_path(command)
 
+    def execute_check() -> CheckResult:
         try:
             exit_code, output = execute(command)
 
@@ -126,20 +123,26 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
 
                 try:
                     with open('.tmp.bin', 'rb') as f:
-                        ignored_elf_header_size = 14 * WORDSIZE
+                        # Read the code start/length out of the program header
+                        # (p_filesz in the ELF program header)
+                        # -> Ignore 12 words
+                        #    (8 ELF header + 1 partial ELF program header)
+                        # CAUTION: These offset values do currently work with
+                        #          Selfie's ELF64 binaries, only!
+                        ignored_elf_header_size = 9 * WORDSIZE
 
-                        f.read(ignored_elf_header_size)
+                        # Between code start and length, fields p_vaddr
+                        # and p_paddr are located
+                        ignored_elf_pheader_seek = 2 * WORDSIZE
+
+                        f.seek(ignored_elf_header_size)
 
                         code_start = read_data(f)
+                        f.read(ignored_elf_pheader_seek)
                         code_length = read_data(f)
 
                         # ignore all pading bytes
-                        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * WORDSIZE
-
-                        if no_of_bytes_until_code < 0:
-                            no_of_bytes_until_code = 0
-
-                        f.read(no_of_bytes_until_code)
+                        f.seek(code_start)
 
                         # read all RISC-V instructions from binary
                         read_instructions = map(lambda x: read_instruction(
@@ -166,16 +169,16 @@ def check_instruction_encoding(instruction, file) -> List[Check]:
             return CheckResult(False, msg, str(e), 'Failed to execute "{}"'.format(
                 command), True, command, mandatory=False)
 
-    return [Check(msg, execute_check)]
+    return [Check(msg, command, execute_check)]
 
 
 def check_assembler_instruction_format(instruction, file) -> List[Check]:
     msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
-    def execute_check() -> CheckResult:
-        command = './selfie -c <assignment>{} -s .tmp.s'.format(file)
-        command = insert_assignment_path(command)
+    command = './selfie -c <assignment>{} -s .tmp.s'.format(file)
+    command = insert_assignment_path(command)
 
+    def execute_check() -> CheckResult:
         try:
             exit_code, output = execute(command)
 
@@ -206,13 +209,13 @@ def check_assembler_instruction_format(instruction, file) -> List[Check]:
             return CheckResult(False, msg, str(e), 'Failed to execute "{}"'.format(
                 command), True, command, mandatory=False)
 
-    return [Check(msg, execute_check)]
+    return [Check(msg, command, execute_check)]
 
 
 def check_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False, timeout=60) -> List[Check]:
-    def execute_check() -> CheckResult:
-        secure_command = insert_assignment_path(command)
+    secure_command = insert_assignment_path(command)
 
+    def execute_check() -> CheckResult:
         try:
             returncode, output = execute(secure_command, timeout)
 
@@ -253,12 +256,12 @@ def check_execution(command, msg, success_criteria=True, should_succeed=True, ma
             return CheckResult(False, msg, str(e), 'Failed to execute "{}"'.format(
                 secure_command), should_succeed, secure_command, mandatory)
 
-    return [Check(msg, execute_check)]
+    return [Check(msg, secure_command, execute_check)]
 
 
 def check_compilable(file, msg, should_succeed=True) -> List[Check]:
     return check_execution('./selfie -c <assignment>{}'.format(file), msg, success_criteria=lambda code,
-                          out: has_compiled(code, out), should_succeed=should_succeed)
+                          out: has_no_compile_warnings(code, out), should_succeed=should_succeed)
 
 
 def check_riscv_instruction(instruction, file) -> List[Check]:
