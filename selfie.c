@@ -8189,11 +8189,11 @@ void print_cache_profile(uint64_t hits, uint64_t misses, char* cache_name) {
   accesses = hits + misses;
 
   printf("%s: %s%lu,", selfie_name, cache_name, accesses);
-  printf("%lu(%.2lu%%),%lu(%.2lu%%)",
+  printf("%lu(%lu.%2lu%%),%lu(%lu.%2lu%%)",
     hits,
-    percentage_format(accesses, hits),
+    ratio_format_integer(percentage_format(accesses, hits)),
     misses,
-    percentage_format(accesses, misses));
+    ratio_format_fractional(percentage_format(accesses, misses)));
 }
 
 // -----------------------------------------------------------------
