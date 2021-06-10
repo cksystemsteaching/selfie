@@ -2790,30 +2790,12 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
   // compute fixed point ratio with f fractional digits
-  // multiply a/b with 10^f but avoid wrap around
-
-  uint64_t p;
-
-  p = 0;
-
-  while (p <= f) {
-    if (a <= UINT64_MAX / ten_to_the_power_of(f - p)) {
-      if (b / ten_to_the_power_of(p) != 0)
-        return (a * ten_to_the_power_of(f - p)) / (b / ten_to_the_power_of(p));
-    }
-
-    p = p + 1;
-  }
-
-  return 0;
+  return a / b * ten_to_the_power_of(f) + a % b * ten_to_the_power_of(f) / b;
 }
 
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
-  if (r != 0)
-    // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
-    return ten_to_the_power_of(4 + f) / r;
-  else
-    return 0;
+  // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
+  return ten_to_the_power_of(4 + f) / r;
 }
 
 uint64_t ratio_format(uint64_t a, uint64_t b) {
@@ -2821,7 +2803,10 @@ uint64_t ratio_format(uint64_t a, uint64_t b) {
 }
 
 uint64_t percentage_format(uint64_t a, uint64_t b) {
-  return fixed_point_percentage(fixed_point_ratio(a, b, 4), 4);
+  if (b != 0)
+    return fixed_point_percentage(fixed_point_ratio(a, b, 4), 4);
+  else
+    return 0;
 }
 
 void put_character(uint64_t c) {
