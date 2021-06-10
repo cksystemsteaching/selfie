@@ -8177,7 +8177,9 @@ void print_cache_profile(uint64_t hits, uint64_t misses, char* cache_name) {
   printf("%lu(%lu.%2lu%%),%lu(%lu.%2lu%%)",
     hits,
     ratio_format_integer(percentage_format(accesses, hits)),
+    ratio_format_fractional(percentage_format(accesses, hits)),
     misses,
+    ratio_format_integer(percentage_format(accesses, misses)),
     ratio_format_fractional(percentage_format(accesses, misses)));
 }
 
