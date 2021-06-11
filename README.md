@@ -2664,6 +2664,10 @@ The `sd` instruction is encoded according to the so-called *S-Format* which is a
 
 Interestingly, the immediate value is split into two parts `imm1` and `imm2` of which the `imm2` part containing the 5 LSBs of `imm` is encoded where otherwise `rd` is encoded. The reason for that is to have all parameters other than immediate values always encoded by the same bits in all formats which enables fast decoding of RISC-V instructions in hardware. Difficult to read for us but easy for the machine which matters more in this case!
 
+From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the above instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
+
+In order to validate your findings you may want to have a look at the source code of the selfie system which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well.
+
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
 #### Arithmetic
