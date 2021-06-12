@@ -2794,8 +2794,11 @@ uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
 }
 
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
-  // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
-  return ten_to_the_power_of(4 + f) / r;
+  if (r != 0)
+    // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
+    return ten_to_the_power_of(4 + f) / r;
+  else
+    return 0;
 }
 
 uint64_t ratio_format(uint64_t a, uint64_t b) {
