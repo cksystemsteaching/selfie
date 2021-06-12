@@ -2789,7 +2789,7 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
 }
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
-  // compute fixed point ratio with f fractional digits
+  // compute fixed-point ratio with f fractional digits
   return a / b * ten_to_the_power_of(f) + a % b * ten_to_the_power_of(f) / b;
 }
 

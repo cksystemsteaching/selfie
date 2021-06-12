@@ -69,6 +69,13 @@ jobs:
     name: Make everything of selfie on docker
     runs-on: ubuntu-latest
 
+    # usage:
+    #
+    # - pull docker image: docker pull cksystemsteaching/selfie
+    # - run command:       docker run --platform linux/amd64 -v cksystemsteaching/selfie command
+    # - run interactive:   docker run --platform linux/amd64 -it cksystemsteaching/selfie
+    # - run on my selfie:  docker run --platform linux/amd64 -it -v /myselfie:/opt/myselfie cksystemsteaching/selfie
+
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
