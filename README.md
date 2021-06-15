@@ -2351,7 +2351,7 @@ Selfie generates 124 instructions for the program of which we show only those in
 ---
 0x48(~1): 0xFF810113: addi sp,sp,-8    // main returns here
 0x4C(~1): 0x00A13023: sd a0,0(sp)
-0x50(~1): 0x00013503: ld a0,0(sp)
+0x50(~1): 0x00013503: ld a0,0(sp)      // load exit code
 0x54(~1): 0x00810113: addi sp,sp,8
 0x58(~1): 0x05D00893: addi a7,zero,93
 0x5C(~1): 0x00000073: ecall            // exit
@@ -2710,6 +2710,23 @@ From now on we do not explicitly decode instructions anymore but feel free to pr
 In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well.
 
 Let us now take a look at the `ld` instruction for loading double words from memory into a register...
+
+```
+0x50(~1): 0x00013503: ld a0,0(sp)      // load exit code
+```
+
+```
+pc==0x10050(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
+```
+
+```
+0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x15C(~6): 0x01043303: ld t1,16(s0)
+```
+
+```
+0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+```
 
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
