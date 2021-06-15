@@ -2623,7 +2623,7 @@ However, before introducing arithmetic instructions we expand our initialization
 
 #### Memory
 
-The next two RISC-U instructions we introduce are the `ld` and `sd` instructions where `ld` stands for *load double word* and `sd` for *store double word*. Loading a double word means to copy a 64-bit machine word from memory to one of the 32 general-purpose 64-bit registers. Storing a double word just refers to the other direction from register to memory.
+The next two RISC-U instructions we introduce are the `ld` and `sd` instructions where `ld` stands for *load double word* and `sd` for *store double word*. Loading (or reading) a double word means to copy a 64-bit machine word from memory to one of the 32 general-purpose 64-bit registers. Storing (or writing) a double word refers to the other direction from register to memory.
 
 While identifying a register is easy since there are only 32, identifying a memory address is not that easy, simply because there are so many. How many again? Our machine has a 32-bit main memory address space with up to 4GB of byte-addressed main memory storage. Thus there are 2^32^ memory addresses which means that we need 32 bits to encode an address in that address space.
 
@@ -2667,11 +2667,23 @@ pc==0x10040(~1): sd t0,0(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0
 
 So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to a large address almost at the top of our address space. With offset `0`, the instruction stores the even larger address `0xFFFFFFD0` in memory where `sp` points to. What exactly is going on here is not so important right now. We clarify that later. But if you are curious you can check out the procedure `emit_bootstrapping` in `selfie.c` which generates the initialization code we discuss here.
 
-Now, let us focus on the heap segment, or *heap* for short.
+Now, let us focus on the heap segment, or *heap* for short, and then go back to the instruction `sd a0,-8(gp)` we discussed earlier. The heap is memory for storing information at runtime. Initially, the heap is empty but then may grow in size typically way beyond the other segments. While the heap can only grow but not shrink the information stored on the heap may become obsolete during code execution. This may happen in any order depending on what the code does during execution hence the name heap. Since the heap can only grow we only need to remember the end of the heap segment which initially is of course equal to the start. The instruction:
 
-...
+```
+0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
+```
 
-Here is the official RISC-V ISA specification of the `sd` instruction. Unlike the `addi` and `lui` instructions, `sd` does not require a destination register `rd` but instead two source registers `rs1` and `rs2` where `rs2` contains the value to be stored in memory at address `rs1 + imm`:
+does exactly that. Another look at the output of the debugger tells us what exactly is going on:
+
+```
+pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0 -> mem[0x11000]==a0==73728(0x12000)
+```
+
+Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the tools chapter.
+
+In sum, our memory layout is determined by the `gp` register which marks the end of the data segment, the `sp` register which marks the start of the stack segment, and the machine word referred to as `_bump` which marks the end of the heap segment. The registers `gp` and `sp` are are sufficient to find everything in memory while the machine word `_bump` is sufficient to manage the heap.
+
+Before going into the details of the `ld` instruction, we present the official RISC-V ISA specification of the `sd` instruction. Unlike the `addi` and `lui` instructions, `sd` does not require a destination register `rd` but instead two source registers `rs1` and `rs2` where `rs2` contains the value to be stored in memory at address `rs1 + imm`:
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
@@ -2692,9 +2704,11 @@ The `sd` instruction is encoded according to the so-called *S-Format* which is a
 
 Interestingly, the immediate value is split into two parts `imm1` and `imm2` of which the `imm2` part containing the 5 LSBs of `imm` is encoded where otherwise `rd` is encoded. The reason for that is to have all parameters other than immediate values always encoded by the same bits in all formats which enables fast decoding of RISC-V instructions in hardware. Difficult to read for us but easy for the machine which matters more in this case!
 
-From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the above instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
+From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
 
-In order to validate your findings you may want to have a look at the source code in `selfie.c` again which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well.
+In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well.
+
+Let us now take a look at the `ld` instruction for loading double words from memory into a register...
 
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
