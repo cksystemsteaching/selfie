@@ -2275,7 +2275,7 @@ The relevant part of the output should be similar to this:
 
 Selfie reports that it generated 42906 RISC-U machine instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
-In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000`:
+In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
 ```
 int count(int n) {
@@ -2324,7 +2324,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
 
-Selfie generates 124 instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for IO and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
+Selfie generates `124` instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for IO and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
 
 ```
 0x0(~1): 0x000112B7: lui t0,0x11
@@ -2453,6 +2453,40 @@ And again, the very last instruction of `count`:
 makes the processor return to the instruction that follows the `jal ra,-35[0x138]` instruction in `main`.
 
 Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. This is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
+
+Let us execute the program and see what happens:
+
+```
+./selfie -c examples/count.c -m 1
+```
+
+Here is the relevant output:
+
+```
+...
+./selfie: selfie executing examples/count.c with 1MB physical memory on mipster
+...
+./selfie: examples/count.c exiting with exit code 10000
+./selfie: selfie terminating examples/count.c with exit code 10000
+...
+./selfie: summary: 90065 executed instructions [22.22% nops]
+...
+./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10033(11.13%)[0.03%]
+./selfie: memory:  ld: 30008(33.31%)[33.33%], sd: 10009(11.11%)[0.01%]
+./selfie: compute: add: 10000(11.10%)[0.00%], sub: 1(0.00%)[0.00%], mul: 0(0.00%)[0.00%]
+./selfie: compute: divu: 0(0.00%)[0.00%], remu: 1(0.00%)[0.00%]
+./selfie: compare: sltu: 10001(11.10%)[0.00%]
+./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.01%], jalr: 2(0.00%)[0.00%]
+./selfie: system:  ecall: 3(0.00%)
+./selfie: profile: total,max(ratio%)@address(line#),2ndmax,3rdmax
+./selfie: calls:   2,1(50.00%)@0x138(~4),1(50.00%)@0x1A0(~13),0(0.00%)
+./selfie: loops:   10000,10000(100.00%)@0x158(~6),0(0.00%),0(0.00%)
+./selfie: loads:   30008,10001(33.32%)@0x158(~6),10001(33.32%)@0x15C(~6),10000(33.32%)@0x168(~7)
+./selfie: stores:  10009,10000(99.91%)@0x174(~7),1(0.00%)@0x30(~1),1(0.00%)@0x40(~1)
+...
+```
+
+The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `124` instructions that implement the program but `90065` executed instructions. Dividing that number by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x158` to `0x178` which implement the `while` loop at line number `6` in `count.c`. You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
 
 In the following we explain each RISC-U machine instruction in detail using the running example as motivation.
 
