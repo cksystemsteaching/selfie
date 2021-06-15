@@ -45,9 +45,10 @@ This book is the result of many years of teaching and working with students and 
 5.3. Memory
 5.4. Input/Output
 5.5. Instructions
-5.6. Performance
+5.6. Booting
 5.7. Algorithms
-5.8. Recommended Readings
+5.8. Performance
+5.9. Recommended Readings
 
 6. Programming
 6.1. Variable
@@ -2712,6 +2713,8 @@ Let us now take a look at the `ld` instruction for loading double words from mem
 
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
+[//]: # (TODO: addition necessary for data flow, address computation)
+
 #### Arithmetic
 
 `add rd,rs1,rs2`: `rd = rs1 + rs2; pc = pc + 4`
@@ -2736,9 +2739,15 @@ Let us now take a look at the `ld` instruction for loading double words from mem
 
 `jalr rd,imm(rs1)`: `tmp = ((rs1 + imm) / 2) * 2; rd = pc + 4; pc = tmp` with `-2^11 <= imm < 2^11`
 
+[//]: # (TODO: addition and subtraction necessary for control flow, program counter)
+
 #### System
 
-`ecall`: system call number is in `a7`, parameters are in `a0-a2`, return value is in `a0`.
+`ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
+
+### Booting
+
+### Algorithms
 
 ### Performance
 
@@ -2751,12 +2760,6 @@ Let us now take a look at the `ld` instruction for loading double words from mem
 [//]: # (| efficiency  | operations/joule |)
 [//]: # (|             | MIPS/watt |)
 [//]: # (|             | FLOPS/watt |)
-
-[//]: # (TODO: addition necessary for data flow, address computation)
-
-[//]: # (TODO: addition and subtraction necessary for control flow, program counter)
-
-### Algorithms
 
 ### Recommended Readings
 
