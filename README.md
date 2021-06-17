@@ -2690,7 +2690,7 @@ First of all, memory is partitioned into two parts: *statically* allocated memor
 
 What is static and dynamic memory? Static memory is used for storing information known by the programmer at *compile time*, that is, at the time of developing and possibly compiling code which means in particular the time before actually executing any code. Dynamic memory is used for storing information computed by the program at *runtime*, that is, during code execution. While the size of dynamic memory is fixed at compile time, its layout or better the use of its addresses for storing information may change during runtime. In contrast, not only the size but also the layout of static memory is fixed at compile time and does not change anymore after that.
 
-What is stored in static memory? Easy. Code and data. More precisely, there is a *code segment* in the lower part of static memory that contains all the code and there is a *data segment* in the higher part of static memory that contains the values of all global variables (and string literals as well as integer literals called *big integers* that do not fit into 32 bits). Size and layout of both segments are fixed at compile time. The `gp` register marks the end of the data segment. Any data in the data segment is then accessed relative to `gp` with negative offsets and this exactly what the above `sd` instruction does. Before going further into the details of this instruction we first need to understand the principled layout of dynamic memory.
+What is stored in static memory? Easy. Code and data. More precisely, there is a *code segment* in the lower part of static memory that contains all the code and there is a *data segment* in the higher part of static memory that contains the values of all global variables (and string literals as well as integer literals called *big integers* that do not fit into 32 bits). Size and layout of both segments are fixed at compile time. The `gp` register marks the end of the data segment. Any data in the data segment is then accessed relative to `gp` with negative offsets and this is exactly what the above `sd` instruction does. Before going further into the details of this instruction we first need to understand the principled layout of dynamic memory.
 
 So, what is stored in dynamic memory? Well, there is a *stack segment* in the higher part of dynamic memory that contains the values of local variables, actual parameters, and some bookkeeping information. And there is a *heap segment* in the lower part of dynamic memory that contains any information that does not fit into any of the other segments. The end of the stack segment is at the end of dynamic memory, that is, at the end of main memory. So, we only need to remember where the stack segment, or *stack* for short, begins. The `sp` register is used for that where `sp` stands for *stack pointer*. The stack may grow and shrink at runtime which means that the value of `sp` needs to be initialized but is otherwise not fixed. Instead, it is decremented at runtime to grow (!) the stack and incremented to shrink it using `addi` instructions. We already saw an example of how `sp` is decremented using a negative immediate value in the previous section.
 
@@ -2720,7 +2720,7 @@ does exactly that. Another look at the output of the debugger tells us what exac
 pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0 -> mem[0x11000]==a0==73728(0x12000)
 ```
 
-Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the tools chapter.
+Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the programming and tools chapters.
 
 In sum, our memory layout is determined by the `gp` register which marks the end of the data segment, the `sp` register which marks the start of the stack segment, and the machine word referred to as `_bump` which marks the end of the heap segment. The registers `gp` and `sp` are are sufficient to find everything in memory while the machine word `_bump` is sufficient to manage the heap.
 
@@ -2770,11 +2770,11 @@ Let us take a look at another example. This time it is machine code that has a d
 0x15C(~6): 0x01043303: ld t1,16(s0)
 ```
 
-The reason for that is to prepare the machine for comparing the values of `c` and `n`, which are stored in memory, to calculate if `c < n` is true or not. However, the machine can only compare values if they are stored in registers. The actual comparison is done by an `sltu` instruction which we explain further below. What is interesting here is to understand where the values of `c` and `n` are stored. Well, `c` is a local variable and `n` is a formal parameter. The values of local variables and formal parameters are stored on the stack!
+The reason for that is to prepare the machine for comparing the values of `c` and `n`, which are stored in memory, to calculate if `c < n` is true or not. However, the machine can only compare values if they are stored in registers. The actual comparison is done by a subsequent `sltu` instruction which we explain further below. What is interesting here is to understand where the values of `c` and `n` are stored. Well, `c` is a local variable and `n` is a formal parameter that represents an actual parameter. The values of local variables and actual parameters are stored on the stack!
 
-But we obviously do not use the `sp` register to find them. This is strange but there is a good reason for that. Instead of `sp`, we use the `s0` register, also called the *frame pointer*, where the `s` in `s0` stands for `saved`. Every time a procedure such as `count` is called the value of `s0` is saved on the stack and then set to an address that is right between where the values of  local variables and formal parameters of the called procedure are stored on the stack. The values of local variables are stored below that address hence the positive offset `16` in our example. Similarly, the values of formal parameters are stored above that address hence the negative offset `-8`. Apparently, there are two machine words in between at `s0 + 0` and `s0 + 8` which are used for bookkeeping. We explain those later.
+But we obviously do not use the `sp` register to find them. This is strange but there is a good reason for that. Instead of `sp`, we use the `s0` register, also called the *frame pointer*, where the `s` in `s0` stands for `saved`. Every time a procedure such as `count` is called the value of `s0` is saved on the stack and then set to an address that is right between where the values of  local variables and actual parameters of the called procedure are stored on the stack. The values of local variables are stored below that address hence the positive offset `16` in our example. Similarly, the values of actual parameters are stored above that address hence the negative offset `-8`. Apparently, there are two machine words in between at `s0 + 0` and `s0 + 8` which are used for bookkeeping. We explain those later.
 
-The reason why we use a frame pointer instead of a stack pointer is because, unlike the frame pointer, the stack pointer may change when preparing another procedure call. However, doing so may still require finding the values of the local variables and formal parameters of the currently called procedure. The exact details are discussed in the programming and tools chapters.
+The reason why we use a frame pointer instead of a stack pointer is because, unlike the frame pointer, the stack pointer may change when preparing another procedure call. However, doing so may still require finding the values of the local variables and actual parameters of the currently called procedure. The exact details are discussed in the programming and tools chapters.
 
 Here is what the debugger has to say about what happens when executing both `ld` instructions for the first time:
 
@@ -2783,19 +2783,45 @@ pc==0x10158(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -
 pc==0x1015C(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
 ```
 
-The high value of `s0` indicates that the `s0` register indeed points to the stack. Moreover, the (initial) values of `c` and `n` stored in memory at `s0 - 8` and `s0 + 16` are `0` and `10000`, respectively, which sounds about right!
+The high value of `s0` indicates that the `s0` register indeed points to the stack. Moreover, the (initial) values of `c` and `n` stored in memory at `s0 - 8` and `s0 + 16` are `0` and `10000`, respectively, which sounds exactly right!
 
-...
+Here is another `ld` instruction that loads the value of `c` into register `t0` to prepare calculating `c + 1` inside the body of the while loop in `count.c`:
 
 ```
 0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
 ```
 
+The actual calculation of the addition is done by a subsequent `add` instruction which we explain next. Before doing so, we mention the official RISC-V ISA specification of the `ld` instruction:
+
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
-[//]: # (TODO: addition necessary for data flow, address computation)
+Similar to the `addi` instruction, `ld` uses a source register `rs1` but interpreted as address and not an integer, and a destination register `rd`. Therefore, `ld` is encoded in the I-Format, just like `addi`, but with opcode `0x3` rather than `0x13`. The exact details are in selfie's source code.
 
-TODO: present execution profile for `lui`, `addi`, `ld`, and `sd` in more detail
+Before moving on, it is time to reflect on what we have seen so far in this chapter. The two instruction pairs `lui` and `addi` as well as `ld` and `sd` facilitate data flow by allowing us to initialize registers and memory to any value we like, address memory anywhere we want, and copy data from memory to registers, from register to register, and from registers back to memory. Because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating addresses. Another look at selfie's output when self-compiling gives us a quantitative idea of the importance of these instructions. Try:
+
+```
+./selfie -c selfie.c -m 3 -c selfie.c
+```
+
+The relevant output should be similar to this:
+
+```
+...
+./selfie: summary: 333914735 executed instructions [20.94% nops]
+...
+./selfie: init:    lui: 1004591(0.30%)[0.00%], addi: 135186087(40.48%)[19.57%]
+./selfie: memory:  ld: 74996568(22.45%)[14.05%], sd: 45569864(13.64%)[28.65%]
+./selfie: compute: add: 10610373(3.17%)[14.08%], sub: 5510021(1.65%)[20.73%], mul: 7394893(2.21%)[32.83%]
+./selfie: compute: divu: 2526014(0.75%)[25.08%], remu: 3236125(0.96%)[52.78%]
+./selfie: compare: sltu: 6790776(2.03%)[1.31%]
+./selfie: control: beq: 8656637(2.59%)[55.63%], jal: 21983089(6.58%)[34.33%], jalr: 10099715(3.02%)[0.00%]
+./selfie: system:  ecall: 349982(0.10%)
+...
+```
+
+While only 0.3% of all executed instructions were `lui` instructions, around 76% were `addi`, `ld`, and `sd` instructions (40.48% + 22.45% + 13.64%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
+
+Our next topic are the classical arithmetic instructions that most CPUs feature in one form or another.
 
 #### Arithmetic
 
