@@ -31,6 +31,12 @@ include defines.mk
 include filesystem.mk
 
 # ==============================================================================
+# Add rules for packaged RISC-U binaries
+
+$(eval $(call compile_riscu_binary,$(SELFIE_PATH)/selfie.c,$(BUILD_DIR)/selfie.m))
+$(eval $(call compile_riscu_binary,$(SELFIE_PATH)/examples/hello-world.c,$(BUILD_DIR)/hello-world.m))
+
+# ==============================================================================
 
 #selfie-k210.bin: selfie-k210.elf
 #	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $^ $@
