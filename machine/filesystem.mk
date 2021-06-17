@@ -24,10 +24,11 @@ files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	@echo "  {\"\", (const char*) NULL, 0}," >>$@;
 	@echo "};" >>$@;
 
-$(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
-	$(MAKE) -C$(SELFIE_PATH) selfie.m
+$(BUILD_DIR)/selfie.m: $(SELFIE_PATH)/selfie.c
+	$(MAKE) -C$(SELFIE_PATH)
+	$(SELFIE_PATH)/selfie -c $^ -o $@
 
-$(SELFIE_PATH)/hello-world.m: $(SELFIE_PATH)/examples/hello-world.c
+$(BUILD_DIR)/hello-world.m: $(SELFIE_PATH)/examples/hello-world.c
 	$(MAKE) -C$(SELFIE_PATH)
 	$(SELFIE_PATH)/selfie -c $^ -o $@
 
