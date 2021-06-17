@@ -61,7 +61,7 @@ include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
 .PHONY: clean
 clean: clean-fs-package
 	@case "`realpath $(BUILD_DIR)`" in \
-		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR);;\
+		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR); echo "Removed output directory \"$(BUILD_DIR)\"...";;\
 		*) echo "WARNING: Build directory '$(BUILD_DIR)' has not been removed as it is not a descending directory";;\
 	esac
 
