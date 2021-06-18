@@ -24,11 +24,17 @@ SBI_WRAPPER_SRCS_COMMON = bootstrap.c tinycstd.c console.c filesystem.c files_pa
 SBI_WRAPPER_SRCS_LIBRARY = bootstrap_library.c selfie.c glue_libraryos.c asm/mem.S
 SBI_WRAPPER_SRCS_KERNEL =  bootstrap_kernel.c mmu.c context.c trap.c elf.c asm/trap.S
 
-SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
+SBI_WRAPPER_FILES_PACKAGE = $(BUILD_DIR)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(BUILD_DIR)/hello-world.m
 ASM_STRUCT_HEADERS = include/context.h
 
 include defines.mk
 include filesystem.mk
+
+# ==============================================================================
+# Add rules for packaged RISC-U binaries
+
+$(eval $(call compile_riscu_binary,$(SELFIE_PATH)/selfie.c,$(BUILD_DIR)/selfie.m))
+$(eval $(call compile_riscu_binary,$(SELFIE_PATH)/examples/hello-world.c,$(BUILD_DIR)/hello-world.m))
 
 # ==============================================================================
 
@@ -61,7 +67,7 @@ include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
 .PHONY: clean
 clean: clean-fs-package
 	@case "`realpath $(BUILD_DIR)`" in \
-		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR);;\
+		"`realpath $$PWD`/"*) rm -rf $(BUILD_DIR); echo "Removed output directory \"$(BUILD_DIR)\"...";;\
 		*) echo "WARNING: Build directory '$(BUILD_DIR)' has not been removed as it is not a descending directory";;\
 	esac
 

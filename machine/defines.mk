@@ -185,3 +185,20 @@ endef
 define target-build-dir
 $$(BUILD_DIR)/$(1)/$(2)
 endef
+
+
+###############################################################################
+# $(eval $(call compile_riscu_binary,srcs,out))
+#
+# Creates a new (explicit) make rule to compile source files to a RISC-U binary.
+# The output file shall be placed in the build directory $(BUILD_DIR) so that
+# all build artifacts can be cleaned
+# - srcs          : The sources to compile
+# - out           : The path of the target binary
+define compile_riscu_binary
+$(2): $(1) | $$(SELFIE_PATH)/selfie
+	$$(SELFIE_PATH)/selfie -c $$^ -o $$@
+endef
+
+$(SELFIE_PATH)/selfie: $(SELFIE_PATH)/selfie.c
+	$(MAKE) -C$(SELFIE_PATH)
