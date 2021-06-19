@@ -247,11 +247,11 @@ Reference: [ASCII Table](ascii-table.md)
 
 ## Unicode
 
-[Unicode](https://en.wikipedia.org/wiki/Unicode) is a technology standard for the consistent encoding, representation, and handling of text expressed in most of the world's writing systems. 
+[Unicode](https://en.wikipedia.org/wiki/Unicode) is a technology standard for the consistent encoding, representation, and handling of text expressed in most of the world's writing systems.
 Unicode can be implemented by different character encodings. The Unicode standard defines Unicode Transformation Formats (UTF) UTF-8, UTF-16, UTF-32, and several other encodings.
 
-One of the most commonly used encodings is [UTF-8](https://en.wikipedia.org/wiki/UTF-8), a variable-width character encoding used for electronic communication. 
-UTF-8 can encode all 1,112,064 valid character code points in Unicode using one to four one-byte (8-bit) code units. It was designed for backward compatibility with ASCII: the first 128 characters of Unicode, which correspond one-to-one with ASCII, are encoded using a single byte with the same binary value as ASCII and the most-significant-bit as an indicator for Unicode, so that valid ASCII text is valid UTF-8-encoded Unicode as well. 
+One of the most commonly used encodings is [UTF-8](https://en.wikipedia.org/wiki/UTF-8), a variable-width character encoding used for electronic communication.
+UTF-8 can encode all 1,112,064 valid character code points in Unicode using one to four one-byte (8-bit) code units. It was designed for backward compatibility with ASCII: the first 128 characters of Unicode, which correspond one-to-one with ASCII, are encoded using a single byte with the same binary value as ASCII and the most-significant-bit as an indicator for Unicode, so that valid ASCII text is valid UTF-8-encoded Unicode as well.
 
 
 So how many bits do we need to represent 120000 different characters?
@@ -653,7 +653,7 @@ In the first step, we convert the decimal digit into the positive value in binar
 | bits       |   0   |   0   |   1   |   0   |   1   |   0   |   0   |   1   |            41 |
 
 
-In the second step, we invert all binary digits so that a 0 converts into a 1 and a 1 converts into a 0. 
+In the second step, we invert all binary digits so that a 0 converts into a 1 and a 1 converts into a 0.
 
 In the example with -41 that looks as follows:
 
@@ -747,7 +747,7 @@ In the signed range (two's complement), we can represent:
 
 **Range**
 
-How many numbers can we represent with 32 and 64 bit as 
+How many numbers can we represent with 32 and 64 bit as
 - an unsigned integer?
 - a signed integer in one's complement?
 - a signed integer in two's complement?
@@ -758,11 +758,11 @@ How can we represent the value -42 with the
 - one's complement?
 - two's complement?
 
-How can we represent the value -1 with the 
+How can we represent the value -1 with the
 - one's complement?
 - two's complement?
 
-How can we represent the value -12 with the 
+How can we represent the value -12 with the
 - one's complement?
 - two's complement?
 
@@ -770,13 +770,13 @@ How can we represent the value -12 with the
 
 ### Integer arithmetics
 
-Fortunately, elementary arithmetics with binary numbers work like decimal numbers or any other representation with a base greater than one. For example, adding two numbers in any such representation works by adding their digits from right to left while carrying any overflow to the left. 
+Fortunately, elementary arithmetics with binary numbers work like decimal numbers or any other representation with a base greater than one. For example, adding two numbers in any such representation works by adding their digits from right to left while carrying any overflow to the left.
 
 #### Examples
 
 **Example**:
 
-Let us add the values 85 and 170. 
+Let us add the values 85 and 170.
 
 Starting from the right, we find that 5+0=5. Thus the rightmost digit of the result is 5.
 
@@ -786,7 +786,7 @@ Starting from the right, we find that 5+0=5. Thus the rightmost digit of the res
 | +     |      1 |      7 |      0 |
 | **=** |        |        |  **5** |
 
-Then, with 8+7=15, the second rightmost digit is 5. Since 15>9, there is an overflow that needs to be considered next. 
+Then, with 8+7=15, the second rightmost digit is 5. Since 15>9, there is an overflow that needs to be considered next.
 
 |       |    10^{2} | 10^{1} | 10^{0} |
 | ----- | --------: | -----: | -----: |
@@ -794,7 +794,7 @@ Then, with 8+7=15, the second rightmost digit is 5. Since 15>9, there is an over
 | +     |         1 |      7 |      0 |
 | **=** | (carry 1) |  **5** |  **5** |
 
-With 1+1=2, we obtain the leftmost digit and the final result of 255. 
+With 1+1=2, we obtain the leftmost digit and the final result of 255.
 
 |       | 10^{2} | 10^{1} | 10^{0} |
 | ----- | -----: | -----: | -----: |
@@ -804,7 +804,7 @@ With 1+1=2, we obtain the leftmost digit and the final result of 255.
 
 **Example**:
 
-Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way. 
+Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way.
 
 |     | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^{3} | 2^{2} | 2^{1} | 2^{0} |          |
 | --- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | -------- |
@@ -812,7 +812,7 @@ Let us now add both numbers in binary that is, 01010101 for 85 and 10101010, whi
 | +   | 1     | 0     | 1     | 0     | 1     | 0     | 1     | 0     | =170     |
 |     | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **=255** |
 
-Since 1+0=1, there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. 
+Since 1+0=1, there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits.
 
 In general, though, one adds two binary numbers, just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
 
@@ -825,9 +825,9 @@ Convert the decimal numbers into binary (8-bit representation) and add them toge
 
 ### Arithmetic overflow
 
-What happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? 
+What happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary?
 
-In this case, we get a binary number with 9 bits rather than the 8 bits representing 255. 
+In this case, we get a binary number with 9 bits rather than the 8 bits representing 255.
 
 |       | 2^{7} | 2^{6} | 2^{5} | 2^{4} | 2^3}  | 2^{2} | 2^{1} | 2^{0} |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
@@ -835,17 +835,17 @@ In this case, we get a binary number with 9 bits rather than the 8 bits represen
 | +     | 0     | 0     | 0     | 0     | 0     | 0     | 0     | 1     |
 | **1** | **0** | **0** | **0** | **0** | **0** | **0** | **0** | **0** |
 
-If we have more than 8 bits, this is not a problem. However, with computers, everything is finite, in particular memory. 
- 
+If we have more than 8 bits, this is not a problem. However, with computers, everything is finite, in particular memory.
+
 Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size, such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called arithmetic overflow.
 
 [Arithmetic Overflow](https://en.wikipedia.org/wiki/Arithmetic_overflow): This occurs when an arithmetic operation attempts to create a numeric value too large to be represented within the available storage space.
 
-How can we deal with arithmetic overflow? Two approaches can be combined: detection and semantics. If an arithmetic overflow is detected, one can discard the computation and do something else. 
+How can we deal with arithmetic overflow? Two approaches can be combined: detection and semantics. If an arithmetic overflow is detected, one can discard the computation and do something else.
 
 For this purpose, most processors feature a so-called carry bit or [carry flag](https://en.wikipedia.org/wiki/Carry_flag). The carry flag is set if an arithmetic operation causes an overflow indicated by a carry out of the most significant bit. In our example, the 9-th bit in 100000000 is that carry bit.
 
-In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^{n}, also referred to as wrap-around semantics, or wrap around. 
+In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^{n}, also referred to as wrap-around semantics, or wrap around.
 
 For example, 255+1=256 modulo 2^8=256 modulo 256=0, which is precisely what 100000000 in an 8-bit system stands for. Some applications are correct even when such wrap-around occurs.
 
@@ -887,7 +887,7 @@ Today, most general-purpose computers are based on what is known as the von Neum
 - External mass storage
 - Input and output mechanisms
 
-A von Neumann machine is a [stored-program computer](https://en.wikipedia.org/wiki/Stored-program_computer), which stores both code and data in the same memory. In fact, in memory, there is no distinction between code and data. A von Neumann machine fetches code from memory and executes it. The code will, in turn, instruct the machine to load data from memory into registers, perform some computation on registers, and finally store the results back in memory. 
+A von Neumann machine is a [stored-program computer](https://en.wikipedia.org/wiki/Stored-program_computer), which stores both code and data in the same memory. In fact, in memory, there is no distinction between code and data. A von Neumann machine fetches code from memory and executes it. The code will, in turn, instruct the machine to load data from memory into registers, perform some computation on registers, and finally store the results back in memory.
 
 **fetching vs. loading from memory**
 
@@ -895,7 +895,7 @@ It is essential to understand that bits fetched from memory and executed happen 
 
 ### Central Processing Unit (CPU)
 
-In selfie, the von Neumann architecture is a 64-bit machine, which means the CPU has a bit-width of 64-bit. It also contains 32 general-purpose registers (processor registers) with 64-bit. With five bits, we can talk to all 32 general-purpose registers (2^{5}), where the ID's go from 0 to 31. 
+In selfie, the von Neumann architecture is a 64-bit machine, which means the CPU has a bit-width of 64-bit. It also contains 32 general-purpose registers (processor registers) with 64-bit. With five bits, we can talk to all 32 general-purpose registers (2^{5}), where the ID's go from 0 to 31.
 
 The 32 general-purpose registers in selfie are defined as Global Constants:
 
@@ -937,21 +937,21 @@ Global [Constant](https://en.wikipedia.org/wiki/Constant_(computer_programming))
 |	T6	|  = 31	|
 
 In the CPU, an [arithmetic logic unit](https://en.wikipedia.org/wiki/Arithmetic_logic_unit) (ALU) is a combinational digital circuit that performs arithmetic and [bitwise operations](https://en.wikipedia.org/wiki/Bitwise_operation) on integer binary numbers.
-The inputs to an ALU are the data to be operated on, called [operands](https://en.wikipedia.org/wiki/Operand), and a code indicating the operation to be performed; the ALU's output is the result of the performed operation. 
+The inputs to an ALU are the data to be operated on, called [operands](https://en.wikipedia.org/wiki/Operand), and a code indicating the operation to be performed; the ALU's output is the result of the performed operation.
 
 #### Examples
 
 When we talk about the von Neumann architecture in selfie, one would ask where it is defined or how we could read the different parameters up?
 
-In the Github Repository, we can look into the `selfie.c` file to clear that up. 
+In the Github Repository, we can look into the `selfie.c` file to clear that up.
 
 For example, if we want to know with how many bits the CPU architecture in selfie is defined, we can search for `WORDSIZEINBITS`, and there we find `uint64_t WORDSIZEINBITS = 64; // 8 * WORDSIZE`, which means the CPU's bit-width is 64-bit or 8-byte.
 
 #### Exercises
 
-Search in the `selfie.c` file: 
+Search in the `selfie.c` file:
 
-- How many registers are implemented in selfie? 
+- How many registers are implemented in selfie?
 - What is the size of an unsigned integer in selfie?
 
 ### Program Counter (PC)
@@ -960,11 +960,11 @@ How does a computer know what to execute? After all, the bits in memory could me
 
 Processors based on the von Neumann architecture feature a special-purpose register as part of their control unit called the program counter (PC). The PC in selfie is a special-purpose 64-bit register.
 
-[Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter): A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction and holds the memory address of (points to) the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new PC value. These include branches (sometimes called jumps), subroutine calls, and returns. 
+[Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter): A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction and holds the memory address of (points to) the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new PC value. These include branches (sometimes called jumps), subroutine calls, and returns.
 
-- A control transfer on some assertion's truth lets the computer follow a different sequence under different conditions. 
-- A branch provides that the next instruction is fetched from somewhere else in memory. 
-- A subroutine call not only branches but saves the preceding contents of the PC somewhere. 
+- A control transfer on some assertion's truth lets the computer follow a different sequence under different conditions.
+- A branch provides that the next instruction is fetched from somewhere else in memory.
+- A subroutine call not only branches but saves the preceding contents of the PC somewhere.
 - A return retrieves the PC's saved contents and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
 
 Each instruction instructs the processor to perform some computation and determines the next value of the PC so that the processor knows where in memory the next instruction is stored. That sequence of PC values is called control flow.
@@ -981,19 +981,19 @@ Intuitively, rather than saying imperatively how to change state, declarative pr
 
 ### Random access memory (RAM)
 
-The great thing about a von Neumann architecture is that it stores code and data in the same memory. In selfie, the main memory has 4 GB, which means 2^{32} bytes or 2^{35} bits of memory are available for use. 
+The great thing about a von Neumann architecture is that it stores code and data in the same memory. In selfie, the main memory has 4 GB, which means 2^{32} bytes or 2^{35} bits of memory are available for use.
 
-How do we get to such numbers? 
+How do we get to such numbers?
 
 
-When writing 4 GB in scientific notation, we get: 
+When writing 4 GB in scientific notation, we get:
 
 2^{2} \* 2^{30} \* 2{3} = 2{35}
 
-Where: 
+Where:
 
-- Quantity of 4 = 2^{2}, 
-- 2^{30} stands for Giga and 
+- Quantity of 4 = 2^{2},
+- 2^{30} stands for Giga and
 - 2^{3} stands for 8 when we convert from bytes to bits.
 
 We know that 4 GB of memory are 2^{35} bit, but how is that memory split up into smaller pieces?
@@ -1008,20 +1008,20 @@ The processor (CPU) that the mipster emulator in selfie implements has a size of
 
 [Emulator](https://en.wikipedia.org/wiki/Emulator): Software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-How many different integer values can 64 bits represent? Well, 2^{64} values, but what are they? 
+How many different integer values can 64 bits represent? Well, 2^{64} values, but what are they?
 That depends on how we interpret them. In C\*, integers are interpreted as unsigned; an integer value is either zero or positive.
 
-> An unsigned integer in C\* can in total represent integer values i from 0 to 18446744073709551615 = 2^{64}-1. 
+> An unsigned integer in C\* can in total represent integer values i from 0 to 18446744073709551615 = 2^{64}-1.
 > In `selfie.c`, that value is called `UINT64_MAX` which is the largest unsigned 64-bit integer value.
 
 However, we may also interpret 64-bit integers as signed integers in two's complement, with the MSB encoding the sign and the remaining 63 LSBs encoding the value. The number of different integer values that can be represented is nevertheless the same.
 
-> A signed 64-bit integer can in total represent values from -9223372036854775808 to 9223372036854775807 since -2^{64-1} to 2^{64-1}-1. 
+> A signed 64-bit integer can in total represent values from -9223372036854775808 to 9223372036854775807 since -2^{64-1} to 2^{64-1}-1.
 > In `selfie.c`, the largest positive signed integer value is defined as `INT64_MAX` while the smallest negative value is `INT64_MIN`.
 
 The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits. In particular, that means that a register's content can also be seen as a memory address and not just an integer value. However, there is one crucial detail. On a mipster machine, memory is not only byte-addressed but also word-aligned for access. That means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes (64 bits = 8 bytes).
 
-> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on. 
+> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on.
 > These addresses are values in bytes. The word at address 0, for example, then contains the eight bytes at addresses 0, 1, 2, 3, 4, 5, 6, and 7.
 
 1. word = 0
@@ -1052,7 +1052,7 @@ Calculate:
 
 ### Memory Bus
 
-In a machine that follows a von Neumann architecture, the bandwidth between the CPU (where all the work gets done) and memory is minimal compared to the amount of memory. 
+In a machine that follows a von Neumann architecture, the bandwidth between the CPU (where all the work gets done) and memory is minimal compared to the amount of memory.
 The main memory and CPU are connected via the memory bus to communicate; this is the bottleneck of a von Neumann machine and the main factor for speed.
 
 The memory bus in selfie has 64 wires to transfer a double word or just word between CPU and main memory. That means we use one wire for each bit.
@@ -1063,11 +1063,11 @@ The von Neumann bottleneck is a limitation on [throughput](https://en.wikipedia.
 
 [Latency](https://en.wikipedia.org/wiki/Latency): Amount of time (or delay) to perform work.
 
-Speed is generally characterized in terms of throughput, the amount of work done per unit of time, and in latency, the amount of time to do some work, particularly before some other work can be done. The difference is explained with a simple example. 
+Speed is generally characterized in terms of throughput, the amount of work done per unit of time, and in latency, the amount of time to do some work, particularly before some other work can be done. The difference is explained with a simple example.
 
 #### Examples
 
-Imagine a fiber optic cable connecting, say, New York City and San Francisco, and a truck loaded with DVDs driving from New York City to San Francisco. 
+Imagine a fiber optic cable connecting, say, New York City and San Francisco, and a truck loaded with DVDs driving from New York City to San Francisco.
 Which one provides higher throughput and which one lower latency? Surprisingly, it may very well be possible that the truck offers higher throughput. However, delivering just a single bit by truck may take days. Thus the truck provides terrible latency not suitable to host, say, a Zoom call.
 
 | Performance | Unit                                                                                        |
@@ -1088,7 +1088,7 @@ Compiling selfie.c into an executable program is done by executing `make` in the
 
 ```sh
 make
-cc -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long' selfie.c -o selfie
+cc -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long' selfie.c -o selfie
 ```
 
 The `make` command invokes the `cc` command, which compiles the file `selfie.c` into a file called `selfie` (without the .c extension) as directed by the `-o` option, ignoring the other options for clarity. In other words, the sequence of bits representing `selfie.c` is changed into another sequence of bits representing `selfie`. The difference between the two sequences is that `selfie.c` represents source code, whereas `selfie` represents machine code.
@@ -1111,7 +1111,7 @@ Now we have a version of selfie that we can run on our machine.
 synopsis: ./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 ```
 
-Selfie requires using at least one option to do anything useful and therefore responds with its usage pattern and then terminates without doing anything else. 
+Selfie requires using at least one option to do anything useful and therefore responds with its usage pattern and then terminates without doing anything else.
 
 
 To do something useful, we compile selfie with its own compiler named starc that is invoked by the option `-c`.
@@ -1206,7 +1206,7 @@ After loading `selfie.m`, the `-m 1` option directs mipster to emulate a compute
 
 [Profiling](https://en.wikipedia.org/wiki/Profiling_(computer_programming)) A form of dynamic program analysis that measures, for example, the space (memory) or time complexity of a program, the usage of particular instructions, or the frequency and duration of function calls. Most commonly, profiling information serves to aid program optimization.
 
-Profiling is also used to explain performance-related issues in selfie. 
+Profiling is also used to explain performance-related issues in selfie.
 
 We can also have mipster execute machine code generated by starc without writing the code into a file:
 
@@ -1292,7 +1292,7 @@ The expression `(~1)` is the approximate line number of the source code, in this
 
 The 32-bit word `0x0D600893` is, in fact, the binary encoded version of the instruction itself, and `addi $a7,$zero,214` is the instruction's human-readable assembly version.
 
-This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent. 
+This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent.
 
 The 32-bit word `0x0D600893` in binary stored at address `0x10` in memory is thus the only thing that the machine needs; the rest is for us to make it readable.
 
@@ -1308,7 +1308,7 @@ The mipster emulator implements a strict subset of 64-bit RISC-V instructions, w
 
 When talking about formal languages, it is essential to distinguish between the [syntax](https://en.wikipedia.org/wiki/Syntax) and the [semantics](https://en.wikipedia.org/wiki/Semantics) of that language.
 
-**Example** 
+**Example**
 
 In the above example, the `addi` string in `addi $a7,$zero,214` is an assembly mnemonic of the operation code or opcode, for short, that identifies the operation to be performed. In contrast, the remaining `$a7,$zero,214` are three operands of that operation.
 
@@ -1323,8 +1323,8 @@ We take:
 - the opcode 19 (`0010011`),
 - register 17 (`10001`),
 - register 0 (`00000`),
-- and value 214 (`000011010110`) 
- 
+- and value 214 (`000011010110`)
+
 and put them together in binary as follows:
 
 `000011010110 00000 000 10001 0010011`
@@ -1342,6 +1342,6 @@ The third operand is treated by `addi` as an integer value rather than, say, a n
 
 [Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode) An aspect of the instruction set architecture in most central processing unit (CPU) designs. The various addressing modes defined in a given instruction set architecture to define how machine language instructions in that architecture identify each instruction's operand(s).
 
-But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^{5}=32 different machine registers. The opcode's seven bits allow us to distinguish up to 2^{6}=64 different opcodes, but we do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register, such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. 
+But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^{5}=32 different machine registers. The opcode's seven bits allow us to distinguish up to 2^{6}=64 different opcodes, but we do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register, such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers.
 
 Note that the value in register `$zero` is assumed to be 0 at all times. This is, in fact, needed for initializing registers using the `addi` instruction. There exists RISC-U assembly in which such intention is made explicit by using pseudo instructions. Here, the pseudo instruction `movi $a7,214`, for example, could be used instead but would anyhow be a short version of `addi $a7,$zero,214`. The remaining thirteen instructions of RISC-U are introduced later.
