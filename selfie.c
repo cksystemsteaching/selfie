@@ -10054,9 +10054,9 @@ void print_profile(uint64_t* context) {
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
-      printf1("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
+      printf1("%s: profile: total,max(ratio%%)@address(line#),2ndmax,3rdmax\n", selfie_name);
     else
-      printf1("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
+      printf1("%s: profile: total,max(ratio%%)@address,2ndmax,3rdmax\n", selfie_name);
 
     print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
     print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
