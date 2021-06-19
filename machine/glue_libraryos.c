@@ -25,7 +25,7 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode) {
 
 
 extern void zero_mem(uint64_t* addr, uint64_t size);
-void* malloc(unsigned long long size) {
+void* malloc(unsigned long size) {
   void* return_ptr;
 
   return_ptr = heap_head;

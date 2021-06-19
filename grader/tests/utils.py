@@ -75,7 +75,7 @@ def assemble_for_selfie(file):
 
 def compile_with_gcc(file):
     return_value = WEXITSTATUS(system(
-        'gcc -w -D\'uint64_t=unsigned long long\' ' + file + ' -o .prog >/dev/null 2>&1'))
+        'gcc -w -D\'uint64_t=unsigned long\' ' + file + ' -o .prog >/dev/null 2>&1'))
 
     if return_value != 0:
         system('rm -rf ./.prog')
@@ -84,7 +84,7 @@ def compile_with_gcc(file):
 
 
 def compile_with_gcc_and_run(file):
-    system('gcc -w -D\'uint64_t=unsigned long long\' ' + file + ' -o .prog')
+    system('gcc -w -D\'uint64_t=unsigned long\' ' + file + ' -o .prog')
 
     process = Popen(shlex.split('./.prog'), stdout=PIPE, stderr=PIPE)
 
