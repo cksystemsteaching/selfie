@@ -302,7 +302,7 @@ int square(int n) {
 }
 ```
 
-In addition to `+` and `*`, there are also the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*` and `/` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
+In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
 
 ```
 int fancy(int n) {
@@ -2833,6 +2833,17 @@ Our next topic are the classical arithmetic instructions that most CPUs feature 
 
 #### Arithmetic
 
+RISC-U features five arithmetic instructions for addition (`add`), subtraction (`sub`), multiplication (`mul`), unsigned division (`divu`), and unsigned remainder (`remu`). The arithmetic C\* operators `+`, `-`, `*`, `/`, and `%` are implemented by `add`, `sub`, `mul`, `divu`, and `remu`, respectively. Here is an instance of an `add` instruction from our running example:
+
+```
+0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+0x16C(~7): 0x00100313: addi t1,zero,1
+0x170(~7): 0x006282B3: add t0,t0,t1
+0x174(~7): 0xFE543C23: sd t0,-8(s0)
+```
+
+This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi` instruction loads the value `1` into register `t1`. The `add` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. Have you noticed that by now you are already able to read machine code? Awesome!
+
 `add rd,rs1,rs2`: `rd = rs1 + rs2; pc = pc + 4`
 
 `sub rd,rs1,rs2`: `rd = rs1 - rs2; pc = pc + 4`
@@ -2842,6 +2853,17 @@ Our next topic are the classical arithmetic instructions that most CPUs feature 
 `divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
 
 `remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+
+```
+// RISC-V R Format
+// ----------------------------------------------------------------
+// |        7         |  5  |  5  |  3   |        5        |  7   |
+// +------------------+-----+-----+------+-----------------+------+
+// |      funct7      | rs2 | rs1 |funct3|       rd        |opcode|
+// +------------------+-----+-----+------+-----------------+------+
+// |31              25|24 20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
+```
 
 #### Comparison
 
