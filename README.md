@@ -2755,7 +2755,7 @@ Interestingly, the immediate value is split into two parts `imm1` and `imm2` of 
 
 From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
 
-In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well.
+In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well. Note that the source code of selfie mostly uses the keyword `uint64_t` instead of the keyword `int`. In C\* both keywords mean the same thing: unsigned integer 64-bit type! However, the keyword `int` actually means something different in C which may be confusing to readers who know C. So, here `int` is just like `uint64_t`.
 
 Let us now take a look at the `ld` instruction for loading a double word from memory into a register. Right before our example program exits with exit code `10000`, after the code of the `main` procedure returned, there is the following `ld` instruction:
 
@@ -2842,7 +2842,9 @@ RISC-U features five arithmetic instructions for addition (`add`), subtraction (
 0x174(~7): 0xFE543C23: sd t0,-8(s0)
 ```
 
-This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi` instruction loads the value `1` into register `t1`. The `add` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. Have you noticed that by now you are already able to read machine code? Awesome!
+This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld t0,-8(s0)` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi t1,zero,1` instruction loads the value `1` into register `t1`. The `add t0,t0,t1` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd t0,-8(s0)` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. Have you noticed that by now you are already able to read machine code? Awesome!
+
+Here is the official RISC-V ISA specification of the five arithmetic instructions:
 
 `add rd,rs1,rs2`: `rd = rs1 + rs2; pc = pc + 4`
 
@@ -2850,9 +2852,11 @@ This code implements the assignment `c = c + 1` in the body of the `while` loop 
 
 `mul rd,rs1,rs2`: `rd = rs1 * rs2; pc = pc + 4`
 
-`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
 
-`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
+
+Unlike the instructions we have seen before, these instructions use two source registers `rs1` and `rs2` as well as a destination register `rd` but no immediate value. This calls for yet another encoding called the *R-Format*:
 
 ```
 // RISC-V R Format
@@ -2865,9 +2869,13 @@ This code implements the assignment `c = c + 1` in the body of the `while` loop 
 // ----------------------------------------------------------------
 ```
 
+Interestingly, all five instructions use the same opcode but different `funct3` and `funct7` values. As usual, the details are in the selfie source code.
+
+One last thing before we already move on. Recall that calculating division and remainder works differently depending on whether the operands are interpreted as signed or unsigned integers. Both C\* and RISC-U only support unsigned integer division and remainder operators and instructions, respectively. However, we sometimes do need signed division which, fortunately, can be implemented using unsigned integer division. If you are curious how this works, try to figure it out yourself and then check out the procedure `signed_division` in `selfie.c` for confirmation. Hint: it also requires signed integer comparison implemented in the procedure `signed_less_than` which you may want to figure out first. This brings us to the next instruction which is the only RISC-U instruction for comparing integers.
+
 #### Comparison
 
-`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
 
 #### Control
 
