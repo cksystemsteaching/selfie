@@ -2871,13 +2871,13 @@ Unlike the instructions we have seen before, these instructions only use registe
 
 Interestingly, all five instructions use the same opcode but different `funct3` and `funct7` values. As usual, the details are in the selfie source code.
 
-One last thing before we move on. Recall that, unlike addition, subtraction, and multiplication, calculating division and remainder works differently depending on whether the operands are interpreted as signed or unsigned integers. Consider the following example. You probably expect the expression `1 / -1` to evaluate to `-1`, right? It does but only if `/` implements signed integer division. If not, it actually evaluates to `0` because `-1` in two's complement is a very large number if interpreted as unsigned integer. In fact, if encoded as 64-bit unsigned integer, `-1` is equal to `UINT64_MAX`. In that case, `1 / -1` is equal to `1 / UINT64_MAX`. Similarly, the expression `1 % -1` evaluates to `0` if `%` implements signed integer remainder, and to `1`, if not. You may also want to check out the file `semantics.md` in the selfie repository for more information.
+One last thing before we move on. Recall that, unlike addition, subtraction, and multiplication, calculating division and remainder works differently depending on whether the operands are interpreted as signed or unsigned integers. Consider the following example. You probably expect the expression `1 / -1` to evaluate to `-1`, right? It does but only if `/` implements signed integer division. If not, it actually evaluates to `0` because `-1` in two's complement is a very large positive number if interpreted as unsigned integer. In fact, if encoded as 64-bit unsigned integer, `-1` is equal to `UINT64_MAX`. In that case, `1 / -1` is equal to `1 / UINT64_MAX`. Similarly, the expression `1 % -1` evaluates to `0` if `%` implements signed integer remainder, and to `1`, if not. You may also want to check out the file `semantics.md` in the selfie repository for more information.
 
 Both C\* and RISC-U only support unsigned integer division and remainder operators and instructions, respectively. However, we sometimes do need signed division which, fortunately, can be implemented using unsigned integer division. If you are curious about how this works, try to figure it out yourself and then check out the procedure `signed_division` in `selfie.c` for confirmation. Hint: it also requires signed integer comparison implemented in the procedure `signed_less_than` which you may want to figure out first. This brings us to the next instruction which is the only RISC-U instruction for comparing integers.
 
 #### Comparison
 
-Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1`  in our running example of which we have already seen the two `ld` instructions:
+Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1` in our running example of which we have already seen the two `ld` instructions:
 
 ```
 0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
@@ -2894,9 +2894,11 @@ Here is the official RISC-V ISA specification of the `sltu` instruction:
 
 Similar to the arithmetic instructions, the `sltu` instruction only uses register addressing with `rs1`, `rs2`, and `rd` parameters and no immediate value and is thus encoded in the R-Format.
 
-There are two more things to discuss before moving on.
+There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the information chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on which is why we show it here.
 
-...
+Secondly, `<` and thus `sltu` are enough to implement the six integer comparison operators we mentioned above. For example, when using `sltu` to implement `<`, the comparison `a <= b` is true if the expression `1 - (b < a)` evaluates to `1`, and it is false if `1 - (b < a)` evaluates to `0`. In other words, combining `sltu` with an `addi` instruction for initializing a register with `1` and a `sub` instruction for subtracting from that register the value of `b < a` as calculated by the `sltu` instruction is enough to implement `a <= b`. Try to figure out the other five cases! The `compile_expression` procedure in `selfie.c` shows the details for you to validate your solutions. Yet keep in mind that selfie does all that for educational purposes. Dedicated machine instructions are of course faster and therefore used in production systems.
+
+Our next topic takes us to control flow. We begin with the `beq` instruction which selfie uses to control program execution based on whether comparisons such as the above are true or false.
 
 #### Control
 
