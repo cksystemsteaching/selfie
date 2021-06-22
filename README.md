@@ -2886,7 +2886,7 @@ Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for 
 0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]
 ```
 
-After loading the values of `c` and `n` from the stack into registers `t0` and `t1`, respectively, the `sltu t0,t0,t1` instruction makes the CPU compare the values of `t0` and `t1`, and then set the value of `t0` to `1` if the current value of `t0` is strictly less than the current value of `t1` where the current values of `t0` and `t1` are interpreted as unsigned integers. Otherwise, the CPU sets the value of `t0` to `0`. In other words, after executing the instruction a `1` in `t0` indicates that the value of `c` is indeed strictly less than the value of `n`, that is, `c < n` is true. A `0` in `t0` obviously indicates that `c < n` is false meaning that either the value of `c` is greater than or equal to the value of `n`. The following `beq` instruction makes the CPU execute, depending on the value of `t0`, either the instructions that implement the `while` loop body or the instructions that implement the statement `return c;` which follows the `while` loop. The details are right below after we are done with `sltu`.
+After loading the values of `c` and `n` from the stack into registers `t0` and `t1`, respectively, the `sltu t0,t0,t1` instruction makes the CPU compare the values of `t0` and `t1`, and then set the value of `t0` to `1` if the current value of `t0` is strictly less than the current value of `t1` where the current values of `t0` and `t1` are interpreted as unsigned integers. Otherwise, the CPU sets the value of `t0` to `0`. In other words, after executing the instruction a `1` in `t0` indicates that the value of `c` is indeed strictly less than the value of `n`, that is, `c < n` is true. A `0` in `t0` obviously indicates that `c < n` is false meaning that either the value of `c` is greater than or equal to the value of `n`. The following `beq` instruction makes the CPU execute, depending on the value of `t0`, either the instructions that implement the `while` loop body or the instructions that implement the statement `return c;` which follows the `while` loop. The details are right below after we are done with comparison.
 
 Here is the official RISC-V ISA specification of the `sltu` instruction:
 
@@ -2894,7 +2894,7 @@ Here is the official RISC-V ISA specification of the `sltu` instruction:
 
 Similar to the arithmetic instructions, the `sltu` instruction only uses register addressing with `rs1`, `rs2`, and `rd` parameters and no immediate value and is thus encoded in the R-Format.
 
-There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the information chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on which is why we show it here.
+There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the information chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on, which is why we show it here.
 
 Secondly, `<` and thus `sltu` are enough to implement the six integer comparison operators we mentioned above. For example, when using `sltu` to implement `<`, the comparison `a <= b` is true if the expression `1 - (b < a)` evaluates to `1`, and it is false if `1 - (b < a)` evaluates to `0`. In other words, combining `sltu` with an `addi` instruction for initializing a register with `1` and a `sub` instruction for subtracting from that register the value of `b < a` as calculated by the `sltu` instruction is enough to implement `a <= b`. Try to figure out the other five cases! The `compile_expression` procedure in `selfie.c` shows the details for you to validate your solutions. Yet keep in mind that selfie does all that for educational purposes. Dedicated machine instructions are of course faster and therefore used in production systems.
 
@@ -2902,17 +2902,67 @@ Our next topic takes us to control flow. We begin with the `beq` instruction whi
 
 #### Control
 
+The RISC-U ISA features three control-flow instructions: the *conditional branch* instruction `beq` and the *unconditional jump* instructions `jal` and `jalr`. The difference between a branch and a jump in machine code is simple. A branch gives the CPU two options to proceed depending on a condition: either stay on the main branch if the condition is false, that is, just go to the next instruction in memory, or else take the new branch if the condition is true, that is, go to some instruction somewhere else in memory. A jump only allows the CPU to do the latter, that is, go to some instruction somewhere else in memory, unconditionally.
+
+We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6` instruction in our running example, this time in its full context:
+
+```
+0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x15C(~6): 0x01043303: ld t1,16(s0)
+0x160(~6): 0x0062B2B3: sltu t0,t0,t1
+0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]
+---
+0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+0x16C(~7): 0x00100313: addi t1,zero,1
+0x170(~7): 0x006282B3: add t0,t0,t1
+0x174(~7): 0xFE543C23: sd t0,-8(s0)
+---
+0x178(~9): 0xFE1FF06F: jal zero,-8[0x158] // }
+---
+0x17C(~9): 0xFF843283: ld t0,-8(s0)       // return c;
+0x180(~9): 0x00028513: addi a0,t0,0
+0x184(~9): 0x0040006F: jal zero,1[0x188]
+```
+
+...
+
 `beq rs1,rs2,imm`: `if (rs1 == rs2) { pc = pc + imm } else { pc = pc + 4 }` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
+
+```
+// RISC-V B Format
+// ----------------------------------------------------------------
+// |        7         |  5  |  5  |  3   |        5        |  7   |
+// +------------------+-----+-----+------+-----------------+------+
+// |imm1[12]imm2[10:5]| rs2 | rs1 |funct3|imm3[4:1]imm4[11]|opcode|
+// +------------------+-----+-----+------+-----------------+------+
+// |31              25|24 20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
+```
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
+```
+// RISC-V J Format
+// ----------------------------------------------------------------
+// |                  20                 |        5        |  7   |
+// +-------------------------------------+-----------------+------+
+// |imm1[20]imm2[10:1]imm3[11]imm4[19:12]|       rd        |opcode|
+// +-------------------------------------+-----------------+------+
+// |31                                 12|11              7|6    0|
+// ----------------------------------------------------------------
+```
+
 `jalr rd,imm(rs1)`: `tmp = ((rs1 + imm) / 2) * 2; rd = pc + 4; pc = tmp` with `-2^11 <= imm < 2^11`
+
+I Format encoding.
 
 [//]: # (TODO: addition and subtraction necessary for control flow, program counter)
 
 #### System
 
 `ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
+
+I Format encoding with `zero` registers and immediate `0`.
 
 ### Booting
 
