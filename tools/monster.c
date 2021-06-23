@@ -195,6 +195,12 @@ uint64_t handle_symbolic_timer(uint64_t* context);
 
 uint64_t handle_symbolic_exception(uint64_t* context);
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 1;
+
+uint64_t SCHEDULE = 100; // extends DONOTEXIT and EXIT
+
 // -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
