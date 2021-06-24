@@ -1,13 +1,3 @@
-/*
-The purpose of this code is to demonstrate the capabilities
-of the monster model generator of selfie. Monster translates
-the code to an SMT-LIB or BTOR2 formula that is satisfiable
-if and only if the code exits with a non-zero exit code, or
-performs division by zero or invalid/unsafe memory accesses.
-
-Input == #b00110001 (== 49 == '1')
-*/
-
 uint64_t main() {
   uint64_t  a;
   uint64_t* x;
@@ -20,11 +10,13 @@ uint64_t main() {
 
   if (*x == 48)
     // address outside of virtual address space -> invalid memory access
+    // if the input is '0' (== 48 == b00110000)
     *(x + 4294967296) = 0;
 
   a = *x - 7;
 
   if (a == 42)
+    // non-zero exit code if the input is '1' (== 49 == b00110001)
     return 1;
   else
     return 0;

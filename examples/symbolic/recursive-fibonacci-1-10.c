@@ -1,13 +1,3 @@
-/*
-The purpose of this code is to demonstrate the capabilities
-of the monster model generator of selfie. Monster translates
-the code to an SMT-LIB or BTOR2 formula that is satisfiable
-if and only if the code exits with a non-zero exit code, or
-performs division by zero or invalid/unsafe memory accesses.
-
-Input == #b00110001 (== 49 == '1')
-*/
-
 uint64_t fibonacci(uint64_t n) {
   if (n <= 1)
     return n;
@@ -27,9 +17,11 @@ uint64_t main() {
 
   *x = *x - 46;
 
+  // 2 == fibonacci(3)
   a = fibonacci(*x);
 
   if (a == 2)
+    // non-zero exit code if the input is '1' (== 49 == b00110001)
     return 1;
   else
     return 0;
