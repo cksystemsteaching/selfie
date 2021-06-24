@@ -2251,7 +2251,7 @@ Before moving on, we would like to mention two more representative examples of I
 
 Our last but not least IO example is that of a clock device which allows a CPU to keep track of time. Very important! Polling time as well as *timer interrupts* are possible. The latter are particularly useful. Suppose we would like to *time-share* the CPU by having it execute some code for a certain amount of time and then execute some other code and so on. This is easy. Most machines have a clock device exactly for this purpose. Before executing some code, we may have the CPU execute code that sets a timer interrupt by instructing the clock device to interrupt the CPU after a given time elapsed. It is like setting an alarm. Then, we also need a timer interrupt handler that makes the CPU set a timer interrupt again before moving on to execute other code. Unsurprisingly, polling other IO devices is usually implemented like that.
 
-The lesson learned here is important. The fact that our machine can only execute one instruction after another puts us in a difficult spot when it comes to dealing with the outside world of the machine. Usually, many things out there happen in *parallel* at the same time while our machine is purely sequential. Even with multiple cores the situation does not change because in the end communication is always between at least two independent parties. At the end of the following section, we nevertheless demonstrate how IO is done in selfie on a more abstract level that avoids most of the above complexity but is still good enough for our purpose.
+The lesson learned here is important. The fact that our machine can only execute one instruction after another puts us in a difficult spot when it comes to dealing with the outside world of the machine. Usually, many things out there happen in *parallel* at the same time while our machine is purely *sequential*. Even with multiple cores the situation does not change because in the end communication is always between at least two independent parties. At the end of the following section, we nevertheless demonstrate how IO is done in selfie on a more abstract level that avoids most of the above complexity but is still good enough for our purpose.
 
 ### Instructions
 
@@ -2603,7 +2603,7 @@ Again, let us go through that line step by step. First of all, the `pc` is `0x10
 
 Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008` where `==` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `69640` in decimal notation and `0x11008` in hexadecimal notation. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but only after executing the instruction. With `gp` now equal to `0x11008`, the value in `t0` has obviously been copied to `gp`.
 
-Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` instruction formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*. In fact, here it is *sequential* control flow, that is, control flow from one instruction to the next instruction in memory.
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in main memory. That's all!
 
@@ -2902,9 +2902,9 @@ Our next topic takes us to control flow. We begin with the `beq` instruction whi
 
 #### Control
 
-The RISC-U ISA features three control-flow instructions: the *conditional branch* instruction `beq` and the *unconditional jump* instructions `jal` and `jalr`. The difference between a branch and a jump in machine code is simple. A branch gives the CPU two options to proceed depending on a condition: either stay on the main branch if the condition is false, that is, just go to the next instruction in memory, or else take the new branch if the condition is true, that is, go to some instruction somewhere else in memory. A jump only allows the CPU to do the latter, that is, go to some instruction somewhere else in memory, unconditionally.
+The RISC-U ISA features three control-flow instructions: the *conditional branch* instruction `beq` and the *unconditional jump* instructions `jal` and `jalr`. The difference between a branch and a jump in machine code is simple. A branch gives the CPU two options to proceed depending on a condition: either just go to the next instruction in memory if the condition is false, or else take the  branch if the condition is true, that is, go to some instruction somewhere else in memory. A jump only allows the CPU to do the latter, that is, go to some instruction somewhere else in memory, unconditionally.
 
-We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6` instruction in our running example, this time in its full context:
+We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x17C]` instruction in our running example, this time in its full context:
 
 ```
 0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
@@ -2924,9 +2924,13 @@ We first focus on the `beq` instruction and then explain the `jal` and `jalr` in
 0x184(~9): 0x0040006F: jal zero,1[0x188]
 ```
 
-...
+The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x17C]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x17C`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x168`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop.
+
+Here is the official RISC-V ISA specification of the `beq` instruction which uses an addressing mode we have not seen yet explicitly called *pc-relative* addressing:
 
 `beq rs1,rs2,imm`: `if (rs1 == rs2) { pc = pc + imm } else { pc = pc + 4 }` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
+
+If the two source registers `rs1` and `rs2` contain the same value, the branch is taken by using the immediate value `imm` as `pc`-relative offset, that is, relative to the address of the `beq` instruction itself. The immediate value, as before, is interpreted as signed integer. A positive immediate value instructs the CPU to branch *forward* in memory while a negative value makes the CPU branch *backward* in memory. In order to maximize the range of branching the `beq` instruction is encoded in a format we have also not seen yet called the *B-Format*:
 
 ```
 // RISC-V B Format
@@ -2938,6 +2942,12 @@ We first focus on the `beq` instruction and then explain the `jal` and `jalr` in
 // |31              25|24 20|19 15|14  12|11              7|6    0|
 // ----------------------------------------------------------------
 ```
+
+In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12 <= imm < 2^12` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate value of `beq` instructions to even values only, that is, values with a remainder of `0` if divided by `2` or, in other words, values that are divisible by `2`.
+
+Note that the immediate value of the `beq t0,zero,6[0x17C]` instruction is the even value `24`, not `6`, and certainly not `0x17C`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x17C` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x17C`. Recall that each instruction is encoded in `4` bytes.
+
+...
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
@@ -2952,9 +2962,15 @@ We first focus on the `beq` instruction and then explain the `jal` and `jalr` in
 // ----------------------------------------------------------------
 ```
 
+...
+
 `jalr rd,imm(rs1)`: `tmp = ((rs1 + imm) / 2) * 2; rd = pc + 4; pc = tmp` with `-2^11 <= imm < 2^11`
 
+What if `rd == rs1`?
+
 I Format encoding.
+
+TODO: Let us reflect on the advantage and disadvantage of pc-relative addressing. Strictly speaking, all RISC-U instructions except `jalr` use pc-relative addressing, including the instructions that are not control-flow instructions...
 
 [//]: # (TODO: addition and subtraction necessary for control flow, program counter)
 
