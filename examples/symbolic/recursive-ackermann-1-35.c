@@ -1,13 +1,3 @@
-/*
-The purpose of this code is to demonstrate the capabilities
-of the monster model generator of selfie. Monster translates
-the code to an SMT-LIB or BTOR2 formula that is satisfiable
-if and only if the code exits with a non-zero exit code, or
-performs division by zero or invalid/unsafe memory accesses.
-
-Input == #b00110001 (== 49 == '1')
-*/
-
 uint64_t ackermann(uint64_t m, uint64_t n) {
   if (m != 0) {
     if (n != 0)
@@ -30,9 +20,11 @@ uint64_t main() {
 
   *x = *x - 47;
 
+  // 4 == ackermann(1, 2)
   a = ackermann(1, *x);
 
   if (a == 4)
+    // non-zero exit code if the input is '1' (== 49 == b00110001)
     return 1;
   else
     return 0;

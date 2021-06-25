@@ -1856,7 +1856,6 @@ uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
 uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
-uint64_t EXCEPTION_SYMBOLICSCHEDULE      = 9; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // textual representation of exceptions
 
@@ -1956,7 +1955,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICSCHEDULE + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNINITIALIZEDREGISTER + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -1967,7 +1966,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICSCHEDULE)      = (uint64_t) "symbolic schedule";
 }
 
 void reset_interpreter() {
@@ -2280,8 +2278,7 @@ uint64_t selfie_run(uint64_t machine);
 uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
-uint64_t EXIT      = 1;
-uint64_t SCHEDULE  = 2; // for symbolic execution
+uint64_t EXIT      = 1; // extended in symbolic execution engine
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 11; // leaving 1-10 for apps
@@ -2300,9 +2297,7 @@ uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 23;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 24;
 uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 25;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 26;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 27; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 28; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 29;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 27;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -2869,7 +2864,7 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
 }
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
-  // compute fixed point ratio with f fractional digits
+  // compute fixed-point ratio with f fractional digits
   return a / b * ten_to_the_power_of(f) + a % b * ten_to_the_power_of(f) / b;
 }
 
@@ -9023,7 +9018,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    sprintf(string_buffer,"%s: pc=0x%lX", binary_name, address);
+    sprintf(string_buffer,"%s: pc==0x%lX", binary_name, address);
     direct_output(string_buffer);
     print_code_line_number_for_instruction(address, code_start);
     if (symbolic)
@@ -9320,9 +9315,9 @@ void print_load_before() {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        printf(",mem[0x%lX]=0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%lX]==0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(",mem[0x%lX]=%ld |- ", vaddr, load_virtual_memory(pt, vaddr));
+        printf(",mem[0x%lX]==%ld |- ", vaddr, load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
@@ -9336,7 +9331,7 @@ void print_load_after(uint64_t vaddr) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
-      printf("=mem[0x%lX]", vaddr);
+      printf("==mem[0x%lX]", vaddr);
     }
 }
 
@@ -9414,9 +9409,9 @@ void print_store_before() {
       print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        printf(" |- mem[0x%lX]=0x%lX", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%lX]==0x%lX", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(" |- mem[0x%lX]=%ld", vaddr, load_virtual_memory(pt, vaddr));
+        printf(" |- mem[0x%lX]==%ld", vaddr, load_virtual_memory(pt, vaddr));
 
       return;
     }
@@ -9427,7 +9422,7 @@ void print_store_before() {
 void print_store_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(" -> mem[0x%lX]=", vaddr);
+      printf(" -> mem[0x%lX]==", vaddr);
       print_register_value(rs2);
     }
 }
@@ -9509,11 +9504,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  printf(" |- pc=0x%lX", pc);
+  printf(" |- pc==0x%lX", pc);
 }
 
 void print_beq_after() {
-  printf(" -> pc=0x%lX", pc);
+  printf(" -> pc==0x%lX", pc);
 }
 
 void record_beq() {
@@ -9553,7 +9548,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=0x%lX", pc);
+  printf("pc==0x%lX", pc);
 }
 
 void print_jal_jalr_after() {
@@ -9623,7 +9618,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf("pc=0x%lX", pc);
+  printf("pc==0x%lX", pc);
 }
 
 void do_jalr() {
@@ -9902,18 +9897,18 @@ void replay_trace() {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  printf("%s=0x%lX", get_register_name(reg), *(registers + reg));
+  printf("%s==0x%lX", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
-  printf("%s=0o%lo", get_register_name(reg), *(registers + reg));
+  printf("%s==0o%lo", get_register_name(reg), *(registers + reg));
 }
 
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    printf("%s=%ld(0x%lX)", get_register_name(reg), *(registers + reg), *(registers + reg));
+    printf("%s==%ld(0x%lX)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
@@ -10432,9 +10427,9 @@ void print_profile(uint64_t* context) {
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
-      printf("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
+      printf("%s: profile: total,max(ratio%%)@address(line#),2ndmax,3rdmax\n", selfie_name);
     else
-      printf("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
+      printf("%s: profile: total,max(ratio%%)@address,2ndmax,3rdmax\n", selfie_name);
 
     print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
     print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
@@ -11579,7 +11574,7 @@ uint64_t no_or_bad_or_more_arguments(uint64_t exit_code) {
 }
 
 void print_synopsis(char* extras) {
-  printf("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
+  printf("synopsis: %s { -c { source } | -o binary | ( -s | -S ) assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 // -----------------------------------------------------------------

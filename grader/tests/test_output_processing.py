@@ -57,7 +57,7 @@ class TestOutputProcessing(TestCase):
 
     def test_clang_warning_detection(self):
         output = """
-cc -Wall -Wextra -pedantic -O3 -m64 -D'uint64_t=unsigned long long' -D'HOSTOS=2' selfie.c -o selfie
+cc -Wall -Wextra -pedantic -O3 -m64 -D'uint64_t=unsigned long' selfie.c -o selfie
 selfie.c:11191:2: warning: no newline at end of file [-Wnewline-eof]
 }
  ^
@@ -73,7 +73,7 @@ selfie.c:11191:2: warning: no newline at end of file [-Wnewline-eof]
     def test_gcc_warning_detection(self):
         output = """
 selfie.c: In function 'init_library':
-selfie.c:294:22: warning: assignment to 'long long unsigned int' from 'long long unsigned int *' makes integer from pointer without a cast [-Wint-conversion]
+selfie.c:294:22: warning: assignment to 'long unsigned int' from 'long unsigned int *' makes integer from pointer without a cast [-Wint-conversion]
   294 |   SIZEOFUINT64       = ((uint64_t*) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
       |
 """

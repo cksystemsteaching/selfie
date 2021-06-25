@@ -1,3 +1,3 @@
 # C\* Code Examples for Symbolic Execution
 
-The code in this directory showcases selfie's symbolic execution capabilities. See selfie's Makefile for more details on how to execute the examples symbolically.
+The purpose of the code in this directory is to demonstrate the capabilities of monster, a symbolic execution engine, and modeler, a model generator, which are both part of selfie. Monster and modeler translate selfie-compiled RISC-U code to an SMT-LIB or BTOR2 formula, respectively, that is satisfiable if there is input to the code such that it exits with a non-zero exit code, or performs division by zero or an invalid/unsafe memory access. See selfie's Makefile for more details on how to execute the examples symbolically.

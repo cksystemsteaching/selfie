@@ -40,13 +40,13 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `mul rd,rs1,rs2`: `rd = rs1 * rs2; pc = pc + 4`
 
-`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
 
-`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
 
 #### Comparison
 
-`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
+`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4` where the values of `rs1` and `rs2` are interpreted as unsigned integers.
 
 #### Control
 
@@ -58,4 +58,4 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 #### System
 
-`ecall`: system call number is in `a7`, parameters are in `a0-a2`, return value is in `a0`.
+`ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
