@@ -2947,9 +2947,19 @@ In this format the LSB of the immediate value is assumed to be `0` and thus igno
 
 Note that the immediate value of the `beq t0,zero,6[0x17C]` instruction is the even value `24`, not `6`, and certainly not `0x17C`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x17C` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x17C`. Recall that each instruction is encoded in `4` bytes.
 
-...
+Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
+
+```
+0x178(~9): 0xFE1FF06F: jal zero,-8[0x158] // }
+```
+
+Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x158`. This way the CPU checks the condition again to see if it is still true or not.
+
+A `jal` instruction is actually capable of doing a bit more than that. Check out its official RISC-V ISA specification:
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
+
+...
 
 ```
 // RISC-V J Format
