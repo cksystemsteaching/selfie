@@ -47,7 +47,7 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 5.3. Memory
 5.4. Input/Output
 5.5. Instructions
-5.6. Booting
+5.6. Emulation
 5.7. Algorithms
 5.8. Performance
 5.9. Recommended Readings
@@ -2143,7 +2143,7 @@ An alternative model to a von Neumann machine that addresses the von Neumann bot
 
 The key advantage of a von Neumann machine over a Harvard architecture is that it provides a common address space for code and data. This removes the problem of provisioning the size of memory for code and data in hardware. With a von Neumann machine we may simply store as much code and data in any ratio until memory is full. But there is also the issue of addressing code and data in memory. Remember that data may be interpreted as pointers to other data, and even code. Also, code needs to address, not just other code in order to instruct the machine where the next instruction is, but also data. In a common address space for code and data all that can be done using the same format for addresses. In other words, domestic mail is just simpler than international.
 
-We begin this chapter with a model of the machine we use throughout the book. After that we present details of the processor and memory, and then explain how machine input and output works in principle. Next is a detailed introduction to the instructions of our machine. At this point, it is time to show how the machine actually starts up before executing any code. The remaining two sections give you an idea of how to measure and evaluate the performance of machine code.
+We begin this chapter with a model of the machine we use throughout the book. After that we present details of the processor and memory, and then explain how machine input and output works in principle. Next is a detailed introduction to the instructions of our machine. At this point, it is time to show how the machine is actually implemented in selfie. The remaining two sections give you an idea of how to measure and evaluate the performance of machine code.
 
 ### Model
 
@@ -2943,7 +2943,7 @@ If the two source registers `rs1` and `rs2` contain the same value, the branch i
 // ----------------------------------------------------------------
 ```
 
-In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12 <= imm < 2^12` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate value of `beq` instructions to even values only, that is, values with a remainder of `0` if divided by `2` or, in other words, values that are divisible by `2`.
+In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12 <= imm < 2^12` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate values of `beq` instructions to even values only, that is, values with a remainder of `0` when divided by `2` or, in other words, values that are divisible by `2`.
 
 Note that the immediate value of the `beq t0,zero,6[0x17C]` instruction is the even value `24`, not `6`, and certainly not `0x17C`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x17C` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x17C`. Recall that each instruction is encoded in `4` bytes.
 
@@ -2980,7 +2980,7 @@ TODO: Let us reflect on the advantage and disadvantage of pc-relative addressing
 
 I Format encoding with `zero` registers and immediate `0`.
 
-### Booting
+### Emulation
 
 ### Algorithms
 
