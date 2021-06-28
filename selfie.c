@@ -688,7 +688,7 @@ uint64_t break_branches = 0; // fixup chain for break statements
 
 uint64_t continue_branches = 0; // fixup chain for continue statements
 
-uint64_t loop_dim = 0; // 0: currently not inside a loop | 1: inside a while loop | 2: inside a while loop which is inside a while loop etc.
+uint64_t loop_dim = 0; // amount of loops ("dimensions") we are in, 0 means not inside loop
 
 uint64_t return_type = 0; // return type of currently parsed procedure
 
