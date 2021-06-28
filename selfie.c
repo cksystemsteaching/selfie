@@ -4844,11 +4844,13 @@ void compile_while() {
 
   loop_dim = loop_dim + 1;
 
+  // temporarily store break-fixup-chain of parent loop
   outside_break_branches = break_branches;
 
-  outside_continue_branches = continue_branches;
-
   break_branches = 0;
+
+  // temporarily store continue-fixup-chain of parent loop
+  outside_continue_branches = continue_branches;
 
   continue_branches = 0;
 
@@ -4921,8 +4923,10 @@ void compile_while() {
 
   loop_dim = loop_dim - 1;
 
+  // restore break-fixup-chain of parent loop
   break_branches = outside_break_branches;
 
+  // restore continue-fixup-chain of parent loop
   continue_branches = outside_continue_branches;
 }
 
@@ -5062,7 +5066,7 @@ void compile_break() {
     syntax_error_symbol(SYM_BREAK);
 
   if (loop_dim > 0) {
-    // jump to procedure epilogue through fixup chain using absolute address
+    // jump to end of loop through fixup chain using absolute address
     emit_jal(REG_ZR, break_branches);
 
     // new head of fixup chain
@@ -5089,7 +5093,7 @@ void compile_continue() {
     syntax_error_symbol(SYM_CONTINUE);
 
   if (loop_dim > 0) {
-    // jump to procedure epilogue through fixup chain using absolute address
+    // jump to beginning of loop through fixup chain using absolute address
     emit_jal(REG_ZR, continue_branches);
 
     // new head of fixup chain
