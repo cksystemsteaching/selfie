@@ -397,31 +397,33 @@ uint64_t SYM_ELSE         = 6;  // else
 uint64_t SYM_VOID         = 7;  // void
 uint64_t SYM_RETURN       = 8;  // return
 uint64_t SYM_WHILE        = 9;  // while
-uint64_t SYM_COMMA        = 10; // ,
-uint64_t SYM_SEMICOLON    = 11; // ;
-uint64_t SYM_LPARENTHESIS = 12; // (
-uint64_t SYM_RPARENTHESIS = 13; // )
-uint64_t SYM_LBRACE       = 14; // {
-uint64_t SYM_RBRACE       = 15; // }
-uint64_t SYM_PLUS         = 16; // +
-uint64_t SYM_MINUS        = 17; // -
-uint64_t SYM_ASTERISK     = 18; // *
-uint64_t SYM_DIVISION     = 19; // /
-uint64_t SYM_REMAINDER    = 20; // %
-uint64_t SYM_ASSIGN       = 21; // =
-uint64_t SYM_EQUALITY     = 22; // ==
-uint64_t SYM_NOTEQ        = 23; // !=
-uint64_t SYM_LT           = 24; // <
-uint64_t SYM_LEQ          = 25; // <=
-uint64_t SYM_GT           = 26; // >
-uint64_t SYM_GEQ          = 27; // >=
+uint64_t SYM_BREAK        = 10; // break
+uint64_t SYM_CONTINUE     = 11; // continue
+uint64_t SYM_COMMA        = 12; // ,
+uint64_t SYM_SEMICOLON    = 13; // ;
+uint64_t SYM_LPARENTHESIS = 14; // (
+uint64_t SYM_RPARENTHESIS = 15; // )
+uint64_t SYM_LBRACE       = 16; // {
+uint64_t SYM_RBRACE       = 17; // }
+uint64_t SYM_PLUS         = 18; // +
+uint64_t SYM_MINUS        = 19; // -
+uint64_t SYM_ASTERISK     = 20; // *
+uint64_t SYM_DIVISION     = 21; // /
+uint64_t SYM_REMAINDER    = 22; // %
+uint64_t SYM_ASSIGN       = 23; // =
+uint64_t SYM_EQUALITY     = 24; // ==
+uint64_t SYM_NOTEQ        = 25; // !=
+uint64_t SYM_LT           = 26; // <
+uint64_t SYM_LEQ          = 27; // <=
+uint64_t SYM_GT           = 28; // >
+uint64_t SYM_GEQ          = 29; // >=
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 28; // int
-uint64_t SYM_CHAR     = 29; // char
-uint64_t SYM_UNSIGNED = 30; // unsigned
-uint64_t SYM_ELLIPSIS = 31; // ...
+uint64_t SYM_INT      = 30; // int
+uint64_t SYM_CHAR     = 31; // char
+uint64_t SYM_UNSIGNED = 32; // unsigned
+uint64_t SYM_ELLIPSIS = 33; // ...
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -471,6 +473,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
   *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
   *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
+  *(SYMBOLS + SYM_BREAK)        = (uint64_t) "break";
+  *(SYMBOLS + SYM_CONTINUE)     = (uint64_t) "continue";
   *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
   *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_LPARENTHESIS) = (uint64_t) "(";
@@ -665,6 +669,8 @@ uint64_t compile_expression();
 void     compile_while();
 void     compile_if();
 void     compile_return();
+void     compile_break();
+void     compile_continue();
 void     compile_statement();
 uint64_t compile_type();
 void     compile_variable(uint64_t offset);
@@ -678,6 +684,12 @@ uint64_t allocated_temporaries = 0; // number of allocated temporaries
 
 uint64_t return_branches = 0; // fixup chain for return statements
 
+uint64_t break_branches = 0; // fixup chain for break statements
+
+uint64_t continue_branches = 0; // fixup chain for continue statements
+
+uint64_t loop_dim = 0; // amount of loops ("dimensions") we are in, 0 means not inside loop
+
 uint64_t return_type = 0; // return type of currently parsed procedure
 
 uint64_t number_of_calls       = 0;
@@ -685,6 +697,8 @@ uint64_t number_of_assignments = 0;
 uint64_t number_of_while       = 0;
 uint64_t number_of_if          = 0;
 uint64_t number_of_return      = 0;
+uint64_t number_of_break       = 0;
+uint64_t number_of_continue    = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -694,6 +708,8 @@ void reset_parser() {
   number_of_while       = 0;
   number_of_if          = 0;
   number_of_return      = 0;
+  number_of_break       = 0;
+  number_of_continue    = 0;
 
   number_of_syntax_errors = 0;
 
@@ -3462,6 +3478,10 @@ uint64_t identifier_or_keyword() {
     return SYM_RETURN;
   else if (identifier_string_match(SYM_WHILE))
     return SYM_WHILE;
+  else if (identifier_string_match(SYM_BREAK))
+    return SYM_BREAK;
+  else if (identifier_string_match(SYM_CONTINUE))
+    return SYM_CONTINUE;
   else if (identifier_string_match(SYM_INT))
     // selfie bootstraps int to uint64_t!
     return SYM_UINT64;
@@ -4010,6 +4030,10 @@ uint64_t look_for_statement() {
   else if (symbol == SYM_IF)
     return 0;
   else if (symbol == SYM_RETURN)
+    return 0;
+  else if (symbol == SYM_BREAK)
+    return 0;
+  else if (symbol == SYM_CONTINUE)
     return 0;
   else if (symbol == SYM_EOF)
     return 0;
@@ -4813,8 +4837,22 @@ uint64_t compile_expression() {
 }
 
 void compile_while() {
+  uint64_t outside_break_branches;
+  uint64_t outside_continue_branches;
   uint64_t jump_back_to_while;
   uint64_t branch_forward_to_end;
+
+  loop_dim = loop_dim + 1;
+
+  // temporarily store break-fixup-chain of parent loop
+  outside_break_branches = break_branches;
+
+  break_branches = 0;
+
+  // temporarily store continue-fixup-chain of parent loop
+  outside_continue_branches = continue_branches;
+
+  continue_branches = 0;
 
   // assert: allocated_temporaries == 0
 
@@ -4875,9 +4913,21 @@ void compile_while() {
     // now we have the address for the conditional branch from above
     fixup_relative_BFormat(branch_forward_to_end);
 
+  fixlink_relative(break_branches, code_size);
+
+  fixlink_relative(continue_branches, jump_back_to_while);
+
   // assert: allocated_temporaries == 0
 
   number_of_while = number_of_while + 1;
+
+  loop_dim = loop_dim - 1;
+
+  // restore break-fixup-chain of parent loop
+  break_branches = outside_break_branches;
+
+  // restore continue-fixup-chain of parent loop
+  continue_branches = outside_continue_branches;
 }
 
 void compile_if() {
@@ -5005,6 +5055,60 @@ void compile_return() {
   // assert: allocated_temporaries == 0
 
   number_of_return = number_of_return + 1;
+}
+
+void compile_break() {
+  // assert: allocated_temporaries == 0
+
+  if (symbol == SYM_BREAK)
+    get_symbol();
+  else
+    syntax_error_symbol(SYM_BREAK);
+
+  if (loop_dim > 0) {
+    // jump to end of loop through fixup chain using absolute address
+    emit_jal(REG_ZR, break_branches);
+
+    // new head of fixup chain
+    break_branches = code_size - INSTRUCTIONSIZE;
+  } else
+    syntax_error_message("break statement outside of loop");
+
+  if (symbol == SYM_SEMICOLON)
+    get_symbol();
+  else
+    syntax_error_symbol(SYM_SEMICOLON);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_break = number_of_break + 1;
+}
+
+void compile_continue() {
+  // assert: allocated_temporaries == 0
+
+  if (symbol == SYM_CONTINUE)
+    get_symbol();
+  else
+    syntax_error_symbol(SYM_CONTINUE);
+
+  if (loop_dim > 0) {
+    // jump to beginning of loop through fixup chain using absolute address
+    emit_jal(REG_ZR, continue_branches);
+
+    // new head of fixup chain
+    continue_branches = code_size - INSTRUCTIONSIZE;
+  } else
+    syntax_error_message("continue statement outside of loop");
+
+  if (symbol == SYM_SEMICOLON)
+    get_symbol();
+  else
+    syntax_error_symbol(SYM_SEMICOLON);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_continue = number_of_continue + 1;
 }
 
 void compile_statement() {
@@ -5177,6 +5281,14 @@ void compile_statement() {
       get_symbol();
     else
       syntax_error_symbol(SYM_SEMICOLON);
+  }
+  // break statement?
+  else if (symbol == SYM_BREAK) {
+    compile_break();
+  }
+  // break statement?
+  else if (symbol == SYM_CONTINUE) {
+    compile_continue();
   }
 }
 
@@ -5792,12 +5904,16 @@ void selfie_compile() {
         (char*) number_of_procedures,
         (char*) number_of_strings);
 
-      printf6("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
+      printf3("%s: %u calls, %u assignments\n", selfie_name,
         (char*) number_of_calls,
-        (char*) number_of_assignments,
+        (char*) number_of_assignments);
+
+      printf6("%s: %u while, %u if, %u return, %u break, %u continue\n", selfie_name,
         (char*) number_of_while,
         (char*) number_of_if,
-        (char*) number_of_return);
+        (char*) number_of_return,
+        (char*) number_of_break,
+        (char*) number_of_continue);
 
       if (number_of_syntax_errors != 0) {
         printf3("%s: encountered %u syntax errors while compiling %s - omitting ELF output\n",
