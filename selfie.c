@@ -5014,8 +5014,6 @@ void compile_statement() {
   uint64_t* entry;
   uint64_t offset;
 
-  ltype = 0;
-
   // assert: allocated_temporaries == 0
 
   while (look_for_statement()) {
@@ -5053,35 +5051,32 @@ void compile_statement() {
       else
         syntax_error_symbol(SYM_RPARENTHESIS);
     } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
+      return;
 
-    // "*" ( variable | "(" expression ")" )
-    if (ltype != 0) {
-      // "*" ( variable | "(" expression ")" ) "=" expression
-      if (symbol == SYM_ASSIGN) {
-        get_symbol();
+    // "*" ( variable | "(" expression ")" ) "=" expression
+    if (symbol == SYM_ASSIGN) {
+      get_symbol();
 
-        rtype = compile_expression();
+      rtype = compile_expression();
 
-        if (rtype != UINT64_T)
-          type_warning(UINT64_T, rtype);
+      if (rtype != UINT64_T)
+        type_warning(UINT64_T, rtype);
 
-        emit_store(previous_temporary(), 0, current_temporary());
+      emit_store(previous_temporary(), 0, current_temporary());
 
-        tfree(2);
+      tfree(2);
 
-        number_of_assignments = number_of_assignments + 1;
-      } else {
-        syntax_error_symbol(SYM_ASSIGN);
+      number_of_assignments = number_of_assignments + 1;
+    } else {
+      syntax_error_symbol(SYM_ASSIGN);
 
-        tfree(1);
-      }
-
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      tfree(1);
     }
+
+    if (symbol == SYM_SEMICOLON)
+      get_symbol();
+    else
+      syntax_error_symbol(SYM_SEMICOLON);
   }
   // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
