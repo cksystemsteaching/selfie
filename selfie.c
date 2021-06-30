@@ -5050,8 +5050,11 @@ void compile_statement() {
         get_symbol();
       else
         syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
+    } else {
+      syntax_error_symbol(SYM_LPARENTHESIS);
+
       return;
+    }
 
     // "*" ( variable | "(" expression ")" ) "=" expression
     if (symbol == SYM_ASSIGN) {
