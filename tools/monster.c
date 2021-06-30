@@ -541,16 +541,23 @@ void implement_symbolic_openat(uint64_t* context) {
 // -----------------------------------------------------------------
 
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
+  uint64_t execution_depth;
+
   path_condition  = get_path_condition(to_context);
   reg_sym         = get_symbolic_regs(to_context);
   symbolic_memory = get_symbolic_memory(to_context);
 
   current_context = do_switch(current_context, to_context, timeout);
 
+  execution_depth = get_total_number_of_instructions();
+
   run_symbolically_until_exception();
+
+  execution_depth = get_total_number_of_instructions() - execution_depth;
 
   save_context(current_context);
 
+  set_execution_depth(current_context, get_execution_depth(current_context) + execution_depth);
   set_path_condition(current_context, path_condition);
   set_symbolic_memory(current_context, symbolic_memory);
 
@@ -1137,10 +1144,10 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (get_beq_counter(context) >= beq_limit) {
-    printf1("; timeout in ", path_condition);
+    print("; timeout (branch limit) in ");
     print_code_context_for_instruction(pc);
     if (debug_merge)
-      printf1(" -> timed out context: %d", (char*) context);
+      printf2(" -> context: %d, path-condition: %s", (char*) context, path_condition);
     println();
 
     return EXIT;
@@ -1148,10 +1155,10 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
 
   if (max_execution_depth) {
     if (get_execution_depth(context) >= max_execution_depth) {
-      printf1("; timeout in ", path_condition);
+      print("; timeout (execution depth) in ");
       print_code_context_for_instruction(pc);
       if (debug_merge)
-        printf1(" -> timed out context: %d", (char*) context);
+        printf2(" -> context: %d, path-condition: %s", (char*) context, path_condition);
       println();
 
       return EXIT;
