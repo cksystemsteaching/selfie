@@ -5027,7 +5027,7 @@ void compile_statement() {
       get_symbol();
   }
 
-  // "*"
+  // ["*"]
   if (symbol == SYM_ASTERISK) {
     get_symbol();
 
@@ -5083,7 +5083,7 @@ void compile_statement() {
         syntax_error_symbol(SYM_SEMICOLON);
     }
   }
-  // variable | procedure name
+  // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
