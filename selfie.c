@@ -5069,6 +5069,7 @@ void compile_statement() {
 
       // "*" identifier
       if (dereference) {
+        // load address into temporary
         ltype = load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
         if (ltype != UINT64STAR_T)
@@ -5086,6 +5087,7 @@ void compile_statement() {
 
         talloc();
 
+        // load address into temporary
         if (is_signed_integer(offset, 12))
           emit_addi(current_temporary(), get_scope(entry), offset);
         else {
@@ -5104,6 +5106,7 @@ void compile_statement() {
 
       assignment = 1;
 
+      // load address into temporary
       ltype = compile_expression();
 
       if (ltype != UINT64STAR_T)
@@ -5142,6 +5145,7 @@ void compile_statement() {
     } else
       syntax_error_symbol(SYM_ASSIGN);
 
+    // free address temporary
     tfree(1);
   }
   // while statement?
