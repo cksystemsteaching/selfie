@@ -5031,20 +5031,23 @@ void compile_statement() {
       get_symbol();
   }
 
+  // ["*"]
   if (symbol == SYM_ASTERISK) {
     get_symbol();
 
     dereference = 1;
   }
 
+  // ["*"] identifier | call
   if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
     get_symbol();
 
+    // procedure call
     if (symbol == SYM_LPARENTHESIS) {
-      if (dereference) {
-        symbol = SYM_ASTERISK;
+      if (dereference) { // * call     this is obviously wrong
+        symbol = SYM_ASTERISK; // workaround to show that the asterisk is misplaced
 
         syntax_error_unexpected();
       }
@@ -5053,6 +5056,8 @@ void compile_statement() {
 
       compile_call(variable_or_procedure_name);
 
+      // reset return register to initial return value
+      // for missing return expressions
       emit_addi(REG_A0, REG_ZR, 0);
 
       if (symbol == SYM_SEMICOLON)
@@ -5062,6 +5067,7 @@ void compile_statement() {
     } else {
       assignment = 1;
 
+      // "*" identifier
       if (dereference) {
         ltype = load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
@@ -5069,7 +5075,9 @@ void compile_statement() {
           type_warning(UINT64STAR_T, ltype);
         else
           ltype = UINT64_T;
-      } else {
+      }
+      // identifier
+      else {
         entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
         ltype = get_type(entry);
@@ -5090,6 +5098,7 @@ void compile_statement() {
       }
     }
   } else if (dereference) {
+    // "*" "(" expression ")"
     if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
@@ -5110,6 +5119,7 @@ void compile_statement() {
       syntax_error_symbol(SYM_LPARENTHESIS);
   }
 
+  // ( ["*"] identifier | "*" "(" expression ")" ) "=" expression
   if (assignment == 1) {
     if (symbol == SYM_ASSIGN) {
       get_symbol();
