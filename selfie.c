@@ -5067,6 +5067,8 @@ void compile_statement() {
     } else {
       assignment = 1;
 
+      // assert: allocated_temporaries == 0
+
       // "*" identifier
       if (dereference) {
         // load address into temporary
@@ -5098,11 +5100,15 @@ void compile_statement() {
           tfree(1);
         }
       }
+
+      // assert: allocated_temporaries == 1
     }
   } else if (dereference) {
     // "*" "(" expression ")"
     if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
+
+      // assert: allocated_temporaries == 0
 
       assignment = 1;
 
@@ -5118,12 +5124,16 @@ void compile_statement() {
         get_symbol();
       else
         syntax_error_symbol(SYM_RPARENTHESIS);
+
+      // assert: allocated_temporaries == 1
     } else
       syntax_error_symbol(SYM_LPARENTHESIS);
   }
 
   // ( ["*"] identifier | "*" "(" expression ")" ) "=" expression
   if (assignment == 1) {
+    // assert: allocated_temporaries == 1
+
     if (symbol == SYM_ASSIGN) {
       get_symbol();
 
@@ -5147,6 +5157,8 @@ void compile_statement() {
 
     // free address temporary
     tfree(1);
+
+    // assert: allocated_temporaries == 0
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
@@ -5165,6 +5177,8 @@ void compile_statement() {
     else
       syntax_error_symbol(SYM_SEMICOLON);
   }
+
+  // assert: allocated_temporaries == 0
 }
 
 uint64_t compile_type() {
