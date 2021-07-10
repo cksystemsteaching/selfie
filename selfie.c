@@ -5218,32 +5218,6 @@ void compile_statement() {
         type_warning(UINT64STAR_T, ltype);
 
       get_symbol();
-
-      // "*" variable "="
-      if (symbol == SYM_ASSIGN) {
-        get_symbol();
-
-        rtype = compile_expression();
-
-        if (rtype != UINT64_T)
-          type_warning(UINT64_T, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
-
-        tfree(2);
-
-        number_of_assignments = number_of_assignments + 1;
-      } else {
-        syntax_error_symbol(SYM_ASSIGN);
-
-        tfree(1);
-      }
-
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
-
     // "*" "(" expression ")"
     } else if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
@@ -5253,37 +5227,40 @@ void compile_statement() {
       if (ltype != UINT64STAR_T)
         type_warning(UINT64STAR_T, ltype);
 
-      if (symbol == SYM_RPARENTHESIS) {
+      if (symbol == SYM_RPARENTHESIS)
         get_symbol();
-
-        // "*" "(" expression ")" "="
-        if (symbol == SYM_ASSIGN) {
-          get_symbol();
-
-          rtype = compile_expression();
-
-          if (rtype != UINT64_T)
-            type_warning(UINT64_T, rtype);
-
-          emit_store(previous_temporary(), 0, current_temporary());
-
-          tfree(2);
-
-          number_of_assignments = number_of_assignments + 1;
-        } else {
-          syntax_error_symbol(SYM_ASSIGN);
-
-          tfree(1);
-        }
-
-        if (symbol == SYM_SEMICOLON)
-          get_symbol();
-        else
-          syntax_error_symbol(SYM_SEMICOLON);
-      } else
+      else
         syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
+    } else {
       syntax_error_symbol(SYM_LPARENTHESIS);
+
+      return;
+    }
+
+    // "*" ( variable | "(" expression ")" ) "=" expression
+    if (symbol == SYM_ASSIGN) {
+      get_symbol();
+
+      rtype = compile_expression();
+
+      if (rtype != UINT64_T)
+        type_warning(UINT64_T, rtype);
+
+      emit_store(previous_temporary(), 0, current_temporary());
+
+      tfree(2);
+
+      number_of_assignments = number_of_assignments + 1;
+    } else {
+      syntax_error_symbol(SYM_ASSIGN);
+
+      tfree(1);
+    }
+
+    if (symbol == SYM_SEMICOLON)
+      get_symbol();
+    else
+      syntax_error_symbol(SYM_SEMICOLON);
   }
   // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
@@ -5306,7 +5283,7 @@ void compile_statement() {
       else
         syntax_error_symbol(SYM_SEMICOLON);
 
-    // variable = expression
+    // variable "=" expression
     } else if (symbol == SYM_ASSIGN) {
       entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
