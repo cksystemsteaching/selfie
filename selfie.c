@@ -439,10 +439,6 @@ uint64_t SYM_CHAR     = 30; // char
 uint64_t SYM_UNSIGNED = 31; // unsigned
 uint64_t SYM_CONST    = 32; // const
 
-uint64_t MACRO_VAR_START = 0;
-uint64_t MACRO_VAR_ARG   = 1;
-uint64_t MACRO_VAR_END   = 2;
-
 uint64_t* SYMBOLS; // strings representing symbols
 
 uint64_t MAX_IDENTIFIER_LENGTH = 64;  // maximum number of characters in an identifier
@@ -603,7 +599,6 @@ uint64_t VOID_T       = 3;
 uint64_t GLOBAL_TABLE  = 1;
 uint64_t LOCAL_TABLE   = 2;
 uint64_t LIBRARY_TABLE = 3;
-uint64_t MACRO_TABLE   = 4;
 
 // hash table size for global symbol table
 uint64_t HASH_TABLE_SIZE = 1024;
@@ -615,7 +610,6 @@ uint64_t HASH_TABLE_SIZE = 1024;
 uint64_t* global_symbol_table  = (uint64_t*) 0;
 uint64_t* local_symbol_table   = (uint64_t*) 0;
 uint64_t* library_symbol_table = (uint64_t*) 0;
-uint64_t* macro_symbol_table   = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
 uint64_t number_of_procedures       = 0;
@@ -630,7 +624,6 @@ void reset_symbol_tables() {
   global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
-  macro_symbol_table   = (uint64_t*) 0;
 
   number_of_global_variables = 0;
   number_of_procedures       = 0;
@@ -720,7 +713,7 @@ void macro_var_end();
 
 uint64_t allocated_temporaries = 0; // number of allocated temporaries
 
-uint64_t* current_procedure = (uint64_t*) 0; //
+uint64_t* current_procedure = (uint64_t*) 0; // currently parsed procedure definition
 
 uint64_t return_branches = 0; // fixup chain for return statements
 
@@ -3885,15 +3878,10 @@ uint64_t* create_symbol_table_entry(uint64_t which_table, char* string, uint64_t
     set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
     local_symbol_table = new_entry;
-  } else if (which_table == LIBRARY_TABLE) {
+  } else {
     set_scope(new_entry, REG_GP);
     set_next_entry(new_entry, library_symbol_table);
     library_symbol_table = new_entry;
-  } else {
-    // macros
-    set_scope(new_entry, REG_GP);
-    set_next_entry(new_entry, macro_symbol_table);
-    macro_symbol_table = new_entry;
   }
 
   return new_entry;
@@ -3926,14 +3914,10 @@ uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
   if (class == VARIABLE)
     // local variables override global variables
     entry = search_symbol_table(local_symbol_table, string, VARIABLE);
-  else if (class == PROCEDURE) {
-    // macros override library procedures
-    entry = search_symbol_table(macro_symbol_table, string, MACRO);
-
-    if (entry == (uint64_t*) 0)
-      // library procedures override declared or defined procedures
-      entry = search_symbol_table(library_symbol_table, string, PROCEDURE);
-  } else
+  else if (class == PROCEDURE)
+    // library procedures override declared or defined procedures
+    entry = search_symbol_table(library_symbol_table, string, PROCEDURE);
+  else
     entry = (uint64_t*) 0;
 
   if (entry == (uint64_t*) 0)
@@ -4497,15 +4481,15 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
 }
 
 uint64_t compile_macro(uint64_t* entry) {
-  uint64_t macro;
+  char* name;
 
-  macro = get_value(entry);
+  name = get_string(entry);
 
-  if (macro == MACRO_VAR_START)
+  if (string_compare(name, "var_start"))
     macro_var_start();
-  else if (macro == MACRO_VAR_ARG)
+  else if (string_compare(name, "var_arg"))
     macro_var_arg();
-  else if (macro == MACRO_VAR_END)
+  else if (string_compare(name, "var_end"))
     macro_var_end();
 
   return get_type(entry);
@@ -4518,12 +4502,13 @@ uint64_t compile_call(char* procedure) {
   uint64_t allocate_memory_on_stack;
   uint64_t type;
 
-  entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
+  entry = search_symbol_table(library_symbol_table, procedure, MACRO);
 
   if (entry != (uint64_t*) 0)
-    if (get_class(entry) == MACRO)
-      // the procedure is actually a macro
-      return compile_macro(entry);
+    // actually expanding a macro, not calling a procedure
+    return compile_macro(entry);
+
+  entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
 
   // assert: n = allocated_temporaries
 
@@ -5706,7 +5691,7 @@ void macro_var_start() {
     syntax_error_message("'var_start' used in procedure with non-variadic parameters");
 
   if (symbol == SYM_IDENTIFIER) {
-    var_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
 
     get_symbol();
 
@@ -5738,7 +5723,7 @@ void macro_var_arg() {
   var_list_address  = 0;
 
   if (symbol == SYM_IDENTIFIER) {
-    var_list_variable = get_scoped_symbol_table_entry(identifier, VARIABLE);
+    var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
 
     get_symbol();
 
@@ -5937,7 +5922,7 @@ void emit_bootstrapping() {
     //         with all other non-temporary registers zeroed
 
     // use main_name string to obtain unique hash
-    entry = get_scoped_symbol_table_entry(main_name, PROCEDURE);
+    entry = search_global_symbol_table(main_name, PROCEDURE);
 
     procedure_call(entry, main_name, get_value(entry));
   }
@@ -6017,12 +6002,12 @@ void selfie_compile() {
     emit_fetch_data_segment_size_interface();
   }
 
-  // declare macros in their table
-  create_symbol_table_entry(MACRO_TABLE, "var_start", 0, MACRO, VOID_T, MACRO_VAR_START, 0);
-  create_symbol_table_entry(MACRO_TABLE, "var_arg", 0, MACRO, UINT64_T, MACRO_VAR_ARG, 0);
-  create_symbol_table_entry(MACRO_TABLE, "var_end", 0, MACRO, VOID_T, MACRO_VAR_END, 0);
+  // declare macros in library symbol table to override entries in global symbol table
+  create_symbol_table_entry(LIBRARY_TABLE, "var_start", 0, MACRO, VOID_T, 1, 0);
+  create_symbol_table_entry(LIBRARY_TABLE, "var_arg", 0, MACRO, UINT64_T, 1, 0);
+  create_symbol_table_entry(LIBRARY_TABLE, "var_end", 0, MACRO, VOID_T, 1, 0);
 
-  // implicitly declare main procedure in global symbol table
+  // declare main procedure in global symbol table
   // use main_name string to obtain unique hash
   create_symbol_table_entry(GLOBAL_TABLE, main_name, 0, PROCEDURE, UINT64_T, 0, 0);
 
