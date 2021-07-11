@@ -168,13 +168,11 @@ void print_binary(uint64_t n, uint64_t a);
 
 uint64_t print_format(char* s, uint64_t i, char* a);
 
-void direct_output(char* buffer);
+uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
 int printf(const char* format, ...);
 int sprintf(char* str, const char* format, ...);
 int dprintf(int fd, const char* format, ...);
-
-uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
 uint64_t selfie_printf(char* format, ...);
 uint64_t selfie_sprintf(char *str, char *format, ...);
@@ -182,6 +180,8 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
 
 // for bootstrapping purposes the "selfie_" prefix of *printf procedures is removed
 char* remove_prefix_from_printf_procedures(char* procedure);
+
+void direct_output(char* buffer);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -2872,22 +2872,26 @@ void put_character(uint64_t c) {
 
     if (output_fd == 1) {
       if (OS != SELFIE)
+        // on bootlevel zero use printf to print on console
+        // to keep output synchronized with other printf output
         written_bytes = printf("%c", (char) c);
       else
+        // on non-zero bootlevel use write to print on console
+        // to avoid infinite loop back to printf
         written_bytes = write(output_fd, character_buffer, 1);
     } else
+      // try to write 1 character from character_buffer
+      // into file with output_fd file descriptor
       written_bytes = write(output_fd, character_buffer, 1);
 
-    // try to write 1 character from character_buffer
-    // into file with output_fd file descriptor
     if (written_bytes != 1) {
-      // write failed
+      // output failed
       if (output_fd != 1) {
-        // failed write was not to the console which has file descriptor 1
+        // failed output was not to console which has file descriptor 1
         // to report the error we may thus still write to the console
         output_fd = 1;
 
-        printf("%s: could not write character to output file %s\n", selfie_name, output_name);
+        printf("%s: could not write character into output file %s\n", selfie_name, output_name);
       }
 
       exit(EXITCODE_IOERROR);
@@ -3065,24 +3069,6 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
   return i;
 }
 
-void direct_output(char* buffer) {
-  uint64_t number_of_dprinted_characters;
-
-  if (output_fd == 1)
-    printf("%s", buffer);
-  else {
-    number_of_dprinted_characters = dprintf(output_fd, "%s", buffer);
-
-    if (signed_less_than(number_of_dprinted_characters, 0)) {
-      printf("%s: could not write buffer to output file %s\n", selfie_name, output_name);
-
-      exit(EXITCODE_IOERROR);
-    }
-
-    number_of_written_characters =  number_of_written_characters + number_of_dprinted_characters;
-  }
-}
-
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   uint64_t i;
 
@@ -3180,6 +3166,24 @@ char* remove_prefix_from_printf_procedures(char* procedure) {
     return "dprintf";
   else
     return procedure;
+}
+
+void direct_output(char* buffer) {
+  uint64_t number_of_dprinted_characters;
+
+  if (output_fd == 1)
+    printf("%s", buffer);
+  else {
+    number_of_dprinted_characters = dprintf(output_fd, "%s", buffer);
+
+    if (signed_less_than(number_of_dprinted_characters, 0)) {
+      printf("%s: could not write buffer to output file %s\n", selfie_name, output_name);
+
+      exit(EXITCODE_IOERROR);
+    }
+
+    number_of_written_characters = number_of_written_characters + number_of_dprinted_characters;
+  }
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
