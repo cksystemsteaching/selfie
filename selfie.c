@@ -241,13 +241,13 @@ uint64_t CHAR_DOT          = '.';
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 
-char* string_buffer; // buffer for reading and writing to files
-
 char* integer_buffer; // buffer for formatting integers
 
-uint64_t MAX_FILENAME_LENGTH = 128;
-
 uint64_t MAX_OUTPUT_LENGTH = 32; // maximum number of bytes in string buffer at the same time
+
+char* string_buffer; // buffer for reading and writing to files
+
+uint64_t MAX_FILENAME_LENGTH = 128;
 
 char* filename_buffer; // buffer for opening files
 
@@ -646,7 +646,6 @@ uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
 uint64_t is_possibly_parameter(uint64_t is_already_variadic);
-uint64_t is_castable();
 
 uint64_t look_for_factor();
 uint64_t look_for_statement();
@@ -4065,15 +4064,6 @@ uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
   return 0;
 }
 
-uint64_t is_castable() {
-  if (symbol == SYM_UINT64)
-    return 1;
-  if (symbol == SYM_VOID)
-    return 1;
-
-  return 0;
-}
-
 uint64_t look_for_factor() {
   if (symbol == SYM_ASTERISK)
     return 0;
@@ -4614,8 +4604,7 @@ uint64_t compile_factor() {
     get_symbol();
 
     // cast: "(" "uint64_t" [ "*" ] ")"
-    // additionally, we allow (void) casts for bootstrapping
-    if (is_castable()) {
+    if (symbol == SYM_UINT64) {
       has_cast = 1;
 
       cast = compile_type();
