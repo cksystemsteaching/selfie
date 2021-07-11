@@ -755,19 +755,18 @@ void emit_bootstrapping();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-char* main_name   = (char*) 0;
-char* bump_name   = (char*) 0;
-char* printf_name = (char*) 0;
+char* main_name = (char*) 0;
+char* bump_name = (char*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void init_bootstrapping() {
   // caution: length of string literals used as identifiers must be
   // multiple of WORDSIZE to avoid out-of-bound array access warnings
-  // during bootstrapping; spaces are removed by sign_shrink
-  main_name   = string_shrink("main   ");
-  bump_name   = string_shrink("_bump  ");
-  printf_name = string_shrink("printf ");
+  // during bootstrapping; trailing spaces are removed by sign_shrink
+  // resulting in unique hash for global symbol table
+  main_name = string_shrink("main   ");
+  bump_name = string_shrink("_bump  ");
 }
 
 // -----------------------------------------------------------------
@@ -3170,13 +3169,14 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
 char* remove_prefix_from_printf_procedures(char* procedure) {
   // remove prefix from selfie *printf procedures
   if (string_compare(procedure, "selfie_printf"))
-    return printf_name;
-  else if (string_compare(procedure, "selfie_sprintf"))
     // length of string literal must be multiple of WORDSIZE
+    // trailing spaces are removed by sign_shrink resulting
+    // in unique hash for global symbol table
+    return string_shrink("printf ");
+  else if (string_compare(procedure, "selfie_sprintf"))
     // sprintf is 7 characters plus null termination
     return "sprintf";
   else if (string_compare(procedure, "selfie_dprintf"))
-    // length of string literal must be a multiple of WORDSIZE
     // dprintf is 7 characters plus null termination
     return "dprintf";
   else
