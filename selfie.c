@@ -101,6 +101,11 @@ uint64_t open(char* filename, uint64_t flags, ...);
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
 
+// selfie bootstraps the following *printf procedures
+int printf(const char* format, ...);
+int sprintf(char* str, const char* format, ...);
+int dprintf(int fd, const char* format, ...);
+
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
@@ -170,15 +175,12 @@ uint64_t print_format(char* s, uint64_t i, char* a);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
-int printf(const char* format, ...);
-int sprintf(char* str, const char* format, ...);
-int dprintf(int fd, const char* format, ...);
-
+// selfie implementations of *printf procedures
 uint64_t selfie_printf(char* format, ...);
-uint64_t selfie_sprintf(char *str, char *format, ...);
+uint64_t selfie_sprintf(char* str, char* format, ...);
 uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
 
-// for bootstrapping purposes the "selfie_" prefix of *printf procedures is removed
+// during bootstrapping the "selfie_" prefix of *printf procedures is removed
 char* remove_prefix_from_printf_procedures(char* procedure);
 
 void direct_output(char* buffer);
@@ -243,9 +245,9 @@ uint64_t* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
 
-uint64_t MAX_OUTPUT_LENGTH = 32; // maximum number of bytes in string buffer at the same time
+uint64_t MAX_OUTPUT_LENGTH = 32; // maximum number of bytes in string buffer
 
-char* string_buffer; // buffer for reading and writing to files
+char* string_buffer; // buffer for console and file output
 
 uint64_t MAX_FILENAME_LENGTH = 128;
 
@@ -339,11 +341,11 @@ void init_library() {
   character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
-  // allocate and touch to make sure memory is mapped
-  string_buffer = string_alloc(MAX_OUTPUT_LENGTH);
-
   // accommodate at least SIZEOFUINT64INBITS numbers for itoa, no mapping needed
   integer_buffer = string_alloc(SIZEOFUINT64INBITS);
+
+  // allocate and touch to make sure memory is mapped
+  string_buffer = string_alloc(MAX_OUTPUT_LENGTH);
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
@@ -5406,8 +5408,8 @@ uint64_t compile_initialization(uint64_t type) {
 
 void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_variadic;
-  uint64_t* entry;
   uint64_t number_of_parameters;
+  uint64_t* entry;
   uint64_t is_undefined;
   uint64_t number_of_local_variable_bytes;
 
