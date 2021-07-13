@@ -377,7 +377,8 @@ void print_line_number(char* message, uint64_t line);
 
 void syntax_error_message(char* message);
 void syntax_error_character(uint64_t character);
-void syntax_error_identifier(char* expected);
+void syntax_error_undeclared_identifier(char* name);
+void syntax_error_unexpected_identifier(char* expected);
 
 void get_character();
 
@@ -574,14 +575,14 @@ uint64_t  get_value(uint64_t* entry)       { return             *(entry + 5); }
 uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
 uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
 
-void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
-void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
-void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
-void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
-void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
-void set_value(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
-void set_address(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
-void set_scope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
+void set_next_entry(uint64_t* entry, uint64_t* next) { *entry       = (uint64_t) next; }
+void set_string(uint64_t* entry, char* identifier)   { *(entry + 1) = (uint64_t) identifier; }
+void set_line_number(uint64_t* entry, uint64_t line) { *(entry + 2) = line; }
+void set_class(uint64_t* entry, uint64_t class)      { *(entry + 3) = class; }
+void set_type(uint64_t* entry, uint64_t type)        { *(entry + 4) = type; }
+void set_value(uint64_t* entry, uint64_t value)      { *(entry + 5) = value; }
+void set_address(uint64_t* entry, uint64_t address)  { *(entry + 6) = address; }
+void set_scope(uint64_t* entry, uint64_t scope)      { *(entry + 7) = scope; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -695,21 +696,6 @@ uint64_t  compile_initialization(uint64_t type);
 void      compile_procedure(char* procedure, uint64_t type);
 void      compile_cstar();
 
-// these macros are seen as functions by the bootstrapping compiler
-void  var_start(uint64_t* args);
-char* var_arg(uint64_t* args);
-void  var_end(uint64_t* args);
-
-// these macros need a dummy definition for the bootstrapping compiler
-// additionally, all arguments are used to avoid compiler warnings
-void  var_start(uint64_t* args) { *args = *args; }
-char* var_arg(uint64_t* args) { *args = *args; return ""; }
-void  var_end(uint64_t* args) { *args = *args; }
-
-void macro_var_start();
-void macro_var_arg();
-void macro_var_end();
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t allocated_temporaries = 0; // number of allocated temporaries
@@ -739,6 +725,25 @@ void reset_parser() {
 
   get_symbol();
 }
+
+// -----------------------------------------------------------------
+// ---------------------------- MACROS -----------------------------
+// -----------------------------------------------------------------
+
+// these C macros are seen as procedures by the bootstrapping compiler ...
+void  var_start(uint64_t* args);
+char* var_arg(uint64_t* args);
+void  var_end(uint64_t* args);
+
+// ... and need a dummy definition using all arguments to avoid compiler warnings
+void  var_start(uint64_t* args) { *args = *args; }
+char* var_arg(uint64_t* args)   { *args = *args; return ""; }
+void  var_end(uint64_t* args)   { *args = *args; }
+
+// these procedures are the actual selfie implementation of the above C macros
+void macro_var_start();
+void macro_var_arg();
+void macro_var_end();
 
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
@@ -3223,15 +3228,15 @@ uint64_t* smalloc(uint64_t size) {
   if (size == 0)
     // any address including 0
     return memory;
-  else if (memory == (uint64_t*) 0) {
+  else if (memory != (uint64_t*) 0)
+    return memory;
+  else {
     if (character_buffer)
       // can only print error message if character_buffer has been successfully allocated
       printf("%s: malloc out of memory\n", selfie_name);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
-
-  return memory;
 }
 
 uint64_t* smalloc_system(uint64_t size) {
@@ -3319,7 +3324,14 @@ void syntax_error_character(uint64_t expected) {
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
-void syntax_error_identifier(char* expected) {
+void syntax_error_undeclared_identifier(char* name) {
+  print_line_number("syntax error", line_number);
+  printf("%s undeclared\n", name);
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
+}
+
+void syntax_error_unexpected_identifier(char* expected) {
   print_line_number("syntax error", line_number);
   print_string(expected);
   print(" expected but ");
@@ -4283,16 +4295,13 @@ uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   else {
     entry = get_scoped_symbol_table_entry(variable_or_big_int, class);
 
-    if (entry == (uint64_t*) 0) {
-      print_line_number("syntax error", line_number);
-      printf("%s undeclared\n", variable_or_big_int);
-
-      number_of_syntax_errors = number_of_syntax_errors + 1;
+    if (entry != (uint64_t*) 0)
+      return entry;
+    else {
+      syntax_error_undeclared_identifier(variable_or_big_int);
 
       exit(EXITCODE_PARSERERROR);
     }
-
-    return entry;
   }
 }
 
@@ -5688,23 +5697,29 @@ void macro_var_start() {
   if (symbol == SYM_IDENTIFIER) {
     var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
 
-    get_symbol();
-
-    if (symbol == SYM_RPARENTHESIS) {
+    if (var_list_variable != (uint64_t*) 0) {
       get_symbol();
 
-      // skip the return address, frame pointer and non-variadic parameters
-      s0_offset = (-get_value(current_procedure) + 2) * WORDSIZE;
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
 
-      load_integer(s0_offset);
+        // skip the return address, frame pointer and non-variadic parameters
+        s0_offset = 2 * WORDSIZE - get_value(current_procedure) * WORDSIZE;
 
-      // address of first variadic parameter is S0 + (#non-variadic parameters + 2) * WORDSIZE
-      emit_add(current_temporary(), current_temporary(), REG_S0);
+        load_integer(s0_offset);
 
-      // store address in variable passed as macro argument
-      emit_store(REG_S0, get_address(var_list_variable), current_temporary());
+        // address of first variadic parameter is S0 + 2 * WORDSIZE + #non-variadic parameters * WORDSIZE
+        emit_add(current_temporary(), current_temporary(), REG_S0);
 
-      tfree(1);
+        // store address in variable passed as macro argument
+        emit_store(REG_S0, get_address(var_list_variable), current_temporary());
+
+        tfree(1);
+      }
+    } else {
+      syntax_error_undeclared_identifier(identifier);
+
+      get_symbol();
     }
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
@@ -5720,36 +5735,43 @@ void macro_var_arg() {
   if (symbol == SYM_IDENTIFIER) {
     var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
 
-    get_symbol();
-
-    if (symbol == SYM_RPARENTHESIS) {
+    if (var_list_variable != (uint64_t*) 0) {
       get_symbol();
 
-      var_list_address = get_address(var_list_variable);
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
 
-      talloc();
+        var_list_address = get_address(var_list_variable);
 
-      // load variadic parameter at position pointed at by var_list_variable
-      emit_load(current_temporary(), REG_S0, var_list_address);
+        talloc();
 
-      // store variadic parameter as return value
-      emit_load(REG_A0, current_temporary(), 0);
+        // load variadic parameter from memory address pointed to
+        // by variable passed as macro argument (var_list_variable)
+        emit_load(current_temporary(), REG_S0, var_list_address);
 
-      // increment var_list_variable pointer by one parameter size (=WORDSIZE)
-      emit_addi(current_temporary(), current_temporary(), WORDSIZE);
+        // store variadic parameter as return value of macro
+        emit_load(REG_A0, current_temporary(), 0);
 
-      emit_store(REG_S0, var_list_address, current_temporary());
+        // increment var_list_variable pointer by one parameter size (=WORDSIZE)
+        emit_addi(current_temporary(), current_temporary(), WORDSIZE);
 
-      tfree(1);
-    } else
-      syntax_error_symbol(SYM_RPARENTHESIS);
+        // store incremented address in variable passed as macro argument
+        emit_store(REG_S0, var_list_address, current_temporary());
+
+        tfree(1);
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else {
+      syntax_error_undeclared_identifier(identifier);
+
+      get_symbol();
+    }
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 }
 
-// implementation of va_start, va_arg, and va_end is platform specific
-// for RISC-V va_end does nothing and is only implemented
-// for completeness and parity with standard C
+// implementation of va_start, va_arg, and va_end is platform-specific;
+// RISC-V va_end does nothing and is only implemented for parity with standard C
 void macro_var_end() {
   if (signed_less_than(get_value(current_procedure), 0) == 0)
     syntax_error_message("'var_end' used in procedure with non-variadic parameters");
@@ -6057,7 +6079,7 @@ void selfie_compile() {
         number_of_return);
 
       if (number_of_syntax_errors != 0) {
-        printf("%s: encountered %lu syntax errors while compiling %s - omitting ELF output\n",
+        printf("%s: encountered %lu syntax errors while compiling %s - omitting output\n",
           selfie_name,
           number_of_syntax_errors,
           source_name);

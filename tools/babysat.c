@@ -228,7 +228,7 @@ void dimacs_word(char* word) {
 
       return;
     } else
-      syntax_error_identifier(word);
+      syntax_error_unexpected_identifier(word);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 
