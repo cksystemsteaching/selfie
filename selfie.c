@@ -3910,8 +3910,8 @@ uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class) {
   while (entry != (uint64_t*) 0) {
     total_search_time = total_search_time + 1;
 
-    if (string_compare(string, get_string(entry)))
-      if (class == get_class(entry))
+    if (class == get_class(entry))
+      if (string_compare(string, get_string(entry)))
         return entry;
 
     // keep looking
