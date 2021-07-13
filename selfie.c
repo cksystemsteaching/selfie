@@ -3002,7 +3002,7 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
   } else if (load_character(s, i) == '.') {
     // for integer specifiers, precision specifies
     // the minimum number of digits to be written;
-    // for simplicity we support a single digit only
+    // we ony support single-digit precision
     p = load_character(s, i + 1) - '0';
 
     if (p < 10) {
@@ -3029,18 +3029,17 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
         }
       }
       return i + 4;
-    } else
-      return i;
+    }
   } else if (load_character(s, i) == '0') {
-    // for simplicity we support a single digit only
+    // we only support padding with 0s and single-digit width
     p = load_character(s, i + 1) - '0';
 
     if (p < 10) {
       // the character at i + 1 is in fact a digit
       if (load_character(s, i + 2) == 'l') {
-          if (load_character(s, i + 3) == 'X')
-            // padding support only for %lX
-            print_hexadecimal((uint64_t) a, p);
+        if (load_character(s, i + 3) == 'X')
+          // padding support only for %lX
+          print_hexadecimal((uint64_t) a, p);
       }
       return i + 4;
     }
@@ -3066,11 +3065,6 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
     print_binary((uint64_t) a, 0);
 
     return i + 1;
-  } else if (load_character(s, i) == '%') {
-    // for %% print just one %
-    put_character('%');
-
-    i = i + 1;
   }
 
   return i;
@@ -3092,14 +3086,15 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   if (s != (char*) 0) {
     while (load_character(s, i) != 0) {
       if (load_character(s, i) == '%') {
-        if (load_character(s, i + 1) != '%') {
-          i = i + 1;
+        i = i + 1;
 
+        if (load_character(s, i) != '%')
           i = print_format(s, i, var_arg(args));
-        } else {
+        else {
+          // for %% print just one %
           put_character('%');
 
-          i = i + 2;
+          i = i + 1;
         }
       } else {
         put_character(load_character(s, i));
