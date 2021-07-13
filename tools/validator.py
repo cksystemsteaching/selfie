@@ -36,7 +36,7 @@
 #                         10s, 5m, 1h)
 #   -tb BTORMC_TIMEOUT, --timeout_btormc BTORMC_TIMEOUT
 #                         timeout for execution of btormc with the generated
-#                         btor2 file (example: 10s, 5m, 1h)
+#                         btor2 file (example: 10s, 10m, 1h)
 #   -kmax KMAX            -kmax parameter for btormc
 #   -mem MEMORY, --memory MEMORY
 #                         memory [MB] for mipster
@@ -307,8 +307,8 @@ arguments.add_argument("-b", "--btormc", dest="btormc_path", default="btormc",
                        help="path to btormc executable")
 arguments.add_argument("-ts", "--timeout_selfie", dest="selfie_timeout", default="10s",
                        help="timeout for execution of in_file on mipster (example: 10s, 5m, 1h)")
-arguments.add_argument("-tb", "--timeout_btormc", dest="btormc_timeout", default="5m",
-                       help="timeout for execution of btormc with the generated btor2 file (example: 10s, 5m, 1h)")
+arguments.add_argument("-tb", "--timeout_btormc", dest="btormc_timeout", default="10m",
+                       help="timeout for execution of btormc with the generated btor2 file (example: 10s, 10m, 1h)")
 arguments.add_argument("-kmax", dest="kmax", type=int, default=10000, help="-kmax parameter for btormc")
 arguments.add_argument("-mem", "--memory", dest="memory", type=int, default="2", help="memory [MB] for mipster")
 arguments.add_argument(dest="in_file", help="input C* file")
