@@ -11338,9 +11338,9 @@ uint64_t mobster(uint64_t* to_context) {
 
 char* replace_extension(char* filename, char* extension) {
   char* s;
-  char* filename_without_extension;
   uint64_t i;
   uint64_t c;
+  char* filename_without_extension;
 
   // assert: string_length(filename) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
 
@@ -11349,7 +11349,7 @@ char* replace_extension(char* filename, char* extension) {
   // start reading at end of filename
   i = string_length(filename);
 
-  c = load_character(filename, i);
+  c = 0;
 
   // look for extension
   while (c != '.') {
@@ -11364,13 +11364,11 @@ char* replace_extension(char* filename, char* extension) {
       c = '.';
   }
 
-  // filename has no extension
   if (i == 0)
-    // writing filename plus extension into s
-    sprintf(s, "%s.%s", filename, extension);
+    // filename has no extension
+    filename_without_extension = filename;
   else {
-    // gcc's sprintf dislikes overlapping input and output buffers, an additional copy is necessary
-    filename_without_extension = string_alloc(string_length(filename));
+    filename_without_extension = string_alloc(i);
 
     // assert: filename_without_extension is zeroed and thus null-terminated
 
@@ -11380,10 +11378,10 @@ char* replace_extension(char* filename, char* extension) {
 
       store_character(filename_without_extension, i, load_character(filename, i));
     }
-
-    // writing filename_without_extension plus extension into s
-    sprintf(s, "%s.%s", filename_without_extension, extension);
   }
+
+  // writing filename_without_extension plus extension into s
+  sprintf(s, "%s.%s", filename_without_extension, extension);
 
   return s;
 }
