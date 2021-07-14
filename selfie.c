@@ -5335,7 +5335,7 @@ uint64_t* compile_variable(uint64_t offset) {
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
 
-    entry = create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, offset);
+    entry = create_symbol_table_entry(LOCAL_TABLE, "no_name", line_number, VARIABLE, type, 0, offset);
   }
 
   return entry;
