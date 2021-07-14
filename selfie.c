@@ -2484,18 +2484,9 @@ uint64_t right_shift(uint64_t n, uint64_t b) {
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  if (i + b < SIZEOFUINT64INBITS)
-    // reset all bits from index i + b to SIZEOFUINT64INBITS - 1
-    n = n % two_to_the_power_of(i + b);
-  else if (i >= SIZEOFUINT64INBITS)
-    return 0;
-
-  if (i == 0)
-    // redundant fast path
-    return n;
-  else
-    // cancel all bits from index 0 to i - 1
-    return right_shift(n, i);
+  // assert: 0 <= i + b < SIZEOFUINT64INBITS
+  // assert: 0 < b
+  return right_shift(n, i) % two_to_the_power_of(b);
 }
 
 uint64_t absolute(uint64_t n) {
