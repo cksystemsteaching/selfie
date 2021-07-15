@@ -8896,7 +8896,6 @@ void gc_collect(uint64_t* context) {
 }
 
 void print_gc_profile(uint64_t* context) {
-  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
   printf("%s: gc:      %lu.%.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
     ratio_format_integral_2(gc_mem_mallocated, MEGABYTE),
     ratio_format_fractional_2(gc_mem_mallocated, MEGABYTE),
@@ -10370,8 +10369,10 @@ void print_profile(uint64_t* context) {
     percentage_format_fractional_2(total_page_frame_memory, pused()),
     total_page_frame_memory / MEGABYTE);
 
-  if (GC_ON)
+  if (GC_ON) {
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_gc_profile(context);
+  }
 
   if (get_total_number_of_instructions() > 0) {
     printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
@@ -11469,8 +11470,10 @@ uint64_t selfie_run(uint64_t machine) {
 
   if (machine != HYPSTER)
     print_profile(current_context);
-  else if (GC_ON)
+  else if (GC_ON) {
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_gc_profile(current_context);
+  }
 
   run = 0;
 
