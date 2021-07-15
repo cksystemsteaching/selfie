@@ -175,7 +175,7 @@ uint64_t print_format(char* s, uint64_t i, char* a);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
-// selfie implementations of *printf procedures
+// selfie implementation of *printf procedures
 uint64_t selfie_printf(char* format, ...);
 uint64_t selfie_sprintf(char* str, char* format, ...);
 uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
@@ -548,6 +548,7 @@ uint64_t* search_global_symbol_table(char* string, uint64_t class);
 uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class);
 
 uint64_t is_undefined_procedure(uint64_t* entry);
+uint64_t is_library_procedure(char* name);
 uint64_t report_undefined_procedures();
 
 // symbol table entry:
@@ -597,6 +598,7 @@ uint64_t MACRO     = 5;
 uint64_t UINT64_T     = 1;
 uint64_t UINT64STAR_T = 2;
 uint64_t VOID_T       = 3;
+uint64_t UNDECLARED_T = 4;
 
 // symbol tables
 uint64_t GLOBAL_TABLE  = 1;
@@ -3932,24 +3934,21 @@ uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
 }
 
 uint64_t is_undefined_procedure(uint64_t* entry) {
-  uint64_t* library_entry;
+  if (get_class(entry) != PROCEDURE)
+    return 0;
 
-  if (get_class(entry) == PROCEDURE) {
-    // library procedures override declared or defined procedures
-    library_entry = search_symbol_table(library_symbol_table, get_string(entry), PROCEDURE);
+  if (get_address(entry) == 0)
+    // procedure declared but not defined
+    return 1;
+  else if (get_opcode(load_instruction(get_address(entry))) == OP_JAL)
+    // procedure called but not defined
+    return 1;
+  else
+    return 0;
+}
 
-    if (library_entry != (uint64_t*) 0)
-      // procedure is library procedure
-      return 0;
-    else if (get_address(entry) == 0)
-      // procedure declared but not defined
-      return 1;
-    else if (get_opcode(load_instruction(get_address(entry))) == OP_JAL)
-      // procedure called but not defined
-      return 1;
-  }
-
-  return 0;
+uint64_t is_library_procedure(char* name) {
+  return search_symbol_table(library_symbol_table, name, PROCEDURE) != (uint64_t*) 0;
 }
 
 uint64_t report_undefined_procedures() {
@@ -3965,13 +3964,14 @@ uint64_t report_undefined_procedures() {
     entry = (uint64_t*) *(global_symbol_table + i);
 
     while (entry != (uint64_t*) 0) {
-      if (is_undefined_procedure(entry)) {
-        undefined = 1;
+      if (is_library_procedure(get_string(entry)) == 0)
+        if (is_undefined_procedure(entry)) {
+          undefined = 1;
 
-        print_line_number("syntax error", get_line_number(entry));
-        printf("procedure %s undefined\n", get_string(entry));
+          print_line_number("syntax error", get_line_number(entry));
+          printf("procedure %s undefined\n", get_string(entry));
 
-        number_of_syntax_errors = number_of_syntax_errors + 1;
+          number_of_syntax_errors = number_of_syntax_errors + 1;
       }
 
       // keep looking
@@ -4225,6 +4225,8 @@ void print_type(uint64_t type) {
     print("uint64_t*");
   else if (type == VOID_T)
     print("void");
+  else if (type == UNDECLARED_T)
+    print("undeclared");
   else
     print("unknown");
 }
@@ -4393,8 +4395,8 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_par
   if (entry == (uint64_t*) 0) {
     // procedure never called nor declared nor defined
 
-    // default return type is "uint64_t"
-    type = UINT64_T;
+    // return type will be determined by procedure declaration or definition
+    type = UNDECLARED_T;
 
     create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, code_size);
 
@@ -5407,7 +5409,6 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_variadic;
   uint64_t number_of_parameters;
   uint64_t* entry;
-  uint64_t is_undefined;
   uint64_t number_of_local_variable_bytes;
 
   local_symbol_table = (uint64_t*) 0;
@@ -5463,65 +5464,60 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   // try parsing rest of procedure declaration or definition
 
+  // bootstrap selfie implementation of *printf procedures
   procedure = remove_prefix_from_printf_procedures(procedure);
 
-  // check if procedure has been declared or defined
+  // look up procedure to see if it has been called, declared, or even defined
   entry = search_global_symbol_table(procedure, PROCEDURE);
 
-  // assuming procedure is undefined
-  is_undefined = 1;
+  if (entry == (uint64_t*) 0)
+    // procedure never called nor declared nor defined
+    entry = create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
+  else if (get_type(entry) == UNDECLARED_T)
+    // procedure already called but neither declared nor defined
+    set_type(entry, type);
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
-    if (entry == (uint64_t*) 0)
-      // procedure never called nor declared nor defined
-      create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
-    else if (get_type(entry) != type)
-      // procedure already called, declared, or even defined
-      // check return type but otherwise ignore
+
+    if (get_type(entry) != type)
+      // procedure already declared or even defined before
+      // warn about mismatching return type but otherwise ignore
       type_warning(get_type(entry), type);
 
     get_symbol();
 
   } else if (symbol == SYM_LBRACE) {
     // this is a procedure definition
-    if (entry == (uint64_t*) 0)
-      // procedure never called nor declared nor defined
-      entry = create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, code_size);
-    else {
-      // procedure already called or declared or defined
-      if (get_address(entry) != 0) {
-        // procedure already called or defined
-        if (get_opcode(load_instruction(get_address(entry))) == OP_JAL)
-          // procedure already called but not defined
-          fixlink_relative(get_address(entry), code_size);
-        else
-          // procedure already defined
-          is_undefined = 0;
-      }
 
-      if (is_undefined) {
-        // procedure already called or declared but not defined
-        set_line_number(entry, line_number);
+    if (is_undefined_procedure(entry)) {
+      set_line_number(entry, line_number);
 
-        if (get_type(entry) != type)
-          type_warning(get_type(entry), type);
+      if (get_type(entry) != type) {
+        // procedure already declared but with different return type
+        type_warning(get_type(entry), type);
 
+        // return type of definition counts
         set_type(entry, type);
-        set_address(entry, code_size);
-
-        if (string_compare(procedure, main_name)) {
-          // first source containing main procedure provides binary name
-          binary_name = source_name;
-
-          // account for initial call to main procedure
-          number_of_calls = number_of_calls + 1;
-        }
-      } else {
-        // procedure already defined
-        print_line_number("warning", line_number);
-        printf("redefinition of procedure %s ignored\n", procedure);
       }
+
+      if (get_address(entry) != 0)
+        // procedure already called but not defined
+        fixlink_relative(get_address(entry), code_size);
+
+      set_address(entry, code_size);
+
+      if (string_compare(procedure, main_name)) {
+        // first source containing main procedure provides binary name
+        binary_name = source_name;
+
+        // account for initial call to main procedure
+        number_of_calls = number_of_calls + 1;
+      }
+    } else {
+      // procedure already defined
+      print_line_number("warning", line_number);
+      printf("redefinition of procedure %s ignored\n", procedure);
     }
 
     get_symbol();
