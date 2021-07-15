@@ -2093,6 +2093,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
+uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
+
 // CAUTION: contexts are extended in the symbolic execution engine and the Boehm garbage collector!
 
 uint64_t* allocate_context() {
