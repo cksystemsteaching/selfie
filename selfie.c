@@ -2490,12 +2490,10 @@ uint64_t right_shift(uint64_t n, uint64_t b) {
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
   // assert: 0 <= i + b <= SIZEOFUINT64INBITS
   // assert: 0 < b
-  if (i + b > SIZEOFUINT64INBITS)
-    exit(i + b);
-  else if (i >= SIZEOFUINT64INBITS)
-    exit(i);
-
-  return right_shift(n, i) % two_to_the_power_of(b);
+  if (b < SIZEOFUINT64INBITS)
+    return right_shift(n, i) % two_to_the_power_of(b);
+  else
+    return right_shift(n, i);
 }
 
 uint64_t absolute(uint64_t n) {
