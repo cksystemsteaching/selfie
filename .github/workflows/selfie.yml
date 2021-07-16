@@ -86,7 +86,7 @@ jobs:
       run: docker build -t cksystemsteaching/selfie .
     - name: Make everything
       run: |
-        docker run cksystemsteaching/selfie make -j -O everything
+        docker run cksystemsteaching/selfie make everything
         docker run cksystemsteaching/selfie make pythons
     - name: Deploy docker image
       run: |
