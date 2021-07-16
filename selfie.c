@@ -2488,8 +2488,13 @@ uint64_t right_shift(uint64_t n, uint64_t b) {
 }
 
 uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 <= i + b < SIZEOFUINT64INBITS
+  // assert: 0 <= i + b <= SIZEOFUINT64INBITS
   // assert: 0 < b
+  if (i + b > SIZEOFUINT64INBITS)
+    exit(i + b);
+  else if (i >= SIZEOFUINT64INBITS)
+    exit(i);
+
   return right_shift(n, i) % two_to_the_power_of(b);
 }
 
@@ -5481,7 +5486,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     // this is a procedure declaration
 
     if (get_type(entry) != type)
-      // procedure already declared or even defined before
+      // procedure already declared or even defined before;
       // warn about mismatching return type but otherwise ignore
       type_warning(get_type(entry), type);
 
