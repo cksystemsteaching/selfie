@@ -205,7 +205,6 @@ WORKDIR /opt/selfie
 # build selfie
 RUN make selfie
 
-# this is commented out for variadic functions/printf as dprintf and sprintf are not implemented in the machine's tiny c-stdlib
 # build machine files
 RUN make --directory machine/
 
