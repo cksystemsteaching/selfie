@@ -10657,11 +10657,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
     } // else assert: frame == get_frame_for_page(table, page)
   }
 
-  if (debug_map) {
-    printf("%s: page ", selfie_name);
-    print_hexadecimal(page, 4);
-    printf(" mapped to frame 0x%08lX in context 0x%08lX\n", (uint64_t) frame, (uint64_t) context);
-  }
+  if (debug_map)
+    printf("%s: page 0x%04lX mapped to frame 0x%08lX in context 0x%08lX\n", selfie_name,
+      page, (uint64_t) frame, (uint64_t) context);
 }
 
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
