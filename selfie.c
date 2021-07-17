@@ -174,6 +174,8 @@ void print_octal(uint64_t n, uint64_t a);
 void print_binary_no_prefix(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);
 
+// printf
+
 uint64_t print_format(char* s, uint64_t i, char* a);
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
@@ -187,6 +189,8 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
 char* remove_prefix_from_printf_procedures(char* procedure);
 
 void direct_output(char* buffer);
+
+// malloc
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -3167,7 +3171,7 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
 }
 
 char* remove_prefix_from_printf_procedures(char* procedure) {
-  // remove prefix from selfie *printf procedures
+  // for bootstrapping remove prefix from selfie *printf procedures
   if (string_compare(procedure, "selfie_printf"))
     // length of string literal must be multiple of WORDSIZE;
     // trailing spaces are removed by string_shrink resulting
@@ -3224,8 +3228,8 @@ void zero_memory(uint64_t* memory, uint64_t size) {
 }
 
 uint64_t* smalloc(uint64_t size) {
-  // this procedure ensures a defined program exit
-  // if no memory can be allocated
+  // use this procedure, instead of malloc, for heap allocation
+  // to ensure a defined program exit if no memory can be allocated
   uint64_t* memory;
 
   if (USE_GC_LIBRARY)
@@ -3267,7 +3271,7 @@ uint64_t* smalloc_system(uint64_t size) {
 uint64_t* zalloc(uint64_t size) {
   // internal use only!
 
-  // this procedure is only executed at boot level 0
+  // this procedure is only executed at boot level 0;
   // zalloc allocates size bytes rounded up to word size
   // and then zeroes that memory, similar to calloc, but
   // called zalloc to avoid redeclaring calloc
@@ -3283,8 +3287,10 @@ uint64_t* zalloc(uint64_t size) {
 }
 
 uint64_t* zmalloc(uint64_t size) {
+  // use this procedure, instead of smalloc,
+  // if allocated memory needs to be zeroed
   if (USE_GC_LIBRARY)
-    // assert: on boot level 1 or above where mallocated memory is zeroed
+    // assert: on boot level 1 or above mallocated memory is zeroed
     return gc_malloc(size);
   else
     return zalloc(size);
