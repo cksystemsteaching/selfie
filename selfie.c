@@ -167,8 +167,11 @@ void print_string(char* s);
 void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
 void unprint_integer(uint64_t n);
+void print_hexadecimal_no_prefix(uint64_t n, uint64_t a);
 void print_hexadecimal(uint64_t n, uint64_t a);
+void print_octal_no_prefix(uint64_t n, uint64_t a);
 void print_octal(uint64_t n, uint64_t a);
+void print_binary_no_prefix(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);
 
 uint64_t print_format(char* s, uint64_t i, char* a);
@@ -2971,16 +2974,28 @@ void unprint_integer(uint64_t n) {
   }
 }
 
-void print_hexadecimal(uint64_t n, uint64_t a) {
+void print_hexadecimal_no_prefix(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 16, 0, a));
 }
 
-void print_octal(uint64_t n, uint64_t a) {
+void print_hexadecimal(uint64_t n, uint64_t a) {
+  print("0x");print_hexadecimal_no_prefix(n, a);
+}
+
+void print_octal_no_prefix(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 8, 0, a));
 }
 
-void print_binary(uint64_t n, uint64_t a) {
+void print_octal(uint64_t n, uint64_t a) {
+  print("0o");print_octal_no_prefix(n, a);
+}
+
+void print_binary_no_prefix(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, 0, a));
+}
+
+void print_binary(uint64_t n, uint64_t a) {
+  print("0b");print_binary_no_prefix(n, a);
 }
 
 uint64_t print_format(char* s, uint64_t i, char* a) {
@@ -3037,7 +3052,7 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
       if (load_character(s, i + 2) == 'l') {
         if (load_character(s, i + 3) == 'X')
           // padding support only for %lX
-          print_hexadecimal((uint64_t) a, p);
+          print_hexadecimal_no_prefix((uint64_t) a, p);
       }
       return i + 4;
     }
@@ -3051,16 +3066,16 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 
       return i + 2;
     } else if (load_character(s, i + 1) == 'X') {
-      print_hexadecimal((uint64_t) a, 0);
+      print_hexadecimal_no_prefix((uint64_t) a, 0);
 
       return i + 2;
     } else if (load_character(s, i + 1) == 'o') {
-      print_octal((uint64_t) a, 0);
+      print_octal_no_prefix((uint64_t) a, 0);
 
       return i + 2;
     }
   } else if (load_character(s, i) == 'b') {
-    print_binary((uint64_t) a, 0);
+    print_binary_no_prefix((uint64_t) a, 0);
 
     return i + 1;
   }
