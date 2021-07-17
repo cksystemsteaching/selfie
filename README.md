@@ -1029,7 +1029,7 @@ The output of selfie shows that 85 is in fact 1010101 in binary which in turn ma
 85 in ASCII:       'U'
 85 in hexadecimal: 0x55
 85 in octal:       0o125
-85 in binary:      1010101
+85 in binary:      0b1010101
 ```
 
 You may also want to take a look at the program `examples/encoding.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
@@ -1169,7 +1169,7 @@ The reason why it is popular is because base 8 is also a power of 2 with 8=2^3. 
 
 (**1**\*8+**2**)\*8+**5** = 85.
 
-In order to avoid confusion, we may use the prefix *0o* with octal numbers, that is, 0o125, for example, and the prefix *b* with binary numbers, that is, b1010101, for example.
+In order to avoid confusion, we may use the prefix *0o* with octal numbers, that is, 0o125, for example, and the prefix *0b* with binary numbers, that is, 0b1010101, for example.
 
 In sum, we have seen unary, binary, octal, decimal, and hexadecimal notation that all work exactly the same, except for unary, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
 
@@ -1438,7 +1438,7 @@ The relevant part of the output is:
 -7 in decimal:     18446744073709551609 (as unsigned integer)
 -7 in hexadecimal: 0xFFFFFFFFFFFFFFF9
 -7 in octal:       0o1777777777777777777771
--7 in binary:      1111111111111111111111111111111111111111111111111111111111111001
+-7 in binary:      0b1111111111111111111111111111111111111111111111111111111111111001
 ```
 
 The only difference to the above representation is that, instead of 7 bits, selfie uses 64 bits to encode positive and negative numbers. Thus -7 encoded in 64 rather than 7 bits is just like `1111001` but with 57 additional more-significant bits set to 1. Why -7 in decimal is such a huge number as unsigned integer is explained next. Before that, modify `examples/negative.c` and then run it again to see the encoding of different numbers!
@@ -1593,20 +1593,20 @@ UINT64_MAX in decimal:     18446744073709551615
 UINT64_MAX in decimal:     -1 (as signed 64-bit integer)
 UINT64_MAX in hexadecimal: 0xFFFFFFFFFFFFFFFF
 UINT64_MAX in octal:       0o1777777777777777777777
-UINT64_MAX in binary:      1111111111111111111111111111111111111111111111111111111111111111
+UINT64_MAX in binary:      0b1111111111111111111111111111111111111111111111111111111111111111
 0 in decimal:              0
 0 in hexadecimal:          0x0
 0 in octal:                0o0
-0 in binary:               0000000000000000000000000000000000000000000000000000000000000000
+0 in binary:               0b0000000000000000000000000000000000000000000000000000000000000000
 INT64_MAX in decimal:      9223372036854775807
 INT64_MAX in hexadecimal:  0x7FFFFFFFFFFFFFFF
 INT64_MAX in octal:        0o777777777777777777777
-INT64_MAX in binary:       0111111111111111111111111111111111111111111111111111111111111111
+INT64_MAX in binary:       0b0111111111111111111111111111111111111111111111111111111111111111
 INT64_MIN in decimal:      -9223372036854775808
 INT64_MIN in decimal:      9223372036854775808 (as unsigned integer)
 INT64_MIN in hexadecimal:  0x8000000000000000
 INT64_MIN in octal:        0o1000000000000000000000
-INT64_MIN in binary:       1000000000000000000000000000000000000000000000000000000000000000
+INT64_MIN in binary:       0b1000000000000000000000000000000000000000000000000000000000000000
 ```
 
 There is one more thing before we move on. Notice that the same binary numbers may sometimes be seen as greater than others and sometimes less! Take our favorite binary numbers 1010101 and 111, for example. 1010101 is clearly greater than 111, right? Well, it depends on our interpretation of 1010101 and 111. If 1010101 and 111 are interpreted as unsigned integers, the answer is yes. But if they are interpreted as signed 7-bit integers, the answer is no! In that case, 1010101 stands for -43 while 111 still stands for 7. This means there is unsigned and signed comparison of binary numbers. Addition, subtraction, and even multiplication, however, work the same way independently of unsigned and signed interpretation. Only division and thus remainder are, similar to comparison, dependent on interpretation but the details are not important here.
@@ -1713,22 +1713,22 @@ The relevant part of the output is:
 UINT64_MAX+1 in decimal:     0
 UINT64_MAX+1 in hexadecimal: 0x0
 UINT64_MAX+1 in octal:       0o0
-UINT64_MAX+1 in binary:      0000000000000000000000000000000000000000000000000000000000000000
+UINT64_MAX+1 in binary:      0b0000000000000000000000000000000000000000000000000000000000000000
 0-1 in decimal:              -1 (as signed 64-bit integer)
 0-1 in decimal:              18446744073709551615 (as unsigned integer)
 0-1 in hexadecimal:          0xFFFFFFFFFFFFFFFF
 0-1 in octal:                0o1777777777777777777777
-0-1 in binary:               1111111111111111111111111111111111111111111111111111111111111111
+0-1 in binary:               0b1111111111111111111111111111111111111111111111111111111111111111
 INT64_MAX+1 in decimal:      -9223372036854775808 (as signed 64-bit integer)
 INT64_MAX+1 in decimal:      9223372036854775808 (as unsigned integer)
 INT64_MAX+1 in hexadecimal:  0x8000000000000000
 INT64_MAX+1 in octal:        0o1000000000000000000000
-INT64_MAX+1 in binary:       1000000000000000000000000000000000000000000000000000000000000000
+INT64_MAX+1 in binary:       0b1000000000000000000000000000000000000000000000000000000000000000
 INT64_MIN-1 in decimal:      9223372036854775807 (as signed 64-bit integer)
 INT64_MIN-1 in decimal:      9223372036854775807 (as unsigned integer)
 INT64_MIN-1 in hexadecimal:  0x7FFFFFFFFFFFFFFF
 INT64_MIN-1 in octal:        0o777777777777777777777
-INT64_MIN-1 in binary:       0111111111111111111111111111111111111111111111111111111111111111
+INT64_MIN-1 in binary:       0b0111111111111111111111111111111111111111111111111111111111111111
 ```
 
 Unintended integer overflows are a major source of errors in software. Think of the Millennium Bug which is probably the most talked about integer overflow bug in the history of computing! And even worse, that bug will in fact repeat itself in 2038! There are real world examples where integer overflows have caused enormous amounts of damage, financially but also in potential threats to life, if not loss of life.
@@ -1873,14 +1873,14 @@ Here, the relevant part of the output should be similar to this:
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 332282271 executed instructions [20.94% nops]
-./selfie:          2.38MB allocated in 23870 mallocs
-./selfie:          2.10MB(88.19% of 2.38MB) actually accessed
-./selfie:          2.29MB(76.56% of 3MB) mapped memory
+./selfie: summary: 377578224 executed instructions [21.85% nops]
+./selfie:          2.40MB allocated in 24201 mallocs
+./selfie:          2.11MB(87.98% of 2.40MB) actually accessed
+./selfie:          2.31MB(77.08% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 2.38MB of main memory but ended up *accessing* only 2.10MB, that is, using only 88.19% of the 2.38MB in storage. Moreover, selfie needed an additional 0.19MB of storage for its code, that is, in sum 2.29MB of (mapped) memory which is 76.56% of the 3MB available storage (physical memory).
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 2.40MB of main memory but ended up *accessing* only 2.11MB, that is, using only 87.98% of the 2.40MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.31MB of (mapped) memory which is 77.08% of the 3MB available storage (physical memory).
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2064,8 +2064,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x0003D2B7: lui t0,0x3D
-0x4(~1): 0x64828293: addi t0,t0,1608
+0x0(~1): 0x0003E2B7: lui t0,0x3E
+0x4(~1): 0x9E828293: addi t0,t0,-1560
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2078,14 +2078,16 @@ The output should be similar to this:
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
 0x34(~1): 0x00000513: addi a0,zero,0
-0x38(~1): 0x00810293: addi t0,sp,8
+0x38(~1): 0x00013283: ld t0,0(sp)
 0x3C(~1): 0xFF810113: addi sp,sp,-8
 0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x571290EF: jal ra,42844[0x29DB4]
+0x44(~1): 0x01010293: addi t0,sp,16
+0x48(~1): 0x00513423: sd t0,8(sp)
+0x4C(~1): 0x450290EF: jal ra,42260[0x2949C]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 43000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 42000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
