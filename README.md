@@ -2273,17 +2273,17 @@ The relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: 185520 bytes generated with 42906 instructions and 13896 bytes of data
-./selfie: init:    lui: 2448(5.70%), addi: 15493(36.11%)
-./selfie: memory:  ld: 7286(16.98%), sd: 6718(15.65%)
-./selfie: compute: add: 3381(7.88%), sub: 726(1.69%), mul: 518(1.20%)
-./selfie: compute: divu: 83(0.19%), remu: 28(0.06%)
-./selfie: compare: sltu: 706(1.64%)
-./selfie: control: beq: 955(2.22%), jal: 3955(9.21%), jalr: 601(1.40%)
+./selfie: 184112 bytes generated with 42322 instructions and 14824 bytes of data
+./selfie: init:    lui: 2535(5.98%), addi: 14136(33.40%)
+./selfie: memory:  ld: 7468(17.64%), sd: 6926(16.36%)
+./selfie: compute: add: 3476(8.21%), sub: 743(1.75%), mul: 528(1.24%)
+./selfie: compute: divu: 80(0.18%), remu: 29(0.06%)
+./selfie: compare: sltu: 720(1.70%)
+./selfie: control: beq: 982(2.32%), jal: 4077(9.63%), jalr: 614(1.45%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 42906 RISC-U machine instructions as well as 13896 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36.11% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 42322 RISC-U machine instructions as well as 14824 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 33.40% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2320,21 +2320,21 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
 ./selfie: 2 calls, 2 assignments, 1 while, 0 if, 2 return
-./selfie: symbol table search time was 2 iterations on average and 40 in total
-./selfie: 504 bytes generated with 124 instructions and 8 bytes of data
-./selfie: init:    lui: 2(1.61%), addi: 57(45.96%)
-./selfie: memory:  ld: 22(17.74%), sd: 11(8.87%)
-./selfie: compute: add: 2(1.61%), sub: 2(1.61%), mul: 0(0.00%)
-./selfie: compute: divu: 0(0.00%), remu: 2(1.61%)
-./selfie: compare: sltu: 1(0.80%)
-./selfie: control: beq: 5(4.03%), jal: 5(4.03%), jalr: 7(5.64%)
-./selfie: system:  ecall: 8(6.45%)
-./selfie: 4532 characters of assembly with 124 instructions and 8 bytes of data written into count.s
+./selfie: symbol table search time was 3 iterations on average and 61 in total
+./selfie: 512 bytes generated with 126 instructions and 8 bytes of data
+./selfie: init:    lui: 2(1.58%), addi: 57(45.23%)
+./selfie: memory:  ld: 23(18.25%), sd: 12(9.52%)
+./selfie: compute: add: 2(1.58%), sub: 2(1.58%), mul: 0(0.00%)
+./selfie: compute: divu: 0(0.00%), remu: 2(1.58%)
+./selfie: compare: sltu: 1(0.79%)
+./selfie: control: beq: 5(3.96%), jal: 5(3.96%), jalr: 7(5.55%)
+./selfie: system:  ecall: 8(6.34%)
+./selfie: 4455 characters of assembly with 126 instructions and 8 bytes of data written into count.s
 ```
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
 
-Selfie generates `124` instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for IO and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
+Selfie generates `126` instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for IO and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
 
 ```
 0x0(~1): 0x000112B7: lui t0,0x11
@@ -2353,18 +2353,20 @@ Selfie generates `124` instructions for the program of which we show only those 
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
 0x34(~1): 0x00000513: addi a0,zero,0
 ---
-0x38(~1): 0x00810293: addi t0,sp,8
+0x38(~1): 0x00013283: ld t0,0(sp)
 0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)      // initialize stack
+0x40(~1): 0x00513023: sd t0,0(sp)
+0x44(~1): 0x01010293: addi t0,sp,16
+0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ---
-0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main procedure
+0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
 ---
-0x48(~1): 0xFF810113: addi sp,sp,-8    // main returns here
-0x4C(~1): 0x00A13023: sd a0,0(sp)
-0x50(~1): 0x00013503: ld a0,0(sp)      // load exit code
-0x54(~1): 0x00810113: addi sp,sp,8
-0x58(~1): 0x05D00893: addi a7,zero,93
-0x5C(~1): 0x00000073: ecall            // exit
+0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x54(~1): 0x00A13023: sd a0,0(sp)
+0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x5C(~1): 0x00810113: addi sp,sp,8
+0x60(~1): 0x05D00893: addi a7,zero,93
+0x64(~1): 0x00000073: ecall            // exit
 ...
 ```
 
@@ -2373,94 +2375,94 @@ It may be hard to believe but after reading this chapter you will be able to und
 For now, let us focus on the `jal` instruction from the above code:
 
 ```
-0x44(~1): 0x15C000EF: jal ra,87[0x1A0] // call main procedure
+0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
 ```
 
-As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A0`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
+As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A8`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
 
 ```
-0x1A0(~13): 0xFF810113: addi sp,sp,-8     // int main() {
-0x1A4(~13): 0x00113023: sd ra,0(sp)
-0x1A8(~13): 0xFF810113: addi sp,sp,-8
-0x1AC(~13): 0x00813023: sd s0,0(sp)
-0x1B0(~13): 0x00010413: addi s0,sp,0
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1AC(~13): 0x00113023: sd ra,0(sp)
+0x1B0(~13): 0xFF810113: addi sp,sp,-8
+0x1B4(~13): 0x00813023: sd s0,0(sp)
+0x1B8(~13): 0x00010413: addi s0,sp,0
 ---
-0x1B4(~13): 0x000022B7: lui t0,0x2        // return count(10000);
-0x1B8(~13): 0x71028293: addi t0,t0,1808
-0x1BC(~13): 0xFF810113: addi sp,sp,-8
-0x1C0(~13): 0x00513023: sd t0,0(sp)
-0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count procedure
-0x1C8(~13): 0x00050293: addi t0,a0,0      // count returns here
-0x1CC(~13): 0x00000513: addi a0,zero,0
-0x1D0(~13): 0x00028513: addi a0,t0,0
-0x1D4(~13): 0x0040006F: jal zero,1[0x1D8]
+0x1BC(~13): 0x000022B7: lui t0,0x2        // return count(10000);
+0x1C0(~13): 0x71028293: addi t0,t0,1808
+0x1C4(~13): 0xFF810113: addi sp,sp,-8
+0x1C8(~13): 0x00513023: sd t0,0(sp)
+0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
+0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
+0x1D4(~13): 0x00000513: addi a0,zero,0
+0x1D8(~13): 0x00028513: addi a0,t0,0
+0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
 ---
-0x1D8(~14): 0x00040113: addi sp,s0,0      // }
-0x1DC(~14): 0x00013403: ld s0,0(sp)
-0x1E0(~14): 0x00810113: addi sp,sp,8
-0x1E4(~14): 0x00013083: ld ra,0(sp)
+0x1E0(~14): 0x00040113: addi sp,s0,0      // }
+0x1E4(~14): 0x00013403: ld s0,0(sp)
 0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1EC(~14): 0x00013083: ld ra,0(sp)
+0x1F0(~14): 0x00810113: addi sp,sp,8
+0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 The very last instruction of `main`:
 
 ```
-0x1EC(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
-makes the processor return to the instruction that follows the `jal ra,87[0x1A0]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
+makes the processor return to the instruction that follows the `jal ra,87[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
 ```
-0x1C4(~13): 0xF75FF0EF: jal ra,-35[0x138] // call count procedure
+0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
 ```
 
-calls the code for `count` at address `0x138` which is right here:
+calls the code for `count` at address `0x140` which is right here:
 
 ```
 ...
-0x138(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
-0x13C(~4): 0x00113023: sd ra,0(sp)
-0x140(~4): 0xFF810113: addi sp,sp,-8
-0x144(~4): 0x00813023: sd s0,0(sp)
-0x148(~4): 0x00010413: addi s0,sp,0
+0x140(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
+0x144(~4): 0x00113023: sd ra,0(sp)
+0x148(~4): 0xFF810113: addi sp,sp,-8
+0x14C(~4): 0x00813023: sd s0,0(sp)
+0x150(~4): 0x00010413: addi s0,sp,0
 ---
-0x14C(~4): 0xFF810113: addi sp,sp,-8      // int c;
+0x154(~4): 0xFF810113: addi sp,sp,-8      // int c;
 ---
-0x150(~4): 0x00000293: addi t0,zero,0     // c = 0;
-0x154(~4): 0xFE543C23: sd t0,-8(s0)
+0x158(~4): 0x00000293: addi t0,zero,0     // c = 0;
+0x15C(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x158(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
-0x15C(~6): 0x01043303: ld t1,16(s0)
-0x160(~6): 0x0062B2B3: sltu t0,t0,t1
-0x164(~6): 0x00028C63: beq t0,zero,6[0x17C]
+0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x164(~6): 0x01043303: ld t1,16(s0)
+0x168(~6): 0x0062B2B3: sltu t0,t0,t1
+0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
 ---
-0x168(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x16C(~7): 0x00100313: addi t1,zero,1
-0x170(~7): 0x006282B3: add t0,t0,t1
-0x174(~7): 0xFE543C23: sd t0,-8(s0)
+0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+0x174(~7): 0x00100313: addi t1,zero,1
+0x178(~7): 0x006282B3: add t0,t0,t1
+0x17C(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x178(~9): 0xFE1FF06F: jal zero,-8[0x158] // }
+0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // }
 ---
-0x17C(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x180(~9): 0x00028513: addi a0,t0,0
-0x184(~9): 0x0040006F: jal zero,1[0x188]
+0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
+0x188(~9): 0x00028513: addi a0,t0,0
+0x18C(~9): 0x0040006F: jal zero,1[0x190]
 ---
-0x188(~10): 0x00040113: addi sp,s0,0      // }
-0x18C(~10): 0x00013403: ld s0,0(sp)
-0x190(~10): 0x00810113: addi sp,sp,8
-0x194(~10): 0x00013083: ld ra,0(sp)
-0x198(~10): 0x01010113: addi sp,sp,16
-0x19C(~10): 0x00008067: jalr zero,0(ra)   // return to main
+0x190(~10): 0x00040113: addi sp,s0,0      // }
+0x194(~10): 0x00013403: ld s0,0(sp)
+0x198(~10): 0x00810113: addi sp,sp,8
+0x19C(~10): 0x00013083: ld ra,0(sp)
+0x1A0(~10): 0x01010113: addi sp,sp,16
+0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
 And again, the very last instruction of `count`:
 
 ```
-0x19C(~10): 0x00008067: jalr zero,0(ra)   // return to main
+0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
-makes the processor return to the instruction that follows the `jal ra,-35[0x138]` instruction in `main`.
+makes the processor return to the instruction that follows the `jal ra,-35[0x140]` instruction in `main`.
 
 Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. This is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
 
@@ -2479,30 +2481,30 @@ Here is the relevant output:
 ./selfie: examples/count.c exiting with exit code 10000
 ./selfie: selfie terminating examples/count.c with exit code 10000
 ...
-./selfie: summary: 90065 executed instructions [22.22% nops]
+./selfie: summary: 90067 executed instructions [22.22% nops]
 ...
 ./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10033(11.13%)[0.03%]
-./selfie: memory:  ld: 30008(33.31%)[33.33%], sd: 10009(11.11%)[0.01%]
+./selfie: memory:  ld: 30009(33.31%)[33.33%], sd: 10010(11.11%)[0.01%]
 ./selfie: compute: add: 10000(11.10%)[0.00%], sub: 1(0.00%)[0.00%], mul: 0(0.00%)[0.00%]
 ./selfie: compute: divu: 0(0.00%)[0.00%], remu: 1(0.00%)[0.00%]
 ./selfie: compare: sltu: 10001(11.10%)[0.00%]
 ./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.01%], jalr: 2(0.00%)[0.00%]
 ./selfie: system:  ecall: 3(0.00%)
 ./selfie: profile: total,max(ratio%)@address(line#),2ndmax,3rdmax
-./selfie: calls:   2,1(50.00%)@0x138(~4),1(50.00%)@0x1A0(~13),0(0.00%)
-./selfie: loops:   10000,10000(100.00%)@0x158(~6),0(0.00%),0(0.00%)
-./selfie: loads:   30008,10001(33.32%)@0x158(~6),10001(33.32%)@0x15C(~6),10000(33.32%)@0x168(~7)
-./selfie: stores:  10009,10000(99.91%)@0x174(~7),1(0.00%)@0x30(~1),1(0.00%)@0x40(~1)
+./selfie: calls:   2,1(50.00%)@0x140(~4),1(50.00%)@0x1A8(~13),0(0.00%)
+./selfie: loops:   10000,10000(100.00%)@0x160(~6),0(0.00%),0(0.00%)
+./selfie: loads:   30009,10001(33.32%)@0x160(~6),10001(33.32%)@0x164(~6),10000(33.32%)@0x170(~7)
+./selfie: stores:  10010,10000(99.90%)@0x17C(~7),1(0.00%)@0x30(~1),1(0.00%)@0x40(~1)
 ...
 ```
 
-The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `124` instructions that implement the program but `90065` executed instructions. Dividing that number by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x158` to `0x178` which implement the `while` loop at line number `6` in `count.c`.
+The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90067` executed instructions. Dividing that number by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x160` to `0x180` which implement the `while` loop at line number `6` in `count.c`.
 
 You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
 
 One more thing before we explain each RISC-U machine instruction in detail: there is a special instruction that we have not seen yet denoted `nop` in assembly where `nop` stands for *no operation*. We nevertheless do not count it as another instruction of the RISC-U ISA because it is just a special case of an `addi` instruction. The only thing a `nop` makes the CPU do is go to the next instruction without doing anything else. In other words, it just wastes time, space, and energy. Yet `nop` instructions have a purpose, also in selfie, namely for *padding* memory where code is stored.
 
-Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that an *effective* `nop`. For example, out of the `90065` executed instructions 22.22% were effective `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
+Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that an *effective* `nop`. For example, out of the `90067` executed instructions 22.22% were effective `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
 
 #### Initialization
 
@@ -2511,25 +2513,25 @@ The first two RISC-U instructions we introduce are the `lui` and `addi` instruct
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
 ```
-0x38(~1): 0x00810293: addi t0,sp,8
+0x44(~1): 0x01010293: addi t0,sp,16
 ```
 
-where `0x38` is the address of the instruction (ignore the `(~1)`), `0x00810293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
+where `0x44` is the address of the instruction (ignore the `(~1)`), `0x01010293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,16` is the human-readable version of the instruction in *assembly code*. In other words, `0x01010293` and `addi t0,sp,16` mean exactly the same thing, just encoded differently. For the machine, `0x01010293` is all it needs while for us `addi t0,sp,16` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
-The instruction `addi t0,sp,8` makes the CPU add the *immediate* value 8 to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by the assignment `t0 = sp + 8` where, as mentioned before, `=` does not assert equality, but instead denotes an assignment of the value to which the expression `sp + 8` evaluates to register `t0`.
+The instruction `addi t0,sp,16` makes the CPU add the *immediate* value `16` to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by the assignment `t0 = sp + 16` where, as mentioned before, `=` does not assert equality, but instead denotes an assignment of the value to which the expression `sp + 16` evaluates to register `t0`.
 
-Alright, but why is the value `8` called immediate value? This is because the value is encoded in the binary code of the instruction itself. You can spot the `8` right there in `0x00810293`. In fact, the `0x008` portion of `0x00810293` is the immediate value encoded in the 12 MSBs as signed 12-bit integer. Can we spot `t0` and `sp` as well? Sure, they are just a bit more difficult to find. Register `sp` is register number `2` and register `t0` is register number `5` among the 32 general-purpose registers of the CPU. Then, take a look at the binary code, not just in hexadecimal but, well, in binary notation:
+Alright, but why is the value `16` called immediate value? This is because the value is encoded in the binary code of the instruction itself. You can spot the `16`, which in hexadecimal is `0x10` or here `0x010`, right there in `0x01010293`, that is, the `16` is encoded in the 12 MSBs of `0x01010293` as signed 12-bit integer. Can we spot `t0` and `sp` as well? Sure, they are just a bit more difficult to find. Register `sp` is register number `2` and register `t0` is register number `5` among the 32 general-purpose registers of the CPU. Then, take a look at the binary code, not just in hexadecimal but, well, in binary notation:
 
 ```
-0x    0    0    8    1    0    2    9    3
- b 0000 0000 1000 0001 0000 0010 1001 0011
+0x    0    1    0    1    0    2    9    3
+0b 0000 0001 0000 0001 0000 0010 1001 0011
 ```
 
 After regrouping the bits (and the hexadecimal digits) you can spot both register numbers `2` and `5` which are encoded in 5 bits each because 5 bits are enough to address all 32, that is, 2^5^ general-purpose registers:
 
 ```
-              8     2         5    0x13
- b 000000001000 00010 000 00101 0010011
+           0x10     2         5    0x13
+0b 000000010000 00010 000 00101 0010011
 ```
 
 There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*. You can find the exact definition of the I-Format and the other formats introduced below in `selfie.c`. Just look for:
@@ -2545,11 +2547,11 @@ There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSB
 // ----------------------------------------------------------------
 ```
 
-In addition to the `opcode`, there is also the `funct3` portion of the I-Format which we nevertheless ignore here. The rest, that is, `rd`, `rs1`, and `immediate` are the parameters of the instruction where `rs` stands for *register source* and `rd` for *register destination*. Both are placeholders for any of the 32 general-purpose registers of the CPU while `immediate` obviously represents the immediate value. In our example `addi t0,sp,8`, the `immediate` value is `8`, the register source `rs1` is the `sp` register `2`, and the register destination `rd` is the `t0` register `5`.
+In addition to the `opcode`, there is also the `funct3` portion of the I-Format which we nevertheless ignore here. The rest, that is, `rd`, `rs1`, and `immediate` are the parameters of the instruction where `rs` stands for *register source* and `rd` for *register destination*. Both are placeholders for any of the 32 general-purpose registers of the CPU while `immediate` obviously represents the immediate value. In our example `addi t0,sp,16`, the `immediate` value is `16`, the register source `rs1` is the `sp` register `2`, and the register destination `rd` is the `t0` register `5`.
 
-Notice that the `immediate` value `8` is data encoded in code whereas the `rs1` and `rd` values `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other instructions which we introduce below.
+Notice that the `immediate` value `16` is data encoded in code whereas the `rs1` and `rd` values `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other instructions which we introduce below.
 
-Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction taken from the running example:
+Let us go back to the example. You might ask yourself how `addi t0,sp,16` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction taken from the running example:
 
 ```
 0x1C(~1): 0x00800293: addi t0,zero,8
@@ -2559,12 +2561,12 @@ Since `zero == 0` is always true, the instruction effectively makes the CPU perf
 
 There is one important detail that we should mention here. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* the 12-bit immediate value `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
 
-The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 8` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 8` evaluates to 7 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
+The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 16` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 16` evaluates to `15` because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
 Let us explore two more important use cases of `addi`, other than just initializing registers with immediate values, taken from the running example:
 
 ```
-0x8(~1): 0x00028193: addi gp,t0,0
+0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
 ```
 
 obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
@@ -2586,7 +2588,7 @@ Most importantly, everything to the left of the colon is *syntax*, that is, just
 The execution of an instruction such as `addi` changes the state of the machine to a new state. Let us go back to the copying example to see how:
 
 ```
-0x8(~1): 0x00028193: addi gp,t0,0
+0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
 ```
 
 When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. To see that in action try:
@@ -2633,14 +2635,14 @@ Observe that `0x11` is encoded in 20 bits as immediate value `0x00011` in the bi
 
 ```
 0x    0    0    0    1    1    2    B    7
- b 0000 0000 0000 0001 0001 0010 1011 0111
+0b 0000 0000 0000 0001 0001 0010 1011 0111
 ```
 
 After regrouping the bits (and the hexadecimal digits) you can spot register `t0`, that is, register number `5`:
 
 ```
                    0x11     5    0x37
- b 00000000000000010001 00101 0110111
+0b 00000000000000010001 00101 0110111
 ```
 
 as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `0110111`. The `lui` instruction is encoded according to the so-called *U-Format* which is obviously different than the I-Format of the `addi` instruction:
