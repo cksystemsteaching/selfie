@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
   // --- test 1 ---
   x = gc_malloc(8); // object 1
   if (((uint64_t) x) != validation_address_1 - check_offset) {
-    printf2("%d - %d\n", (char*) ((uint64_t) x), (char*) (validation_address_1 - check_offset));
+    printf("0x%08lX - 0x%lX\n", (uint64_t) x, validation_address_1 - check_offset);
     print("test 1 failed!\n");
     exit(1);
   }

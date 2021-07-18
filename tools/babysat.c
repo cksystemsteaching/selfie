@@ -143,7 +143,7 @@ void selfie_print_dimacs() {
   uint64_t clause;
   uint64_t variable;
 
-  printf2("p cnf %u %u\n", (char*) number_of_sat_variables, (char*) number_of_sat_clauses);
+  printf("p cnf %lu %lu\n", number_of_sat_variables, number_of_sat_clauses);
 
   clause = 0;
 
@@ -228,7 +228,7 @@ void dimacs_word(char* word) {
 
       return;
     } else
-      syntax_error_identifier(word);
+      syntax_error_unexpected_identifier(word);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 
@@ -315,14 +315,14 @@ void dimacs_get_instance() {
 void selfie_load_dimacs() {
   source_name = get_argument();
 
-  printf2("%s: babysat loading SAT instance %s\n", selfie_name, source_name);
+  printf("%s: babysat loading SAT instance %s\n", selfie_name, source_name);
 
   // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   source_fd = open_read_only(source_name);
 
   if (signed_less_than(source_fd, 0)) {
-    printf2("%s: could not open input file %s\n", selfie_name, source_name);
+    printf("%s: could not open input file %s\n", selfie_name, source_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -347,9 +347,9 @@ void selfie_load_dimacs() {
 
   dimacs_get_instance();
 
-  printf4("%s: %u clauses with %u declared variables loaded from %s\n", selfie_name,
-    (char*) number_of_sat_clauses,
-    (char*) number_of_sat_variables,
+  printf("%s: %lu clauses with %lu declared variables loaded from %s\n", selfie_name,
+    number_of_sat_clauses,
+    number_of_sat_variables,
     source_name);
 
   dimacs_name = source_name;
@@ -363,7 +363,7 @@ void selfie_sat() {
   selfie_load_dimacs();
 
   if (dimacs_name == (char*) 0) {
-    printf1("%s: nothing to SAT solve\n", selfie_name);
+    printf("%s: nothing to SAT solve\n", selfie_name);
 
     return;
   }
@@ -371,20 +371,20 @@ void selfie_sat() {
   selfie_print_dimacs();
 
   if (babysat(0) == SAT) {
-    printf2("%s: %s is satisfiable with ", selfie_name, dimacs_name);
+    printf("%s: %s is satisfiable with ", selfie_name, dimacs_name);
 
     variable = 0;
 
     while (variable < number_of_sat_variables) {
       if (*(sat_assignment + variable) == FALSE)
-        printf1("-%u ", (char*) (variable + 1));
+        printf("-%lu ", variable + 1);
       else
-        printf1("%u ", (char*) (variable + 1));
+        printf("%lu ", variable + 1);
 
       variable = variable + 1;
     }
   } else
-    printf2("%s: %s is unsatisfiable", selfie_name, dimacs_name);
+    printf("%s: %s is unsatisfiable", selfie_name, dimacs_name);
 
   println();
 }

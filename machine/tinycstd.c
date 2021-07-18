@@ -1,9 +1,14 @@
 #include "tinycstd.h"
 
-#include <stdarg.h>
-#include <stdint.h>
 #include "console.h"
+#include "diag.h"
 #include "syscalls.h"
+#include "compiler-utils.h"
+#include <stdarg.h>
+
+// Format string handling
+typedef ssize_t (*put_handler)(const char* buffer, ssize_t len, void** context);
+int handle_format_string(const char* format, va_list args, put_handler handler, void* context);
 
 // Function required by libgcc for a freestanding environment
 
@@ -111,8 +116,62 @@ int printf(const char* format, ...) {
   return result;
 }
 
+ssize_t sprintf_put(const char* str, ssize_t len, void** ctxt) {
+  strlcpy((*ctxt)+1, str, len+1); // len+1 due to \0
+  return len;
+}
+int sprintf(char* buf, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  int ret = handle_format_string(format, args, sprintf_put, buf);
+  // No need for explicitly setting \0 at the end - strlcpy in sprintf_put already does the job
+
+  va_end(args);
+
+  return ret;
+}
+
+void puts(const char* s) {
+  console_puts(s, strlen(s));
+}
+
+void putc(char c) {
+  console_putc(c);
+}
+
+int dprintf(int fd, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret;
+
+  if (fd_is_stdio(fd))
+    ret = va_printf(format, args);
+  else
+    panic("dprintf called with non-stdio descriptor (no write support on files)");
+
+  va_end(args);
+
+  return ret;
+}
+
+ssize_t printf_puts(const char* str, ssize_t len, void** ctxt) {
+  UNUSED_VAR(ctxt);
+  return console_puts(str, len);
+}
+
 int va_printf(const char* format, va_list args) {
+  return handle_format_string(format, args, printf_puts, NULL);
+}
+
+// TODO: This function mingles signed and unsigned characters of various sizes (32bit and 64bit).
+//       As long as the format operation does not exceed 2147483647 characters
+//       (2^31 - 1 due to the sign bit), it should work.
+//       However, this is still unclean and must be handled correctly
+int handle_format_string(const char* format, va_list args, put_handler handler, void* context) {
   int written = 0;
+  size_t len;
+  ssize_t handled;
   const char* fmt_pos;
 
   while (1) {
@@ -120,23 +179,24 @@ int va_printf(const char* format, va_list args) {
 
     if (fmt_pos == NULL) {
       // Found no format specifier - print rest and return
-      puts(format);
-      return written + strlen(format);
+      len = strlen(format);
+      handled = handler(format, len, &context);
+      return written + handled;
     } else {
       // Found format specifier - print everything before it and handle specifier
-      console_puts(format, fmt_pos - format);
-      written += (fmt_pos - format);
+      handled = handler(format, fmt_pos - format, &context);
+      written += handled;
       format = fmt_pos + 1;
       switch (*format) {
         case '%':
-          putc('%');
-          written++;
+          handled = handler("%", 1, &context);
+          written += handled;
           format++;
           break;
         case 'c': {
           char c = va_arg(args, int); // char is "promoted" to int by variable args
-          putc(c);
-          written++;
+          handled = handler(&c, 1, &context);
+          written += handled;
           format++;
           break;
         }
@@ -144,16 +204,18 @@ int va_printf(const char* format, va_list args) {
         case 'i': {
           int i = va_arg(args, int);
           char* buf = itoa_ext(i, 10, sizeof(int) * 8, true);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
         case 'u': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 10, sizeof(uintmax_t) * 8, false);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
@@ -161,8 +223,9 @@ int va_printf(const char* format, va_list args) {
         case 'X': {
           uintmax_t i = va_arg(args, uintmax_t);
           char* buf = itoa_ext(i, 16, sizeof(uintmax_t) * 8, false);
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
@@ -173,39 +236,34 @@ int va_printf(const char* format, va_list args) {
           // One hex number is a nibble (4 bits) -> two represent one byte
           size_t filldiff = (sizeof(void*) * 2) - strlen(buf);
           while (filldiff != 0) {
-            putc('0');
+            handled = handler("0", 1, &context);
+            written += handled;
             filldiff--;
           }
 
-          puts(buf);
-          written += strlen(buf);
+          len = strlen(buf);
+          handled = handler(buf, len, &context);
+          written += handled;
           format++;
           break;
         }
         case 's': {
           const char* s = va_arg(args, const char*);
-          puts(s);
-          written += strlen(s);
+          len = strlen(s);
+          handled = handler(s, len, &context);
+          written += handled;
           format++;
           break;
         }
         default:
-          putc('%');
-          putc(*format);
-          written += 2;
+          handled = handler("%", 1, &context);
+          handled += handler(format, 1, &context);
+          written += handled;
           format++;
           break;
       }
     }
   }
-}
-
-void puts(const char* s) {
-  console_puts(s, strlen(s));
-}
-
-void putc(char c) {
-  console_putc(c);
 }
 
 

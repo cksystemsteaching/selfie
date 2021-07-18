@@ -3,7 +3,7 @@
 
 #include <stdarg.h>
 
-void panic(const char* diagnostic_message, ...);
+void panic(const char* diagnostic_message, ...) __attribute__((noreturn));
 void shutdown() __attribute__((noreturn));
 
 extern void hang_machine() __attribute__((noreturn));

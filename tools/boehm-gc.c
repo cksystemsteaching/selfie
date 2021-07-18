@@ -241,7 +241,7 @@ uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
     set_chunk_heap_bump_gc(context, get_chunk_heap_bump_gc(context) + GC_CHUNK_SIZE / SIZEOFUINT64);
 
     if ((uint64_t) get_chunk_heap_bump_gc(context) >= ((uint64_t) get_chunk_heap_start_gc(context) + GC_CHUNK_HEAP_SIZE)) {
-      printf1("%s: chunk heap size exceeded\n", selfie_name);
+      printf("%s: chunk heap size exceeded\n", selfie_name);
 
       exit(EXITCODE_OUTOFVIRTUALMEMORY);
     }
@@ -670,14 +670,14 @@ void gc_init_boehm(uint64_t* context) {
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE; // object size in order to fit 2 objects into one chunk
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_MAX_SMALL_OBJECT_SIZE / 2;
 
-  set_small_object_free_lists_gc(context, smalloc_system(GC_CHUNK_MAX_SMALL_OBJECT_SIZE)); // collector not initialised -> allocate using bump pointer allocator
+  set_small_object_free_lists_gc(context, smalloc_system(GC_CHUNK_MAX_SMALL_OBJECT_SIZE)); // collector not initialized -> allocate using bump pointer allocator
   zero_memory(get_small_object_free_lists_gc(context), GC_CHUNK_MAX_SMALL_OBJECT_SIZE);
 
   align_chunk_allocator(context); // note: chunk heap needs to be aligned!
 
   set_chunk_heap_start_gc(context, allocate_new_memory(context, GC_CHUNK_HEAP_SIZE));
   if (get_chunk_heap_start_gc(context) == (uint64_t*) 0)
-    printf1("%s: could not initialise gc (chunk heap allocation)\n", (uint64_t) get_chunk_heap_start_gc(context));
+    printf("%s: could not initialize gc (chunk heap allocation)\n", (uint64_t) get_chunk_heap_start_gc(context));
 
   set_chunk_heap_bump_gc(context, get_chunk_heap_start_gc(context));
 }
