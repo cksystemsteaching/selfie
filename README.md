@@ -2977,9 +2977,9 @@ If the two source registers `rs1` and `rs2` contain the same value, the branch i
 // ----------------------------------------------------------------
 ```
 
-In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12 <= imm < 2^12` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate values of `beq` instructions to *even* values only, that is, values with a remainder of `0` when divided by `2` or, in other words, values that are divisible by `2`.
+In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12 <= imm < 2^12` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate values of `beq` instructions to *even* values only, that is, values with a remainder of `0` when divided by `2` or, in other words, values that are divisible by `2`. The strange out-of-order encoding of the immediate value enables fast decoding in hardware.
 
-Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the even value `24`, not `6`, and certainly not `0x184`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x184` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x184`. Recall that each instruction is encoded in `4` bytes.
+Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the even value `24`, not `6`, and certainly not `0x184`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x184` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x184`. Recall that each instruction is encoded in `4` bytes. Thus a `beq` instruction has a range of branching `1023` instructions forward and `1024` instructions backward since `2^12/4` is equal to `1024`.
 
 Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
 
@@ -2993,11 +2993,13 @@ Probably, you can already guess what it does. It instructs the CPU to jump back 
 pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
 ```
 
-A `jal` instruction is actually capable of doing a bit more than that. Check out its official RISC-V ISA specification:
+You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates both the *forward-branching* `beq` and the *backward-jumping* `jal` instruction for a given `while` loop.
+
+A `jal` instruction is actually capable of doing a bit more than just jumping unconditionally. Check out its official RISC-V ISA specification:
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
-...
+Before jumping `pc`-relative by setting the `pc` to `pc + imm`, `jal` actually saves the value of `pc + 4` in a register identified by the `rd` parameter! This is called *linking*. It just did not do that in the above example because we were using the `zero` register which ignores all updates. In fact, `jal` stands for *jump and link*, even though a `jal` actually instructs the CPU to link first and then jump. In any case, we show you an example of that right below. The other important feature of `jal` is that it supports an even larger range of immediate values than the `beq` instruction and therefore requires yet another encoding format called the *J-Format*:
 
 ```
 // RISC-V J Format
@@ -3009,6 +3011,10 @@ A `jal` instruction is actually capable of doing a bit more than that. Check out
 // |31                                 12|11              7|6    0|
 // ----------------------------------------------------------------
 ```
+
+Similar to the immediate value of a `beq` instruction, the immediate value of a `jal` instruction is assumed to be an even value interpreted as signed integer. Here, 20 bits encode a 21-bit immediate value, again by ignoring its LSB. Thus a `jal` instruction has a range of jumping a whopping `262,143` instructions forward and `262,144` instructions backward. Again, the strange out-of-order encoding of the immediate value enables fast decoding in hardware.
+
+...
 
 ```
 0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
