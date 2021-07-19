@@ -3026,19 +3026,37 @@ This instruction links, that is, saves the value of `pc + 4`, which is here `0x1
 pc==0x1004C(~1): jal ra,87: |- ra==0x0,pc==0x1004C -> pc==0x101A8,ra==0x10050
 ```
 
-The idea of linking is to save the address of the next instruction in memory at `pc + 4` as *return address* in a register. Here we use the `ra` register where, you guessed right, `ra` stands for *return address*. Eventually, control is supposed to return to that address by setting the `pc` to that address when the code we jump to is done. We already saw above that returning to that address is done by a `jalr` instruction which we explain below.
+The idea of linking is to save the address of the next instruction in memory at `pc + 4` as *return address* in a register. Here we use the `ra` register where, you guessed right, `ra` stands for *return address*. Eventually, control is supposed to return to that address by setting the `pc` to that address when the code we jump to is done. We already saw above that returning to that address is done by a `jalr` instruction. The following instruction from our running example does exactly that:
 
-...
+```
+0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+```
+
+It takes the value of the `ra` register, adds `0` to it, and then sets the `pc` to the result, that is, to `ra + 0`. For confirmation, let us have a look at what the debugger says:
+
+```
+pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+```
+
+Looks good! So, in fact, we always use a `jal` instruction involving the `ra` register in conjunction with a `jalr` instruction, again involving the `ra` register, to facilitate calling code that implements a procedure. The call of a procedure is done by `jal` and the eventual return from the procedure is done by `jalr`. More precisely, the very last instruction implementing a procedure is always a `jalr zero,0(ra)` instruction. For example, the last instruction of the `count` procedure is:
+
+```
+0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
+```
+
+Well, a `jalr` instruction can actually do even more than just returning. After all, `jalr` stands for *jump and link return*. So far, we have only seen the jump-return part. Here is the official RISC-V ISA specification:
 
 `jalr rd,imm(rs1)`: `tmp = ((rs1 + imm) / 2) * 2; rd = pc + 4; pc = tmp` with `-2^11 <= imm < 2^11`
 
-What if `rd == rs1`?
+Indeed, it looks like a `jalr` instruction can also link to `pc + 4` if we use a register other than `zero` as `rd` parameter. Before doing so, since `rd` and `rs1` could actually be the same register, it temporarily saves the result of adding the immediate value to the value of the register identified by the `rs1` parameter. Also, the LSB of the sum is ignored by resetting it through an integer division by `2` without remainder followed by an integer multiplication by `2`. After linking, it jumps to the instruction in memory at the previously saved address. Interestingly, the immediate value is encoded in 12 bits and interpreted as signed integer, similar to an `addi` instruction. A `jalr` instruction is therefore encoded in the I-Format.
 
-I Format encoding.
+Similar to a `jal` instruction, a `jalr` instruction uses pc-relative addressing for linking. However, unlike a `jal` instruction, which also uses pc-relative addressing for jumping, a `jalr` instruction obviously uses register-relative addressing for jumping which allows it to jump virtually anywhere if, for example, the range of a `jal` instruction is insufficient. We nevertheless do not use `jalr` for that purpose here.
 
 TODO: Let us reflect on the advantage and disadvantage of pc-relative addressing. Strictly speaking, all RISC-U instructions except `jalr` use pc-relative addressing, including the instructions that are not control-flow instructions...
 
 [//]: # (TODO: addition and subtraction necessary for control flow, program counter)
+
+`ra` is saved on stack...
 
 #### System
 
