@@ -2936,6 +2936,8 @@ Nevertheless, let us complete comparison first. Here is the official RISC-V ISA 
 
 Similar to the arithmetic instructions, the `sltu` instruction only uses register addressing with `rs1`, `rs2`, and `rd` parameters and no immediate value and is thus encoded in the R-Format.
 
+Let us take another quick look back at selfie's profiler output above when self-compiling. Turns out that arithmetic instructions even together with the comparison instruction only amount to 9.32% of all executed instructions. Even control-flow instructions are executed slightly more often, as we see below.
+
 > Unsigned integer comparison is different from signed integer comparison
 
 There are two more things to discuss before moving on. Firstly, integer comparison, just like division and remainder, works differently for unsigned and signed interpretation of integers. We already mentioned an example in the information chapter. Here is another example. At first sight, the comparison `1 < -1` is obviously false but only if the operands are interpreted as signed integers. Otherwise, `1 < -1` is actually equal to `1 < UINT64_MAX` which is obviously true. Thus, as confusing it might be, `1 < -1` is actually true in C\*. However, the example does demonstrate the importance of understanding how information is encoded and operated on, which is why we show it here.
@@ -3015,6 +3017,10 @@ pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
 
 You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates both the *forward-branching* `beq` and the *backward-jumping* `jal` instruction for a given `while` loop.
 
+
+TODO: above discuss `jal` for return statements, mention `compile_return`
+
+
 A `jal` instruction is actually capable of doing a bit more than just jumping unconditionally. Check out its official RISC-V ISA specification:
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
@@ -3064,23 +3070,30 @@ Looks good! So, in fact, we always use a `jal` instruction involving the `ra` re
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
+
+TODO: `ra` is saved on stack...
+
+
 Well, a `jalr` instruction can actually do even more than just returning. After all, `jalr` stands for *jump and link return*. So far, we have only seen the jump-return part. Here is the official RISC-V ISA specification:
 
 `jalr rd,imm(rs1)`: `tmp = ((rs1 + imm) / 2) * 2; rd = pc + 4; pc = tmp` with `-2^11 <= imm < 2^11`
 
 Indeed, it looks like a `jalr` instruction can also link to `pc + 4` if we use a register other than `zero` as `rd` parameter. Before doing so, since `rd` and `rs1` could actually be the same register, it temporarily saves the result of adding the immediate value to the value of the register identified by the `rs1` parameter. Also, the LSB of the sum is ignored by resetting it through an integer division by `2` without remainder followed by an integer multiplication by `2`. After linking, it jumps to the instruction in memory at the previously saved address. Interestingly, the immediate value is encoded in 12 bits and interpreted as signed integer, similar to an `addi` instruction. A `jalr` instruction is therefore encoded in the I-Format.
 
-Similar to a `jal` instruction, a `jalr` instruction uses pc-relative addressing for linking. However, unlike a `jal` instruction, which also uses pc-relative addressing for jumping, a `jalr` instruction obviously uses register-relative addressing for jumping which allows it to jump virtually anywhere if, for example, the range of a `jal` instruction is insufficient. Before the `jalr` instruction, just load the register identified by the `rs1` parameter with the absolute (!) address of the instruction you would like the CPU to execute next. We nevertheless do not use `jalr` for that purpose here.
+Another quick look at selfie's output above when self-compiling reveals that
+the three control-flow instructions `beq`, `jal`, and `jalr` are with 12.2% the second most often executed category of instructions, after initialization and memory instructions which account for around 78% of all executed instructions, and before arithmetic and comparison instructions which make up 9.32% of all executed instructions.
+
+Similar to a `jal` instruction, a `jalr` instruction uses pc-relative addressing for linking. However, unlike a `jal` instruction, which also uses pc-relative addressing for jumping, a `jalr` instruction obviously uses register-relative addressing for jumping which allows it to jump virtually anywhere if, for example, the range of a `jal` instruction is insufficient. Right before a `jalr` instruction, just load the register identified by the `rs1` parameter of the `jalr` instruction with the absolute (!) address of the instruction you would like the CPU to execute next. We nevertheless do not use `jalr` for that purpose here.
 
 > Relocatable code through pc-relative addressing
 
-In fact, the machine code generated by selfie only uses pc-relative addressing for control flow and there is a good reason for that. It ensures that the code is *relocatable* in memory. Recall that the selfie bootloader puts the code in memory starting at address `0x10000`, not `0x0`. However, the bootloader could actually put the code anywhere else too and the code would run just fine. This is because each instruction identifies the next instruction to execute either pc-relative based on its own address in memory (all instructions but `jalr`) or based on an address obtained by pc-relative linking (`jalr`). If the code would use absolute addresses of instructions in control flow, relocating the code would involve *fixing up*, that is, updating all absolute addresses.
+In fact, the machine code generated by selfie only uses pc-relative addressing for control flow and there is a good reason for that. It ensures that the code is *relocatable* in memory. Recall that the selfie bootloader puts the code in memory starting at address `0x10000`, not `0x0`. However, the bootloader could actually put the code anywhere else too and the code would run just fine. This is because each instruction identifies the next instruction to execute either pc-relative based on its own actual address in memory (all instructions but `jalr`) or based on an address obtained by pc-relative linking (`jalr`). If the code would use absolute addresses of instructions in control flow, relocating the code would involve *fixing up*, that is, updating all absolute addresses.
 
 Nevertheless, the disadvantage of pc-relative addressing is that the range of branching and jumping is limited by the range of immediate values. This is not a problem in the selfie system but could be a problem in systems and applications that require more code than selfie to implement.
 
-[//]: # (TODO: addition and subtraction necessary for control flow, program counter)
 
-`ra` is saved on stack...
+TODO: addition and subtraction necessary for control flow, program counter
+
 
 #### System
 
