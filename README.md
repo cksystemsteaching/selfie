@@ -2432,7 +2432,7 @@ calls the code for `count` at address `0x140` which is right here:
 0x158(~4): 0x00000293: addi t0,zero,0     // c = 0;
 0x15C(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 0x168(~6): 0x0062B2B3: sltu t0,t0,t1
 0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
@@ -2442,7 +2442,7 @@ calls the code for `count` at address `0x140` which is right here:
 0x178(~7): 0x006282B3: add t0,t0,t1
 0x17C(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // }
+0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
 ---
 0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
 0x188(~9): 0x00028513: addi a0,t0,0
@@ -2498,7 +2498,7 @@ Here is the relevant output:
 ...
 ```
 
-The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90067` executed instructions. Dividing that number by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x160` to `0x180` which implement the `while` loop at line number `6` in `count.c`.
+The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90067` executed instructions. Dividing `90067` by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x160` to `0x180` which implement the `while` loop at lines `6` and `7` in `count.c`.
 
 You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
 
@@ -2534,7 +2534,7 @@ After regrouping the bits (and the hexadecimal digits) you can spot both registe
 0b 000000010000 00010 000 00101 0010011
 ```
 
-There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*. You can find the exact definition of the I-Format and the other formats introduced below in `selfie.c`. Just look for:
+There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*. You can find the exact definition of the I-Format and the other formats introduced below in `selfie.c`. For the I-Format, just look for:
 
 ```
 // RISC-V I Format
@@ -2702,11 +2702,11 @@ Why do we have the machine do this? Intuitively, all we do here is prepare the m
 
 ![Memory Layout](figures/layout.png "Memory Layout")
 
-First of all, memory is partitioned into two parts: *statically* allocated memory in the lower part of memory and *dynamically* allocated memory in the higher part of memory. By lower and higher we mean addresses with lower and higher values, respectively. We may also just speak of static and dynamic memory. The boundary between static and dynamic memory is initially marked by the *program break*. While the original boundary never changes, the program break may grow from lower to higher addresses during code execution. We therefore use something else to remember the boundary: the `gp` register where `gp` stands for *global pointer*. To be exact, `gp` points to the lowest address of dynamic memory. Any address lower than that is part of static memory.
+First of all, memory is partitioned into two parts: *statically* allocated memory in the lower part of memory and *dynamically* allocated memory in the higher part of memory. By lower and higher we mean addresses with lower and higher values, respectively. We may also just speak of static and dynamic memory. The boundary between static and dynamic memory is initially marked by the *program break*. While the original boundary never changes, the program break may grow from lower to higher addresses during code execution. We therefore use something else to remember the original boundary: the `gp` register where `gp` stands for *global pointer*. To be exact, `gp` points to the lowest address of dynamic memory. Any address lower than that is part of static memory.
 
 > Compile time versus runtime, static memory versus dynamic memory
 
-What is static and dynamic memory? Static memory is used for storing information whose amount in bytes is known by the programmer at *compile time*, that is, at the time of developing and possibly compiling code which means in particular the time before actually executing any code. Dynamic memory is used for storing information whose amount is unknown by the programmer and instead computed by the program at *runtime*, that is, during code execution. While the maximum size of dynamic memory is bounded, its layout or better the use of its addresses for storing information may change during runtime. In contrast, not only the size but also the layout of static memory is fixed at compile time and does not change anymore after that.
+What is static and dynamic memory? Static memory is used for storing information whose amount in bytes is known by the programmer at *compile time*, that is, at the time of developing and possibly compiling code which means in particular the time before actually executing any code. Dynamic memory is used for storing information whose amount is unknown by the programmer and instead computed by the program at *runtime*, that is, during code execution. While the maximum amount of dynamic memory is always bounded, its layout or better the use of its addresses for storing information may change during runtime. In contrast, not only the size but also the layout of static memory is fixed at compile time and does not change anymore after that.
 
 > Code, global variables, string literals, and big integers are in static memory
 
@@ -2730,9 +2730,9 @@ And let us take a look at what the debugger says about this instruction when exe
 pc==0x10048(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
 ```
 
-So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to a large address almost at the top of our address space. With offset `8`, the instruction stores the value of `t0`, which is the even larger address `0xFFFFFFD0`, in memory where `sp + 8` points to. What exactly the purpose of that is here is not so important right now. We clarify that later. But if you are curious you can check out the procedure `emit_bootstrapping` in `selfie.c` which generates the initialization code we discuss here.
+So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to a high address almost at the top of our address space. With offset `8`, the instruction stores the value of `t0`, which is the even higher address `0xFFFFFFD0`, in memory where `sp + 8` points to. What exactly the purpose of that is here is not so important right now. We clarify that later. But if you are curious you can check out the procedure `emit_bootstrapping` in `selfie.c` which generates the initialization code we discuss here.
 
-Now, let us focus on the heap segment, or *heap* for short, and then go back to the instruction `sd a0,-8(gp)` we discussed earlier. The heap is memory for storing information at runtime. Initially, the heap is empty but then may grow in size typically way beyond the other segments. While the heap can only grow but not shrink the information stored on the heap may become obsolete during code execution. This may happen in any order depending on what the code does during execution hence the name heap. Since the heap can only grow we only need to remember the end of the heap segment which initially is of course equal to the start. The instruction:
+Now, let us focus on the heap segment, or *heap* for short, and then go back to the instruction `sd a0,-8(gp)` we discussed earlier. The heap is memory for storing information at runtime. Initially, the heap is empty but then may grow in size typically way beyond the other segments. While the heap can only grow but not shrink, the information stored on the heap may become obsolete during code execution. This may happen in any order depending on what the code does during execution hence the name heap. Since the heap can only grow we only need to remember the end of the heap segment which initially is of course equal to the start. The instruction:
 
 ```
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
@@ -2746,13 +2746,13 @@ pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0
 
 Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the programming and tools chapters.
 
-In sum, our memory layout is determined by the `gp` register which marks the end of the data segment, the `sp` register which marks the start of the stack segment, and the machine word referred to as `_bump` which marks the end of the heap segment. The registers `gp` and `sp` are are sufficient to find everything in memory while the machine word `_bump` is sufficient to manage the heap.
+In sum, our memory layout is determined by the `gp` register which marks the end of the data segment, the `sp` register which marks the start of the stack segment, and the machine word referred to as `_bump` which marks the end of the heap segment. The registers `gp` and `sp` are sufficient to find everything in memory while the machine word `_bump` is sufficient to manage the heap.
 
 Before going into the details of the `ld` instruction, we present the official RISC-V ISA specification of the `sd` instruction. Unlike the `addi` and `lui` instructions, `sd` does not require a destination register `rd` but instead two source registers `rs1` and `rs2` where `rs2` contains the value to be stored in memory at address `rs1 + imm`:
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
-Similar to `addi`, the 12-bit immediate value `imm` is sign-extended to 64 bits before doing anything else. Then, the CPU calculates `rs1 + imm` to prepare for storing the value of `rs2`. Finally, the CPU stores that value in memory at address `rs1 + imm` and then moves on to the next instruction.
+Similar to `addi`, the 12-bit immediate value `imm` is first sign-extended to 64 bits. Then, the CPU calculates `rs1 + imm` to prepare for storing the value of `rs2`. Finally, the CPU stores that value in memory at address `rs1 + imm` and then moves on to the next instruction.
 
 The `sd` instruction is encoded according to the so-called *S-Format* which is again different than the I-Format of the `addi` and the U-Format of the `lui` instruction. Similar to the I-Format, the S-Format encodes three parameters, a 12-bit immediate value and two registers. Unlike the I-Format, however, the S-Format uses the `rs2` parameter as source register, instead of `rd`:
 
@@ -2771,7 +2771,7 @@ Interestingly, the immediate value is split into two parts `imm1` and `imm2` of 
 
 From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
 
-In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well. Note that the source code of selfie mostly uses the keyword `uint64_t` instead of the keyword `int`. In C\* both keywords mean the same thing: unsigned integer 64-bit type! However, the keyword `int` actually means something different in C which may be confusing to readers who know C. So, here `int` is just like `uint64_t`.
+In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well. Note that the source code of selfie mostly uses the keyword `uint64_t` instead of the keyword `int`. In C\* both keywords mean the same thing: unsigned integer 64-bit type! However, the keyword `int` actually means something different in standard C which may be confusing to readers who know C. So, here `int` is just like `uint64_t`.
 
 Let us now take a look at the `ld` instruction for loading a double word from memory into a register. Right before our example program exits with exit code `10000`, after the code of the `main` procedure returned, there is the following `ld` instruction:
 
@@ -2790,7 +2790,7 @@ Coincidentally, the value of `a0` was already `10000` before executing the instr
 Let us take a look at another example. This time it is machine code that has a direct correspondence to the source code in `count.c`. The following two `ld` instructions have been generated by the selfie compiler to load the values of `c` and `n` from memory at addresses `s0 - 8` and `s0 + 16` into registers `t0` and `t1`, respectively:
 
 ```
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 ```
 
@@ -2911,7 +2911,7 @@ Both C\* and RISC-U only support unsigned integer division and remainder operato
 Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1` in our running example of which we have already seen the two `ld` instructions:
 
 ```
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 0x168(~6): 0x0062B2B3: sltu t0,t0,t1
 0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
@@ -2953,7 +2953,7 @@ The RISC-U ISA features three control-flow instructions: the *conditional branch
 We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x184]` instruction in our running example, this time in its full context:
 
 ```
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n) {
+0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 0x168(~6): 0x0062B2B3: sltu t0,t0,t1
 0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
@@ -2963,7 +2963,7 @@ We first focus on the `beq` instruction and then explain the `jal` and `jalr` in
 0x178(~7): 0x006282B3: add t0,t0,t1
 0x17C(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // }
+0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
 ---
 0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
 0x188(~9): 0x00028513: addi a0,t0,0
@@ -3006,7 +3006,7 @@ Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the e
 Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
 
 ```
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // }
+0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
 ```
 
 Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x160`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
