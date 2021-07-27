@@ -3015,13 +3015,26 @@ Probably, you can already guess what it does. It instructs the CPU to jump back 
 pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
 ```
 
-You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates both the *forward-branching* `beq` and the *backward-jumping* `jal` instruction for a given `while` loop.
+You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates for a given `while` loop both the *forward-branching* `beq` instruction (with a positive immediate value) and the *backward-jumping* `jal` instruction (with a negative immediate value). Selfie also generates *forward-jumping* `jal` instructions, that is, for implementing `if` and `return` statements, see the `compile_if` and the `compile_return` procedure, respectively. For example, the `return c;` statement in our running example is implemented by the following three instructions:
 
+```
+0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
+0x188(~9): 0x00028513: addi a0,t0,0
+0x18C(~9): 0x0040006F: jal zero,1[0x190]
+```
 
-TODO: above discuss `jal` for return statements, mention `compile_return`
+with a forward-jumping `jal` instruction that, in this case, is actually redundant and could be removed since it always behaves like a `nop`. However, the code shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last four instructions implementing the `return count(10000)` statement, for example:
 
+```
+0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
+0x1D4(~13): 0x00000513: addi a0,zero,0
+0x1D8(~13): 0x00028513: addi a0,t0,0
+0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
+```
 
-A `jal` instruction is actually capable of doing a bit more than just jumping unconditionally. Check out its official RISC-V ISA specification:
+If you look carefully, you may notice that the last three instructions are actually redundant and could be removed. Even the first instruction can be removed as well since `t0` is not used anymore after that. However, in general, this is not true and making selfie not generate those instructions is harder than you might think. As we mentioned before, this is an advanced topic that we skip here. Instead let us focus on the fact that a `jal` instruction is actually capable of doing a bit more than just jumping unconditionally.
+
+Check out the official RISC-V ISA specification of a `jal` instruction:
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
