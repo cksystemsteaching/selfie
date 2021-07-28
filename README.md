@@ -718,10 +718,10 @@ A debugger is a software tool for finding flaws in software called *bugs*. Lots 
 
 ```
 ...
-... pc==0x10154(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
-... pc==0x10158(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
-... pc==0x1015C(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
-... pc==0x10160(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
+pc==0x10154(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x10158(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x1015C(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
+pc==0x10160(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
 ...
 ```
 
@@ -3083,9 +3083,38 @@ Looks good! So, in fact, we always use a `jal` instruction involving the `ra` re
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
+There is, however, a catch. What if a procedure calls another procedure before returning such as when `main` calls `count` before returning? In that case, the value of the `ra` register would be overwritten before returning. We therefore need to save its value and then restore it right before returning. Our running example actually shows you how this is done. The implementation of each procedure begins with a block of code called *prologue* and ends with a block of code called *epilogue*. For example, here is the prologue of `main`:
 
-TODO: `ra` is saved on stack...
+```
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1AC(~13): 0x00113023: sd ra,0(sp)
+0x1B0(~13): 0xFF810113: addi sp,sp,-8
+0x1B4(~13): 0x00813023: sd s0,0(sp)
+0x1B8(~13): 0x00010413: addi s0,sp,0
+```
 
+and the epilogue of `main`:
+
+```
+0x1E0(~14): 0x00040113: addi sp,s0,0      // }
+0x1E4(~14): 0x00013403: ld s0,0(sp)
+0x1E8(~14): 0x00810113: addi sp,sp,8
+0x1EC(~14): 0x00013083: ld ra,0(sp)
+0x1F0(~14): 0x00810113: addi sp,sp,8
+0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+```
+
+The `count` procedure has a similar prologue and epilogue. The prologue saves the value of `ra` as well as the frame pointer in `s0` on the stack using `sd` instructions while the epilogue restores their values from the stack using `ld` instructions. That's all. This technique supports arbitrarily nested procedure calls including recursive calls. The only limitation is the size of the stack. For example, a non-terminating recursion would result in an ever growing stack that would eventually overflow into the heap.
+
+Let us have a quick look at the output of the debugger right before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x10050`:
+
+```
+pc==0x101EC(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x10050 |- ra==0x101D0 -> ra==0x10050==mem[0xFFFFFFB8]
+pc==0x101F0(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
+pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+```
+
+The output shows that the `ld ra,0(sp)` instruction does in fact restore the value of `ra` to `0x10050` overwriting its previous value `0x101D0` which is the by now obsolete return address of the previous call to `count`. This way the `jalr zero,0(ra)` instruction does return to the right address. Beautiful!
 
 Well, a `jalr` instruction can actually do even more than just returning. After all, `jalr` stands for *jump and link return*. So far, we have only seen the jump-return part. Here is the official RISC-V ISA specification:
 
