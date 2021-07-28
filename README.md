@@ -38,7 +38,7 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 4.14. Audio
 4.15. Code
 4.16. Apps
-4.17. Summary
+4.17. Life
 4.18. Recommended Readings
 
 5. Machine
@@ -50,7 +50,8 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 5.6. Emulation
 5.7. Algorithms
 5.8. Performance
-5.9. Recommended Readings
+5.9. Life
+5.10. Recommended Readings
 
 6. Programming
 6.1. Variable
@@ -2113,11 +2114,19 @@ However, keep in mind that not all machine code can be executed by all computers
 
 An *application* or just *app* is a collection of files of which some are executable code while others are usually data files such as text, images, video, and audio depending on the type of app. For example, a social networking app contains code that *implements* chat functionality and data that the code uses to construct the visual appearance of the app on your screen. The type and format of the app files highly depend on the type of machine on which the app executes or *runs*. An app for Android phones does not run on iPhones and vice versa. However, it may still come from the same source code and the same data files. In many cases, there is much more data than code in apps, especially with games, even though the code is of course the most complex artifact among all app files and key to correct behavior of the app.
 
-### Summary
+### Life
 
 Everything on a digital device is encoded in bits. As a consequence, whatever we want such a machine do for us needs to be encoded in bits. We began by looking at how numbers are encoded in bits. It turned out that using binary notation is not all that different from decimal notation. Even arithmetic with binary numbers works essentially the same way as arithmetic with decimal numbers. Fortunately, for other types of information such as text, images, video, audio, and even code and apps, there is a lot of help these days in encoding and decoding them.
 
 There are keyboards that encode the keys you type into bits that represent ASCII characters that form text when put together. There are digital cameras and smartphones that encode the pictures, videos, and audio recordings you take into bits. There are screens that decode text, images, and videos from bits into pixels for you to enjoy. There are speakers that decode audio from bits into sound. And then there are software tools that translate the source code you write for an app into machine code encoded in bits that your machine then decodes and executes, together with the data files in your app.
+
+But what about life? What can we learn from the fact that everything can be encoded in bits? Can we encode the DNA of a person in binary? Yes, of course! Mathematically speaking, the only difference between DNA and binary encodings is that DNA is a base-4 encoding whereas binary is a base-2 encoding. So, DNA is more compact than binary by a factor of 2 but that's all. In other words, a DNA sequence of length `n` can encode `4^n` different DNAs but we only need `2 * n` bits to be able to do the same thing in binary.
+
+Alright, so the blueprints of life can be encoded in bits. Now, let us conduct a thought experiment also called a Gedankenexperiment. Can we write a program that instructs a computer to go through all possible states the machine can be in? In other words, can we make a computer that can store `n` bits *enumerate* all `2^n` states the machine can be in? Yes, of course! Such a program is actually quite easy to write. Just view all of the machine's memory as storage for an integer that is incremented by that program. The only problem is that it will take the computer a very long time to complete the execution of the program. In fact, as mentioned before, the computer will long have turned to dust before even getting close to completion.
+
+However, suppose we had a computer that could run for a very long time. What would happen? Well, once in a while, and we are talking "gazillions" of years depending on the speed of the machine, it would come across a state that would encode, according to today's encoding schemes, say, Leonardo da Vinci's Mona Lisa or Ludwig van Beethoven's Fifth Symphony. And that would happen without any intelligence whatsoever! I mean any intelligence other than the mechanism of incrementing an integer. However, the computer would not be able to focus on such states by *selecting* them for further enumeration since it cannot distinguish *good* from *bad* states, at least not without additional software which would be a lot more complex than merely enumerating states, and may or may not be ever invented.
+
+This is where life and in particular evolution comes in. Evolution is the process of enumerating DNA sequences through a mechanism called *mutation* and then selecting DNA sequences for further enumeration based on criteria such as their reproductive success. The difference to computers is that mutation and selection are physical processes. The simplicity of that model is striking.
 
 ### Recommended Readings
 
@@ -3153,6 +3162,8 @@ I Format encoding with `zero` registers and immediate `0`.
 [//]: # (| efficiency  | operations/joule |)
 [//]: # (|             | MIPS/watt |)
 [//]: # (|             | FLOPS/watt |)
+
+### Life
 
 ### Recommended Readings
 
