@@ -3167,6 +3167,12 @@ I Format encoding with `zero` registers and immediate `0`.
 
 ### Life
 
+The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U can implement anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms.
+
+However, my fascination comes from something else and that is related to life. While the process of developing code can be extremely slow and tedious and even nerve wrecking, especially when writing machine code, the execution of code is not because that is done by a machine. That moment when running for the first time some new code that does something I cannot do by hand is like magic. It is that moment of automating something in life that I have to do but do not want to do so that I can do something I want to do, like coding. An important side effect of making a machine do this is that I am creating a well-defined description of how to do this that others can read, use, extend, and improve.
+
+Source code...
+
 ### Recommended Readings
 
 ## Programming
