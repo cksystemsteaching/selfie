@@ -2182,7 +2182,7 @@ Before taking a closer look at individual RISC-U instructions, we first need to 
 
 > The program counter determines which bits are interpreted as code
 
-The *program counter* of a CPU, and they all have one, is like a register but with an important, dedicated purpose. It stores exactly one machine word which is interpreted as a pointer to memory, that is, a memory address where the next instruction to be fetched, decoded, and executed is stored in memory. For the machine, the program counter, also denoted `pc`, is therefore the only way of knowing where code rather than data is stored in memory. Any hacker trying to break into a computer effectively attempts to control the program counter to have the machine run code that it would otherwise not run.
+The *program counter* of a CPU, and they all have one, is like a register but with an important, dedicated purpose. It stores exactly one machine word which is interpreted as a pointer to memory, that is, a memory address where the next instruction to be fetched, decoded, and executed is stored in memory. For the machine, the program counter, also denoted `pc`, is therefore the only way of knowing where code rather than data is stored in memory. Any hacker trying to break into a computer ultimately attempts to control the program counter to have the machine run code that it would otherwise not run.
 
 > All day long: fetch, decode, execute
 
@@ -3169,9 +3169,13 @@ I Format encoding with `zero` registers and immediate `0`.
 
 The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U can implement anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms.
 
-However, my fascination comes from something else and that is related to life. While the process of developing code can be extremely slow and tedious and even nerve wrecking, especially when writing machine code, the execution of code is not because that is done by a machine. That moment when running for the first time some new code that does something I cannot do by hand is like magic. It is that moment of automating something in life that I have to do but do not want to do so that I can do something I want to do, like coding. An important side effect of making a machine do this is that I am creating a well-defined description of how to do this that others can read, use, extend, and improve.
+However, my true fascination comes from something else and that is related to life. While the process of developing code can be extremely slow and tedious and even nerve wrecking sometimes, especially when writing machine code, the execution of code is not because that is done by a machine, not me. That moment when running some new code that does something I cannot or do not want to do by hand is like magic. It is as if the code comes alive. Coding is really about automating something important in life that I have to do but cannot or do not want to do so that I can do something I want to do, like coding. An important side effect of coding is that I am creating a well-defined description of how to automate something that others can read, use, extend, and improve.
 
-Source code...
+And this is where the next chapter comes in. Coding in machine code is tedious and errorprone and thus does not *scale* in complexity. If you would like the machine do something complex we need to raise the level of abstraction and then use tools, rather than our "hands", as in any other engineering discipline, that help us construct large amounts of machine code that actually work. For this purpose, computer scientists invented high-level programming languages. When asking students about the motivation of programming languages, I often hear that they make coding "easier". But I do not like that answer because that is only a superficial feature of something deeper.
+
+Suppose we are trying to build a bridge.
+
+High-level programming languages enable *scalability* of coding through tools.
 
 ### Recommended Readings
 
