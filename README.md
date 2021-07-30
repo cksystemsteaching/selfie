@@ -3171,15 +3171,19 @@ The machine and its code is a concept that has amazed me for a long time. In pri
 
 However, my true fascination comes from something else and that is related to life. While the process of developing code can be extremely slow and tedious and even nerve wrecking sometimes, especially when writing machine code, the execution of code is not because that is done by a machine, not me. That moment when running some new code that does something I cannot or do not want to do by hand is like magic. It is as if the code comes alive. Coding is really about automating something important in life that I have to do but cannot or do not want to do so that I can do something I want to do, like coding. An important side effect of coding is that I am creating a well-defined description of how to automate something that others can read, use, extend, and improve.
 
-And this is where the next chapter comes in. Coding in machine code is tedious and errorprone and thus does not *scale* in complexity. If you would like the machine do something complex we need to raise the level of abstraction and then use tools, rather than our "hands", as in any other engineering discipline, that help us construct large amounts of machine code that actually work. For this purpose, computer scientists invented high-level programming languages. When asking students about the motivation of programming languages, I often hear that they make coding "easier". But I do not like that answer because that is only a superficial feature of something deeper.
-
-Suppose we are trying to build a bridge.
-
-High-level programming languages enable *scalability* of coding through tools.
+And this is where the next chapter comes in. Coding in machine code is tedious and errorprone and thus does not *scale* in complexity. If you would like the machine do something complex we need to raise the level of abstraction and then use tools, rather than our "hands", as in any other engineering discipline, that help us construct large amounts of machine code that actually work. For this purpose, computer scientists invented high-level programming languages. The next chapter is about that.
 
 ### Recommended Readings
 
 ## Programming
+
+Almost all code today is written in high-level programming languages. There are many languages to choose from and, for better or worse, there are new languages being developed all the time. Also, modern languages usually come with a whole ecosystem of libraries and tools that play an important role in addition to the language itself. However, most programming languages share some basic concepts that we introduce and focus on here. We do that in a subset of the programming language C called C\* which we specifically designed for this purpose. C\* ignores many of the more recently introduced innovations in programming languages because our goal is not to show you the latest and greatest in programming language design. There are plenty of books available doing just that, see the recommended readings at the end of this chapter.
+
+The promise here is different. Programming languages are typically designed at least for an *application area* and possibly also a *class of hardware*. We say a language X is good for application Y on machine Z. How so? When asking students about the motivation to use a particular programming language, I often hear that it makes coding "easier" for them. While this sounds plausible there is something deeper to that statement.
+
+A programming language is a formalism with a well-defined syntax and semantics. What we care about is the implementation of a language, not its design. Here is an example. Suppose we are trying to build a bridge...
+
+High-level programming languages enable *scalability* of coding through tools...
 
 ### Variable
 
