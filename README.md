@@ -3145,6 +3145,10 @@ It is again time to reflect on what we have seen here. The instructions `beq` as
 
 #### System
 
+At this point we have seen all RISC-U instructions but one. I would not say we kept the best but definitely the strangest instruction for last. It is the `ecall` instruction where `ecall` stands for *environment call*. The first source of confusion is the name. An environment call is essentially what most people familiar with machine code would actually call a *system call*. We treat both terms as synonyms but for simplicity use the term system call from now on.
+
+Logically, a system call is like a procedure call implemented by a `jal` instruction. It allows us to instruct the CPU to jump to some code, execute that code, and finally return when done. The only difference is that the code we call with `ecall` is not procedure code but system code or better operating system code. Thus calling it a system call makes sense. Calling it an environment call just emphasizes its extrovert purpose rather than its introvert function. The purpose of a system call is usually to interact with the (hardware) environment of the machine such as an I/O device or the (software) environment of the caller such as the code of another application running on the same machine.
+
 `ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
 
 I Format encoding with `zero` registers and immediate `0`.
