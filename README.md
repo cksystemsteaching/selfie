@@ -3149,9 +3149,20 @@ At this point we have seen all RISC-U instructions but one. I would not say we k
 
 Logically, a system call is like a procedure call implemented by a `jal` instruction. It allows us to instruct the CPU to jump to some code, execute that code, and finally return when done. The only difference is that the code we call with `ecall` is not procedure code but system code or better operating system code. Thus calling it a system call makes sense. Calling it an environment call just emphasizes its extrovert purpose rather than its introvert function. The purpose of a system call is usually to interact with the (hardware) environment of the machine such as an I/O device or the (software) environment of the caller such as the code of another application running on the same machine.
 
+Another source of confusion with the `ecall` instruction is that it does not have any parameters which identify registers or represent immediate values. The binary encoding of an `ecall` instruction is simply `0x00000073`. In fact, it is encoded in the I-Format with the `rd` and `rs1` placeholders set to register `zero` and the immediate value set to value `0`. So, how do we even specify which code we would like to call? There is no memory address here anywhere.
+
+...
+
 `ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
 
-I Format encoding with `zero` registers and immediate `0`.
+```
+0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x54(~1): 0x00A13023: sd a0,0(sp)
+0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x5C(~1): 0x00810113: addi sp,sp,8
+0x60(~1): 0x05D00893: addi a7,zero,93
+0x64(~1): 0x00000073: ecall            // exit
+```
 
 ### Emulation
 
