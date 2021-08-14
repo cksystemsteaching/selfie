@@ -3178,7 +3178,60 @@ Another source of confusion with the `ecall` instruction is that it does not hav
 
 ### Emulation
 
+```
+void run_until_exception() {
+  trap = 0;
+
+  while (trap == 0) {
+    fetch();
+    decode();
+    execute();
+
+    interrupt();
+  }
+
+  trap = 0;
+}
+```
+
+```
+void do_lui() {
+  // load upper immediate
+
+  uint64_t next_rd_value;
+
+  update_register_counters();
+
+  if (rd != REG_ZR) {
+    // semantics of lui
+    next_rd_value = left_shift(imm, 12);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_lui = nopc_lui + 1;
+  } else
+    nopc_lui = nopc_lui + 1;
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_lui = ic_lui + 1;
+}
+```
+
+```
+make debug
+```
+
+```
+make replay
+```
+
 ### Algorithms
+
+```
+make os
+```
 
 ### Performance
 
