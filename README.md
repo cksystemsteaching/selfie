@@ -3163,6 +3163,14 @@ Logically, a system call is like a procedure call implemented by a `jal` instruc
 
 Another source of confusion with the `ecall` instruction is that it does not have any parameters which identify registers or represent immediate values. The binary encoding of an `ecall` instruction is simply `0x00000073`. In fact, it is encoded in the I-Format with the `rd` and `rs1` placeholders set to register `zero` and the immediate value set to value `0`. So, how do we even specify which code we would like to call? There is no memory address here anywhere.
 
+Here is how this works and keep in mind that the CPU can only execute one instruction after another. There is no waiting or doing something else. When the CPU executes an `ecall` instruction it saves at least part of the machine state, in particular the value of the `pc`, similar to a `jal` instruction, and then sets the value of the `pc` to some fixed address specified by the RISC-V standard. Thus the code at that address is executed next. That code is called *system call handler* because it is supposed to handle, well, system calls.
+
+Now, here is the interesting part. The system call handler checks the integer value of register `a7` to find out which system call we would actually like to invoke, and then invokes, on our behalf, the code that implements that system call. In other words, a system call is identified by an integer value, not an address. The mapping from value to address is done by the system call handler. The idea is that the system call handler is privileged code beyond our control that is part of the operating system. The computing chapter has more on that.
+
+Relevant for us here is that system calls are logically like procedure calls...except for id and parameters...
+
+Selfie implements five system calls...
+
 ...
 
 `ecall`: system call number is in `a7`, parameters are in `a0-a3`, return value is in `a0`.
