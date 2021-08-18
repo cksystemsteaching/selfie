@@ -3186,7 +3186,7 @@ The `exit` system call has one parameter which is the exit code of the program, 
 
 But how do we do that? We only have those 14 RISC-U instructions. The answer is that, in a real RISC-V system, there are special instructions for this purpose. However, we decided to avoid introducing those and instead implement the system calls we actually need in selfie as if they were special instructions: `exit`, `open`, `read`, `write`, and `brk`. The `open`, `read`, and `write` system calls are for handling I/O, and the `brk` system call is for allocating memory. Their system call numbers are of course also defined in the selfie code. Again, the tools and computing chapters have more details on system calls.
 
-...
+Well, it is time to celebrate. By now, you have all the information necessary to understand our running example, except for the code at the very beginning that prepares initializing the heap. There are two `ecall` invocations of, in fact, the `brk` system call. Never mind those. They become clear later. Now, it is time to look at how our RISC-U machine works in selfie.
 
 ### Emulation
 
