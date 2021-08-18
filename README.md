@@ -3165,13 +3165,13 @@ Another source of confusion with the `ecall` instruction is that it does not hav
 
 Here is how this works and keep in mind that the CPU can only execute one instruction after another. There is no waiting or doing something else. When the CPU executes an `ecall` instruction it saves at least part of the machine state, in particular the value of the `pc`, similar to a `jal` instruction, and then sets the value of the `pc` to some fixed address specified by the RISC-V standard. Thus the code at that address is executed next. That code is called *system call handler* because it is supposed to handle, well, system calls.
 
-Now, here is the interesting part. The system call handler checks the integer value of register `a7` to find out which system call we would actually like to invoke, and then invokes, on our behalf, the code that implements that system call. In other words, a system call is identified by an integer value, not an address. The mapping from value to address is done by the system call handler. The idea is that the system call handler is privileged code beyond our control that is part of the operating system. The *system call number* in `a7` simply allows us to identify system calls without even knowing where in memory the code is that implements them. The computing chapter has more on that.
+Now, here is the interesting part. The system call handler checks the integer value of register `a7` to find out which system call we would actually like to invoke, and then invokes, on our behalf, the code that implements that system call. In other words, a system call is identified by an integer value, not an address. The mapping from value to address is done by the system call handler. The idea is that the system call handler is privileged code beyond our control that is part of the operating system. The *system call number* in `a7` simply allows us to identify system calls without even knowing where in memory the code is that implements them. The tools and computing chapters have more on that.
 
-Relevant for us here is that system calls are logically like procedure calls, possibly with actual parameters and return value, but in particular with a specific purpose that often requires special hardware support. Selfie implements five system calls which we mention below. Similar to a procedure call, the return value of a system call is stored in register `a0`. However, actual parameters of a system call are not pushed onto the stack but stored in registers `a0` to `a3`. In other words, there cannot be more than four actual parameters. Here is a summary of the *system call convention* or *application binary interface* that is a subset of the RISC-V standard and used in selfie:
+Relevant for us here is that system calls are logically like procedure calls, possibly with actual parameters and return value, but in particular with a specific purpose that often requires special hardware support. Selfie implements five system calls which we mention below. Similar to a procedure call, the return value of a system call is stored in register `a0`. However, actual parameters of a system call are not pushed onto the stack but stored in registers `a0` to `a3`. In other words, there cannot be more than four actual parameters. Here is a summary of the *system call convention* or *application binary interface* (ABI) that is a subset of the RISC-V standard and used in selfie:
 
 `ecall`: system call number is in `a7`, actual parameters are in `a0-a3`, return value is in `a0`.
 
-...
+Let us have a look at the code from our running example that terminates execution of the program using the `exit` system call which happens to be identified by system call number `93`:
 
 ```
 0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
@@ -3181,6 +3181,10 @@ Relevant for us here is that system calls are logically like procedure calls, po
 0x60(~1): 0x05D00893: addi a7,zero,93
 0x64(~1): 0x00000073: ecall            // exit
 ```
+
+The `exit` system call has one parameter which is the exit code of the program, here provided by the return value of the `main` procedure. The first four instructions are actually redundant since the returned exit code is already in register `a0` but let us not worry about that. Important is that the `addi a7,zero,93` instruction initializes register `a7` with the value `93`. The following `ecall` instruction is thus recognized as the `exit` system call which terminates execution of the program and shuts down the machine.
+
+But how do we do that? We only have those 14 RISC-U instructions. The answer is that, in a real RISC-V system, there are special instructions for this purpose. However, we decided to avoid introducing those and instead implement the system calls we actually need in selfie as if they were special instructions: `exit`, `open`, `read`, `write`, and `brk`. The `open`, `read`, and `write` system calls are for handling I/O, and the `brk` system call is for allocating memory. Their system call numbers are of course also defined in the selfie code. Again, the tools and computing chapters have more details on system calls.
 
 ...
 
