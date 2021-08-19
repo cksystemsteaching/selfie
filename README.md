@@ -3202,6 +3202,15 @@ RISC-U code runs on actual RISC-V hardware. If you are interested in seeing how,
 
 [https://github.com/cksystemsteaching/selfie/tree/main/machine](https://github.com/cksystemsteaching/selfie/tree/main/machine)
 
+Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that simulates actual hardware. For example, RISC-U code runs on the popular emulator [QEMU](https://www.qemu.org).
+
+Selfie also implements an emulator called *mipster* that just supports RISC-U to keep it simple. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We already saw that invoking mipster works by using the `-m` option, for example:
+
+```
+./selfie -c selfie.c -m 1
+```
+
+...
 
 ```
 void run_until_exception() {
