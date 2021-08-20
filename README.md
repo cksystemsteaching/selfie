@@ -3210,7 +3210,15 @@ Selfie also implements an emulator called *mipster* that just supports RISC-U to
 ./selfie -c selfie.c -m 1
 ```
 
-Let us go through this invocation step by step.
+Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates an *instance* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run` and in particular `boot_loader`.
+
+There are a few points that we should mention here.
+
+physical memory
+
+stack and console arguments
+
+machine context
 
 ```
 void run_until_exception() {
