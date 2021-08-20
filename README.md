@@ -3202,15 +3202,15 @@ RISC-U code including selfie runs on actual RISC-V hardware. If you are interest
 
 [https://github.com/cksystemsteaching/selfie/tree/main/machine](https://github.com/cksystemsteaching/selfie/tree/main/machine)
 
-Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that simulates actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org).
+Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that mimics actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org). By the way, the difference between *emulation* and *simulation* is important. Emulation *reproduces* exact functionality (but not performance) whereas simulation *approximates* behavior. Both methods are usually slower than the real thing but there are ways to make them faster. The key observation is that it is impossible for any code to know if it is running on hardware or an emulator, assuming hardware and emulator are sound, and the code has no way of checking the progress of real time.
 
-Selfie also implements an emulator called *mipster* that just supports RISC-U to keep it simple. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We use mipster throughout the book for a number of reasons. First of all, the design of mipster is educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already saw that mipster is invoked with the `-m` option, for example:
+Selfie also implements an emulator called *mipster* that just supports RISC-U to keep it simple. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We use mipster throughout the book for a number of reasons. First of all, the design of mipster is educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
 
 ```
 ./selfie -c selfie.c -m 1
 ```
 
-...
+
 
 ```
 void run_until_exception() {
