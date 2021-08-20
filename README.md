@@ -3198,13 +3198,13 @@ Well, it is time to celebrate. By now, you have all the information necessary to
 
 ### Emulation
 
-RISC-U code runs on actual RISC-V hardware. If you are interested in seeing how, check out:
+RISC-U code including selfie runs on actual RISC-V hardware. If you are interested in seeing how, check out:
 
 [https://github.com/cksystemsteaching/selfie/tree/main/machine](https://github.com/cksystemsteaching/selfie/tree/main/machine)
 
-Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that simulates actual hardware. For example, RISC-U code runs on the popular emulator [QEMU](https://www.qemu.org).
+Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that simulates actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org).
 
-Selfie also implements an emulator called *mipster* that just supports RISC-U to keep it simple. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We already saw that invoking mipster works by using the `-m` option, for example:
+Selfie also implements an emulator called *mipster* that just supports RISC-U to keep it simple. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We use mipster throughout the book for a number of reasons. First of all, the design of mipster is educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already saw that mipster is invoked with the `-m` option, for example:
 
 ```
 ./selfie -c selfie.c -m 1
