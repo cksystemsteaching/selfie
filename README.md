@@ -212,7 +212,7 @@ or simply:
 make self-self
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. It self-self-compiled. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
 
 Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *Turing-complete*, that is, it is *computationally universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
@@ -1872,7 +1872,7 @@ Suppose we use eight bits, that is, one byte to encode an address in binary. In 
 
 So, in addition to encoding unsigned and signed integers as well as characters in bits, we can encode pointers as memory addresses in unsigned integers. Who would have thought that unsigned integers can not only be used to represent quantities but also structural elements such as pointers, thanks to digital memory? However, properly using pointers and digital memory in general is a major topic in computer science and an important, non-trivial part of any type of coding effort. You might think that 8-bit address spaces are not a big deal, which is true, but today's reality are typically 32-bit and even 64-bit address spaces that feature billions of addresses, even on your smartphone!
 
-Selfie simulates a 32-bit main memory address space and up to 4GB of main memory storage. Try selfie's self-compilation from the selfie chapter:
+Selfie simulates a 32-bit main memory address space and up to 4GB of main memory storage. Try self-compilation as before in the selfie chapter:
 
 ```
 ./selfie -c selfie.c -m 3 -c selfie.c
@@ -3210,15 +3210,30 @@ Selfie also implements an emulator called *mipster* that just supports RISC-U to
 ./selfie -c selfie.c -m 1
 ```
 
-Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates an *instance* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run` and in particular `boot_loader`.
+Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates an *instance* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run` and `boot_loader`.
 
-There are a few points that we should mention here.
+There are a few points that we should mention here. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with a rough estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB instead of 3MB of physical memory:
 
-physical memory
+```
+./selfie -c selfie.c -m 2 -c selfie.c
+```
 
-stack and console arguments
+As mentioned before, selfie reports how much physical memory was actually needed in the last line of the profile summary under mapped memory:
 
-machine context
+```
+...
+./selfie: summary: 377558087 executed instructions [21.85% nops]
+./selfie:          2.40MB allocated in 24200 mallocs
+./selfie:          2.11MB(87.98% of 2.40MB) actually accessed
+./selfie:          2.31MB(115.63% of 2MB) mapped memory
+...
+```
+
+In this case, 2.31MB of the available 2MB of physical memory were needed, that is, mipster tolerated memory usage of 115.63% above the threshold of 2MB.
+
+...stack and console arguments
+
+...machine context
 
 ```
 void run_until_exception() {
