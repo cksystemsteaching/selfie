@@ -1352,7 +1352,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   path_condition = smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context));
   set_path_condition(active_context, path_condition);
 
-  if (get_execution_depth(mergeable_context) > get_execution_depth(active_context))
+  if (get_execution_depth(mergeable_context) < get_execution_depth(active_context))
     set_execution_depth(active_context, get_execution_depth(mergeable_context));
 
   if (get_beq_counter(mergeable_context) < get_beq_counter(active_context))
