@@ -3231,7 +3231,43 @@ As mentioned before, selfie reports how much physical memory was actually needed
 
 In this case, 2.31MB of the available 2MB of physical memory were needed, that is, mipster tolerated memory usage of 115.63% above the threshold of 2MB.
 
-...stack and console arguments
+Another important point we should mention is how console arguments are handled. How does selfie know about the options we use in the terminal?
+
+```
+int main(int argc, char** argv) {
+  ...
+}
+```
+
+```
+argc: 7
+argv: *
+    __|
+   |
+   V
+[  *  ][  *  ][  *  ][  *  ][  *  ][  *  ][  *  ]
+  _|      |_     |      |___   |_     |    __|
+ |          |    |          |    |   |    |
+ V          V    V          V    V   V    V
+"./selfie" "-c" "selfie.c" "-m" "2" "-c" "selfie.c"
+```
+
+```
+argc: 3
+argv: *
+    __|
+   |
+   V
+[  *  ][  *  ][  *  ]
+  _|      |_     |
+ |          |    |
+ V          V    V
+"selfie.c" "-c" "selfie.c"
+```
+
+```
+./selfie -c selfie.c
+```
 
 ...machine context
 
