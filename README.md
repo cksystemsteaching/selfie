@@ -3293,13 +3293,13 @@ argv: *
 "selfie.c" "-c" "selfie.c"
 ```
 
-That run corresponds to invoking selfie as follows:
+which corresponds to invoking selfie as follows:
 
 ```
 ./selfie -c selfie.c
 ```
 
-with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas here `selfie.c` represents RISC-U code compiled from `selfie.c`.
+with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas the occurrence of `selfie.c` before `-c` represents RISC-U code compiled from `selfie.c`.
 
 ...machine context
 
