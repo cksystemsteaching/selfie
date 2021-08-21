@@ -3231,13 +3231,21 @@ As mentioned before, selfie reports how much physical memory was actually needed
 
 In this case, 2.31MB of the available 2MB of physical memory were needed, that is, mipster tolerated memory usage of 115.63% above the threshold of 2MB.
 
-Another important point we should mention is how console arguments are handled. How does selfie know about the options we use in the terminal?
+Another important point we should mention is how console arguments are handled. How does selfie know about the options we use in the terminal? Take a look at the `main` procedure in `selfie.c`:
 
 ```
 int main(int argc, char** argv) {
   ...
 }
 ```
+
+There are two formal parameters `argc` and `argv`. Whenever selfie or any other program written in C is invoked, the console arguments are passed to the `main` procedure as actual parameters of `argc` and `argv`. In particular, the value of `argc` is the number of console arguments including the name of the invoked program and the value of `argv` is a pointer to a contiguous piece of memory or *vector* containing pointers to the strings of the console arguments. The `c` in `argc` stands for counter and the `v` in `argv` stands for vector. For example, invoking selfie as above:
+
+```
+./selfie -c selfie.c -m 2 -c selfie.c
+```
+
+results in the following actual parameters for `argc` and `argv`:
 
 ```
 argc: 7
@@ -3252,6 +3260,26 @@ argv: *
 "./selfie" "-c" "selfie.c" "-m" "2" "-c" "selfie.c"
 ```
 
+Where is all this information stored in memory? On the stack! The procedure `up_load_arguments` in `selfie.c` shows you how. The details are non-trivial and revisited in the tools and computing chapters.
+
+Interestingly, whenever mipster is invoked, say, with `-m 2 -c selfie.c`, the `boot_loader` procedure passes the remaining arguments `-c selfie.c` to the code that mipster is about to execute including the filename of the code which is here `selfie.c`:
+
+```
+argc: 3
+argv: *
+      |________________________
+                               |
+                               V
+[  *  ][  *  ][  *  ][  *  ][  *  ][  *  ][  *  ]
+  _|      |_     |      |___   |_     |    __|
+ |          |    |          |    |    |    |
+ V          V    V          V    |    V    V
+"./selfie" "-c" "selfie.c" "-m"  |   "-c" "selfie.c"
+                 ^_______________|
+```
+
+In fact, the picture is as follows with all obsolete information removed:
+
 ```
 argc: 3
 argv: *
@@ -3265,9 +3293,13 @@ argv: *
 "selfie.c" "-c" "selfie.c"
 ```
 
+That run corresponds to invoking selfie as follows:
+
 ```
 ./selfie -c selfie.c
 ```
+
+with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas here `selfie.c` represents RISC-U code compiled from `selfie.c`.
 
 ...machine context
 
