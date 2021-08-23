@@ -3212,11 +3212,15 @@ Selfie also implements an emulator called *mipster* that just supports RISC-U ba
 ./selfie -c selfie.c -m 1
 ```
 
-Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates an *instance* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run` and `boot_loader`.
+Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates in software an *instance* or *context* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run`, `boot_loader`, and `mipster`.
+
+> Machine context for emulation
+
+Selfie maintains what we call a *machine context* for emulating a RISC-U machine. Look for that term in the source code of selfie. A machine context essentially gathers all information about the state of a RISC-U machine, in particular, the values of all registers and program counter, and the values of all machine words stored in main memory. There is also some concurrency and memory management information that we explain in the computing chapter. The `selfie_run` procedure essentially creates a machine context, then initializes the context by calling the `boot_loader` procedure, and finally executes the context by calling the `mipster` procedure.
 
 > Physical memory of mipster
 
-There are a few points that we should mention here. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with a rough estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB instead of 3MB of physical memory:
+There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with just an estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB rather than 3MB of physical memory:
 
 ```
 ./selfie -c selfie.c -m 2 -c selfie.c
@@ -3311,7 +3315,7 @@ which corresponds to:
 ./selfie -c selfie.c
 ```
 
-with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas the occurrence of `selfie.c` before `-c` in `selfie.c -c selfie.c` represents RISC-U code compiled from `selfie.c`.
+with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas the occurrence of `selfie.c` before `-c` in `selfie.c -c selfie.c` represents RISC-U code compiled from `selfie.c` and then executed by mipster.
 
 How about repeating that pattern? Can we do that? Yes, of course, try:
 
@@ -3320,8 +3324,6 @@ How about repeating that pattern? Can we do that? Yes, of course, try:
 ```
 
 In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a mipster on a mipster. However, this will take a few hours to complete. We explain why below.
-
-> Machine context for emulation
 
 ...
 
