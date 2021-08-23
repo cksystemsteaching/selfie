@@ -3206,21 +3206,21 @@ Well, most of us do not have access to RISC-V hardware, at least not yet. We can
 
 > RISC-U emulation with mipster
 
-Selfie also implements an emulator called *mipster* that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ mipster throughout the book for a number of reasons. First of all, the design of mipster is educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
+Selfie implements an emulator called *mipster* that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ mipster throughout the book for a number of reasons. First of all, the design of mipster is simple and educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
 
 ```
 ./selfie -c selfie.c -m 1
 ```
 
-Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates in software an *instance* or *context* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run`, `boot_loader`, and `mipster`.
+We go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates, in software, an *instance* or *context* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run`, `boot_loader`, and `mipster`.
 
 > Machine context for emulation
 
-Selfie maintains what we call a *machine context* for emulating a RISC-U machine. Look for that term in the source code of selfie. A machine context essentially gathers all information about the state of a RISC-U machine, in particular, the values of all registers and program counter, and the values of all machine words stored in main memory. There is also some concurrency and memory management information that we explain in the computing chapter. The `selfie_run` procedure essentially creates a machine context, then initializes the context by calling the `boot_loader` procedure, and finally executes the context by calling the `mipster` procedure.
+Selfie maintains what we call a *machine context* for emulating a RISC-U machine. Look for that term in the source code of selfie. A machine context essentially gathers all information about the state of a RISC-U machine, in particular, the values of all registers and the program counter, and the values of all machine words stored in main memory. There is also some concurrency and memory management information that we explain in the computing chapter. The `selfie_run` procedure essentially creates a machine context, then initializes the context by calling the `boot_loader` procedure, and finally executes the context by calling the `mipster` procedure.
 
 > Physical memory of mipster
 
-There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with just an estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB rather than 3MB of physical memory:
+There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space but usually much less physical memory. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with just an estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB rather than 3MB of physical memory:
 
 ```
 ./selfie -c selfie.c -m 2 -c selfie.c
@@ -3325,7 +3325,7 @@ How about repeating that pattern? Can we do that? Yes, of course, try:
 
 In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a mipster on a mipster. However, this will take a few hours to complete. We explain why below.
 
-...
+Let us focus on code execution now. After creating and booting a new machine context in the `selfie_run` procedure, the `mipster` procedure is invoked. The details of that procedure are not important here. What matters is that `mipster` invokes ...
 
 ```
 void run_until_exception() {
