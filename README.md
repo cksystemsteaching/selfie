@@ -3204,6 +3204,8 @@ RISC-U code including selfie runs on actual RISC-V hardware. If you are interest
 
 Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that mimics actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org). By the way, the difference between *emulation* and *simulation* is important. Emulation *reproduces* exact functionality (but not performance) whereas simulation *approximates* behavior. Both methods are usually slower than the real thing but there are ways to make them faster. For example, an emulator typically uses interpretation, which is slow, but can also use compilation by translating at least parts of the code to machine code that can run directly on the machine without interpretation (in software). QEMU does that. In any case, it is impossible for any code to know if it is running on hardware or an emulator, assuming hardware and emulator are sound, and the code has no way of checking the progress of real time.
 
+> RISC-U emulation with mipster
+
 Selfie also implements an emulator called *mipster* that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ mipster throughout the book for a number of reasons. First of all, the design of mipster is educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
 
 ```
@@ -3211,6 +3213,8 @@ Selfie also implements an emulator called *mipster* that just supports RISC-U ba
 ```
 
 Let us go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates an *instance* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run` and `boot_loader`.
+
+> Physical memory of mipster
 
 There are a few points that we should mention here. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with a rough estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB instead of 3MB of physical memory:
 
@@ -3230,6 +3234,8 @@ As mentioned before, selfie reports how much physical memory was actually needed
 ```
 
 In this case, 2.31MB of the available 2MB of physical memory were needed, that is, mipster tolerated memory usage of 115.63% above the threshold of 2MB.
+
+> Console arguments of selfie
 
 Another important point we should mention is how console arguments are handled. How does selfie know about the options we use in the terminal? Take a look at the `main` procedure in `selfie.c`:
 
@@ -3315,7 +3321,9 @@ How about repeating that pattern? Can we do that? Yes, of course, try:
 
 In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a mipster on a mipster. However, this will take a few hours to complete. We explain why below.
 
-...machine context
+> Machine context for emulation
+
+...
 
 ```
 void run_until_exception() {
