@@ -3325,7 +3325,9 @@ How about repeating that pattern? Can we do that? Yes, of course, try:
 
 In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a mipster on a mipster. However, this will take a few hours to complete. We explain why below.
 
-Let us focus on code execution now. After creating and booting a new machine context in the `selfie_run` procedure, the `mipster` procedure is invoked. The details of that procedure are not important here. What matters is that `mipster` invokes ...
+> The core
+
+Let us focus on code execution now. After creating and booting a new machine context in the `selfie_run` procedure, the `mipster` procedure is invoked to execute the code in that context. The details of the `mipster` procedure are not yet important. The only thing that matters here is that `mipster` invokes, via the procedure `mipster_switch`, the RISC-U interpreter implemented by the procedure `run_until_exception`:
 
 ```
 void run_until_exception() {
@@ -3342,6 +3344,14 @@ void run_until_exception() {
   trap = 0;
 }
 ```
+
+This procedure represents the *core* of a RISC-U processor. It does exactly what a real processor core does. It *fetches* an instruction from memory, *decodes* the instruction into opcode and arguments, and then *executes* the instruction, before fetching the next instruction, and so on, never mind the *interrupt* here. The only way to leave the `while` loop is when an *exception* occurs, as the name of the procedure suggests. Whenever this happens, `mipster` takes over and handles the situation, either to return here, or else terminate.
+
+> Exceptions!
+
+An exception may occur for a number of reasons, for example, when a division by zero or an attempt to access memory at an invalid address happens. An `ecall` instruction also causes an exception which is then handled by `mipster` as well. The exact details of exception handling are discussed in the computing chapter. For now, take a look at the procedures `fetch`, `decode`, and `execute` in the selfie source code to get a better idea of how RISC-U emulation works.
+
+The 14 RISC-U instructions are implemented by procedures prefixed `do_`. Those procedures define the exact semantics of the instructions. As example, consider the procedure `do_lui` which implements the `lui` instruction:
 
 ```
 void do_lui() {
@@ -3367,6 +3377,8 @@ void do_lui() {
   ic_lui = ic_lui + 1;
 }
 ```
+
+Most of the code is actually for profiling...
 
 ```
 make debug
