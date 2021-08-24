@@ -3384,11 +3384,13 @@ void do_lui() {
 
 Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The global variable `ic_lui` (`nopc_lui`) counts the number of times a `lui` instruction has been executed (without effect).
 
-...
+For all instructions, there are also procedures prefixed `print_` which are used by selfie's debugger and disassembler for printing instructions. Moreover, selfie's debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively, for example, by running:
 
 ```
 make debug
 ```
+
+...
 
 ```
 make replay
