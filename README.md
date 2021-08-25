@@ -3384,17 +3384,27 @@ void do_lui() {
 
 Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The global variable `ic_lui` (`nopc_lui`) counts the number of times a `lui` instruction has been executed (without effect).
 
-For all instructions, there are also procedures prefixed `print_` which are used by selfie's debugger and disassembler for printing instructions. Moreover, selfie's debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively, for example, by running:
+For all instructions, there are also procedures prefixed `print_` which are used by selfie's debugger and disassembler for printing instructions. Moreover, selfie's debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively. Studying those procedures is recommended to deepen your understanding of the semantics of each instruction. There is also an easy way to invoke the debugger on a simple example, just try:
 
 ```
 make debug
 ```
 
-...
+There is one more thing before we move on. Selfie's mipster supports *replay* using the option `-r` instead of `-m`: Try, for example:
 
 ```
 make replay
 ```
+
+During code execution, rather than printing all executed instructions with the debugger, replay only prints the last, say, 100 executed instructions *before* running into an error such as division by zero. But how is this possible without knowing when such an error occurs? Well, if replay is enabled, mipster *records*, during code execution, information about the last 100 executed instructions. Turns out, for this purpose, it is enough to record just the current program counter value and the possibly affected register value or machine word in memory *before* executing an instruction. In particular, mipster neither needs to record the rest of the *context* in which an instruction runs, that is, the part of the machine state the instruction just reads from, nor the *effect* of the instruction on the machine state.
+
+> The inverse semantics of instructions
+
+In short, mipster only records what an instruction overwrites. Suppose mipster encounters a division by zero. In this case, it looks up the most recently updated program counter value to determine which instruction had been executed right before the division. Then, mipster re-executes that instruction but this time using its *inverse* semantics which is implemented in procedures prefixed `undo_` rather than `do_`. This puts the machine back into the state right before executing the instruction. After that, mipster just applies that routine to the remaining 99 recorded instructions in the reverse order of how they were recorded. When done, mipster replays code execution, this time printing each executed instruction like the debugger, until it hits division by zero again.
+
+> A RISC-U machine is deterministic
+
+Replay is always possible because a RISC-U machine is *deterministic*. This means that, for the same input, a RISC-U machine always produces the same output. We implemented replay in selfie and explained it here because of its educational value. Determinism is a strong property and important to know about. However, real computers often show behavior that appears to be non-deterministic such as a software bug that only shows up once in a while. Nevertheless, non-determinism is not the root cause of that, at least as long as the machine is not broken. The root cause is in the software and the input to the machine ultimately triggers the bugs. This is problematic since there is usually a lot of input to a computer such as network and disc traffic but also non-recurring input such as the time of day.
 
 ### Algorithms
 
