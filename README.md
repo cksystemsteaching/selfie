@@ -42,16 +42,15 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 4.18. Recommended Readings
 
 5. Machine
-5.1 Model
+5.1. Model
 5.2. Processor
 5.3. Memory
 5.4. Input/Output
 5.5. Instructions
 5.6. Emulation
-5.7. Algorithms
-5.8. Performance
-5.9. Life
-5.10. Recommended Readings
+5.7. Performance
+5.8. Life
+5.9. Recommended Readings
 
 6. Programming
 6.1. Variable
@@ -3406,23 +3405,25 @@ In short, mipster only records what an instruction overwrites. Suppose mipster e
 
 Replay is always possible because a RISC-U machine is *deterministic*. This means that, for the same input, a RISC-U machine always produces the same output. We implemented replay in selfie and explained it here because of its educational value. Determinism is a strong property and important to know about. However, real computers often show behavior that appears to be non-deterministic such as a software bug that only shows up once in a while. Nevertheless, non-determinism is not the root cause of that, at least as long as the machine is not broken. The root cause is in the software and the input to the machine ultimately triggers the bugs. This is problematic since there is usually a lot of input to a computer such as network and disc traffic but also non-recurring input such as the time of day.
 
-### Algorithms
+So far, we have pretty much ignored performance. However, performance does matter! Let us focus on that now.
+
+### Performance
+
+Performance is important in computer science, even on an introductory level. How much time, memory, and energy does a program need to run? How do we measure that? To which extent does that depend on the machine that executes the program? In other words, can we predict performance? We already heard about algorithmic complexity in that context. We clarify the connection here in more detail.
+
+...
+
+| Performance | Unit |
+| ----------- | ---- |
+| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
+|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
+| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
+| efficiency  | operations/joule, MIPS/watt, FLOPS/watt |
 
 ```
 make os
 ```
-
-### Performance
-
-[//]: # (| Performance | Unit |)
-[//]: # (| ----------- | ---- |)
-[//]: # (| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |)
-[//]: # (|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |)
-[//]: # (| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |)
-[//]: # (| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |)
-[//]: # (| efficiency  | operations/joule |)
-[//]: # (|             | MIPS/watt |)
-[//]: # (|             | FLOPS/watt |)
 
 ### Life
 
