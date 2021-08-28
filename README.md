@@ -3423,6 +3423,12 @@ Performance is important in computer science, even on an introductory level. How
 | power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
 | efficiency  | operations/joule, MIPS/watt, FLOPS/watt |
 
+![Performance](figures/performance.png "Performance")
+
+![Algorithmic Complexity](figures/complexity.png "Algorithmic Complexity")
+
+![Constants](figures/constants.png "Constants")
+
 ```
 make os
 ```
