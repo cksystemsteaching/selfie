@@ -2043,7 +2043,13 @@ As usual, digital *audio* is yet another sequence of bytes, usually by far not a
 
 ![Audio encoded with 8-bit bit depth and stored contiguously in memory sample by sample](figures/audio.png "Audio")
 
-So, how often do we have to take a sample? In other words, the question is what an adequate *sampling rate* is, in analogy to the frame rate of video. Well, it depends on the highest frequency we would like to capture. Humans can typically hear frequencies between around 20Hz and 20kHz where Hz stands for cycles per second and is an abbreviation of *Hertz*, the name of a famous physicist. The prefixes kilo, mega, and giga in Hz are in base 10. According to the famous *Nyquist-Shannon sampling theorem*, we need to sample at twice the rate of the highest frequency we would like to capture in order to be able to reconstruct that frequency and all lower frequencies from our samples without any loss of information. So, it is 40kHz then. Well, for legacy reasons, the slightly higher frequency of 44.1kHz was chosen for Audio CDs, for example, and subsequently for audio formats such as MP3 as well.
+So, how often do we have to take a sample? In other words, the question is what an adequate *sampling rate* is, in analogy to the frame rate of video. Well, it depends on the highest frequency we would like to capture. Humans can typically hear frequencies between around 20Hz and 20kHz where Hz stands for cycles per second and is an abbreviation of *Hertz*, the name of a famous physicist. The prefixes kilo, mega, and giga in Hz are in base 10:
+
+| Unit              | Prefix |
+| ----------------- | ------ |
+| cycles per second ([Hertz,Hz](https://en.wikipedia.org/wiki/Hertz "Hertz"))                   | 1 kilohertz (kHz) = 1000Hz = 10^3^Hz, 1 megahertz (MHz) = 10^6^Hz, 1 gigahertz (GHz) = 10^9^Hz, ... |
+
+According to the famous *Nyquist-Shannon sampling theorem*, we need to sample at twice the rate of the highest frequency we would like to capture in order to be able to reconstruct that frequency and all lower frequencies from our samples without any loss of information. So, it is 40kHz then. Well, for legacy reasons, the slightly higher frequency of 44.1kHz was chosen for Audio CDs, for example, and subsequently for audio formats such as MP3 as well.
 
 Together with the bit depth used for Audio CDs, for example, which is 16 bits encoding a 16-bit signed integer, we can now calculate the *bit rate* at which audio from CDs is encoded and decoded, again in analogy to the bit rate of video. Just calculate 44.1Hz, that is, 44100Hz times 16B times 2 (because of stereo!) which is 1,411,200 bits per second or around 1.4mbps. This is quite high but remember the bit rate of 5.9gbps necessary for 4K video! Well, there are audio formats that provide even higher quality than CDs, of course, with higher sampling rates and bit depth of even 24 bits. But those still do not reach the typical bit rates of video.
 
@@ -3437,6 +3443,10 @@ While reporting execution time and memory consumption in seconds and bytes, resp
 Intuitively, *throughput* refers to an amount of work done per second, whatever that work might be. For example, instruction throughput refers to the number of instructions a processor can execute per second. MIPS is a popular metric for that. The problem is that different instructions may take different time to execute, and even the same instruction may take different time depending on the machine context in which it executes. FLOPS are an attempt to address that issue by focusing on a subset of instructions such as special instructions for floating-point arithmetic. We could also just state processor speed in terms of the frequency at which the processor circuit is clocked to synchronize its components, say, in billion cycles per second or GHz. Clock frequency used to be a good metric when processors took a fixed amount of cycles to execute an instruction. However, this is not the case anymore with many modern processors. Processor efficiency may be stated in MIPS/watt or FLOPS/watt with similar issues regarding relevance.
 
 > Efficiency
+
+...
+
+> Throughput versus latency
 
 ...
 
