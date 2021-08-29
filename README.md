@@ -3411,9 +3411,15 @@ It is time to summarize what we have seen so far before focusing a bit on perfor
 
 ### Performance
 
-Performance is important in computer science, even on an introductory level. How much time, memory, and energy does a program need to run? How do we measure that? To which extent does that depend on the machine that executes the program? In other words, can we predict performance? We already heard about algorithmic complexity in that context. We clarify the connection here in more detail.
+Performance is important in computer science! How much time, space (memory), and energy does a program need to run? How do we *measure* that? To which extent does that depend on the machine that executes the program? In other words, can we *predict* performance? We already heard about algorithmic complexity in that context. We discuss all that here in more detail.
 
-...
+> Benchmarking
+
+First of all, we need to clarify whether we are interested in the performance of hardware or software, in *relative* or *absolute* terms of time, space, or energy consumption. For this purpose, computer scientists design *benchmarks* which are typically collections of programs or tests to measure the performance of hardware and software. *Benchmarking* is the process of running those programs or tests and measuring the resulting resource consumption.
+
+Whether some hardware or software is actually faster and uses less memory and energy than some other hardware or software also depends on the benchmark and not just the compared artifacts. Benchmarks are therefore often claimed to be representative for certain use cases to increase *relevance*.
+
+The other issue with benchmarking is *reproducibility*.
 
 | Performance | Unit |
 | ----------- | ---- |
