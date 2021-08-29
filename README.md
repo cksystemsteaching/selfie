@@ -3415,25 +3415,42 @@ Performance is important in computer science! How much time, space (memory), and
 
 > Benchmarking
 
-First of all, we need to clarify whether we are interested in the performance of hardware or software, in *relative* or *absolute* terms of time, space, or energy consumption. For this purpose, computer scientists design *benchmarks* which are typically collections of programs or tests to measure the performance of hardware and software. *Benchmarking* is the process of running those programs or tests and measuring the resulting resource consumption.
+First of all, we need to clarify whether we are interested in the performance of hardware or software, in *relative* or *absolute* terms of time, space, or energy consumption. For this purpose, computer scientists design *benchmarks* which are typically collections of programs or tests to measure the performance of hardware and software. *Benchmarking* is the process of running those programs or tests and measuring the resulting resource consumption. Whether some hardware or software is actually faster and uses less memory and energy than some other hardware or software also depends on the benchmark and not just the compared artifacts. Benchmarks are therefore often claimed to be representative for certain use cases to increase *application relevance*.
 
-Whether some hardware or software is actually faster and uses less memory and energy than some other hardware or software also depends on the benchmark and not just the compared artifacts. Benchmarks are therefore often claimed to be representative for certain use cases to increase *relevance*.
+> Reproducibility
 
-The other issue with benchmarking is *reproducibility*.
+The other issue with benchmarking is *reproducibility*. For example, even though computers are deterministic machines, running the same program multiple times on the same machine may result in different execution times. This is because running a program usually requires running other software such as an operating system which also takes time depending on the machine context in which it runs. Therefore, serious benchmarking usually requires repetition to increase *statistical relevance* as well as full disclosure of all hardware and software involved in a benchmark to enable reproducibility.
+
+> Metrics
+
+While reporting execution time and memory consumption in seconds and bytes, respectively, is easy, reporting hardware characteristics such as processor speed and efficiency in *instruction throughput* and *energy efficiency* is harder. A few of the most popular metrics are here:
 
 | Performance | Unit |
 | ----------- | ---- |
 | throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
-|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+|             | floating-point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+| frequency   | processor cycles per second ([Hertz,Hz](https://en.wikipedia.org/wiki/Hertz "Hertz")) |
 | energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
 | power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
 | efficiency  | operations/joule, MIPS/watt, FLOPS/watt |
+
+Intuitively, *throughput* refers to an amount of work done per second, whatever that work might be. For example, instruction throughput refers to the number of instructions a processor can execute per second. MIPS is a popular metric for that. The problem is that different instructions may take different time to execute, and even the same instruction may take different time depending on the machine context in which it executes. FLOPS are an attempt to address that issue by focusing on a subset of instructions such as special instructions for floating-point arithmetic. We could also just state processor speed in terms of the frequency at which the processor circuit is clocked to synchronize its components, say, in billion cycles per second or GHz. Clock frequency used to be a good metric when processors took a fixed amount of cycles to execute an instruction. However, this is not the case anymore with many modern processors. Processor efficiency may be stated in MIPS/watt or FLOPS/watt with similar issues regarding relevance.
+
+> Efficiency
+
+...
+
+> Lower and upper bounds
+
+...
 
 ![Performance](figures/performance.png "Performance")
 
 ![Algorithmic Complexity](figures/complexity.png "Algorithmic Complexity")
 
 ![Constants](figures/constants.png "Constants")
+
+> Emulation
 
 ```
 make os
