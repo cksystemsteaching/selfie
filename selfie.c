@@ -8159,7 +8159,7 @@ void print_cache_profile(uint64_t hits, uint64_t misses, char* cache_name) {
   accesses = hits + misses;
 
   printf("%s: %s%lu,", selfie_name, cache_name, accesses);
-  printf("%lu(%lu.%2lu%%),%lu(%lu.%2lu%%)",
+  printf("%lu(%lu.%.2lu%%),%lu(%lu.%.2lu%%)",
     hits,
     percentage_format_integral_2(accesses, hits),
     percentage_format_fractional_2(accesses, hits),
