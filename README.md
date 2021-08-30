@@ -3440,13 +3440,13 @@ While reporting execution time and memory consumption in seconds and bytes, resp
 | power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
 | efficiency  | operations/joule, MIPS/watt, FLOPS/watt |
 
-Intuitively, *throughput* refers to an amount of work done per second, whatever that work might be. For example, instruction throughput refers to the number of instructions a processor can execute per second. MIPS is a popular metric for that, and not to be confused with the MIPS ISA. The problem is that different instructions may take different time to execute, and even the same instruction may take different time to execute depending on the machine context in which it executes. FLOPS are an attempt to address that issue by focusing on a subset of instructions such as special instructions for floating-point arithmetic.
+Intuitively, *throughput* refers to an amount of work done per second, whatever that work might be. For example, instruction throughput refers to the number of instructions a processor can execute per second. MIPS is a popular metric for that, and not to be confused with the MIPS ISA. The problem is that different instructions and even the same instruction may take different time to execute, the latter depending on the machine context in which it executes. FLOPS are an attempt to address that issue by focusing on a subset of instructions such as special instructions for floating-point arithmetic.
 
-We could also just state processor speed in terms of the frequency at which the processor circuit is clocked to synchronize its components, say, in billion cycles per second or GHz. Clock frequency used to be a good metric when processors took a fixed amount of cycles to execute an instruction. However, this is not the case anymore with many modern processors. Processor efficiency may be stated in MIPS/watt or FLOPS/watt with similar issues regarding relevance.
+We could also just state processor speed in terms of the frequency at which the processor circuit is clocked to synchronize its components, say, in billion cycles per second (GHz). Clock frequency used to be a reasonable metric when processors took a fixed amount of cycles to execute an instruction. However, this is not the case anymore with most modern processors. Processor efficiency may be stated in MIPS/watt or FLOPS/watt with similar issues regarding relevance. Energy consumption and efficiency is generally even harder to describe accurately than temporal and spatial characteristics because of its dependency on the full details of an electronic circuit.
 
-> Efficiency
+> Time versus space versus energy
 
-...
+When it comes to performance, just like in other disciplines, *there is no such thing as a free lunch* in computer science. Making something faster usually takes more energy and possibly more memory as well as more code and circuit complexity too. Nowadays, hardware design often begins with a power budget that dictates all other decisions. For mobile devices this means that everything is designed around the battery. Even software design cannot ignore memory and in particular power consumption anymore. The important lesson to learn here is to be cautious with any performance improvements without knowing the price you pay. For example, improvements in processor speed have increased complexity to an extent that correctness is extremely hard to establish, possibly resulting even in safety and security issues.
 
 > Throughput versus latency
 
