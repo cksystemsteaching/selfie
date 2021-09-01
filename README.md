@@ -3452,7 +3452,9 @@ When it comes to performance, [there is no such thing as a free lunch](https://e
 
 > Caches
 
-While we largely stay away from covering performance optimizations in this book, we should still mention that selfie supports the simulation of *Level 1 (L1) instruction and data caches* in mipster which are a key component in any modern processor and a beautiful example of a time-space-energy tradeoff. With an L1 instruction cache, every time the CPU fetches an instruction it first searches the cache if it contains the instruction already and, if yes, takes it from there. This is called a *cache hit* which is much faster than accessing main memory. However, if the instruction is not in the cache, it is indeed fetched from main memory and only then transferred to the CPU and stored in the cache for future access. This is called a *cache miss* which is slower than accessing main memory but not by as much as a cache hit is faster. The same applies to data caches which are used by load and store operations.
+While we largely stay away from covering performance optimizations in this book, we should still mention that selfie supports the simulation of *Level 1 (L1) instruction and data caches* in mipster which are a key component in any modern processor and a beautiful example of a time-space-energy tradeoff. Such caches aim at reducing the effects of the von Neumann bottleneck.
+
+With an L1 instruction cache, every time the CPU fetches an instruction it first searches the cache if it contains the instruction already and, if yes, takes it from there. This is called a *cache hit* which is much faster than accessing main memory. However, if the instruction is not in the cache, it is indeed fetched from main memory and only then transferred to the CPU and stored in the cache for future access. This is called a *cache miss* which is slower than accessing main memory but not by as much as a cache hit is faster. The same applies to data caches which are used by load and store operations.
 
 > Least recently used
 
@@ -3494,9 +3496,13 @@ In the presence of locality, caches increase instruction throughput. However, th
 
 > Lower and upper bounds
 
-...
+When it comes to performance there is one innovation that is incredibly useful to *predict* rather than *measure* performance and thereby minimize its dependency on hardware including any optimizations. It is called *algorithmic complexity*, also called *asymptotic complexity*. We mentioned this concept in the language chapter already. Consider the following performance graph:
 
 ![Performance](figures/performance.png "Performance")
+
+The graph shows the actual performance (y-axis) of a program running on some hardware and inputs of increasing size (x-axis). Performance may be execution time, memory consumption, or even power consumption. Input size may be measured in bytes, for example. What would it take to predict instead of measure that performance? Well, we need two ingredients plus some ingenuity for abstraction. But first the idea.
+
+The first ingredient is...
 
 ![Algorithmic Complexity](figures/complexity.png "Algorithmic Complexity")
 
