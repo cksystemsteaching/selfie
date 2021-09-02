@@ -3500,7 +3500,9 @@ When it comes to performance there is one innovation that is incredibly useful t
 
 ![Performance](figures/performance.png "Performance")
 
-The graph shows the actual performance (y-axis) of a program running on some hardware and inputs of increasing size (x-axis). Performance may be execution time, memory consumption, or even power consumption. Input size may be measured in bytes, for example. What would it take to predict instead of measure that performance? Well, we need two ingredients plus some ingenuity for abstraction. But first the idea.
+The graph shows the actual performance (y-axis) of a program running on some hardware, and inputs of increasing size (x-axis). Performance may be execution time, memory consumption, or any other metric related to the cost of running the program. Input size may be measured in bytes, for example.
+
+What would it take to predict instead of measuring that performance? Well, we need two ingredients plus some ingenuity for abstraction. But first the idea. What if we could find a *lower* and an *upper bound* at least on the amount of *work*, whatever it is, involved in running a program on input of increasing size? That means we need a metric for measuring amount of work. How about the number of *steps* involved in getting the work done? For example, the above performance graph shows that running the program takes at least as many steps *n* and at most as many steps *n^2^* for all inputs that are at least of size *n > n_0* where n is the number of bytes encoding the input. In that case, we also say that the algorithmic complexity of the program is n square, and no less than linear in n, where n is the size of the input. By the way, *n_0* is there because it allows us to ignore the *cost* of running programs on small inputs which may anyway be irrelevant and too hard to predict. Once we are able to do all that we can compare programs or, in fact, algorithms in terms of their algorithmic complexity, or predicted performance. This is very important! Okay, again, what does it take to be able to do that?
 
 The first ingredient is...
 
