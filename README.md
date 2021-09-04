@@ -3512,17 +3512,27 @@ It shows the most important types of algorithmic complexity which help us catego
 
 Also, logarithmic growth is the inverse of exponential growth. The cost of running an algorithm with exponential complexity at least *doubles* with each increment in input size whereas seeing an increment in the cost of running an algorithm with logarithmic complexity requires at least *doubling* the input size. Exponential growth is very fast, especially on larger inputs. Logarithmic growth is very slow, again, especially on larger inputs. Finally, the *O* above is called *Big O* and stands for *Ordnung*, the German word for order. Big O represents upper bounds on complexity while the Greek letter *Omega* called *Big Omega*, not shown here, represents lower bounds.
 
+> Time and space complexity
+
 Okay, again, what does it take to be able to do all that? The first ingredient is an assumption on what exactly a *step of work* is. We need to find a *constant* relationship between step and time, or step and space, or even step and energy. Algorithmic complexity typically refers to *time complexity* by associating a single step of work with a single machine instruction assuming that executing a machine instruction takes constant time. Thus understanding algorithmic complexity requires understanding some machine model, just like the one we introduced here. We get back to that point for even deeper understanding right below. Also, algorithmic complexity may refer to *space complexity* by associating a single step of work with a constant amount of memory, say, one byte. Understanding that requires understanding a memory model, again, just like the one we introduced here.
 
-The second ingredient is the Big-O and Big-Omega notation. For example, *O(n)* actually represents *all* functions that *asymptotically* grow slower than or equal to *any* linear function *n* times some constant *k*, and not just *n*. In other words, as mentioned above, Big-O notation serves as upper bound on complexity. Symmetrically, Big-Omega notation represents all functions that *asymptotically* grow faster than or equal to the given function times some constant *k*, and therefore serves as lower bound. There is also *Big-Theta* notation using the Greek letter *Theta* which represents the complexity of algorithms whose upper and lower bounds are known to be the same.
+> Big-O notation
+
+The second ingredient is the Big-O and Big-Omega notation. For example, *O(n)* actually represents *all* functions that *asymptotically* grow slower than or equal to *any* linear function *n* times some constant factor *k*, and not just *n*. In other words, as mentioned above, Big-O notation serves as upper bound on complexity. Symmetrically, Big-Omega notation represents all functions that *asymptotically* grow faster than or equal to the given function times some constant factor *k*, and therefore serves as lower bound. There is also *Big-Theta* notation using the Greek letter *Theta* which represents the complexity of algorithms whose upper and lower bounds are known to be the same.
+
+> Constant factors
 
 However, keep in mind that the constant factors *k* in Big-O and Big-Omega notation may very well play an important role in actual performance, at least on smaller inputs. Consider the following performance graph:
 
 ![Constants](figures/constants.png "Constants")
 
-Suddenly, the world seems to be upside down. Up to input sizes of *s_0*, the program with exponential complexity is in fact the fastest program while the program with constant complexity is the slowest, with all others in between. The lesson to be learned here is that if there are algorithms with different algorithmic complexity that solve the same problem, the algorithm with the best complexity may not always be the best choice. That also depends on the workload, that is, the input size that the program will be running on in practice.
+Suddenly, the world seems to be upside down. Up to input sizes of *s_0*, the program with exponential complexity is in fact the fastest program while the program with constant complexity is the slowest, with all others in between. The lesson to be learned here is that if there are algorithms with different algorithmic complexity that solve the same problem, the algorithm with the best complexity may not always be the best choice. That also depends on the workload, that is, the input size that the program will be running on in practice. Nevertheless, algorithmic complexity is an important tool for abstracting code into a simple formula that captures a key property. In the tools and computing chapters we hear more about how to come up with the algorithmic complexity of an algorithm.
 
-> Complexity classes
+> Two ways to make things faster, really faster
+
+Algorithmic complexity holds the key to make things faster, and by that we mean fundamentally faster, not just by a constant factor but in terms of, well, algorithmic complexity. There are only two ways which may be combined as well. Firstly, we may be able to improve algorithms in such a way that they get better upper and lower bounds, sometimes at the expense of space complexity or vice versa but not necessarily. A lot of computer scientists are doing just that. Secondly, we may be able to invent new hardware that can perform in a single step a non-constant amount of work of our old hardware. While this may not be possible in general for all types of algorithms, it may still be possible for some. Quantum computers are a promising example of that.
+
+> Virtualization
 
 ```
 make os
