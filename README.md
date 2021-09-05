@@ -3540,7 +3540,35 @@ While less ambitious, improving constant factors in hardware and software perfor
 make os
 ```
 
+This runs a mipster instance, say, *S* on another mipster instance, say, *H*, just to run selfie on *S* without console arguments making selfie print its synopsis. In particular, selfie first starts *H*, then loads its code onto *H*, then starts *S* on *H*, then loads its code onto *S*, and finally starts its code on *S* without any remaining console arguments. The relevant output is:
+
+```
 ...
+synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+...
+selfie.m: selfie terminating selfie.m with exit code 0
+...
+selfie.m: summary: 59944 executed instructions [22.31% nops]
+selfie.m:          0.00MB allocated in 6 mallocs
+selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
+selfie.m:          0.19MB(19.92% of 1MB) mapped memory
+...
+./selfie: selfie terminating selfie.m with exit code 0
+...
+./selfie: summary: 157685408 executed instructions [18.28% nops]
+./selfie:          2.59MB allocated in 27 mallocs
+./selfie:          1.78MB(68.77% of 2.59MB) actually accessed
+./selfie:          1.98MB(99.22% of 2MB) mapped memory
+...
+```
+
+Selfie took 59944 RISC-U instructions running on mipster instance *S* to print its synopsis. We have seen that number before. But then check this out. The mipster instance *H* executed 157,685,408 RISC-U instructions to run selfie on *S*. This means that, on average, *H* executed around 2630 instructions just so that *S* executes a single instruction. In other words, on average, mipster takes, at least on this workload, around 2630 RISC-U instructions to implement a single RISC-U instruction, and around 1.78MB of memory. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
+
+What if we stack even more mipsters onto each other just to see what happens? On my laptop I tried three mipsters:
+
+```
+./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
+```
 
 ### Life
 
