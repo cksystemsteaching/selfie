@@ -3537,10 +3537,22 @@ Algorithmic complexity holds the key to make things faster, and by that we mean 
 While less ambitious, improving constant factors in hardware and software performance is still very important and may also be extremely difficult. Depending on the improvement, even new applications are possible as well. Try the following in your terminal:
 
 ```
+./selfie -c selfie.c -o selfie.m
+```
+
+followed by:
+
+```
+./selfie -l selfie.m -m 2 -l selfie.m -m 1
+```
+
+or, equivalently, just try:
+
+```
 make os
 ```
 
-This runs a mipster instance, say, *S* on another mipster instance, say, *H*, just to run selfie on *S* without console arguments making selfie print its synopsis. In particular, selfie first starts *H*, then loads its code onto *H*, then starts *S* on *H*, then loads its code onto *S*, and finally starts its code on *S* without any remaining console arguments. The relevant output is:
+This runs a mipster instance, say, *S* on another mipster instance, say, *H*, just to run selfie on *S* without console arguments making selfie print its synopsis. In particular, selfie first *loads* its RISC-U implementation in `selfie.m` using the `-l selfie.m` option and then starts *H* using the `-m 2` option to execute `selfie.m`. Then, `selfie.m` running on *H* loads itself and then starts *S* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *S* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
@@ -3562,13 +3574,17 @@ selfie.m:          0.19MB(19.92% of 1MB) mapped memory
 ...
 ```
 
-Selfie took 59944 RISC-U instructions running on mipster instance *S* to print its synopsis. We have seen that number before. But then check this out. The mipster instance *H* executed 157,685,408 RISC-U instructions to run selfie on *S*. This means that, on average, *H* executed around 2630 instructions just so that *S* executes a single instruction. In other words, on average, mipster takes, at least on this workload, around 2630 RISC-U instructions to implement a single RISC-U instruction, and around 1.78MB of memory. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
+Selfie took 59944 RISC-U instructions and 0.19MB memory on mipster instance *S* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to run *S*. This means that, on average, *H* executed around 2630 instructions just so that *S* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
 
-What if we stack even more mipsters onto each other just to see what happens? On my laptop I tried three mipsters:
+What if we stack even more mipsters onto each other just to see what happens? On my laptop, I tried three mipsters as follows:
 
 ```
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
+
+This took a few hours to complete, as opposed to a few seconds for `make os`.
+
+...
 
 ### Life
 
