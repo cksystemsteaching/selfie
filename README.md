@@ -3549,10 +3549,10 @@ followed by:
 or, equivalently, just try:
 
 ```
-make os
+make emu
 ```
 
-This runs a mipster instance, say, *S* on another mipster instance, say, *H*, just to run selfie on *S* without console arguments making selfie print its synopsis. In particular, selfie first *loads* its RISC-U implementation in `selfie.m` using the `-l selfie.m` option and then starts *H* using the `-m 2` option to execute `selfie.m`. Then, `selfie.m` running on *H* loads itself and then starts *S* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *S* prints the synopsis of selfie. The relevant output is:
+This runs or *hosts* a mipster instance, say, *U* on another mipster instance, say, *H*, just to run selfie on *U* without console arguments making selfie print its synopsis. In particular, selfie first *loads* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then starts *H* using the `-m 2` option to execute `selfie.m`. Next, `selfie.m` running on *H* loads itself and then starts *U* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *U* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
@@ -3574,7 +3574,7 @@ selfie.m:          0.19MB(19.92% of 1MB) mapped memory
 ...
 ```
 
-Selfie took 59944 RISC-U instructions and 0.19MB memory on mipster instance *S* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to run *S*. This means that, on average, *H* executed around 2630 instructions just so that *S* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
+Selfie took 59944 RISC-U instructions and 0.19MB memory on mipster instance *U* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to host *U*. This means that, on average, *H* executed around 2630 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
 
 What if we stack even more mipsters onto each other just to see what happens? On my laptop, I tried three mipsters as follows:
 
@@ -3582,9 +3582,35 @@ What if we stack even more mipsters onto each other just to see what happens? On
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
-This took a few hours to complete, as opposed to a few seconds for `make os`.
+This took a few hours to complete, as opposed to a few seconds for the two mipsters with `make emu`. In fact, the mipster instance that hosted the other two mipster instances executed 339,454,590,487 RISC-U instructions to do it. Looks like with each mipster instance the number of executed instructions increases by three orders of magnitude. Here, from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, here in the number of mipster instances, and even if we optimized mipster such that executing a single instruction would take only two instructions there would be exponential growth.
 
 ...
+
+```
+./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
+```
+
+```
+...
+synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+...
+selfie.m: selfie terminating selfie.m with exit code 0
+...
+selfie.m: summary: 59944 executed instructions [22.31% nops]
+selfie.m:          0.00MB allocated in 6 mallocs
+selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
+selfie.m:          0.19MB(19.92% of 1MB) mapped memory
+...
+selfie.m: selfie terminating selfie.m with exit code 0
+...
+./selfie: selfie terminating selfie.m with exit code 0
+...
+./selfie: summary: 201139441 executed instructions [18.81% nops]
+./selfie:          3.59MB allocated in 28 mallocs
+./selfie:          2.28MB(63.56% of 3.59MB) actually accessed
+./selfie:          2.49MB(124.81% of 2MB) mapped memory
+...
+```
 
 ### Life
 
