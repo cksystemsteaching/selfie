@@ -50,10 +50,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2 all
+.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2
+all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt mod btor2
 
 # Self-compile selfie
 self: selfie
@@ -82,8 +82,12 @@ replay: selfie
 	./selfie -c examples/division-by-zero.c -r 1
 
 # Run emulator on emulator
-os: selfie.m
+emu: selfie.m
 	./selfie -l selfie.m -m 2 -l selfie.m -m 1
+
+# Run hypervisor between emulators
+os: selfie.m
+	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
 
 # Self-compile on two virtual machines
 vm: selfie.m selfie.s
