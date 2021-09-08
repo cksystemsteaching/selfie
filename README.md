@@ -3584,7 +3584,7 @@ What if we stack even more mipsters onto each other just to see what happens? On
 
 This took a few hours to complete, as opposed to a few seconds for just the two mipster instances with `make emu`. In fact, this time, mipster instance *H* executed 339,454,590,487 RISC-U instructions to run both *S* and *U*. Looks like with each mipster instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of mipster instances, and even if we optimized mipster such that executing a single instruction would take only two instructions there would be exponential growth.
 
-But how is this relevant in practice? Well, there is a reason why we called the mipster instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U* all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+But how is this relevant in practice? Well, there is a reason why we called the three mipster instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U*, all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
 ```
 ./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
@@ -3620,7 +3620,11 @@ selfie.m: selfie terminating selfie.m with exit code 0
 ...
 ```
 
-...
+Now we are back from billions to millions of instructions. This time *H* took only 201,139,441 RISC-U instructions to run both *S* and *U*, compared to 157,685,408 RISC-U instructions to run just *U*. This is a factor of around 1.28 instructions for each instruction of *U*, even though *S* runs in between *H* and *U*. How is this possible?
+
+The key observation is that *S* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *U* in this case. But if *H* can execute the RISC-U code of *S*, it can also execute the RISC-U code of *U*, effectively bypassing *S*. The option `-y 1` in the above invocation of selfie does exactly that. Instead of launching a mipster instance, it creates a *hypster* instance for *S* which, similar to a mipster instance, executes *U*, yet not by interpretation but by instructing *H* to execute *U* on its behalf, through something called a *context switch*. The factor 1.28 overhead comes from context switching and may become even less if *U* were to run longer amortizing bootstrapping cost even more.
+
+We say that hypster *hosts* the execution of RISC-U code in a *virtual machine*. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization is a fascinating concept but it takes time to understand it. We come back to it in the last chapter.
 
 ### Life
 
