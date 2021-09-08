@@ -571,7 +571,7 @@ For example, there are 469 global variables and 611 procedures in the source cod
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-What you see here is a *profile* of the generated machine instructions. For example, the system generated 3474 `add` instructions which is 8.22% of all 42260 generated instructions. In the following, let us take a closer look using the `double.c` example.
+What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,474 `add` instructions which is 8.22% of all 42,260 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -810,7 +810,7 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ...
 ```
 
-Selfie reports how many instructions it took just to print its synopsis: 59944 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1715 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it took just to print its synopsis: 59,944 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,715 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -1998,7 +1998,7 @@ A file is a named sequence of bytes, any bytes. Text is an unnamed sequence of b
 
 ### Images
 
-By now you can probably guess what a digital *image* is? It is a sequence of bytes, right! But seriously, if we do not care about performance, that is, the amount of bytes we need to encode an image, a *bitmap* does the job perfectly. A bitmap is a rectangular grid of pixels, just like your computer screen. The color of each pixel is encoded in, say, one byte which represents an unsigned integer. Each pixel can thus have 256 different colors including black and white. This is called *color depth*. If you want more, just increase the number of bytes per pixel. Three bytes is standard today enabling more than sixteen million different colors per pixel. If you want more resolution, just increase the number of pixels in your bitmap. For example, 4K resolution is 4096 times 2160 pixels which is more than eight million pixels requiring, at three bytes per pixel, a bitmap of around 25.3MB. To get to the unit of MB, just calculate 4096\*2160\*3 and divide that by 1MB which is 2^20^B.
+By now you can probably guess what a digital *image* is? It is a sequence of bytes, right! But seriously, if we do not care about performance, that is, the amount of bytes we need to encode an image, a *bitmap* does the job perfectly. A bitmap is a rectangular grid of pixels, just like your computer screen. The color of each pixel is encoded in, say, one byte which represents an unsigned integer. Each pixel can thus have 256 different colors including black and white. This is called *color depth*. If you want more, just increase the number of bytes per pixel. Three bytes is standard today enabling more than sixteen million different colors per pixel. If you want more resolution, just increase the number of pixels in your bitmap. For example, 4K resolution is 4,096 times 2,160 pixels which is more than eight million pixels requiring, at three bytes per pixel, a bitmap of around 25.3MB. To get to the unit of MB, just calculate 4096\*2160\*3 and divide that by 1MB which is 2^20^B.
 
 ![An image encoded and stored contiguously in memory in row-major](figures/image.png "Image")
 
@@ -2014,7 +2014,7 @@ Both, lossless and lossy compression work best for a particular type of informat
 
 Either way, compressed images likely require fewer bytes than the original images. But, it takes time to save space for storing images through compression (even though sending compressed images to someone is faster because there is less to transfer). Just imagine that every time you take a picture and then show it on a screen, your machine needs to encode and decode it, including compression and decompression, which is usually the default setting. But luckily, there is special hardware for that as well.
 
-So, what are other effective ways of reducing the *size* of an image, that is, the number of bytes necessary to encode it? Compression is great but reducing resolution and color depth also works since that reduces the amount of original data directly. Keep that in mind if a lower resolution and color depth is fine for your purposes. For example, going from 4K to HD, which is still 1920 times 1080 pixels in resolution, reduces the size of the 4K bitmap from 25.3MB to 5.9MB, still without any compression. The lesson to be learned here is to look for the *factors* that influence the result to an extent that is relevant for your purpose. A prerequisite for that is to understand the difference in *orders of magnitude* from kilobytes to megabytes and gigabytes, for example. Many people ignore that and end up trying to send very large images around or put them up on websites that load slowly or not at all because of that. Machines can only do so much about that.
+So, what are other effective ways of reducing the *size* of an image, that is, the number of bytes necessary to encode it? Compression is great but reducing resolution and color depth also works since that reduces the amount of original data directly. Keep that in mind if a lower resolution and color depth is fine for your purposes. For example, going from 4K to HD, which is still 1,920 times 1,080 pixels in resolution, reduces the size of the 4K bitmap from 25.3MB to 5.9MB, still without any compression. The lesson to be learned here is to look for the *factors* that influence the result to an extent that is relevant for your purpose. A prerequisite for that is to understand the difference in *orders of magnitude* from kilobytes to megabytes and gigabytes, for example. Many people ignore that and end up trying to send very large images around or put them up on websites that load slowly or not at all because of that. Machines can only do so much about that.
 
 One more thing before we continue with something that needs even more bytes than images, a lot more. We all seem to have the problem of photo libraries that are ever increasing in size with new pictures coming in almost daily, just like all the other files that we are accumulating at work and at home all the time. With that premise, organizing your photo library into neat albums and deleting bad pictures seems like futile business. We therefore recommend, similar to organizing your files, to not do that yourself but leave it to the machine to organize your photo library. Just take your pictures and do not worry about the rest! Similar to office files containing textual information, image files can also be *indexed* and then found later when searching for pictures showing, say, beaches or mountains. Unfortunately, indexing image files does still not work as well as indexing office files but computer scientists are getting there. By the way, the same applies to files containing video, of course, which is our next topic.
 
@@ -2051,7 +2051,7 @@ So, how often do we have to take a sample? In other words, the question is what 
 
 According to the famous *Nyquist-Shannon sampling theorem*, we need to sample at twice the rate of the highest frequency we would like to capture in order to be able to reconstruct that frequency and all lower frequencies from our samples without any loss of information. So, it is 40kHz then. Well, for legacy reasons, the slightly higher frequency of 44.1kHz was chosen for Audio CDs, for example, and subsequently for audio formats such as MP3 as well.
 
-Together with the bit depth used for Audio CDs, for example, which is 16 bits encoding a 16-bit signed integer, we can now calculate the *bit rate* at which audio from CDs is encoded and decoded, again in analogy to the bit rate of video. Just calculate 44.1Hz, that is, 44100Hz times 16B times 2 (because of stereo!) which is 1,411,200 bits per second or around 1.4mbps. This is quite high but remember the bit rate of 5.9gbps necessary for 4K video! Well, there are audio formats that provide even higher quality than CDs, of course, with higher sampling rates and bit depth of even 24 bits. But those still do not reach the typical bit rates of video.
+Together with the bit depth used for Audio CDs, for example, which is 16 bits encoding a 16-bit signed integer, we can now calculate the *bit rate* at which audio from CDs is encoded and decoded, again in analogy to the bit rate of video. Just calculate 44.1kHz, that is, 44,100Hz times 16B times 2 (because of stereo!) which is 1,411,200 bits per second or around 1.4mbps. This is quite high but remember the bit rate of 5.9gbps necessary for 4K video! Well, there are audio formats that provide even higher quality than CDs, of course, with higher sampling rates and bit depth of even 24 bits. But those still do not reach the typical bit rates of video.
 
 State-of-the-art music compression is not as effective as video compression but still capable of bringing down size and bit rate of music files by one order of magnitude with negligible loss of quality. MP3 is probably still the most popular format using lossy compression but there many other, newer formats using lossy as well as lossless compression. The key idea with lossy music compression is to avoid encoding sound that is inaudible by humans in the presence of other sound. MP3, for example, can be used to reduce the bit rate of Audio CDs from 1.4mbps to, say, 256kbps and still sound close to the original. Going below 128kbps is great for saving space and bandwidth but typically introduces audible degradation in sound quality.
 
@@ -2107,7 +2107,7 @@ The output should be similar to this:
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 42000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 42,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
@@ -2313,7 +2313,7 @@ The relevant part of the output should be similar to this:
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 42322 RISC-U machine instructions as well as 14824 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 33.40% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 42,322 RISC-U machine instructions as well as 14,824 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 33.40% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -3574,7 +3574,7 @@ selfie.m:          0.19MB(19.92% of 1MB) mapped memory
 ...
 ```
 
-Selfie took 59944 RISC-U instructions and 0.19MB memory on mipster instance *U* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to host *U*. This means that, on average, *H* executed around 2630 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
+Selfie took 59,944 RISC-U instructions and 0.19MB memory on mipster instance *U* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to host *U*. This means that, on average, *H* executed around 2,630 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2,630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
 
 What if we stack even more mipsters onto each other just to see what happens? On my laptop, I tried three mipsters as follows:
 
