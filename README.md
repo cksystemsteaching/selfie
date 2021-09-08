@@ -3514,7 +3514,7 @@ Also, logarithmic growth is the inverse of exponential growth. The cost of runni
 
 > Time and space complexity
 
-Okay, again, what does it take to be able to do all that? The first ingredient is an assumption on what exactly a *step of work* is. We need to find a *constant* relationship between step and time, or step and space, or even step and energy. Algorithmic complexity typically refers to *time complexity* by associating a single step of work with a single machine instruction assuming that executing a machine instruction takes constant time. Thus understanding algorithmic complexity requires understanding some machine model, just like the one we introduced here. We get back to that point for even deeper understanding right below. Also, algorithmic complexity may refer to *space complexity* by associating a single step of work with a constant amount of memory, say, one byte. Understanding that requires understanding a memory model, again, just like the one we introduced here.
+Okay, again, what does it take to be able to do all that? The first ingredient is an assumption on what exactly a *step of work* is. We need to find a *constant* relationship between step and time, or step and space, or even step and energy. Algorithmic complexity typically refers to *time complexity* by associating a single step of work with a single machine instruction assuming that executing a machine instruction takes constant time. Thus understanding algorithmic complexity requires understanding some machine model, just like the one we introduced here. Also, algorithmic complexity may refer to *space complexity* by associating a single step of work with a constant amount of memory, say, one byte. Understanding that requires understanding a memory model, again, just like the one we introduced here.
 
 > Big-O notation
 
@@ -3552,7 +3552,7 @@ or, equivalently, just try:
 make emu
 ```
 
-This runs or *hosts* a mipster instance, say, *U* on another mipster instance, say, *H*, just to run selfie on *U* without console arguments making selfie print its synopsis. In particular, selfie first *loads* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then starts *H* using the `-m 2` option to execute `selfie.m`. Next, `selfie.m` running on *H* loads itself and then starts *U* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *U* prints the synopsis of selfie. The relevant output is:
+This *self-executes* mipster by running a mipster instance, say, *U* on another mipster instance, say, *H*, just to run selfie on *U* without console arguments making selfie print its synopsis. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to *load* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then start *H* using the `-m 2` option to execute `selfie.m`. Next, we have `selfie.m` running on *H* load itself and then start *U* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *U* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
@@ -3574,21 +3574,29 @@ selfie.m:          0.19MB(19.92% of 1MB) mapped memory
 ...
 ```
 
-Selfie took 59,944 RISC-U instructions and 0.19MB memory on mipster instance *U* to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to host *U*. This means that, on average, *H* executed around 2,630 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2,630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2630.
+Selfie running on mipster instance *U* took 59,944 RISC-U instructions and 0.19MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 157,685,408 RISC-U instructions and 1.98MB memory to run *U*. This means that, on average, *H* executed around 2,630 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2,630 RISC-U instructions to implement a single RISC-U instruction, and 1.78MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,630.
 
-What if we stack even more mipsters onto each other just to see what happens? On my laptop, I tried three mipsters as follows:
+What if we stack even more mipsters onto each other just to see what happens? On my laptop, I ran three mipster instances, calling the third mipster instance *S*, assuming that *S* runs in between mipster instances *H* and *U*, and allocating 4MB rather than 2MB of physical memory to *H*:
 
 ```
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
-This took a few hours to complete, as opposed to a few seconds for the two mipsters with `make emu`. In fact, the mipster instance that hosted the other two mipster instances executed 339,454,590,487 RISC-U instructions to do it. Looks like with each mipster instance the number of executed instructions increases by three orders of magnitude. Here, from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, here in the number of mipster instances, and even if we optimized mipster such that executing a single instruction would take only two instructions there would be exponential growth.
+This took a few hours to complete, as opposed to a few seconds for just the two mipster instances with `make emu`. In fact, this time, mipster instance *H* executed 339,454,590,487 RISC-U instructions to run both *S* and *U*. Looks like with each mipster instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of mipster instances, and even if we optimized mipster such that executing a single instruction would take only two instructions there would be exponential growth.
 
-...
+But how is this relevant in practice? Well, there is a reason why we called the mipster instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U* all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
 ```
 ./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
 ```
+
+or, equivalently:
+
+```
+make os
+```
+
+The relevant output is:
 
 ```
 ...
@@ -3611,6 +3619,8 @@ selfie.m: selfie terminating selfie.m with exit code 0
 ./selfie:          2.49MB(124.81% of 2MB) mapped memory
 ...
 ```
+
+...
 
 ### Life
 
