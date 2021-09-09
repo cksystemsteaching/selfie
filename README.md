@@ -3624,7 +3624,7 @@ Now we are back from billions to millions of instructions. This time *H* took on
 
 The key observation is that *S* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *U* in this case. But if *H* can execute the RISC-U code of *S*, it can also execute the RISC-U code of *U*, effectively bypassing *S*. The option `-y 1` in the above invocation of selfie does exactly that. Instead of launching a mipster instance, it creates a *hypster* instance for *S* which, similar to a mipster instance, executes *U*, yet not by interpretation but by instructing *H* to execute *U* on its behalf, through something called a *context switch*. The factor 1.28 overhead comes from context switching and may become even less if *U* were to run longer amortizing bootstrapping cost even more.
 
-We say that hypster *hosts* the execution of RISC-U code in a *virtual machine*. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization is a fascinating concept but it takes time to understand it. We come back to it in the last chapter.
+We say that hypster *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
 ### Life
 
