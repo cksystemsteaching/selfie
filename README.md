@@ -53,39 +53,31 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 5.9. Recommended Readings
 
 6. Programming
-6.1. Variable
+6.1. Literal
 6.2. Expression
-6.3. Assignment
-6.4. Conditional
-6.5. Loop
-6.6. Procedure
-6.7. Algorithms
-6.8. Memory
-6.9. Libraries
-6.10. Apps
+6.3. Variable
+6.4. Assignment
+6.5. Conditional
+6.6. Loop
+6.7. Procedure
+6.8. Libraries
+6.9. Apps
+6.10. Life
 6.11. Recommended Readings
 
 7. Tools
-7.1. Regular Expressions
-7.2. Finite State Machines
-7.3. Scanning
-7.4. Parsing
-7.5. Typing
-7.6. Code Generation
-7.7. Interpretation
-7.8. Recommended Readings
+7.1. Compiler
+7.2. Interpreter
+7.3. Virtual Machine
+7.4. Virtual Memory
+7.5. Virtual Time
+7.6. Virtual Machine Monitor
+7.7. Computing as Utility
+7.8. Cloud Computing
+7.9. Life
+7.10. Recommended Readings
 
-8. Computing
-8.1. Emulation
-8.2. Spatial Isolation
-8.2. Virtual Memory
-8.3. Time Sharing
-8.4. Virtual Processor
-8.5. Computing as Utility
-8.6. Cloud Computing
-8.7. Recommended Readings
-
-9. Glossary
+8. Glossary
 
 ## Introduction
 
@@ -3648,37 +3640,8 @@ Suppose we would like to build a suspension bridge. What we essentially need, ot
 
 High-level programming languages enable *scalability* of coding through libraries and tools. The challenge of learning a programming language is thus not just learning the language but also what libraries and tools do and how to use them properly. In fact, it is usually easy to implement something in a language of which you only know a fraction of all its features as long as you know how to use its libraries and tools whereas the converse is not true! We therefore introduce basic concepts of programming languages not just by explaining their design but in particular by showing how they facilitate an actual implementation on the machine we introduced in the previous chapter.
 
-### Variable
-
+### Literal
 ### Expression
-
-### Assignment
-
-### Conditional
-
-### Loop
-
-### Procedure
-
-### Algorithms
-
-### Memory
-
-### Library
-
-### Apps
-
-### Recommended Readings
-
-## Tools
-
-### Regular Expressions
-
-### Finite State Machines
-
-### Scanning
-
-### Parsing
 
 ```
 PSH: :                                                   n * n + 1 - n / 2 + 42
@@ -3706,30 +3669,40 @@ POP: { ("+" | "-") term }:
      :
 ```
 
-### Typing
+### Variable
+### Assignment
 
-### Code Generation
+### Conditional
 
-### Interpretation
+### Loop
 
+### Procedure
+
+### Library
+
+### Apps
+
+### Life
 ### Recommended Readings
 
-## Computing
+## Tools
 
-### Emulation
+### Compiler
 
-### Spatial Isolation
+### Interpreter
 
+### Virtual Machine
 ### Virtual Memory
 
-### Time Sharing
+### Virtual Time
 
-### Virtual Processor
+### Virtual Machine Monitor
 
 ### Computing as Utility
 
 ### Cloud Computing
 
+### Life
 ### Recommended Readings
 
 ## Glossary
