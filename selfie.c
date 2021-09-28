@@ -4729,7 +4729,7 @@ uint64_t compile_factor() {
 
     type = UINT64STAR_T;
 
-  //  "(" expression ")"
+  // "(" expression ")" ?
   } else if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
 
@@ -9542,7 +9542,7 @@ void do_jal() {
     // first link
     *(registers + rd) = pc + INSTRUCTIONSIZE;
 
-    // then jump for procedure calls
+    // then jump (for procedure call)
     pc = pc + imm;
 
     // prologue address for profiling procedure calls
@@ -9554,7 +9554,7 @@ void do_jal() {
     // and individually
     *(calls_per_procedure + a) = *(calls_per_procedure + a) + 1;
   } else if (signed_less_than(imm, 0)) {
-    // jump backwards to check for another loop iteration
+    // just jump backward (to check loop condition again)
     pc = pc + imm;
 
     // first loop instruction address for profiling loop iterations
