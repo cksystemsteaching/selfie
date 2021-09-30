@@ -5310,6 +5310,8 @@ void compile_statement() {
     else
       syntax_error_symbol(SYM_SEMICOLON);
   }
+
+  // assert: allocated_temporaries == 0
 }
 
 uint64_t compile_type() {
