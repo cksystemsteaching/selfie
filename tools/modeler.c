@@ -1739,6 +1739,8 @@ void modeler() {
     log_ten(data_start + data_size +
       (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
+  // assert: pc == code_start
+
   while (pc < code_start + code_size) {
     current_nid = pc_nid(pcs_nid, pc);
 
@@ -1769,7 +1771,7 @@ void modeler() {
 
   dprintf(output_fd, "\n; data segment\n\n");
 
-  // assert: pc == code_start + code_size
+  pc = data_start;
 
   while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
     if (pc == data_start + data_size) {
