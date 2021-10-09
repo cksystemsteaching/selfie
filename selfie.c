@@ -1704,7 +1704,7 @@ void do_ecall();
 void undo_ecall();
 
 void print_data_line_number();
-void print_data_context(uint64_t data);
+void print_data_context();
 void print_data(uint64_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -9684,22 +9684,17 @@ void print_data_line_number() {
   }
 }
 
-void print_data_context(uint64_t data) {
+void print_data_context() {
   sprintf(string_buffer, "0x%lX", pc);
   direct_output(string_buffer);
-
-  if (disassemble_verbose) {
-    print_data_line_number();
-    print(": ");
-    print_hexadecimal(data, SIZEOFUINT64 * 2);
-    print(" ");
-  } else
-    print(": ");
+  print_data_line_number();
+  sprintf(string_buffer, ": ");
+  direct_output(string_buffer);
 }
 
 void print_data(uint64_t data) {
   if (disassemble_verbose)
-    print_data_context(data);
+    print_data_context();
   if (IS64BITSYSTEM)
     sprintf(string_buffer, ".8byte 0x%lX", data);
   else
@@ -9783,7 +9778,8 @@ void selfie_disassemble(uint64_t verbose) {
 
     decode();
     print_instruction();
-    println();
+    sprintf(string_buffer, "\n");
+    direct_output(string_buffer);
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -9792,7 +9788,8 @@ void selfie_disassemble(uint64_t verbose) {
     data = load_data(pc - code_size);
 
     print_data(data);
-    println();
+    sprintf(string_buffer, "\n");
+    direct_output(string_buffer);
 
     pc = pc + WORDSIZE;
   }
