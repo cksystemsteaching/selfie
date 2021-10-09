@@ -1,6 +1,9 @@
 #include "../selfie.h"
 #define uint64_t unsigned long long
 
+// set to 0 to enable variable analysis + optimization passes
+uint64_t register_analysis_only = 1;
+
 uint64_t opt_debug = 0; // debug output. levels = {0,1,2}
 uint64_t opt_UNKNOWN = 52596306927616181;
 uint64_t opt_pc = 0;
@@ -1988,7 +1991,6 @@ void patch_enops() {
 
 int main(int argc, char **argv) {
   uint64_t total;
-  uint64_t analyze_only;
 
   total = 0;
 
@@ -2004,8 +2006,12 @@ int main(int argc, char **argv) {
 
   debug = 0;
 
-  analyze_only = 1;
-  if (analyze_only) {
+  if (register_analysis_only) {
+    opt_memtrack_ld_enable = 0;
+    opt_memtrack_sd_enable = 0;
+    opt_memtrack_region_bytes = 0;
+    opt_memtrack_region_words = 0;
+
     selfie_traverse();
 
     printf2("Number of updates: %d states, %d livedeads\n", (char*) state_update_counter, (char*) livedead_update_counter);
