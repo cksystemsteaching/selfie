@@ -189,6 +189,7 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
 char* remove_prefix_from_printf_procedures(char* procedure);
 
 void direct_output(char* buffer);
+void direct_println();
 
 // malloc
 
@@ -3203,6 +3204,10 @@ void direct_output(char* buffer) {
 
     number_of_written_characters = number_of_written_characters + number_of_dprinted_characters;
   }
+}
+
+void direct_println() {
+  sprintf(string_buffer, "\n");direct_output(string_buffer);
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {

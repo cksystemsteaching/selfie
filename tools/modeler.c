@@ -61,8 +61,6 @@ void model_syscalls();
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void direct_println();
-
 uint64_t pc_nid(uint64_t nid, uint64_t pc);
 uint64_t is_procedure_call(uint64_t instruction, uint64_t link);
 uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, uint64_t to_address);
@@ -794,10 +792,6 @@ void model_syscalls() {
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
-
-void direct_println() {
-  sprintf(string_buffer, "\n");direct_output(string_buffer);
-}
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
