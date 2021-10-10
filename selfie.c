@@ -252,7 +252,7 @@ uint64_t* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
 
-uint64_t MAX_OUTPUT_LENGTH = 32; // maximum number of bytes in string buffer
+uint64_t MAX_OUTPUT_LENGTH = 256; // maximum number of bytes in string buffer
 
 char* string_buffer; // buffer for console and file output
 
@@ -8998,14 +8998,17 @@ void print_code_context_for_instruction(uint64_t address) {
     if (symbolic)
       // skip further output
       return;
-    else
-      print(": ");
+    else {
+      sprintf(string_buffer, ": ");
+      direct_output(string_buffer);
+    }
   } else {
     if (model) {
       sprintf(string_buffer,"0x%lX", address);
       direct_output(string_buffer);
       print_code_line_number_for_instruction(address, code_start);
-      print(": ");
+      sprintf(string_buffer, ": ");
+      direct_output(string_buffer);
     } else if (disassemble_verbose) {
       sprintf(string_buffer,"0x%lX", address);
       direct_output(string_buffer);
