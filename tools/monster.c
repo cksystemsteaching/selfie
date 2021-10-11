@@ -1233,7 +1233,7 @@ char* bv_constant(uint64_t value) {
 
   string = string_alloc(5 + 20 + 4); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf(string, "(_ bv%lu 64)", value);direct_output(string_buffer);
+  sprintf(string, "(_ bv%lu 64)", value);
 
   return string;
 }
@@ -1243,7 +1243,7 @@ char* bv_variable(uint64_t bits) {
 
   string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf(string, "(_ BitVec %lu)", bits);direct_output(string_buffer);
+  sprintf(string, "(_ BitVec %lu)", bits);
 
   return string;
 }
@@ -1253,7 +1253,7 @@ char* bv_zero_extension(uint64_t bits) {
 
   string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf(string, "(_ zero_extend %lu)", WORDSIZEINBITS - bits);direct_output(string_buffer);
+  sprintf(string, "(_ zero_extend %lu)", WORDSIZEINBITS - bits);
 
   return string;
 }
@@ -1270,7 +1270,7 @@ char* smt_variable(char* prefix, uint64_t bits) {
 
   svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf(svar, "%s%lu", prefix, variable_version);direct_output(string_buffer);
+  sprintf(svar, "%s%lu", prefix, variable_version);
 
   sprintf(string_buffer, "(declare-fun %s () (_ BitVec %lu)); variable for ", svar, bits);direct_output(string_buffer);
   print_code_context_for_instruction(pc);
@@ -1286,7 +1286,7 @@ char* smt_unary(char* opt, char* op) {
 
   string = string_alloc(1 + string_length(opt) + 1 + string_length(op) + 1);
 
-  sprintf(string, "(%s %s)", opt, op);direct_output(string_buffer);
+  sprintf(string, "(%s %s)", opt, op);
 
   return string;
 }
@@ -1296,7 +1296,7 @@ char* smt_binary(char* opt, char* op1, char* op2) {
 
   string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1);
 
-  sprintf(string, "(%s %s %s)", opt, op1, op2);direct_output(string_buffer);
+  sprintf(string, "(%s %s %s)", opt, op1, op2);
 
   return string;
 }
@@ -1306,7 +1306,7 @@ char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
 
   string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + string_length(op3) + 1);
 
-  sprintf(string, "(%s %s %s %s)", opt, op1, op2, op3);direct_output(string_buffer);
+  sprintf(string, "(%s %s %s %s)", opt, op1, op2, op3);
 
   return string;
 }
