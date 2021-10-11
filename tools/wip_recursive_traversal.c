@@ -1090,6 +1090,7 @@ uint64_t update_livedead(uint64_t address, uint64_t* new) {
   }
 }
 
+uint64_t first_livedead_effect = 1;
 void apply_livedead_effects(uint64_t *livedead) {
   if ((is == LUI) + (is == JAL)) {
     set_reg_dead(livedead, rd);
@@ -1108,16 +1109,20 @@ void apply_livedead_effects(uint64_t *livedead) {
     set_reg_live(livedead, rs2);
   }
   else if (is == ECALL) {
-    set_reg_live(livedead, REG_A0);
-    set_reg_live(livedead, REG_A1);
-    set_reg_live(livedead, REG_A2);
-    set_reg_live(livedead, REG_A3);
+    // first ecall processed is exit, which only reads from a7
+    if (first_livedead_effect == 0) {
+      set_reg_live(livedead, REG_A0);
+      set_reg_live(livedead, REG_A1);
+      set_reg_live(livedead, REG_A2);
+      set_reg_live(livedead, REG_A3);
+    }
     set_reg_live(livedead, REG_A7);
   }
   else {
     print("Error: unhandled instruction in apply_livedead_effects!\n");
     exit(1);
   }
+  first_livedead_effect = 0;
 }
 
 /*
