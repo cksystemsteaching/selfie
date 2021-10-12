@@ -253,7 +253,7 @@ uint64_t* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
 
-uint64_t MAX_OUTPUT_LENGTH = 256; // maximum number of bytes in string buffer
+uint64_t MAX_OUTPUT_LENGTH = 8192; // maximum number of bytes in string buffer
 
 char* string_buffer; // buffer for console and file output
 
