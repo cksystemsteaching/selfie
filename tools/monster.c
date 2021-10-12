@@ -78,7 +78,7 @@ uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout);
 uint64_t* load_symbolic_memory(uint64_t vaddr);
 void      store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, uint64_t bits);
 uint64_t* find_word_in_unshared_symbolic_memory(uint64_t vaddr);
-void      update_begin_of_shared_symbolic_memory(uint64_t* context);
+void      update_begin_of_shared_symbolic_memory(uint64_t* context, uint64_t* partner);
 
 uint64_t is_symbolic_value(uint64_t* sword);
 
@@ -639,17 +639,36 @@ uint64_t* find_word_in_unshared_symbolic_memory(uint64_t vaddr) {
   return (uint64_t*) 0;
 }
 
-void update_begin_of_shared_symbolic_memory(uint64_t* context) {
+void update_begin_of_shared_symbolic_memory(uint64_t* context, uint64_t* partner) {
+  uint64_t* sword_of_shared_store;
   uint64_t* sword;
 
   if (context == (uint64_t*) 0)
     return;
 
+  sword_of_shared_store = (uint64_t*) 0;
+
+  sword = get_symbolic_memory(partner);
+
+  while (sword) {
+    if (get_word_address(sword) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY) {
+      // remember beginning of shared symbolic memory portion in partner context
+      sword_of_shared_store = get_next_word(sword);
+      sword = (uint64_t*) 0;
+    } else
+      sword = get_next_word(sword);
+  }
+
   sword = get_symbolic_memory(context);
 
   while (sword) {
     if (get_word_address(sword) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY) {
-      set_word_address(sword, DELETED);
+      // only unshare symbolic memory if both contexts point to the same shared portion
+      if (get_next_word(sword) == sword_of_shared_store)
+        set_word_address(sword, DELETED);
+      else if (debug_merge)
+        w = w + dprintf(output_fd, "; unbalanced shared symbolic memory detected, skip unsharing\n");
+
       return;
     }
 
@@ -1061,6 +1080,9 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   symbolic_contexts = context;
 
+  if (debug_merge)
+    w = w + dprintf(output_fd, "; creating new context 0x%08lX from original 0x%08lX\n", (uint64_t) context, (uint64_t) original);
+
   return context;
 }
 
@@ -1381,7 +1403,7 @@ void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mer
   merge_registers(active_context, mergeable_context);
 
   // the shared symbolic memory space needs needs to be updated since the other context was merged into the active context
-  update_begin_of_shared_symbolic_memory(active_context);
+  update_begin_of_shared_symbolic_memory(active_context, mergeable_context);
 }
 
 void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context) {
@@ -1900,7 +1922,7 @@ void monster(uint64_t* to_context) {
 
       if (exception == EXIT) {
         // we need to update the end of the shared symbolic memory of the corresponding context
-        update_begin_of_shared_symbolic_memory(get_merge_partner(from_context));
+        update_begin_of_shared_symbolic_memory(get_merge_partner(from_context), from_context);
 
         // delete exited context
         symbolic_contexts = delete_context(from_context, symbolic_contexts);
