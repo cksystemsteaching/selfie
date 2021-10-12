@@ -136,6 +136,9 @@ uint64_t sign_shrink(uint64_t n, uint64_t b);
 uint64_t load_character(char* s, uint64_t i);
 char*    store_character(char* s, uint64_t i, uint64_t c);
 
+uint64_t is_letter(uint64_t c);
+uint64_t is_digit(uint64_t c);
+
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
 char*    string_shrink(char* s);
@@ -166,6 +169,7 @@ void print_character(uint64_t c);
 void print_string(char* s);
 void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
+void print_fractional(uint64_t n, uint64_t p);
 void unprint_integer(uint64_t n);
 void print_hexadecimal_no_prefix(uint64_t n, uint64_t a);
 void print_hexadecimal(uint64_t n, uint64_t a);
@@ -395,8 +399,6 @@ uint64_t is_character_whitespace();
 
 uint64_t find_next_character();
 
-uint64_t is_character_letter();
-uint64_t is_character_digit();
 uint64_t is_character_letter_or_digit_or_underscore();
 uint64_t is_character_not_double_quote_or_new_line_or_eof();
 
@@ -2609,6 +2611,33 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   return s;
 }
 
+uint64_t is_letter(uint64_t c) {
+  // ASCII codes for lower- and uppercase letters are in contiguous intervals
+  if (c >= 'a')
+    if (c <= 'z')
+      return 1;
+    else
+      return 0;
+  else if (c >= 'A')
+    if (c <= 'Z')
+      return 1;
+    else
+      return 0;
+  else
+    return 0;
+}
+
+uint64_t is_digit(uint64_t c) {
+  // ASCII codes for digits are in a contiguous interval
+  if (c >= '0')
+    if (c <= '9')
+      return 1;
+    else
+      return 0;
+  else
+    return 0;
+}
+
 char* string_alloc(uint64_t l) {
   // allocates zeroed memory for a string of l characters
   // plus a null terminator aligned to word size
@@ -2969,6 +2998,21 @@ void print_integer(uint64_t n) {
   print(itoa(n, integer_buffer, 10, 1, 0));
 }
 
+void print_fractional(uint64_t n, uint64_t p) {
+  uint64_t d;
+
+  // number of digits of n
+  d = log_ten(n) + 1;
+
+  while (p > d) {
+    put_character('0');
+
+    p = p - 1;
+  }
+
+  print(itoa(n, integer_buffer, 10, 0, 0));
+}
+
 void unprint_integer(uint64_t n) {
   n = string_length(itoa(n, integer_buffer, 10, 1, 0));
 
@@ -3017,50 +3061,6 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
     put_character((uint64_t) a);
 
     return i + 1;
-  } else if (load_character(s, i) == '.') {
-    // for integer specifiers, precision specifies
-    // the minimum number of digits to be written;
-    // we ony support single-digit precision
-    p = load_character(s, i + 1) - '0';
-
-    if (p < 10) {
-      // the character at i + 1 is in fact a digit
-      if (load_character(s, i + 2) == 'l') {
-        // using integer_buffer here is ok since we are not using print_integer
-        if (load_character(s, i + 3) == 'u')
-          itoa((uint64_t) a, integer_buffer, 10, 0, 0);
-        else if (load_character(s, i + 3) == 'd')
-          itoa((uint64_t) a, integer_buffer, 10, 1, 0);
-        else
-          // precision only supported for %lu and %ld
-          return i + 4;
-
-        if (p > 0) {
-          p = p - string_length(integer_buffer);
-
-          while (p > 0) {
-            put_character('0');
-
-            p = p - 1;
-          }
-          print(integer_buffer);
-        }
-      }
-      return i + 4;
-    }
-  } else if (load_character(s, i) == '0') {
-    // we only support padding with 0s and single-digit width
-    p = load_character(s, i + 1) - '0';
-
-    if (p < 10) {
-      // the character at i + 1 is in fact a digit
-      if (load_character(s, i + 2) == 'l') {
-        if (load_character(s, i + 3) == 'X')
-          // padding support only for %lX
-          print_hexadecimal_no_prefix((uint64_t) a, p);
-      }
-      return i + 4;
-    }
   } else if (load_character(s, i) == 'l') {
     if (load_character(s, i + 1) == 'u') {
       print_unsigned_integer((uint64_t) a);
@@ -3083,6 +3083,32 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
     print_binary_no_prefix((uint64_t) a, 0);
 
     return i + 1;
+  } else if (load_character(s, i) == '.') {
+    // for integer specifiers, precision specifies
+    // the minimum number of digits to be written;
+    // we only support single-digit precision
+    p = load_character(s, i + 1);
+
+    if (is_digit(p))
+      if (load_character(s, i + 2) == 'l')
+        if (load_character(s, i + 3) == 'u') {
+          // precision support only for %lu
+          print_fractional((uint64_t) a, p - '0');
+
+          return i + 4;
+        }
+  } else if (load_character(s, i) == '0') {
+    // we only support padding with 0s and single-digit width
+    p = load_character(s, i + 1);
+
+    if (is_digit(p))
+      if (load_character(s, i + 2) == 'l')
+        if (load_character(s, i + 3) == 'X') {
+          // padding support only for %lX
+          print_hexadecimal_no_prefix((uint64_t) a, p - '0');
+
+          return i + 4;
+        }
   }
 
   return i;
@@ -3106,13 +3132,15 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
       if (load_character(s, i) == '%') {
         i = i + 1;
 
-        if (load_character(s, i) != '%')
-          i = print_format(s, i, var_arg(args));
-        else {
-          // for %% print just one %
-          put_character('%');
+        if (load_character(s, i) != 0) {
+          if (load_character(s, i) != '%')
+            i = print_format(s, i, var_arg(args));
+          else {
+            // for %% print just one %
+            put_character('%');
 
-          i = i + 1;
+            i = i + 1;
+          }
         }
       } else {
         put_character(load_character(s, i));
@@ -3506,37 +3534,10 @@ uint64_t find_next_character() {
   }
 }
 
-uint64_t is_character_letter() {
-  // ASCII codes for lower- and uppercase letters are in contiguous intervals
-  if (character >= 'a')
-    if (character <= 'z')
-      return 1;
-    else
-      return 0;
-  else if (character >= 'A')
-    if (character <= 'Z')
-      return 1;
-    else
-      return 0;
-  else
-    return 0;
-}
-
-uint64_t is_character_digit() {
-  // ASCII codes for digits are in a contiguous interval
-  if (character >= '0')
-    if (character <= '9')
-      return 1;
-    else
-      return 0;
-  else
-    return 0;
-}
-
 uint64_t is_character_letter_or_digit_or_underscore() {
-  if (is_character_letter())
+  if (is_letter(character))
     return 1;
-  else if (is_character_digit())
+  else if (is_digit(character))
     return 1;
   else if (character == CHAR_UNDERSCORE)
     return 1;
@@ -3601,7 +3602,7 @@ void get_symbol() {
 
       // start state of finite state machine
       // for recognizing C* symbols is here
-      if (is_character_letter()) {
+      if (is_letter(character)) {
         // accommodate identifier and null for termination
         identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
 
@@ -3625,13 +3626,13 @@ void get_symbol() {
 
         symbol = identifier_or_keyword();
 
-      } else if (is_character_digit()) {
+      } else if (is_digit(character)) {
         // accommodate integer and null for termination
         integer = string_alloc(MAX_INTEGER_LENGTH);
 
         i = 0;
 
-        while (is_character_digit()) {
+        while (is_digit(character)) {
           if (i >= MAX_INTEGER_LENGTH) {
             if (integer_is_signed)
               syntax_error_message("signed integer out of bound");
