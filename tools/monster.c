@@ -238,6 +238,8 @@ uint64_t selfie_run_symbolically();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t w = 0; // number of written characters
+
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
 
 uint64_t variable_version = 0; // generates unique SMT-LIB variable names
@@ -284,19 +286,17 @@ void implement_symbolic_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  sprintf(string_buffer, "\n(push 1)\n");direct_output(string_buffer);
+  w = w
+    + dprintf(output_fd, "\n(push 1)\n")
+    + dprintf(output_fd, "(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
+        path_condition,
+        smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)))
+    + print_code_context_for_instruction(pc);
 
-  sprintf(string_buffer, "(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
-    path_condition,
-    smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
-  direct_output(string_buffer);
-  print_code_context_for_instruction(pc);
+  if (debug_merge)
+    w = w + dprintf(output_fd, " -> exiting context: 0x%08lX", (uint64_t) context);
 
-  if (debug_merge) {
-    sprintf(string_buffer, " -> exiting context: 0x%08lX", (uint64_t) context);direct_output(string_buffer);
-  }
-
-  sprintf(string_buffer, "\n(check-sat)\n(get-model)\n(pop 1)\n");direct_output(string_buffer);
+  w = w + dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 }
 
 void implement_symbolic_read(uint64_t* context) {
@@ -612,9 +612,10 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, u
   else if (sym) {
     set_word_symbolic(sword, smt_variable("m", SIZEOFUINT64 * 8));
 
-    sprintf(string_buffer, "(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym);direct_output(string_buffer);
-    print_code_context_for_instruction(pc);
-    direct_println();
+    w = w
+      + dprintf(output_fd, "(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym)
+      + print_code_context_for_instruction(pc)
+      + dprintf(output_fd, "\n");
   } else
     set_word_symbolic(sword, 0);
 
@@ -661,11 +662,10 @@ uint64_t is_symbolic_value(uint64_t* sword) {
 }
 
 void print_symbolic_memory(uint64_t* sword) {
-  if (is_symbolic_value(sword)) {
-    sprintf(string_buffer, "%s", get_word_symbolic(sword));direct_output(string_buffer);
-  }
+  if (is_symbolic_value(sword))
+    w = w + dprintf(output_fd, "%s", get_word_symbolic(sword));
 
-  sprintf(string_buffer, "[0x%lX]@0x%lX\n", get_word_value(sword), get_word_address(sword));direct_output(string_buffer);
+  w = w + dprintf(output_fd, "[0x%lX]@0x%lX\n", get_word_value(sword), get_word_address(sword));
 }
 
 // -----------------------------------------------------------------
@@ -707,11 +707,11 @@ void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
     *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
 
     // checking for division by zero
-    if (string_compare(operator, "bvudiv")) {
-      sprintf(string_buffer, "(push 1)\n");direct_output(string_buffer);
-      sprintf(string_buffer, "(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)));direct_output(string_buffer);
-      sprintf(string_buffer, "\n(check-sat)\n(get-model)\n(pop 1)\n");direct_output(string_buffer);
-    }
+    if (string_compare(operator, "bvudiv"))
+      w = w
+        + dprintf(output_fd, "(push 1)\n")
+        + dprintf(output_fd, "(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)))
+        + dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
   }
 }
 
@@ -732,9 +732,9 @@ void constrain_load() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    sprintf(string_buffer, "%s: symbolic memory address in ld instruction at 0x%lX", selfie_name, pc);direct_output(string_buffer);
+    printf("%s: symbolic memory address in ld instruction at 0x%lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
-    direct_println();
+    printf("\n");
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -790,9 +790,9 @@ void constrain_store() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    sprintf(string_buffer, "%s: symbolic memory address in sd instruction at 0x%lX", selfie_name, pc);direct_output(string_buffer);
+    printf("%s: symbolic memory address in sd instruction at 0x%lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
-    direct_println();
+    printf("\n");
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -849,15 +849,17 @@ void constrain_beq() {
 
   bvar = smt_variable("b", 1);
 
-  sprintf(string_buffer, "(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2));direct_output(string_buffer);
-  print_code_context_for_instruction(pc);
-  direct_println();
+  w = w
+    + dprintf(output_fd, "(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2))
+    + print_code_context_for_instruction(pc)
+    + dprintf(output_fd, "\n");
 
   pvar = smt_variable("p", 1);
 
-  sprintf(string_buffer, "(assert (= %s %s)); path condition in ", pvar, path_condition);direct_output(string_buffer);
-  print_code_context_for_instruction(pc);
-  direct_println();
+  w = w
+    + dprintf(output_fd, "(assert (= %s %s)); path condition in ", pvar, path_condition)
+    + print_code_context_for_instruction(pc)
+    + dprintf(output_fd, "\n");
 
   // increase the number of executed symbolic beq instructions
   set_beq_counter(current_context, get_beq_counter(current_context) + 1);
@@ -880,9 +882,9 @@ void constrain_jalr() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    sprintf(string_buffer, "%s: symbolic memory address in jalr instruction at 0x%lX", selfie_name, pc);direct_output(string_buffer);
+    printf("%s: symbolic memory address in jalr instruction at 0x%lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
-    direct_println();
+    printf("\n");
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -1131,9 +1133,10 @@ uint64_t handle_symbolic_division_by_zero(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   // check if this division by zero is reachable
-  sprintf(string_buffer, "(push 1)\n");direct_output(string_buffer);
-  sprintf(string_buffer, "(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);direct_output(string_buffer);
-  sprintf(string_buffer, "\n(check-sat)\n(get-model)\n(pop 1)\n");direct_output(string_buffer);
+  w = w
+    + dprintf(output_fd, "(push 1)\n")
+    + dprintf(output_fd, "(assert %s); division by zero detected; check if this division by zero is reachable", path_condition)
+    + dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
   // we terminate the execution of the context, because if the location is not reachable,
   // the rest of the path is not reachable either, and otherwise
@@ -1147,24 +1150,24 @@ uint64_t handle_symbolic_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (get_beq_counter(context) >= beq_limit) {
-    sprintf(string_buffer, "; timeout (branch limit) in ");direct_output(string_buffer);
-    print_code_context_for_instruction(pc);
-    if (debug_merge) {
-      sprintf(string_buffer, " -> context: 0x%08lX, path-condition: %s", (uint64_t) context, path_condition);direct_output(string_buffer);
-    }
-    direct_println();
+    w = w
+      + dprintf(output_fd, "; timeout (branch limit) in ")
+      + print_code_context_for_instruction(pc);
+    if (debug_merge)
+      w = w + dprintf(output_fd, " -> context: 0x%08lX, path-condition: %s", (uint64_t) context, path_condition);
+    w = w + dprintf(output_fd, "\n");
 
     return EXIT;
   }
 
   if (max_execution_depth) {
     if (get_execution_depth(context) >= max_execution_depth) {
-      sprintf(string_buffer, "; timeout (execution depth) in ");direct_output(string_buffer);
-      print_code_context_for_instruction(pc);
-      if (debug_merge) {
-        sprintf(string_buffer, " -> context: 0x%08lX, path-condition: %s", (uint64_t) context, path_condition);direct_output(string_buffer);
-      }
-      direct_println();
+      w = w
+        + dprintf(output_fd, "; timeout (execution depth) in ")
+        + print_code_context_for_instruction(pc);
+      if (debug_merge)
+        w = w + dprintf(output_fd, " -> context: 0x%08lX, path-condition: %s", (uint64_t) context, path_condition);
+      w = w + dprintf(output_fd, "\n");
 
       return EXIT;
     } else
@@ -1187,9 +1190,10 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return handle_symbolic_timer(context);
   else if (exception == EXCEPTION_INVALIDADDRESS) {
     // check if this invalid memory access is reachable
-    sprintf(string_buffer, "(push 1)\n");direct_output(string_buffer);
-    sprintf(string_buffer, "(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);direct_output(string_buffer);
-    sprintf(string_buffer, "\n(check-sat)\n(get-model)\n(pop 1)\n");direct_output(string_buffer);
+    w = w
+      + dprintf(output_fd, "(push 1)\n")
+      + dprintf(output_fd, "(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition)
+      + dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
@@ -1199,9 +1203,10 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return EXIT;
   } else if (exception == EXCEPTION_SEGMENTATIONFAULT) {
     // check if this memory access is reachable
-    sprintf(string_buffer, "(push 1)\n");direct_output(string_buffer);
-    sprintf(string_buffer, "(assert %s); segmentation fault detected; check if this memory access is reachable", path_condition);direct_output(string_buffer);
-    sprintf(string_buffer, "\n(check-sat)\n(get-model)\n(pop 1)\n");direct_output(string_buffer);
+    w = w
+      + dprintf(output_fd, "(push 1)\n")
+      + dprintf(output_fd, "(assert %s); segmentation fault detected; check if this memory access is reachable", path_condition)
+      + dprintf(output_fd, "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
@@ -1272,9 +1277,10 @@ char* smt_variable(char* prefix, uint64_t bits) {
 
   sprintf(svar, "%s%lu", prefix, variable_version);
 
-  sprintf(string_buffer, "(declare-fun %s () (_ BitVec %lu)); variable for ", svar, bits);direct_output(string_buffer);
-  print_code_context_for_instruction(pc);
-  direct_println();
+  w = w
+    + dprintf(output_fd, "(declare-fun %s () (_ BitVec %lu)); variable for ", svar, bits)
+    + print_code_context_for_instruction(pc)
+    + dprintf(output_fd, "\n");
 
   variable_version = variable_version + 1;
 
@@ -1342,13 +1348,13 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (merge_enabled == 0)
     return;
 
-  sprintf(string_buffer, "; merging two contexts at ");direct_output(string_buffer);
-  print_code_context_for_instruction(location);
+  w = w
+    + dprintf(output_fd, "; merging two contexts at ")
+    + print_code_context_for_instruction(location);
 
-  if (debug_merge) {
-    sprintf(string_buffer, " -> active context: 0x%08lX, mergeable context: 0x%08lX", (uint64_t) active_context, (uint64_t) mergeable_context);direct_output(string_buffer);
-  }
-  direct_println();
+  if (debug_merge)
+    w = w + dprintf(output_fd, " -> active context: 0x%08lX, mergeable context: 0x%08lX", (uint64_t) active_context, (uint64_t) mergeable_context);
+  w = w + dprintf(output_fd, "\n");
 
   // merging the symbolic store
   merge_symbolic_memory_and_registers(active_context, mergeable_context);
@@ -1844,8 +1850,8 @@ void use_file() {
 }
 
 void monster(uint64_t* to_context) {
-  uint64_t  timeout;
   uint64_t* from_context;
+  uint64_t  timeout;
   uint64_t  exception;
 
   symbolic_contexts = to_context;
@@ -1853,28 +1859,34 @@ void monster(uint64_t* to_context) {
   if (debug_merge)
     from_context = (uint64_t*) 0;
 
-  sprintf(string_buffer, "; %s\n\n", SELFIE_URL);direct_output(string_buffer);
+  w = w
+    + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
+    + dprintf(output_fd, "; SMT-LIB formulae generated by %s for\n", selfie_name)
+    + dprintf(output_fd, "; RISC-V code obtained from %s with\n", binary_name);
 
-  sprintf(string_buffer, "; SMT-LIB formulae generated by %s for\n", selfie_name);direct_output(string_buffer);
-  sprintf(string_buffer, "; RISC-V code obtained from %s with\n", binary_name);direct_output(string_buffer);
-  if (max_execution_depth) sprintf(string_buffer, "; %lu", max_execution_depth); else sprintf(string_buffer, "; unbounded");
-  direct_output(string_buffer);
-  sprintf(string_buffer, " execution depth, branching limit of %lu, and merging", beq_limit);direct_output(string_buffer);
-  if (merge_enabled) sprintf(string_buffer, " enabled\n\n"); else sprintf(string_buffer, " disabled\n\n");
-  direct_output(string_buffer);
+  if (max_execution_depth)
+    w = w + dprintf(output_fd, "; %lu", max_execution_depth);
+  else
+    w = w + dprintf(output_fd, "; unbounded");
 
-  sprintf(string_buffer, "(set-option :produce-models true)\n");direct_output(string_buffer);
-  sprintf(string_buffer, "(set-option :incremental true)\n");direct_output(string_buffer);
-  sprintf(string_buffer, "(set-logic QF_BV)\n\n");direct_output(string_buffer);
+  w = w + dprintf(output_fd, " execution depth, branching limit of %lu, and merging", beq_limit);
+  if (merge_enabled)
+    w = w + dprintf(output_fd, " enabled\n\n");
+  else
+    w = w + dprintf(output_fd, " disabled\n\n");
+
+  w = w
+    + dprintf(output_fd, "(set-option :produce-models true)\n")
+    + dprintf(output_fd, "(set-option :incremental true)\n")
+    + dprintf(output_fd, "(set-logic QF_BV)\n\n");
 
   timeout = 1;
 
   while (1) {
 
     if (debug_merge)
-      if (from_context != (uint64_t*) 0) {
-        sprintf(string_buffer, "; switching from context 0x%08lX to context 0x%08lX\n", (uint64_t) from_context, (uint64_t) to_context);direct_output(string_buffer);
-      }
+      if (from_context != (uint64_t*) 0)
+        w = w + dprintf(output_fd, "; switching from context 0x%08lX to context 0x%08lX\n", (uint64_t) from_context, (uint64_t) to_context);
 
     from_context = mipster_symbolic_switch(to_context, timeout);
 
@@ -1902,13 +1914,7 @@ void monster(uint64_t* to_context) {
         if (to_context)
           timeout = 1;
         else {
-          sprintf(string_buffer, "\n(exit)");direct_output(string_buffer);
-
-          use_stdout();
-
-          printf("%s: %lu characters of SMT-LIB formulae written into %s\n", selfie_name,
-            number_of_written_characters,
-            smt_name);
+          w = w + dprintf(output_fd, "\n(exit)");
 
           return;
         }
@@ -2013,9 +2019,7 @@ uint64_t selfie_run_symbolically() {
 
       run = 0;
 
-      printf("%s: %lu characters of SMT-LIB formulae written into %s\n", selfie_name,
-        number_of_written_characters,
-        smt_name);
+      printf("%s: %lu characters of SMT-LIB formulae written into %s\n", selfie_name, w, smt_name);
 
       return EXITCODE_NOERROR;
     } else
