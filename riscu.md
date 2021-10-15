@@ -10,7 +10,7 @@ This document provides an overview of the RISC-U instruction set. RISC-U is a ti
 
 A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers numbered `0` to `31` and denoted `zero`, `ra`, `sp`, `gp`, `tp`, `t0`-`t2`, `s0`-`s1`, `a0`-`a7`, `s2`-`s11`, `t3`-`t6`, and 4GB of byte-addressed memory.
 
-Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
+Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored. Selfie only uses a subset of the general-purpose registers, namely `ra` which stands for *return address*, `sp` for *stack pointer*, `gp` for *global pointer*, `t0-t6` where the `t` stands for *temporary*, `s0` where the `s` stands for *saved*, and `a0-a3` and `a6-a7` where `a` stands for *argument*. Registers `tp`, `s1`, `a4-a5`, and `s2-s11` are not used in selfie.
 
 ## Instructions
 
