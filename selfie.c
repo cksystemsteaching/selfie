@@ -3147,10 +3147,11 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
       store_character(buffer, output_cursor, 0);
   }
 
-  output_buffer = (char*) 0;
-  output_cursor = 0;
-
-  output_fd = save_fd;
+  if (buffer) {
+    output_buffer = (char*) 0;
+    output_cursor = 0;
+  } else
+    output_fd = save_fd;
 
   return number_of_put_characters;
 }
