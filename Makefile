@@ -87,7 +87,7 @@ emu: selfie.m
 
 # Run hypervisor between emulators
 os: selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
+	./selfie -l selfie.m -m 2 -l selfie.m -y 2 -l selfie.m -m 1
 
 # Self-compile on two virtual machines
 vm: selfie.m selfie.s
