@@ -1794,9 +1794,9 @@ void modeler() {
     if (i == 0)
       w = w + dprintf(output_fd, "\n");
     else if (*(registers + i) != 0)
-      w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX for %s\n",
+      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX for %s\n",
         reg_nids * 2 + i,      // nid of this line
-        *(registers + i),      // initial value
+        *(registers + i),      // initial value with sign
         *(registers + i),      // initial value in hexadecimal as comment
         get_register_name(i)); // register name as comment
 
@@ -1816,12 +1816,12 @@ void modeler() {
         reg_nids + i,          // nid of to-be-initialized register
         get_register_name(i)); // register name as comment
     else
-      w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %lu\n",
+      w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %ld\n",
         reg_nids * 3 + i,     // nid of this line
         reg_nids + i,         // nid of to-be-initialized register
         reg_nids * 2 + i,     // nid of initial value
         get_register_name(i), // register name as comment
-        *(registers + i));    // initial value
+        *(registers + i));    // initial value with sign
 
     i = i + 1;
   }
