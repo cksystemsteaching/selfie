@@ -1694,7 +1694,7 @@ void modeler() {
 
     // start of heap segment for checking address validity
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
-    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
+    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_heap_seg_start(current_context), get_heap_seg_start(current_context))
 
     + dprintf(output_fd, "; 4GB of memory\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
