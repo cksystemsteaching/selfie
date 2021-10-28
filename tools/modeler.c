@@ -1765,15 +1765,15 @@ void modeler() {
       *(reg_flow_nids + i) = reg_nids + i;
 
       if (i == LO_FLOW)
-        w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX\n",
-          *(reg_flow_nids + i),    // nid of this line
-          code_start + code_size,  // end of code segment
-          code_start + code_size); // end of code segment
+        w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX start of data segment\n",
+          *(reg_flow_nids + i), // nid of this line
+          data_start,           // start of data segment
+          data_start);          // start of data segment in hexadecimal
       else if (i == UP_FLOW)
-        w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX\n",
+        w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX 4GB of memory addresses\n",
           *(reg_flow_nids + i),          // nid of this line
           VIRTUALMEMORYSIZE * GIGABYTE,  // 4GB of memory addresses
-          VIRTUALMEMORYSIZE * GIGABYTE); // 4GB of memory addresses
+          VIRTUALMEMORYSIZE * GIGABYTE); // 4GB of memory addresses in hexadecimal
       else {
         w = w + dprintf(output_fd, "%lu state 2 ", *(reg_flow_nids + i));
 
