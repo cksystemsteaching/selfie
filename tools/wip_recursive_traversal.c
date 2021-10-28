@@ -675,7 +675,7 @@ void set_return_target(uint64_t pc) {
 }
 
 uint64_t function_is_exit(uint64_t function) {
-  return (uint64_t) ((uint64_t) get_returns(function) == -1);
+  return (uint64_t) ((uint64_t) get_returns(function) == (uint64_t) -1);
 }
 
 void set_function_is_exit(uint64_t function) {
@@ -748,7 +748,7 @@ void build_cfg_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_func) {
 
     already_visited = (uint64_t) (get_edges(inverse_cfg, pc) != (uint64_t *) 0);
 
-    if (prev_pc != -1) {
+    if (prev_pc != (uint64_t) -1) {
       add_cfg_edge(prev_pc, pc);
     }
 
@@ -875,7 +875,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
         copy_state(tmp_state, state);
       } else if (merge_states(tmp_state, state) == 0) { // merge current machine states
         // if merge didn't result in any changes: return
-        if (current_ra != -1) {
+        if (current_ra != (uint64_t) -1) {
           if (call_stack_recursion_check()) {
             update_state(current_ra, unknown_state);
             set_reg(get_state(current_ra), REG_GP, gp_val); // temporary workaround
@@ -1179,7 +1179,7 @@ void recursive_livedead_function(uint64_t pc, uint64_t prev_pc, uint64_t call_pc
     } else if (merge_livedead(tmp_livedead, livedead) == 0) { // merge current live/dead information
       // if merge didn't result in any changes: return
       //if (!force_continue) {
-        if (call_pc != -1) {
+        if (call_pc != (uint64_t) -1) {
           if (call_stack_recursion_check()) {
             update_livedead(call_pc, unknown_livedead);
             // printf1("Updated livedead at call_pc=%x (set to unknown)\n", call_pc);
@@ -1199,7 +1199,7 @@ void recursive_livedead_function(uint64_t pc, uint64_t prev_pc, uint64_t call_pc
 
     if (pc == get_ins_to_func(pc)) {
       // reached first instruction of the function
-      if (call_pc != -1) {
+      if (call_pc != (uint64_t) -1) {
         update_livedead(call_pc, livedead);
         // printf1("Updated livedead at pc=%x (2)\n", call_pc);
       }
@@ -1588,7 +1588,7 @@ uint64_t PATTERN_RETC_VAL = 0;
 //
 // 0x800(~506): 0x00000013: nop
 //
-void pattern_jal_nop(uint64_t matched_instructions) {
+void pattern_jal_nop() {
   number_of_instructions_in_pattern = 1;
 
   // 4194415 = 0x0040006F = jal zero,1
@@ -1718,7 +1718,7 @@ void update_pattern(uint64_t matched_instructions) {
   reset_pattern_matcher();
 
   if (current_pattern == PATTERN_JAL_NOP)
-    pattern_jal_nop(matched_instructions);
+    pattern_jal_nop();
   else if (current_pattern == PATTERN_POINTER)
     pattern_pointer(matched_instructions);
   else if (current_pattern == PATTERN_RETC)
@@ -1767,7 +1767,7 @@ void patch_peephole(uint64_t pattern) {
 
   number_of_matches = 0;
 
-  while (last_match != -1) {
+  while (last_match != (uint64_t) -1) {
 
     if (opt_debug == 2) {
       printf1("%x\tmatches: ", (char*) last_match);
@@ -1830,7 +1830,7 @@ void patch_dead_ops() {
   last_dead_op = find_next_dead_op(0);
   number_of_dead_ops = 0;
 
-  while (last_dead_op != -1) {
+  while (last_dead_op != (uint64_t) -1) {
     number_of_dead_ops = number_of_dead_ops + 1;
     insert_nop(last_dead_op);
     last_dead_op = find_next_dead_op(last_dead_op);
@@ -1885,7 +1885,7 @@ void print_enops() {
   last_enop = find_next_enop(0);
   number_of_enops = 0;
 
-  while (last_enop != -1) {
+  while (last_enop != (uint64_t) -1) {
     number_of_enops = number_of_enops + 1;
     printf1("enop at: %x\n", (char*) last_enop);
     print_state(get_state(last_enop));
@@ -1900,7 +1900,7 @@ void patch_enops() {
   last_enop = find_next_enop(0);
   number_of_enops = 0;
 
-  while (last_enop != -1) {
+  while (last_enop != (uint64_t) -1) {
     number_of_enops = number_of_enops + 1;
     insert_nop(last_enop);
     last_enop = find_next_enop(last_enop);
