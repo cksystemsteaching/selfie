@@ -1125,69 +1125,6 @@ void apply_livedead_effects(uint64_t *livedead) {
   first_livedead_effect = 0;
 }
 
-/*
-void recursive_livedead(uint64_t pc, uint64_t prev_pc) {
-  uint64_t* livedead;
-  uint64_t created_new;
-  uint64_t* current;
-
-  while (1) {
-    if (pc >= code_length) {
-      print("Error: pc went past end of code!");
-      exit(1);
-    }
-
-    created_new = 0;
-    livedead = get_livedead(pc);
-    if (livedead == (uint64_t *) 0) {
-      livedead = new_livedead();
-      set_livedead(pc, livedead);
-      created_new = 1;
-    }
-
-    ir = load_instruction(pc);
-    decode();
-
-    if (prev_pc != (uint64_t) -1) {
-      copy_livedead(get_livedead(prev_pc), tmp_livedead);
-    }
-    else {
-      tmp_livedead = new_livedead();
-    }
-
-    apply_livedead_effects(tmp_livedead); // apply effects of current instruction to live/dead information
-    if (created_new) {
-      copy_livedead(tmp_livedead, livedead);
-    } else if (!merge_livedead(tmp_livedead, livedead)) { // merge current live/dead information
-      // if merge didn't result in any changes: return
-      return;
-    }
-
-    current = get_edges(inverse_cfg, pc);
-
-    if (current == (uint64_t*) 0) {
-      if (pc != 0) {
-        printf1("Error! No in-edges at pc=%x", (char*) pc);
-        exit(1);
-      }
-      else {
-        // reached cfg root
-        return;
-      }
-    }
-
-    while (get_next_edge(current) != 0) {
-      recursive_livedead(get_to_pc(current), pc);
-      current = get_next_edge(current);
-    }
-
-    // traverse last edge without recursion to avoid a stack overflow
-    prev_pc = pc;
-    pc = get_to_pc(current);
-  }
-}
-*/
-
 uint64_t current_backward_depth = 0;
 uint64_t max_backward_depth = 0;
 
@@ -1338,8 +1275,6 @@ void recursive_livedead_helper(uint64_t pc) {
 void selfie_traverse() {
   uint64_t num_instructions;
   uint64_t* exit;
-  uint64_t pc;
-  uint64_t* state;
 
   num_instructions = code_length / INSTRUCTIONSIZE;
   // allocate for each instruction
@@ -1376,24 +1311,6 @@ void selfie_traverse() {
   tmp_livedead = new_livedead();
   unknown_livedead = new_unknown_livedead();
 
-  /*
-  pc = 0;
-  while (pc < code_length) {
-      state = get_state(pc);
-      if (state) {
-          if (!is_reg_unknown(state, REG_A7)) {
-              if (get_reg(state, REG_A7) == SYSCALL_EXIT) {
-                  ir = load_instruction(pc);
-                  decode();
-                  if (is == ECALL) {
-                      recursive_livedead_helper(pc);
-                  }
-              }
-          }
-      }
-      pc = pc + INSTRUCTIONSIZE;
-  }
-  */
   exit = exits;
   while (exit != (uint64_t*) 0) {
     recursive_livedead_helper(get_exit_pc(exit));
@@ -2021,6 +1938,8 @@ int main(int argc, char **argv) {
 
     printf2("Number of updates: %d states, %d livedeads\n", (char*) state_update_counter, (char*) livedead_update_counter);
     printf2("Maximum call stack depth: %d (forward), %d (backward)\n", (char*) max_forward_depth, (char*) max_backward_depth);
+
+    //print_states_and_livedeads();
   }
   else {
     /////////////////////////
