@@ -1,6 +1,3 @@
-#include "../selfie.h"
-#define uint64_t unsigned long long
-
 // set to 0 to enable variable analysis + optimization passes
 uint64_t register_analysis_only = 1;
 
