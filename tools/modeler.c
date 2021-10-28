@@ -610,7 +610,7 @@ void model_syscalls() {
 
   w = w
     + dprintf(output_fd, "%lu state 2 brk ; brk bump pointer\n", bump_pointer_nid)
-    + dprintf(output_fd, "%lu init 2 %lu 32 ; initial program break\n",
+    + dprintf(output_fd, "%lu init 2 %lu 40 ; initial program break\n",
         current_nid + 1451, // nid of this line
         bump_pointer_nid)   // nid of brk bump pointer
 
@@ -1572,7 +1572,7 @@ void check_segmentation(uint64_t flow_nid) {
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
     // check if address of most recent memory access < start of heap segment
-    + dprintf(output_fd, "%lu ult 1 %lu 32 ; address < start of heap segment\n",
+    + dprintf(output_fd, "%lu ult 1 %lu 40 ; address < start of heap segment\n",
         current_nid + 1, // nid of this line
         flow_nid)        // nid of address of most recent memory access
     + dprintf(output_fd, "%lu and 1 %lu %lu\n",
@@ -1694,11 +1694,7 @@ void modeler() {
 
     // start of heap segment for checking address validity
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
-    + dprintf(output_fd, "32 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
-
-    // value in register $sp from boot loader
-    + dprintf(output_fd, "; word-aligned initial $sp (stack pointer) value from boot loader\n\n")
-    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP))
+    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
 
     + dprintf(output_fd, "; 4GB of memory\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
@@ -1790,6 +1786,23 @@ void modeler() {
       i = i + 1;
     }
 
+  w = w + dprintf(output_fd, "\n; non-zero initial register values\n");
+
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (i == 0)
+      w = w + dprintf(output_fd, "\n");
+    else if (*(registers + i) != 0)
+      w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX for %s\n",
+        reg_nids * 2 + i,      // nid of this line
+        *(registers + i),      // initial value
+        *(registers + i),      // initial value in hexadecimal as comment
+        get_register_name(i)); // register name as comment
+
+    i = i + 1;
+  }
+
   w = w + dprintf(output_fd, "\n; initializing registers\n");
 
   i = 0;
@@ -1797,19 +1810,18 @@ void modeler() {
   while (i < NUMBEROFREGISTERS) {
     if (i == 0)
       w = w + dprintf(output_fd, "\n");
-    else {
-      if (i == REG_SP)
-        w = w + dprintf(output_fd, "%lu init 2 %lu 40 %s ; initial value from boot loader\n",
-          reg_nids * 2 + i,      // nid of this line
-          reg_nids + i,          // nid of $sp register
-          get_register_name(i)); // register name as comment
-      else
-        // ignoring non-zero value in register $a6 from initial context switch
-        w = w + dprintf(output_fd, "%lu init 2 %lu 20 %s ; initial value is 0\n",
-          reg_nids * 2 + i,      // nid of this line
-          reg_nids + i,          // nid of to-be-initialized register
-          get_register_name(i)); // register name as comment
-    }
+    else if (*(registers + i) == 0)
+      w = w + dprintf(output_fd, "%lu init 2 %lu 20 %s ; initial value is 0\n",
+        reg_nids * 3 + i,      // nid of this line
+        reg_nids + i,          // nid of to-be-initialized register
+        get_register_name(i)); // register name as comment
+    else
+      w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %lu\n",
+        reg_nids * 3 + i,     // nid of this line
+        reg_nids + i,         // nid of to-be-initialized register
+        reg_nids * 2 + i,     // nid of initial value
+        get_register_name(i), // register name as comment
+        *(registers + i));    // initial value
 
     i = i + 1;
   }
@@ -1820,12 +1832,12 @@ void modeler() {
         w = w + dprintf(output_fd, "\n");
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
         w = w + dprintf(output_fd, "%lu init 2 %lu 30 %s ; initial value is start of data segment\n",
-          reg_nids * 2 + i,                          // nid of this line
+          reg_nids * 3 + i,                          // nid of this line
           reg_nids + i,                              // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
       else if (i < UP_FLOW + NUMBEROFREGISTERS)
         w = w + dprintf(output_fd, "%lu init 2 %lu 50 %s ; initial value is 4GB of memory addresses\n",
-          reg_nids * 2 + i,                          // nid of this line
+          reg_nids * 3 + i,                          // nid of this line
           reg_nids + i,                              // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
 
