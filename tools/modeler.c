@@ -1649,7 +1649,7 @@ void modeler() {
 
   uint64_t machine_word;
 
-  uint64_t loader_nid;
+  uint64_t memory_dump_nid;
   uint64_t code_nid;
   uint64_t control_nid;
   uint64_t condition_nid;
@@ -1877,25 +1877,36 @@ void modeler() {
 
   current_nid = pc_nid(pcs_nid, pc);
 
-  w = w + dprintf(output_fd, "\n%lu state 3 boot-loader\n", current_nid);
+  w = w + dprintf(output_fd, "\n%lu state 3 memory-dump\n", current_nid);
 
-  loader_nid    = current_nid;
-  data_flow_nid = current_nid;
-  current_nid   = current_nid + 1;
+  memory_dump_nid = current_nid;
+  data_flow_nid   = current_nid;
+  current_nid     = current_nid + 1;
 
   w = w + dprintf(output_fd, "\n; data segment\n\n");
+
+  // assert: data segment is not empty
 
   pc = data_start;
 
   while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
     if (pc == data_start + data_size) {
+      pc = get_heap_seg_start(current_context);
+
+      if (pc != get_program_break(current_context))
+        w = w + dprintf(output_fd, "\n; heap segment\n\n");
+    }
+
+    if (pc == get_program_break(current_context)) {
       // assert: stack pointer < VIRTUALMEMORYSIZE * GIGABYTE
       pc = *(registers + REG_SP);
 
-      w = w + dprintf(output_fd, "\n; stack\n\n");
+      w = w + dprintf(output_fd, "\n; stack segment\n\n");
+
+      // assert: stack segment is not empty
     }
 
-    // address in data segment or stack
+    // address in data, heap, or stack segment
     w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
       current_nid, // nid of this line
       pc, pc);     // address of current machine word
@@ -1906,7 +1917,7 @@ void modeler() {
       // load machine word == 0
       w = w + dprintf(output_fd, "%lu write 3 %lu %lu 20\n",
         current_nid + 1, // nid of this line
-        data_flow_nid,   // nid of most recent update to data segment
+        data_flow_nid,   // nid of most recent update of memory
         current_nid);    // nid of address of current machine word
 
       data_flow_nid = current_nid + 1;
@@ -1918,7 +1929,7 @@ void modeler() {
             machine_word, machine_word) // value of machine word at current address
         + dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
             current_nid + 2,  // nid of this line
-            data_flow_nid,    // nid of most recent update to data segment
+            data_flow_nid,    // nid of most recent update of memory
             current_nid,      // nid of address of current machine word
             current_nid + 1); // nid of value of machine word at current address
 
@@ -1927,8 +1938,9 @@ void modeler() {
 
     pc = pc + WORDSIZE;
 
-    if (current_nid == loader_nid + 1)
-      current_nid = loader_nid + WORDSIZE;
+    if (current_nid == memory_dump_nid + 1)
+      // account for nid offset by 1 through memory-dump state
+      current_nid = memory_dump_nid + WORDSIZE;
     else
       current_nid = current_nid + WORDSIZE;
   }
@@ -1940,11 +1952,11 @@ void modeler() {
   current_nid = memory_nid;
 
   w = w
-    + dprintf(output_fd, "%lu state 3 memory ; data segment, heap, stack\n", current_nid)
-    + dprintf(output_fd, "%lu init 3 %lu %lu ; loading data segment and stack into memory\n",
+    + dprintf(output_fd, "%lu state 3 memory ; data, heap, stack segments\n", current_nid)
+    + dprintf(output_fd, "%lu init 3 %lu %lu ; loading data, heap, stack segments into memory\n",
         current_nid + 1, // nid of this line
         current_nid,     // nid of memory
-        data_flow_nid);  // nid of most recent update to data segment
+        data_flow_nid);  // nid of most recent update of memory
 
   memory_flow_nid = current_nid;
 
