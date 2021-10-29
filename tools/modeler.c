@@ -97,7 +97,16 @@ void model_ecall();
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+uint64_t mark_statically_live_code(uint64_t next_pc);
+void     static_dead_code_elimination(uint64_t entry_pc);
+
 void translate_to_model();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t exit_wrapper_entry = 0;
+
+uint64_t* statically_live_code = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -1468,6 +1477,91 @@ void model_ecall() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+uint64_t mark_statically_live_code(uint64_t callee_pc) {
+  uint64_t next_pc;
+
+  pc = callee_pc;
+
+  while (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) == 0) {
+    *(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) = 1;
+
+    fetch();
+    decode();
+
+    next_pc = pc + INSTRUCTIONSIZE;
+
+    if (is == ADDI) {
+      if (rd == REG_A7)
+        if (rs1 == REG_ZR)
+          if (imm != 0)
+            // assert: next instruction is ecall
+            reg_a7 = imm;
+    } else if (is == BEQ)
+      // mark true branch first
+      mark_statically_live_code(pc + imm);
+    else if (is == JAL) {
+      if (rd == REG_RA) {
+        // assert: procedure call
+        if (pc + imm == exit_wrapper_entry)
+          // "returning" from exit
+          return 0;
+        else if (mark_statically_live_code(pc + imm))
+          // "returning" from exit
+          return 0;
+      } else
+        // assert: jump
+        next_pc = pc + imm;
+    } else if (is == JALR)
+      // assert: return from procedure call
+      return 0;
+    else if (is == ECALL) {
+      if (reg_a7 == SYSCALL_EXIT) {
+        reg_a7 = 0;
+
+        exit_wrapper_entry = callee_pc;
+
+        return 1;
+      }
+    }
+
+    pc = next_pc;
+  }
+
+  return 0;
+}
+
+void static_dead_code_elimination(uint64_t entry_pc) {
+  uint64_t saved_pc;
+
+  statically_live_code = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+
+  exit_wrapper_entry = 0;
+
+  saved_pc = pc;
+
+  pc = entry_pc;
+
+  mark_statically_live_code(entry_pc);
+
+  pc = saved_pc;
+
+/*
+  while (pc < code_start + code_size) {
+    fetch();
+    decode();
+
+    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE))
+      dprintf(output_fd, "1: %lX: ", pc);
+    else
+      dprintf(output_fd, "0: %lX: ", pc);
+    print_instruction();
+    dprintf(output_fd, "\n");
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+  */
+}
+
 void translate_to_model() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
@@ -1853,24 +1947,27 @@ void modeler() {
     log_ten(data_start + data_size +
       (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
-  // assert: pc == code_start
+  pc = code_start;
 
   while (pc < code_start + code_size) {
     current_nid = pc_nid(pcs_nid, pc);
 
-    // pc flag of current instruction
-    w = w + dprintf(output_fd, "%lu state 1\n", current_nid);
+    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
+      // pc flag of current instruction
+      w = w + dprintf(output_fd, "%lu state 1 ; 0x%lX\n", current_nid, pc);
 
-    if (pc == e_entry)
-      // set pc here by initializing pc flag of instruction at address 0 to true
-      w = w + dprintf(output_fd, "%lu init 1 %lu 11 ; initial program counter\n",
-        current_nid + 1, // nid of this line
-        current_nid);    // nid of pc flag of current instruction
-    else
-      // initialize all other pc flags to false
-      w = w + dprintf(output_fd, "%lu init 1 %lu 10\n",
-        current_nid + 1, // nid of this line
-        current_nid);    // nid of pc flag of current instruction
+      if (pc == get_pc(current_context))
+        // set pc here by initializing pc flag of instruction to true
+        w = w + dprintf(output_fd, "%lu init 1 %lu 11 ; initial program counter\n",
+          current_nid + 1, // nid of this line
+          current_nid);    // nid of pc flag of current instruction
+      else
+        // initialize all other pc flags to false
+        w = w + dprintf(output_fd, "%lu init 1 %lu 10\n",
+          current_nid + 1, // nid of this line
+          current_nid);    // nid of pc flag of current instruction
+    } else
+      w = w + dprintf(output_fd, "; %lu unreachable state at %lX\n", current_nid, pc);
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -1996,15 +2093,22 @@ void modeler() {
   current_callee   = code_start;
   estimated_return = code_start;
 
-  pc = get_pc(current_context);
+  pc = code_start;
 
   while (pc < code_start + code_size) {
-    current_nid = pc_nid(code_nid, pc);
-
     fetch();
     decode();
 
-    translate_to_model();
+    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
+      current_nid = pc_nid(code_nid, pc);
+
+      translate_to_model();
+    } else if (is == JALR) {
+      // assert: next "procedure body" begins right after jalr
+      current_callee = pc + INSTRUCTIONSIZE;
+
+      estimated_return = current_callee;
+    }
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -2019,143 +2123,145 @@ void modeler() {
 
   control_nid = pcs_nid * 5;
 
-  pc = get_pc(current_context);
+  pc = code_start;
 
   while (pc < code_start + code_size) {
-    current_nid = pc_nid(control_nid, pc);
+    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
+      current_nid = pc_nid(control_nid, pc);
 
-    in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
+      in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
 
-    // nid of 1-bit 0
-    control_flow_nid = 10;
+      // nid of 1-bit 0
+      control_flow_nid = 10;
 
-    while (in_edge != (uint64_t*) 0) {
-      from_instruction = *(in_edge + 1);
-      from_address     = *(in_edge + 2);
-      condition_nid    = *(in_edge + 3);
+      while (in_edge != (uint64_t*) 0) {
+        from_instruction = *(in_edge + 1);
+        from_address     = *(in_edge + 2);
+        condition_nid    = *(in_edge + 3);
 
-      if (from_instruction == BEQ) {
-        w = w
-          // is beq active and its condition true or false?
-          + dprintf(output_fd, "%lu and 1 %lu %lu ; beq %lu[0x%lX]",
-              current_nid,                   // nid of this line
-              pc_nid(pcs_nid, from_address), // nid of pc flag of instruction proceeding here
-              condition_nid,                 // nid of true or false beq condition
-              from_address, from_address)    // address of instruction proceeding here
-          + print_code_line_number_for_instruction(from_address, code_start)
-          + dprintf(output_fd, "\n");
-
-        current_nid = current_nid + 1;
-
-        // activate this instruction if beq is active and its condition is true (false)
-        control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-      } else if (from_instruction == JALR) {
-        jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
-
-        if (jalr_address != 0) {
+        if (from_instruction == BEQ) {
           w = w
-            // is value of $ra register with LSB reset equal to address of this instruction?
-            + dprintf(output_fd, "%lu not 2 21 ; jalr %lu[0x%lX]",
-                current_nid,                // nid of this line
-                jalr_address, jalr_address) // address of instruction proceeding here
-            + print_code_line_number_for_instruction(jalr_address, code_start)
-            + dprintf(output_fd, "\n")
-            + dprintf(output_fd, "%lu and 2 %lu %lu\n",
-                current_nid + 1,   // nid of this line
-                reg_nids + REG_RA, // nid of current value of $ra register
-                current_nid)       // nid of not 1
-            + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
-                current_nid + 2, // nid of this line
-                current_nid + 1, // nid of current value of $ra register with LSB reset
-                condition_nid)   // nid of address of this instruction (generated by jal)
-
-            // is jalr active and the previous condition true or false?
-            + dprintf(output_fd, "%lu and 1 %lu %lu\n",
-                current_nid + 3,               // nid of this line
-                pc_nid(pcs_nid, jalr_address), // nid of pc flag of instruction proceeding here
-                current_nid + 2);              // nid of return address condition
-
-          current_nid = current_nid + 4;
-
-          // activate this instruction if jalr is active and its condition is true (false)
-          control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-        } else {
-          // no jalr returning from jal found
-
-          w = w
-            + dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[0x%lX]", from_address, from_address)
+            // is beq active and its condition true or false?
+            + dprintf(output_fd, "%lu and 1 %lu %lu ; beq %lu[0x%lX]",
+                current_nid,                   // nid of this line
+                pc_nid(pcs_nid, from_address), // nid of pc flag of instruction proceeding here
+                condition_nid,                 // nid of true or false beq condition
+                from_address, from_address)    // address of instruction proceeding here
             + print_code_line_number_for_instruction(from_address, code_start)
             + dprintf(output_fd, "\n");
 
-          // this instruction may stay deactivated if there is no more in-edges
+          current_nid = current_nid + 1;
+
+          // activate this instruction if beq is active and its condition is true (false)
+          control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
+        } else if (from_instruction == JALR) {
+          jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
+
+          if (jalr_address != 0) {
+            w = w
+              // is value of $ra register with LSB reset equal to address of this instruction?
+              + dprintf(output_fd, "%lu not 2 21 ; jalr %lu[0x%lX]",
+                  current_nid,                // nid of this line
+                  jalr_address, jalr_address) // address of instruction proceeding here
+              + print_code_line_number_for_instruction(jalr_address, code_start)
+              + dprintf(output_fd, "\n")
+              + dprintf(output_fd, "%lu and 2 %lu %lu\n",
+                  current_nid + 1,   // nid of this line
+                  reg_nids + REG_RA, // nid of current value of $ra register
+                  current_nid)       // nid of not 1
+              + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
+                  current_nid + 2, // nid of this line
+                  current_nid + 1, // nid of current value of $ra register with LSB reset
+                  condition_nid)   // nid of address of this instruction (generated by jal)
+
+              // is jalr active and the previous condition true or false?
+              + dprintf(output_fd, "%lu and 1 %lu %lu\n",
+                  current_nid + 3,               // nid of this line
+                  pc_nid(pcs_nid, jalr_address), // nid of pc flag of instruction proceeding here
+                  current_nid + 2);              // nid of return address condition
+
+            current_nid = current_nid + 4;
+
+            // activate this instruction if jalr is active and its condition is true (false)
+            control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
+          } else {
+            // no jalr returning from jal found
+
+            w = w
+              + dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[0x%lX]", from_address, from_address)
+              + print_code_line_number_for_instruction(from_address, code_start)
+              + dprintf(output_fd, "\n");
+
+            // this instruction may stay deactivated if there is no more in-edges
+          }
+        } else if (from_instruction == ECALL) {
+          w = w
+            + dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[0x%lX]",
+                current_nid,                // nid of this line
+                from_address, from_address) // address of instruction proceeding here
+            + print_code_line_number_for_instruction(from_address, code_start)
+            + dprintf(output_fd, "\n")
+
+            + dprintf(output_fd, "%lu init 1 %lu 10 ; ecall is initially inactive\n",
+                current_nid + 1, // nid of this line
+                current_nid)     // nid of kernel-mode pc flag of ecall
+
+            + dprintf(output_fd, "%lu ite 1 %lu 60 %lu ; activate ecall and keep active while in kernel mode\n",
+                current_nid + 2,               // nid of this line
+                current_nid,                   // nid of kernel-mode pc flag of ecall
+                pc_nid(pcs_nid, from_address)) // nid of pc flag of instruction proceeding here
+
+            + dprintf(output_fd, "%lu next 1 %lu %lu ; keep ecall active while in kernel mode\n",
+                current_nid + 3, // nid of this line
+                current_nid,     // nid of kernel-mode pc flag of ecall
+                current_nid + 2) // nid of previous line
+
+            + dprintf(output_fd, "%lu and 1 %lu 62 ; ecall is active but not in kernel mode anymore\n",
+                current_nid + 4, // nid of this line
+                current_nid);    // nid of kernel-mode pc flag of ecall
+
+          current_nid = current_nid + 5;
+
+          // activate this instruction if ecall is active but not in kernel mode anymore
+          control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
+        } else {
+          if (from_instruction == JAL) w = w + dprintf(output_fd, "; jal "); else w = w + dprintf(output_fd, "; ");
+          w = w
+            + dprintf(output_fd, "%lu[0x%lX]", from_address, from_address)
+            + print_code_line_number_for_instruction(from_address, code_start)
+            + dprintf(output_fd, "\n");
+
+          // activate this instruction if instruction proceeding here is active
+          control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
         }
-      } else if (from_instruction == ECALL) {
-        w = w
-          + dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[0x%lX]",
-              current_nid,                // nid of this line
-              from_address, from_address) // address of instruction proceeding here
-          + print_code_line_number_for_instruction(from_address, code_start)
-          + dprintf(output_fd, "\n")
 
-          + dprintf(output_fd, "%lu init 1 %lu 10 ; ecall is initially inactive\n",
-              current_nid + 1, // nid of this line
-              current_nid)     // nid of kernel-mode pc flag of ecall
-
-          + dprintf(output_fd, "%lu ite 1 %lu 60 %lu ; activate ecall and keep active while in kernel mode\n",
-              current_nid + 2,               // nid of this line
-              current_nid,                   // nid of kernel-mode pc flag of ecall
-              pc_nid(pcs_nid, from_address)) // nid of pc flag of instruction proceeding here
-
-          + dprintf(output_fd, "%lu next 1 %lu %lu ; keep ecall active while in kernel mode\n",
-              current_nid + 3, // nid of this line
-              current_nid,     // nid of kernel-mode pc flag of ecall
-              current_nid + 2) // nid of previous line
-
-          + dprintf(output_fd, "%lu and 1 %lu 62 ; ecall is active but not in kernel mode anymore\n",
-              current_nid + 4, // nid of this line
-              current_nid);    // nid of kernel-mode pc flag of ecall
-
-        current_nid = current_nid + 5;
-
-        // activate this instruction if ecall is active but not in kernel mode anymore
-        control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-      } else {
-        if (from_instruction == JAL) w = w + dprintf(output_fd, "; jal "); else w = w + dprintf(output_fd, "; ");
-        w = w
-          + dprintf(output_fd, "%lu[0x%lX]", from_address, from_address)
-          + print_code_line_number_for_instruction(from_address, code_start)
-          + dprintf(output_fd, "\n");
-
-        // activate this instruction if instruction proceeding here is active
-        control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
+        in_edge = (uint64_t*) *in_edge;
       }
 
-      in_edge = (uint64_t*) *in_edge;
-    }
+      w = w
+        // update pc flag of current instruction
+        + dprintf(output_fd, "%lu next 1 %lu %lu ; ->%lu[0x%lX]",
+            current_nid,         // nid of this line
+            pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
+            control_flow_nid,    // nid of most recently processed in-edge
+            pc, pc)              // address of current instruction
+        + print_code_line_number_for_instruction(pc, code_start);
+      if (control_flow_nid == 10)
+        if (pc > code_start)
+          // TODO: warn here about unreachable code
+          w = w + dprintf(output_fd, " (unreachable)");
+      w = w + dprintf(output_fd, "\n");
 
-    w = w
-      // update pc flag of current instruction
-      + dprintf(output_fd, "%lu next 1 %lu %lu ; ->%lu[0x%lX]",
-          current_nid,         // nid of this line
-          pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
-          control_flow_nid,    // nid of most recently processed in-edge
-          pc, pc)              // address of current instruction
-      + print_code_line_number_for_instruction(pc, code_start);
-    if (control_flow_nid == 10)
-      if (pc > code_start)
-        // TODO: warn here about unreachable code
-        w = w + dprintf(output_fd, " (unreachable)");
-    w = w + dprintf(output_fd, "\n");
+      if (current_nid >= pc_nid(control_nid, pc) + 400) {
+        // the instruction at pc is reachable by too many other instructions
 
-    if (current_nid >= pc_nid(control_nid, pc) + 400) {
-      // the instruction at pc is reachable by too many other instructions
+        // report the error on the console
+        output_fd = 1;
 
-      //report the error on the console
-      output_fd = 1;
+        printf("%s: too many in-edges at instruction address 0x%lX detected\n", selfie_name, pc);
 
-      printf("%s: too many in-edges at instruction address 0x%lX detected\n", selfie_name, pc);
-
-      exit(EXITCODE_MODELINGERROR);
+        exit(EXITCODE_MODELINGERROR);
+      }
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -2314,6 +2420,8 @@ uint64_t selfie_model() {
       run = 0;
 
       do_switch(current_context, current_context, TIMEROFF);
+
+      static_dead_code_elimination(get_pc(current_context));
 
       output_name = model_name;
       output_fd   = model_fd;
