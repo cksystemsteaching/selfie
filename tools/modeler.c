@@ -144,7 +144,10 @@ uint64_t w = 0; // number of written characters
 
 uint64_t current_nid = 0; // nid of current line
 
-uint64_t  reg_nids      = 0;             // nids of registers
+uint64_t reg_value_nids = 100; // nids of initial values of registers
+uint64_t reg_nids       = 200; // nids of registers
+uint64_t reg_init_nids  = 300; // nids of initialization of registers
+
 uint64_t* reg_flow_nids = (uint64_t*) 0; // nids of most recent update of registers
 
 uint64_t bump_pointer_nid = 0; // nid of brk bump pointer
@@ -1819,7 +1822,24 @@ void modeler() {
 
     + dprintf(output_fd, "; 32 64-bit general-purpose registers\n");
 
-  reg_nids = 100;
+  w = w + dprintf(output_fd, "\n; non-zero initial register values\n");
+
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (i == 0)
+      w = w + dprintf(output_fd, "\n");
+    else if (*(registers + i) != 0)
+      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX for %s\n",
+        reg_value_nids + i,    // nid of this line
+        *(registers + i),      // initial value with sign
+        *(registers + i),      // initial value in hexadecimal as comment
+        get_register_name(i)); // register name as comment
+
+    i = i + 1;
+  }
+
+  w = w + dprintf(output_fd, "\n; registers\n");
 
   reg_flow_nids = smalloc(3 * NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
@@ -1871,23 +1891,6 @@ void modeler() {
       i = i + 1;
     }
 
-  w = w + dprintf(output_fd, "\n; non-zero initial register values\n");
-
-  i = 0;
-
-  while (i < NUMBEROFREGISTERS) {
-    if (i == 0)
-      w = w + dprintf(output_fd, "\n");
-    else if (*(registers + i) != 0)
-      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX for %s\n",
-        reg_nids * 2 + i,      // nid of this line
-        *(registers + i),      // initial value with sign
-        *(registers + i),      // initial value in hexadecimal as comment
-        get_register_name(i)); // register name as comment
-
-    i = i + 1;
-  }
-
   w = w + dprintf(output_fd, "\n; initializing registers\n");
 
   i = 0;
@@ -1897,14 +1900,14 @@ void modeler() {
       w = w + dprintf(output_fd, "\n");
     else if (*(registers + i) == 0)
       w = w + dprintf(output_fd, "%lu init 2 %lu 20 %s ; initial value is 0\n",
-        reg_nids * 3 + i,      // nid of this line
+        reg_init_nids + i,     // nid of this line
         reg_nids + i,          // nid of to-be-initialized register
         get_register_name(i)); // register name as comment
     else
       w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %ld\n",
-        reg_nids * 3 + i,     // nid of this line
+        reg_init_nids + i,    // nid of this line
         reg_nids + i,         // nid of to-be-initialized register
-        reg_nids * 2 + i,     // nid of initial value
+        reg_value_nids + i,   // nid of initial value
         get_register_name(i), // register name as comment
         *(registers + i));    // initial value with sign
 
@@ -1917,12 +1920,12 @@ void modeler() {
         w = w + dprintf(output_fd, "\n");
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
         w = w + dprintf(output_fd, "%lu init 2 %lu 30 %s ; initial value is start of data segment\n",
-          reg_nids * 3 + i,                          // nid of this line
+          reg_init_nids + i,                         // nid of this line
           reg_nids + i,                              // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
       else if (i < UP_FLOW + NUMBEROFREGISTERS)
         w = w + dprintf(output_fd, "%lu init 2 %lu 50 %s ; initial value is 4GB of memory addresses\n",
-          reg_nids * 3 + i,                          // nid of this line
+          reg_init_nids + i,                         // nid of this line
           reg_nids + i,                              // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
 
