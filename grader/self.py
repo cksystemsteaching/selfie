@@ -214,7 +214,7 @@ def check_self_assemblation() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie1.s',
                            'preparation: selfie can compile and assemble its own source', mandatory=True) + \
         check_execution('./selfie -a selfie1.s -o selfie1.m -m 128 -c selfie.c -o selfie2.m',
-                        'selfie can re-assemble its own binary file', mandatory=True) + \
+                        'selfie can re-assemble its own binary file', mandatory=True, timeout=120) + \
         check_execution('diff -q selfie1.m selfie2.m',
                         'both binary files are exactly the same', mandatory=True)
 
