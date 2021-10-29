@@ -1940,11 +1940,11 @@ void modeler() {
 
   w = w + dprintf(output_fd, "\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate code, data, and stack with
+  // 3 more digits to accommodate code, data, heap, and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
-  // 100*8 lines per 64-bit machine word in data segment
+  // 100*8 lines per 64-bit machine word in memory segments
   pcs_nid = ten_to_the_power_of(
-    log_ten(data_start + data_size +
+    log_ten(get_program_break(current_context) +
       (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP))) + 3);
 
   pc = code_start;
@@ -1972,19 +1972,18 @@ void modeler() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
+  pc = data_start;
+
   current_nid = pc_nid(pcs_nid, pc);
 
   w = w + dprintf(output_fd, "\n%lu state 3 memory-dump\n", current_nid);
 
   memory_dump_nid = current_nid;
   data_flow_nid   = current_nid;
-  current_nid     = current_nid + 1;
 
   w = w + dprintf(output_fd, "\n; data segment\n\n");
 
   // assert: data segment is not empty
-
-  pc = data_start;
 
   while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
     if (pc == data_start + data_size) {
@@ -1999,9 +1998,16 @@ void modeler() {
       pc = *(registers + REG_SP);
 
       w = w + dprintf(output_fd, "\n; stack segment\n\n");
-
       // assert: stack segment is not empty
     }
+
+    if (current_nid == memory_dump_nid)
+      // account for nid offset by 1 of memory-dump state
+      current_nid = current_nid + 1;
+    else if (pc < *(registers + REG_SP))
+      current_nid = pc_nid(pcs_nid, pc);
+    else
+      current_nid = pc_nid(pcs_nid, get_program_break(current_context) + (pc - *(registers + REG_SP)));
 
     // address in data, heap, or stack segment
     w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
@@ -2034,12 +2040,6 @@ void modeler() {
     }
 
     pc = pc + WORDSIZE;
-
-    if (current_nid == memory_dump_nid + 1)
-      // account for nid offset by 1 through memory-dump state
-      current_nid = memory_dump_nid + WORDSIZE;
-    else
-      current_nid = current_nid + WORDSIZE;
   }
 
   w = w + dprintf(output_fd, "\n; 64-bit memory\n\n");
