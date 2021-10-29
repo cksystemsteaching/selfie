@@ -97,14 +97,14 @@ void model_ecall();
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-uint64_t mark_statically_live_code(uint64_t next_pc);
+uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark);
 void     static_dead_code_elimination(uint64_t entry_pc);
 
 void translate_to_model();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t exit_wrapper_entry = 0;
+uint64_t exit_procedure_entry = 0;
 
 uint64_t* statically_live_code = (uint64_t*) 0;
 
@@ -1477,13 +1477,19 @@ void model_ecall() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-uint64_t mark_statically_live_code(uint64_t callee_pc) {
+uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark) {
   uint64_t next_pc;
 
   pc = callee_pc;
 
-  while (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) == 0) {
-    *(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) = 1;
+  while (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) != mark) {
+    if (pc == exit_pc) {
+      // procedure containing exit pc does not return to jal
+      exit_procedure_entry = callee_pc;
+
+      return 1;
+    } else
+      *(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) = mark;
 
     fetch();
     decode();
@@ -1498,14 +1504,14 @@ uint64_t mark_statically_live_code(uint64_t callee_pc) {
             reg_a7 = imm;
     } else if (is == BEQ)
       // mark true branch first
-      mark_statically_live_code(pc + imm);
+      mark_statically_live_code(pc + imm, exit_pc, mark);
     else if (is == JAL) {
       if (rd == REG_RA) {
         // assert: procedure call
-        if (pc + imm == exit_wrapper_entry)
+        if (pc + imm == exit_procedure_entry)
           // "returning" from exit
           return 0;
-        else if (mark_statically_live_code(pc + imm))
+        else if (mark_statically_live_code(pc + imm, exit_pc, mark))
           // "returning" from exit
           return 0;
       } else
@@ -1518,7 +1524,8 @@ uint64_t mark_statically_live_code(uint64_t callee_pc) {
       if (reg_a7 == SYSCALL_EXIT) {
         reg_a7 = 0;
 
-        exit_wrapper_entry = callee_pc;
+        // exit wrapper does not return to jal
+        exit_procedure_entry = callee_pc;
 
         return 1;
       }
@@ -1535,31 +1542,15 @@ void static_dead_code_elimination(uint64_t entry_pc) {
 
   statically_live_code = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  exit_wrapper_entry = 0;
+  exit_procedure_entry = 0;
 
   saved_pc = pc;
 
   pc = entry_pc;
 
-  mark_statically_live_code(entry_pc);
+  mark_statically_live_code(entry_pc, 0, 1);
 
   pc = saved_pc;
-
-/*
-  while (pc < code_start + code_size) {
-    fetch();
-    decode();
-
-    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE))
-      dprintf(output_fd, "1: %lX: ", pc);
-    else
-      dprintf(output_fd, "0: %lX: ", pc);
-    print_instruction();
-    dprintf(output_fd, "\n");
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-  */
 }
 
 void translate_to_model() {
