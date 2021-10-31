@@ -2253,13 +2253,12 @@ void modeler(uint64_t entry_pc) {
           }
         } else {
           // no jalr returning from jal found
-          output_fd = 1;
+          w = w
+            + dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[0x%lX]", from_address, from_address)
+            + print_code_line_number_for_instruction(from_address, code_start)
+            + dprintf(output_fd, "\n");
 
-          printf("%s: exit ecall wrapper call or runaway jal %lu[0x%lX] detected\n", selfie_name, from_address, from_address);
-
-          exit(EXITCODE_MODELINGERROR);
-
-          // this instruction may nevertheless have more in-edges
+          // this instruction may stay deactivated if there is no more in-edges
         }
       } else if (from_instruction == ECALL) {
         if (is_statically_live_instruction(from_address)) {
