@@ -69,36 +69,46 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
 void reset_bounds();
 
-void model_lui();
+void model_data_flow_lui();
+void model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
 
 void transfer_bounds();
 
-void model_addi();
-void model_add();
-void model_sub();
-void model_mul();
-void model_divu();
-void model_remu();
-void model_sltu();
+void model_data_flow_addi();
+void model_control_flow_addi();
+
+void model_data_flow_add();
+void model_data_flow_sub();
+void model_data_flow_mul();
+void model_data_flow_divu();
+void model_data_flow_remu();
+void model_data_flow_sltu();
 
 uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
 uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
 uint64_t compute_address();
 
-void model_load();
-void model_store();
+void model_data_flow_load();
+void model_data_flow_store();
 
-void model_beq();
-void model_jal();
-void model_jalr();
-void model_ecall();
+void model_data_flow_beq();
+void model_control_flow_beq();
+void model_data_flow_jal();
+void model_control_flow_jal();
+// TODO: model jalr data flow
+void model_control_flow_jalr();
+void model_data_flow_ecall();
+void model_control_flow_ecall();
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_statically_live_instruction(uint64_t address);
+void     mark_statically_live_instruction(uint64_t address, uint64_t mark);
+
 uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark);
-void     static_dead_code_elimination(uint64_t entry_pc);
+void     static_dead_code_elimination(uint64_t entry_pc, uint64_t exit_pc);
 
 void translate_to_model();
 
@@ -137,6 +147,7 @@ char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
 uint64_t generate_block_access_checks = 0; // flag for generating memory access validity checks on malloced block level
+uint64_t constant_propagation         = 0; // flag for constant propagation
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
@@ -622,7 +633,7 @@ void model_syscalls() {
 
   w = w
     + dprintf(output_fd, "%lu state 2 brk ; brk bump pointer\n", bump_pointer_nid)
-    + dprintf(output_fd, "%lu init 2 %lu 40 ; initial program break\n",
+    + dprintf(output_fd, "%lu init 2 %lu 41 ; current program break\n",
         current_nid + 1451, // nid of this line
         bump_pointer_nid)   // nid of brk bump pointer
 
@@ -783,7 +794,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   //report the error on the console
   output_fd = 1;
 
-  printf("%s: invalid instruction address 0x%lX detected\n", selfie_name, to_address);
+  printf("%s: invalid instruction address %lu[0x%lX] detected\n", selfie_name, to_address, to_address);
 
   exit(EXITCODE_MODELINGERROR);
 }
@@ -812,7 +823,7 @@ void reset_bounds() {
   }
 }
 
-void model_lui() {
+void model_data_flow_lui() {
   if (rd != REG_ZR) {
     reset_bounds();
 
@@ -830,7 +841,9 @@ void model_lui() {
 
     w = w + print_lui() + dprintf(output_fd, "\n");
   }
+}
 
+void model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store() {
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
@@ -860,7 +873,7 @@ void transfer_bounds() {
   }
 }
 
-void model_addi() {
+void model_data_flow_addi() {
   uint64_t result_nid;
 
   if (rd != REG_ZR) {
@@ -875,10 +888,6 @@ void model_addi() {
         result_nid = current_nid;
 
         current_nid = current_nid + 1;
-
-        if (rd == REG_A7)
-          // assert: next instruction is ecall
-          reg_a7 = imm;
       } else {
         // compute $rs1 + imm
         w = w + dprintf(output_fd, "%lu add 2 %lu %lu\n",
@@ -903,11 +912,20 @@ void model_addi() {
 
     w = w + print_addi() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_add() {
+void model_control_flow_addi() {
+  if (rd != REG_ZR)
+    if (imm != 0)
+      if (rs1 == REG_ZR)
+        if (rd == REG_A7)
+          // assert: next instruction is ecall
+          reg_a7 = imm;
+
+  model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
+}
+
+void model_data_flow_add() {
   if (rd != REG_ZR) {
     if (generate_block_access_checks) {
       w = w
@@ -979,11 +997,9 @@ void model_add() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_sub() {
+void model_data_flow_sub() {
   if (rd != REG_ZR) {
     // TODO: check if bounds on $rs2 are really initial bounds
     transfer_bounds();
@@ -1006,11 +1022,9 @@ void model_sub() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_mul() {
+void model_data_flow_mul() {
   if (rd != REG_ZR) {
     // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
     reset_bounds();
@@ -1033,11 +1047,9 @@ void model_mul() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_divu() {
+void model_data_flow_divu() {
   if (rd != REG_ZR) {
     // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
     reset_bounds();
@@ -1072,11 +1084,9 @@ void model_divu() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_remu() {
+void model_data_flow_remu() {
   if (rd != REG_ZR) {
     // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
     reset_bounds();
@@ -1111,11 +1121,9 @@ void model_remu() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_sltu() {
+void model_data_flow_sltu() {
   if (rd != REG_ZR) {
     reset_bounds();
 
@@ -1142,8 +1150,6 @@ void model_sltu() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
@@ -1219,7 +1225,7 @@ uint64_t compute_address() {
   }
 }
 
-void model_load() {
+void model_data_flow_load() {
   uint64_t address_nid;
 
   if (rd != REG_ZR) {
@@ -1294,11 +1300,9 @@ void model_load() {
 
     w = w + print_load() + dprintf(output_fd, "\n");
   }
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_store() {
+void model_data_flow_store() {
   uint64_t address_nid;
 
   current_nid = current_nid + record_start_bounds(0, pc_nid(pcs_nid, pc), rs1);
@@ -1374,11 +1378,9 @@ void model_store() {
   memory_flow_nid = current_nid + 1;
 
   w = w + print_store() + dprintf(output_fd, "\n");
-
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
-void model_beq() {
+void model_data_flow_beq() {
   // compute if beq condition is true
   w = w + dprintf(output_fd, "%lu eq 1 %lu %lu ; ",
     current_nid,     // nid of this line
@@ -1387,19 +1389,21 @@ void model_beq() {
 
   w = w + print_beq() + dprintf(output_fd, "\n");
 
-  // true branch
-  go_to_instruction(is, REG_ZR, pc, pc + imm, current_nid);
-
   // compute if beq condition is false
   w = w + dprintf(output_fd, "%lu not 1 %lu\n",
     current_nid + 1, // nid of this line
     current_nid);    // nid of preceding line
+}
+
+void model_control_flow_beq() {
+  // true branch
+  go_to_instruction(is, REG_ZR, pc, pc + imm, current_nid);
 
   // false branch
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, current_nid + 1);
 }
 
-void model_jal() {
+void model_data_flow_jal() {
   if (rd != REG_ZR) {
     w = w
       // address of next instruction used here and in returning jalr instruction
@@ -1418,6 +1422,18 @@ void model_jal() {
     *(reg_flow_nids + rd) = current_nid + 1;
 
     w = w + print_jal() + dprintf(output_fd, "\n");
+  }
+}
+
+void model_control_flow_jal() {
+  if (rd != REG_ZR) {
+    if (is_statically_live_instruction(pc) == 0)
+      w = w
+        // we still need address of next instruction used in returning jalr instruction
+        + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
+            current_nid,           // nid of this line
+            pc + INSTRUCTIONSIZE,  // address of next instruction
+            pc + INSTRUCTIONSIZE); // address of next instruction
 
     // link next instruction to returning jalr instruction via instruction at address pc + imm
     go_to_instruction(JALR, REG_ZR, pc + imm, pc + INSTRUCTIONSIZE, current_nid);
@@ -1427,7 +1443,7 @@ void model_jal() {
   go_to_instruction(is, rd, pc, pc + imm, 0);
 }
 
-void model_jalr() {
+void model_control_flow_jalr() {
   if (rd == REG_ZR)
     if (imm == 0)
       if (rs1 == REG_RA)
@@ -1448,21 +1464,12 @@ void model_jalr() {
   //report the error on the console
   output_fd = 1;
 
-  printf("%s: unsupported jalr at address 0x%lX with estimated address 0x%lX detected\n", selfie_name, pc, estimated_return);
+  printf("%s: unsupported jalr at address %lu[0x%lX] with estimated address %lu[0x%lX] detected\n", selfie_name, pc, pc, estimated_return, estimated_return);
 
   exit(EXITCODE_MODELINGERROR);
 }
 
-void model_ecall() {
-  if (reg_a7 == SYSCALL_EXIT) {
-    // assert: exit ecall is immediately followed by first procedure in code
-    current_callee = pc + INSTRUCTIONSIZE;
-
-    estimated_return = current_callee;
-  }
-
-  reg_a7 = 0;
-
+void model_data_flow_ecall() {
   // keep track of whether any ecall is active
   w = w + dprintf(output_fd, "%lu ite 1 %lu 11 %lu ; ",
     current_nid,         // nid of this line
@@ -1472,27 +1479,58 @@ void model_ecall() {
   ecall_flow_nid = current_nid;
 
   w = w + print_ecall() + dprintf(output_fd, "\n");
+}
 
-  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
+void model_control_flow_ecall() {
+  if (reg_a7 == SYSCALL_EXIT) {
+    // assert: exit ecall is immediately followed by first procedure in code
+    current_callee = pc + INSTRUCTIONSIZE;
+
+    estimated_return = current_callee;
+  }
+
+  reg_a7 = 0;
+
+  model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
 }
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_statically_live_instruction(uint64_t address) {
+  if (statically_live_code != (uint64_t*) 0)
+    return *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE);
+  else
+    return 1;
+}
+
+void mark_statically_live_instruction(uint64_t address, uint64_t mark) {
+  *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE) = mark;
+}
+
 uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark) {
   uint64_t next_pc;
 
   pc = callee_pc;
 
-  while (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) != mark) {
-    if (pc == exit_pc) {
+  while (1) {
+    if (pc < code_start)
+      exit(1);
+    else if (pc >= code_start + code_size)
+      exit(1);
+    else if (pc == exit_pc) {
       // procedure containing exit pc does not return to jal
       exit_procedure_entry = callee_pc;
 
       return 1;
-    } else
-      *(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE) = mark;
+    }
+
+    if (is_statically_live_instruction(pc) != mark)
+      mark_statically_live_instruction(pc, mark);
+    else
+      // already marked
+      return 0;
 
     fetch();
     decode();
@@ -1506,6 +1544,8 @@ uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_
             // assert: next instruction is ecall
             reg_a7 = imm;
     } else if (is == BEQ)
+      // assert: only branching forward
+
       // mark true branch first
       mark_statically_live_code(pc + imm, exit_pc, mark);
     else if (is == JAL) {
@@ -1513,12 +1553,12 @@ uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_
         // assert: procedure call
         if (pc + imm == exit_procedure_entry)
           // "returning" from exit
-          return 0;
+          return 1;
         else if (mark_statically_live_code(pc + imm, exit_pc, mark))
           // "returning" from exit
-          return 0;
+          return 1;
       } else
-        // assert: jump
+        // assert: forward jump
         next_pc = pc + imm;
     } else if (is == JALR)
       // assert: return from procedure call
@@ -1536,56 +1576,100 @@ uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_
 
     pc = next_pc;
   }
-
-  return 0;
 }
 
-void static_dead_code_elimination(uint64_t entry_pc) {
+void static_dead_code_elimination(uint64_t entry_pc, uint64_t exit_pc) {
   uint64_t saved_pc;
-
-  statically_live_code = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   exit_procedure_entry = 0;
 
   saved_pc = pc;
 
+  if (exit_pc == 0)
+    mark_statically_live_code(entry_pc, 0, 1);
+  else
+    mark_statically_live_code(entry_pc, exit_pc, 0);
+/*
   pc = entry_pc;
 
-  mark_statically_live_code(entry_pc, 0, 1);
+  while (pc < code_start + code_size) {
+    fetch();
+    decode();
 
+    if (is_statically_live_instruction(pc))
+      dprintf(output_fd, "1: %lX: ", pc);
+    else
+      dprintf(output_fd, "0: %lX: ", pc);
+    print_instruction();
+    dprintf(output_fd, "\n");
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+*/
   pc = saved_pc;
 }
 
 void translate_to_model() {
   // assert: 1 <= is <= number of RISC-U instructions
+
+  if (is_statically_live_instruction(pc)) {
+    if (is == ADDI)
+      model_data_flow_addi();
+    else if (is == LOAD)
+      model_data_flow_load();
+    else if (is == STORE)
+      model_data_flow_store();
+    else if (is == ADD)
+      model_data_flow_add();
+    else if (is == SUB)
+      model_data_flow_sub();
+    else if (is == MUL)
+      model_data_flow_mul();
+    else if (is == DIVU)
+      model_data_flow_divu();
+    else if (is == REMU)
+      model_data_flow_remu();
+    else if (is == SLTU)
+      model_data_flow_sltu();
+    else if (is == BEQ)
+      model_data_flow_beq();
+    else if (is == JAL)
+      model_data_flow_jal();
+    // TODO: model jalr data flow
+    else if (is == LUI)
+      model_data_flow_lui();
+    else if (is == ECALL)
+      model_data_flow_ecall();
+  }
+
   if (is == ADDI)
-    model_addi();
+    model_control_flow_addi();
   else if (is == LOAD)
-    model_load();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == STORE)
-    model_store();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == ADD)
-    model_add();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == SUB)
-    model_sub();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == MUL)
-    model_mul();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == DIVU)
-    model_divu();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == REMU)
-    model_remu();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == SLTU)
-    model_sltu();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == BEQ)
-    model_beq();
+    model_control_flow_beq();
   else if (is == JAL)
-    model_jal();
+    model_control_flow_jal();
   else if (is == JALR)
-    model_jalr();
+    model_control_flow_jalr();
   else if (is == LUI)
-    model_lui();
+    model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
   else if (is == ECALL)
-    model_ecall();
+    model_control_flow_ecall();
 }
 
 // -----------------------------------------------------------------
@@ -1732,7 +1816,7 @@ void check_block_access(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flo
   current_nid = current_nid + 2;
 }
 
-void modeler() {
+void modeler(uint64_t entry_pc) {
   uint64_t i;
 
   uint64_t machine_word;
@@ -1753,20 +1837,21 @@ void modeler() {
 
   w = w
     + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
-
-    + dprintf(output_fd, "; BTOR2 %s generated by %s for\n", model_name, selfie_name)
-    + dprintf(output_fd, "; RISC-V code obtained from %s and\n; invoked as", binary_name);
-
+    + dprintf(output_fd, "; BTOR2 %s generated by %s for\n", model_name, selfie_name);
+  if (generate_block_access_checks)
+    w = w + dprintf(output_fd, "; with memory block access checks\n");
+  w = w + dprintf(output_fd, "; RISC-V code obtained from %s and\n; invoked as", binary_name);
   i = 0;
-
   while (i < number_of_remaining_arguments()) {
     w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
-
     i = i + 1;
   }
+  if (constant_propagation)
+    w = w + dprintf(output_fd, "\n; with constant propagation");
+  w = w + dprintf(output_fd, "\n\n");
 
   w = w
-    + dprintf(output_fd, "\n\n1 sort bitvec 1 ; Boolean\n")
+    + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
     + dprintf(output_fd, "2 sort bitvec 64 ; 64-bit machine word\n")
     + dprintf(output_fd, "3 sort array 2 2 ; 64-bit memory\n\n")
 
@@ -1783,6 +1868,10 @@ void modeler() {
     // start of heap segment for checking address validity
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
     + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_heap_seg_start(current_context), get_heap_seg_start(current_context))
+
+    // end of heap segment for initializing brk bump pointer
+    + dprintf(output_fd, "; end of heap segment in memory (current program break)\n\n")
+    + dprintf(output_fd, "41 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
 
     + dprintf(output_fd, "; 4GB of memory\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
@@ -1946,11 +2035,11 @@ void modeler() {
   while (pc < code_start + code_size) {
     current_nid = pc_nid(pcs_nid, pc);
 
-    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
+    if (is_statically_live_instruction(pc)) {
       // pc flag of current instruction
       w = w + dprintf(output_fd, "%lu state 1 ; 0x%lX\n", current_nid, pc);
 
-      if (pc == get_pc(current_context))
+      if (pc == entry_pc)
         // set pc here by initializing pc flag of instruction to true
         w = w + dprintf(output_fd, "%lu init 1 %lu 11 ; initial program counter\n",
           current_nid + 1, // nid of this line
@@ -2008,7 +2097,11 @@ void modeler() {
       current_nid, // nid of this line
       pc, pc);     // address of current machine word
 
-    machine_word = load_virtual_memory(pt, pc);
+    if (is_virtual_address_mapped(get_pt(current_context), pc))
+      machine_word = load_virtual_memory(get_pt(current_context), pc);
+    else
+      // memory allocated but not yet mapped
+      machine_word = 0;
 
     if (machine_word == 0) {
       // load machine word == 0
@@ -2093,16 +2186,9 @@ void modeler() {
     fetch();
     decode();
 
-    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
-      current_nid = pc_nid(code_nid, pc);
+    current_nid = pc_nid(code_nid, pc);
 
-      translate_to_model();
-    } else if (is == JALR) {
-      // assert: next "procedure body" begins right after jalr
-      current_callee = pc + INSTRUCTIONSIZE;
-
-      estimated_return = current_callee;
-    }
+    translate_to_model();
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -2120,20 +2206,20 @@ void modeler() {
   pc = code_start;
 
   while (pc < code_start + code_size) {
-    if (*(statically_live_code + (pc - code_start) / INSTRUCTIONSIZE)) {
-      current_nid = pc_nid(control_nid, pc);
+    current_nid = pc_nid(control_nid, pc);
 
-      in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
+    in_edge = (uint64_t*) *(control_in + (pc - code_start) / INSTRUCTIONSIZE);
 
-      // nid of 1-bit 0
-      control_flow_nid = 10;
+    // nid of 1-bit 0
+    control_flow_nid = 10;
 
-      while (in_edge != (uint64_t*) 0) {
-        from_instruction = *(in_edge + 1);
-        from_address     = *(in_edge + 2);
-        condition_nid    = *(in_edge + 3);
+    while (in_edge != (uint64_t*) 0) {
+      from_instruction = *(in_edge + 1);
+      from_address     = *(in_edge + 2);
+      condition_nid    = *(in_edge + 3);
 
-        if (from_instruction == BEQ) {
+      if (from_instruction == BEQ) {
+        if (is_statically_live_instruction(from_address)) {
           w = w
             // is beq active and its condition true or false?
             + dprintf(output_fd, "%lu and 1 %lu %lu ; beq %lu[0x%lX]",
@@ -2148,10 +2234,12 @@ void modeler() {
 
           // activate this instruction if beq is active and its condition is true (false)
           control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-        } else if (from_instruction == JALR) {
-          jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
+        }
+      } else if (from_instruction == JALR) {
+        jalr_address = *(call_return + (from_address - code_start) / INSTRUCTIONSIZE);
 
-          if (jalr_address != 0) {
+        if (jalr_address != 0) {
+          if (is_statically_live_instruction(jalr_address)) {
             w = w
               // is value of $ra register with LSB reset equal to address of this instruction?
               + dprintf(output_fd, "%lu not 2 21 ; jalr %lu[0x%lX]",
@@ -2178,17 +2266,19 @@ void modeler() {
 
             // activate this instruction if jalr is active and its condition is true (false)
             control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-          } else {
-            // no jalr returning from jal found
-
-            w = w
-              + dprintf(output_fd, "; exit ecall wrapper call or runaway jal %lu[0x%lX]", from_address, from_address)
-              + print_code_line_number_for_instruction(from_address, code_start)
-              + dprintf(output_fd, "\n");
-
-            // this instruction may stay deactivated if there is no more in-edges
           }
-        } else if (from_instruction == ECALL) {
+        } else {
+          // no jalr returning from jal found
+          output_fd = 1;
+
+          printf("%s: exit ecall wrapper call or runaway jal %lu[0x%lX] detected\n", selfie_name, from_address, from_address);
+
+          exit(EXITCODE_MODELINGERROR);
+
+          // this instruction may nevertheless have more in-edges
+        }
+      } else if (from_instruction == ECALL) {
+        if (is_statically_live_instruction(from_address)) {
           w = w
             + dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[0x%lX]",
                 current_nid,                // nid of this line
@@ -2218,7 +2308,9 @@ void modeler() {
 
           // activate this instruction if ecall is active but not in kernel mode anymore
           control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
-        } else {
+        }
+      } else {
+        if (is_statically_live_instruction(from_address)) {
           if (from_instruction == JAL) w = w + dprintf(output_fd, "; jal "); else w = w + dprintf(output_fd, "; ");
           w = w
             + dprintf(output_fd, "%lu[0x%lX]", from_address, from_address)
@@ -2228,9 +2320,20 @@ void modeler() {
           // activate this instruction if instruction proceeding here is active
           control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
         }
-
-        in_edge = (uint64_t*) *in_edge;
       }
+
+      in_edge = (uint64_t*) *in_edge;
+    }
+
+    if (is_statically_live_instruction(pc)) {
+      if (control_flow_nid == 10)
+        if (pc != entry_pc) {
+          output_fd = 1;
+
+          printf("%s: no in-edges at reachable instruction address %lu[0x%lX] detected\n", selfie_name, pc, pc);
+
+          exit(EXITCODE_MODELINGERROR);
+        }
 
       w = w
         // update pc flag of current instruction
@@ -2239,23 +2342,19 @@ void modeler() {
             pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
             control_flow_nid,    // nid of most recently processed in-edge
             pc, pc)              // address of current instruction
-        + print_code_line_number_for_instruction(pc, code_start);
-      if (control_flow_nid == 10)
-        if (pc > code_start)
-          // TODO: warn here about unreachable code
-          w = w + dprintf(output_fd, " (unreachable)");
-      w = w + dprintf(output_fd, "\n");
+        + print_code_line_number_for_instruction(pc, code_start)
+        + dprintf(output_fd, "\n");
+    }
 
-      if (current_nid >= pc_nid(control_nid, pc) + 400) {
-        // the instruction at pc is reachable by too many other instructions
+    if (current_nid >= pc_nid(control_nid, pc) + 400) {
+      // the instruction at pc is reachable by too many other instructions
 
-        // report the error on the console
-        output_fd = 1;
+      // report the error on the console
+      output_fd = 1;
 
-        printf("%s: too many in-edges at instruction address 0x%lX detected\n", selfie_name, pc);
+      printf("%s: too many in-edges at instruction address %lu[0x%lX] detected\n", selfie_name, pc, pc);
 
-        exit(EXITCODE_MODELINGERROR);
-      }
+      exit(EXITCODE_MODELINGERROR);
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -2367,18 +2466,33 @@ void modeler() {
 }
 
 uint64_t selfie_model() {
+  uint64_t entry_pc;
+  uint64_t model_arguments;
+
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
 
       generate_block_access_checks = 0;
+      constant_propagation         = 0;
 
-      if (number_of_remaining_arguments() > 1)
-        if (string_compare(peek_argument(1), "--check-block-access")) {
-          generate_block_access_checks = 1;
+      model_arguments = 0;
 
-          get_argument();
-        }
+      while (model_arguments == 0) {
+        if (number_of_remaining_arguments() > 1) {
+          if (string_compare(peek_argument(1), "--check-block-access")) {
+            generate_block_access_checks = 1;
+
+            get_argument();
+          } else if (string_compare(peek_argument(1), "--constant-propagation")) {
+            constant_propagation = 1;
+
+            get_argument();
+          } else
+            model_arguments = 1;
+        } else
+          model_arguments = 1;
+      }
 
       if (code_size == 0) {
         printf("%s: nothing to model\n", selfie_name);
@@ -2400,7 +2514,9 @@ uint64_t selfie_model() {
       }
 
       reset_library();
+
       reset_interpreter();
+      reset_profiler();
       reset_microkernel();
 
       init_memory(1);
@@ -2411,18 +2527,35 @@ uint64_t selfie_model() {
 
       boot_loader(current_context);
 
-      run = 0;
-
       do_switch(current_context, current_context, TIMEROFF);
 
-      static_dead_code_elimination(get_pc(current_context));
+      entry_pc = get_pc(current_context);
+
+      statically_live_code = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+
+      static_dead_code_elimination(entry_pc, 0);
+
+      if (constant_propagation) {
+        exit_on_read = 1;
+
+        run = 1;
+
+        mipster(current_context);
+
+        run = 0;
+
+        exit_on_read = 0;
+
+        static_dead_code_elimination(entry_pc, get_pc(current_context));
+      } else
+        run = 0;
 
       output_name = model_name;
       output_fd   = model_fd;
 
       model = 1;
 
-      modeler();
+      modeler(get_pc(current_context));
 
       model = 0;
 
