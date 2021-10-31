@@ -1589,23 +1589,7 @@ void static_dead_code_elimination(uint64_t entry_pc, uint64_t exit_pc) {
     mark_statically_live_code(entry_pc, 0, 1);
   else
     mark_statically_live_code(entry_pc, exit_pc, 0);
-/*
-  pc = entry_pc;
 
-  while (pc < code_start + code_size) {
-    fetch();
-    decode();
-
-    if (is_statically_live_instruction(pc))
-      dprintf(output_fd, "1: %lX: ", pc);
-    else
-      dprintf(output_fd, "0: %lX: ", pc);
-    print_instruction();
-    dprintf(output_fd, "\n");
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-*/
   pc = saved_pc;
 }
 
