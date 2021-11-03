@@ -3110,13 +3110,13 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   uint64_t save_fd;
   uint64_t i;
 
+  save_fd = output_fd;
+
   if (buffer) {
     output_buffer = buffer;
     output_cursor = 0;
-  } else {
-    save_fd   = output_fd;
+  } else
     output_fd = fd;
-  }
 
   number_of_put_characters = 0;
 
@@ -3152,8 +3152,9 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   if (buffer) {
     output_buffer = (char*) 0;
     output_cursor = 0;
-  } else
-    output_fd = save_fd;
+  }
+
+  output_fd = save_fd;
 
   return number_of_put_characters;
 }
