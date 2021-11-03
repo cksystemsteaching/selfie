@@ -2320,6 +2320,8 @@ uint64_t next_page_frame = 0;
 uint64_t allocated_page_frame_memory = 0;
 uint64_t free_page_frame_memory      = 0;
 
+uint64_t exit_on_read = 0;
+
 // -----------------------------------------------------------------
 // ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
@@ -3108,13 +3110,13 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   uint64_t save_fd;
   uint64_t i;
 
+  save_fd = output_fd;
+
   if (buffer) {
     output_buffer = buffer;
     output_cursor = 0;
-  } else {
-    save_fd   = output_fd;
+  } else
     output_fd = fd;
-  }
 
   number_of_put_characters = 0;
 
@@ -3150,8 +3152,9 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   if (buffer) {
     output_buffer = (char*) 0;
     output_cursor = 0;
-  } else
-    output_fd = save_fd;
+  }
+
+  output_fd = save_fd;
 
   return number_of_put_characters;
 }
@@ -11060,9 +11063,14 @@ uint64_t handle_system_call(uint64_t* context) {
       implement_gc_brk(context);
     else
       implement_brk(context);
-  } else if (a7 == SYSCALL_READ)
-    implement_read(context);
-  else if (a7 == SYSCALL_WRITE)
+  } else if (a7 == SYSCALL_READ) {
+    if (exit_on_read) {
+      set_exit_code(context, sign_shrink(EXITCODE_NOERROR, SYSCALL_BITWIDTH));
+
+      return EXIT;
+    } else
+      implement_read(context);
+  } else if (a7 == SYSCALL_WRITE)
     implement_write(context);
   else if (a7 == SYSCALL_OPENAT)
     implement_openat(context);
