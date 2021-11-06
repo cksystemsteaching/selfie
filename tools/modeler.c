@@ -124,6 +124,10 @@ uint64_t* statically_live_code = (uint64_t*) 0;
 
 uint64_t control_flow(uint64_t activate_nid, uint64_t control_flow_nid);
 
+uint64_t control_flow_from_beq(uint64_t from_address, uint64_t condition_nid, uint64_t control_flow_nid);
+uint64_t control_flow_from_jalr(uint64_t jalr_address, uint64_t condition_nid, uint64_t control_flow_nid);
+uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_nid);
+
 void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
 void check_address_alignment(uint64_t flow_nid);
