@@ -86,7 +86,9 @@ void model_data_flow_sltu();
 
 uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
 uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
-uint64_t compute_address();
+
+uint64_t compute_virtual_address();
+uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid);
 
 void model_data_flow_load();
 void model_data_flow_store();
@@ -453,15 +455,21 @@ void model_syscalls() {
         current_nid + 1182, // nid of increment == 8
         current_nid + 1181) // nid of unsigned-extended 7-byte input
 
-  // write input to memory at address $a1 + $a0
+  // compute virtual address $a1 + $a0
     + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + $a0\n",
         current_nid + 1184, // nid of this line
         reg_nids + REG_A1,  // nid of current value of $a1 register
-        reg_nids + REG_A0)  // nid of current value of $a0 register
-    + dprintf(output_fd, "%lu write 3 %lu %lu %lu ; memory[$a1 + $a0] = input\n",
-        current_nid + 1185, // nid of this line
+        reg_nids + REG_A0); // nid of current value of $a0 register
+
+  // compute physical address $a1 + $a0
+  compute_physical_address(current_nid + 1185, current_nid + 1184);
+
+  w = w
+    // write input to memory at physical address $a1 + $a0
+    + dprintf(output_fd, "%lu write 4 %lu %lu %lu ; memory[$a1 + $a0] = input\n",
+        current_nid + 1186, // nid of this line
         memory_nid,         // nid of memory
-        current_nid + 1184, // nid of $a1 + $a0
+        current_nid + 1185, // nid of physical address $a1 + $a0
         current_nid + 1183) // nid of input
 
   // read ecall is in kernel mode and not done yet
@@ -485,10 +493,10 @@ void model_syscalls() {
         current_nid + 1194, // nid of this line
         current_nid + 1192, // nid of read ecall is in kernel mode and not done yet
         current_nid + 1193) // nid of increment > 0
-    + dprintf(output_fd, "%lu ite 3 %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
+    + dprintf(output_fd, "%lu ite 4 %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
         current_nid + 1195, // nid of this line
         current_nid + 1194, // nid of read ecall is in kernel mode and not done yet and increment > 0
-        current_nid + 1185, // nid of memory[$a1 + $a0] = input
+        current_nid + 1186, // nid of memory[$a1 + $a0] = input
         memory_flow_nid);   // nid of most recent update of memory
 
   memory_flow_nid = current_nid + 1195;
@@ -1211,7 +1219,7 @@ uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t re
     return offset;
 }
 
-uint64_t compute_address() {
+uint64_t compute_virtual_address() {
   if (imm == 0)
     return reg_nids + rs1; // nid of current value of $rs1 register
   else {
@@ -1230,19 +1238,31 @@ uint64_t compute_address() {
   }
 }
 
+uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid) {
+  w = w + dprintf(output_fd, "%lu slice 3 %lu 31 3\n",
+    current_nid, // nid of this line
+    vaddr_nid);  // nid of virtual address
+
+  return current_nid; // nid of physical address
+}
+
 void model_data_flow_load() {
-  uint64_t address_nid;
+  uint64_t vaddr_nid;
+  uint64_t paddr_nid;
 
   if (rd != REG_ZR) {
     current_nid = current_nid + record_start_bounds(0, pc_nid(pcs_nid, pc), rs1);
 
-    address_nid = compute_address();
+    vaddr_nid = compute_virtual_address();
+    paddr_nid = compute_physical_address(current_nid, vaddr_nid);
+
+    current_nid = current_nid + 1;
 
     // if this instruction is active record $rs1 + imm for checking address validity
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
       current_nid,            // nid of this line
       pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      address_nid,            // nid of $rs1 + imm
+      vaddr_nid,              // nid of virtual address $rs1 + imm
       access_flow_start_nid); // nid of address of most recent memory access
 
     access_flow_start_nid = current_nid;
@@ -1255,7 +1275,7 @@ void model_data_flow_load() {
         + dprintf(output_fd, "%lu read 2 %lu %lu\n",
             current_nid,   // nid of this line
             lo_memory_nid, // nid of lower bounds on addresses in memory
-            address_nid)   // nid of $rs1 + imm
+            paddr_nid)     // nid of physical address $rs1 + imm
 
         // if this instruction is active set lower bound on $rd = lower-bounds memory[$rs1 + imm]
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
@@ -1273,7 +1293,7 @@ void model_data_flow_load() {
         + dprintf(output_fd, "%lu read 2 %lu %lu\n",
             current_nid,   // nid of this line
             up_memory_nid, // nid of upper bounds on addresses in memory
-            address_nid)   // nid of $rs1 + imm
+            paddr_nid)     // nid of physical address $rs1 + imm
 
         // if this instruction is active set upper bound on $rd = upper-bounds memory[$rs1 + imm]
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
@@ -1292,7 +1312,7 @@ void model_data_flow_load() {
       + dprintf(output_fd, "%lu read 2 %lu %lu\n",
           current_nid, // nid of this line
           memory_nid,  // nid of memory
-          address_nid) // nid of $rs1 + imm
+          paddr_nid)   // nid of physical address $rs1 + imm
 
       // if this instruction is active set $rd = memory[$rs1 + imm]
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
@@ -1308,17 +1328,21 @@ void model_data_flow_load() {
 }
 
 void model_data_flow_store() {
-  uint64_t address_nid;
+  uint64_t vaddr_nid;
+  uint64_t paddr_nid;
 
   current_nid = current_nid + record_start_bounds(0, pc_nid(pcs_nid, pc), rs1);
 
-  address_nid = compute_address();
+  vaddr_nid = compute_virtual_address();
+  paddr_nid = compute_physical_address(current_nid, vaddr_nid);
+
+  current_nid = current_nid + 1;
 
   // if this instruction is active record $rs1 + imm for checking address validity
   w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
     current_nid,            // nid of this line
     pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-    address_nid,            // nid of $rs1 + imm
+    vaddr_nid,              // nid of virtual address $rs1 + imm
     access_flow_start_nid); // nid of address of most recent memory access
 
   access_flow_start_nid = current_nid;
@@ -1328,14 +1352,14 @@ void model_data_flow_store() {
   if (generate_block_access_checks) {
     w = w
       // write lower bound on $rs2 register to lower-bounds memory[$rs1 + imm]
-      + dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
+      + dprintf(output_fd, "%lu write 4 %lu %lu %lu\n",
           current_nid,              // nid of this line
           lo_memory_nid,            // nid of lower bounds on addresses in memory
-          address_nid,              // nid of $rs1 + imm
+          paddr_nid,                // nid of physical address $rs1 + imm
           reg_nids + LO_FLOW + rs2) // nid of lower bound on $rs2 register
 
       // if this instruction is active set lower-bounds memory[$rs1 + imm] = lower bound on $rs2
-      + dprintf(output_fd, "%lu ite 3 %lu %lu %lu\n",
+      + dprintf(output_fd, "%lu ite 4 %lu %lu %lu\n",
           current_nid + 1,     // nid of this line
           pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
           current_nid,         // nid of lower-bounds memory[$rs1 + imm]
@@ -1347,14 +1371,14 @@ void model_data_flow_store() {
 
     w = w
       // write upper bound on $rs2 register to upper-bounds memory[$rs1 + imm]
-      + dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
+      + dprintf(output_fd, "%lu write 4 %lu %lu %lu\n",
           current_nid,              // nid of this line
           up_memory_nid,            // nid of upper bounds on addresses in memory
-          address_nid,              // nid of $rs1 + imm
+          paddr_nid,                // nid of physical address $rs1 + imm
           reg_nids + UP_FLOW + rs2) // nid of upper bound on $rs2 register
 
       // if this instruction is active set upper-bounds memory[$rs1 + imm] = upper bound on $rs2
-      + dprintf(output_fd, "%lu ite 3 %lu %lu %lu\n",
+      + dprintf(output_fd, "%lu ite 4 %lu %lu %lu\n",
           current_nid + 1,     // nid of this line
           pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
           current_nid,         // nid of upper-bounds memory[$rs1 + imm]
@@ -1367,14 +1391,14 @@ void model_data_flow_store() {
 
   w = w
     // write $rs2 register to memory[$rs1 + imm]
-    + dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
+    + dprintf(output_fd, "%lu write 4 %lu %lu %lu\n",
         current_nid,    // nid of this line
         memory_nid,     // nid of memory
-        address_nid,    // nid of $rs1 + imm
+        paddr_nid,      // nid of physical address $rs1 + imm
         reg_nids + rs2) // nid of current value of $rs2 register
 
     // if this instruction is active set memory[$rs1 + imm] = $rs2
-    + dprintf(output_fd, "%lu ite 3 %lu %lu %lu ; ",
+    + dprintf(output_fd, "%lu ite 4 %lu %lu %lu ; ",
         current_nid + 1,     // nid of this line
         pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
         current_nid,         // nid of memory[$rs1 + imm] = $rs2
@@ -1497,6 +1521,14 @@ void model_control_flow_ecall() {
   reg_a7 = 0;
 
   model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t model_address(uint64_t vaddr) {
+  return vaddr / WORDSIZE;
 }
 
 // -----------------------------------------------------------------
@@ -1942,7 +1974,8 @@ void modeler(uint64_t entry_pc) {
   w = w
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
     + dprintf(output_fd, "2 sort bitvec 64 ; 64-bit machine word\n")
-    + dprintf(output_fd, "3 sort array 2 2 ; 64-bit memory\n\n")
+    + dprintf(output_fd, "3 sort bitvec 29 ; 29-bit physical address\n")
+    + dprintf(output_fd, "4 sort array 3 2 ; 29-bit physical memory\n\n")
 
     + dprintf(output_fd, "10 zero 1\n11 one 1\n\n")
     + dprintf(output_fd, "20 zero 2\n21 one 2\n22 constd 2 2\n23 constd 2 3\n24 constd 2 4\n25 constd 2 5\n26 constd 2 6\n27 constd 2 7\n28 constd 2 8\n\n")
@@ -2152,7 +2185,7 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pc_nid(pcs_nid, pc);
 
-  w = w + dprintf(output_fd, "\n%lu state 3 memory-dump\n", current_nid);
+  w = w + dprintf(output_fd, "\n%lu state 4 memory-dump\n", current_nid);
 
   memory_dump_nid = current_nid;
   data_flow_nid   = current_nid;
@@ -2186,9 +2219,10 @@ void modeler(uint64_t entry_pc) {
       current_nid = pc_nid(pcs_nid, get_program_break(current_context) + (pc - *(registers + REG_SP)));
 
     // address in data, heap, or stack segment
-    w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX\n",
-      current_nid, // nid of this line
-      pc, pc);     // address of current machine word
+    w = w + dprintf(output_fd, "%lu constd 3 %lu ; 0x%lX\n",
+      current_nid,        // nid of this line
+      model_address(pc),  // physical address of current machine word
+      model_address(pc)); // physical address of current machine word in hexadecimal as comment
 
     if (is_virtual_address_mapped(get_pt(current_context), pc))
       machine_word = load_virtual_memory(get_pt(current_context), pc);
@@ -2198,7 +2232,7 @@ void modeler(uint64_t entry_pc) {
 
     if (machine_word == 0) {
       // load machine word == 0
-      w = w + dprintf(output_fd, "%lu write 3 %lu %lu 20\n",
+      w = w + dprintf(output_fd, "%lu write 4 %lu %lu 20\n",
         current_nid + 1, // nid of this line
         data_flow_nid,   // nid of most recent update of memory
         current_nid);    // nid of address of current machine word
@@ -2210,7 +2244,7 @@ void modeler(uint64_t entry_pc) {
         + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
             current_nid + 1,            // nid of this line
             machine_word, machine_word) // value of machine word at current address
-        + dprintf(output_fd, "%lu write 3 %lu %lu %lu\n",
+        + dprintf(output_fd, "%lu write 4 %lu %lu %lu\n",
             current_nid + 2,  // nid of this line
             data_flow_nid,    // nid of most recent update of memory
             current_nid,      // nid of address of current machine word
@@ -2229,8 +2263,8 @@ void modeler(uint64_t entry_pc) {
   current_nid = memory_nid;
 
   w = w
-    + dprintf(output_fd, "%lu state 3 memory ; data, heap, stack segments\n", current_nid)
-    + dprintf(output_fd, "%lu init 3 %lu %lu ; loading data, heap, stack segments into memory\n",
+    + dprintf(output_fd, "%lu state 4 memory ; data, heap, stack segments\n", current_nid)
+    + dprintf(output_fd, "%lu init 4 %lu %lu ; loading data, heap, stack segments into memory\n",
         current_nid + 1, // nid of this line
         current_nid,     // nid of memory
         data_flow_nid);  // nid of most recent update of memory
@@ -2243,8 +2277,8 @@ void modeler(uint64_t entry_pc) {
     lo_memory_nid = current_nid;
 
     w = w
-      + dprintf(output_fd, "\n%lu state 3 lower-bounds ; for checking address validity\n", current_nid)
-      + dprintf(output_fd, "%lu init 3 %lu 30 ; initializing lower bounds to start of data segment\n",
+      + dprintf(output_fd, "\n%lu state 4 lower-bounds ; for checking address validity\n", current_nid)
+      + dprintf(output_fd, "%lu init 4 %lu 30 ; initializing lower bounds to start of data segment\n",
           current_nid + 1, // nid of this line
           current_nid);    // nid of lower bounds on addresses in memory
 
@@ -2255,8 +2289,8 @@ void modeler(uint64_t entry_pc) {
     up_memory_nid = current_nid;
 
     w = w
-      + dprintf(output_fd, "\n%lu state 3 upper-bounds ; for checking address validity\n", current_nid)
-      + dprintf(output_fd, "%lu init 3 %lu 50 ; initializing upper bounds to 4GB of memory addresses\n",
+      + dprintf(output_fd, "\n%lu state 4 upper-bounds ; for checking address validity\n", current_nid)
+      + dprintf(output_fd, "%lu init 4 %lu 50 ; initializing upper bounds to 4GB of memory addresses\n",
           current_nid + 1, // nid of this line
           current_nid);    // nid of upper bounds on addresses in memory
 
@@ -2430,18 +2464,18 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pcs_nid * 7;
 
-  w = w + dprintf(output_fd, "%lu next 3 %lu %lu memory\n",
+  w = w + dprintf(output_fd, "%lu next 4 %lu %lu memory\n",
     current_nid,      // nid of this line
     memory_nid,       // nid of memory
     memory_flow_nid); // nid of most recent write to memory
 
   if (generate_block_access_checks)
     w = w
-      + dprintf(output_fd, "%lu next 3 %lu %lu lower-bounds\n",
+      + dprintf(output_fd, "%lu next 4 %lu %lu lower-bounds\n",
         current_nid + 1,    // nid of this line
         lo_memory_nid,      // nid of lower bounds on addresses in memory
         lo_memory_flow_nid) // nid of most recent write to lower bounds on addresses in memory
-      + dprintf(output_fd, "%lu next 3 %lu %lu upper-bounds\n",
+      + dprintf(output_fd, "%lu next 4 %lu %lu upper-bounds\n",
         current_nid + 2,     // nid of this line
         up_memory_nid,       // nid of upper bounds on addresses in memory
         up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
