@@ -2219,10 +2219,11 @@ void modeler(uint64_t entry_pc) {
       current_nid = pc_nid(pcs_nid, get_program_break(current_context) + (pc - *(registers + REG_SP)));
 
     // address in data, heap, or stack segment
-    w = w + dprintf(output_fd, "%lu constd 3 %lu ; 0x%lX\n",
-      current_nid,        // nid of this line
-      model_address(pc),  // physical address of current machine word
-      model_address(pc)); // physical address of current machine word in hexadecimal as comment
+    w = w + dprintf(output_fd, "%lu constd 3 %lu ; 0x%lX paddr, 0x%lX vaddr\n",
+      current_nid,       // nid of this line
+      model_address(pc), // physical address of current machine word
+      model_address(pc), // physical address of current machine word in hexadecimal as comment
+      pc);               // virtual address of current machine word in hexadecimal as comment
 
     if (is_virtual_address_mapped(get_pt(current_context), pc))
       machine_word = load_virtual_memory(get_pt(current_context), pc);
@@ -2256,7 +2257,7 @@ void modeler(uint64_t entry_pc) {
     pc = pc + WORDSIZE;
   }
 
-  w = w + dprintf(output_fd, "\n; 64-bit memory\n\n");
+  w = w + dprintf(output_fd, "\n; 29-bit physical memory\n\n");
 
   memory_nid = pcs_nid * 2;
 
@@ -2460,7 +2461,7 @@ void modeler(uint64_t entry_pc) {
       i = i + 1;
     }
 
-  w = w + dprintf(output_fd, "\n; updating memory\n\n");
+  w = w + dprintf(output_fd, "\n; updating physical memory\n\n");
 
   current_nid = pcs_nid * 7;
 
