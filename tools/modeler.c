@@ -67,12 +67,8 @@ uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, 
 
 void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid);
 
-void reset_bounds();
-
 void model_data_flow_lui();
 void model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
-
-void transfer_bounds();
 
 void model_data_flow_addi();
 void model_control_flow_addi();
@@ -83,12 +79,6 @@ void model_data_flow_mul();
 void model_data_flow_divu();
 void model_data_flow_remu();
 void model_data_flow_sltu();
-
-uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
-uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
-
-uint64_t compute_virtual_address();
-uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid);
 
 void model_data_flow_load();
 void model_data_flow_store();
@@ -101,6 +91,21 @@ void model_control_flow_jal();
 void model_control_flow_jalr();
 void model_data_flow_ecall();
 void model_control_flow_ecall();
+
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+void reset_bounds();
+void transfer_bounds();
+
+uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
+uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg);
+
+uint64_t compute_virtual_address();
+uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid);
+
+uint64_t model_address(uint64_t vaddr);
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -812,30 +817,6 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   exit(EXITCODE_MODELINGERROR);
 }
 
-void reset_bounds() {
-  if (generate_block_access_checks) {
-    // if this instruction is active reset lower bound on $rd register to start of data segment
-    w = w + dprintf(output_fd, "%lu ite 2 %lu 30 %lu\n",
-      current_nid,                      // nid of this line
-      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
-
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-
-    // if this instruction is active reset upper bound on $rd register to 4GB of memory addresses
-    w = w + dprintf(output_fd, "%lu ite 2 %lu 50 %lu\n",
-      current_nid,                      // nid of this line
-      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
-
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-  }
-}
-
 void model_data_flow_lui() {
   if (rd != REG_ZR) {
     reset_bounds();
@@ -858,32 +839,6 @@ void model_data_flow_lui() {
 
 void model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store() {
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
-}
-
-void transfer_bounds() {
-  if (generate_block_access_checks) {
-    // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid,                      // nid of this line
-      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      reg_nids + LO_FLOW + rs1,         // nid of lower bound on $rs1 register
-      *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
-
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-
-    // if this instruction is active set upper bound on $rd = upper bound on $rs1 register
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid,                      // nid of this line
-      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      reg_nids + UP_FLOW + rs1,         // nid of upper bound on $rs1 register
-      *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
-
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-  }
 }
 
 void model_data_flow_addi() {
@@ -1163,87 +1118,6 @@ void model_data_flow_sltu() {
 
     w = w + print_add_sub_mul_divu_remu_sltu() + dprintf(output_fd, "\n");
   }
-}
-
-uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
-  if (generate_block_access_checks) {
-    // if current instruction is active record lower bound on $reg register for checking address validity
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid + offset,     // nid of this line
-      activation_nid,           // nid of activation condition of current instruction
-      reg_nids + LO_FLOW + reg, // nid of current lower bound on $reg register
-      lo_flow_start_nid);       // nid of most recent update of lower bound on memory access
-
-    lo_flow_start_nid = current_nid + offset;
-
-    offset = offset + 1;
-
-    // if current instruction is active record upper bound on $reg register for checking address validity
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid + offset,     // nid of this line
-      activation_nid,           // nid of activation condition of current instruction
-      reg_nids + UP_FLOW + reg, // nid of current upper bound on $reg register
-      up_flow_start_nid);       // nid of most recent update of upper bound on memory access
-
-    up_flow_start_nid = current_nid + offset;
-
-    return offset + 1;
-  } else
-    return offset;
-}
-
-uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
-  if (generate_block_access_checks) {
-    // if current instruction is active record lower bound on $reg register for checking address validity
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid + offset,     // nid of this line
-      activation_nid,           // nid of activation condition of current instruction
-      reg_nids + LO_FLOW + reg, // nid of current lower bound on $reg register
-      lo_flow_end_nid);         // nid of most recent update of lower bound on memory access
-
-    lo_flow_end_nid = current_nid + offset;
-
-    offset = offset + 1;
-
-    // if current instruction is active record upper bound on $reg register for checking address validity
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-      current_nid + offset,     // nid of this line
-      activation_nid,           // nid of activation condition of current instruction
-      reg_nids + UP_FLOW + reg, // nid of current upper bound on $reg register
-      up_flow_end_nid);         // nid of most recent update of upper bound on memory access
-
-    up_flow_end_nid = current_nid + offset;
-
-    return offset + 1;
-  } else
-    return offset;
-}
-
-uint64_t compute_virtual_address() {
-  if (imm == 0)
-    return reg_nids + rs1; // nid of current value of $rs1 register
-  else {
-    w = w
-      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n", current_nid, imm, imm)
-
-      // compute $rs1 + imm
-      + dprintf(output_fd, "%lu add 2 %lu %lu\n",
-          current_nid + 1, // nid of this line
-          reg_nids + rs1,  // nid of current value of $rs1 register
-          current_nid);    // nid of immediate value
-
-    current_nid = current_nid + 2;
-
-    return current_nid - 1; // nid of $rs1 + imm
-  }
-}
-
-uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid) {
-  w = w + dprintf(output_fd, "%lu slice 3 %lu 31 3\n",
-    current_nid, // nid of this line
-    vaddr_nid);  // nid of virtual address
-
-  return current_nid; // nid of physical address
 }
 
 void model_data_flow_load() {
@@ -1526,6 +1400,137 @@ void model_control_flow_ecall() {
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
+
+void reset_bounds() {
+  if (generate_block_access_checks) {
+    // if this instruction is active reset lower bound on $rd register to start of data segment
+    w = w + dprintf(output_fd, "%lu ite 2 %lu 30 %lu\n",
+      current_nid,                      // nid of this line
+      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+
+    current_nid = current_nid + 1;
+
+    // if this instruction is active reset upper bound on $rd register to 4GB of memory addresses
+    w = w + dprintf(output_fd, "%lu ite 2 %lu 50 %lu\n",
+      current_nid,                      // nid of this line
+      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
+
+    current_nid = current_nid + 1;
+  }
+}
+
+void transfer_bounds() {
+  if (generate_block_access_checks) {
+    // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid,                      // nid of this line
+      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      reg_nids + LO_FLOW + rs1,         // nid of lower bound on $rs1 register
+      *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+
+    current_nid = current_nid + 1;
+
+    // if this instruction is active set upper bound on $rd = upper bound on $rs1 register
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid,                      // nid of this line
+      pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      reg_nids + UP_FLOW + rs1,         // nid of upper bound on $rs1 register
+      *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
+
+    current_nid = current_nid + 1;
+  }
+}
+
+uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
+  if (generate_block_access_checks) {
+    // if current instruction is active record lower bound on $reg register for checking address validity
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid + offset,     // nid of this line
+      activation_nid,           // nid of activation condition of current instruction
+      reg_nids + LO_FLOW + reg, // nid of current lower bound on $reg register
+      lo_flow_start_nid);       // nid of most recent update of lower bound on memory access
+
+    lo_flow_start_nid = current_nid + offset;
+
+    offset = offset + 1;
+
+    // if current instruction is active record upper bound on $reg register for checking address validity
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid + offset,     // nid of this line
+      activation_nid,           // nid of activation condition of current instruction
+      reg_nids + UP_FLOW + reg, // nid of current upper bound on $reg register
+      up_flow_start_nid);       // nid of most recent update of upper bound on memory access
+
+    up_flow_start_nid = current_nid + offset;
+
+    return offset + 1;
+  } else
+    return offset;
+}
+
+uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
+  if (generate_block_access_checks) {
+    // if current instruction is active record lower bound on $reg register for checking address validity
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid + offset,     // nid of this line
+      activation_nid,           // nid of activation condition of current instruction
+      reg_nids + LO_FLOW + reg, // nid of current lower bound on $reg register
+      lo_flow_end_nid);         // nid of most recent update of lower bound on memory access
+
+    lo_flow_end_nid = current_nid + offset;
+
+    offset = offset + 1;
+
+    // if current instruction is active record upper bound on $reg register for checking address validity
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      current_nid + offset,     // nid of this line
+      activation_nid,           // nid of activation condition of current instruction
+      reg_nids + UP_FLOW + reg, // nid of current upper bound on $reg register
+      up_flow_end_nid);         // nid of most recent update of upper bound on memory access
+
+    up_flow_end_nid = current_nid + offset;
+
+    return offset + 1;
+  } else
+    return offset;
+}
+
+uint64_t compute_virtual_address() {
+  if (imm == 0)
+    return reg_nids + rs1; // nid of current value of $rs1 register
+  else {
+    w = w
+      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n", current_nid, imm, imm)
+
+      // compute $rs1 + imm
+      + dprintf(output_fd, "%lu add 2 %lu %lu\n",
+          current_nid + 1, // nid of this line
+          reg_nids + rs1,  // nid of current value of $rs1 register
+          current_nid);    // nid of immediate value
+
+    current_nid = current_nid + 2;
+
+    return current_nid - 1; // nid of $rs1 + imm
+  }
+}
+
+uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid) {
+  w = w + dprintf(output_fd, "%lu slice 3 %lu 31 3\n",
+    current_nid, // nid of this line
+    vaddr_nid);  // nid of virtual address
+
+  return current_nid; // nid of physical address
+}
 
 uint64_t model_address(uint64_t vaddr) {
   return vaddr / WORDSIZE;
