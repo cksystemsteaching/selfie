@@ -114,8 +114,9 @@ void init_library();
 void reset_library();
 
 uint64_t two_to_the_power_of(uint64_t p);
-uint64_t ten_to_the_power_of(uint64_t p);
+uint64_t log_two(uint64_t n);
 
+uint64_t ten_to_the_power_of(uint64_t p);
 uint64_t log_ten(uint64_t n);
 
 uint64_t left_shift(uint64_t n, uint64_t b);
@@ -2459,6 +2460,15 @@ void turn_on_gc_library(uint64_t period, char* name) {
 uint64_t two_to_the_power_of(uint64_t p) {
   // assert: 0 <= p < SIZEOFUINT64INBITS
   return *(power_of_two_table + p);
+}
+
+uint64_t log_two(uint64_t n) {
+  // use recursion for simplicity and educational value
+  // for n < 0x10000 performance is not relevant
+  if (n < 2)
+    return 0;
+  else
+    return log_two(n / 2) + 1;
 }
 
 uint64_t ten_to_the_power_of(uint64_t p) {
