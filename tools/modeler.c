@@ -2563,6 +2563,9 @@ uint64_t selfie_model() {
       static_dead_code_elimination(entry_pc, 0);
 
       if (constant_propagation) {
+        printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+        printf("%s: constant propagation with ", selfie_name);
+
         exit_on_read = 1;
 
         run = 1;
