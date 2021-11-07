@@ -174,6 +174,11 @@ uint64_t stack_allowance = 0; // additional stack memory in bytes
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
+uint64_t heap_start  = 0;
+uint64_t heap_size   = 0;
+uint64_t stack_start = 0;
+uint64_t stack_size  = 0;
+
 uint64_t w = 0; // number of written characters
 
 uint64_t current_nid = 0; // nid of current line
@@ -1544,6 +1549,29 @@ uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid) {
 }
 
 uint64_t model_address(uint64_t vaddr) {
+  if (segment_memory) {
+    if (vaddr >= data_start)
+      if (vaddr < data_start + data_size)
+        // vaddr in data segment
+        vaddr = vaddr - data_start;
+      else if (vaddr >= heap_start)
+        if (vaddr < heap_start + heap_size)
+          // vaddr in heap segment
+          vaddr = vaddr - heap_start + data_size;
+        else if (vaddr >= stack_start)
+          if (vaddr < stack_start + stack_size)
+            // vaddr in stack segment
+            vaddr = vaddr - stack_start + data_size + heap_size;
+          else
+            exit(EXITCODE_MODELINGERROR);
+        else
+          exit(EXITCODE_MODELINGERROR);
+      else
+        exit(EXITCODE_MODELINGERROR);
+    else
+      exit(EXITCODE_MODELINGERROR);
+  }
+
   return vaddr / WORDSIZE;
 }
 
@@ -1981,9 +2009,6 @@ uint64_t number_of_bits(uint64_t n) {
 }
 
 void modeler(uint64_t entry_pc) {
-  uint64_t heap_size;
-  uint64_t stack_size;
-
   uint64_t i;
 
   uint64_t machine_word;
@@ -2027,8 +2052,10 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
     + dprintf(output_fd, "2 sort bitvec 64 ; 64-bit machine word\n\n");
 
-  heap_size  = round_up(get_program_break(current_context) - get_heap_seg_start(current_context) + heap_allowance, WORDSIZE);
-  stack_size = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP) + stack_allowance, WORDSIZE);
+  heap_start  = get_heap_seg_start(current_context);
+  heap_size   = round_up(get_program_break(current_context) - heap_start + heap_allowance, WORDSIZE);
+  stack_start = round_up(*(registers + REG_SP) - stack_allowance, WORDSIZE);
+  stack_size  = VIRTUALMEMORYSIZE * GIGABYTE - stack_start;
 
   w = w + dprintf(output_fd, "; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
     data_size + heap_size + stack_size,
@@ -2064,7 +2091,7 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "31 constd 2 %lu ; 0x%lX\n\n", data_start + data_size, data_start + data_size)
 
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
-    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_heap_seg_start(current_context), get_heap_seg_start(current_context))
+    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", heap_start, heap_start)
 
     + dprintf(output_fd, "; current end of heap segment in memory (current program break)\n\n")
     + dprintf(output_fd, "41 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
@@ -2075,16 +2102,12 @@ void modeler(uint64_t entry_pc) {
   if (fixed_heap_segment)
     w = w
       + dprintf(output_fd, "; allowed end of heap segment in memory (with %luB allowance)\n\n", heap_allowance)
-      + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n",
-          get_heap_seg_start(current_context) + heap_size,
-          get_heap_seg_start(current_context) + heap_size);
+      + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n", heap_start + heap_size, heap_start + heap_size);
 
   if (fixed_stack_segment)
     w = w
       + dprintf(output_fd, "; allowed start of stack segment in memory (with %luB allowance)\n\n", stack_allowance)
-      + dprintf(output_fd, "44 constd 2 %lu ; 0x%lX\n\n",
-          VIRTUALMEMORYSIZE * GIGABYTE - stack_size,
-          VIRTUALMEMORYSIZE * GIGABYTE - stack_size);
+      + dprintf(output_fd, "44 constd 2 %lu ; 0x%lX\n\n", stack_start, stack_start);
 
   w = w
     + dprintf(output_fd, "; 4GB of memory\n\n")
@@ -2632,39 +2655,43 @@ uint64_t selfie_model() {
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      bad_exit_code = atoi(get_argument());
+      bad_exit_code = atoi(peek_argument(0));
 
       model_arguments = 0;
 
       while (model_arguments == 0) {
-        if (number_of_remaining_arguments() > 0) {
-          if (string_compare(peek_argument(0), check_block_access_option)) {
+        if (number_of_remaining_arguments() > 1) {
+          if (string_compare(peek_argument(1), check_block_access_option)) {
             check_block_access = 1;
 
             get_argument();
-          } else if (string_compare(peek_argument(0), constant_propagation_option)) {
+          } else if (string_compare(peek_argument(1), constant_propagation_option)) {
             constant_propagation = 1;
 
             get_argument();
-          } else if (string_compare(peek_argument(0), heap_allowance_option)) {
+          } else if (string_compare(peek_argument(1), heap_allowance_option)) {
             fixed_heap_segment = 1;
 
             get_argument();
 
-            if (number_of_remaining_arguments() > 0)
-              heap_allowance = atoi(get_argument());
-            else
+            if (number_of_remaining_arguments() > 1) {
+              heap_allowance = atoi(peek_argument(1));
+
+              get_argument();
+            } else
               exit(EXITCODE_BADARGUMENTS);
-          } else if (string_compare(peek_argument(0), stack_allowance_option)) {
+          } else if (string_compare(peek_argument(1), stack_allowance_option)) {
             fixed_stack_segment = 1;
 
             get_argument();
 
-            if (number_of_remaining_arguments() > 0)
-              stack_allowance = atoi(get_argument());
-            else
+            if (number_of_remaining_arguments() > 1) {
+              stack_allowance = atoi(peek_argument(1));
+
+              get_argument();
+            } else
               exit(EXITCODE_BADARGUMENTS);
-          } else if (string_compare(peek_argument(0), segment_memory_option)) {
+          } else if (string_compare(peek_argument(1), segment_memory_option)) {
             segment_memory = 1;
 
             fixed_heap_segment  = 1;
