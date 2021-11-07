@@ -137,9 +137,9 @@ uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_ni
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
-void check_address_alignment(uint64_t flow_nid);
-void check_segmentation(uint64_t flow_nid);
-void check_block_access(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
+void generate_address_alignment_check(uint64_t flow_nid);
+void generate_segmentation_faults(uint64_t flow_nid);
+void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
 
 void modeler();
 
@@ -157,10 +157,15 @@ uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registe
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
-uint64_t generate_block_access_checks = 0; // flag for generating memory access validity checks on malloced block level
-uint64_t constant_propagation         = 0; // flag for constant propagation
-uint64_t fixed_segments               = 0; // flag for fixing size of heap and stack segments
-uint64_t segment_memory               = 0; // flag for segmenting memory
+char* check_block_access_option   = (char*) 0;
+char* constant_propagation_option = (char*) 0;
+char* fixed_segments_option       = (char*) 0;
+char* segment_memory_option       = (char*) 0;
+
+uint64_t check_block_access   = 0; // flag for generating memory access validity checks on malloced block level
+uint64_t constant_propagation = 0; // flag for constant propagation
+uint64_t fixed_segments       = 0; // flag for fixing size of heap and stack segments
+uint64_t segment_memory       = 0; // flag for segmenting memory
 
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
@@ -713,7 +718,7 @@ void model_syscalls() {
 
   *(reg_flow_nids + REG_A0) = current_nid + 1463;
 
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
       current_nid + 1464,                   // nid of this line
       current_nid + 1458,                   // nid of brk ecall is active and $a0 is valid
@@ -899,7 +904,7 @@ void model_control_flow_addi() {
 
 void model_data_flow_add() {
   if (rd != REG_ZR) {
-    if (generate_block_access_checks) {
+    if (check_block_access) {
       w = w
         // lower bound on $rs1 register > lower bound on $rs2 register
         + dprintf(output_fd, "%lu ugt 1 %lu %lu\n",
@@ -1147,7 +1152,7 @@ void model_data_flow_load() {
 
     current_nid = current_nid + 1;
 
-    if (generate_block_access_checks) {
+    if (check_block_access) {
       w = w
         // read from lower-bounds memory[$rs1 + imm] into lower bound on $rd register
         + dprintf(output_fd, "%lu read 2 %lu %lu\n",
@@ -1227,7 +1232,7 @@ void model_data_flow_store() {
 
   current_nid = current_nid + 1;
 
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     w = w
       // write lower bound on $rs2 register to lower-bounds memory[$rs1 + imm]
       + dprintf(output_fd, "%lu write 4 %lu %lu %lu\n",
@@ -1406,7 +1411,7 @@ void model_control_flow_ecall() {
 // -----------------------------------------------------------------
 
 void reset_bounds() {
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     // if this instruction is active reset lower bound on $rd register to start of data segment
     w = w + dprintf(output_fd, "%lu ite 2 %lu 30 %lu\n",
       current_nid,                      // nid of this line
@@ -1430,7 +1435,7 @@ void reset_bounds() {
 }
 
 void transfer_bounds() {
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
       current_nid,                      // nid of this line
@@ -1456,7 +1461,7 @@ void transfer_bounds() {
 }
 
 uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     // if current instruction is active record lower bound on $reg register for checking address validity
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
       current_nid + offset,     // nid of this line
@@ -1483,7 +1488,7 @@ uint64_t record_start_bounds(uint64_t offset, uint64_t activation_nid, uint64_t 
 }
 
 uint64_t record_end_bounds(uint64_t offset, uint64_t activation_nid, uint64_t reg) {
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     // if current instruction is active record lower bound on $reg register for checking address validity
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
       current_nid + offset,     // nid of this line
@@ -1824,7 +1829,7 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
   current_nid = current_nid + 2;
 }
 
-void check_address_alignment(uint64_t flow_nid) {
+void generate_address_alignment_check(uint64_t flow_nid) {
   w = w
     // check if address of most recent memory access is word-aligned
     + dprintf(output_fd, "%lu and 2 %lu 27\n",
@@ -1840,9 +1845,8 @@ void check_address_alignment(uint64_t flow_nid) {
   current_nid = current_nid + 3;
 }
 
-void check_segmentation(uint64_t flow_nid) {
+void generate_segmentation_faults(uint64_t flow_nid) {
   w = w
-    // check if address of most recent memory access < start of data segment
     + dprintf(output_fd, "%lu ult 1 %lu 30 ; address < start of data segment\n",
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
@@ -1853,11 +1857,9 @@ void check_segmentation(uint64_t flow_nid) {
   current_nid = current_nid + 2;
 
   w = w
-    // check if address of most recent memory access >= end of data segment
     + dprintf(output_fd, "%lu ugte 1 %lu 31 ; address >= end of data segment\n",
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
-    // check if address of most recent memory access < start of heap segment
     + dprintf(output_fd, "%lu ult 1 %lu 40 ; address < start of heap segment\n",
         current_nid + 1, // nid of this line
         flow_nid)        // nid of address of most recent memory access
@@ -1871,43 +1873,64 @@ void check_segmentation(uint64_t flow_nid) {
 
   current_nid = current_nid + 4;
 
-  if (fixed_segments)
-    w = w
-      // check if address of most recent memory access >= original end of heap segment
-      + dprintf(output_fd, "%lu ugte 1 %lu 41 ; address >= original end of heap segment\n",
-          current_nid, // nid of this line
-          flow_nid)    // nid of address of most recent memory access
-      // check if address of most recent memory access < original start of stack segment
-      + dprintf(output_fd, "%lu ult 1 %lu 42 ; address < original start of stack segment\n",
-          current_nid + 1, // nid of this line
-          flow_nid);       // nid of address of most recent memory access
-  else
-    w = w
-      // check if address of most recent memory access >= end of heap segment
-      + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= end of heap segment\n",
-          current_nid,      // nid of this line
-          flow_nid,         // nid of address of most recent memory access
-          bump_pointer_nid) // nid of brk bump pointer
-      // check if address of most recent memory access < start of stack segment
-      + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < start of stack segment\n",
-          current_nid + 1,   // nid of this line
-          flow_nid,          // nid of address of most recent memory access
-          reg_nids + REG_SP); // nid of current value of $sp register
-
   w = w
-    // check if memory access in between heap and stack segments
+    + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= current end of heap segment\n",
+        current_nid,      // nid of this line
+        flow_nid,         // nid of address of most recent memory access
+        bump_pointer_nid) // nid of brk bump pointer
+    + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < current start of stack segment\n",
+        current_nid + 1,   // nid of this line
+        flow_nid,          // nid of address of most recent memory access
+        reg_nids + REG_SP) // nid of current value of $sp register
     + dprintf(output_fd, "%lu and 1 %lu %lu\n",
         current_nid + 2, // nid of this line
         current_nid,     // nid of >= check
         current_nid + 1) // nid of < check
-    + dprintf(output_fd, "%lu bad %lu ; memory access in between heap and stack segments\n",
+    + dprintf(output_fd, "%lu bad %lu ; memory access in between current heap and stack segments\n",
         current_nid + 3,  // nid of this line
         current_nid + 2); // nid of previous check
 
   current_nid = current_nid + 4;
 
+  if (fixed_segments) {
+    w = w
+      + dprintf(output_fd, "%lu ugte 1 %lu 42 ; address >= allowed end of heap segment\n",
+          current_nid, // nid of this line
+          flow_nid)    // nid of address of most recent memory access
+      + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < current end of heap segment\n",
+          current_nid + 1,  // nid of this line
+          flow_nid,         // nid of address of most recent memory access
+          bump_pointer_nid) // nid of brk bump pointer
+      + dprintf(output_fd, "%lu and 1 %lu %lu\n",
+          current_nid + 2, // nid of this line
+          current_nid,     // nid of >= check
+          current_nid + 1) // nid of < check
+      + dprintf(output_fd, "%lu bad %lu ; memory access in between allowed and current end of heap segment\n",
+          current_nid + 3,  // nid of this line
+          current_nid + 2); // nid of previous check
+
+    current_nid = current_nid + 4;
+
+    w = w
+      + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= current start of stack segment\n",
+        current_nid,       // nid of this line
+        flow_nid,          // nid of address of most recent memory access
+        reg_nids + REG_SP) // nid of current value of $sp register
+      + dprintf(output_fd, "%lu ult 1 %lu 43 ; address < allowed start of stack segment\n",
+          current_nid + 1, // nid of this line
+          flow_nid)        // nid of address of most recent memory access
+      + dprintf(output_fd, "%lu and 1 %lu %lu\n",
+          current_nid + 2, // nid of this line
+          current_nid,     // nid of >= check
+          current_nid + 1) // nid of < check
+      + dprintf(output_fd, "%lu bad %lu ; memory access in between current and allowed start of stack segment\n",
+          current_nid + 3,  // nid of this line
+          current_nid + 2); // nid of previous check
+
+    current_nid = current_nid + 4;
+  }
+
   w = w
-    // check if address of most recent memory access > end of stack segment
     + dprintf(output_fd, "%lu ugte 1 %lu 50 ; address >= 4GB of memory addresses\n",
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
@@ -1918,7 +1941,7 @@ void check_segmentation(uint64_t flow_nid) {
   current_nid = current_nid + 2;
 }
 
-void check_block_access(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid) {
+void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid) {
   w = w
     // check if address of most recent memory access < current lower bound
     + dprintf(output_fd, "%lu ult 1 %lu %lu\n",
@@ -1979,11 +2002,11 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
     + dprintf(output_fd, "; BTOR2 %s generated by %s\n", model_name, selfie_name);
   if (fixed_segments)
-    w = w + dprintf(output_fd, "; with fixed heap and stack segments\n");
+    w = w + dprintf(output_fd, "; with %s\n", fixed_segments_option);
   if (segment_memory)
-    w = w + dprintf(output_fd, "; with data, heap, and stack segments\n");
-  if (generate_block_access_checks)
-    w = w + dprintf(output_fd, "; with memory block access checks\n");
+    w = w + dprintf(output_fd, "; with %s\n", segment_memory_option);
+  if (check_block_access)
+    w = w + dprintf(output_fd, "; with %s\n", check_block_access_option);
   w = w + dprintf(output_fd, "\n; RISC-V code obtained from %s and invoked as:", binary_name);
   i = 0;
   while (i < number_of_remaining_arguments()) {
@@ -1991,7 +2014,7 @@ void modeler(uint64_t entry_pc) {
     i = i + 1;
   }
   if (constant_propagation)
-    w = w + dprintf(output_fd, "\n; with constant propagation");
+    w = w + dprintf(output_fd, "\n; with %s", constant_propagation_option);
   w = w + dprintf(output_fd, "\n\n");
 
   w = w
@@ -2001,32 +2024,25 @@ void modeler(uint64_t entry_pc) {
   heap_size  = round_up(get_program_break(current_context) - get_heap_seg_start(current_context) + heap_allowance, WORDSIZE);
   stack_size = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP) + stack_allowance, WORDSIZE);
 
-  if (segment_memory) {
-    w = w
-      + dprintf(output_fd, "3 sort bitvec %lu ; %lu-bit data segment address\n",
-        number_of_bits(data_size / WORDSIZE),
-        number_of_bits(data_size / WORDSIZE))
-      + dprintf(output_fd, "4 sort array 3 2 ; %lu-bit data segment (%luB)\n\n",
-        number_of_bits(data_size / WORDSIZE),
-        data_size);
+  w = w + dprintf(output_fd, "; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
+    data_size + heap_size + stack_size,
+    data_size,
+    heap_size,
+    heap_size - heap_allowance,
+    heap_allowance,
+    stack_size,
+    stack_size - stack_allowance,
+    stack_allowance);
 
-    if (heap_size > 0)
-      w = w
-        + dprintf(output_fd, "5 sort bitvec %lu ; %lu-bit heap segment address\n",
-          number_of_bits(heap_size / WORDSIZE),
-          number_of_bits(heap_size / WORDSIZE))
-        + dprintf(output_fd, "6 sort array 5 2 ; %lu-bit heap segment (%luB)\n\n",
-          number_of_bits(heap_size / WORDSIZE),
-          heap_size);
-
+  if (segment_memory)
     w = w
-      + dprintf(output_fd, "7 sort bitvec %lu ; %lu-bit stack segment address\n",
-        number_of_bits(stack_size / WORDSIZE),
-        number_of_bits(stack_size / WORDSIZE))
-      + dprintf(output_fd, "8 sort array 7 2 ; %lu-bit stack segment (%luB)\n\n",
-        number_of_bits(stack_size / WORDSIZE),
-        stack_size);
-  } else
+      + dprintf(output_fd, "3 sort bitvec %lu ; %lu-bit physical address\n",
+        number_of_bits((data_size + heap_size + stack_size) / WORDSIZE),
+        number_of_bits((data_size + heap_size + stack_size) / WORDSIZE))
+      + dprintf(output_fd, "4 sort array 3 2 ; %lu-bit physical memory (%luB)\n\n",
+        number_of_bits((data_size + heap_size + stack_size) / WORDSIZE),
+        data_size + heap_size + stack_size);
+  else
     w = w
       + dprintf(output_fd, "3 sort bitvec 29 ; 29-bit physical address\n")
       + dprintf(output_fd, "4 sort array 3 2 ; 29-bit physical memory\n\n");
@@ -2046,13 +2062,21 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
     + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_heap_seg_start(current_context), get_heap_seg_start(current_context))
 
-    // end of heap segment for initializing brk bump pointer and fixing heap size
+    // end of heap segment for initializing brk bump pointer
     + dprintf(output_fd, "; end of heap segment in memory (current program break)\n\n")
     + dprintf(output_fd, "41 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
 
-    // start of stack segment for fixing stack size
-    + dprintf(output_fd, "; start of stack segment in memory (current stack pointer)\n\n")
-    + dprintf(output_fd, "42 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP))
+    // end of heap segment with allowance for fixing heap size
+    + dprintf(output_fd, "; end of heap segment in memory (with %luB allowance)\n\n", heap_allowance)
+    + dprintf(output_fd, "42 constd 2 %lu ; 0x%lX\n\n",
+        get_heap_seg_start(current_context) + heap_size,
+        get_heap_seg_start(current_context) + heap_size)
+
+    // start of stack segment with allowance for fixing stack size
+    + dprintf(output_fd, "; start of stack segment in memory (with %luB allowance)\n\n", stack_allowance)
+    + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n",
+        VIRTUALMEMORYSIZE * GIGABYTE - stack_size,
+        VIRTUALMEMORYSIZE * GIGABYTE - stack_size)
 
     + dprintf(output_fd, "; 4GB of memory\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
@@ -2131,7 +2155,7 @@ void modeler(uint64_t entry_pc) {
     i = i + 1;
   }
 
-  if (generate_block_access_checks)
+  if (check_block_access)
     while (i < 3 * NUMBEROFREGISTERS) {
       *(reg_flow_nids + i) = reg_nids + i;
 
@@ -2184,7 +2208,7 @@ void modeler(uint64_t entry_pc) {
     i = i + 1;
   }
 
-  if (generate_block_access_checks)
+  if (check_block_access)
     while (i < 3 * NUMBEROFREGISTERS) {
       if (i % NUMBEROFREGISTERS == 0)
         w = w + dprintf(output_fd, "\n");
@@ -2327,7 +2351,7 @@ void modeler(uint64_t entry_pc) {
 
   memory_flow_nid = current_nid;
 
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     current_nid = current_nid + 2;
 
     lo_memory_nid = current_nid;
@@ -2493,7 +2517,7 @@ void modeler(uint64_t entry_pc) {
     i = i + 1;
   }
 
-  if (generate_block_access_checks)
+  if (check_block_access)
     while (i < 3 * NUMBEROFREGISTERS) {
       if (i % NUMBEROFREGISTERS == 0)
         w = w + dprintf(output_fd, "\n");
@@ -2525,7 +2549,7 @@ void modeler(uint64_t entry_pc) {
     memory_nid,       // nid of memory
     memory_flow_nid); // nid of most recent write to memory
 
-  if (generate_block_access_checks)
+  if (check_block_access)
     w = w
       + dprintf(output_fd, "%lu next 4 %lu %lu lower-bounds\n",
         current_nid + 1,    // nid of this line
@@ -2549,28 +2573,28 @@ void modeler(uint64_t entry_pc) {
 
   w = w + dprintf(output_fd, "; is start address of memory access word-aligned?\n\n");
 
-  check_address_alignment(access_flow_start_nid);
+  generate_address_alignment_check(access_flow_start_nid);
 
   w = w + dprintf(output_fd, "; is end address of memory access word-aligned?\n\n");
 
-  check_address_alignment(access_flow_end_nid);
+  generate_address_alignment_check(access_flow_end_nid);
 
   w = w + dprintf(output_fd, "; is start address of memory access in a valid segment?\n\n");
 
-  check_segmentation(access_flow_start_nid);
+  generate_segmentation_faults(access_flow_start_nid);
 
   w = w + dprintf(output_fd, "; is end address of memory access in a valid segment?\n\n");
 
-  check_segmentation(access_flow_end_nid);
+  generate_segmentation_faults(access_flow_end_nid);
 
-  if (generate_block_access_checks) {
+  if (check_block_access) {
     w = w + dprintf(output_fd, "; is start address of memory access in memory block?\n\n");
 
-    check_block_access(access_flow_start_nid, lo_flow_start_nid, up_flow_start_nid);
+    generate_block_access_check(access_flow_start_nid, lo_flow_start_nid, up_flow_start_nid);
 
     w = w + dprintf(output_fd, "; is end address of memory access in memory block?\n\n");
 
-    check_block_access(access_flow_end_nid, lo_flow_end_nid, up_flow_end_nid);
+    generate_block_access_check(access_flow_end_nid, lo_flow_end_nid, up_flow_end_nid);
   }
 
   // TODO: check validity of return addresses in jalr
@@ -2582,30 +2606,37 @@ uint64_t selfie_model() {
   uint64_t entry_pc;
   uint64_t model_arguments;
 
+  check_block_access_option   = "--check-block-access";
+  constant_propagation_option = "--constant-propagation";
+  fixed_segments_option       = "--fixed-segments";
+  segment_memory_option       = "--segment-memory";
+
+  check_block_access   = 0;
+  constant_propagation = 0;
+  fixed_segments       = 0;
+  segment_memory       = 0;
+
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
-
-      generate_block_access_checks = 0;
-      constant_propagation         = 0;
 
       model_arguments = 0;
 
       while (model_arguments == 0) {
         if (number_of_remaining_arguments() > 1) {
-          if (string_compare(peek_argument(1), "--check-block-access")) {
-            generate_block_access_checks = 1;
+          if (string_compare(peek_argument(1), check_block_access_option)) {
+            check_block_access = 1;
 
             get_argument();
-          } else if (string_compare(peek_argument(1), "--constant-propagation")) {
+          } else if (string_compare(peek_argument(1), constant_propagation_option)) {
             constant_propagation = 1;
 
             get_argument();
-          } else if (string_compare(peek_argument(1), "--fixed-segments")) {
+          } else if (string_compare(peek_argument(1), fixed_segments_option)) {
             fixed_segments = 1;
 
             get_argument();
-          } else if (string_compare(peek_argument(1), "--segment-memory")) {
+          } else if (string_compare(peek_argument(1), segment_memory_option)) {
             segment_memory = 1;
 
             get_argument();
