@@ -1894,7 +1894,7 @@ void generate_segmentation_faults(uint64_t flow_nid) {
 
   if (fixed_segments) {
     w = w
-      + dprintf(output_fd, "%lu ugte 1 %lu 42 ; address >= allowed end of heap segment\n",
+      + dprintf(output_fd, "%lu ugte 1 %lu 43 ; address >= allowed end of heap segment\n",
           current_nid, // nid of this line
           flow_nid)    // nid of address of most recent memory access
       + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < current end of heap segment\n",
@@ -1916,7 +1916,7 @@ void generate_segmentation_faults(uint64_t flow_nid) {
         current_nid,       // nid of this line
         flow_nid,          // nid of address of most recent memory access
         reg_nids + REG_SP) // nid of current value of $sp register
-      + dprintf(output_fd, "%lu ult 1 %lu 43 ; address < allowed start of stack segment\n",
+      + dprintf(output_fd, "%lu ult 1 %lu 44 ; address < allowed start of stack segment\n",
           current_nid + 1, // nid of this line
           flow_nid)        // nid of address of most recent memory access
       + dprintf(output_fd, "%lu and 1 %lu %lu\n",
@@ -2051,33 +2051,34 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "10 zero 1\n11 one 1\n\n")
     + dprintf(output_fd, "20 zero 2\n21 one 2\n22 constd 2 2\n23 constd 2 3\n24 constd 2 4\n25 constd 2 5\n26 constd 2 6\n27 constd 2 7\n28 constd 2 8\n\n")
 
-    // start and end of data segment for checking address validity
     + dprintf(output_fd, "; start of data segment in memory\n\n")
     + dprintf(output_fd, "30 constd 2 %lu ; 0x%lX\n\n", data_start, data_start)
 
     + dprintf(output_fd, "; end of data segment in memory\n\n")
     + dprintf(output_fd, "31 constd 2 %lu ; 0x%lX\n\n", data_start + data_size, data_start + data_size)
 
-    // start of heap segment for checking address validity
     + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
     + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", get_heap_seg_start(current_context), get_heap_seg_start(current_context))
 
-    // end of heap segment for initializing brk bump pointer
-    + dprintf(output_fd, "; end of heap segment in memory (current program break)\n\n")
+    + dprintf(output_fd, "; current end of heap segment in memory (current program break)\n\n")
     + dprintf(output_fd, "41 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
 
-    // end of heap segment with allowance for fixing heap size
-    + dprintf(output_fd, "; end of heap segment in memory (with %luB allowance)\n\n", heap_allowance)
-    + dprintf(output_fd, "42 constd 2 %lu ; 0x%lX\n\n",
-        get_heap_seg_start(current_context) + heap_size,
-        get_heap_seg_start(current_context) + heap_size)
+    + dprintf(output_fd, "; current start of stack segment in memory (current stack pointer)\n\n")
+    + dprintf(output_fd, "42 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP));
 
-    // start of stack segment with allowance for fixing stack size
-    + dprintf(output_fd, "; start of stack segment in memory (with %luB allowance)\n\n", stack_allowance)
-    + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n",
-        VIRTUALMEMORYSIZE * GIGABYTE - stack_size,
-        VIRTUALMEMORYSIZE * GIGABYTE - stack_size)
+  if (fixed_segments)
+    w = w
+      + dprintf(output_fd, "; allowed end of heap segment in memory (with %luB allowance)\n\n", heap_allowance)
+      + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n",
+          get_heap_seg_start(current_context) + heap_size,
+          get_heap_seg_start(current_context) + heap_size)
 
+      + dprintf(output_fd, "; allowed start of stack segment in memory (with %luB allowance)\n\n", stack_allowance)
+      + dprintf(output_fd, "44 constd 2 %lu ; 0x%lX\n\n",
+          VIRTUALMEMORYSIZE * GIGABYTE - stack_size,
+          VIRTUALMEMORYSIZE * GIGABYTE - stack_size);
+
+  w = w
     + dprintf(output_fd, "; 4GB of memory\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n", VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
 
