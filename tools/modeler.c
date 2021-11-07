@@ -1548,6 +1548,21 @@ uint64_t compute_physical_address(uint64_t current_nid, uint64_t vaddr_nid) {
   return current_nid; // nid of physical address
 }
 
+uint64_t compute_physical_address_segment(uint64_t current_nid, uint64_t vaddr_nid) {
+  w = w
+    + dprintf(output_fd, "%lu slice 3 %lu 31 3\n",
+      current_nid, // nid of this line
+      vaddr_nid)   // nid of virtual address
+    + dprintf(output_fd, "%lu ugte 1 %lu 32 ; address >= 29-bit physical start of data segment\n",
+      current_nid + 1, // nid of this line
+      current_nid)     // nid of 29-bit physical address
+    + dprintf(output_fd, "%lu ite 1 %lu %lu %lu\n",
+      current_nid, // nid of this line
+      vaddr_nid);  // nid of virtual address
+
+  return current_nid; // nid of physical address
+}
+
 uint64_t model_address(uint64_t vaddr) {
   if (segment_memory) {
     if (vaddr >= data_start)
@@ -1924,7 +1939,7 @@ void generate_segmentation_faults(uint64_t flow_nid) {
 
   if (fixed_heap_segment) {
     w = w
-      + dprintf(output_fd, "%lu ugte 1 %lu 43 ; address >= allowed end of heap segment\n",
+      + dprintf(output_fd, "%lu ugte 1 %lu 44 ; address >= allowed end of heap segment\n",
           current_nid, // nid of this line
           flow_nid)    // nid of address of most recent memory access
       + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < current end of heap segment\n",
@@ -1948,7 +1963,7 @@ void generate_segmentation_faults(uint64_t flow_nid) {
         current_nid,       // nid of this line
         flow_nid,          // nid of address of most recent memory access
         reg_nids + REG_SP) // nid of current value of $sp register
-      + dprintf(output_fd, "%lu ult 1 %lu 44 ; address < allowed start of stack segment\n",
+      + dprintf(output_fd, "%lu ult 1 %lu 47 ; address < allowed start of stack segment\n",
           current_nid + 1, // nid of this line
           flow_nid)        // nid of address of most recent memory access
       + dprintf(output_fd, "%lu and 1 %lu %lu\n",
@@ -2067,47 +2082,60 @@ void modeler(uint64_t entry_pc) {
     stack_size - stack_allowance,
     stack_allowance);
 
+  w = w
+    + dprintf(output_fd, "3 sort bitvec 29 ; 29-bit physical address\n")
+    + dprintf(output_fd, "4 sort array 3 2 ; 29-bit physical memory\n\n");
+
   if (segment_memory)
     w = w
-      + dprintf(output_fd, "3 sort bitvec %lu ; %lu-bit physical address\n",
+      + dprintf(output_fd, "5 sort bitvec %lu ; %lu-bit physical address\n",
         number_of_bits((data_size + heap_size + stack_size) / WORDSIZE),
         number_of_bits((data_size + heap_size + stack_size) / WORDSIZE))
-      + dprintf(output_fd, "4 sort array 3 2 ; %lu-bit physical memory (%luB)\n\n",
+      + dprintf(output_fd, "6 sort array 5 2 ; %lu-bit physical memory (%luB)\n\n",
         number_of_bits((data_size + heap_size + stack_size) / WORDSIZE),
         data_size + heap_size + stack_size);
-  else
-    w = w
-      + dprintf(output_fd, "3 sort bitvec 29 ; 29-bit physical address\n")
-      + dprintf(output_fd, "4 sort array 3 2 ; 29-bit physical memory\n\n");
 
   w = w
     + dprintf(output_fd, "10 zero 1\n11 one 1\n\n")
     + dprintf(output_fd, "20 zero 2\n21 one 2\n22 constd 2 2\n23 constd 2 3\n24 constd 2 4\n25 constd 2 5\n26 constd 2 6\n27 constd 2 7\n28 constd 2 8\n\n")
 
-    + dprintf(output_fd, "; start of data segment in memory\n\n")
-    + dprintf(output_fd, "30 constd 2 %lu ; 0x%lX\n\n", data_start, data_start)
-
-    + dprintf(output_fd, "; end of data segment in memory\n\n")
+    + dprintf(output_fd, "; start of data segment in 64-bit virtual memory\n")
+    + dprintf(output_fd, "30 constd 2 %lu ; 0x%lX\n", data_start, data_start)
+    + dprintf(output_fd, "; end of data segment in 64-bit virtual memory\n")
     + dprintf(output_fd, "31 constd 2 %lu ; 0x%lX\n\n", data_start + data_size, data_start + data_size)
 
-    + dprintf(output_fd, "; start of heap segment in memory (initial program break)\n\n")
-    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n\n", heap_start, heap_start)
+    + dprintf(output_fd, "; start of data segment in 29-bit physical memory\n")
+    + dprintf(output_fd, "32 constd 3 %lu ; 0x%lX\n", data_start / WORDSIZE, data_start / WORDSIZE)
+    + dprintf(output_fd, "; end of data segment in 29-bit physical memory\n")
+    + dprintf(output_fd, "33 constd 3 %lu ; 0x%lX\n\n", (data_start + data_size) / WORDSIZE, (data_start + data_size) / WORDSIZE)
 
-    + dprintf(output_fd, "; current end of heap segment in memory (current program break)\n\n")
+    + dprintf(output_fd, "; start of heap segment in 64-bit virtual memory (initial program break)\n")
+    + dprintf(output_fd, "40 constd 2 %lu ; 0x%lX\n", heap_start, heap_start)
+    + dprintf(output_fd, "; current end of heap segment in 64-bit virtual memory (current program break)\n")
     + dprintf(output_fd, "41 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context))
 
-    + dprintf(output_fd, "; current start of stack segment in memory (current stack pointer)\n\n")
-    + dprintf(output_fd, "42 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP));
+    + dprintf(output_fd, "; start of heap segment in 29-bit physical memory (initial program break)\n")
+    + dprintf(output_fd, "42 constd 3 %lu ; 0x%lX\n", heap_start / WORDSIZE, heap_start / WORDSIZE)
+    + dprintf(output_fd, "; current end of heap segment in 29-bit physical memory (current program break)\n")
+    + dprintf(output_fd, "43 constd 3 %lu ; 0x%lX\n\n", get_program_break(current_context) / WORDSIZE, get_program_break(current_context) / WORDSIZE);
 
   if (fixed_heap_segment)
     w = w
-      + dprintf(output_fd, "; allowed end of heap segment in memory (with %luB allowance)\n\n", heap_allowance)
-      + dprintf(output_fd, "43 constd 2 %lu ; 0x%lX\n\n", heap_start + heap_size, heap_start + heap_size);
+      + dprintf(output_fd, "; allowed end of heap segment in 64-bit virtual memory (with %luB allowance)\n", heap_allowance)
+      + dprintf(output_fd, "44 constd 2 %lu ; 0x%lX\n", heap_start + heap_size, heap_start + heap_size)
+      + dprintf(output_fd, "; allowed end of heap segment in 29-bit physical memory (with %luB allowance)\n", heap_allowance)
+      + dprintf(output_fd, "45 constd 3 %lu ; 0x%lX\n\n", (heap_start + heap_size) / WORDSIZE, (heap_start + heap_size) / WORDSIZE);
+
+  w = w
+    + dprintf(output_fd, "; current start of stack segment in 64-bit virtual memory (current stack pointer)\n")
+    + dprintf(output_fd, "46 constd 2 %lu ; 0x%lX\n\n", *(registers + REG_SP), *(registers + REG_SP));
 
   if (fixed_stack_segment)
     w = w
-      + dprintf(output_fd, "; allowed start of stack segment in memory (with %luB allowance)\n\n", stack_allowance)
-      + dprintf(output_fd, "44 constd 2 %lu ; 0x%lX\n\n", stack_start, stack_start);
+      + dprintf(output_fd, "; allowed start of stack segment in 64-bit virtual memory (with %luB allowance)\n", stack_allowance)
+      + dprintf(output_fd, "47 constd 2 %lu ; 0x%lX\n", stack_start, stack_start)
+      + dprintf(output_fd, "; allowed start of stack segment in 29-bit physical memory (with %luB allowance)\n", stack_allowance)
+      + dprintf(output_fd, "48 constd 3 %lu ; 0x%lX\n\n", stack_start / WORDSIZE, stack_start / WORDSIZE);
 
   w = w
     + dprintf(output_fd, "; 4GB of memory\n\n")
