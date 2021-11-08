@@ -103,7 +103,6 @@ uint64_t record_start_bounds(uint64_t cursor_nid, uint64_t activation_nid, uint6
 uint64_t record_end_bounds(uint64_t cursor_nid, uint64_t activation_nid, uint64_t reg);
 
 uint64_t model_virtual_address();
-uint64_t model_linear_address(uint64_t cursor_nid, uint64_t vaddr_nid);
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t word_alignment,
   uint64_t flow_nid);
@@ -185,8 +184,9 @@ uint64_t fixed_heap_segment   = 0; // flag for fixing size of heap segment
 uint64_t fixed_stack_segment  = 0; // flag for fixing size of stack segment
 uint64_t segment_memory       = 0; // flag for segmenting memory
 
-uint64_t address_sort_nid = 0; // nid of address sort
-uint64_t memory_sort_nid  = 0; // nid of physical memory sort
+uint64_t virtual_address_sort_nid  = 0; // nid of virtual address sort
+uint64_t physical_address_sort_nid = 0; // nid of physical address sort
+uint64_t memory_sort_nid           = 0; // nid of physical memory sort
 
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
@@ -227,7 +227,7 @@ uint64_t current_callee = 0; // address of first instruction of current callee
 // address of currently farthest forward branch or jump to find matching jalr instruction
 uint64_t estimated_return = 0;
 
-uint64_t memory_nid      = 0; // nid of memory
+uint64_t memory_nid      = 0; // nid of physical memory
 uint64_t memory_flow_nid = 0; // nid of most recent update of memory
 
 uint64_t lo_memory_nid      = 0; // nid of lower bounds on addresses in memory
@@ -270,6 +270,11 @@ uint64_t ecall_flow_nid = 10;
 
 void model_syscalls() {
   uint64_t current_ecall_nid;
+  uint64_t increment_nid;
+  uint64_t input_nid;
+  uint64_t paddr_nid;
+  uint64_t write_input_nid;
+  uint64_t read_loop_nid;
   uint64_t kernel_mode_flow_nid;
 
   w = w
@@ -361,7 +366,7 @@ void model_syscalls() {
         current_ecall_nid + 4, // nid of this line
         current_ecall_nid + 3) // nid of preceding line
 
-  // if exit ecall is active stay in kernel mode indefinitely
+    // if exit ecall is active stay in kernel mode indefinitely
     + dprintf(output_fd, "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
         current_ecall_nid + 50, // nid of this line
         current_nid + 10,       // nid of $a7 == SYSCALL_EXIT
@@ -451,127 +456,140 @@ void model_syscalls() {
         current_ecall_nid + 61, // nid of this line
         current_ecall_nid + 60) // nid of $a2 - $a0
     + dprintf(output_fd, "%lu ite 2 %lu 28 %lu ; read 8 bytes if $a2 - $a0 >= 8 bytes, or else $a2 - $a0 bytes\n",
-        current_ecall_nid + 62, // nid of this line
-        current_ecall_nid + 61, // nid of $a2 - $a0 >= 8 bytes
-        current_ecall_nid + 60) // nid of $a2 - $a0
+        current_ecall_nid + 62,  // nid of this line
+        current_ecall_nid + 61,  // nid of $a2 - $a0 >= 8 bytes
+        current_ecall_nid + 60); // nid of $a2 - $a0
 
+  increment_nid = current_ecall_nid + 62;
+
+  w = w
     // compute unsigned-extended input
     + dprintf(output_fd, "%lu eq 1 %lu 22 ; increment == 2\n",
         current_ecall_nid + 70, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 92 91 ; unsigned-extended 2-byte input if increment == 2, or else unsigned-extended 1-byte input\n",
         current_ecall_nid + 71, // nid of this line
         current_ecall_nid + 70) // nid of increment == 2
     + dprintf(output_fd, "%lu eq 1 %lu 23 ; increment == 3\n",
         current_ecall_nid + 72, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 93 %lu ; unsigned-extended 3-byte input if increment == 3\n",
         current_ecall_nid + 73, // nid of this line
         current_ecall_nid + 72, // nid of increment == 3
         current_ecall_nid + 71) // nid of unsigned-extended 2-byte input
     + dprintf(output_fd, "%lu eq 1 %lu 24 ; increment == 4\n",
         current_ecall_nid + 74, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 94 %lu ; unsigned-extended 4-byte input if increment == 4\n",
         current_ecall_nid + 75, // nid of this line
         current_ecall_nid + 74, // nid of increment == 4
         current_ecall_nid + 73) // nid of unsigned-extended 3-byte input
     + dprintf(output_fd, "%lu eq 1 %lu 25 ; increment == 5\n",
         current_ecall_nid + 76, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 95 %lu ; unsigned-extended 5-byte input if increment == 5\n",
         current_ecall_nid + 77, // nid of this line
         current_ecall_nid + 76, // nid of increment == 5
         current_ecall_nid + 75) // nid of unsigned-extended 4-byte input
     + dprintf(output_fd, "%lu eq 1 %lu 26 ; increment == 6\n",
         current_ecall_nid + 78, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 96 %lu ; unsigned-extended 6-byte input if increment == 6\n",
         current_ecall_nid + 79, // nid of this line
         current_ecall_nid + 78, // nid of increment == 6
         current_ecall_nid + 77) // nid of unsigned-extended 5-byte input
     + dprintf(output_fd, "%lu eq 1 %lu 27 ; increment == 7\n",
         current_ecall_nid + 80, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 97 %lu ; unsigned-extended 7-byte input if increment == 7\n",
         current_ecall_nid + 81, // nid of this line
         current_ecall_nid + 80, // nid of increment == 7
         current_ecall_nid + 79) // nid of unsigned-extended 6-byte input
     + dprintf(output_fd, "%lu eq 1 %lu 28 ; increment == 8\n",
         current_ecall_nid + 82, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        increment_nid)          // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu 98 %lu ; 8-byte input if increment == 8\n",
-        current_ecall_nid + 83, // nid of this line
-        current_ecall_nid + 82, // nid of increment == 8
-        current_ecall_nid + 81) // nid of unsigned-extended 7-byte input
+        current_ecall_nid + 83,  // nid of this line
+        current_ecall_nid + 82,  // nid of increment == 8
+        current_ecall_nid + 81); // nid of unsigned-extended 7-byte input
 
-  // compute virtual address $a1 + $a0
+  input_nid = current_ecall_nid + 83;
+
+  w = w
+    // compute virtual address $a1 + $a0
     + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + $a0\n",
         current_ecall_nid + 84, // nid of this line
         reg_nids + REG_A1,      // nid of current value of $a1 register
         reg_nids + REG_A0);     // nid of current value of $a0 register
 
-  // compute linear address $a1 + $a0
-  // model_physical_address(current_nid + 1185, current_nid + 1184);
+  // compute physical address $a1 + $a0
+  paddr_nid = model_physical_address(current_ecall_nid + 85, current_ecall_nid + 84);
+
+  write_input_nid = paddr_nid + 1;
 
   w = w
     // write input to memory at physical address $a1 + $a0
-    + dprintf(output_fd, "%lu write 3 %lu %lu %lu ; memory[$a1 + $a0] = input\n",
-        current_ecall_nid + 86, // nid of this line
-        memory_nid,             // nid of memory
-        current_ecall_nid + 84, // nid of physical address $a1 + $a0
-        current_ecall_nid + 83) // nid of input
+    + dprintf(output_fd, "%lu write %lu %lu %lu %lu ; memory[$a1 + $a0] = input\n",
+        write_input_nid, // nid of this line
+        memory_sort_nid, // nid of physical memory sort
+        memory_nid,      // nid of physical memory
+        paddr_nid,       // nid of physical address $a1 + $a0
+        input_nid);      // nid of input
 
-  // read ecall is in kernel mode and not done yet
+  read_loop_nid = write_input_nid + 1;
+
+  w = w
+    // read ecall is in kernel mode and not done yet
     + dprintf(output_fd, "%lu ult 1 %lu %lu ; $a0 < $a2\n",
-        current_ecall_nid + 90, // nid of this line
-        reg_nids + REG_A0,      // nid of current value of $a0 register
-        reg_nids + REG_A2)      // nid of current value of $a2 register
+        read_loop_nid,     // nid of this line
+        reg_nids + REG_A0, // nid of current value of $a0 register
+        reg_nids + REG_A2) // nid of current value of $a2 register
     + dprintf(output_fd, "%lu and 1 %lu %lu ; $a7 == SYSCALL_READ and $a0 < $a2\n",
-        current_ecall_nid + 91, // nid of this line
-        current_nid + 11,       // nid of $a7 == SYSCALL_READ
-        current_ecall_nid + 90) // nid of $a0 < $a2
+        read_loop_nid + 1, // nid of this line
+        current_nid + 11,  // nid of $a7 == SYSCALL_READ
+        read_loop_nid)     // nid of $a0 < $a2
     + dprintf(output_fd, "%lu and 1 60 %lu ; read ecall is in kernel mode and not done yet\n",
-        current_ecall_nid + 92, // nid of this line
-        current_ecall_nid + 91) // nid of $a7 == SYSCALL_READ and $a0 < $a2
+        read_loop_nid + 2, // nid of this line
+        read_loop_nid + 1) // nid of $a7 == SYSCALL_READ and $a0 < $a2
 
-  // if read ecall is in kernel mode and not done yet write input to memory at address $a1 + $a0
+    // if read ecall is in kernel mode and not done yet write input to memory at address $a1 + $a0
     + dprintf(output_fd, "%lu ugt 1 %lu 20 ; increment > 0\n",
-        current_ecall_nid + 93, // nid of this line
-        current_ecall_nid + 62) // nid of increment
+        read_loop_nid + 3, // nid of this line
+        increment_nid)     // nid of increment
     + dprintf(output_fd, "%lu and 1 %lu %lu ; read ecall is in kernel mode and not done yet and increment > 0\n",
-        current_ecall_nid + 94, // nid of this line
-        current_ecall_nid + 92, // nid of read ecall is in kernel mode and not done yet
-        current_ecall_nid + 93) // nid of increment > 0
-    + dprintf(output_fd, "%lu ite 3 %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
-        current_ecall_nid + 95, // nid of this line
-        current_ecall_nid + 94, // nid of read ecall is in kernel mode and not done yet and increment > 0
-        current_ecall_nid + 86, // nid of memory[$a1 + $a0] = input
-        memory_flow_nid);       // nid of most recent update of memory
+        read_loop_nid + 4, // nid of this line
+        read_loop_nid + 2, // nid of read ecall is in kernel mode and not done yet
+        read_loop_nid + 3) // nid of increment > 0
+    + dprintf(output_fd, "%lu ite %lu %lu %lu %lu ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
+        read_loop_nid + 5, // nid of this line
+        memory_sort_nid,   // nid of physical memory sort
+        read_loop_nid + 4, // nid of read ecall is in kernel mode and not done yet and increment > 0
+        write_input_nid,   // nid of memory[$a1 + $a0] = input
+        memory_flow_nid);  // nid of most recent update of memory
 
-  memory_flow_nid = current_ecall_nid + 95;
+  memory_flow_nid = read_loop_nid + 5;
 
   w = w
     // if read ecall is in kernel mode and not done yet increment number of bytes read
     + dprintf(output_fd, "%lu add 2 %lu %lu ; $a0 + increment\n",
-        current_ecall_nid + 96, // nid of this line
-        reg_nids + REG_A0,      // nid of current value of $a0 register
-        current_ecall_nid + 62) // nid of increment
+        read_loop_nid + 6, // nid of this line
+        reg_nids + REG_A0, // nid of current value of $a0 register
+        increment_nid)     // nid of increment
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = $a0 + increment if read ecall is in kernel mode and not done yet\n",
-        current_ecall_nid + 97,     // nid of this line
-        current_ecall_nid + 92,     // nid of read ecall is in kernel mode and not done yet
-        current_ecall_nid + 96,     // nid of $a0 + increment
+        read_loop_nid + 7, // nid of this line
+        read_loop_nid + 2, // nid of read ecall is in kernel mode and not done yet
+        read_loop_nid + 6, // nid of $a0 + increment
         *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_ecall_nid + 97;
+  *(reg_flow_nids + REG_A0) = read_loop_nid + 7;
 
   // if read ecall is in kernel mode and not done yet stay in kernel mode
   w = w + dprintf(output_fd, "%lu ite 1 %lu 11 %lu ; stay in kernel mode if read ecall is in kernel mode and not done yet\n\n",
-    current_ecall_nid + 98, // nid of this line
-    current_ecall_nid + 92, // nid of read ecall is in kernel mode and not done yet
-    kernel_mode_flow_nid);  // nid of most recent update of kernel-mode flag
+    read_loop_nid + 8,     // nid of this line
+    read_loop_nid + 2,     // nid of read ecall is in kernel mode and not done yet
+    kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
 
-  kernel_mode_flow_nid = current_ecall_nid + 98;
+  kernel_mode_flow_nid = read_loop_nid + 8;
 
 
   current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100 * 2;
@@ -1237,7 +1255,7 @@ void model_data_flow_load() {
       // read from memory[$rs1 + imm] into $rd register
       + dprintf(output_fd, "%lu read 2 %lu %lu\n",
           current_nid, // nid of this line
-          memory_nid,  // nid of memory
+          memory_nid,  // nid of physical memory
           paddr_nid)   // nid of physical address $rs1 + imm
 
       // if this instruction is active set $rd = memory[$rs1 + imm]
@@ -1325,7 +1343,7 @@ void model_data_flow_store() {
     + dprintf(output_fd, "%lu write %lu %lu %lu %lu\n",
         current_nid,     // nid of this line
         memory_sort_nid, // nid of physical memory sort
-        memory_nid,      // nid of memory
+        memory_nid,      // nid of physical memory
         paddr_nid,       // nid of physical address $rs1 + imm
         reg_nids + rs2)  // nid of current value of $rs2 register
 
@@ -1583,72 +1601,65 @@ uint64_t model_virtual_address() {
   }
 }
 
-uint64_t model_linear_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
-  if (linear_address_space) {
-    w = w + dprintf(output_fd, "%lu slice 4 %lu 31 3\n",
-      cursor_nid, // nid of this line
-      vaddr_nid); // nid of virtual address
-
-    return cursor_nid; // nid of linear address
-  } else
-    return vaddr_nid;
-}
-
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t word_alignment,
   uint64_t flow_nid) {
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= start of segment\n",
-      cursor_nid + 1, // nid of this line
-      laddr_nid,      // nid of virtual or linear address
-      start_nid)      // nid of start of segment
+      cursor_nid, // nid of this line
+      laddr_nid,  // nid of virtual or linear address
+      start_nid)  // nid of start of segment
     + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
-      cursor_nid + 2, // nid of this line
+      cursor_nid + 1, // nid of this line
       laddr_nid,      // nid of virtual or linear address
       end_nid)        // nid of end of segment
     + dprintf(output_fd, "%lu and 1 %lu %lu\n",
-      cursor_nid + 3, // nid of this line
-      cursor_nid + 1, // nid of >= check
-      cursor_nid + 2) // nid of < check
+      cursor_nid + 2, // nid of this line
+      cursor_nid,     // nid of >= check
+      cursor_nid + 1) // nid of < check
     + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
-      cursor_nid + 4, // nid of this line
-      address_sort_nid,
-      laddr_nid,      // nid of virtual or linear address
-      offset_nid)     // nid of segment offset in virtual or linear address space
+      cursor_nid + 3,           // nid of this line
+      virtual_address_sort_nid, // nid of address sort
+      laddr_nid,                // nid of virtual or linear address
+      offset_nid)               // nid of segment offset in virtual or linear address space
     + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
-      cursor_nid + 5,                                   // nid of this line
-      cursor_nid + 4,                                   // nid of mapped virtual or linear address
+      cursor_nid + 4,                                   // nid of this line
+      cursor_nid + 3,                                   // nid of mapped virtual or linear address
       physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
       word_alignment)                                   // 3 for virtual address, 0 for linear address
     + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
-      cursor_nid + 6, // nid of this line
-      cursor_nid + 3, // nid of segment check
-      cursor_nid + 5, // nid of physical address
+      cursor_nid + 5, // nid of this line
+      cursor_nid + 2, // nid of segment check
+      cursor_nid + 4, // nid of physical address
       flow_nid);      // nid of physical address in other segment
 
-  return cursor_nid + 6; // nid of physical address
+  return cursor_nid + 5; // nid of physical address
 }
 
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
   uint64_t laddr_nid;
 
-  laddr_nid = model_linear_address(cursor_nid, vaddr_nid);
+  if (linear_address_space) {
+    w = w + dprintf(output_fd, "%lu slice 4 %lu 31 3\n",
+      cursor_nid, // nid of this line
+      vaddr_nid); // nid of virtual address
 
-  if (laddr_nid != vaddr_nid)
-    // account for slicing
-    cursor_nid = laddr_nid + 1;
+    laddr_nid  = cursor_nid;
+    cursor_nid = cursor_nid + 1;
+  } else
+    laddr_nid = vaddr_nid;
 
   if (segment_memory) {
     if (linear_address_space) {
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 0, 8);
-      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 42, 44, 46, 0, cursor_nid);
+      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 42, 44, 46, 0, cursor_nid);
 
-      return model_physical_address_in_segment(cursor_nid, laddr_nid, 45, 51, 47, 0, cursor_nid);
+      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 51, 47, 0, cursor_nid);
     } else {
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 30, 31, 30, 3, 8);
-      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 32, 34, 36, 3, cursor_nid);
+      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 32, 34, 36, 3, cursor_nid);
 
-      return model_physical_address_in_segment(cursor_nid, laddr_nid, 35, 50, 37, 3, cursor_nid);
+      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 35, 50, 37, 3, cursor_nid);
     }
   } else
     return laddr_nid;
@@ -1676,6 +1687,8 @@ uint64_t compute_physical_address(uint64_t vaddr) {
         exit(EXITCODE_MODELINGERROR);
     else
       exit(EXITCODE_MODELINGERROR);
+
+    return vaddr / WORDSIZE;
   }
 
   if (linear_address_space)
@@ -2174,15 +2187,17 @@ void modeler(uint64_t entry_pc) {
   if (linear_address_space == 0) {
     w = w + dprintf(output_fd, "3 sort array 2 2 ; 64-bit physical memory\n\n");
 
-    address_sort_nid = 2;
-    memory_sort_nid  = 3;
+    virtual_address_sort_nid  = 2;
+    physical_address_sort_nid = 2;
+    memory_sort_nid           = 3;
   } else {
     w = w
       + dprintf(output_fd, "4 sort bitvec 29 ; 29-bit linear address\n")
       + dprintf(output_fd, "5 sort array 4 2 ; 29-bit physical memory\n\n");
 
-    address_sort_nid = 4;
-    memory_sort_nid  = 5;
+    virtual_address_sort_nid  = 4;
+    physical_address_sort_nid = 4;
+    memory_sort_nid           = 5;
 
     physical_address_space_size = 29;
   }
@@ -2206,8 +2221,8 @@ void modeler(uint64_t entry_pc) {
         data_size + heap_size + stack_size)
       + dprintf(output_fd, "8 zero 6\n\n");
 
-    address_sort_nid = 6;
-    memory_sort_nid  = 7;
+    physical_address_sort_nid = 6;
+    memory_sort_nid           = 7;
   }
 
   w = w
@@ -2239,7 +2254,7 @@ void modeler(uint64_t entry_pc) {
       + dprintf(output_fd, "; allowed end of heap segment in 64-bit virtual memory (with %luB allowance)\n", heap_allowance)
       + dprintf(output_fd, "34 constd 2 %lu ; 0x%lX\n", heap_start + heap_size, heap_start + heap_size)
       + dprintf(output_fd, "; allowed start of stack segment in 64-bit virtual memory (with %luB allowance)\n", stack_allowance)
-      + dprintf(output_fd, "35 constd 2 %lu ; 0x%lX\n", stack_start, stack_start);
+      + dprintf(output_fd, "35 constd 2 %lu ; 0x%lX\n\n", stack_start, stack_start);
 
   if (segment_memory)
     w = w
@@ -2263,7 +2278,7 @@ void modeler(uint64_t entry_pc) {
     if (fixed_heap_segment)
       w = w
         + dprintf(output_fd, "; allowed end of heap segment in 29-bit linear memory (with %luB allowance)\n", heap_allowance)
-        + dprintf(output_fd, "44 constd 4 %lu ; 0x%lX\n\n", (heap_start + heap_size) / WORDSIZE, (heap_start + heap_size) / WORDSIZE)
+        + dprintf(output_fd, "44 constd 4 %lu ; 0x%lX\n", (heap_start + heap_size) / WORDSIZE, (heap_start + heap_size) / WORDSIZE)
         + dprintf(output_fd, "; allowed start of stack segment in 29-bit linear memory (with %luB allowance)\n", stack_allowance)
         + dprintf(output_fd, "45 constd 4 %lu ; 0x%lX\n\n", stack_start / WORDSIZE, stack_start / WORDSIZE);
 
@@ -2502,7 +2517,7 @@ void modeler(uint64_t entry_pc) {
     // address in data, heap, or stack segment
     w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX paddr, 0x%lX vaddr\n",
       current_nid,                  // nid of this line
-      address_sort_nid,             // nid of address sort
+      physical_address_sort_nid,    // nid of physical address sort
       compute_physical_address(pc), // physical address of current machine word
       compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
       pc);                          // virtual address of current machine word in hexadecimal as comment
@@ -2761,7 +2776,7 @@ void modeler(uint64_t entry_pc) {
   w = w + dprintf(output_fd, "%lu next %lu %lu %lu physical-memory\n",
     current_nid,      // nid of this line
     memory_sort_nid,  // nid of physical memory sort
-    memory_nid,       // nid of memory
+    memory_nid,       // nid of physical memory
     memory_flow_nid); // nid of most recent write to memory
 
   if (check_block_access)
