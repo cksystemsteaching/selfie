@@ -184,9 +184,9 @@ uint64_t fixed_heap_segment   = 0; // flag for fixing size of heap segment
 uint64_t fixed_stack_segment  = 0; // flag for fixing size of stack segment
 uint64_t segment_memory       = 0; // flag for segmenting memory
 
-uint64_t virtual_address_sort_nid  = 0; // nid of virtual address sort
-uint64_t physical_address_sort_nid = 0; // nid of physical address sort
-uint64_t memory_sort_nid           = 0; // nid of physical memory sort
+uint64_t virtual_address_sort_nid  = 2; // nid of virtual address sort
+uint64_t physical_address_sort_nid = 2; // nid of physical address sort
+uint64_t memory_sort_nid           = 3; // nid of physical memory sort
 
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
@@ -2192,24 +2192,6 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
     + dprintf(output_fd, "2 sort bitvec 64 ; 64-bit machine word\n");
 
-  if (linear_address_space == 0) {
-    w = w + dprintf(output_fd, "3 sort array 2 2 ; 64-bit physical memory\n\n");
-
-    virtual_address_sort_nid  = 2;
-    physical_address_sort_nid = 2;
-    memory_sort_nid           = 3;
-  } else {
-    w = w
-      + dprintf(output_fd, "4 sort bitvec 29 ; 29-bit linear address\n")
-      + dprintf(output_fd, "5 sort array 4 2 ; 29-bit physical memory\n\n");
-
-    virtual_address_sort_nid  = 4;
-    physical_address_sort_nid = 4;
-    memory_sort_nid           = 5;
-
-    physical_address_space_size = 29;
-  }
-
   // assert: value of stack pointer is 64-bit-word-aligned
 
   heap_start  = get_heap_seg_start(current_context);
@@ -2217,11 +2199,17 @@ void modeler(uint64_t entry_pc) {
   stack_start = *(registers + REG_SP) - stack_allowance;
   stack_size  = VIRTUALMEMORYSIZE * GIGABYTE - stack_start;
 
+  if (linear_address_space) {
+    w = w + dprintf(output_fd, "\n4 sort bitvec 29 ; 29-bit linear address\n");
+
+    virtual_address_sort_nid = 4;
+  }
+
   if (segment_memory) {
     physical_address_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
 
     w = w
-      + dprintf(output_fd, "6 sort bitvec %lu ; %lu-bit physical address\n",
+      + dprintf(output_fd, "\n6 sort bitvec %lu ; %lu-bit physical address\n",
         physical_address_space_size,
         physical_address_space_size)
       + dprintf(output_fd, "7 sort array 6 2 ; %lu-bit physical memory (%luB)\n",
@@ -2231,7 +2219,15 @@ void modeler(uint64_t entry_pc) {
 
     physical_address_sort_nid = 6;
     memory_sort_nid           = 7;
-  }
+  } else if (linear_address_space) {
+    physical_address_space_size = 29;
+
+    w = w + dprintf(output_fd, "5 sort array 4 2 ; 29-bit physical memory\n\n");
+
+    physical_address_sort_nid = 4;
+    memory_sort_nid           = 5;
+  } else
+    w = w + dprintf(output_fd, "3 sort array 2 2 ; 64-bit physical memory\n\n");
 
   w = w
     + dprintf(output_fd, "; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
