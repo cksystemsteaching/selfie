@@ -1606,34 +1606,42 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
   uint64_t flow_nid) {
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= start of segment\n",
-      cursor_nid, // nid of this line
-      laddr_nid,  // nid of virtual or linear address
-      start_nid)  // nid of start of segment
-    + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
-      cursor_nid + 1, // nid of this line
-      laddr_nid,      // nid of virtual or linear address
-      end_nid)        // nid of end of segment
-    + dprintf(output_fd, "%lu and 1 %lu %lu\n",
-      cursor_nid + 2, // nid of this line
-      cursor_nid,     // nid of >= check
-      cursor_nid + 1) // nid of < check
-    + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
-      cursor_nid + 3,           // nid of this line
-      virtual_address_sort_nid, // nid of address sort
-      laddr_nid,                // nid of virtual or linear address
-      offset_nid)               // nid of segment offset in virtual or linear address space
-    + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
-      cursor_nid + 4,                                   // nid of this line
-      cursor_nid + 3,                                   // nid of mapped virtual or linear address
-      physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
-      word_alignment)                                   // 3 for virtual address, 0 for linear address
-    + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
-      cursor_nid + 5, // nid of this line
-      cursor_nid + 2, // nid of segment check
-      cursor_nid + 4, // nid of physical address
-      flow_nid);      // nid of physical address in other segment
+        cursor_nid, // nid of this line
+        laddr_nid,  // nid of virtual or linear address
+        start_nid); // nid of start of segment
 
-  return cursor_nid + 5; // nid of physical address
+  if (end_nid) {
+    w = w
+      + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
+          cursor_nid + 1, // nid of this line
+          laddr_nid,      // nid of virtual or linear address
+          end_nid)        // nid of end of segment
+      + dprintf(output_fd, "%lu and 1 %lu %lu\n",
+          cursor_nid + 2,  // nid of this line
+          cursor_nid,      // nid of >= check
+          cursor_nid + 1); // nid of < check
+
+    cursor_nid = cursor_nid + 2;
+  }
+
+  w = w
+    + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
+        cursor_nid + 1,           // nid of this line
+        virtual_address_sort_nid, // nid of address sort
+        laddr_nid,                // nid of virtual or linear address
+        offset_nid)               // nid of segment offset in virtual or linear address space
+    + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
+        cursor_nid + 2,                                   // nid of this line
+        cursor_nid + 1,                                   // nid of mapped virtual or linear address
+        physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
+        word_alignment)                                   // 3 for virtual address, 0 for linear address
+    + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
+        cursor_nid + 3, // nid of this line
+        cursor_nid,     // nid of segment check
+        cursor_nid + 2, // nid of physical address
+        flow_nid);      // nid of physical address in other segment
+
+  return cursor_nid + 3; // nid of physical address
 }
 
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
@@ -1654,7 +1662,7 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 0, 8);
       cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 42, 44, 46, 0, cursor_nid);
 
-      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 51, 47, 0, cursor_nid);
+      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 0, 47, 0, cursor_nid);
     } else {
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 30, 31, 30, 3, 8);
       cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 32, 34, 36, 3, cursor_nid);
@@ -2292,15 +2300,10 @@ void modeler(uint64_t entry_pc) {
 
   w = w
     + dprintf(output_fd, "; 4GB of virtual memory\n\n")
-    + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX end of 32-bit virtual address space\n",
-      VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE);
+    + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX end of 32-bit virtual address space\n\n",
+      VIRTUALMEMORYSIZE * GIGABYTE, VIRTUALMEMORYSIZE * GIGABYTE)
 
-  if (linear_address_space)
-    w = w
-      + dprintf(output_fd, "51 zero 4 ; end of 29-bit linear address space (2^29 in 29-bit arithmetic)\n");
-
-  w = w
-    + dprintf(output_fd, "\n; kernel-mode flag\n\n")
+    + dprintf(output_fd, "; kernel-mode flag\n\n")
 
     + dprintf(output_fd, "60 state 1 kernel-mode\n")
     + dprintf(output_fd, "61 init 1 60 10 kernel-mode ; initial value is false\n")
