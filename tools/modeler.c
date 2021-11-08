@@ -1604,11 +1604,11 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
       address_sort_nid,
       laddr_nid,      // nid of virtual or linear address
       offset_nid)     // nid of segment offset in virtual or linear address space
-    + dprintf(output_fd, "%lu slice 6 %lu %lu 0\n",
-      cursor_nid + 5,                  // nid of this line
-      cursor_nid + 4,                  // nid of mapped virtual or linear address
-      physical_address_space_size - 1, // size of physical address space in bits - 1
-      word_alignment)                  // 3 for virtual address, 0 for linear address
+    + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
+      cursor_nid + 5,                                   // nid of this line
+      cursor_nid + 4,                                   // nid of mapped virtual or linear address
+      physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
+      word_alignment)                                   // 3 for virtual address, 0 for linear address
     + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
       cursor_nid + 6, // nid of this line
       cursor_nid + 3, // nid of segment check
