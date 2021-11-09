@@ -1391,6 +1391,8 @@ void model_data_flow_store() {
       // nid of memory[$rs1 + imm] = $rs2
       *(RAM_flow_nid + RAM_address) = current_nid + 2;
 
+      current_nid = current_nid + 3;
+
       RAM_address = RAM_address + 1;
 
       if (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE)
