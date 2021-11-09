@@ -144,6 +144,8 @@ void generate_address_alignment_check(uint64_t flow_nid);
 void generate_segmentation_faults(uint64_t flow_nid);
 void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
 
+uint64_t number_of_bits(uint64_t n);
+
 void modeler();
 
 uint64_t selfie_model();
@@ -1200,6 +1202,7 @@ void model_data_flow_load() {
     paddr_nid = model_physical_address(current_nid, vaddr_nid);
 
     if (paddr_nid != vaddr_nid)
+      // account for mapping code
       current_nid = paddr_nid + 1;
 
     // if this instruction is active record $rs1 + imm for checking address validity
@@ -1281,6 +1284,7 @@ void model_data_flow_store() {
   paddr_nid = model_physical_address(current_nid, vaddr_nid);
 
   if (paddr_nid != vaddr_nid)
+    // account for mapping code
     current_nid = paddr_nid + 1;
 
   // if this instruction is active record $rs1 + imm for checking address validity
@@ -1611,6 +1615,8 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
         start_nid); // nid of start of segment
 
   if (end_nid) {
+    // in address spaces where the highest address is the largest value
+    // wraparound makes this constraint obsolete
     w = w
       + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
           cursor_nid + 1, // nid of this line
@@ -1625,6 +1631,7 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
   }
 
   w = w
+    // subtract offset of segment in virtual address space
     + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
         cursor_nid + 1,           // nid of this line
         virtual_address_sort_nid, // nid of address sort
@@ -1659,11 +1666,13 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
 
   if (segment_memory) {
     if (linear_address_space) {
+      // use linear segment dimensions
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 0, 8);
       cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 42, 44, 46, 0, cursor_nid);
 
       return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 0, 47, 0, cursor_nid);
     } else {
+      // use virtual segment dimensions
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 30, 31, 30, 3, 8);
       cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 32, 34, 36, 3, cursor_nid);
 
@@ -1696,6 +1705,7 @@ uint64_t compute_physical_address(uint64_t vaddr) {
     else
       exit(EXITCODE_MODELINGERROR);
 
+    // bypass linear address space
     return vaddr / WORDSIZE;
   }
 
