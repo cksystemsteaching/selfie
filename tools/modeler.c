@@ -1371,25 +1371,25 @@ void model_data_flow_store() {
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
       w = w
-        // $rs1 + imm == RAM address
+        // physical address $rs1 + imm == RAM address
         + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
             current_nid,                     // nid of this line
             paddr_nid,                       // nid of physical address $rs1 + imm
             pc_nid(memory_nid, RAM_address)) // nid of RAM address
-        // $rs1 + imm == RAM address and this instruction is active
+        // physical address $rs1 + imm == RAM address and this instruction is active
         + dprintf(output_fd, "%lu and 1 %lu %lu\n",
             current_nid + 1,     // nid of this line
-            current_nid,         // nid of $rs1 + imm == address
+            current_nid,         // nid of physical address $rs1 + imm == RAM address
             pc_nid(pcs_nid, pc)) // nid of pc flag of this instruction
-        // if $rs1 + imm == RAM address and this instruction is active set memory[$rs1 + imm] = $rs2
+        // if physical address $rs1 + imm == RAM address and this instruction is active set memory[$rs1 + imm] = $rs2
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu",
             current_nid + 2,                // nid of this line
-            current_nid + 1,                // $rs1 + imm == RAM address and this instruction is active
+            current_nid + 1,                // physical address $rs1 + imm == RAM address and this instruction is active
             reg_nids + rs2,                 // nid of current value of $rs2 register
             *(RAM_flow_nid + RAM_address)); // nid of most recent update of RAM address
 
       // nid of memory[$rs1 + imm] = $rs2
-      *(RAM_flow_nid + RAM_address) = current_nid;
+      *(RAM_flow_nid + RAM_address) = current_nid + 2;
 
       RAM_address = RAM_address + 1;
 
