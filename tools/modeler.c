@@ -585,7 +585,7 @@ void model_syscalls() {
           read_loop_nid + 5, // nid of this line
           memory_sort_nid,   // nid of physical memory sort
           read_loop_nid + 4, // nid of read ecall is in kernel mode and not done yet and increment > 0
-          input_nid,         // nid of memory[$a1 + $a0] = input
+          write_input_nid,   // nid of memory[$a1 + $a0] = input
           memory_flow_nid);  // nid of most recent update of memory
 
     memory_flow_nid = read_loop_nid + 5;
