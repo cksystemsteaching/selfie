@@ -240,6 +240,8 @@ uint64_t lo_memory_flow_nid = 0; // nid of most recent update of lower bounds on
 uint64_t up_memory_nid      = 0; // nid of upper bounds on addresses in memory
 uint64_t up_memory_flow_nid = 0; // nid of most recent update of upper bounds on addresses in memory
 
+uint64_t* RAM_flow_nid = (uint64_t*) 0; // nids of most recent update to RAM
+
 // for checking division and remainder by zero
 // 21 is nid of 1 which is ok as divisor
 uint64_t division_flow_nid  = 21;
@@ -2505,6 +2507,8 @@ void modeler(uint64_t entry_pc) {
     w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
 
     data_flow_nid = 0;
+
+    RAM_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * SIZEOFUINT64);
   }
 
   w = w + dprintf(output_fd, "; data segment\n\n");
@@ -2545,11 +2549,14 @@ void modeler(uint64_t entry_pc) {
       compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
       pc);                          // virtual address of current machine word in hexadecimal as comment
 
-    if (RAM)
+    if (RAM) {
       // implementing memory words in state variables
       w = w + dprintf(output_fd, "%lu state 2 memory-word-%lu\n",
         current_nid + 1,               // nid of this line
         compute_physical_address(pc)); // physical address of current machine word
+
+      *(RAM_flow_nid + compute_physical_address(pc)) = current_nid + 1;
+    }
 
     if (is_virtual_address_mapped(get_pt(current_context), pc))
       memory_word = load_virtual_memory(get_pt(current_context), pc);
@@ -2562,7 +2569,7 @@ void modeler(uint64_t entry_pc) {
       if (RAM) {
         w = w + dprintf(output_fd, "%lu init 2 %lu 20\n",
           current_nid + 2,  // nid of this line
-          current_nid + 1); // nid of memory word in memory
+          current_nid + 1); // nid of memory word in RAM
 
         // account for last declared and initialized memory word, see below
         data_flow_nid = current_nid + 3;
@@ -2584,7 +2591,7 @@ void modeler(uint64_t entry_pc) {
               memory_word, memory_word) // value of memory word at current address
           + dprintf(output_fd, "%lu init 2 %lu %lu\n",
               current_nid + 3,  // nid of this line
-              current_nid + 1,  // nid of memory word in memory
+              current_nid + 1,  // nid of memory word in RAM
               current_nid + 2); // nid of value of memory word at current address
 
         // account for last declared and initialized memory word, see below
@@ -2651,7 +2658,7 @@ void modeler(uint64_t entry_pc) {
     up_memory_nid = current_nid;
 
     w = w
-      + dprintf(output_fd, "\n%lu state %lu upper-bounds ; for checking address validity\n",
+      + dprintf(output_fd, "%lu state %lu upper-bounds ; for checking address validity\n",
           current_nid,     // nid of this line
           memory_sort_nid) // nid of physical memory sort
       + dprintf(output_fd, "%lu init %lu %lu 50 ; initializing upper bounds to 4GB of memory addresses\n",
@@ -2829,26 +2836,44 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pcs_nid * 7;
 
-  w = w + dprintf(output_fd, "%lu next %lu %lu %lu physical-memory\n",
-    current_nid,      // nid of this line
-    memory_sort_nid,  // nid of physical memory sort
-    memory_nid,       // nid of physical memory
-    memory_flow_nid); // nid of most recent write to memory
+  if (RAM == 0) {
+    w = w + dprintf(output_fd, "%lu next %lu %lu %lu physical-memory\n",
+      current_nid,      // nid of this line
+      memory_sort_nid,  // nid of physical memory sort
+      memory_nid,       // nid of physical memory
+      memory_flow_nid); // nid of most recent write to memory
+
+    current_nid = current_nid + 1;
+  } else {
+    i = 0;
+
+    while (i < (data_size + heap_size + stack_size) / WORDSIZE) {
+      w = w + dprintf(output_fd, "%lu next 2 %lu %lu memory-word-%lu\n",
+        current_nid,               // nid of this line
+        pc_nid(memory_nid, i) + 1, // nid of RAM
+        *(RAM_flow_nid + i),       // nid of most recent write to RAM
+        i);                        // physical address of machine word
+
+      current_nid = current_nid + 1;
+
+      i = i + 1;
+    }
+  }
+
+  w = w + dprintf(output_fd, "\n");
 
   if (check_block_access)
     w = w
       + dprintf(output_fd, "%lu next %lu %lu %lu lower-bounds\n",
-        current_nid + 1,    // nid of this line
+        current_nid,        // nid of this line
         memory_sort_nid,    // nid of physical memory sort
         lo_memory_nid,      // nid of lower bounds on addresses in memory
         lo_memory_flow_nid) // nid of most recent write to lower bounds on addresses in memory
-      + dprintf(output_fd, "%lu next %lu %lu %lu upper-bounds\n",
-        current_nid + 2,     // nid of this line
+      + dprintf(output_fd, "%lu next %lu %lu %lu upper-bounds\n\n",
+        current_nid + 1,     // nid of this line
         memory_sort_nid,     // nid of physical memory sort
         up_memory_nid,       // nid of upper bounds on addresses in memory
         up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
-
-  w = w + dprintf(output_fd, "\n");
 
   current_nid = pcs_nid * 8;
 
