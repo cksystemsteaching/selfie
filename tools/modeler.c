@@ -172,7 +172,8 @@ char* constant_propagation_option = (char*) 0;
 char* linear_address_space_option = (char*) 0;
 char* heap_allowance_option       = (char*) 0;
 char* stack_allowance_option      = (char*) 0;
-char* segment_memory_option       = (char*) 0;
+char* MMU_option                  = (char*) 0;
+char* RAM_option                  = (char*) 0;
 
 uint64_t syscall_id_check       = 1; // flag for preventing syscall id checks
 uint64_t division_by_zero_check = 1; // flag for preventing division and remainder by zero checks
@@ -184,7 +185,8 @@ uint64_t constant_propagation = 0; // flag for constant propagation
 uint64_t linear_address_space = 0; // flag for 29-bit linear address space
 uint64_t fixed_heap_segment   = 0; // flag for fixing size of heap segment
 uint64_t fixed_stack_segment  = 0; // flag for fixing size of stack segment
-uint64_t segment_memory       = 0; // flag for segmenting memory
+uint64_t MMU                  = 0; // flag for generating MMU circuit
+uint64_t RAM                  = 0; // flag for generating RAM state and circuit
 
 uint64_t virtual_address_sort_nid  = 2; // nid of virtual address sort
 uint64_t physical_address_sort_nid = 2; // nid of physical address sort
@@ -1664,7 +1666,7 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
   } else
     laddr_nid = vaddr_nid;
 
-  if (segment_memory) {
+  if (MMU) {
     if (linear_address_space) {
       // use linear segment dimensions
       cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 0, 8);
@@ -1683,7 +1685,7 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
 }
 
 uint64_t compute_physical_address(uint64_t vaddr) {
-  if (segment_memory) {
+  if (MMU) {
     if (vaddr >= data_start)
       if (vaddr < data_start + data_size)
         // vaddr in data segment
@@ -2151,9 +2153,8 @@ uint64_t number_of_bits(uint64_t n) {
 void modeler(uint64_t entry_pc) {
   uint64_t i;
 
-  uint64_t machine_word;
+  uint64_t memory_word;
 
-  uint64_t memory_dump_nid;
   uint64_t code_nid;
   uint64_t control_nid;
   uint64_t condition_nid;
@@ -2184,8 +2185,10 @@ void modeler(uint64_t entry_pc) {
     w = w + dprintf(output_fd, "; with %s %lu\n", heap_allowance_option, heap_allowance);
   if (fixed_stack_segment)
     w = w + dprintf(output_fd, "; with %s %lu\n", stack_allowance_option, stack_allowance);
-  if (segment_memory)
-    w = w + dprintf(output_fd, "; with %s\n", segment_memory_option);
+  if (MMU)
+    w = w + dprintf(output_fd, "; with %s\n", MMU_option);
+  if (RAM)
+    w = w + dprintf(output_fd, "; with %s\n", RAM_option);
   if (check_block_access)
     w = w + dprintf(output_fd, "; with %s\n", check_block_access_option);
   w = w + dprintf(output_fd, "\n; RISC-V code obtained from %s and invoked as:", binary_name);
@@ -2215,7 +2218,7 @@ void modeler(uint64_t entry_pc) {
     virtual_address_sort_nid = 4;
   }
 
-  if (segment_memory) {
+  if (MMU) {
     physical_address_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
 
     w = w
@@ -2270,7 +2273,7 @@ void modeler(uint64_t entry_pc) {
       + dprintf(output_fd, "; allowed start of stack segment in 64-bit virtual memory (with %luB allowance)\n", stack_allowance)
       + dprintf(output_fd, "35 constd 2 %lu ; 0x%lX\n\n", stack_start, stack_start);
 
-  if (segment_memory)
+  if (MMU)
     w = w
       + dprintf(output_fd, "; offset of heap segment in 64-bit virtual memory\n")
       + dprintf(output_fd, "36 constd 2 %lu ; 0x%lX\n", heap_start - data_size, heap_start - data_size)
@@ -2296,7 +2299,7 @@ void modeler(uint64_t entry_pc) {
         + dprintf(output_fd, "; allowed start of stack segment in 29-bit linear memory (with %luB allowance)\n", stack_allowance)
         + dprintf(output_fd, "45 constd 4 %lu ; 0x%lX\n\n", stack_start / WORDSIZE, stack_start / WORDSIZE);
 
-    if (segment_memory)
+    if (MMU)
       w = w
         + dprintf(output_fd, "; offset of heap segment in 29-bit linear memory\n")
         + dprintf(output_fd, "46 constd 4 %lu ; 0x%lX\n", (heap_start - data_size) / WORDSIZE, (heap_start - data_size) / WORDSIZE)
@@ -2488,14 +2491,23 @@ void modeler(uint64_t entry_pc) {
 
   pc = data_start;
 
-  current_nid = pc_nid(pcs_nid, pc);
+  if (RAM == 0) {
+    current_nid = pc_nid(pcs_nid, pc);
+    memory_nid  = current_nid;
 
-  w = w + dprintf(output_fd, "\n%lu state %lu memory-dump\n", current_nid, memory_sort_nid);
+    w = w + dprintf(output_fd, "\n%lu state %lu memory-dump\n\n", current_nid, memory_sort_nid);
 
-  memory_dump_nid = current_nid;
-  data_flow_nid   = current_nid;
+    data_flow_nid = current_nid;
+  } else {
+    memory_nid  = pcs_nid * 2;
+    current_nid = memory_nid;
 
-  w = w + dprintf(output_fd, "\n; data segment\n\n");
+    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
+
+    data_flow_nid = 0;
+  }
+
+  w = w + dprintf(output_fd, "; data segment\n\n");
 
   // assert: data segment is not empty
 
@@ -2515,7 +2527,9 @@ void modeler(uint64_t entry_pc) {
       // assert: stack segment is not empty
     }
 
-    if (current_nid == memory_dump_nid)
+    if (RAM)
+      current_nid = pc_nid(memory_nid, compute_physical_address(pc));
+    else if (current_nid == memory_nid)
       // account for nid offset by 1 of memory-dump state
       current_nid = current_nid + 1;
     else if (pc < *(registers + REG_SP))
@@ -2531,61 +2545,94 @@ void modeler(uint64_t entry_pc) {
       compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
       pc);                          // virtual address of current machine word in hexadecimal as comment
 
+    if (RAM)
+      // implementing memory words in state variables
+      w = w + dprintf(output_fd, "%lu state 2 memory-word-%lu\n",
+        current_nid + 1,               // nid of this line
+        compute_physical_address(pc)); // physical address of current machine word
+
     if (is_virtual_address_mapped(get_pt(current_context), pc))
-      machine_word = load_virtual_memory(get_pt(current_context), pc);
+      memory_word = load_virtual_memory(get_pt(current_context), pc);
     else
-      // memory allocated but not yet mapped
-      machine_word = 0;
+      // memory allocated but not yet mapped is zeroed
+      memory_word = 0;
 
-    if (machine_word == 0) {
-      // load machine word == 0
-      w = w + dprintf(output_fd, "%lu write %lu %lu %lu 20\n",
-        current_nid + 1, // nid of this line
-        memory_sort_nid, // nid of physical memory sort
-        data_flow_nid,   // nid of most recent update of memory
-        current_nid);    // nid of address of current machine word
+    if (memory_word == 0) {
+      // load memory word == 0
+      if (RAM) {
+        w = w + dprintf(output_fd, "%lu init 2 %lu 20\n",
+          current_nid + 2,  // nid of this line
+          current_nid + 1); // nid of memory word in memory
 
-      data_flow_nid = current_nid + 1;
+        // account for last declared and initialized memory word, see below
+        data_flow_nid = current_nid + 3;
+      } else {
+        w = w + dprintf(output_fd, "%lu write %lu %lu %lu 20\n",
+          current_nid + 1, // nid of this line
+          memory_sort_nid, // nid of physical memory sort
+          data_flow_nid,   // nid of most recent update of memory
+          current_nid);    // nid of address of current memory word
+
+        data_flow_nid = current_nid + 1;
+      }
     } else {
-      w = w
-        // load non-zero machine word, use sign
-        + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
-            current_nid + 1,            // nid of this line
-            machine_word, machine_word) // value of machine word at current address
-        + dprintf(output_fd, "%lu write %lu %lu %lu %lu\n",
-            current_nid + 2,  // nid of this line
-            memory_sort_nid,  // nid of physical memory sort
-            data_flow_nid,    // nid of most recent update of memory
-            current_nid,      // nid of address of current machine word
-            current_nid + 1); // nid of value of machine word at current address
+      // load non-zero memory word, use sign
+      if (RAM) {
+        w = w
+          + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+              current_nid + 2,          // nid of this line
+              memory_word, memory_word) // value of memory word at current address
+          + dprintf(output_fd, "%lu init 2 %lu %lu\n",
+              current_nid + 3,  // nid of this line
+              current_nid + 1,  // nid of memory word in memory
+              current_nid + 2); // nid of value of memory word at current address
 
-      data_flow_nid = current_nid + 2;
+        // account for last declared and initialized memory word, see below
+        data_flow_nid = current_nid + 4;
+      } else {
+        w = w
+          + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+              current_nid + 1,          // nid of this line
+              memory_word, memory_word) // value of memory word at current address
+          + dprintf(output_fd, "%lu write %lu %lu %lu %lu\n",
+              current_nid + 2,  // nid of this line
+              memory_sort_nid,  // nid of physical memory sort
+              data_flow_nid,    // nid of most recent update of memory
+              current_nid,      // nid of address of current memory word
+              current_nid + 1); // nid of value of memory word at current address
+
+        data_flow_nid = current_nid + 2;
+      }
     }
 
     pc = pc + WORDSIZE;
   }
 
-  w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
+  if (RAM == 0) {
+    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
 
-  memory_nid = pcs_nid * 2;
+    memory_nid = pcs_nid * 2;
 
-  current_nid = memory_nid;
+    current_nid = memory_nid;
 
-  w = w
-    + dprintf(output_fd, "%lu state %lu physical-memory ; data, heap, stack segments\n",
-        current_nid,     // nid of this line
-        memory_sort_nid) // nid of physical memory sort
-    + dprintf(output_fd, "%lu init %lu %lu %lu ; loading data, heap, stack segments into memory\n",
-        current_nid + 1, // nid of this line
-        memory_sort_nid, // nid of physical memory sort
-        current_nid,     // nid of physical memory
-        data_flow_nid);  // nid of most recent update of memory
+    w = w
+      + dprintf(output_fd, "%lu state %lu physical-memory ; data, heap, stack segments\n",
+          current_nid,     // nid of this line
+          memory_sort_nid) // nid of physical memory sort
+      + dprintf(output_fd, "%lu init %lu %lu %lu ; loading data, heap, stack segments into memory\n",
+          current_nid + 1, // nid of this line
+          memory_sort_nid, // nid of physical memory sort
+          current_nid,     // nid of physical memory
+          data_flow_nid);  // nid of most recent update of memory
 
-  memory_flow_nid = current_nid;
+    memory_flow_nid = current_nid;
+
+    current_nid = current_nid + 2;
+  } else
+    // account for last declared and initialized memory word
+    current_nid = data_flow_nid;
 
   if (check_block_access) {
-    current_nid = current_nid + 2;
-
     lo_memory_nid = current_nid;
 
     w = w
@@ -2867,14 +2914,16 @@ uint64_t selfie_model() {
   linear_address_space_option = "--linear-address-space";
   heap_allowance_option       = "--heap-allowance";
   stack_allowance_option      = "--stack-allowance";
-  segment_memory_option       = "--segment-memory";
+  MMU_option                  = "--MMU";
+  RAM_option                  = "--RAM";
 
   check_block_access   = 0;
   constant_propagation = 0;
   linear_address_space = 0;
   fixed_heap_segment   = 0;
   fixed_stack_segment  = 0;
-  segment_memory       = 0;
+  MMU                  = 0;
+  RAM                  = 0;
 
   heap_allowance  = 0;
   stack_allowance = 0;
@@ -2937,8 +2986,16 @@ uint64_t selfie_model() {
               get_argument();
             } else
               exit(EXITCODE_BADARGUMENTS);
-          } else if (string_compare(peek_argument(1), segment_memory_option)) {
-            segment_memory = 1;
+          } else if (string_compare(peek_argument(1), MMU_option)) {
+            MMU = 1;
+
+            fixed_heap_segment  = 1;
+            fixed_stack_segment = 1;
+
+            get_argument();
+          } else if (string_compare(peek_argument(1), RAM_option)) {
+            RAM = 1;
+            MMU = 1;
 
             fixed_heap_segment  = 1;
             fixed_stack_segment = 1;
