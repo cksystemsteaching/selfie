@@ -726,31 +726,31 @@ void model_syscalls(uint64_t cursor_nid) {
   // TODO: check address validity of whole filename, flags and mode arguments
 
   w = w
-    + dprintf(output_fd, "%lu state 2 fd-bump\n", current_ecall_nid + 50)
+    + dprintf(output_fd, "%lu state 2 fd-bump\n", cursor_nid)
     + dprintf(output_fd, "%lu init 2 %lu 21 ; initial fd-bump is 1 (file descriptor bump pointer)\n",
-        current_ecall_nid + 51, // nid of this line
-        current_ecall_nid + 50) // nid of fd-bump
+        cursor_nid + 1, // nid of this line
+        cursor_nid)     // nid of fd-bump
 
     // if openat ecall is active set $a0 (file descriptor) = fd-bump + 1 (next file descriptor)
     + dprintf(output_fd, "%lu inc 2 %lu\n",
-        current_ecall_nid + 52, // nid of this line
-        current_ecall_nid + 50) // nid of fd-bump
+        cursor_nid + 2, // nid of this line
+        cursor_nid)     // nid of fd-bump
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; fd-bump + 1 if openat ecall is active\n",
-        current_ecall_nid + 53, // nid of this line
-        current_ecall_nid,      // nid of openat ecall is active
-        current_ecall_nid + 52, // nid of fd-bump + 1
-        current_ecall_nid + 50) // nid of fd-bump
+        cursor_nid + 3,    // nid of this line
+        current_ecall_nid, // nid of openat ecall is active
+        cursor_nid + 2,    // nid of fd-bump + 1
+        cursor_nid)        // nid of fd-bump
     + dprintf(output_fd, "%lu next 2 %lu %lu ; increment fd-bump if openat ecall is active\n",
-        current_ecall_nid + 54, // nid of this line
-        current_ecall_nid + 50, // nid of fd-bump
-        current_ecall_nid + 53) // nid of fd-bump + 1
+        cursor_nid + 4, // nid of this line
+        cursor_nid,     // nid of fd-bump
+        cursor_nid + 3) // nid of fd-bump + 1
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
-        current_ecall_nid + 55,     // nid of this line
+        cursor_nid + 5,             // nid of this line
         current_ecall_nid,          // nid of openat ecall is active
-        current_ecall_nid + 52,     // nid of fd-bump + 1
+        cursor_nid + 2,             // nid of fd-bump + 1
         *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_ecall_nid + 55;
+  *(reg_flow_nids + REG_A0) = cursor_nid + 5;
 
 
   current_ecall_nid = current_ecall_nid + pcs_nid / 10;
