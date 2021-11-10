@@ -50,6 +50,7 @@ Modeler is inspired by Professor Armin Biere from JKU Linz.
 // -----------------------------------------------------------------
 
 uint64_t generate_ecall_address_checks(uint64_t cursor_nid, uint64_t current_ecall_nid);
+uint64_t generate_ecall_address_and_block_checks(uint64_t cursor_nid, uint64_t current_ecall_nid);
 
 void model_syscalls(uint64_t cursor_nid);
 
@@ -282,10 +283,10 @@ uint64_t ecall_flow_nid = 10;
 uint64_t generate_ecall_address_checks(uint64_t cursor_nid, uint64_t current_ecall_nid) {
   if (check_addresses()) {
     w = w
-      // if read or write ecall is active record $a1 register for checking address validity
+      // if read, write, or openat ecall is active record $a1 register for checking address validity
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of buffer for checking address validity\n",
           cursor_nid,             // nid of this line
-          current_ecall_nid,      // nid of read or write ecall is active
+          current_ecall_nid,      // nid of read, write, or openat ecall is active
           reg_nids + REG_A1,      // nid of current value of $a1 register
           access_flow_start_nid); // nid of address of most recent memory access
 
@@ -293,6 +294,12 @@ uint64_t generate_ecall_address_checks(uint64_t cursor_nid, uint64_t current_eca
 
     cursor_nid = cursor_nid + 1;
   }
+
+  return cursor_nid;
+}
+
+uint64_t generate_ecall_address_and_block_checks(uint64_t cursor_nid, uint64_t current_ecall_nid) {
+  cursor_nid = generate_ecall_address_checks(cursor_nid, current_ecall_nid);
 
   if (check_block_access) {
     w = w
@@ -430,33 +437,33 @@ void model_syscalls(uint64_t cursor_nid) {
     which_ecall_nid);  // nid of $a7 == SYSCALL_EXIT
   if (bad_exit_code == 0)
     w = w + dprintf(output_fd, "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
-      current_nid + 2,    // nid of this line
+      cursor_nid + 2,     // nid of this line
       reg_nids + REG_A0); // nid of current value of $a0 register
   else
     w = w
       + dprintf(output_fd, "%lu constd 2 %ld ; bad exit code\n",
-          current_nid + 1, // nid of this line
+          cursor_nid + 1,  // nid of this line
           bad_exit_code)   // value of bad exit code
       + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a0 == bad non-zero exit code\n",
-          current_nid + 2,   // nid of this line
+          cursor_nid + 2,    // nid of this line
           reg_nids + REG_A0, // nid of current value of $a0 register
-          current_nid + 1);  // nid of value of bad non-zero exit code
+          cursor_nid + 1);   // nid of value of bad non-zero exit code
   w = w
     + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active with non-zero exit code\n",
-        current_nid + 3,   // nid of this line
+        cursor_nid + 3,    // nid of this line
         current_ecall_nid, // nid of exit ecall is active
-        current_nid + 2)   // nid of non-zero exit code
+        cursor_nid + 2)    // nid of non-zero exit code
     + dprintf(output_fd, "%lu bad %lu ; non-zero exit code\n",
-        current_nid + 4, // nid of this line
-        current_nid + 3) // nid of preceding line
+        cursor_nid + 4, // nid of this line
+        cursor_nid + 3) // nid of preceding line
 
     // if exit ecall is active stay in kernel mode indefinitely
     + dprintf(output_fd, "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
-        current_nid + 5,    // nid of this line
+        cursor_nid + 5,     // nid of this line
         which_ecall_nid,    // nid of $a7 == SYSCALL_EXIT
         current_ecall_nid); // nid of exit ecall is active
 
-  kernel_mode_flow_nid = current_nid + 5;
+  kernel_mode_flow_nid = cursor_nid + 5;
 
 
   current_ecall_nid = current_ecall_nid + pcs_nid / 10;
@@ -468,7 +475,7 @@ void model_syscalls(uint64_t cursor_nid) {
         ecall_flow_nid,       // nid of most recent update of ecall activation
         which_ecall_nid + 1); // nid of $a7 == SYSCALL_READ
 
-  cursor_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
+  cursor_nid = generate_ecall_address_and_block_checks(current_ecall_nid + 1, current_ecall_nid);
 
   // TODO: check file descriptor validity, return error codes
 
@@ -687,7 +694,7 @@ void model_syscalls(uint64_t cursor_nid) {
         ecall_flow_nid,       // nid of most recent update of ecall activation
         which_ecall_nid + 2); // nid of $a7 == SYSCALL_WRITE
 
-  cursor_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
+  cursor_nid = generate_ecall_address_and_block_checks(current_ecall_nid + 1, current_ecall_nid);
 
   // TODO: check file descriptor validity, return error codes
 
@@ -710,20 +717,11 @@ void model_syscalls(uint64_t cursor_nid) {
         ecall_flow_nid,       // nid of most recent update of ecall activation
         which_ecall_nid + 3); // nid of $a7 == SYSCALL_OPENAT
 
-  if (check_addresses()) {
-    w = w
-      // if openat ecall is active record $a1 register for checking address validity
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of filename for checking address validity\n",
-          current_ecall_nid + 1,  // nid of this line
-          current_ecall_nid,      // nid of openat ecall is active
-          reg_nids + REG_A1,      // nid of current value of $a1 register
-          access_flow_start_nid); // nid of address of most recent memory access
+  cursor_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
 
-    access_flow_start_nid = current_ecall_nid + 1;
-
+  if (check_block_access)
     // if openat ecall is active record $a1 bounds for checking address validity
-    record_start_bounds(current_ecall_nid + 2, current_ecall_nid, REG_A1);
-  }
+    cursor_nid = record_start_bounds(cursor_nid, current_ecall_nid, REG_A1);
 
   // TODO: check address validity of whole filename, flags and mode arguments
 
