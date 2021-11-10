@@ -761,98 +761,100 @@ void model_syscalls(uint64_t cursor_nid) {
     ecall_flow_nid,       // nid of most recent update of ecall activation
     which_ecall_nid + 4); // nid of $a7 == SYSCALL_BRK
 
-  bump_pointer_nid = current_ecall_nid + 50;
+  cursor_nid = current_ecall_nid + 1;
+
+  bump_pointer_nid = cursor_nid;
 
   w = w
     + dprintf(output_fd, "%lu state 2 brk ; brk bump pointer\n", bump_pointer_nid)
     + dprintf(output_fd, "%lu init 2 %lu 33 ; current program break\n",
-        current_ecall_nid + 51, // nid of this line
-        bump_pointer_nid)       // nid of brk bump pointer
+        cursor_nid + 1,   // nid of this line
+        bump_pointer_nid) // nid of brk bump pointer
 
     // if brk ecall is active and $a0 is valid set brk = $a0
     // $a0 is valid if brk <= $a0 < $sp and $a0 is word-aligned
     + dprintf(output_fd, "%lu ulte 1 %lu %lu ; brk <= $a0\n",
-        current_ecall_nid + 52, // nid of this line
-        bump_pointer_nid,       // nid of brk bump pointer
-        reg_nids + REG_A0)      // nid of current value of $a0 register
+        cursor_nid + 2,    // nid of this line
+        bump_pointer_nid,  // nid of brk bump pointer
+        reg_nids + REG_A0) // nid of current value of $a0 register
     + dprintf(output_fd, "%lu ult 1 %lu %lu ; $a0 < $sp\n",
-        current_ecall_nid + 53, // nid of this line
-        reg_nids + REG_A0,      // nid of current value of $a0 register
-        reg_nids + REG_SP)      // nid of current value of $sp register
+        cursor_nid + 3,    // nid of this line
+        reg_nids + REG_A0, // nid of current value of $a0 register
+        reg_nids + REG_SP) // nid of current value of $sp register
     + dprintf(output_fd, "%lu and 1 %lu %lu ; brk <= $a0 < $sp\n",
-        current_ecall_nid + 54, // nid of this line
-        current_ecall_nid + 52, // nid of brk <= $a0
-        current_ecall_nid + 53) // nid of $a0 < $sp
+        cursor_nid + 4, // nid of this line
+        cursor_nid + 2, // nid of brk <= $a0
+        cursor_nid + 3) // nid of $a0 < $sp
     + dprintf(output_fd, "%lu and 2 %lu 27 ; reset all but 3 LSBs of $a0\n",
-        current_ecall_nid + 55, // nid of this line
-        reg_nids + REG_A0)      // nid of current value of $a0 register
+        cursor_nid + 5,    // nid of this line
+        reg_nids + REG_A0) // nid of current value of $a0 register
     + dprintf(output_fd, "%lu eq 1 %lu 20 ; 3 LSBs of $a0 == 0 ($a0 is word-aligned)\n",
-        current_ecall_nid + 56, // nid of this line
-        current_ecall_nid + 55) // nid of 3 LSBs of current value of $a0 register
+        cursor_nid + 6, // nid of this line
+        cursor_nid + 5) // nid of 3 LSBs of current value of $a0 register
     + dprintf(output_fd, "%lu and 1 %lu %lu ; brk <= $a0 < $sp and $a0 is word-aligned ($a0 is valid)\n",
-        current_ecall_nid + 57, // nid of this line
-        current_ecall_nid + 54, // nid of brk <= $a0 < $sp
-        current_ecall_nid + 56) // nid of $a0 is word-aligned
+        cursor_nid + 7, // nid of this line
+        cursor_nid + 4, // nid of brk <= $a0 < $sp
+        cursor_nid + 6) // nid of $a0 is word-aligned
     + dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active and $a0 is valid\n",
-        current_ecall_nid + 58, // nid of this line
-        current_ecall_nid + 00, // nid of brk ecall is active
-        current_ecall_nid + 57) // nid of $a0 is valid
+        cursor_nid + 8,    // nid of this line
+        current_ecall_nid, // nid of brk ecall is active
+        cursor_nid + 7)    // nid of $a0 is valid
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; brk = $a0 if brk ecall is active and $a0 is valid\n",
-        current_ecall_nid + 59, // nid of this line
-        current_ecall_nid + 58, // nid of brk ecall is active and $a0 is valid
-        reg_nids + REG_A0,      // nid of current value of $a0 register
-        bump_pointer_nid)       // nid of brk bump pointer
+        cursor_nid + 9,    // nid of this line
+        cursor_nid + 8,    // nid of brk ecall is active and $a0 is valid
+        reg_nids + REG_A0, // nid of current value of $a0 register
+        bump_pointer_nid)  // nid of brk bump pointer
     + dprintf(output_fd, "%lu next 2 %lu %lu ; set brk = $a0 if brk ecall is active and $a0 is valid\n",
-        current_ecall_nid + 60, // nid of this line
-        bump_pointer_nid,       // nid of brk bump pointer
-        current_ecall_nid + 59) // nid of preceding line
+        cursor_nid + 10,  // nid of this line
+        bump_pointer_nid, // nid of brk bump pointer
+        cursor_nid + 9)   // nid of preceding line
 
     // if brk ecall is active and $a0 is invalid set $a0 = brk
     + dprintf(output_fd, "%lu not 1 %lu ; $a0 is invalid\n",
-        current_ecall_nid + 61, // nid of this line
-        current_ecall_nid + 57) // nid of $a0 is valid
+        cursor_nid + 11, // nid of this line
+        cursor_nid + 7)  // nid of $a0 is valid
     + dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active and $a0 is invalid\n",
-        current_ecall_nid + 62, // nid of this line
-        current_ecall_nid + 00, // nid of brk ecall is active
-        current_ecall_nid + 61) // nid of $a0 is invalid
+        cursor_nid + 12,   // nid of this line
+        current_ecall_nid, // nid of brk ecall is active
+        cursor_nid + 11)   // nid of $a0 is invalid
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
-        current_ecall_nid + 63,     // nid of this line
-        current_ecall_nid + 62,     // nid of brk ecall is active and $a0 is invalid
+        cursor_nid + 13,            // nid of this line
+        cursor_nid + 12,            // nid of brk ecall is active and $a0 is invalid
         bump_pointer_nid,           // nid of brk bump pointer
         *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_ecall_nid + 63;
+  *(reg_flow_nids + REG_A0) = cursor_nid + 13;
 
   if (check_block_access) {
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
-      current_ecall_nid + 64,               // nid of this line
-      current_ecall_nid + 58,               // nid of brk ecall is active and $a0 is valid
+      cursor_nid + 14,                      // nid of this line
+      cursor_nid + 8,                       // nid of brk ecall is active and $a0 is valid
       bump_pointer_nid,                     // nid of brk bump pointer
       *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
-    *(reg_flow_nids + LO_FLOW + REG_T1) = current_ecall_nid + 64;
+    *(reg_flow_nids + LO_FLOW + REG_T1) = cursor_nid + 14;
 
     w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
-      current_ecall_nid + 65,               // nid of this line
-      current_ecall_nid + 58,               // nid of brk ecall is active and $a0 is valid
+      cursor_nid + 15,                      // nid of this line
+      cursor_nid + 8,                       // nid of brk ecall is active and $a0 is valid
       reg_nids + REG_A0,                    // nid of current value of $a0 register
       *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
-    *(reg_flow_nids + UP_FLOW + REG_T1) = current_ecall_nid + 65;
+    *(reg_flow_nids + UP_FLOW + REG_T1) = cursor_nid + 15;
 
     w = w + dprintf(output_fd, "%lu ite 2 %lu 30 %lu ; lower bound on $t1 = start of data segment if brk ecall is active and $a0 is invalid\n",
-      current_ecall_nid + 66,               // nid of this line
-      current_ecall_nid + 62,               // nid of brk ecall is active and $a0 is invalid
+      cursor_nid + 16,                      // nid of this line
+      cursor_nid + 12,                      // nid of brk ecall is active and $a0 is invalid
       *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
-    *(reg_flow_nids + LO_FLOW + REG_T1) = current_ecall_nid + 66;
+    *(reg_flow_nids + LO_FLOW + REG_T1) = cursor_nid + 16;
 
     w = w + dprintf(output_fd, "%lu ite 2 %lu 50 %lu ; upper bound on $t1 = 4GB of memory addresses if brk ecall is active and $a0 is invalid\n",
-      current_ecall_nid + 67,               // nid of this line
-      current_ecall_nid + 62,               // nid of brk ecall is active and $a0 is invalid
+      cursor_nid + 17,                      // nid of this line
+      cursor_nid + 12,                      // nid of brk ecall is active and $a0 is invalid
       *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
-    *(reg_flow_nids + UP_FLOW + REG_T1) = current_ecall_nid + 67;
+    *(reg_flow_nids + UP_FLOW + REG_T1) = cursor_nid + 17;
   }
 
 
