@@ -49,6 +49,8 @@ Modeler is inspired by Professor Armin Biere from JKU Linz.
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
+uint64_t generate_ecall_address_checks(uint64_t cursor_ecall_nid, uint64_t current_ecall_nid);
+
 void model_syscalls();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -277,6 +279,61 @@ uint64_t ecall_flow_nid = 10;
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
+uint64_t generate_ecall_address_checks(uint64_t cursor_ecall_nid, uint64_t current_ecall_nid) {
+  if (check_addresses()) {
+    w = w
+      // if read or write ecall is active record $a1 register for checking address validity
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of buffer for checking address validity\n",
+          cursor_ecall_nid,       // nid of this line
+          current_ecall_nid,      // nid of read or write ecall is active
+          reg_nids + REG_A1,      // nid of current value of $a1 register
+          access_flow_start_nid); // nid of address of most recent memory access
+
+    access_flow_start_nid = cursor_ecall_nid;
+
+    cursor_ecall_nid = cursor_ecall_nid + 1;
+  }
+
+  if (check_block_access) {
+    w = w
+      // if read or write ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
+      // $a1 otherwise, as address for checking address validity
+      + dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
+          cursor_ecall_nid,  // nid of this line
+          reg_nids + REG_A2) // nid of current value of $a2 register
+      + dprintf(output_fd, "%lu not 2 27 ; not 7\n",
+          cursor_ecall_nid + 1) // nid of this line
+      + dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
+          cursor_ecall_nid + 2, // nid of this line
+          cursor_ecall_nid,     // nid of $a2 - 1
+          cursor_ecall_nid + 1) // nid of not 7
+      + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
+          cursor_ecall_nid + 3, // nid of this line
+          reg_nids + REG_A1,    // nid of current value of $a1 register
+          cursor_ecall_nid + 2) // nid of (($a2 - 1) / 8) * 8
+      + dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
+          cursor_ecall_nid + 4, // nid of this line
+          reg_nids + REG_A2)    // nid of current value of $a2 register
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
+          cursor_ecall_nid + 5, // nid of this line
+          cursor_ecall_nid + 4, // nid of $a2 > 0
+          cursor_ecall_nid + 3, // nid of $a1 + (($a2 - 1) / 8) * 8
+          reg_nids + REG_A1)  // nid of current value of $a1 register
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of buffer for checking address validity\n",
+          cursor_ecall_nid + 6, // nid of this line
+          current_ecall_nid,    // nid of read or write ecall is active
+          cursor_ecall_nid + 5, // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
+          access_flow_end_nid); // nid of address of most recent memory access
+
+    access_flow_end_nid = cursor_ecall_nid + 6;
+
+    // if read or write ecall is active record $a1 bounds for checking address validity
+    cursor_ecall_nid = record_end_bounds(record_start_bounds(cursor_ecall_nid + 7, current_ecall_nid, REG_A1), current_ecall_nid, REG_A1);
+  }
+
+  return cursor_ecall_nid;
+}
+
 void model_syscalls() {
   uint64_t current_ecall_nid;
   uint64_t cursor_ecall_nid;
@@ -396,58 +453,7 @@ void model_syscalls() {
         ecall_flow_nid,    // nid of most recent update of ecall activation
         current_nid + 11); // nid of $a7 == SYSCALL_READ
 
-  cursor_ecall_nid = current_ecall_nid + 1;
-
-  if (check_addresses()) {
-    w = w
-      // if read ecall is active record $a1 register for checking address validity
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of write buffer for checking address validity\n",
-          cursor_ecall_nid,       // nid of this line
-          current_ecall_nid,      // nid of read ecall is active
-          reg_nids + REG_A1,      // nid of current value of $a1 register
-          access_flow_start_nid); // nid of address of most recent memory access
-
-    access_flow_start_nid = cursor_ecall_nid;
-
-    cursor_ecall_nid = cursor_ecall_nid + 1;
-  }
-
-  if (check_block_access) {
-    w = w
-      // if read ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
-      // $a1 otherwise, as address for checking address validity
-      + dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
-          cursor_ecall_nid,  // nid of this line
-          reg_nids + REG_A2) // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu not 2 27 ; not 7\n",
-          cursor_ecall_nid + 1) // nid of this line
-      + dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
-          cursor_ecall_nid + 2, // nid of this line
-          cursor_ecall_nid,     // nid of $a2 - 1
-          cursor_ecall_nid + 1) // nid of not 7
-      + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
-          cursor_ecall_nid + 3, // nid of this line
-          reg_nids + REG_A1,     // nid of current value of $a1 register
-          cursor_ecall_nid + 2) // nid of (($a2 - 1) / 8) * 8
-      + dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
-          cursor_ecall_nid + 4, // nid of this line
-          reg_nids + REG_A2)     // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
-          cursor_ecall_nid + 5, // nid of this line
-          cursor_ecall_nid + 4, // nid of $a2 > 0
-          cursor_ecall_nid + 3, // nid of $a1 + (($a2 - 1) / 8) * 8
-          reg_nids + REG_A1)  // nid of current value of $a1 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of write buffer for checking address validity\n",
-          cursor_ecall_nid + 6, // nid of this line
-          current_ecall_nid,    // nid of read ecall is active
-          cursor_ecall_nid + 5, // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
-          access_flow_end_nid); // nid of address of most recent memory access
-
-    access_flow_end_nid = cursor_ecall_nid + 6;
-
-    // if read ecall is active record $a1 bounds for checking address validity
-    cursor_ecall_nid = record_end_bounds(record_start_bounds(cursor_ecall_nid + 7, current_ecall_nid, REG_A1), current_ecall_nid, REG_A1);
-  }
+  cursor_ecall_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
 
   // TODO: check file descriptor validity, return error codes
 
@@ -666,65 +672,18 @@ void model_syscalls() {
         ecall_flow_nid,    // nid of most recent update of ecall activation
         current_nid + 12); // nid of $a7 == SYSCALL_WRITE
 
-  if (check_addresses()) {
-    w = w
-      // if write ecall is active record $a1 register for checking address validity
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 is start address of read buffer for checking address validity\n",
-          current_ecall_nid + 1,  // nid of this line
-          current_ecall_nid,      // nid of write ecall is active
-          reg_nids + REG_A1,      // nid of current value of $a1 register
-          access_flow_start_nid); // nid of address of most recent memory access
-
-    access_flow_start_nid = current_ecall_nid + 1;
-  }
-
-  if (check_block_access) {
-    w = w
-      // if write ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
-      // $a1 otherwise, as address for checking address validity
-      + dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
-          current_ecall_nid + 2, // nid of this line
-          reg_nids + REG_A2)     // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu not 2 27 ; not 7\n",
-          current_ecall_nid + 3) // nid of this line
-      + dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
-          current_ecall_nid + 4, // nid of this line
-          current_ecall_nid + 2, // nid of $a2 - 1
-          current_ecall_nid + 3) // nid of not 7
-      + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
-          current_ecall_nid + 5, // nid of this line
-          reg_nids + REG_A1,     // nid of current value of $a1 register
-          current_ecall_nid + 4) // nid of (($a2 - 1) / 8) * 8
-      + dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
-          current_ecall_nid + 6, // nid of this line
-          reg_nids + REG_A2)     // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
-          current_ecall_nid + 7, // nid of this line
-          current_ecall_nid + 6, // nid of $a2 > 0
-          current_ecall_nid + 5, // nid of $a1 + (($a2 - 1) / 8) * 8
-          reg_nids + REG_A1)  // nid of current value of $a1 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of read buffer for checking address validity\n",
-          current_ecall_nid + 8, // nid of this line
-          current_ecall_nid,     // nid of write ecall is active
-          current_ecall_nid + 7, // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
-          access_flow_end_nid);  // nid of address of most recent memory access
-
-    access_flow_end_nid = current_ecall_nid + 8;
-
-    // if write ecall is active record $a1 bounds for checking address validity
-    record_end_bounds(record_start_bounds(current_ecall_nid + 9, current_ecall_nid, REG_A1), current_ecall_nid, REG_A1);
-  }
+  cursor_ecall_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
 
   // TODO: check file descriptor validity, return error codes
 
   // if write ecall is active set $a0 (written number of bytes) = $a2 (size)
   w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = $a2 if write ecall is active\n\n",
-    current_ecall_nid + 50,     // nid of this line
+    cursor_ecall_nid,           // nid of this line
     current_ecall_nid,          // nid of write ecall is active
     reg_nids + REG_A2,          // nid of current value of $a2 register
     *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_ecall_nid + 50;
+  *(reg_flow_nids + REG_A0) = cursor_ecall_nid;
 
 
   current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100 * 3;
