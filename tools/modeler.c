@@ -336,6 +336,9 @@ uint64_t generate_ecall_address_checks(uint64_t cursor_ecall_nid, uint64_t curre
 
 void model_syscalls() {
   uint64_t current_ecall_nid;
+  uint64_t which_ecall_nid;
+  uint64_t invalid_syscall_nid;
+
   uint64_t cursor_ecall_nid;
   uint64_t kernel_mode_flow_nid;
   uint64_t increment_nid;
@@ -346,73 +349,85 @@ void model_syscalls() {
   uint64_t read_ecall_active_increment_nid;
   uint64_t RAM_address;
 
+  current_ecall_nid = current_nid;
+
   w = w
     + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_EXIT\n", current_nid, SYSCALL_EXIT)
     + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_READ\n", current_nid + 1, SYSCALL_READ)
     + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_WRITE\n", current_nid + 2, SYSCALL_WRITE)
     + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_OPENAT\n", current_nid + 3, SYSCALL_OPENAT)
-    + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_BRK\n\n", current_nid + 4, SYSCALL_BRK)
+    + dprintf(output_fd, "%lu constd 2 %lu ; SYSCALL_BRK\n\n", current_nid + 4, SYSCALL_BRK);
 
+  which_ecall_nid = current_nid + 10;
+
+  w = w
     + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_EXIT\n",
-        current_nid + 10,  // nid of this line
+        which_ecall_nid,   // nid of this line
         reg_nids + REG_A7, // nid of current value of $a7 register
-        current_nid)        // nid of SYSCALL_EXIT
+        current_nid)       // nid of SYSCALL_EXIT
     + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_READ\n",
-        current_nid + 11,  // nid of this line
-        reg_nids + REG_A7, // nid of current value of $a7 register
-        current_nid + 1)   // nid of SYSCALL_READ
+        which_ecall_nid + 1, // nid of this line
+        reg_nids + REG_A7,   // nid of current value of $a7 register
+        current_nid + 1)     // nid of SYSCALL_READ
     + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_WRITE\n",
-        current_nid + 12,  // nid of this line
-        reg_nids + REG_A7, // nid of current value of $a7 register
-        current_nid + 2)   // nid of SYSCALL_WRITE
+        which_ecall_nid + 2, // nid of this line
+        reg_nids + REG_A7,   // nid of current value of $a7 register
+        current_nid + 2)     // nid of SYSCALL_WRITE
     + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_OPENAT\n",
-        current_nid + 13,  // nid of this line
-        reg_nids + REG_A7, // nid of current value of $a7 register
-        current_nid + 3)   // nid of SYSCALL_OPENAT
+        which_ecall_nid + 3, // nid of this line
+        reg_nids + REG_A7,   // nid of current value of $a7 register
+        current_nid + 3)     // nid of SYSCALL_OPENAT
     + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a7 == SYSCALL_BRK\n\n",
-        current_nid + 14,  // nid of this line
-        reg_nids + REG_A7, // nid of current value of $a7 register
-        current_nid + 4)   // nid of SYSCALL_BRK
+        which_ecall_nid + 4, // nid of this line
+        reg_nids + REG_A7,   // nid of current value of $a7 register
+        current_nid + 4);    // nid of SYSCALL_BRK
 
+  current_nid = current_nid + 20;
+
+  w = w
     + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_EXIT\n",
-        current_nid + 20, // nid of this line
-        current_nid + 10) // nid of $a7 == SYSCALL_EXIT
+        current_nid,     // nid of this line
+        which_ecall_nid) // nid of $a7 == SYSCALL_EXIT
     + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_READ\n",
-        current_nid + 21, // nid of this line
-        current_nid + 11, // nid of $a7 == SYSCALL_READ
-        current_nid + 20) // nid of preceding line
+        current_nid + 1,     // nid of this line
+        which_ecall_nid + 1, // nid of $a7 == SYSCALL_READ
+        current_nid)         // nid of preceding line
     + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_WRITE\n",
-        current_nid + 22, // nid of this line
-        current_nid + 12, // nid of $a7 == SYSCALL_WRITE
-        current_nid + 21) // nid of preceding line
+        current_nid + 2,     // nid of this line
+        which_ecall_nid + 2, // nid of $a7 == SYSCALL_WRITE
+        current_nid + 1)     // nid of preceding line
     + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_OPENAT\n",
-        current_nid + 23, // nid of this line
-        current_nid + 13, // nid of $a7 == SYSCALL_OPENAT
-        current_nid + 22) // nid of preceding line
+        current_nid + 3,     // nid of this line
+        which_ecall_nid + 3, // nid of $a7 == SYSCALL_OPENAT
+        current_nid + 2)     // nid of preceding line
     + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_BRK (invalid syscall id in $a7 detected)\n\n",
-        current_nid + 24,  // nid of this line
-        current_nid + 14,  // nid of $a7 == SYSCALL_BRK
-        current_nid + 23); // nid of preceding line
+        current_nid + 4,     // nid of this line
+        which_ecall_nid + 4, // nid of $a7 == SYSCALL_BRK
+        current_nid + 3);    // nid of preceding line
+
+  invalid_syscall_nid = current_nid + 4;
+
+  current_nid = current_nid + 10;
 
   if (syscall_id_check)
     w = w
       // if any ecall is active check if $a7 register contains invalid syscall id
       + dprintf(output_fd, "%lu and 1 %lu %lu ; ecall is active for invalid syscall id\n",
-          current_nid + 30, // nid of this line
-          ecall_flow_nid,   // nid of most recent update of ecall activation
-          current_nid + 24) // nid of invalid syscall id check
+          current_nid,         // nid of this line
+          ecall_flow_nid,      // nid of most recent update of ecall activation
+          invalid_syscall_nid) // nid of invalid syscall id check
       + dprintf(output_fd, "%lu bad %lu ; ecall invalid syscall id\n\n",
-          current_nid + 31,  // nid of this line
-          current_nid + 30); // nid of preceding line
+          current_nid + 1, // nid of this line
+          current_nid);    // nid of preceding line
 
 
-  current_ecall_nid = current_nid + pcs_nid / 10;
+  current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
   // if exit ecall is active check if exit code in $a0 register is not 0
   w = w + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active\n",
     current_ecall_nid, // nid of this line
     ecall_flow_nid,    // nid of most recent update of ecall activation
-    current_nid + 10); // nid of $a7 == SYSCALL_EXIT
+    which_ecall_nid);  // nid of $a7 == SYSCALL_EXIT
   if (bad_exit_code == 0)
     w = w + dprintf(output_fd, "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
       current_ecall_nid + 2, // nid of this line
@@ -437,21 +452,21 @@ void model_syscalls() {
 
     // if exit ecall is active stay in kernel mode indefinitely
     + dprintf(output_fd, "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
-        current_ecall_nid + 50, // nid of this line
-        current_nid + 10,       // nid of $a7 == SYSCALL_EXIT
-        current_ecall_nid);     // nid of exit ecall is active
+        current_ecall_nid + 5, // nid of this line
+        which_ecall_nid,       // nid of $a7 == SYSCALL_EXIT
+        current_ecall_nid);    // nid of exit ecall is active
 
-  kernel_mode_flow_nid = current_ecall_nid + 50;
+  kernel_mode_flow_nid = current_ecall_nid + 5;
 
 
-  current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100;
+  current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
   w = w
     // read ecall
     + dprintf(output_fd, "%lu and 1 %lu %lu ; read ecall is active\n",
-        current_ecall_nid, // nid of this line
-        ecall_flow_nid,    // nid of most recent update of ecall activation
-        current_nid + 11); // nid of $a7 == SYSCALL_READ
+        current_ecall_nid,    // nid of this line
+        ecall_flow_nid,       // nid of most recent update of ecall activation
+        which_ecall_nid + 1); // nid of $a7 == SYSCALL_READ
 
   cursor_ecall_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
 
@@ -582,7 +597,7 @@ void model_syscalls() {
         reg_nids + REG_A2) // nid of current value of $a2 register
     + dprintf(output_fd, "%lu and 1 %lu %lu ; $a7 == SYSCALL_READ and $a0 < $a2\n",
         cursor_ecall_nid + 1, // nid of this line
-        current_nid + 11,     // nid of $a7 == SYSCALL_READ
+        which_ecall_nid + 1,  // nid of $a7 == SYSCALL_READ
         cursor_ecall_nid)     // nid of $a0 < $a2
     + dprintf(output_fd, "%lu and 1 60 %lu ; read ecall is in kernel mode and not done yet\n",
         cursor_ecall_nid + 2,  // nid of this line
@@ -663,14 +678,14 @@ void model_syscalls() {
   kernel_mode_flow_nid = cursor_ecall_nid + 2;
 
 
-  current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100 * 2;
+  current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
   w = w
     // write ecall
     + dprintf(output_fd, "%lu and 1 %lu %lu ; write ecall is active\n",
-        current_ecall_nid, // nid of this line
-        ecall_flow_nid,    // nid of most recent update of ecall activation
-        current_nid + 12); // nid of $a7 == SYSCALL_WRITE
+        current_ecall_nid,    // nid of this line
+        ecall_flow_nid,       // nid of most recent update of ecall activation
+        which_ecall_nid + 2); // nid of $a7 == SYSCALL_WRITE
 
   cursor_ecall_nid = generate_ecall_address_checks(current_ecall_nid + 1, current_ecall_nid);
 
@@ -686,14 +701,14 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = cursor_ecall_nid;
 
 
-  current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100 * 3;
+  current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
   w = w
     // openat ecall
     + dprintf(output_fd, "%lu and 1 %lu %lu ; openat ecall is active\n",
-        current_ecall_nid, // nid of this line
-        ecall_flow_nid,    // nid of most recent update of ecall activation
-        current_nid + 13); // nid of $a7 == SYSCALL_OPENAT
+        current_ecall_nid,    // nid of this line
+        ecall_flow_nid,       // nid of most recent update of ecall activation
+        which_ecall_nid + 3); // nid of $a7 == SYSCALL_OPENAT
 
   if (check_addresses()) {
     w = w
@@ -740,13 +755,13 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = current_ecall_nid + 55;
 
 
-  current_ecall_nid = current_nid + pcs_nid / 10 + pcs_nid / 100 * 4;
+  current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
   // is brk ecall is active?
   w = w + dprintf(output_fd, "%lu and 1 %lu %lu ; brk ecall is active\n",
-    current_ecall_nid, // nid of this line
-    ecall_flow_nid,    // nid of most recent update of ecall activation
-    current_nid + 14); // nid of $a7 == SYSCALL_BRK
+    current_ecall_nid,    // nid of this line
+    ecall_flow_nid,       // nid of most recent update of ecall activation
+    which_ecall_nid + 4); // nid of $a7 == SYSCALL_BRK
 
   bump_pointer_nid = current_ecall_nid + 50;
 
@@ -842,9 +857,10 @@ void model_syscalls() {
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_ecall_nid + 67;
   }
 
+
   w = w + dprintf(output_fd, "\n%lu next 1 60 %lu ; update kernel-mode flag\n",
-    current_nid + pcs_nid / 10 + pcs_nid / 100 * 5, // nid of this line
-    kernel_mode_flow_nid);                          // nid of most recent update of kernel-mode flag
+    current_ecall_nid + pcs_nid / 10, // nid of this line
+    kernel_mode_flow_nid);            // nid of most recent update of kernel-mode flag
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
