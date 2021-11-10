@@ -168,10 +168,10 @@ uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registe
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
-char* no_syscall_id_check_option       = (char*) 0;
-char* no_division_by_zero_check_option = (char*) 0;
-char* no_address_validity_check_option = (char*) 0;
-char* no_segmentation_faults_option    = (char*) 0;
+char* no_syscall_id_check_option        = (char*) 0;
+char* no_division_by_zero_check_option  = (char*) 0;
+char* no_address_alignment_check_option = (char*) 0;
+char* no_segmentation_faults_option     = (char*) 0;
 
 char* check_block_access_option   = (char*) 0;
 char* constant_propagation_option = (char*) 0;
@@ -181,12 +181,12 @@ char* stack_allowance_option      = (char*) 0;
 char* MMU_option                  = (char*) 0;
 char* RAM_option                  = (char*) 0;
 
-uint64_t syscall_id_check       = 1; // flag for preventing syscall id checks
-uint64_t division_by_zero_check = 1; // flag for preventing division and remainder by zero checks
-uint64_t address_validity_check = 1; // flag for preventing memory access validity checks
-uint64_t segmentation_faults    = 1; // flag for preventing segmentation fault checks
+uint64_t syscall_id_check        = 1; // flag for preventing syscall id checks
+uint64_t division_by_zero_check  = 1; // flag for preventing division and remainder by zero checks
+uint64_t address_alignment_check = 1; // flag for preventing memory address alignment checks
+uint64_t segmentation_faults     = 1; // flag for preventing segmentation fault checks
 
-uint64_t check_block_access   = 0; // flag for generating memory access validity checks on malloced block level
+uint64_t check_block_access   = 0; // flag for generating memory access checks on malloced block level
 uint64_t constant_propagation = 0; // flag for constant propagation
 uint64_t linear_address_space = 0; // flag for 29-bit linear address space
 uint64_t fixed_heap_segment   = 0; // flag for fixing size of heap segment
@@ -1254,7 +1254,7 @@ void model_data_flow_load() {
 
     if (check_addresses()) {
       // if this instruction is active record $rs1 + imm for checking address validity
-      w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+      w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; for checking address validity\n",
         current_nid,            // nid of this line
         pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
         vaddr_nid,              // nid of virtual address $rs1 + imm
@@ -1366,7 +1366,7 @@ void model_data_flow_store() {
 
   if (check_addresses()) {
     // if this instruction is active record $rs1 + imm for checking address validity
-    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+    w = w + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; for checking address validity\n",
       current_nid,            // nid of this line
       pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
       vaddr_nid,              // nid of virtual address $rs1 + imm
@@ -2122,7 +2122,7 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
 }
 
 uint64_t check_addresses() {
-  if (address_validity_check)
+  if (address_alignment_check)
     return 1;
   else if (segmentation_faults)
     return 1;
@@ -2304,8 +2304,8 @@ void modeler(uint64_t entry_pc) {
     w = w + dprintf(output_fd, "; with %s\n", no_syscall_id_check_option);
   if (division_by_zero_check == 0)
     w = w + dprintf(output_fd, "; with %s\n", no_division_by_zero_check_option);
-  if (address_validity_check == 0)
-    w = w + dprintf(output_fd, "; with %s\n", no_address_validity_check_option);
+  if (address_alignment_check == 0)
+    w = w + dprintf(output_fd, "; with %s\n", no_address_alignment_check_option);
   if (segmentation_faults == 0)
     w = w + dprintf(output_fd, "; with %s\n", no_segmentation_faults_option);
   if (linear_address_space)
@@ -3020,7 +3020,7 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pcs_nid * 9;
 
-  if (address_validity_check) {
+  if (address_alignment_check) {
     w = w
       + dprintf(output_fd, "; checking address validity\n\n")
       + dprintf(output_fd, "; is start address of memory access word-aligned?\n\n");
@@ -3063,10 +3063,10 @@ uint64_t selfie_model() {
   uint64_t entry_pc;
   uint64_t model_arguments;
 
-  no_syscall_id_check_option       = "--no-syscall-id-check";
-  no_division_by_zero_check_option = "--no-division-by-zero-check";
-  no_address_validity_check_option = "--no-address-validity-check";
-  no_segmentation_faults_option    = "--no-segmentation-faults";
+  no_syscall_id_check_option        = "--no-syscall-id-check";
+  no_division_by_zero_check_option  = "--no-division-by-zero-check";
+  no_address_alignment_check_option = "--no-address-alignment-check";
+  no_segmentation_faults_option     = "--no-segmentation-faults";
 
   check_block_access_option   = "--check-block-access";
   constant_propagation_option = "--constant-propagation";
@@ -3103,8 +3103,8 @@ uint64_t selfie_model() {
             division_by_zero_check = 0;
 
             get_argument();
-          } else if (string_compare(peek_argument(1), no_address_validity_check_option)) {
-            address_validity_check = 0;
+          } else if (string_compare(peek_argument(1), no_address_alignment_check_option)) {
+            address_alignment_check = 0;
 
             get_argument();
           } else if (string_compare(peek_argument(1), no_segmentation_faults_option)) {
