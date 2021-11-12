@@ -207,6 +207,8 @@ uint64_t current_nid = 0; // nid of current line
 
 uint64_t which_ecall_nid; // nid of $a7 == SYSCALL_EXIT
 
+uint64_t bad_number = 0; // bad number counter
+
 uint64_t bad_exit_code  = 0; // model for this exit code
 uint64_t exit_ecall_nid = 0; // nid of exit ecall is active
 
@@ -2089,11 +2091,14 @@ void check_syscall_id() {
         current_nid + 9, // nid of this line
         ecall_flow_nid,  // nid of most recent update of ecall activation
         current_nid + 8) // nid of invalid syscall id check
-    + dprintf(output_fd, "%lu bad %lu ; ecall invalid syscall id\n\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; invalid syscall id\n\n",
         current_nid + 10, // nid of this line
-        current_nid + 9); // nid of preceding line
+        current_nid + 9,  // nid of preceding line
+        bad_number);      // bad number
 
-    current_nid = current_nid + 11;
+  current_nid = current_nid + 11;
+
+  bad_number = bad_number + 1;
 }
 
 void check_exit_code() {
@@ -2127,11 +2132,14 @@ void check_exit_code() {
         current_nid,         // nid of this line
         exit_ecall_nid,      // nid of exit ecall is active
         exit_code_check_nid) // nid of exit code check
-    + dprintf(output_fd, "%lu bad %lu ; non-zero exit code\n\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; non-zero exit code\n\n",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of preceding line
+        current_nid,     // nid of preceding line
+        bad_number);     // bad number
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 }
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
@@ -2140,15 +2148,18 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
     + dprintf(output_fd, "%lu eq 1 %lu 20\n",
         current_nid, // nid of this line
         flow_nid)    // nid of divisor of most recent division or remainder
-    + dprintf(output_fd, "%lu bad %lu ; ",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; ",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of divisor == 0
+        current_nid,     // nid of divisor == 0
+        bad_number);     // bad number
   if (division)
     w = w + dprintf(output_fd, "division by zero\n\n");
   else
     w = w + dprintf(output_fd, "remainder by zero\n\n");
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 }
 
 uint64_t check_addresses() {
@@ -2169,11 +2180,14 @@ void generate_address_alignment_check(uint64_t flow_nid) {
     + dprintf(output_fd, "%lu neq 1 %lu 20\n",
         current_nid + 1, // nid of this line
         current_nid)     // nid of 3 LSBs of address of most recent memory access
-    + dprintf(output_fd, "%lu bad %lu ; word-unaligned memory access\n\n",
-        current_nid + 2,  // nid of this line
-        current_nid + 1); // nid of previous check
+    + dprintf(output_fd, "%lu bad %lu b%lu ; word-unaligned memory access\n\n",
+        current_nid + 2, // nid of this line
+        current_nid + 1, // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 3;
+
+  bad_number = bad_number + 1;
 }
 
 void generate_segmentation_faults(uint64_t flow_nid) {
@@ -2181,11 +2195,14 @@ void generate_segmentation_faults(uint64_t flow_nid) {
     + dprintf(output_fd, "%lu ult 1 %lu 30 ; address < start of data segment\n",
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
-    + dprintf(output_fd, "%lu bad %lu ; memory access below data segment\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access below data segment\n",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of previous check
+        current_nid,     // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu 31 ; address >= end of data segment\n",
@@ -2198,11 +2215,14 @@ void generate_segmentation_faults(uint64_t flow_nid) {
         current_nid + 2, // nid of this line
         current_nid,     // nid of >= check
         current_nid + 1) // nid of < check
-    + dprintf(output_fd, "%lu bad %lu ; memory access in between data and heap segments\n",
-        current_nid + 3,  // nid of this line
-        current_nid + 2); // nid of previous check
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access in between data and heap segments\n",
+        current_nid + 3, // nid of this line
+        current_nid + 2, // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 4;
+
+  bad_number = bad_number + 1;
 
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= current end of heap segment\n",
@@ -2217,11 +2237,14 @@ void generate_segmentation_faults(uint64_t flow_nid) {
         current_nid + 2, // nid of this line
         current_nid,     // nid of >= check
         current_nid + 1) // nid of < check
-    + dprintf(output_fd, "%lu bad %lu ; memory access in between current heap and stack segments\n",
-        current_nid + 3,  // nid of this line
-        current_nid + 2); // nid of previous check
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access in between current heap and stack segments\n",
+        current_nid + 3, // nid of this line
+        current_nid + 2, // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 4;
+
+  bad_number = bad_number + 1;
 
   if (fixed_heap_segment) {
     w = w
@@ -2236,11 +2259,14 @@ void generate_segmentation_faults(uint64_t flow_nid) {
           current_nid + 2, // nid of this line
           current_nid,     // nid of >= check
           current_nid + 1) // nid of < check
-      + dprintf(output_fd, "%lu bad %lu ; memory access in between allowed and current end of heap segment\n",
-          current_nid + 3,  // nid of this line
-          current_nid + 2); // nid of previous check
+      + dprintf(output_fd, "%lu bad %lu b%lu ; memory access in between allowed and current end of heap segment\n",
+          current_nid + 3, // nid of this line
+          current_nid + 2, // nid of previous check
+          bad_number);     // bad number
 
     current_nid = current_nid + 4;
+
+    bad_number = bad_number + 1;
   }
 
   if (fixed_stack_segment) {
@@ -2256,22 +2282,28 @@ void generate_segmentation_faults(uint64_t flow_nid) {
           current_nid + 2, // nid of this line
           current_nid,     // nid of >= check
           current_nid + 1) // nid of < check
-      + dprintf(output_fd, "%lu bad %lu ; memory access in between current and allowed start of stack segment\n",
-          current_nid + 3,  // nid of this line
-          current_nid + 2); // nid of previous check
+      + dprintf(output_fd, "%lu bad %lu b%lu ; memory access in between current and allowed start of stack segment\n",
+          current_nid + 3, // nid of this line
+          current_nid + 2, // nid of previous check
+          bad_number);     // bad number
 
     current_nid = current_nid + 4;
+
+    bad_number = bad_number + 1;
   }
 
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu 50 ; address >= 4GB of memory addresses\n",
         current_nid, // nid of this line
         flow_nid)    // nid of address of most recent memory access
-    + dprintf(output_fd, "%lu bad %lu ; memory access above stack segment\n\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access above stack segment\n\n",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of previous check
+        current_nid,     // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 }
 
 void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid) {
@@ -2281,11 +2313,14 @@ void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64
         current_nid, // nid of this line
         flow_nid,    // nid of address of most recent memory access
         lo_flow_nid) // nid of current lower bound on memory addresses
-    + dprintf(output_fd, "%lu bad %lu ; memory access below lower bound\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access below lower bound\n",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of previous check
+        current_nid,     // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 
   w = w
     // check if address of most recent memory access >= current upper bound
@@ -2293,11 +2328,14 @@ void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64
         current_nid, // nid of this line
         flow_nid,    // nid of address of most recent memory access
         up_flow_nid) // nid of current upper bound on memory addresses
-    + dprintf(output_fd, "%lu bad %lu ; memory access at or above upper bound\n\n",
+    + dprintf(output_fd, "%lu bad %lu b%lu ; memory access at or above upper bound\n\n",
         current_nid + 1, // nid of this line
-        current_nid);    // nid of previous check
+        current_nid,     // nid of previous check
+        bad_number);     // bad number
 
   current_nid = current_nid + 2;
+
+  bad_number = bad_number + 1;
 }
 
 uint64_t number_of_bits(uint64_t n) {
@@ -3042,6 +3080,8 @@ void modeler(uint64_t entry_pc) {
         up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
 
   current_nid = pcs_nid * 8;
+
+  bad_number = 0;
 
   if (syscall_id_check) {
     w = w + dprintf(output_fd, "; checking syscall id\n\n");
