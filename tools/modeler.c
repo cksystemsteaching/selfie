@@ -142,6 +142,7 @@ uint64_t control_flow_from_beq(uint64_t from_address, uint64_t condition_nid, ui
 uint64_t control_flow_from_jalr(uint64_t jalr_address, uint64_t condition_nid, uint64_t control_flow_nid);
 uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_nid);
 
+void check_exit_code();
 void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
 uint64_t check_addresses();
@@ -169,6 +170,7 @@ char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
 char* no_syscall_id_check_option        = (char*) 0;
+char* no_exit_code_check_option         = (char*) 0;
 char* no_division_by_zero_check_option  = (char*) 0;
 char* no_address_alignment_check_option = (char*) 0;
 char* no_segmentation_faults_option     = (char*) 0;
@@ -182,6 +184,7 @@ char* MMU_option                  = (char*) 0;
 char* RAM_option                  = (char*) 0;
 
 uint64_t syscall_id_check        = 1; // flag for preventing syscall id checks
+uint64_t exit_code_check         = 1; // flag for preventing exit code check
 uint64_t division_by_zero_check  = 1; // flag for preventing division and remainder by zero checks
 uint64_t address_alignment_check = 1; // flag for preventing memory address alignment checks
 uint64_t segmentation_faults     = 1; // flag for preventing segmentation fault checks
@@ -201,7 +204,8 @@ uint64_t memory_sort_nid           = 3; // nid of physical memory sort
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
 
-uint64_t bad_exit_code = 0; // model for this exit code
+uint64_t bad_exit_code  = 0; // model for this exit code
+uint64_t exit_ecall_nid = 0; // nid of exit ecall is active
 
 uint64_t physical_address_space_size = 64; // size of physical address space in bits
 
@@ -428,42 +432,21 @@ void model_syscalls(uint64_t cursor_nid) {
 
   current_ecall_nid = current_ecall_nid + pcs_nid / 10;
 
-  cursor_nid = current_ecall_nid;
+  exit_ecall_nid = current_ecall_nid;
 
-  // if exit ecall is active check if exit code in $a0 register is not 0
-  w = w + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active\n",
-    current_ecall_nid, // nid of this line
-    ecall_flow_nid,    // nid of most recent update of ecall activation
-    which_ecall_nid);  // nid of $a7 == SYSCALL_EXIT
-  if (bad_exit_code == 0)
-    w = w + dprintf(output_fd, "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
-      cursor_nid + 2,     // nid of this line
-      reg_nids + REG_A0); // nid of current value of $a0 register
-  else
-    w = w
-      + dprintf(output_fd, "%lu constd 2 %ld ; bad exit code\n",
-          cursor_nid + 1,  // nid of this line
-          bad_exit_code)   // value of bad exit code
-      + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a0 == bad non-zero exit code\n",
-          cursor_nid + 2,    // nid of this line
-          reg_nids + REG_A0, // nid of current value of $a0 register
-          cursor_nid + 1);   // nid of value of bad non-zero exit code
   w = w
-    + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active with non-zero exit code\n",
-        cursor_nid + 3,    // nid of this line
-        current_ecall_nid, // nid of exit ecall is active
-        cursor_nid + 2)    // nid of non-zero exit code
-    + dprintf(output_fd, "%lu bad %lu ; non-zero exit code\n",
-        cursor_nid + 4, // nid of this line
-        cursor_nid + 3) // nid of preceding line
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active\n",
+      exit_ecall_nid,  // nid of this line
+      ecall_flow_nid,  // nid of most recent update of ecall activation
+      which_ecall_nid) // nid of $a7 == SYSCALL_EXIT
 
     // if exit ecall is active stay in kernel mode indefinitely
     + dprintf(output_fd, "%lu ite 1 60 %lu %lu ; stay in kernel mode indefinitely if exit ecall is active\n\n",
-        cursor_nid + 5,     // nid of this line
+        exit_ecall_nid + 1, // nid of this line
         which_ecall_nid,    // nid of $a7 == SYSCALL_EXIT
-        current_ecall_nid); // nid of exit ecall is active
+        exit_ecall_nid);    // nid of exit ecall is active
 
-  kernel_mode_flow_nid = cursor_nid + 5;
+  kernel_mode_flow_nid = exit_ecall_nid + 1;
 
 
   current_ecall_nid = current_ecall_nid + pcs_nid / 10;
@@ -2104,6 +2087,44 @@ uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_ni
   return control_flow_nid;
 }
 
+void check_exit_code() {
+  uint64_t exit_code_check_nid;
+
+  if (bad_exit_code == 0) {
+    w = w + dprintf(output_fd, "%lu neq 1 %lu 20 ; $a0 != zero exit code\n",
+      current_nid,        // nid of this line
+      reg_nids + REG_A0); // nid of current value of $a0 register
+
+    exit_code_check_nid = current_nid;
+
+    current_nid = current_nid + 1;
+  } else {
+    w = w
+      + dprintf(output_fd, "%lu constd 2 %ld ; non-zero exit code\n",
+          current_nid,   // nid of this line
+          bad_exit_code) // value of non-zero exit code
+      + dprintf(output_fd, "%lu eq 1 %lu %lu ; $a0 == non-zero exit code\n",
+          current_nid + 1,   // nid of this line
+          reg_nids + REG_A0, // nid of current value of $a0 register
+          current_nid);      // nid of value of non-zero exit code
+
+    exit_code_check_nid = current_nid + 1;
+
+    current_nid = current_nid + 2;
+  }
+
+  w = w
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; exit ecall is active with non-zero exit code\n",
+        current_nid,         // nid of this line
+        exit_ecall_nid,      // nid of exit ecall is active
+        exit_code_check_nid) // nid of exit code check
+    + dprintf(output_fd, "%lu bad %lu ; non-zero exit code\n\n",
+        current_nid + 1, // nid of this line
+        current_nid);    // nid of preceding line
+
+  current_nid = current_nid + 2;
+}
+
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
   w = w
     // check if divisor == 0
@@ -2302,6 +2323,8 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "; BTOR2 %s generated by %s\n", model_name, selfie_name);
   if (syscall_id_check == 0)
     w = w + dprintf(output_fd, "; with %s\n", no_syscall_id_check_option);
+  if (exit_code_check == 0)
+    w = w + dprintf(output_fd, "; with %s\n", no_exit_code_check_option);
   if (division_by_zero_check == 0)
     w = w + dprintf(output_fd, "; with %s\n", no_division_by_zero_check_option);
   if (address_alignment_check == 0)
@@ -3011,14 +3034,18 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pcs_nid * 8;
 
+  if (exit_code_check) {
+    w = w + dprintf(output_fd, "; checking exit code\n\n");
+
+    check_exit_code();
+  }
+
   if (division_by_zero_check) {
     w = w + dprintf(output_fd, "; checking division and remainder by zero\n\n");
 
     check_division_by_zero(1, division_flow_nid);
     check_division_by_zero(0, remainder_flow_nid);
   }
-
-  current_nid = pcs_nid * 9;
 
   if (address_alignment_check) {
     w = w
@@ -3064,6 +3091,7 @@ uint64_t selfie_model() {
   uint64_t model_arguments;
 
   no_syscall_id_check_option        = "--no-syscall-id-check";
+  no_exit_code_check_option         = "--no-exit-code-check";
   no_division_by_zero_check_option  = "--no-division-by-zero-check";
   no_address_alignment_check_option = "--no-address-alignment-check";
   no_segmentation_faults_option     = "--no-segmentation-faults";
@@ -3076,17 +3104,6 @@ uint64_t selfie_model() {
   MMU_option                  = "--MMU";
   RAM_option                  = "--RAM";
 
-  check_block_access   = 0;
-  constant_propagation = 0;
-  linear_address_space = 0;
-  fixed_heap_segment   = 0;
-  fixed_stack_segment  = 0;
-  MMU                  = 0;
-  RAM                  = 0;
-
-  heap_allowance  = 0;
-  stack_allowance = 0;
-
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
@@ -3097,6 +3114,10 @@ uint64_t selfie_model() {
         if (number_of_remaining_arguments() > 1) {
           if (string_compare(peek_argument(1), no_syscall_id_check_option)) {
             syscall_id_check = 0;
+
+            get_argument();
+          } else if (string_compare(peek_argument(1), no_exit_code_check_option)) {
+            exit_code_check = 0;
 
             get_argument();
           } else if (string_compare(peek_argument(1), no_division_by_zero_check_option)) {
