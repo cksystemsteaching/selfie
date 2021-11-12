@@ -674,28 +674,28 @@ void model_syscalls(uint64_t cursor_nid) {
   // TODO: check address validity of whole filename, flags and mode arguments
 
   w = w
-    + dprintf(output_fd, "%lu state 2 fd-bump\n", cursor_nid)
-    + dprintf(output_fd, "%lu init 2 %lu 21 ; initial fd-bump is 1 (file descriptor bump pointer)\n",
+    + dprintf(output_fd, "%lu state 2 fd-bump-pointer\n", cursor_nid)
+    + dprintf(output_fd, "%lu init 2 %lu 21 ; initial fd-bump-pointer is 1 (file descriptor bump pointer)\n",
         cursor_nid + 1, // nid of this line
-        cursor_nid)     // nid of fd-bump
+        cursor_nid)     // nid of fd-bump-pointer
 
-    // if openat ecall is active set $a0 (file descriptor) = fd-bump + 1 (next file descriptor)
+    // if openat ecall is active set $a0 (file descriptor) = fd-bump-pointer + 1 (next file descriptor)
     + dprintf(output_fd, "%lu inc 2 %lu\n",
         cursor_nid + 2, // nid of this line
-        cursor_nid)     // nid of fd-bump
-    + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; fd-bump + 1 if openat ecall is active\n",
+        cursor_nid)     // nid of fd-bump-pointer
+    + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; fd-bump-pointer + 1 if openat ecall is active\n",
         cursor_nid + 3,    // nid of this line
         current_ecall_nid, // nid of openat ecall is active
-        cursor_nid + 2,    // nid of fd-bump + 1
-        cursor_nid)        // nid of fd-bump
-    + dprintf(output_fd, "%lu next 2 %lu %lu ; increment fd-bump if openat ecall is active\n",
+        cursor_nid + 2,    // nid of fd-bump-pointer + 1
+        cursor_nid)        // nid of fd-bump-pointer
+    + dprintf(output_fd, "%lu next 2 %lu %lu ; increment fd-bump-pointer if openat ecall is active\n",
         cursor_nid + 4, // nid of this line
-        cursor_nid,     // nid of fd-bump
-        cursor_nid + 3) // nid of fd-bump + 1
-    + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
+        cursor_nid,     // nid of fd-bump-pointer
+        cursor_nid + 3) // nid of fd-bump-pointer + 1
+    + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set $a0 = fd-bump-pointer + 1 if openat ecall is active\n\n",
         cursor_nid + 5,             // nid of this line
         current_ecall_nid,          // nid of openat ecall is active
-        cursor_nid + 2,             // nid of fd-bump + 1
+        cursor_nid + 2,             // nid of fd-bump-pointer + 1
         *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
   *(reg_flow_nids + REG_A0) = cursor_nid + 5;
@@ -714,7 +714,7 @@ void model_syscalls(uint64_t cursor_nid) {
   bump_pointer_nid = cursor_nid;
 
   w = w
-    + dprintf(output_fd, "%lu state 2 brk ; brk bump pointer\n", bump_pointer_nid)
+    + dprintf(output_fd, "%lu state 2 brk-bump-pointer\n", bump_pointer_nid)
     + dprintf(output_fd, "%lu init 2 %lu 33 ; current program break\n",
         cursor_nid + 1,   // nid of this line
         bump_pointer_nid) // nid of brk bump pointer
@@ -2020,7 +2020,7 @@ uint64_t control_flow_from_jalr(uint64_t jalr_address, uint64_t condition_nid, u
 
 uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_nid) {
   w = w
-    + dprintf(output_fd, "%lu state 1 ; kernel-mode pc flag of ecall %lu[0x%lX]",
+    + dprintf(output_fd, "%lu state 1 kernel-mode-pc-flag-%lu[0x%lX]",
         current_nid,                // nid of this line
         from_address, from_address) // address of instruction proceeding here
     + print_code_line_number_for_instruction(from_address, code_start)
@@ -2527,13 +2527,13 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "76 sort bitvec 48 ; 6 bytes\n")
     + dprintf(output_fd, "77 sort bitvec 56 ; 7 bytes\n\n")
 
-    + dprintf(output_fd, "81 input 71 ; 1 byte\n")
-    + dprintf(output_fd, "82 input 72 ; 2 bytes\n")
-    + dprintf(output_fd, "83 input 73 ; 3 bytes\n")
-    + dprintf(output_fd, "84 input 74 ; 4 bytes\n")
-    + dprintf(output_fd, "85 input 75 ; 5 bytes\n")
-    + dprintf(output_fd, "86 input 76 ; 6 bytes\n")
-    + dprintf(output_fd, "87 input 77 ; 7 bytes\n\n")
+    + dprintf(output_fd, "81 input 71 1-byte-input\n")
+    + dprintf(output_fd, "82 input 72 2-byte-input\n")
+    + dprintf(output_fd, "83 input 73 3-byte-input\n")
+    + dprintf(output_fd, "84 input 74 4-byte-input\n")
+    + dprintf(output_fd, "85 input 75 5-byte-input\n")
+    + dprintf(output_fd, "86 input 76 6-byte-input\n")
+    + dprintf(output_fd, "87 input 77 7-byte-input\n\n")
 
     + dprintf(output_fd, "91 uext 2 81 56 ; 1 byte\n")
     + dprintf(output_fd, "92 uext 2 82 48 ; 2 bytes\n")
@@ -2542,7 +2542,7 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "95 uext 2 85 24 ; 5 bytes\n")
     + dprintf(output_fd, "96 uext 2 86 16 ; 6 bytes\n")
     + dprintf(output_fd, "97 uext 2 87 8 ; 7 bytes\n")
-    + dprintf(output_fd, "98 input 2 ; 8 bytes\n\n")
+    + dprintf(output_fd, "98 input 2 8-byte-input\n\n")
 
     + dprintf(output_fd, "; 32 64-bit general-purpose registers\n");
 
@@ -2670,7 +2670,7 @@ void modeler(uint64_t entry_pc) {
 
     if (is_statically_live_instruction(pc)) {
       // pc flag of current instruction
-      w = w + dprintf(output_fd, "%lu state 1 ; 0x%lX\n", current_nid, pc);
+      w = w + dprintf(output_fd, "%lu state 1 pc=0x%lX\n", current_nid, pc);
 
       if (pc == entry_pc)
         // set pc here by initializing pc flag of instruction to true
