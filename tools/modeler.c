@@ -2535,13 +2535,13 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "86 input 76 6-byte-input\n")
     + dprintf(output_fd, "87 input 77 7-byte-input\n\n")
 
-    + dprintf(output_fd, "91 uext 2 81 56 ; 1 byte\n")
-    + dprintf(output_fd, "92 uext 2 82 48 ; 2 bytes\n")
-    + dprintf(output_fd, "93 uext 2 83 40 ; 3 bytes\n")
-    + dprintf(output_fd, "94 uext 2 84 32 ; 4 bytes\n")
-    + dprintf(output_fd, "95 uext 2 85 24 ; 5 bytes\n")
-    + dprintf(output_fd, "96 uext 2 86 16 ; 6 bytes\n")
-    + dprintf(output_fd, "97 uext 2 87 8 ; 7 bytes\n")
+    + dprintf(output_fd, "91 uext 2 81 56 ; uext-1-byte-input\n")
+    + dprintf(output_fd, "92 uext 2 82 48 ; uext-2-byte-input\n")
+    + dprintf(output_fd, "93 uext 2 83 40 ; uext-3-byte-input\n")
+    + dprintf(output_fd, "94 uext 2 84 32 ; uext-4-byte-input\n")
+    + dprintf(output_fd, "95 uext 2 85 24 ; uext-5-byte-input\n")
+    + dprintf(output_fd, "96 uext 2 86 16 ; uext-6-byte-input\n")
+    + dprintf(output_fd, "97 uext 2 87 8 ; uext-7-byte-input\n")
     + dprintf(output_fd, "98 input 2 8-byte-input\n\n")
 
     + dprintf(output_fd, "; 32 64-bit general-purpose registers\n");
