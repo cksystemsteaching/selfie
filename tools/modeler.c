@@ -142,6 +142,7 @@ uint64_t control_flow_from_beq(uint64_t from_address, uint64_t condition_nid, ui
 uint64_t control_flow_from_jalr(uint64_t jalr_address, uint64_t condition_nid, uint64_t control_flow_nid);
 uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_nid);
 
+void check_syscall_id();
 void check_exit_code();
 void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
@@ -197,15 +198,21 @@ uint64_t fixed_stack_segment  = 0; // flag for fixing size of stack segment
 uint64_t MMU                  = 0; // flag for generating MMU circuit
 uint64_t RAM                  = 0; // flag for generating RAM state and circuit
 
-uint64_t virtual_address_sort_nid  = 2; // nid of virtual address sort
-uint64_t physical_address_sort_nid = 2; // nid of physical address sort
-uint64_t memory_sort_nid           = 3; // nid of physical memory sort
-
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
 
+uint64_t w = 0; // number of written characters
+
+uint64_t current_nid = 0; // nid of current line
+
+uint64_t which_ecall_nid; // nid of $a7 == SYSCALL_EXIT
+
 uint64_t bad_exit_code  = 0; // model for this exit code
 uint64_t exit_ecall_nid = 0; // nid of exit ecall is active
+
+uint64_t virtual_address_sort_nid  = 2; // nid of virtual address sort
+uint64_t physical_address_sort_nid = 2; // nid of physical address sort
+uint64_t memory_sort_nid           = 3; // nid of physical memory sort
 
 uint64_t physical_address_space_size = 64; // size of physical address space in bits
 
@@ -213,10 +220,6 @@ uint64_t heap_start  = 0;
 uint64_t heap_size   = 0;
 uint64_t stack_start = 0;
 uint64_t stack_size  = 0;
-
-uint64_t w = 0; // number of written characters
-
-uint64_t current_nid = 0; // nid of current line
 
 uint64_t reg_value_nids = 100; // nids of initial values of registers
 uint64_t reg_nids       = 200; // nids of registers
@@ -347,8 +350,6 @@ uint64_t generate_ecall_address_and_block_checks(uint64_t cursor_nid, uint64_t c
 
 void model_syscalls(uint64_t cursor_nid) {
   uint64_t current_ecall_nid;
-  uint64_t which_ecall_nid;
-  uint64_t invalid_syscall_nid;
   uint64_t kernel_mode_flow_nid;
   uint64_t increment_nid;
   uint64_t input_nid;
@@ -390,44 +391,6 @@ void model_syscalls(uint64_t cursor_nid) {
         which_ecall_nid + 4, // nid of this line
         reg_nids + REG_A7,   // nid of current value of $a7 register
         cursor_nid + 4);     // nid of SYSCALL_BRK
-
-  cursor_nid = cursor_nid + 20;
-
-  w = w
-    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_EXIT\n",
-        cursor_nid,      // nid of this line
-        which_ecall_nid) // nid of $a7 == SYSCALL_EXIT
-    + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_READ\n",
-        cursor_nid + 1,      // nid of this line
-        which_ecall_nid + 1, // nid of $a7 == SYSCALL_READ
-        cursor_nid)          // nid of preceding line
-    + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_WRITE\n",
-        cursor_nid + 2,      // nid of this line
-        which_ecall_nid + 2, // nid of $a7 == SYSCALL_WRITE
-        cursor_nid + 1)      // nid of preceding line
-    + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_OPENAT\n",
-        cursor_nid + 3,      // nid of this line
-        which_ecall_nid + 3, // nid of $a7 == SYSCALL_OPENAT
-        cursor_nid + 2)      // nid of preceding line
-    + dprintf(output_fd, "%lu ite 1 %lu 10 %lu ; ... and $a7 != SYSCALL_BRK (invalid syscall id in $a7 detected)\n\n",
-        cursor_nid + 4,      // nid of this line
-        which_ecall_nid + 4, // nid of $a7 == SYSCALL_BRK
-        cursor_nid + 3);     // nid of preceding line
-
-  invalid_syscall_nid = cursor_nid + 4;
-
-  cursor_nid = cursor_nid + 10;
-
-  if (syscall_id_check)
-    w = w
-      // if any ecall is active check if $a7 register contains invalid syscall id
-      + dprintf(output_fd, "%lu and 1 %lu %lu ; ecall is active for invalid syscall id\n",
-          cursor_nid,          // nid of this line
-          ecall_flow_nid,      // nid of most recent update of ecall activation
-          invalid_syscall_nid) // nid of invalid syscall id check
-      + dprintf(output_fd, "%lu bad %lu ; ecall invalid syscall id\n\n",
-          cursor_nid + 1, // nid of this line
-          cursor_nid);    // nid of preceding line
 
 
   current_ecall_nid = current_ecall_nid + pcs_nid / 10;
@@ -2087,6 +2050,52 @@ uint64_t control_flow_from_ecall(uint64_t from_address, uint64_t control_flow_ni
   return control_flow_nid;
 }
 
+void check_syscall_id() {
+  w = w
+    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_EXIT\n",
+        current_nid,     // nid of this line
+        which_ecall_nid) // nid of $a7 == SYSCALL_EXIT
+    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_READ\n",
+        current_nid + 1,     // nid of this line
+        which_ecall_nid + 1) // nid of $a7 == SYSCALL_READ
+    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_WRITE\n",
+        current_nid + 2,     // nid of this line
+        which_ecall_nid + 2) // nid of $a7 == SYSCALL_WRITE
+    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_OPENAT\n",
+        current_nid + 3,     // nid of this line
+        which_ecall_nid + 3) // nid of $a7 == SYSCALL_OPENAT
+    + dprintf(output_fd, "%lu not 1 %lu ; $a7 != SYSCALL_BRK\n",
+        current_nid + 4,     // nid of this line
+        which_ecall_nid + 4) // nid of $a7 == SYSCALL_BRK
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; ... and $a7 != SYSCALL_READ\n",
+        current_nid + 5, // nid of this line
+        current_nid,     // nid of $a7 != SYSCALL_EXIT
+        current_nid + 1) // nid of $a7 != SYSCALL_READ
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; ... and $a7 != SYSCALL_WRITE\n",
+        current_nid + 6, // nid of this line
+        current_nid + 5, // nid of preceding line
+        current_nid + 2) // nid of $a7 != SYSCALL_WRITE
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; ... and $a7 != SYSCALL_OPENAT\n",
+        current_nid + 7, // nid of this line
+        current_nid + 6, // nid of preceding line
+        current_nid + 3) // nid of $a7 != SYSCALL_OPENAT
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; ... and $a7 != SYSCALL_BRK\n\n",
+        current_nid + 8, // nid of this line
+        current_nid + 7, // nid of preceding line
+        current_nid + 4) // nid of $a7 != SYSCALL_BRK
+
+    // if any ecall is active check if $a7 register contains invalid syscall id
+    + dprintf(output_fd, "%lu and 1 %lu %lu ; ecall is active for invalid syscall id\n",
+        current_nid + 9, // nid of this line
+        ecall_flow_nid,  // nid of most recent update of ecall activation
+        current_nid + 8) // nid of invalid syscall id check
+    + dprintf(output_fd, "%lu bad %lu ; ecall invalid syscall id\n\n",
+        current_nid + 10, // nid of this line
+        current_nid + 9); // nid of preceding line
+
+    current_nid = current_nid + 11;
+}
+
 void check_exit_code() {
   uint64_t exit_code_check_nid;
 
@@ -3033,6 +3042,12 @@ void modeler(uint64_t entry_pc) {
         up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
 
   current_nid = pcs_nid * 8;
+
+  if (syscall_id_check) {
+    w = w + dprintf(output_fd, "; checking syscall id\n\n");
+
+    check_syscall_id();
+  }
 
   if (exit_code_check) {
     w = w + dprintf(output_fd, "; checking exit code\n\n");
