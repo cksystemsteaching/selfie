@@ -330,13 +330,13 @@ uint64_t generate_ecall_address_and_block_checks(uint64_t cursor_nid, uint64_t c
           reg_nids + REG_A1, // nid of current value of $a1 register
           cursor_nid + 2)    // nid of (($a2 - 1) / 8) * 8
       + dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
-          cursor_nid + 4, // nid of this line
-          reg_nids + REG_A2)    // nid of current value of $a2 register
+          cursor_nid + 4,    // nid of this line
+          reg_nids + REG_A2) // nid of current value of $a2 register
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
-          cursor_nid + 5,     // nid of this line
-          cursor_nid + 4,     // nid of $a2 > 0
-          cursor_nid + 3,     // nid of $a1 + (($a2 - 1) / 8) * 8
-          reg_nids + REG_A1)  // nid of current value of $a1 register
+          cursor_nid + 5,    // nid of this line
+          cursor_nid + 4,    // nid of $a2 > 0
+          cursor_nid + 3,    // nid of $a1 + (($a2 - 1) / 8) * 8
+          reg_nids + REG_A1) // nid of current value of $a1 register
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of buffer for checking address validity\n",
           cursor_nid + 6,       // nid of this line
           current_ecall_nid,    // nid of read or write ecall is active
@@ -2191,6 +2191,8 @@ uint64_t check_addresses() {
   if (address_alignment_check)
     return 1;
   else if (segmentation_faults)
+    return 1;
+  else if (check_block_access)
     return 1;
   else
     return 0;
