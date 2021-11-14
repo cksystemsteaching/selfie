@@ -188,6 +188,10 @@ smt: $(smts-1) $(smts-2) $(smts-3)
 modeler: tools/modeler.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
+# Compile modeler.c with selfie.h as library into 32-bit modeler executable
+modeler-32: tools/modeler.c selfie.h
+	$(CC) $(32-BIT-CFLAGS) --include selfie.h $< -o $@
+
 # Run modeler, the symbolic model generator, natively and as RISC-U executable
 mod: modeler selfie.h selfie
 	./modeler
