@@ -159,8 +159,6 @@ uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t IS64BITMODEL = 1; // flag to distinguish 64-bit and 32-bit models
-
 uint64_t EXITCODE_MODELINGERROR = 1;
 
 uint64_t LO_FLOW = 32; // offset of nids of lower bounds on addresses in registers
@@ -213,11 +211,14 @@ uint64_t bad_number = 0; // bad number counter
 uint64_t bad_exit_code  = 0; // model for this exit code
 uint64_t exit_ecall_nid = 0; // nid of exit ecall is active
 
-uint64_t virtual_address_sort_nid  = 2; // nid of virtual address sort
-uint64_t physical_address_sort_nid = 2; // nid of physical address sort
-uint64_t memory_sort_nid           = 3; // nid of physical memory sort
+uint64_t vaddr_sort_nid  = 2;  // nid of virtual address sort
+uint64_t vaddr_mask_nid  = 27; // nid of bit mask for resetting LSBs in virtual addresses
+uint64_t vaddr_alignment = 3;  // virtual address alignment in bits
 
-uint64_t physical_address_space_size = 64; // size of physical address space in bits
+uint64_t paddr_sort_nid   = 2;  // nid of physical address sort
+uint64_t paddr_space_size = 64; // size of physical address space in bits
+
+uint64_t memory_sort_nid = 3; // nid of physical memory sort
 
 uint64_t heap_start  = 0;
 uint64_t heap_size   = 0;
@@ -738,12 +739,15 @@ void model_syscalls(uint64_t cursor_nid) {
         cursor_nid + 2, // nid of this line
         cursor_nid,     // nid of brk <= $a0
         cursor_nid + 1) // nid of $a0 < $sp
-    + dprintf(output_fd, "%lu and 2 %lu 27 ; reset all but 3 LSBs of $a0\n",
+    + dprintf(output_fd, "%lu and 2 %lu %lu ; reset all but %lu LSBs of $a0\n",
         cursor_nid + 3,    // nid of this line
-        reg_nids + REG_A0) // nid of current value of $a0 register
-    + dprintf(output_fd, "%lu eq 1 %lu 20 ; 3 LSBs of $a0 == 0 ($a0 is word-aligned)\n",
-        cursor_nid + 4, // nid of this line
-        cursor_nid + 3) // nid of 3 LSBs of current value of $a0 register
+        reg_nids + REG_A0, // nid of current value of $a0 register
+        vaddr_mask_nid,    // nid of bit mask
+        vaddr_alignment)   // virtual address alignment in bits
+    + dprintf(output_fd, "%lu eq 1 %lu 20 ; %lu LSBs of $a0 == 0 ($a0 is word-aligned)\n",
+        cursor_nid + 4,  // nid of this line
+        cursor_nid + 3,  // nid of 3 (or 2) LSBs of current value of $a0 register
+        vaddr_alignment) // virtual address alignment in bits
     + dprintf(output_fd, "%lu and 1 %lu %lu ; brk <= $a0 < $sp and $a0 is word-aligned ($a0 is valid)\n",
         cursor_nid + 5, // nid of this line
         cursor_nid + 2, // nid of brk <= $a0 < $sp
@@ -801,9 +805,10 @@ void model_syscalls(uint64_t cursor_nid) {
     *(reg_flow_nids + LO_FLOW + REG_T1) = cursor_nid;
 
     w = w
-      + dprintf(output_fd, "%lu sub 2 %lu 28 ; $a0 - WORDSIZE\n",
+      + dprintf(output_fd, "%lu sub 2 %lu %lu ; $a0 - WORDSIZE\n",
           cursor_nid + 1,    // nid of this line
-          reg_nids + REG_A0) // nid of current value of $a0 register
+          reg_nids + REG_A0, // nid of current value of $a0 register
+          20 + WORDSIZE)     // nid of word size
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 - WORDSIZE if brk ecall is active and $a0 is valid\n",
           cursor_nid + 2,                       // nid of this line
           valid_brk_nid,                        // nid of brk ecall is active and $a0 is valid
@@ -1685,15 +1690,7 @@ uint64_t model_virtual_address() {
 
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid) {
-  uint64_t word_alignment;
-
-  if (linear_address_space)
-    word_alignment = 0;
-  else if (IS64BITSYSTEM)
-    word_alignment = 3;
-  else
-    // assert: 32-bit system
-    word_alignment = 2;
+  uint64_t laddr_alignment;
 
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= start of segment\n",
@@ -1725,18 +1722,23 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
     cursor_nid = cursor_nid + 2;
   }
 
+  if (linear_address_space)
+    laddr_alignment = 0;
+  else
+    laddr_alignment = vaddr_alignment;
+
   w = w
     // subtract offset of segment in virtual address space
     + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
-        cursor_nid + 1,           // nid of this line
-        virtual_address_sort_nid, // nid of address sort
-        laddr_nid,                // nid of virtual or linear address
-        offset_nid)               // nid of segment offset in virtual or linear address space
+        cursor_nid + 1, // nid of this line
+        vaddr_sort_nid, // nid of virtual address sort
+        laddr_nid,      // nid of virtual or linear address
+        offset_nid)     // nid of segment offset in virtual or linear address space
     + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
-        cursor_nid + 2,                                   // nid of this line
-        cursor_nid + 1,                                   // nid of mapped virtual or linear address
-        physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
-        word_alignment)                                   // 3 (or 2) for virtual address, 0 for linear address
+        cursor_nid + 2,                         // nid of this line
+        cursor_nid + 1,                         // nid of mapped virtual or linear address
+        paddr_space_size - 1 + laddr_alignment, // size of physical address space in bits - 1 + address alignment
+        laddr_alignment)                        // 3 (or 2) for virtual address, 0 for linear address
     + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
         cursor_nid + 3, // nid of this line
         cursor_nid,     // nid of segment check
@@ -2223,23 +2225,17 @@ uint64_t check_addresses() {
 }
 
 void generate_address_alignment_check(uint64_t flow_nid) {
-  uint64_t mask_nid;
-
-  if (IS64BITSYSTEM)
-    mask_nid = 27;
-  else
-    // assert: 32-bit system
-    mask_nid = 23;
-
   w = w
     // check if address of most recent memory access is word-aligned
-    + dprintf(output_fd, "%lu and 2 %lu %lu\n",
-        current_nid, // nid of this line
-        flow_nid,    // nid of address of most recent memory access
-        mask_nid)    // nid of bit mask
-    + dprintf(output_fd, "%lu neq 1 %lu 20\n",
+    + dprintf(output_fd, "%lu and 2 %lu %lu ; reset all but %lu LSBs of address\n",
+        current_nid,     // nid of this line
+        flow_nid,        // nid of address of most recent memory access
+        vaddr_mask_nid,  // nid of bit mask
+        vaddr_alignment) // virtual address alignment in bits
+    + dprintf(output_fd, "%lu neq 1 %lu 20 ; %lu LSBs of address != 0 (address is not word-aligned)\n",
         current_nid + 1, // nid of this line
-        current_nid)     // nid of 3 (or 2) LSBs of address of most recent memory access
+        current_nid,     // nid of 3 (or 2) LSBs of address of most recent memory access
+        vaddr_alignment) // virtual address alignment in bits
     + dprintf(output_fd, "%lu bad %lu b%lu ; word-unaligned memory access\n\n",
         current_nid + 2, // nid of this line
         current_nid + 1, // nid of previous check
@@ -2462,9 +2458,9 @@ void modeler(uint64_t entry_pc) {
 
   w = w
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
-    + dprintf(output_fd, "2 sort bitvec 64 ; 64-bit machine word\n");
+    + dprintf(output_fd, "2 sort bitvec %lu ; %lu-bit machine word\n", WORDSIZEINBITS, WORDSIZEINBITS);
 
-  // assert: value of stack pointer is 64-bit-word-aligned
+  // assert: value of stack pointer is word-aligned
 
   heap_start  = get_heap_seg_start(current_context);
   heap_size   = get_program_break(current_context) - heap_start + heap_allowance;
@@ -2474,32 +2470,32 @@ void modeler(uint64_t entry_pc) {
   if (linear_address_space) {
     w = w + dprintf(output_fd, "\n4 sort bitvec 29 ; 29-bit linear address\n");
 
-    virtual_address_sort_nid = 4;
+    vaddr_sort_nid = 4;
   }
 
   if (MMU) {
-    physical_address_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
+    paddr_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
 
     w = w
       + dprintf(output_fd, "\n6 sort bitvec %lu ; %lu-bit physical address\n",
-        physical_address_space_size,
-        physical_address_space_size)
+        paddr_space_size,
+        paddr_space_size)
       + dprintf(output_fd, "7 sort array 6 2 ; %lu-bit physical memory (%luB)\n",
-        physical_address_space_size,
+        paddr_space_size,
         data_size + heap_size + stack_size)
       + dprintf(output_fd, "8 zero 6\n\n");
 
-    physical_address_sort_nid = 6;
-    memory_sort_nid           = 7;
+    paddr_sort_nid  = 6;
+    memory_sort_nid = 7;
   } else if (linear_address_space) {
-    physical_address_space_size = 29;
+    paddr_space_size = 29;
 
     w = w + dprintf(output_fd, "5 sort array 4 2 ; 29-bit physical memory\n\n");
 
-    physical_address_sort_nid = 4;
-    memory_sort_nid           = 5;
+    paddr_sort_nid  = 4;
+    memory_sort_nid = 5;
   } else
-    w = w + dprintf(output_fd, "3 sort array 2 2 ; 64-bit physical memory\n\n");
+    w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n\n", paddr_space_size);
 
   w = w
     + dprintf(output_fd, "; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
@@ -2515,28 +2511,28 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "10 zero 1\n11 one 1\n\n")
     + dprintf(output_fd, "20 zero 2\n21 one 2\n22 constd 2 2\n23 constd 2 3\n24 constd 2 4\n25 constd 2 5\n26 constd 2 6\n27 constd 2 7\n28 constd 2 8\n\n")
 
-    + dprintf(output_fd, "; start of data segment in 64-bit virtual memory\n")
+    + dprintf(output_fd, "; start of data segment in %lu-bit virtual memory\n", WORDSIZEINBITS)
     + dprintf(output_fd, "30 constd 2 %lu ; 0x%lX\n", data_start, data_start)
-    + dprintf(output_fd, "; end of data segment in 64-bit virtual memory\n")
+    + dprintf(output_fd, "; end of data segment in %lu-bit virtual memory\n", WORDSIZEINBITS)
     + dprintf(output_fd, "31 constd 2 %lu ; 0x%lX\n\n", data_start + data_size, data_start + data_size)
 
-    + dprintf(output_fd, "; start of heap segment in 64-bit virtual memory (initial program break)\n")
+    + dprintf(output_fd, "; start of heap segment in %lu-bit virtual memory (initial program break)\n", WORDSIZEINBITS)
     + dprintf(output_fd, "32 constd 2 %lu ; 0x%lX\n", heap_start, heap_start)
-    + dprintf(output_fd, "; current end of heap segment in 64-bit virtual memory (current program break)\n")
+    + dprintf(output_fd, "; current end of heap segment in %lu-bit virtual memory (current program break)\n", WORDSIZEINBITS)
     + dprintf(output_fd, "33 constd 2 %lu ; 0x%lX\n\n", get_program_break(current_context), get_program_break(current_context));
 
   if (fixed_heap_segment)
     w = w
-      + dprintf(output_fd, "; allowed end of heap segment in 64-bit virtual memory (with %luB allowance)\n", heap_allowance)
+      + dprintf(output_fd, "; allowed end of heap segment in %lu-bit virtual memory (with %luB allowance)\n", WORDSIZEINBITS, heap_allowance)
       + dprintf(output_fd, "34 constd 2 %lu ; 0x%lX\n", heap_start + heap_size, heap_start + heap_size)
-      + dprintf(output_fd, "; allowed start of stack segment in 64-bit virtual memory (with %luB allowance)\n", stack_allowance)
+      + dprintf(output_fd, "; allowed start of stack segment in %lu-bit virtual memory (with %luB allowance)\n", WORDSIZEINBITS, stack_allowance)
       + dprintf(output_fd, "35 constd 2 %lu ; 0x%lX\n\n", stack_start, stack_start);
 
   if (MMU)
     w = w
-      + dprintf(output_fd, "; offset of heap segment in 64-bit virtual memory\n")
+      + dprintf(output_fd, "; offset of heap segment in %lu-bit virtual memory\n", WORDSIZEINBITS)
       + dprintf(output_fd, "36 constd 2 %lu ; 0x%lX\n", heap_start - data_size, heap_start - data_size)
-      + dprintf(output_fd, "; offset of stack segment in 64-bit virtual memory\n")
+      + dprintf(output_fd, "; offset of stack segment in %lu-bit virtual memory\n", WORDSIZEINBITS)
       + dprintf(output_fd, "37 constd 2 %lu ; 0x%lX\n\n", stack_start - data_size - heap_size, stack_start - data_size - heap_size);
 
   if (linear_address_space) {
@@ -2605,7 +2601,7 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "97 uext 2 87 8 ; uext-7-byte-input\n")
     + dprintf(output_fd, "98 input 2 8-byte-input\n\n")
 
-    + dprintf(output_fd, "; 32 64-bit general-purpose registers\n");
+    + dprintf(output_fd, "; 32 %lu-bit general-purpose registers\n", WORDSIZEINBITS);
 
   w = w + dprintf(output_fd, "\n; non-zero initial register values\n");
 
@@ -2717,7 +2713,7 @@ void modeler(uint64_t entry_pc) {
       i = i + 1;
     }
 
-  w = w + dprintf(output_fd, "\n; 64-bit program counter encoded in Boolean flags\n\n");
+  w = w + dprintf(output_fd, "\n; %lu-bit program counter encoded in Boolean flags\n\n", WORDSIZEINBITS);
 
   // 3 more digits to accommodate code, data, heap, and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
@@ -2762,7 +2758,7 @@ void modeler(uint64_t entry_pc) {
     memory_nid  = pcs_nid * 2;
     current_nid = memory_nid;
 
-    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
+    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", paddr_space_size);
 
     data_flow_nid = 0;
 
@@ -2802,7 +2798,7 @@ void modeler(uint64_t entry_pc) {
     // address in data, heap, or stack segment
     w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX paddr, 0x%lX vaddr\n",
       current_nid,                  // nid of this line
-      physical_address_sort_nid,    // nid of physical address sort
+      paddr_sort_nid,               // nid of physical address sort
       compute_physical_address(pc), // physical address of current machine word
       compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
       pc);                          // virtual address of current machine word in hexadecimal as comment
@@ -2881,7 +2877,7 @@ void modeler(uint64_t entry_pc) {
   }
 
   if (RAM == 0) {
-    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", physical_address_space_size);
+    w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", paddr_space_size);
 
     memory_nid = pcs_nid * 2;
 
@@ -3097,7 +3093,7 @@ void modeler(uint64_t entry_pc) {
       i = i + 1;
     }
 
-  w = w + dprintf(output_fd, "\n; updating %lu-bit physical memory\n\n", physical_address_space_size);
+  w = w + dprintf(output_fd, "\n; updating %lu-bit physical memory\n\n", paddr_space_size);
 
   current_nid = pcs_nid * 7;
 
@@ -3219,6 +3215,14 @@ uint64_t selfie_model() {
   stack_allowance_option      = "--stack-allowance";
   MMU_option                  = "--MMU";
   RAM_option                  = "--RAM";
+
+  if (IS64BITSYSTEM == 0) {
+    // assert: 32-bit system
+    vaddr_mask_nid  = 23;
+    vaddr_alignment = 2;
+
+    paddr_space_size = WORDSIZEINBITS;
+  }
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
