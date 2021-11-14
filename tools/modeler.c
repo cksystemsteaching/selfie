@@ -1693,14 +1693,22 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
         laddr_nid,  // nid of virtual or linear address
         start_nid); // nid of start of segment
 
+  // in address spaces where the highest address is the largest value
+  // wraparound makes this constraint obsolete
   if (end_nid) {
-    // in address spaces where the highest address is the largest value
-    // wraparound makes this constraint obsolete
+    if (end_nid == 50)
+      // highest address in 32-bit virtual address space (4GB)
+      w = w + dprintf(output_fd, "%lu ulte 1 %lu %lu ; address <= end of segment\n",
+        cursor_nid + 1, // nid of this line
+        laddr_nid,      // nid of virtual address
+        end_nid);       // nid of end of segment
+    else
+      w = w + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
+        cursor_nid + 1, // nid of this line
+        laddr_nid,      // nid of virtual or linear address
+        end_nid);       // nid of end of segment
+
     w = w
-      + dprintf(output_fd, "%lu ult 1 %lu %lu ; address < end of segment\n",
-          cursor_nid + 1, // nid of this line
-          laddr_nid,      // nid of virtual or linear address
-          end_nid)        // nid of end of segment
       + dprintf(output_fd, "%lu and 1 %lu %lu\n",
           cursor_nid + 2,  // nid of this line
           cursor_nid,      // nid of >= check
@@ -2534,6 +2542,7 @@ void modeler(uint64_t entry_pc) {
   }
 
   w = w
+    // avoiding 2^32 for 32-bit version
     + dprintf(output_fd, "; highest address in 32-bit virtual address space (4GB)\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n",
       VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE, VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
@@ -2741,15 +2750,15 @@ void modeler(uint64_t entry_pc) {
 
   while (pc < VIRTUALMEMORYSIZE * GIGABYTE) {
     if (pc == data_start + data_size) {
-      pc = get_heap_seg_start(current_context);
+      pc = heap_start;
 
-      if (pc != get_program_break(current_context))
+      if (heap_size > 0)
         w = w + dprintf(output_fd, "\n; heap segment\n\n");
     }
 
-    if (pc == get_program_break(current_context)) {
+    if (pc == heap_start + heap_size) {
       // assert: stack pointer < VIRTUALMEMORYSIZE * GIGABYTE
-      pc = *(registers + REG_SP);
+      pc = stack_start;
 
       w = w + dprintf(output_fd, "\n; stack segment\n\n");
       // assert: stack segment is not empty
@@ -2760,10 +2769,10 @@ void modeler(uint64_t entry_pc) {
     else if (current_nid == memory_nid)
       // account for nid offset by 1 of memory-dump state
       current_nid = current_nid + 1;
-    else if (pc < *(registers + REG_SP))
+    else if (pc < stack_start)
       current_nid = pc_nid(pcs_nid, pc);
     else
-      current_nid = pc_nid(pcs_nid, get_program_break(current_context) + (pc - *(registers + REG_SP)));
+      current_nid = pc_nid(pcs_nid, pc - stack_start + heap_start + heap_size);
 
     // address in data, heap, or stack segment
     w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX paddr, 0x%lX vaddr\n",
