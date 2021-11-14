@@ -1828,7 +1828,7 @@ uint64_t compute_physical_address(uint64_t vaddr) {
           // vaddr in heap segment
           vaddr = vaddr - heap_start + data_size;
         else if (vaddr >= stack_start)
-          if (vaddr < stack_start + stack_size)
+          if (vaddr <= stack_start + stack_size - WORDSIZE)
             // vaddr in stack segment
             vaddr = vaddr - stack_start + data_size + heap_size;
           else
