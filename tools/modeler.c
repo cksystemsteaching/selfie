@@ -107,8 +107,7 @@ uint64_t record_end_bounds(uint64_t cursor_nid, uint64_t activation_nid, uint64_
 
 uint64_t model_virtual_address();
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
-  uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t word_alignment,
-  uint64_t flow_nid);
+  uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid);
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid);
 uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t activation_nid, uint64_t paddr_nid, uint64_t RAM_address);
 
@@ -1685,8 +1684,17 @@ uint64_t model_virtual_address() {
 }
 
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
-  uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t word_alignment,
-  uint64_t flow_nid) {
+  uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid) {
+  uint64_t word_alignment;
+
+  if (linear_address_space)
+    word_alignment = 0;
+  else if (IS64BITSYSTEM)
+    word_alignment = 3;
+  else
+    // assert: 32-bit system
+    word_alignment = 2;
+
   w = w
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; address >= start of segment\n",
         cursor_nid, // nid of this line
@@ -1697,7 +1705,7 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
   // wraparound makes this constraint obsolete
   if (end_nid) {
     if (end_nid == 50)
-      // highest address in 32-bit virtual address space (4GB)
+      // 50 is nid of highest address in 32-bit virtual address space (4GB)
       w = w + dprintf(output_fd, "%lu ulte 1 %lu %lu ; address <= end of segment\n",
         cursor_nid + 1, // nid of this line
         laddr_nid,      // nid of virtual address
@@ -1728,7 +1736,7 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
         cursor_nid + 2,                                   // nid of this line
         cursor_nid + 1,                                   // nid of mapped virtual or linear address
         physical_address_space_size - 1 + word_alignment, // size of physical address space in bits - 1 + word alignment
-        word_alignment)                                   // 3 for virtual address, 0 for linear address
+        word_alignment)                                   // 3 (or 2) for virtual address, 0 for linear address
     + dprintf(output_fd, "%lu ite 6 %lu %lu %lu\n",
         cursor_nid + 3, // nid of this line
         cursor_nid,     // nid of segment check
@@ -1739,12 +1747,20 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
 }
 
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
+  uint64_t word_alignment;
   uint64_t laddr_nid;
 
+  if (IS64BITSYSTEM)
+    word_alignment = 3;
+  else
+    // assert: 32-bit system
+    word_alignment = 2;
+
   if (linear_address_space) {
-    w = w + dprintf(output_fd, "%lu slice 4 %lu 31 3\n",
-      cursor_nid, // nid of this line
-      vaddr_nid); // nid of virtual address
+    w = w + dprintf(output_fd, "%lu slice 4 %lu 31 %lu\n",
+      cursor_nid,      // nid of this line
+      vaddr_nid,       // nid of virtual address
+      word_alignment); // 3 (or 2) for virtual address
 
     laddr_nid  = cursor_nid;
     cursor_nid = cursor_nid + 1;
@@ -1754,16 +1770,16 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
   if (MMU) {
     if (linear_address_space) {
       // use linear segment dimensions
-      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 0, 8);
-      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 42, 44, 46, 0, cursor_nid);
+      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 40, 41, 40, 8);
+      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 42, 44, 46, cursor_nid);
 
-      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 0, 47, 0, cursor_nid);
+      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 45, 0, 47, cursor_nid);
     } else {
       // use virtual segment dimensions
-      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 30, 31, 30, 3, 8);
-      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 32, 34, 36, 3, cursor_nid);
+      cursor_nid = model_physical_address_in_segment(cursor_nid, laddr_nid, 30, 31, 30, 8);
+      cursor_nid = model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 32, 34, 36, cursor_nid);
 
-      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 35, 50, 37, 3, cursor_nid);
+      return model_physical_address_in_segment(cursor_nid + 1, laddr_nid, 35, 50, 37, cursor_nid);
     }
   } else
     return laddr_nid;
@@ -2207,14 +2223,23 @@ uint64_t check_addresses() {
 }
 
 void generate_address_alignment_check(uint64_t flow_nid) {
+  uint64_t mask_nid;
+
+  if (IS64BITSYSTEM)
+    mask_nid = 27;
+  else
+    // assert: 32-bit system
+    mask_nid = 23;
+
   w = w
     // check if address of most recent memory access is word-aligned
-    + dprintf(output_fd, "%lu and 2 %lu 27\n",
+    + dprintf(output_fd, "%lu and 2 %lu %lu\n",
         current_nid, // nid of this line
-        flow_nid)    // nid of address of most recent memory access
+        flow_nid,    // nid of address of most recent memory access
+        mask_nid)    // nid of bit mask
     + dprintf(output_fd, "%lu neq 1 %lu 20\n",
         current_nid + 1, // nid of this line
-        current_nid)     // nid of 3 LSBs of address of most recent memory access
+        current_nid)     // nid of 3 (or 2) LSBs of address of most recent memory access
     + dprintf(output_fd, "%lu bad %lu b%lu ; word-unaligned memory access\n\n",
         current_nid + 2, // nid of this line
         current_nid + 1, // nid of previous check
