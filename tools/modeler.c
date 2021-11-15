@@ -848,7 +848,7 @@ void model_syscalls(uint64_t cursor_nid) {
 
     *(reg_flow_nids + LO_FLOW + REG_T1) = cursor_nid;
 
-    w = w + dprintf(output_fd, "%lu ite 2 %lu 50 %lu ; upper bound on $t1 = highest address in 32-bit virtual address space (4GB) if brk ecall is active and $a0 is invalid\n",
+    w = w + dprintf(output_fd, "%lu ite 2 %lu 50 %lu ; upper bound on $t1 = highest address (4GB) if brk ecall is active and $a0 is invalid\n",
       cursor_nid + 1,                       // nid of this line
       invalid_brk_nid,                      // nid of brk ecall is active and $a0 is invalid
       *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
