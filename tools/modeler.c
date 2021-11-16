@@ -1804,17 +1804,17 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
 uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t address_nid, uint64_t RAM_address,
   uint64_t RAM_word, uint64_t RAM_word_flow_nid) {
   w = w
-    // address != RAM address
-    + dprintf(output_fd, "%lu neq 1 %lu %lu\n",
+    // address == RAM address
+    + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
         cursor_nid,                      // nid of this line
         address_nid,                     // nid of virtual, linear, or physical address
         pc_nid(memory_nid, RAM_address)) // nid of virtual, linear, or physical RAM address
     // if paddr == RAM address access RAM word
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-        cursor_nid + 1,    // nid of this line
-        cursor_nid,        // address != RAM address
-        RAM_word_flow_nid, // nid of most recent access of RAM word at RAM address
-        RAM_word);         // nid of RAM word
+        cursor_nid + 1,     // nid of this line
+        cursor_nid,         // address == RAM address
+        RAM_word,           // nid of RAM word
+        RAM_word_flow_nid); // nid of most recent access of RAM word at RAM address
 
   return cursor_nid + 1;
 }
