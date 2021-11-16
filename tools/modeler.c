@@ -1347,12 +1347,12 @@ void model_data_flow_load() {
               current_nid + 1,   // nid of address $rs1 + imm == RAM address
               current_nid,       // nid of set $rd = RAM[$rs1 + imm]
               RAM_read_flow_nid) // nid of most recent read from RAM address
-          // is current value of $rs2 register == current RAM word at RAM address?
+          // is current value of $rd register == current RAM word at RAM address?
           + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
               current_nid + 3,                     // nid of this line
               reg_nids + rd,                       // nid of current value of $rd register
               pc_nid(memory_nid, RAM_address) + 2) // nid of current RAM word at RAM address
-          // if current value of $rs2 register == current RAM word at RAM address skip write
+          // if current value of $rd register == current RAM word at RAM address skip write
           + dprintf(output_fd, "%lu ite 2 %lu %lu %lu",
               current_nid + 4,   // nid of this line
               current_nid + 3,   // nid of current value of $rd register == current RAM word at RAM address
