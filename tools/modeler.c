@@ -109,7 +109,7 @@ uint64_t model_virtual_address();
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid);
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid);
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address,
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t address_nid, uint64_t RAM_address,
   uint64_t RAM_word, uint64_t RAM_word_flow_nid);
 
 uint64_t compute_physical_address(uint64_t vaddr);
@@ -183,6 +183,7 @@ char* heap_allowance_option       = (char*) 0;
 char* stack_allowance_option      = (char*) 0;
 char* MMU_option                  = (char*) 0;
 char* RAM_option                  = (char*) 0;
+char* MMURAM_option               = (char*) 0;
 
 uint64_t syscall_id_check        = 1; // flag for preventing syscall id checks
 uint64_t exit_code_check         = 1; // flag for preventing exit code check
@@ -197,6 +198,7 @@ uint64_t fixed_heap_segment   = 0; // flag for fixing size of heap segment
 uint64_t fixed_stack_segment  = 0; // flag for fixing size of stack segment
 uint64_t MMU                  = 0; // flag for generating MMU circuit
 uint64_t RAM                  = 0; // flag for generating RAM state and circuit
+uint64_t MMURAM               = 0; // flag for generating combined MMU and RAM state and circuit
 
 uint64_t heap_allowance  = 0; // additional heap memory in bytes
 uint64_t stack_allowance = 0; // additional stack memory in bytes
@@ -212,7 +214,7 @@ uint64_t bad_number = 0; // bad number counter
 uint64_t bad_exit_code  = 0; // model for this exit code
 uint64_t exit_ecall_nid = 0; // nid of exit ecall is active
 
-uint64_t vaddr_sort_nid   = 2;  // nid of virtual address sort
+uint64_t vaddr_sort_nid   = 2;  // nid of virtual or linear address sort
 uint64_t vaddr_space_size = 64; // size of virtual address space in bits
 uint64_t vaddr_mask_nid   = 27; // nid of bit mask for resetting LSBs in virtual addresses
 uint64_t vaddr_alignment  = 3;  // virtual address alignment in bits
@@ -557,7 +559,7 @@ void model_syscalls(uint64_t cursor_nid) {
 
   write_input_nid = paddr_nid + 1;
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     w = w
       // write input to memory at physical address $a1 + $a0
       + dprintf(output_fd, "%lu write %lu %lu %lu %lu ; memory[$a1 + $a0] = input\n",
@@ -603,7 +605,7 @@ void model_syscalls(uint64_t cursor_nid) {
 
   cursor_nid = cursor_nid + 2;
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     w = w
       + dprintf(output_fd, "%lu ite %lu %lu %lu %lu ; read input into memory[$a1 + $a0]\n",
           cursor_nid,                      // nid of this line
@@ -619,7 +621,7 @@ void model_syscalls(uint64_t cursor_nid) {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      // if physical address $a1 + $a0 == RAM address write input at RAM address
+      // if address $a1 + $a0 == RAM address write input at RAM address
       cursor_nid = model_RAM_access(cursor_nid, paddr_nid, RAM_address,
         input_nid, *(RAM_write_flow_nid + RAM_address));
 
@@ -1306,7 +1308,7 @@ void model_data_flow_load() {
       current_nid = current_nid + 2;
     }
 
-    if (RAM == 0) {
+    if (RAM + MMURAM == 0) {
       w = w
         // read from memory[$rs1 + imm] into $rd register
         + dprintf(output_fd, "%lu read 2 %lu %lu\n",
@@ -1320,11 +1322,11 @@ void model_data_flow_load() {
     } else {
       RAM_address = 0;
 
-      // read 0 if physical address $rs1 + imm does not match any RAM address (must not happen)
+      // read 0 if address $rs1 + imm does not match any RAM address (must not happen)
       RAM_read_flow_nid = 20;
 
       while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-        // if physical address $rs1 + imm == RAM address read RAM[$rs1 + imm] at RAM address
+        // if address $rs1 + imm == RAM address read RAM[$rs1 + imm] at RAM address
         RAM_read_flow_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
           pc_nid(memory_nid, RAM_address) + 2, RAM_read_flow_nid);
 
@@ -1418,7 +1420,7 @@ void model_data_flow_store() {
     current_nid = current_nid + 2;
   }
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     w = w
       // write $rs2 register to memory[$rs1 + imm]
       + dprintf(output_fd, "%lu write %lu %lu %lu %lu\n",
@@ -1441,8 +1443,7 @@ void model_data_flow_store() {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      // if physical address $rs1 + imm == RAM address
-      // write current value of $rs2 register at RAM address
+      // if address $rs1 + imm == RAM address write current value of $rs2 register at RAM address
       current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
         reg_nids + rs2, *(RAM_write_flow_nid + RAM_address));
 
@@ -1748,10 +1749,10 @@ uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_n
     laddr_alignment = vaddr_alignment;
 
   w = w
-    // subtract offset of segment in virtual address space
+    // subtract offset of segment in virtual or linear address space
     + dprintf(output_fd, "%lu sub %lu %lu %lu\n",
         cursor_nid + 1, // nid of this line
-        vaddr_sort_nid, // nid of virtual address sort
+        vaddr_sort_nid, // nid of virtual or linear address sort
         laddr_nid,      // nid of virtual or linear address
         offset_nid)     // nid of segment offset in virtual or linear address space
     + dprintf(output_fd, "%lu slice 6 %lu %lu %lu\n",
@@ -1800,26 +1801,33 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
     return laddr_nid;
 }
 
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address,
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t address_nid, uint64_t RAM_address,
   uint64_t RAM_word, uint64_t RAM_word_flow_nid) {
   w = w
-    // paddr == RAM address
+    // address == RAM address
     + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
         cursor_nid,                      // nid of this line
-        paddr_nid,                       // nid of paddr
-        pc_nid(memory_nid, RAM_address)) // nid of RAM address
+        address_nid,                     // nid of virtual, linear, or physical address
+        pc_nid(memory_nid, RAM_address)) // nid of virtual, linear, or physical RAM address
     // if paddr == RAM address access RAM word
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
         cursor_nid + 1,     // nid of this line
-        cursor_nid,         // paddr == RAM address
+        cursor_nid,         // address == RAM address
         RAM_word,           // nid of RAM word
         RAM_word_flow_nid); // nid of most recent access of RAM word at RAM address
 
   return cursor_nid + 1;
 }
 
+uint64_t compute_linear_address(uint64_t vaddr) {
+  if (linear_address_space)
+    return vaddr / WORDSIZE;
+  else
+    return vaddr;
+}
+
 uint64_t compute_physical_address(uint64_t vaddr) {
-  if (MMU) {
+  if (MMU + RAM + MMURAM > 0) {
     if (vaddr >= data_start)
       if (vaddr < data_start + data_size)
         // vaddr in data segment
@@ -1845,10 +1853,7 @@ uint64_t compute_physical_address(uint64_t vaddr) {
     return vaddr / WORDSIZE;
   }
 
-  if (linear_address_space)
-    return vaddr / WORDSIZE;
-  else
-    return vaddr;
+  return compute_linear_address(vaddr);
 }
 
 // -----------------------------------------------------------------
@@ -2459,6 +2464,8 @@ void modeler(uint64_t entry_pc) {
     w = w + dprintf(output_fd, "; with %s\n", MMU_option);
   if (RAM)
     w = w + dprintf(output_fd, "; with %s\n", RAM_option);
+  if (MMURAM)
+    w = w + dprintf(output_fd, "; with %s\n", MMURAM_option);
   if (check_block_access)
     w = w + dprintf(output_fd, "; with %s\n", check_block_access_option);
   w = w + dprintf(output_fd, "\n; RISC-V code obtained from %s and invoked as:", binary_name);
@@ -2475,6 +2482,25 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
     + dprintf(output_fd, "2 sort bitvec %lu ; %lu-bit machine word\n", WORDSIZEINBITS, WORDSIZEINBITS);
 
+  if (linear_address_space + MMU + RAM + MMURAM == 0)
+    w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n\n", paddr_space_size);
+  else if (linear_address_space) {
+    laddr_space_size = laddr_space_size - vaddr_alignment;
+
+    w = w + dprintf(output_fd, "\n4 sort bitvec %lu ; %lu-bit linear address\n", laddr_space_size, laddr_space_size);
+
+    vaddr_sort_nid = 4;
+
+    if (MMU + RAM + MMURAM == 0) {
+      paddr_space_size = laddr_space_size;
+
+      w = w + dprintf(output_fd, "5 sort array 4 2 ; %lu-bit physical memory\n", paddr_space_size);
+
+      paddr_sort_nid  = 4;
+      memory_sort_nid = 5;
+    }
+  }
+
   // assert: value of stack pointer is word-aligned
 
   heap_start  = get_heap_seg_start(current_context);
@@ -2482,40 +2508,33 @@ void modeler(uint64_t entry_pc) {
   stack_start = *(registers + REG_SP) - stack_allowance;
   stack_size  = VIRTUALMEMORYSIZE * GIGABYTE - stack_start;
 
-  if (linear_address_space) {
-    laddr_space_size = laddr_space_size - vaddr_alignment;
-
-    w = w + dprintf(output_fd, "\n4 sort bitvec %lu ; %lu-bit linear address\n", laddr_space_size, laddr_space_size);
-
-    vaddr_sort_nid = 4;
-  }
-
-  if (MMU) {
+  if (MMU + RAM + MMURAM > 0) {
     paddr_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
 
     w = w
       + dprintf(output_fd, "\n6 sort bitvec %lu ; %lu-bit physical address\n",
         paddr_space_size,
-        paddr_space_size)
-      + dprintf(output_fd, "7 sort array 6 2 ; %lu-bit physical memory (%luB)\n",
-        paddr_space_size,
-        data_size + heap_size + stack_size)
-      + dprintf(output_fd, "8 zero 6\n\n");
+        paddr_space_size);
 
-    paddr_sort_nid  = 6;
-    memory_sort_nid = 7;
-  } else if (linear_address_space) {
-    paddr_space_size = laddr_space_size;
+    paddr_sort_nid = 6;
 
-    w = w + dprintf(output_fd, "5 sort array 4 2 ; %lu-bit physical memory\n\n", paddr_space_size);
+    if (RAM + MMURAM == 0) {
+      w = w
+        + dprintf(output_fd, "7 sort array 6 2 ; %lu-bit physical memory (%luB)\n",
+          paddr_space_size,
+          data_size + heap_size + stack_size);
 
-    paddr_sort_nid  = 4;
-    memory_sort_nid = 5;
-  } else
-    w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n\n", paddr_space_size);
+      memory_sort_nid = 7;
+    } else
+      memory_sort_nid = 0; // unused
+
+    if (MMURAM == 0)
+      // nid used if MMU cannot match address
+      w = w + dprintf(output_fd, "8 zero 6\n");
+  }
 
   w = w
-    + dprintf(output_fd, "; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
+    + dprintf(output_fd, "\n; %luB total memory, %luB data, %luB heap (%luB,%luB), %luB stack (%luB,%luB)\n\n",
         data_size + heap_size + stack_size,
         data_size,
         heap_size,
@@ -2782,7 +2801,7 @@ void modeler(uint64_t entry_pc) {
 
   pc = data_start;
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     current_nid = pc_nid(pcs_nid, pc);
     memory_nid  = current_nid;
 
@@ -2820,7 +2839,7 @@ void modeler(uint64_t entry_pc) {
       // assert: stack segment is not empty
     }
 
-    if (RAM)
+    if (RAM + MMURAM > 0)
       current_nid = pc_nid(memory_nid, compute_physical_address(pc));
     else if (current_nid == memory_nid)
       // account for nid offset by 1 of memory-dump state
@@ -2831,12 +2850,20 @@ void modeler(uint64_t entry_pc) {
       current_nid = pc_nid(pcs_nid, pc - stack_start + heap_start + heap_size);
 
     // address in data, heap, or stack segment
-    w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX paddr, 0x%lX vaddr\n",
-      current_nid,                  // nid of this line
-      paddr_sort_nid,               // nid of physical address sort
-      compute_physical_address(pc), // physical address of current machine word
-      compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
-      pc);                          // virtual address of current machine word in hexadecimal as comment
+    if (MMURAM == 0)
+      w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX paddr, 0x%lX vaddr\n",
+        current_nid,                  // nid of this line
+        paddr_sort_nid,               // nid of physical address sort
+        compute_physical_address(pc), // physical address of current machine word
+        compute_physical_address(pc), // physical address of current machine word in hexadecimal as comment
+        pc);                          // virtual address of current machine word in hexadecimal as comment
+    else
+      w = w + dprintf(output_fd, "%lu constd %lu %lu ; 0x%lX laddr, 0x%lX vaddr\n",
+        current_nid,                // nid of this line
+        vaddr_sort_nid,             // nid of virtual or linear address sort
+        compute_linear_address(pc), // virtual or linear address of current machine word
+        compute_linear_address(pc), // virtual or linear address of current machine word in hexadecimal as comment
+        pc);                        // virtual address of current machine word in hexadecimal as comment
 
     if (is_virtual_address_mapped(get_pt(current_context), pc))
       memory_word = load_virtual_memory(get_pt(current_context), pc);
@@ -2846,7 +2873,7 @@ void modeler(uint64_t entry_pc) {
 
     if (memory_word == 0) {
       // load memory word == 0
-      if (RAM) {
+      if (RAM + MMURAM > 0) {
         // implementing memory word as state variable, after constd for paddr
         w = w
           // wasting one nid so that state variables have the same offset
@@ -2873,7 +2900,7 @@ void modeler(uint64_t entry_pc) {
       }
     } else {
       // load non-zero memory word, use sign
-      if (RAM) {
+      if (RAM + MMURAM > 0) {
         w = w
           + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
               current_nid + 1,          // nid of this line
@@ -2915,7 +2942,7 @@ void modeler(uint64_t entry_pc) {
       pc = pc + WORDSIZE;
   }
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     w = w + dprintf(output_fd, "\n; %lu-bit physical memory\n\n", paddr_space_size);
 
     memory_nid = pcs_nid * 2;
@@ -3136,7 +3163,7 @@ void modeler(uint64_t entry_pc) {
 
   current_nid = pcs_nid * 7;
 
-  if (RAM == 0) {
+  if (RAM + MMURAM == 0) {
     w = w + dprintf(output_fd, "%lu next %lu %lu %lu physical-memory\n",
       current_nid,      // nid of this line
       memory_sort_nid,  // nid of physical memory sort
@@ -3254,6 +3281,7 @@ uint64_t selfie_model() {
   stack_allowance_option      = "--stack-allowance";
   MMU_option                  = "--MMU";
   RAM_option                  = "--RAM";
+  MMURAM_option               = "--MMURAM";
 
   if (IS64BITSYSTEM == 0) {
     // assert: 32-bit system
@@ -3341,10 +3369,31 @@ uint64_t selfie_model() {
             fixed_stack_segment = 1;
 
             get_argument();
+          } else if (string_compare(peek_argument(1), MMURAM_option)) {
+            MMURAM = 1;
+
+            fixed_heap_segment  = 1;
+            fixed_stack_segment = 1;
+
+            get_argument();
           } else
             model_arguments = 1;
         } else
           model_arguments = 1;
+      }
+
+      if (MMURAM) {
+        MMU = 0;
+        RAM = 0;
+      }
+
+      if (segmentation_faults == 0) {
+        if (MMU)
+          printf("%s: warning: %s with %s\n", selfie_name, MMU_option, no_segmentation_faults_option);
+        if (RAM)
+          printf("%s: warning: %s with %s\n", selfie_name, RAM_option, no_segmentation_faults_option);
+        if (MMURAM)
+          printf("%s: warning: %s with %s\n", selfie_name, MMURAM_option, no_segmentation_faults_option);
       }
 
       if (code_size == 0) {
