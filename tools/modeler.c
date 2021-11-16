@@ -109,7 +109,8 @@ uint64_t model_virtual_address();
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid);
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid);
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address);
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address,
+  uint64_t RAM_word, uint64_t RAM_word_flow_nid);
 
 uint64_t compute_physical_address(uint64_t vaddr);
 
@@ -260,7 +261,7 @@ uint64_t lo_memory_flow_nid = 0; // nid of most recent update of lower bounds on
 uint64_t up_memory_nid      = 0; // nid of upper bounds on addresses in memory
 uint64_t up_memory_flow_nid = 0; // nid of most recent update of upper bounds on addresses in memory
 
-uint64_t* RAM_flow_nid = (uint64_t*) 0; // nids of most recent update to RAM
+uint64_t* RAM_write_flow_nid = (uint64_t*) 0; // nids of most recent writes of RAM
 
 // for checking division and remainder by zero
 // 21 is nid of 1 which is ok as divisor
@@ -604,7 +605,7 @@ void model_syscalls(uint64_t cursor_nid) {
 
   if (RAM == 0) {
     w = w
-      + dprintf(output_fd, "%lu ite %lu %lu %lu %lu ; set memory[$a1 + $a0] = input\n",
+      + dprintf(output_fd, "%lu ite %lu %lu %lu %lu ; read input into memory[$a1 + $a0]\n",
           cursor_nid,                      // nid of this line
           memory_sort_nid,                 // nid of physical memory sort
           read_ecall_active_increment_nid, // nid of read ecall is in kernel mode and not done yet and increment > 0
@@ -618,26 +619,21 @@ void model_syscalls(uint64_t cursor_nid) {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      cursor_nid = model_RAM_access(cursor_nid, paddr_nid, RAM_address);
+      // if physical address $a1 + $a0 == RAM address write input at RAM address
+      cursor_nid = model_RAM_access(cursor_nid, paddr_nid, RAM_address,
+        input_nid, *(RAM_write_flow_nid + RAM_address));
 
       w = w
-        // if physical address $a1 + $a0 == RAM address use input
-        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-            cursor_nid + 1,                // nid of this line
-            cursor_nid,                    // physical address $a1 + $a0 == RAM address
-            input_nid,                     // nid of input
-            *(RAM_flow_nid + RAM_address)) // nid of most recent update of RAM address
-
         // if this instruction is active set RAM[$a1 + $a0] = input
-        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set RAM[$a1 + $a0] = input\n",
-            cursor_nid + 2,                  // nid of this line
-            read_ecall_active_increment_nid, // read ecall is in kernel mode and not done yet and increment > 0
-            cursor_nid + 1,                  // nid of RAM[$a1 + $a0] = input
-            *(RAM_flow_nid + RAM_address));  // nid of most recent update of RAM address
+        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; read input into RAM[$a1 + $a0]\n",
+            cursor_nid + 1,                       // nid of this line
+            read_ecall_active_increment_nid,      // read ecall is in kernel mode and not done yet and increment > 0
+            cursor_nid,                           // nid of RAM[$a1 + $a0] = input
+            *(RAM_write_flow_nid + RAM_address)); // nid of most recent write at RAM address
 
-      *(RAM_flow_nid + RAM_address) = cursor_nid + 2;
+      *(RAM_write_flow_nid + RAM_address) = cursor_nid + 1;
 
-      cursor_nid  = cursor_nid + 3;
+      cursor_nid  = cursor_nid + 2;
       RAM_address = RAM_address + 1;
     }
   }
@@ -1319,25 +1315,20 @@ void model_data_flow_load() {
             paddr_nid);  // nid of physical address $rs1 + imm
 
       RAM_read_flow_nid = current_nid;
-      current_nid       = current_nid + 1;
+
+      current_nid = current_nid + 1;
     } else {
-      RAM_address       = 0;
+      RAM_address = 0;
+
+      // read 0 if physical address $rs1 + imm does not match any RAM address (must not happen)
       RAM_read_flow_nid = 20;
 
       while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-        current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address);
+        // if physical address $rs1 + imm == RAM address read RAM[$rs1 + imm] at RAM address
+        RAM_read_flow_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
+          pc_nid(memory_nid, RAM_address) + 2, RAM_read_flow_nid);
 
-        w = w
-          // if physical address $rs1 + imm == RAM address read state at RAM address
-          + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-              current_nid + 1,                     // nid of this line
-              current_nid,                         // physical address $rs1 + imm == RAM address
-              pc_nid(memory_nid, RAM_address) + 2, // nid of RAM[$rs1 + imm]
-              RAM_read_flow_nid);                  // nid of read from RAM at previous address
-
-        RAM_read_flow_nid = current_nid + 1;
-
-        current_nid = current_nid + 2;
+        current_nid = RAM_read_flow_nid + 1;
         RAM_address = RAM_address + 1;
       }
     }
@@ -1450,26 +1441,22 @@ void model_data_flow_store() {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address);
+      // if physical address $rs1 + imm == RAM address
+      // write current value of $rs2 register at RAM address
+      current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
+        reg_nids + rs2, *(RAM_write_flow_nid + RAM_address));
 
       w = w
-        // if physical address $rs1 + imm == RAM address use current value of $rs2 register
-        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
-            current_nid + 1,               // nid of this line
-            current_nid,                   // physical address $rs1 + imm == RAM address
-            reg_nids + rs2,                // nid of current value of $rs2 register
-            *(RAM_flow_nid + RAM_address)) // nid of most recent update of RAM address
-
         // if this instruction is active set RAM[$rs1 + imm] = $rs2
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu",
-            current_nid + 2,                // nid of this line
-            pc_nid(pcs_nid, pc),            // nid of pc flag of this instruction
-            current_nid + 1,                // nid of RAM[$rs1 + imm] = $rs2
-            *(RAM_flow_nid + RAM_address)); // nid of most recent update of RAM address
+            current_nid + 1,                      // nid of this line
+            pc_nid(pcs_nid, pc),                  // nid of pc flag of this instruction
+            current_nid,                          // nid of RAM[$rs1 + imm] = $rs2
+            *(RAM_write_flow_nid + RAM_address)); // nid of most recent write at RAM address
 
-      *(RAM_flow_nid + RAM_address) = current_nid + 2;
+      *(RAM_write_flow_nid + RAM_address) = current_nid + 1;
 
-      current_nid = current_nid + 3;
+      current_nid = current_nid + 2;
       RAM_address = RAM_address + 1;
 
       if (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE)
@@ -1813,15 +1800,22 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
     return laddr_nid;
 }
 
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address) {
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address,
+  uint64_t RAM_word, uint64_t RAM_word_flow_nid) {
   w = w
     // paddr == RAM address
     + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
-        cursor_nid,                       // nid of this line
-        paddr_nid,                        // nid of paddr
-        pc_nid(memory_nid, RAM_address)); // nid of RAM address
+        cursor_nid,                      // nid of this line
+        paddr_nid,                       // nid of paddr
+        pc_nid(memory_nid, RAM_address)) // nid of RAM address
+    // if paddr == RAM address access RAM word
+    + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+        cursor_nid + 1,     // nid of this line
+        cursor_nid,         // paddr == RAM address
+        RAM_word,           // nid of RAM word
+        RAM_word_flow_nid); // nid of most recent access of RAM word at RAM address
 
-  return cursor_nid;
+  return cursor_nid + 1;
 }
 
 uint64_t compute_physical_address(uint64_t vaddr) {
@@ -2803,7 +2797,7 @@ void modeler(uint64_t entry_pc) {
 
     data_flow_nid = 0;
 
-    RAM_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * SIZEOFUINT64);
+    RAM_write_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * SIZEOFUINT64);
   }
 
   w = w + dprintf(output_fd, "; data segment\n\n");
@@ -2856,7 +2850,7 @@ void modeler(uint64_t entry_pc) {
         // implementing memory word as state variable, after constd for paddr
         w = w
           // wasting one nid so that state variables have the same offset
-          + dprintf(output_fd, "%lu state 2 memory-word-%lu\n",
+          + dprintf(output_fd, "%lu state 2 RAM-word-%lu\n",
               current_nid + 2,              // nid of this line
               compute_physical_address(pc)) // physical address of current machine word
           // initialize memory word in RAM with zero
@@ -2864,7 +2858,7 @@ void modeler(uint64_t entry_pc) {
               current_nid + 3,  // nid of this line
               current_nid + 2); // nid of memory word in RAM
 
-        *(RAM_flow_nid + compute_physical_address(pc)) = current_nid + 2;
+        *(RAM_write_flow_nid + compute_physical_address(pc)) = current_nid + 2;
 
         // account for last declared and initialized memory word, see below
         data_flow_nid = current_nid + 4;
@@ -2885,7 +2879,7 @@ void modeler(uint64_t entry_pc) {
               current_nid + 1,          // nid of this line
               memory_word, memory_word) // value of memory word at current address
           // implementing memory word as state variable, after constd for paddr
-          + dprintf(output_fd, "%lu state 2 memory-word-%lu\n",
+          + dprintf(output_fd, "%lu state 2 RAM-word-%lu\n",
               current_nid + 2,              // nid of this line
               compute_physical_address(pc)) // physical address of current machine word
           // initialize memory word in RAM with non-zero value
@@ -2894,7 +2888,7 @@ void modeler(uint64_t entry_pc) {
               current_nid + 2,  // nid of memory word in RAM
               current_nid + 1); // nid of value of memory word at current address
 
-        *(RAM_flow_nid + compute_physical_address(pc)) = current_nid + 2;
+        *(RAM_write_flow_nid + compute_physical_address(pc)) = current_nid + 2;
 
         // account for last declared and initialized memory word, see below
         data_flow_nid = current_nid + 4;
@@ -3154,10 +3148,10 @@ void modeler(uint64_t entry_pc) {
     i = 0;
 
     while (i < (data_size + heap_size + stack_size) / WORDSIZE) {
-      w = w + dprintf(output_fd, "%lu next 2 %lu %lu memory-word-%lu\n",
+      w = w + dprintf(output_fd, "%lu next 2 %lu %lu RAM-word-%lu\n",
         current_nid,               // nid of this line
         pc_nid(memory_nid, i) + 2, // nid of RAM
-        *(RAM_flow_nid + i),       // nid of most recent write to RAM
+        *(RAM_write_flow_nid + i), // nid of most recent write to RAM
         i);                        // physical address of machine word
 
       current_nid = current_nid + 1;
