@@ -109,7 +109,7 @@ uint64_t model_virtual_address();
 uint64_t model_physical_address_in_segment(uint64_t cursor_nid, uint64_t laddr_nid,
   uint64_t start_nid, uint64_t end_nid, uint64_t offset_nid, uint64_t flow_nid);
 uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid);
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t activation_nid, uint64_t paddr_nid, uint64_t RAM_address);
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address);
 
 uint64_t compute_physical_address(uint64_t vaddr);
 
@@ -618,20 +618,26 @@ void model_syscalls(uint64_t cursor_nid) {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      cursor_nid = model_RAM_access(cursor_nid, read_ecall_active_increment_nid, paddr_nid, RAM_address);
+      cursor_nid = model_RAM_access(cursor_nid, paddr_nid, RAM_address);
 
       w = w
-        // if physical address $rs1 + imm == RAM address and this instruction is active set RAM[$rs1 + imm] = $rs2
+        // if physical address $a1 + $a0 == RAM address use input
+        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+            cursor_nid + 1,                // nid of this line
+            cursor_nid,                    // physical address $a1 + $a0 == RAM address
+            input_nid,                     // nid of input
+            *(RAM_flow_nid + RAM_address)) // nid of most recent update of RAM address
+
+        // if this instruction is active set RAM[$a1 + $a0] = input
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; set RAM[$a1 + $a0] = input\n",
-            cursor_nid + 1,                 // nid of this line
-            cursor_nid,                     // physical address $a1 + $a0 == RAM address and read ecall is in kernel mode and not done yet and increment > 0
-            input_nid,                      // nid of input
-            *(RAM_flow_nid + RAM_address)); // nid of most recent update of RAM address
+            cursor_nid + 2,                  // nid of this line
+            read_ecall_active_increment_nid, // read ecall is in kernel mode and not done yet and increment > 0
+            cursor_nid + 1,                  // nid of RAM[$a1 + $a0] = input
+            *(RAM_flow_nid + RAM_address));  // nid of most recent update of RAM address
 
-      *(RAM_flow_nid + RAM_address) = cursor_nid + 1;
+      *(RAM_flow_nid + RAM_address) = cursor_nid + 2;
 
-      cursor_nid = cursor_nid + 2;
-
+      cursor_nid  = cursor_nid + 3;
       RAM_address = RAM_address + 1;
     }
   }
@@ -1241,6 +1247,7 @@ void model_data_flow_load() {
   uint64_t vaddr_nid;
   uint64_t paddr_nid;
   uint64_t RAM_address;
+  uint64_t RAM_read_flow_nid;
 
   if (rd != REG_ZR) {
     current_nid = record_start_bounds(current_nid, pc_nid(pcs_nid, pc), rs1);
@@ -1309,42 +1316,41 @@ void model_data_flow_load() {
         + dprintf(output_fd, "%lu read 2 %lu %lu\n",
             current_nid, // nid of this line
             memory_nid,  // nid of physical memory
-            paddr_nid)   // nid of physical address $rs1 + imm
+            paddr_nid);  // nid of physical address $rs1 + imm
 
-        // if this instruction is active set $rd = memory[$rs1 + imm]
-        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
-            current_nid + 1,        // nid of this line
-            pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-            current_nid,            // nid of memory[$rs1 + imm]
-            *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid + 1;
+      RAM_read_flow_nid = current_nid;
+      current_nid       = current_nid + 1;
     } else {
-      RAM_address = 0;
+      RAM_address       = 0;
+      RAM_read_flow_nid = 20;
 
       while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-        current_nid = model_RAM_access(current_nid, pc_nid(pcs_nid, pc), paddr_nid, RAM_address);
+        current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address);
 
         w = w
-          // if physical address $rs1 + imm == RAM address and this instruction is active set $rd = RAM[$rs1 + imm]
-          + dprintf(output_fd, "%lu ite 2 %lu %lu %lu",
+          // if physical address $rs1 + imm == RAM address read state at RAM address
+          + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
               current_nid + 1,                     // nid of this line
-              current_nid,                         // physical address $rs1 + imm == RAM address and this instruction is active
+              current_nid,                         // physical address $rs1 + imm == RAM address
               pc_nid(memory_nid, RAM_address) + 2, // nid of RAM[$rs1 + imm]
-              *(reg_flow_nids + rd));              // nid of most recent update of $rd register
+              RAM_read_flow_nid);                  // nid of read from RAM at previous address
 
-        *(reg_flow_nids + rd) = current_nid + 1;
+        RAM_read_flow_nid = current_nid + 1;
 
         current_nid = current_nid + 2;
-
         RAM_address = RAM_address + 1;
-
-        if (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE)
-          w = w + dprintf(output_fd, "\n");
-        else
-          w = w + dprintf(output_fd, " ; ");
       }
     }
+
+    w = w
+      // if this instruction is active set $rd = memory[$rs1 + imm]
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
+          current_nid,            // nid of this line
+          pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+          RAM_read_flow_nid,      // nid of memory[$rs1 + imm]
+          *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+      *(reg_flow_nids + rd) = current_nid;
 
     w = w + print_load() + dprintf(output_fd, "\n");
   }
@@ -1444,20 +1450,26 @@ void model_data_flow_store() {
     RAM_address = 0;
 
     while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
-      current_nid = model_RAM_access(current_nid, pc_nid(pcs_nid, pc), paddr_nid, RAM_address);
+      current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address);
 
       w = w
-        // if physical address $rs1 + imm == RAM address and this instruction is active set RAM[$rs1 + imm] = $rs2
+        // if physical address $rs1 + imm == RAM address use current value of $rs2 register
+        + dprintf(output_fd, "%lu ite 2 %lu %lu %lu\n",
+            current_nid + 1,               // nid of this line
+            current_nid,                   // physical address $rs1 + imm == RAM address
+            reg_nids + rs2,                // nid of current value of $rs2 register
+            *(RAM_flow_nid + RAM_address)) // nid of most recent update of RAM address
+
+        // if this instruction is active set RAM[$rs1 + imm] = $rs2
         + dprintf(output_fd, "%lu ite 2 %lu %lu %lu",
-            current_nid + 1,                // nid of this line
-            current_nid,                    // physical address $rs1 + imm == RAM address and this instruction is active
-            reg_nids + rs2,                 // nid of current value of $rs2 register
+            current_nid + 2,                // nid of this line
+            pc_nid(pcs_nid, pc),            // nid of pc flag of this instruction
+            current_nid + 1,                // nid of RAM[$rs1 + imm] = $rs2
             *(RAM_flow_nid + RAM_address)); // nid of most recent update of RAM address
 
-      *(RAM_flow_nid + RAM_address) = current_nid + 1;
+      *(RAM_flow_nid + RAM_address) = current_nid + 2;
 
-      current_nid = current_nid + 2;
-
+      current_nid = current_nid + 3;
       RAM_address = RAM_address + 1;
 
       if (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE)
@@ -1801,20 +1813,15 @@ uint64_t model_physical_address(uint64_t cursor_nid, uint64_t vaddr_nid) {
     return laddr_nid;
 }
 
-uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t activation_nid, uint64_t paddr_nid, uint64_t RAM_address) {
+uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t paddr_nid, uint64_t RAM_address) {
   w = w
     // paddr == RAM address
     + dprintf(output_fd, "%lu eq 1 %lu %lu\n",
-        cursor_nid,                      // nid of this line
-        paddr_nid,                       // nid of paddr
-        pc_nid(memory_nid, RAM_address)) // nid of RAM address
-    // paddr == RAM address and this instruction is active
-    + dprintf(output_fd, "%lu and 1 %lu %lu\n",
-        cursor_nid + 1,  // nid of this line
-        cursor_nid,      // nid of paddr == RAM address
-        activation_nid); // nid of activation condition of current instruction
+        cursor_nid,                       // nid of this line
+        paddr_nid,                        // nid of paddr
+        pc_nid(memory_nid, RAM_address)); // nid of RAM address
 
-  return cursor_nid + 1;
+  return cursor_nid;
 }
 
 uint64_t compute_physical_address(uint64_t vaddr) {
