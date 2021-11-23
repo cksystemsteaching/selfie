@@ -1,5 +1,13 @@
+# QUBOT
 
-# Usage
+QUBOT is a bounded model checker that runs in polynomial time. It generates a Binary Quadratic Model (BQM), specifically a Quadratic Unconstrained Binary Optimization (QUBO) model, from a given BTOR2 file and a given number of timesteps $n$.
+
+QUBOs are special functions that quantum annealers can process and solve in constant time regardless of the number of variables the QUBO has, as far as the Quantum Processor Unit (QPU) has enough qubits to represent all the binary variables.
+
+The purpose of QUBOT is to build a function whose ground state (global minimum value) equals 0 for all inputs that cause any bad state of a given BTOR2 file (e.g bad memory accesses, division by 0, etc.) in $n$ or less arbitrary executed instructions.
+
+
+## Usage
 ```` Python
 from btor2bqm import BTor2BQM
 from bqm_input_checker import InputChecker # used only for debugging purposes
@@ -27,11 +35,11 @@ value at any timestep.
 Instead, `InputChecker` class loads everything from disk, the model that is saved at `./output_dir_path/`
 
 
-# Prerequisites 
+## Prerequisites 
 python >= 3.6
 
 
-# Installation
+## Installation
 Install required libraries (a virtual environment is recommended):
 
 ```bash
