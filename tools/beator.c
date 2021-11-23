@@ -9,13 +9,13 @@ in Austria. For further information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
-Modeler is a binary translator for bounded model checking that
+BEATOR is a binary translator for bounded model checking that
 implements a sound and complete translation of RISC-U code to BTOR2
-formulae. Modeler serves as research platform and facilitates teaching
+formulae. BEATOR serves as research platform and facilitates teaching
 the absolute basics of bit-precise reasoning on real code.
 
 Given a RISC-U binary (or C* source code compiled to RISC-U, including
-all of selfie and modeler itself), modeler generates a BTOR2 file that
+all of selfie and beator itself), beator generates a BTOR2 file that
 models the bit-precise behavior of the binary on a 64-bit machine with
 4GB of memory. The translation runs in time and space linear in the
 number of instructions in three iterations over all instructions for
@@ -29,14 +29,14 @@ modeled as erroneous. Division by zero as well as memory access to
 the code segment and above the 4GB memory of the machine is also
 modeled as erroneous.
 
-The optional console argument --check-block-access instructs modeler
+The optional console argument --check-block-access instructs beator
 to generate additional checks for identifying unsafe memory access
 outside of malloced memory blocks.
 
 Any remaining console arguments are uninterpreted and passed on as
 console arguments to the modeled RISC-U binary.
 
-Modeler is inspired by Professor Armin Biere from JKU Linz.
+BEATOR is inspired by Professor Armin Biere from JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -154,7 +154,7 @@ void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64
 
 uint64_t number_of_bits(uint64_t n);
 
-void modeler();
+void beator();
 
 uint64_t selfie_model();
 
@@ -2423,7 +2423,7 @@ uint64_t number_of_bits(uint64_t n) {
     return 0;
 }
 
-void modeler(uint64_t entry_pc) {
+void beator(uint64_t entry_pc) {
   uint64_t i;
 
   uint64_t memory_word;
@@ -2483,7 +2483,7 @@ void modeler(uint64_t entry_pc) {
     + dprintf(output_fd, "2 sort bitvec %lu ; %lu-bit machine word\n", WORDSIZEINBITS, WORDSIZEINBITS);
 
   if (linear_address_space + MMU + RAM + MMURAM == 0)
-    w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n\n", paddr_space_size);
+    w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n", paddr_space_size);
   else if (linear_address_space) {
     laddr_space_size = laddr_space_size - vaddr_alignment;
 
@@ -3460,7 +3460,7 @@ uint64_t selfie_model() {
 
       model = 1;
 
-      modeler(get_pc(current_context));
+      beator(get_pc(current_context));
 
       model = 0;
 
