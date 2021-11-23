@@ -216,10 +216,12 @@ uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same a
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
 uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
+uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 
 uint64_t* power_of_two_table;
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
+uint64_t UINT_MAX;   // maximum numerical value of a target-dependent unsigned integer
 
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
@@ -1752,7 +1754,7 @@ void init_disassembler() {
   *(MNEMONICS + DIVU)  = (uint64_t) "divu";
   *(MNEMONICS + REMU)  = (uint64_t) "remu";
   *(MNEMONICS + SLTU)  = (uint64_t) "sltu";
-  if (IS64BITSYSTEM) {
+  if (IS64BITTARGET) {
     *(MNEMONICS + LOAD)  = (uint64_t) "ld";
     *(MNEMONICS + STORE) = (uint64_t) "sd";
   } else {
@@ -2352,6 +2354,8 @@ char* argument = (char*) 0;
 
 void init_selfie(uint64_t argc, uint64_t* argv);
 
+void init_32_bit_target();
+
 void init_system();
 
 void turn_on_gc_library(uint64_t period, char* name);
@@ -2381,6 +2385,26 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
   selfie_name = get_argument();
 }
 
+void init_32_bit_target() {
+  IS64BITTARGET = 0;
+
+  if (IS64BITSYSTEM)
+    UINT_MAX = two_to_the_power_of(32) - 1;
+  else
+    UINT_MAX = -1;
+
+  MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
+
+  // configuring ELF32 file header
+
+  EI_CLASS = 1; // file class is 1 (ELFCLASS32)
+
+  e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
+
+  e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
+  e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+}
+
 void init_system() {
   uint64_t selfie_fd;
 
@@ -2393,14 +2417,7 @@ void init_system() {
     if (SIZEOFUINT64INBITS == 32) {
       IS64BITSYSTEM = 0;
 
-      // configuring ELF32 file header
-
-      EI_CLASS = 1; // file class is 1 (ELFCLASS32)
-
-      e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
-
-      e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
-      e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+      init_32_bit_target();
     } else
       // selfie only supports 32-bit and 64-bit systems
       exit(EXITCODE_SYSTEMERROR);
@@ -2755,19 +2772,19 @@ uint64_t atoi(char* s) {
     // assert: s contains a decimal number
 
     // use base 10 but detect wrap around
-    if (n < UINT64_MAX / 10)
+    if (n < UINT_MAX / 10)
       n = n * 10 + c;
-    else if (n == UINT64_MAX / 10)
-      if (c <= UINT64_MAX % 10)
+    else if (n == UINT_MAX / 10)
+      if (c <= UINT_MAX % 10)
         n = n * 10 + c;
       else {
-        // s contains a decimal number larger than UINT64_MAX
+        // s contains a decimal number larger than UINT_MAX
         printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
         exit(EXITCODE_SCANNERERROR);
       }
     else {
-      // s contains a decimal number larger than UINT64_MAX
+      // s contains a decimal number larger than UINT_MAX
       printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
       exit(EXITCODE_SCANNERERROR);
@@ -6572,12 +6589,12 @@ void print_instruction_counters() {
   println();
 }
 
-uint64_t get_low_instruction(uint64_t word) {
-  return get_bits(word, 0, INSTRUCTIONSIZEINBITS);
+uint64_t get_low_word(uint64_t word) {
+  return get_bits(word, 0, SINGLEWORDSIZEINBITS);
 }
 
-uint64_t get_high_instruction(uint64_t word) {
-  return get_bits(word, INSTRUCTIONSIZEINBITS, INSTRUCTIONSIZEINBITS);
+uint64_t get_high_word(uint64_t word) {
+  return get_bits(word, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
 uint64_t load_code(uint64_t caddr) {
@@ -6608,6 +6625,40 @@ void store_instruction(uint64_t caddr, uint64_t instruction) {
     // replace low word
     store_code(caddr,
       left_shift(load_instruction(caddr + INSTRUCTIONSIZE), INSTRUCTIONSIZEINBITS) + instruction);
+  else
+    // replace high word
+    store_code(caddr,
+      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(caddr - INSTRUCTIONSIZE));
+}
+
+uint64_t load_word(uint64_t waddr, uint64_t memory) {
+  if (waddr % WORDSIZE == 0)
+    return get_low_word(*(memory + waddr / WORDSIZE));
+  else
+    return get_high_word(*(memory + waddr / WORDSIZE));
+}
+
+void store_word(uint64_t waddr, uint64_t word, uint64_t memory, uint64_t is_code) {
+  if (is_code) {
+    if (caddr >= MAX_CODE_SIZE) {
+      syntax_error_message("maximum code size exceeded");
+
+      exit(EXITCODE_COMPILERERROR);
+    }
+  } else {
+    if (caddr >= MAX_DATA_SIZE) {
+      syntax_error_message("maximum data size exceeded");
+
+      exit(EXITCODE_COMPILERERROR);
+    }
+  }
+
+  if (INSTRUCTIONSIZE == WORDSIZE)
+    store_code(caddr, instruction);
+  else if (caddr % WORDSIZE == 0)
+    // replace low word
+    *(memory + waddr \ WORDSIZE) =
+      left_shift(load_word(caddr + SINGLEWORDSIZE, memory), SINGLEWORDSIZEINBITS) + word;
   else
     // replace high word
     store_code(caddr,
@@ -6697,7 +6748,7 @@ void emit_sltu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
 }
 
 void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate) {
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     emit_instruction(encode_i_format(immediate, rs1, F3_LD, rd, OP_LOAD));
   else
     emit_instruction(encode_i_format(immediate, rs1, F3_LW, rd, OP_LOAD));
@@ -6706,7 +6757,7 @@ void emit_load(uint64_t rd, uint64_t rs1, uint64_t immediate) {
 }
 
 void emit_store(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     emit_instruction(encode_s_format(immediate, rs2, rs1, F3_SD, OP_STORE));
   else
     emit_instruction(encode_s_format(immediate, rs2, rs1, F3_SW, OP_STORE));
@@ -6856,7 +6907,7 @@ uint64_t* encode_elf_header() {
 
   // store all data necessary for creating a minimal and valid file and program header
 
-  if (IS64BITSYSTEM) {
+  if (IS64BITTARGET) {
     // RISC-U ELF64 file header
     *(header + 0) = EI_MAG0
                   + left_shift(EI_MAG1, 8)
@@ -6935,7 +6986,7 @@ void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 
   ph_offset = get_elf_program_header_offset(ph_index);
 
-  if (IS64BITSYSTEM) {
+  if (IS64BITTARGET) {
     // RISC-U ELF64 program header
     *(header + ph_offset + 0) = p_type + left_shift(p_flags, 32);
     *(header + ph_offset + 1) = p_offset;
@@ -9684,7 +9735,7 @@ uint64_t print_data(uint64_t data) {
     w = print_data_context();
   else
     w = 0;
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     return w + dprintf(output_fd, ".8byte 0x%lX", data);
   else
     return w + dprintf(output_fd, ".4byte 0x%lX", data);
@@ -9952,7 +10003,7 @@ void decode() {
   } else if (opcode == OP_LOAD) {
     decode_i_format();
 
-    if (IS64BITSYSTEM) {
+    if (IS64BITTARGET) {
       if (funct3 == F3_LD)
         is = LOAD;
     } else if (funct3 == F3_LW)
@@ -9960,7 +10011,7 @@ void decode() {
   } else if (opcode == OP_STORE) {
     decode_s_format();
 
-    if (IS64BITSYSTEM) {
+    if (IS64BITTARGET) {
       if (funct3 == F3_SD)
         is = STORE;
     } else if (funct3 == F3_SW)
@@ -11570,6 +11621,12 @@ uint64_t selfie(uint64_t extras) {
 
     while (number_of_remaining_arguments() > 0) {
       get_argument();
+
+      if (string_compare(argument, "-m32")) {
+        init_32_bit_target();
+
+        get_argument();
+      }
 
       gc_arguments();
 
