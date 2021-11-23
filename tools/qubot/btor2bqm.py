@@ -110,8 +110,8 @@ class BTor2BQM:
             return None
         qubits: Dict[str, int] = result[0]
 
-        if line_number in State.created_states_ids.keys():
-            variable_names = State.created_states_ids[line_number][timestep]
+        if line_number in Instruction.created_states_ids.keys():
+            variable_names = Instruction.created_states_ids[line_number][timestep]
             binary_representation = []
             for name in variable_names:
                 if name in Instruction.qubits_to_fix.keys():
@@ -162,7 +162,7 @@ class BTor2BQM:
         return result
 
     def run_quantum_solver(self, filename: str, output_path, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, qubit_growth_file=None, _num_reads=100, chain_strength_=1):
+                   input_nid=81, qubit_growth_file=None, _num_reads=1000, chain_strength_=1):
         print("parsing file")
         bqm = self.parse_file(filename, output_path, with_init=with_init, initialize_states=initialize_states, 
                               modify_memory_sort=modify_memory_sort, input_nid=input_nid, qubit_growth_file=qubit_growth_file)
