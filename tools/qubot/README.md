@@ -29,7 +29,7 @@ value at any timestep.
 python >= 3.6
 
 
-# Instalation
+# Installation
 Install required libraries (a virtual environment is recommended):
 
 ```bash
