@@ -631,7 +631,7 @@ void model_syscalls(uint64_t cursor_nid) {
             cursor_nid + 1,                       // nid of this line
             read_ecall_active_increment_nid,      // read ecall is in kernel mode and not done yet and increment > 0
             cursor_nid,                           // nid of RAM[$a1 + $a0] = input
-            *(RAM_write_flow_nid + RAM_address)); // nid of most recent write to RAM address
+            *(RAM_write_flow_nid + RAM_address)); // nid of most recent write at RAM address
 
       *(RAM_write_flow_nid + RAM_address) = cursor_nid + 1;
 
