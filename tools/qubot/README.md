@@ -24,6 +24,8 @@ If the model is still in memory built by calling one of the three methods of `pa
 you can use the method `BTor2BQM.get_variable_value(some_nid, timestep_t, result_sampleset)` to get any **nid** 
 value at any timestep.
 
+`InputChecker` class loads everything from disk, the model that is saved at `./output_dir_path/`
+
 
 # Prerequisites 
 python >= 3.6
