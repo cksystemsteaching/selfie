@@ -1,0 +1,51 @@
+# this file declares constant values
+
+import dimod
+
+BQM_TYPE = dimod.BINARY
+
+CONSTD = "constd"
+SORT = "sort"
+STATE = "state"
+INPUT = "input"
+NEXT = "next"
+ADD = "add"
+SUB = "sub"
+ITE = "ite"
+MUL = "mul"
+UEXT = "uext"
+ZERO = "zero"
+ONE = "one"
+DEC = "dec"
+INC = "inc"
+AND = "and"
+NOT = "not"
+EQ = "eq"
+ULT = "ult"
+ULTE = "ulte"
+UGT = "ugt"
+UGTE = "ugte"
+UDIV = "udiv"
+UREM = "urem"
+WRITE = "write"
+READ = "read"
+BAD = "bad"
+NEQ = "neq"
+INIT = "init"
+SLICE = "slice"
+
+# rules
+NAND = "NAND"
+R_AND = "AND"
+OR = "OR"
+XNOR = "XNOR"
+AUX_HALF_ADDER = "AUX_HALF_ADDER"
+AUX_FULL_ADDER = "AUX_FULL_ADDER"
+R_NOT = "NOT"
+CARRY_HALF_ADDER = "CARRY_HALF_ADDER"
+CARRY_FULL_ADDER = "CARRY_FULL_ADDER"
+RESULT_HALF_ADDER = "RESULT_HALF_ADDER"
+RESULT_FULL_ADDER = "RESULT_FULL_ADDER"
+MATRIARCH1 = "MATRIARCH1"
+XOR = "XOR"
+
