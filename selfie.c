@@ -215,6 +215,9 @@ uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same as SIZEOFUINT64
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
+uint64_t SINGLEWORDSIZE       = 4;  // single word size in bytes
+uint64_t SINGLEWORDSIZEINBITS = 32; // single word size in bits
+
 uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
 uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 
@@ -340,6 +343,7 @@ void init_library() {
 
   // compute 64-bit unsigned integer range using signed integer arithmetic
   UINT64_MAX = -1;
+  UINT_MAX   = UINT64_MAX;
 
   // compute 64-bit signed integer range using unsigned integer arithmetic
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
@@ -992,14 +996,16 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
 
 void print_instruction_counters();
 
-uint64_t get_low_instruction(uint64_t word);
-uint64_t get_high_instruction(uint64_t word);
+uint64_t get_low_word(uint64_t word);
+uint64_t get_high_word(uint64_t word);
 
-uint64_t load_code(uint64_t caddr);
-void     store_code(uint64_t caddr, uint64_t code);
+uint64_t load_word(uint64_t waddr, uint64_t* memory, uint64_t is_data);
+void     store_word(uint64_t waddr, uint64_t word, uint64_t* memory, uint64_t is_data);
 
 uint64_t load_instruction(uint64_t caddr);
 void     store_instruction(uint64_t caddr, uint64_t instruction);
+
+uint64_t load_code(uint64_t caddr);
 
 uint64_t load_data(uint64_t daddr);
 void     store_data(uint64_t daddr, uint64_t data);
@@ -2390,8 +2396,6 @@ void init_32_bit_target() {
 
   if (IS64BITSYSTEM)
     UINT_MAX = two_to_the_power_of(32) - 1;
-  else
-    UINT_MAX = -1;
 
   MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
 
@@ -6597,86 +6601,75 @@ uint64_t get_high_word(uint64_t word) {
   return get_bits(word, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
-uint64_t load_code(uint64_t caddr) {
-  return *(code_binary + caddr / WORDSIZE);
+uint64_t load_word(uint64_t waddr, uint64_t* memory, uint64_t is_data) {
+  if (IS64BITSYSTEM) {
+    if (IS64BITTARGET)
+      if (is_data)
+        // data is double words
+        return *(memory + waddr / WORDSIZE);
+
+    if (waddr % WORDSIZE == 0)
+      return get_low_word(*(memory + waddr / WORDSIZE));
+    else
+      return get_high_word(*(memory + waddr / WORDSIZE));
+  } else
+    return *(memory + waddr / WORDSIZE);
 }
 
-void store_code(uint64_t caddr, uint64_t code) {
-  if (caddr >= MAX_CODE_SIZE) {
-    syntax_error_message("maximum code size exceeded");
-
-    exit(EXITCODE_COMPILERERROR);
-  }
-
-  *(code_binary + caddr / WORDSIZE) = code;
-}
-
-uint64_t load_instruction(uint64_t caddr) {
-  if (caddr % WORDSIZE == 0)
-    return get_low_instruction(load_code(caddr));
-  else
-    return get_high_instruction(load_code(caddr));
-}
-
-void store_instruction(uint64_t caddr, uint64_t instruction) {
-  if (INSTRUCTIONSIZE == WORDSIZE)
-    store_code(caddr, instruction);
-  else if (caddr % WORDSIZE == 0)
-    // replace low word
-    store_code(caddr,
-      left_shift(load_instruction(caddr + INSTRUCTIONSIZE), INSTRUCTIONSIZEINBITS) + instruction);
-  else
-    // replace high word
-    store_code(caddr,
-      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(caddr - INSTRUCTIONSIZE));
-}
-
-uint64_t load_word(uint64_t waddr, uint64_t memory) {
-  if (waddr % WORDSIZE == 0)
-    return get_low_word(*(memory + waddr / WORDSIZE));
-  else
-    return get_high_word(*(memory + waddr / WORDSIZE));
-}
-
-void store_word(uint64_t waddr, uint64_t word, uint64_t memory, uint64_t is_code) {
-  if (is_code) {
-    if (caddr >= MAX_CODE_SIZE) {
-      syntax_error_message("maximum code size exceeded");
-
-      exit(EXITCODE_COMPILERERROR);
-    }
-  } else {
-    if (caddr >= MAX_DATA_SIZE) {
+void store_word(uint64_t waddr, uint64_t word, uint64_t* memory, uint64_t is_data) {
+  if (is_data) {
+    if (waddr >= MAX_DATA_SIZE) {
       syntax_error_message("maximum data size exceeded");
 
       exit(EXITCODE_COMPILERERROR);
     }
+  } else {
+    if (waddr >= MAX_CODE_SIZE) {
+      syntax_error_message("maximum code size exceeded");
+
+      exit(EXITCODE_COMPILERERROR);
+    }
   }
 
-  if (INSTRUCTIONSIZE == WORDSIZE)
-    store_code(caddr, instruction);
-  else if (caddr % WORDSIZE == 0)
-    // replace low word
-    *(memory + waddr \ WORDSIZE) =
-      left_shift(load_word(caddr + SINGLEWORDSIZE, memory), SINGLEWORDSIZEINBITS) + word;
-  else
-    // replace high word
-    store_code(caddr,
-      left_shift(instruction, INSTRUCTIONSIZEINBITS) + load_instruction(caddr - INSTRUCTIONSIZE));
+  if (IS64BITSYSTEM) {
+    if (IS64BITTARGET)
+      if (is_data) {
+        // data is double words
+        *(memory + waddr / WORDSIZE) = word;
+
+        return;
+      }
+
+    if (waddr % WORDSIZE == 0)
+      // replace low word
+      *(memory + waddr / WORDSIZE) =
+        left_shift(load_word(waddr + SINGLEWORDSIZE, memory, is_data), SINGLEWORDSIZEINBITS) + word;
+    else
+      // replace high word
+      *(memory + waddr / WORDSIZE) =
+        left_shift(word, SINGLEWORDSIZEINBITS) + load_word(waddr - SINGLEWORDSIZE, memory, is_data);
+  } else
+    *(memory + waddr / WORDSIZE) = word;
+}
+
+uint64_t load_instruction(uint64_t caddr) {
+  return load_word(caddr, code_binary, 0);
+}
+
+void store_instruction(uint64_t caddr, uint64_t instruction) {
+  store_word(caddr, instruction, code_binary, 0);
+}
+
+uint64_t load_code(uint64_t caddr) {
+  return load_word(caddr, code_binary, 1);
 }
 
 uint64_t load_data(uint64_t daddr) {
-  return *(data_binary + daddr / WORDSIZE);
+  return load_word(daddr, data_binary, 1);
 }
 
 void store_data(uint64_t daddr, uint64_t data) {
-  if (daddr >= MAX_DATA_SIZE) {
-    syntax_error_message("maximum data size exceeded");
-
-    exit(EXITCODE_COMPILERERROR);
-  }
-
-  *(data_binary + daddr / WORDSIZE) = data;
+  store_word(daddr, data, data_binary, 1);
 }
 
 void emit_instruction(uint64_t instruction) {
@@ -9976,9 +9969,9 @@ void fetch() {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
       if (pc % WORDSIZE == 0)
-        ir = get_low_instruction(load_cached_instruction_word(pt, pc));
+        ir = get_low_word(load_cached_instruction_word(pt, pc));
       else
-        ir = get_high_instruction(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
+        ir = get_high_word(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
 
       return;
     } else
@@ -11612,6 +11605,12 @@ uint64_t selfie(uint64_t extras) {
     print_host_os();
     println();
 
+    if (string_compare(peek_argument(0), "-m32")) {
+      init_32_bit_target();
+
+      get_argument();
+    }
+
     init_scanner();
     init_bootstrapping();
 
@@ -11621,12 +11620,6 @@ uint64_t selfie(uint64_t extras) {
 
     while (number_of_remaining_arguments() > 0) {
       get_argument();
-
-      if (string_compare(argument, "-m32")) {
-        init_32_bit_target();
-
-        get_argument();
-      }
 
       gc_arguments();
 
