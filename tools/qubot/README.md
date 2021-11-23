@@ -7,7 +7,7 @@ from bqm_input_checker import InputChecker
 parser = BTor2BQM(21) # creates a btor2 file parser of 21 timesteps
 parser.parse_file(f"./btor2files/a_btor2_file.btor2",f"./output_dir_path/")
 
-for i in range(0, 256):
+for i in range(0, 256): # test ascii decimal values that fit in 1 byte
     energy, error_states = InputChecker.run_checker(f"./output_dir_path/", i)
     print(f"{i}: ",energy, error_states)
 
