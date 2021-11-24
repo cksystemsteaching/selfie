@@ -228,7 +228,7 @@ uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same as SIZEOFUINT64
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
-uint64_t TARGETWORDSIZE = 8; // target-dependent word size
+uint64_t MEMORYWORDSIZE = 8; // target-dependent memory word size
 
 uint64_t SINGLEWORDSIZE       = 4;  // single word size in bytes
 uint64_t SINGLEWORDSIZEINBITS = 32; // single word size in bits
@@ -356,7 +356,7 @@ void init_library() {
   WORDSIZE       = SIZEOFUINT64;
   WORDSIZEINBITS = WORDSIZE * 8;
 
-  TARGETWORDSIZE = WORDSIZE;
+  MEMORYWORDSIZE = WORDSIZE;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
@@ -2407,7 +2407,7 @@ void init_32_bit_target() {
     SIZEOFUINT = 4;
     UINT_MAX   = two_to_the_power_of(32) - 1;
 
-    TARGETWORDSIZE = 4;
+    MEMORYWORDSIZE = 4;
   }
 
   MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
@@ -4233,7 +4233,7 @@ void tfree(uint64_t number_of_temporaries) {
 void save_temporaries() {
   while (allocated_temporaries > 0) {
     // push temporary onto stack
-    emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
+    emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
     emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
@@ -4246,7 +4246,7 @@ void restore_temporaries(uint64_t number_of_temporaries) {
 
     // restore temporary from stack
     emit_load(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+    emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
   }
 }
 
@@ -4410,7 +4410,7 @@ void load_integer(uint64_t value) {
 
     if (entry == (uint64_t*) 0) {
       // allocate memory for big integer in data segment
-      data_size = data_size + TARGETWORDSIZE;
+      data_size = data_size + MEMORYWORDSIZE;
 
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
@@ -4429,7 +4429,7 @@ void load_string(char* string) {
   length = string_length(string) + 1;
 
   // allocate memory for string in data segment
-  data_size = data_size + round_up(length, TARGETWORDSIZE);
+  data_size = data_size + round_up(length, MEMORYWORDSIZE);
 
   create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
 
@@ -4478,13 +4478,13 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_par
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   // allocate memory for return address
-  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
 
   // save return address
   emit_store(REG_SP, 0, REG_RA);
 
   // allocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
 
   // save caller's frame pointer
   emit_store(REG_SP, 0, REG_S0);
@@ -4514,13 +4514,13 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_load(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   // restore return address
   emit_load(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and (non-variadic) actual parameters
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE + number_of_parameter_bytes);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE + number_of_parameter_bytes);
 
   // return
   emit_jalr(REG_ZR, REG_RA, 0);
@@ -4578,7 +4578,7 @@ uint64_t compile_call(char* procedure) {
     emit_addi(REG_SP, REG_SP, 0);
 
     // push first parameter onto stack
-    emit_store(REG_SP, number_of_parameters * TARGETWORDSIZE, current_temporary());
+    emit_store(REG_SP, number_of_parameters * MEMORYWORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -4590,7 +4590,7 @@ uint64_t compile_call(char* procedure) {
       compile_expression();
 
       // push next parameter onto stack
-      emit_store(REG_SP, number_of_parameters * TARGETWORDSIZE, current_temporary());
+      emit_store(REG_SP, number_of_parameters * MEMORYWORDSIZE, current_temporary());
 
       tfree(1);
 
@@ -4598,7 +4598,7 @@ uint64_t compile_call(char* procedure) {
     }
 
     // now we know the number of actual parameters
-    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * TARGETWORDSIZE));
+    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * MEMORYWORDSIZE));
 
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
@@ -4622,7 +4622,7 @@ uint64_t compile_call(char* procedure) {
   if (entry != (uint64_t*) 0)
     if (signed_less_than(get_value(entry), 0))
       // deallocate variadic parameters
-      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * TARGETWORDSIZE);
+      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * MEMORYWORDSIZE);
 
   // assert: allocated_temporaries == 0
 
@@ -5481,10 +5481,10 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       number_of_parameters = 1;
 
-      // 2 * TARGETWORDSIZE offset to skip frame pointer and link
-      // additional offset (number_of_parameters - 1) * TARGETWORDSIZE
+      // 2 * MEMORYWORDSIZE offset to skip frame pointer and link
+      // additional offset (number_of_parameters - 1) * MEMORYWORDSIZE
       // since actual parameters are pushed onto stack in reverse
-      set_address(entry, 2 * TARGETWORDSIZE + (number_of_parameters - 1) * TARGETWORDSIZE);
+      set_address(entry, 2 * MEMORYWORDSIZE + (number_of_parameters - 1) * MEMORYWORDSIZE);
 
       while (is_possibly_parameter(is_variadic)) {
         get_symbol();
@@ -5498,7 +5498,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
           number_of_parameters = number_of_parameters + 1;
 
-          set_address(entry, 2 * TARGETWORDSIZE + (number_of_parameters - 1) * TARGETWORDSIZE);
+          set_address(entry, 2 * MEMORYWORDSIZE + (number_of_parameters - 1) * MEMORYWORDSIZE);
         }
       }
 
@@ -5580,7 +5580,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     number_of_local_variable_bytes = 0;
 
     while (symbol == SYM_UINT64) {
-      number_of_local_variable_bytes = number_of_local_variable_bytes + TARGETWORDSIZE;
+      number_of_local_variable_bytes = number_of_local_variable_bytes + MEMORYWORDSIZE;
 
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
@@ -5613,9 +5613,9 @@ void compile_procedure(char* procedure, uint64_t type) {
       return_branches = 0;
 
       if (is_variadic)
-        procedure_epilogue(-number_of_parameters * TARGETWORDSIZE);
+        procedure_epilogue(-number_of_parameters * MEMORYWORDSIZE);
       else
-        procedure_epilogue(number_of_parameters * TARGETWORDSIZE);
+        procedure_epilogue(number_of_parameters * MEMORYWORDSIZE);
 
       get_symbol();
     } else {
@@ -5702,7 +5702,7 @@ void compile_cstar() {
 
           if (entry == (uint64_t*) 0) {
             // allocate memory for global variable in data segment
-            data_size = data_size + TARGETWORDSIZE;
+            data_size = data_size + MEMORYWORDSIZE;
 
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
           } else {
@@ -5741,12 +5741,12 @@ void macro_var_start() {
         get_symbol();
 
         // skip the return address, frame pointer and non-variadic parameters
-        s0_offset = 2 * TARGETWORDSIZE - get_value(current_procedure) * TARGETWORDSIZE;
+        s0_offset = 2 * MEMORYWORDSIZE - get_value(current_procedure) * MEMORYWORDSIZE;
 
         load_integer(s0_offset);
 
         // address of first variadic parameter is:
-        // S0 + 2 * TARGETWORDSIZE + #non-variadic parameters * TARGETWORDSIZE
+        // S0 + 2 * MEMORYWORDSIZE + #non-variadic parameters * MEMORYWORDSIZE
         emit_add(current_temporary(), current_temporary(), REG_S0);
 
         // store address in variable passed as macro argument
@@ -5790,8 +5790,8 @@ void macro_var_arg() {
         // store variadic parameter as return value of macro
         emit_load(REG_A0, current_temporary(), 0);
 
-        // increment var_list_variable pointer by one parameter size (TARGETWORDSIZE)
-        emit_addi(current_temporary(), current_temporary(), TARGETWORDSIZE);
+        // increment var_list_variable pointer by one parameter size (MEMORYWORDSIZE)
+        emit_addi(current_temporary(), current_temporary(), MEMORYWORDSIZE);
 
         // store incremented address in variable passed as macro argument
         emit_store(REG_S0, var_list_address, current_temporary());
@@ -5879,8 +5879,8 @@ void emit_bootstrapping() {
   // code segment starts at PK_CODE_START
   code_start = PK_CODE_START;
 
-  // code size must be word-aligned
-  if (code_size % TARGETWORDSIZE != 0)
+  // code size must be memory-word-aligned
+  if (code_size % MEMORYWORDSIZE != 0)
     emit_nop();
 
   // start of data segment must be page-aligned for ELF program header
@@ -5924,8 +5924,8 @@ void emit_bootstrapping() {
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
     emit_ecall();
 
-    // word-align current program break
-    emit_round_up(REG_A0, TARGETWORDSIZE);
+    // memory-word-align current program break
+    emit_round_up(REG_A0, MEMORYWORDSIZE);
 
     // set program break to word-aligned program break
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
@@ -5953,18 +5953,18 @@ void emit_bootstrapping() {
     talloc();
 
     emit_load(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
+    emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
     emit_store(REG_SP, 0, current_temporary());
 
-    //   sp  sp+TRGTWRDSZ sp+2*TARGETWORDSIZE
+    //   sp  sp+MEMWRDSZ sp+2*MEMORYWORDSIZE
     //    |      |        |
     //    V      V        V
     // | argc | argc | argv[0] | argv[1] | ... | argv[n]
 
     // then overwrite below-top argc with &argv
 
-    emit_addi(current_temporary(), REG_SP, 2 * TARGETWORDSIZE);
-    emit_store(REG_SP, TARGETWORDSIZE, current_temporary());
+    emit_addi(current_temporary(), REG_SP, 2 * MEMORYWORDSIZE);
+    emit_store(REG_SP, MEMORYWORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -5983,7 +5983,7 @@ void emit_bootstrapping() {
   }
 
   // we exit with exit code in return register pushed onto the stack
-  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
   emit_store(REG_SP, 0, REG_A0);
 
   // discount NOPs in profile that were generated for program entry
@@ -6029,7 +6029,7 @@ void selfie_compile() {
 
   // allocate zeroed memory for storing source code line numbers
   code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zmalloc(MAX_DATA_SIZE / TARGETWORDSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_SIZE / MEMORYWORDSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -6851,7 +6851,7 @@ void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number)
   store_data(data_size + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (data_size + offset) / TARGETWORDSIZE) = source_line_number;
+    *(data_line_number + (data_size + offset) / MEMORYWORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -6863,14 +6863,12 @@ void emit_string_data(uint64_t* entry) {
 
   i = 0;
 
-  l = round_up(string_length(s) + 1, TARGETWORDSIZE);
+  l = round_up(string_length(s) + 1, MEMORYWORDSIZE);
 
   while (i < l) {
-    // CAUTION: at boot levels higher than 0, s is only accessible
-    // in C* at word granularity, not individual characters
     emit_data_word(load_word(i, (uint64_t*) s, 1), get_address(entry) + i, get_line_number(entry));
 
-    i = i + TARGETWORDSIZE;
+    i = i + MEMORYWORDSIZE;
   }
 }
 
@@ -7227,7 +7225,7 @@ void emit_exit() {
   emit_load(REG_A0, REG_SP, 0);
 
   // remove the exit code from the stack
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   // load the correct syscall number and invoke syscall
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
@@ -7261,13 +7259,13 @@ void emit_read() {
   create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
 
@@ -7313,7 +7311,7 @@ void implement_read(uint64_t* context) {
 
   read_total = 0;
 
-  bytes_to_read = TARGETWORDSIZE;
+  bytes_to_read = MEMORYWORDSIZE;
 
   failed = 0;
 
@@ -7321,7 +7319,7 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_virtual_address_valid(vbuffer, TARGETWORDSIZE))
+    if (is_virtual_address_valid(vbuffer, MEMORYWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7334,7 +7332,7 @@ void implement_read(uint64_t* context) {
             size = size - actually_read;
 
             if (size > 0)
-              vbuffer = vbuffer + TARGETWORDSIZE;
+              vbuffer = vbuffer + MEMORYWORDSIZE;
           } else {
             if (signed_less_than(0, actually_read))
               read_total = read_total + actually_read;
@@ -7385,13 +7383,13 @@ void emit_write() {
   create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
 
@@ -7508,13 +7506,13 @@ void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // flags
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A3, REG_SP, 0); // mode
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
   emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD);
@@ -7645,7 +7643,7 @@ void emit_malloc() {
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
-  data_size = data_size + TARGETWORDSIZE;
+  data_size = data_size + MEMORYWORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
   // use bump_name string to obtain unique hash
@@ -7658,10 +7656,10 @@ void emit_malloc() {
   talloc();
 
   emit_load(current_temporary(), REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
-  // round up to target-dependent word size
-  emit_round_up(current_temporary(), TARGETWORDSIZE);
+  // round up to target-dependent memory word size
+  emit_round_up(current_temporary(), MEMORYWORDSIZE);
 
   // allocate register to compute new bump pointer
   talloc();
@@ -7705,7 +7703,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
   current_program_break = get_program_break(context);
 
-  if (is_virtual_address_valid(new_program_break, TARGETWORDSIZE))
+  if (is_virtual_address_valid(new_program_break, MEMORYWORDSIZE))
     if (is_address_between_stack_and_heap(context, new_program_break)) {
       if (debug_brk)
         printf("%s: setting program break to 0x%08lX\n", selfie_name, (uint64_t) new_program_break);
@@ -7794,10 +7792,10 @@ void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 2, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // number of instructions to execute
-  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
+  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
 
@@ -9722,7 +9720,7 @@ void undo_ecall() {
 
 uint64_t print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    return dprintf(output_fd, "(~%lu)", *(data_line_number + (pc - code_size) / TARGETWORDSIZE));
+    return dprintf(output_fd, "(~%lu)", *(data_line_number + (pc - code_size) / MEMORYWORDSIZE));
   else
     return 0;
 }
@@ -9840,7 +9838,7 @@ void selfie_disassemble(uint64_t verbose) {
       + print_data()
       + dprintf(output_fd, "\n");
 
-    pc = pc + TARGETWORDSIZE;
+    pc = pc + MEMORYWORDSIZE;
   }
 
   disassemble_verbose = 0;
