@@ -18,6 +18,31 @@ def get_qubit_value(qubit_name: int, qubits_to_fix: Dict[int, int]) -> Optional[
         return qubits_to_fix[qubit_name]
     return None
 
+def separate_constants(qubit_names: List[int], qubits_to_fix: Dict[int, int]) -> (List[int], List[int]):
+    constant_names = []
+    non_constant_names = []
+
+    for name in qubit_names:
+        if name in qubits_to_fix.keys():
+            constant_names.append(name)
+        else:
+            non_constant_names.append(name)
+
+    return constant_names, non_constant_names
+
+def get_constant_bits_value(constant_names: List[int], qubits_to_fix: Dict[int, int], gate_name: str) -> Optional[int]:
+
+    for name in constant_names:
+        value = qubits_to_fix[name]
+        if gate_name == AND:
+            if value == 0:
+                return 0
+        elif gate_name == OR:
+            if value == 1:
+                return 1
+        else:
+            raise Exception("not excepted gate called at tools.get_constant_bits_value:", gate_name)
+    return None
 
 class InputPropagationFile:
     file = None
@@ -45,6 +70,9 @@ class InputPropagationFile:
 
 def optimized_bits_nand(bits: List[int], bqm: dimod.BinaryQuadraticModel, current_n: int,
                         qubits_to_fix: Dict[int, int]) -> QWord:
+
+    raise Exception("this function is not optimized, and I was not expecting to call it.")
+
     #assert len(_bits) >= 2
 
     #bits = _bits#[::-1]  # get_more_constants_first(bits, qubits_to_fix,0)
@@ -482,7 +510,7 @@ def optimized_divide(dividend: List[int], divisor: List[int], current_n: int, bq
     qword_remainder.create_state(bqm, current_n)
 
     sum_qword = optimized_bitwise_add(multiplication_qword[current_n], qword_remainder[current_n], current_n, bqm,
-                                      qubits_to_fix, True)
+                                      qubits_to_fix, True) # fix the last carry to be equal to 0
 
     is_equal_qword = optimized_is_equal(dividend, sum_qword[current_n], current_n, bqm, qubits_to_fix)
 
@@ -539,6 +567,11 @@ def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuad
             name_result = get_qubit_name()
             bqm.add_variable(name_result)
             qubits_to_fix[name_result] = 1
+            result.append(name_result)
+        elif value_x1 is not None and value_x2 is not None:
+            name_result = get_qubit_name()
+            bqm.add_variable(name_result)
+            qubits_to_fix[name_result] = value_x1 == value_x2
             result.append(name_result)
         elif (value_x1 is not None and value_x2 is None) or (value_x1 is None and value_x2 is not None):
             if value_x1 is None:
@@ -606,6 +639,11 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
             qubits_to_fix[name_result] = 0
             result.append(name_result)
 
+        elif value_x1 is not None and value_x2 is not None:
+            name_result = get_qubit_name()
+            bqm.add_variable(name_result)
+            qubits_to_fix[name_result] = value_x1 != value_x2
+            result.append(name_result)
         elif (value_x1 is not None and value_x2 is None) or (value_x1 is None and value_x2 is not None):
             if value_x1 is None:
                 name_none = bit1
@@ -613,7 +651,6 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
             else:
                 name_none = bit2
                 target_value = value_x1
-
             if target_value == 1:
                 name_result = get_qubit_name()
                 model, _ = get_model(Config.NOT, [name_none, name_result])
@@ -657,66 +694,47 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
     return result
 
 
-
-def get_more_constants_first(bits, qubits_to_fix, search_value) -> list[int]:
-    i = 0
-    j = len(bits) - 1
-    while i <= j:
-        value_left = get_qubit_value(bits[i], qubits_to_fix)
-        value_right = get_qubit_value(bits[j], qubits_to_fix)
-
-        if value_right == search_value:
-            return bits[::-1]
-
-        if value_left == search_value:
-            return bits
-        i += 1
-        j -= 1
-    return bits
-
-
 def optimized_bits_and(_bits: List[int], bqm: dimod.BinaryQuadraticModel, current_n: int,
                        qubits_to_fix: Dict[int, int]) -> QWord:
-    assert len(_bits) >= 2
+    assert len(_bits) > 1
 
-    bits = _bits[::-1]  # get_more_constants_first(bits, qubits_to_fix, 0)
+    const_names, bits = separate_constants(_bits, qubits_to_fix)
 
-    value_bit0 = get_qubit_value(bits[0], qubits_to_fix)
-    value_bit1 = get_qubit_value(bits[1], qubits_to_fix)
+    const_value = get_constant_bits_value(const_names, qubits_to_fix, AND)
+    if const_value is not None:
+        result_name = GlobalIndexer.get_name_index()
+        bqm.add_variable(result_name)
+        qubits_to_fix[result_name] = const_value
+        qword_result = QWord(1)
+        qword_result.append_state([result_name], current_n)
+        return qword_result
 
-    if value_bit0 == 1:
-        intermediate_result = bits[1]
-    elif value_bit1 == 1:
-        intermediate_result = bits[0]
-    else:
-        intermediate_result = GlobalIndexer.get_name_index()
-        decision_variables = [bits[0], bits[1], intermediate_result]
-        model, _ = get_model(Config.AND, decision_variables)
-        if value_bit0 is not None and value_bit1 is not None:
-            qubits_to_fix[intermediate_result] = value_bit0 and value_bit1
-        elif value_bit0 == 0 or value_bit1 == 0:
-            qubits_to_fix[intermediate_result] = 0
-        InputPropagationFile.write_rule(R_AND, intermediate_result, [bits[0], bits[1]], qubits_to_fix)
-        bqm.update(model)
+    if len(bits) == 0:
+        # all values are 1
+        result_name = GlobalIndexer.get_name_index()
+        bqm.add_variable(result_name)
+        qubits_to_fix[result_name] = 1
+        qword_result = QWord(1)
+        qword_result.append_state([result_name], current_n)
+        return qword_result
+    elif len(bits) == 1:
+        qword_result = QWord(1)
+        qword_result.append_state([bits[0]], current_n)
+        return qword_result
+
+    intermediate_result = GlobalIndexer.get_name_index()
+    decision_variables = [bits[0], bits[1], intermediate_result]
+    model, _ = get_model(Config.AND, decision_variables)
+    InputPropagationFile.write_rule(R_AND, intermediate_result, [bits[0], bits[1]], qubits_to_fix)
+    bqm.update(model)
 
     for bit in bits[2:]:
         prev_intermediate = intermediate_result
-        value_bit0 = get_qubit_value(bit, qubits_to_fix)
-        value_bit1 = get_qubit_value(prev_intermediate, qubits_to_fix)
-        if value_bit0 == 1:
-            intermediate_result = prev_intermediate
-        elif value_bit1 == 1:
-            intermediate_result = bit
-        else:
-            intermediate_result = get_qubit_name()
-            decision_variables = [bit, prev_intermediate, intermediate_result]
-            model, _ = get_model(Config.AND, decision_variables)
-            if value_bit0 is not None and value_bit1 is not None:
-                qubits_to_fix[intermediate_result] = value_bit0 and value_bit1
-            elif value_bit0 == 0 or value_bit1 == 0:
-                qubits_to_fix[intermediate_result] = 0
-            InputPropagationFile.write_rule(R_AND, intermediate_result, [bit, prev_intermediate], qubits_to_fix)
-            bqm.update(model)
+        intermediate_result = get_qubit_name()
+        decision_variables = [bit, prev_intermediate, intermediate_result]
+        model, _ = get_model(Config.AND, decision_variables)
+        InputPropagationFile.write_rule(R_AND, intermediate_result, [bit, prev_intermediate], qubits_to_fix)
+        bqm.update(model)
 
     qword_result = QWord(1)
     qword_result.append_state([intermediate_result], current_n)
@@ -774,33 +792,35 @@ def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_t
 
     assert len(bits) > 1
 
-    value_bit0 = get_qubit_value(bits[0], qubits_to_fix)
-    value_bit1 = get_qubit_value(bits[1], qubits_to_fix)
+    const_names, bits = separate_constants(bits, qubits_to_fix)
+
+    const_value = get_constant_bits_value(const_names, qubits_to_fix, OR)
+    if const_value is not None:
+        result_name = GlobalIndexer.get_name_index()
+        bqm.add_variable(result_name)
+        qubits_to_fix[result_name] = const_value
+        return result_name
+
+    if len(bits) == 0:
+        # all values are 0
+        result_name = GlobalIndexer.get_name_index()
+        bqm.add_variable(result_name)
+        qubits_to_fix[result_name] = 0
+        return result_name
+    elif len(bits) == 1:
+        return bits[0]
 
     intermediate_result = GlobalIndexer.get_name_index()
     decision_variables = [bits[0], bits[1], intermediate_result]
     model, _ = get_model(Config.OR, decision_variables)
-    if value_bit0 is not None and value_bit1 is not None:
-        qubits_to_fix[intermediate_result] = value_bit0 or value_bit1
-    elif value_bit0 == 1 or value_bit1 == 1:
-        qubits_to_fix[intermediate_result] = 1
     InputPropagationFile.write_rule(OR, intermediate_result, [bits[0], bits[1]], qubits_to_fix)
     bqm.update(model)
 
     for bit in bits[2:]:
         prev_intermediate = intermediate_result
-
-        value_bit0 = get_qubit_value(bit, qubits_to_fix)
-        value_bit1 = get_qubit_value(prev_intermediate, qubits_to_fix)
-
         intermediate_result = get_qubit_name()
         decision_variables = [bit, prev_intermediate, intermediate_result]
         model, _ = get_model(Config.OR, decision_variables)
-        if value_bit0 is not None and value_bit1 is not None:
-            qubits_to_fix[intermediate_result] = value_bit0 or value_bit1
-        elif value_bit0 == 1 or value_bit1 == 1:
-            qubits_to_fix[intermediate_result] = 1
         bqm.update(model)
         InputPropagationFile.write_rule(OR, intermediate_result, [bit, prev_intermediate], qubits_to_fix)
-
     return intermediate_result
