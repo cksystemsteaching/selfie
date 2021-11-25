@@ -6625,7 +6625,6 @@ uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
       if (is_double_word)
-        // data is double words
         return *(memory + waddr / SIZEOFUINT64);
 
     if (waddr % SIZEOFUINT64 == 0)
@@ -6640,7 +6639,6 @@ void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint6
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
       if (is_double_word) {
-        // data is double words
         *(memory + waddr / SIZEOFUINT64) = word;
 
         return;
@@ -7548,6 +7546,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
+        // MEMORYWORDSIZE may be less than SIZEOFUINT64
         j = i % SIZEOFUINT64;
 
         // check if string ends in the current word
@@ -9342,7 +9341,7 @@ void print_load_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
         printf(",mem[0x%lX]==0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
@@ -9357,7 +9356,7 @@ void print_load_before() {
 }
 
 void print_load_after(uint64_t vaddr) {
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
@@ -9370,7 +9369,7 @@ void record_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(*(registers + rd));
 }
@@ -9384,7 +9383,7 @@ uint64_t do_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -9433,7 +9432,7 @@ void print_store_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(",");
       print_register_value(rs2);
@@ -9449,7 +9448,7 @@ void print_store_before() {
 }
 
 void print_store_after(uint64_t vaddr) {
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       printf(" -> mem[0x%lX]==", vaddr);
       print_register_value(rs2);
@@ -9461,7 +9460,7 @@ void record_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE))
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(load_virtual_memory(pt, vaddr));
 }
@@ -9474,7 +9473,7 @@ uint64_t do_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -9992,7 +9991,7 @@ void fetch() {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
-      if (pc % WORDSIZE == 0)
+      if (pc % MEMORYWORDSIZE == 0)
         ir = get_low_word(load_cached_instruction_word(pt, pc));
       else
         ir = get_high_word(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
@@ -10561,7 +10560,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE));
+  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - MEMORYWORDSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
@@ -10728,7 +10727,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
       set_PTE_for_page(table, page, frame);
 
       // exploit spatial locality in page table caching
-      if (page <= get_page_of_virtual_address(get_program_break(context) - WORDSIZE)) {
+      if (page <= get_page_of_virtual_address(get_program_break(context) - MEMORYWORDSIZE)) {
         set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
         set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
       } else {
@@ -10848,7 +10847,7 @@ uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
   // is address in stack segment?
   if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
+    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - MEMORYWORDSIZE)
       return 1;
 
   return 0;
@@ -10933,8 +10932,10 @@ uint64_t pavailable() {
 uint64_t pexcess() {
   if (pavailable())
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= 2 * total_page_frame_memory)
-    // tolerate twice as much memory mapped on demand than physically available
+  else if (allocated_page_frame_memory + MEGABYTE <=
+            2 * total_page_frame_memory * SIZEOFUINT64 / MEMORYWORDSIZE)
+    // tolerate twice (four times) as much memory mapped on demand than physically available
+    // (single word on 32-bit target occupies double word on 64-bit system)
     return 1;
   else
     return 0;
@@ -10945,15 +10946,19 @@ uint64_t pused() {
 }
 
 uint64_t* palloc() {
+  uint64_t double_for_single_word;
   uint64_t block;
   uint64_t frame;
+
+  // single word on 32-bit target occupies double word on 64-bit system
+  double_for_single_word = SIZEOFUINT64 / MEMORYWORDSIZE;
 
   // assert: total_page_frame_memory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
     if (pexcess()) {
-      free_page_frame_memory = MEGABYTE;
+      free_page_frame_memory = MEGABYTE * double_for_single_word;
 
       // on boot level zero allocate zeroed memory
       block = (uint64_t) zmalloc(free_page_frame_memory);
@@ -10961,11 +10966,11 @@ uint64_t* palloc() {
       allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
 
       // page frames must be page-aligned to work as page table index
-      next_page_frame = round_up(block, PAGESIZE);
+      next_page_frame = round_up(block, PAGESIZE * double_for_single_word);
 
       if (next_page_frame > block)
         // losing one page frame to fragmentation
-        free_page_frame_memory = free_page_frame_memory - PAGESIZE;
+        free_page_frame_memory = free_page_frame_memory - PAGESIZE * double_for_single_word;
     } else {
       printf("%s: palloc out of physical memory\n", selfie_name);
 
@@ -10975,12 +10980,12 @@ uint64_t* palloc() {
 
   frame = next_page_frame;
 
-  next_page_frame = next_page_frame + PAGESIZE;
+  next_page_frame = next_page_frame + PAGESIZE * double_for_single_word;
 
-  free_page_frame_memory = free_page_frame_memory - PAGESIZE;
+  free_page_frame_memory = free_page_frame_memory - PAGESIZE * double_for_single_word;
 
   // strictly, touching is only necessary on boot levels higher than 0
-  return touch((uint64_t*) frame, PAGESIZE);
+  return touch((uint64_t*) frame, PAGESIZE * double_for_single_word);
 }
 
 void pfree(uint64_t* frame) {
@@ -10989,7 +10994,7 @@ void pfree(uint64_t* frame) {
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
-  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
 
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
@@ -11023,7 +11028,7 @@ void up_load_binary(uint64_t* context) {
   while (baddr < code_size) {
     map_and_store(context, get_code_seg_start(context) + baddr, load_code(baddr));
 
-    baddr = baddr + WORDSIZE;
+    baddr = baddr + MEMORYWORDSIZE;
   }
 
   baddr = 0;
@@ -11031,7 +11036,7 @@ void up_load_binary(uint64_t* context) {
   while (baddr < data_size) {
     map_and_store(context, get_data_seg_start(context) + baddr, load_data(baddr));
 
-    baddr = baddr + WORDSIZE;
+    baddr = baddr + MEMORYWORDSIZE;
   }
 
   set_name(context, binary_name);
@@ -11041,7 +11046,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   uint64_t bytes;
   uint64_t i;
 
-  bytes = round_up(string_length(s) + 1, WORDSIZE);
+  bytes = round_up(string_length(s) + 1, MEMORYWORDSIZE);
 
   // allocate memory for storing string
   SP = SP - bytes;
@@ -11049,13 +11054,9 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   i = 0;
 
   while (i < bytes) {
-    // CAUTION: at boot levels higher than 0, s is only accessible
-    // in C* at word granularity, not individual characters
-    map_and_store(context, SP + i, *((uint64_t*) s));
+    map_and_store(context, SP + i, load_word((uint64_t*) s, i, 1));
 
-    s = (char*) ((uint64_t*) s + 1);
-
-    i = i + WORDSIZE;
+    i = i + MEMORYWORDSIZE;
   }
 
   return SP;
@@ -11092,13 +11093,13 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
 
   // allocate memory for termination of env table
-  SP = SP - WORDSIZE;
+  SP = SP - MEMORYWORDSIZE;
 
   // push null value to terminate env table
   map_and_store(context, SP, 0);
 
   // allocate memory for termination of argv table
-  SP = SP - WORDSIZE;
+  SP = SP - MEMORYWORDSIZE;
 
   // push null value to terminate argv table
   map_and_store(context, SP, 0);
@@ -11108,7 +11109,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push argv table onto the stack
   while (i > 0) {
     // allocate memory for argv table entry
-    SP = SP - WORDSIZE;
+    SP = SP - MEMORYWORDSIZE;
 
     i = i - 1;
 
@@ -11117,7 +11118,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
 
   // allocate memory for argc
-  SP = SP - WORDSIZE;
+  SP = SP - MEMORYWORDSIZE;
 
   // push argc
   map_and_store(context, SP, argc);
