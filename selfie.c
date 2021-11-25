@@ -1008,8 +1008,8 @@ void print_instruction_counters();
 uint64_t get_low_word(uint64_t word);
 uint64_t get_high_word(uint64_t word);
 
-uint64_t load_word(uint64_t waddr, uint64_t* memory, uint64_t is_data);
-void     store_word(uint64_t waddr, uint64_t word, uint64_t* memory, uint64_t is_data);
+uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word);
+void     store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint64_t word);
 
 uint64_t load_instruction(uint64_t caddr);
 void     store_instruction(uint64_t caddr, uint64_t instruction);
@@ -6615,10 +6615,10 @@ uint64_t get_high_word(uint64_t word) {
   return get_bits(word, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
-uint64_t load_word(uint64_t waddr, uint64_t* memory, uint64_t is_data) {
+uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
-      if (is_data)
+      if (is_double_word)
         // data is double words
         return *(memory + waddr / SIZEOFUINT64);
 
@@ -6630,24 +6630,10 @@ uint64_t load_word(uint64_t waddr, uint64_t* memory, uint64_t is_data) {
     return *(memory + waddr / SIZEOFUINT64);
 }
 
-void store_word(uint64_t waddr, uint64_t word, uint64_t* memory, uint64_t is_data) {
-  if (is_data) {
-    if (waddr >= MAX_DATA_SIZE) {
-      syntax_error_message("maximum data size exceeded");
-
-      exit(EXITCODE_COMPILERERROR);
-    }
-  } else {
-    if (waddr >= MAX_CODE_SIZE) {
-      syntax_error_message("maximum code size exceeded");
-
-      exit(EXITCODE_COMPILERERROR);
-    }
-  }
-
+void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint64_t word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
-      if (is_data) {
+      if (is_double_word) {
         // data is double words
         *(memory + waddr / SIZEOFUINT64) = word;
 
@@ -6657,33 +6643,45 @@ void store_word(uint64_t waddr, uint64_t word, uint64_t* memory, uint64_t is_dat
     if (waddr % SIZEOFUINT64 == 0)
       // replace low word
       *(memory + waddr / SIZEOFUINT64) =
-        left_shift(load_word(waddr + SINGLEWORDSIZE, memory, is_data), SINGLEWORDSIZEINBITS) + word;
+        left_shift(load_word(memory, waddr + SINGLEWORDSIZE, is_double_word), SINGLEWORDSIZEINBITS) + word;
     else
       // replace high word
       *(memory + waddr / SIZEOFUINT64) =
-        left_shift(word, SINGLEWORDSIZEINBITS) + load_word(waddr - SINGLEWORDSIZE, memory, is_data);
+        left_shift(word, SINGLEWORDSIZEINBITS) + load_word(memory, waddr - SINGLEWORDSIZE, is_double_word);
   } else
     *(memory + waddr / SIZEOFUINT64) = word;
 }
 
 uint64_t load_instruction(uint64_t caddr) {
-  return load_word(caddr, code_binary, 0);
+  return load_word(code_binary, caddr, 0);
 }
 
 void store_instruction(uint64_t caddr, uint64_t instruction) {
-  store_word(caddr, instruction, code_binary, 0);
+  if (caddr >= MAX_CODE_SIZE) {
+    syntax_error_message("maximum code size exceeded");
+
+    exit(EXITCODE_COMPILERERROR);
+  }
+
+  store_word(code_binary, caddr, 0, instruction);
 }
 
 uint64_t load_code(uint64_t caddr) {
-  return load_word(caddr, code_binary, 1);
+  return load_word(code_binary, caddr, 1);
 }
 
 uint64_t load_data(uint64_t daddr) {
-  return load_word(daddr, data_binary, 1);
+  return load_word(data_binary, daddr, 1);
 }
 
 void store_data(uint64_t daddr, uint64_t data) {
-  store_word(daddr, data, data_binary, 1);
+  if (daddr >= MAX_DATA_SIZE) {
+    syntax_error_message("maximum data size exceeded");
+
+    exit(EXITCODE_COMPILERERROR);
+  }
+
+  store_word(data_binary, daddr, 1, data);
 }
 
 void emit_instruction(uint64_t instruction) {
@@ -6866,7 +6864,7 @@ void emit_string_data(uint64_t* entry) {
   l = round_up(string_length(s) + 1, MEMORYWORDSIZE);
 
   while (i < l) {
-    emit_data_word(load_word(i, (uint64_t*) s, 1), get_address(entry) + i, get_line_number(entry));
+    emit_data_word(load_word((uint64_t*) s, i, 1), get_address(entry) + i, get_line_number(entry));
 
     i = i + MEMORYWORDSIZE;
   }
@@ -6912,49 +6910,49 @@ uint64_t* encode_elf_header() {
 
   if (IS64BITTARGET) {
     // RISC-U ELF64 file header
-    *(header + 0) = EI_MAG0
-                  + left_shift(EI_MAG1, 8)
-                  + left_shift(EI_MAG2, 16)
-                  + left_shift(EI_MAG3, 24)
-                  + left_shift(EI_CLASS, 32)
-                  + left_shift(EI_DATA, 40)
-                  + left_shift(EI_VERSION, 48)
-                  + left_shift(EI_OSABI, 56);
-    *(header + 1) = EI_ABIVERSION + left_shift(EI_PAD, 8);
-    *(header + 2) = e_type
-                  + left_shift(e_machine, 16)
-                  + left_shift(e_version, 32);
-    *(header + 3) = e_entry;
-    *(header + 4) = e_phoff;
-    *(header + 5) = e_shoff;
-    *(header + 6) = e_flags
-                  + left_shift(e_ehsize, 32)
-                  + left_shift(e_phentsize, 48);
-    *(header + 7) = e_phnum
-                  + left_shift(e_shentsize, 16)
-                  + left_shift(e_shnum, 32)
-                  + left_shift(e_shstrndx, 48);
+    store_word(header, 0, 1, EI_MAG0
+                + left_shift(EI_MAG1, 8)
+                + left_shift(EI_MAG2, 16)
+                + left_shift(EI_MAG3, 24)
+                + left_shift(EI_CLASS, 32)
+                + left_shift(EI_DATA, 40)
+                + left_shift(EI_VERSION, 48)
+                + left_shift(EI_OSABI, 56));
+    store_word(header, 8, 1, EI_ABIVERSION + left_shift(EI_PAD, 8));
+    store_word(header, 16, 1, e_type
+                + left_shift(e_machine, 16)
+                + left_shift(e_version, 32));
+    store_word(header, 24, 1, e_entry);
+    store_word(header, 32, 1, e_phoff);
+    store_word(header, 40, 1, e_shoff);
+    store_word(header, 48, 1, e_flags
+                + left_shift(e_ehsize, 32)
+                + left_shift(e_phentsize, 48));
+    store_word(header, 56, 1, e_phnum
+                + left_shift(e_shentsize, 16)
+                + left_shift(e_shnum, 32)
+                + left_shift(e_shstrndx, 48));
   } else {
     // RISC-U ELF32 file header
-    *(header + 0)  = EI_MAG0
-                   + left_shift(EI_MAG1, 8)
-                   + left_shift(EI_MAG2, 16)
-                   + left_shift(EI_MAG3, 24);
-    *(header + 1)  = EI_CLASS
-                   + left_shift(EI_DATA, 8)
-                   + left_shift(EI_VERSION, 16)
-                   + left_shift(EI_OSABI, 24);
-    *(header + 2)  = EI_ABIVERSION; // ignoring 24 LSBs of EI_PAD
-    *(header + 3)  = EI_PAD;        // ignoring 24 MSBs of EI_PAD
-    *(header + 4)  = e_type + left_shift(e_machine, 16);
-    *(header + 5)  = e_version;
-    *(header + 6)  = e_entry;
-    *(header + 7)  = e_phoff;
-    *(header + 8)  = e_shoff;
-    *(header + 9)  = e_flags;
-    *(header + 10) = e_ehsize + left_shift(e_phentsize, 16);
-    *(header + 11) = e_phnum + left_shift(e_shentsize, 16);
-    *(header + 12) = e_shnum + left_shift(e_shstrndx, 16);
+    store_word(header, 0, 0, EI_MAG0
+                + left_shift(EI_MAG1, 8)
+                + left_shift(EI_MAG2, 16)
+                + left_shift(EI_MAG3, 24));
+    store_word(header, 4, 0, EI_CLASS
+                + left_shift(EI_DATA, 8)
+                + left_shift(EI_VERSION, 16)
+                + left_shift(EI_OSABI, 24));
+    store_word(header, 8, 0, EI_ABIVERSION); // ignoring 24 LSBs of EI_PAD
+    store_word(header, 12, 0, EI_PAD);       // ignoring 24 MSBs of EI_PAD
+    store_word(header, 16, 0, e_type + left_shift(e_machine, 16));
+    store_word(header, 20, 0, e_version);
+    store_word(header, 24, 0, e_entry);
+    store_word(header, 28, 0, e_phoff);
+    store_word(header, 32, 0, e_shoff);
+    store_word(header, 36, 0, e_flags);
+    store_word(header, 40, 0, e_ehsize + left_shift(e_phentsize, 16));
+    store_word(header, 44, 0, e_phnum + left_shift(e_shentsize, 16));
+    store_word(header, 48, 0, e_shnum + left_shift(e_shstrndx, 16));
   }
 
   // start of segments have to be aligned in the binary file
@@ -6981,7 +6979,7 @@ uint64_t* encode_elf_header() {
 }
 
 uint64_t get_elf_program_header_offset(uint64_t ph_index) {
-  return (e_ehsize + e_phentsize * ph_index) / SIZEOFUINT64;
+  return e_ehsize + e_phentsize * ph_index;
 }
 
 void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
@@ -6991,28 +6989,31 @@ void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 
   if (IS64BITTARGET) {
     // RISC-U ELF64 program header
-    *(header + ph_offset + 0) = p_type + left_shift(p_flags, 32);
-    *(header + ph_offset + 1) = p_offset;
-    *(header + ph_offset + 2) = p_vaddr;
-    *(header + ph_offset + 3) = p_paddr;
-    *(header + ph_offset + 4) = p_filesz;
-    *(header + ph_offset + 5) = p_memsz;
-    *(header + ph_offset + 6) = p_align;
+    store_word(header, ph_offset + 0, 1, p_type + left_shift(p_flags, 32));
+    store_word(header, ph_offset + 8, 1, p_offset);
+    store_word(header, ph_offset + 16, 1, p_vaddr);
+    store_word(header, ph_offset + 24, 1, p_paddr);
+    store_word(header, ph_offset + 32, 1, p_filesz);
+    store_word(header, ph_offset + 40, 1, p_memsz);
+    store_word(header, ph_offset + 48, 1, p_align);
   } else {
     // RISC-U ELF32 program header
-    *(header + ph_offset + 0) = p_type;
-    *(header + ph_offset + 1) = p_offset;
-    *(header + ph_offset + 2) = p_vaddr;
-    *(header + ph_offset + 3) = p_paddr;
-    *(header + ph_offset + 4) = p_filesz;
-    *(header + ph_offset + 5) = p_memsz;
-    *(header + ph_offset + 6) = p_flags;
-    *(header + ph_offset + 7) = p_align;
+    store_word(header, ph_offset + 0, 0, p_type);
+    store_word(header, ph_offset + 4, 0, p_offset);
+    store_word(header, ph_offset + 8, 0, p_vaddr);
+    store_word(header, ph_offset + 12, 0, p_paddr);
+    store_word(header, ph_offset + 16, 0, p_filesz);
+    store_word(header, ph_offset + 20, 0, p_memsz);
+    store_word(header, ph_offset + 24, 0, p_flags);
+    store_word(header, ph_offset + 28, 0, p_align);
   }
 }
 
 void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
-  p_filesz = *(header + get_elf_program_header_offset(ph_index) + 4);
+  if (IS64BITTARGET)
+    p_filesz = load_word(header, get_elf_program_header_offset(ph_index) + 32, 1);
+  else
+    p_filesz = load_word(header, get_elf_program_header_offset(ph_index) + 16, 0);
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
