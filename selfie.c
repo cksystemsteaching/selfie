@@ -212,18 +212,19 @@ uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 uint64_t SIZEOFUINT64       = 8;  // in bytes
 uint64_t SIZEOFUINT64INBITS = 64; // SIZEOFUINT64 * 8
 
-uint64_t SIZEOFUINT = 8; // size of target-dependent unsigned integer in bytes
-
-uint64_t SIZEOFUINT64STAR       = 8; // in bytes, must be the same as SIZEOFUINT64
+uint64_t SIZEOFUINT64STAR       = 8;  // in bytes, must be the same as SIZEOFUINT64
 uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 
 uint64_t* power_of_two_table;
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
-uint64_t UINT_MAX;   // maximum numerical value of a target-dependent unsigned integer
 
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
+
+uint64_t SIZEOFTARGETUINT = 8; // size of target-dependent unsigned integer in bytes
+
+uint64_t TARGETUINT_MAX; // maximum numerical value of target-dependent unsigned integer
 
 uint64_t TARGETWORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t TARGETWORDSIZEINBITS = 64; // TARGETWORDSIZE * 8
@@ -326,7 +327,7 @@ void init_library() {
   SIZEOFUINT64INBITS = SIZEOFUINT64 * 8;
 
   // target-dependent
-  SIZEOFUINT = SIZEOFUINT64;
+  SIZEOFTARGETUINT = SIZEOFUINT64;
 
   // determine actual size of uint64_t*
   SIZEOFUINT64STAR       = (uint64_t) ((uint64_t**) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
@@ -347,8 +348,8 @@ void init_library() {
   }
 
   // compute 64-bit unsigned integer range using signed integer arithmetic
-  UINT64_MAX = -1;
-  UINT_MAX   = UINT64_MAX;
+  UINT64_MAX     = -1;
+  TARGETUINT_MAX = UINT64_MAX;
 
   // compute 64-bit signed integer range using unsigned integer arithmetic
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
@@ -2406,8 +2407,8 @@ void init_32_bit_target() {
   IS64BITTARGET = 0;
 
   if (IS64BITSYSTEM) {
-    SIZEOFUINT = 4;
-    UINT_MAX   = two_to_the_power_of(32) - 1;
+    SIZEOFTARGETUINT = 4;
+    TARGETUINT_MAX   = two_to_the_power_of(32) - 1;
 
     TARGETWORDSIZE       = 4;
     TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
@@ -2792,19 +2793,19 @@ uint64_t atoi(char* s) {
     // assert: s contains a decimal number
 
     // use base 10 but detect wrap around
-    if (n < UINT_MAX / 10)
+    if (n < TARGETUINT_MAX / 10)
       n = n * 10 + c;
-    else if (n == UINT_MAX / 10)
-      if (c <= UINT_MAX % 10)
+    else if (n == TARGETUINT_MAX / 10)
+      if (c <= TARGETUINT_MAX % 10)
         n = n * 10 + c;
       else {
-        // s contains a decimal number larger than UINT_MAX
+        // s contains a decimal number larger than TARGETUINT_MAX
         printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
         exit(EXITCODE_SCANNERERROR);
       }
     else {
-      // s contains a decimal number larger than UINT_MAX
+      // s contains a decimal number larger than TARGETUINT_MAX
       printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
       exit(EXITCODE_SCANNERERROR);
@@ -4870,15 +4871,15 @@ uint64_t compile_simple_expression() {
       if (ltype == UINT64STAR_T) {
         if (rtype == UINT64_T)
           // UINT64STAR_T + UINT64_T
-          // pointer arithmetic: left_term + right_term * SIZEOFUINT
-          emit_multiply_by(current_temporary(), SIZEOFUINT);
+          // pointer arithmetic: left_term + right_term * SIZEOFTARGETUINT
+          emit_multiply_by(current_temporary(), SIZEOFTARGETUINT);
         else
           // UINT64STAR_T + UINT64STAR_T
           syntax_error_message("(uint64_t*) + (uint64_t*) is undefined");
       } else if (rtype == UINT64STAR_T) {
         // UINT64_T + UINT64STAR_T
-        // pointer arithmetic: left_term * SIZEOFUINT + right_term
-        emit_multiply_by(previous_temporary(), SIZEOFUINT);
+        // pointer arithmetic: left_term * SIZEOFTARGETUINT + right_term
+        emit_multiply_by(previous_temporary(), SIZEOFTARGETUINT);
 
         ltype = UINT64STAR_T;
       }
@@ -4889,14 +4890,14 @@ uint64_t compile_simple_expression() {
       if (ltype == UINT64STAR_T) {
         if (rtype == UINT64_T) {
           // UINT64STAR_T - UINT64_T
-          // pointer arithmetic: left_term - right_term * SIZEOFUINT
-          emit_multiply_by(current_temporary(), SIZEOFUINT);
+          // pointer arithmetic: left_term - right_term * SIZEOFTARGETUINT
+          emit_multiply_by(current_temporary(), SIZEOFTARGETUINT);
           emit_sub(previous_temporary(), previous_temporary(), current_temporary());
         } else {
           // UINT64STAR_T - UINT64STAR_T
-          // pointer arithmetic: (left_term - right_term) / SIZEOFUINT
+          // pointer arithmetic: (left_term - right_term) / SIZEOFTARGETUINT
           emit_sub(previous_temporary(), previous_temporary(), current_temporary());
-          emit_addi(current_temporary(), REG_ZR, SIZEOFUINT);
+          emit_addi(current_temporary(), REG_ZR, SIZEOFTARGETUINT);
           emit_divu(previous_temporary(), previous_temporary(), current_temporary());
 
           ltype = UINT64_T;
