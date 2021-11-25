@@ -317,6 +317,10 @@ uint64_t output_cursor = 0; // cursor for output buffer
 void init_library() {
   uint64_t i;
 
+  if (SELFIE_URL)
+    // avoid repeated initialization in tools
+    return;
+
   SELFIE_URL = "selfie.cs.uni-salzburg.at";
 
   // determine actual size of uint64_t
@@ -786,7 +790,7 @@ char* bump_name = (char*) 0;
 
 void init_bootstrapping() {
   // caution: length of string literals used as identifiers must be
-  // multiple of WORDSIZE to avoid out-of-bound array access warnings
+  // multiple of SIZEOFUINT64 to avoid out-of-bound array access warnings
   // during bootstrapping; trailing spaces are removed by string_shrink
   // resulting in unique hash for global symbol table
   main_name = string_shrink("main   ");
@@ -1384,7 +1388,7 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 
 // L1 cache-block size
 // assert: cache-block sizes are powers of 2
-// assert: L1_xCACHE_BLOCK_SIZE >= WORDSIZE
+// assert: L1_xCACHE_BLOCK_SIZE >= MEMORYWORDSIZE
 // assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY >= L1_xCACHE_BLOCK_SIZE
 uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
 uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
@@ -1592,7 +1596,7 @@ void gc_arguments();
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
-    return gc_malloc_implementation((uint64_t*) 0, size);
+  return gc_malloc_implementation((uint64_t*) 0, size);
 }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1609,6 +1613,8 @@ uint64_t GC_PERIOD = 1000; // gc every so often
 uint64_t GC_REUSE = 1; // reuse memory with freelist by default
 
 uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
+
+uint64_t GC_WORDSIZE = 8; // SIZEOFUINT64 for library variant, otherwise MEMORYWORDSIZE
 
 uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
 uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
@@ -3245,7 +3251,7 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
 char* remove_prefix_from_printf_procedures(char* procedure) {
   // for bootstrapping remove prefix from selfie *printf procedures
   if (string_compare(procedure, "selfie_printf"))
-    // length of string literal must be multiple of WORDSIZE;
+    // length of string literal must be multiple of SIZEOFUINT64;
     // trailing spaces are removed by string_shrink resulting
     // in unique hash for global symbol table
     return string_shrink("printf ");
@@ -7435,7 +7441,7 @@ void implement_write(uint64_t* context) {
 
   written_total = 0;
 
-  bytes_to_write = SIZEOFUINT64;
+  bytes_to_write = MEMORYWORDSIZE;
 
   failed = 0;
 
@@ -7443,7 +7449,7 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_virtual_address_valid(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, MEMORYWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7456,7 +7462,7 @@ void implement_write(uint64_t* context) {
             size = size - actually_written;
 
             if (size > 0)
-              vbuffer = vbuffer + SIZEOFUINT64;
+              vbuffer = vbuffer + MEMORYWORDSIZE;
           } else {
             if (signed_less_than(0, actually_written))
               written_total = written_total + actually_written;
@@ -7531,32 +7537,32 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
 
   i = 0;
 
-  while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_virtual_address_valid(vaddr, WORDSIZE))
+  while (i < MAX_FILENAME_LENGTH) {
+    if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
-          *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
+          store_word((uint64_t*) s, i, 1, load_virtual_memory(get_pt(context), vaddr));
         else {
           printf("%s: opening file failed because the file name address 0x%08lX is unmapped\n", selfie_name, (uint64_t) vaddr);
 
           return 0;
         }
 
-        j = 0;
+        j = i % SIZEOFUINT64;
 
         // check if string ends in the current word
-        while (j < SIZEOFUINT64) {
-          if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+        while (j - i % SIZEOFUINT64 < MEMORYWORDSIZE) {
+          if (load_character((char*) ((uint64_t*) s + i / SIZEOFUINT64), j) == 0)
             return 1;
 
           j = j + 1;
         }
 
         // advance to the next word in virtual memory
-        vaddr = vaddr + SIZEOFUINT64;
+        vaddr = vaddr + MEMORYWORDSIZE;
 
-        // advance to the next word in our memory
-        i = i + 1;
+        // advance to the corresponding word in our memory
+        i = i + MEMORYWORDSIZE;
       } else {
         printf("%s: opening file failed because the file name address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
 
@@ -8077,7 +8083,8 @@ void fill_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  number_of_words_in_cache_block = get_cache_block_size(cache) / WORDSIZE;
+  // cache block size / SIZEOFUINT64 (not MEMORYWORDSIZE)
+  number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
 
   block_memory = get_block_memory(cache_block);
 
@@ -8128,7 +8135,8 @@ void flush_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  number_of_words_in_cache_block = get_cache_block_size(cache) / WORDSIZE;
+  // cache block size / SIZEOFUINT64 (not MEMORYWORDSIZE)
+  number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
 
   block_memory = get_block_memory(cache_block);
 
@@ -8152,7 +8160,7 @@ uint64_t load_from_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr) {
 
   block_memory = get_block_memory(cache_block);
 
-  return *(block_memory + cache_byte_offset(cache, vaddr) / WORDSIZE);
+  return *(block_memory + cache_byte_offset(cache, vaddr) / SIZEOFUINT64);
 }
 
 void store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t data) {
@@ -8163,7 +8171,7 @@ void store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t da
 
   block_memory = get_block_memory(cache_block);
 
-  *(block_memory + cache_byte_offset(cache, vaddr) / WORDSIZE) = data;
+  *(block_memory + cache_byte_offset(cache, vaddr) / SIZEOFUINT64) = data;
 
   flush_cache_block(cache, cache_block, paddr);
 }
@@ -8327,7 +8335,7 @@ uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
 }
 
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
-  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
 
   return is_page_mapped(table, get_page_of_virtual_address(vaddr));
 }
@@ -8337,7 +8345,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   uint64_t frame;
   uint64_t paddr;
 
-  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   page = get_page_of_virtual_address(vaddr);
@@ -8358,14 +8366,14 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 }
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
-  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
-  // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
@@ -8373,7 +8381,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     return load_data_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
   else
@@ -8382,7 +8390,7 @@ uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
 
 void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     store_data_in_cache(vaddr, (uint64_t) tlb(table, vaddr), data);
   else
@@ -8391,7 +8399,7 @@ void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data)
 
 uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     return load_instruction_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
   else
@@ -8486,7 +8494,7 @@ void implement_gc_brk(uint64_t* context) {
     // assert: _bump pointer is last entry in data segment
 
     // updating the _bump pointer of the program (for consistency)
-    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - SIZEOFUINT64, get_program_break(context));
+    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - MEMORYWORDSIZE, get_program_break(context));
 
     sc_brk = sc_brk + 1;
 
@@ -8626,7 +8634,12 @@ void gc_init_selfie(uint64_t* context) {
   reset_gc_counters();
 
   // calculate metadata size using actual width of integers/pointers
-  GC_METADATA_SIZE =  SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
+  GC_METADATA_SIZE = SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
+
+  if (is_gc_library(context))
+    GC_WORDSIZE = SIZEOFUINT64;
+  else
+    GC_WORDSIZE = MEMORYWORDSIZE;
 
   set_data_and_heap_segments_gc(context);
 
@@ -8670,7 +8683,7 @@ uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
-    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, MEMORYWORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       return load_virtual_memory(get_pt(context), address);
     else
@@ -8681,7 +8694,7 @@ void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
   if (is_gc_library(context))
     *((uint64_t*) address) = value;
   else
-    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, MEMORYWORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       store_virtual_memory(get_pt(context), address, value);
 }
@@ -8697,7 +8710,7 @@ void zero_object(uint64_t* context, uint64_t* metadata) {
   while (object_start < object_end) {
     gc_store_memory(context, object_start, 0);
 
-    object_start = object_start + SIZEOFUINT64;
+    object_start = object_start + GC_WORDSIZE;
   }
 }
 
@@ -8806,7 +8819,7 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
 
   // then, allocate memory
 
-  size = round_up(size, SIZEOFUINT64);
+  size = round_up(size, GC_WORDSIZE);
 
   return allocate_memory(context, size);
 }
@@ -8826,10 +8839,11 @@ uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) 
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
-    if (address >= (uint64_t) node)
-      if (address < ((uint64_t) node + GC_METADATA_SIZE))
-        // address points to metadata
-        return (uint64_t*) 0;
+    if (is_gc_library(context))
+      if (address >= (uint64_t) node)
+        if (address < ((uint64_t) node + GC_METADATA_SIZE))
+          // address points to metadata (redundant check but possibly faster)
+          return (uint64_t*) 0;
 
     object = (uint64_t) get_metadata_memory(node);
 
@@ -8857,8 +8871,9 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t object_start;
   uint64_t object_end;
 
-  if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
-    return;
+  if (is_gc_library(context) == 0)
+    if (is_virtual_address_valid(gc_address, MEMORYWORDSIZE) == 0)
+      return;
 
   metadata = get_metadata_if_address_is_valid(context, gc_address);
 
@@ -8877,23 +8892,21 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   while (object_start < object_end) {
     mark_object(context, object_start);
 
-    object_start = object_start + SIZEOFUINT64;
+    object_start = object_start + GC_WORDSIZE;
   }
 }
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap
 
-  // prevent (32-bit) overflow by subtracting SIZEOFUINT64 from index
-  segment_start = segment_start - SIZEOFUINT64;
+  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
+  segment_start = segment_start - GC_WORDSIZE;
 
-  while (segment_start < segment_end - WORDSIZE) {
-    // assert: is_virtual_address_valid(segment_start, WORDSIZE) == 1
-    // assert: is_virtual_address_mapped(segment_start) == 1
-    // undo index offset before marking address
-    mark_object(context, segment_start + SIZEOFUINT64);
+  while (segment_start < segment_end - GC_WORDSIZE) {
+    // undo GC_WORDSIZE index offset before marking address
+    mark_object(context, segment_start + GC_WORDSIZE);
 
-    segment_start = segment_start + SIZEOFUINT64;
+    segment_start = segment_start + GC_WORDSIZE;
   }
 }
 
