@@ -313,7 +313,7 @@ void implement_symbolic_read(uint64_t* context) {
 
   read_total = 0;
 
-  bytes_to_read = SIZEOFUINT64;
+  bytes_to_read = TARGETWORDSIZE;
 
   failed = 0;
 
@@ -321,7 +321,7 @@ void implement_symbolic_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_virtual_address_valid(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
@@ -334,7 +334,7 @@ void implement_symbolic_read(uint64_t* context) {
           size = size - bytes_to_read;
 
           if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
+            vbuffer = vbuffer + TARGETWORDSIZE;
         } else {
           failed = 1;
 
@@ -388,7 +388,7 @@ void implement_symbolic_write(uint64_t* context) {
 
   written_total = 0;
 
-  bytes_to_write = SIZEOFUINT64;
+  bytes_to_write = TARGETWORDSIZE;
 
   failed = 0;
 
@@ -396,7 +396,7 @@ void implement_symbolic_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_virtual_address_valid(vbuffer, WORDSIZE))
+    if (is_virtual_address_valid(vbuffer, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           // TODO: What should symbolically executed code actually output?
@@ -406,7 +406,7 @@ void implement_symbolic_write(uint64_t* context) {
           size = size - bytes_to_write;
 
           if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
+            vbuffer = vbuffer + TARGETWORDSIZE;
         } else {
           failed = 1;
 
@@ -451,8 +451,8 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
 
   i = 0;
 
-  while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_virtual_address_valid(vaddr, WORDSIZE))
+  while (i < MAX_FILENAME_LENGTH) {
+    if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr)) {
           sword = load_symbolic_memory(vaddr);
@@ -469,10 +469,10 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
             } else
               // CAUTION: at boot levels higher than zero, s is only accessible
               // in C* at machine word granularity, not individual characters
-              *((uint64_t*) s + i) = get_word_value(sword);
+              store_word((uint64_t*) s, i, 1, get_word_value(sword));
           } else
             // assert: vaddr is mapped
-            *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
+            store_word((uint64_t*) s, i, 1, load_virtual_memory(get_pt(context), vaddr));
         } else {
           use_stdout();
           printf("%s: opening file failed because the file name address 0x%08lX is unmapped\n", selfie_name, vaddr);
@@ -481,21 +481,22 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
-        j = 0;
+        // TARGETWORDSIZE may be less than SIZEOFUINT64
+        j = i % SIZEOFUINT64;
 
-        // check if string ends in the current machine word
-        while (j < SIZEOFUINT64) {
-          if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+        // check if string ends in the current word
+        while (j - i % SIZEOFUINT64 < TARGETWORDSIZE) {
+          if (load_character((char*) ((uint64_t*) s + i / SIZEOFUINT64), j) == 0)
             return 1;
 
           j = j + 1;
         }
 
-        // advance to the next machine word in virtual memory
-        vaddr = vaddr + SIZEOFUINT64;
+        // advance to the next word in virtual memory
+        vaddr = vaddr + TARGETWORDSIZE;
 
-        // advance to the next machine word in our memory
-        i = i + 1;
+        // advance to the corresponding word in our memory
+        i = i + TARGETWORDSIZE;
       } else {
         use_stdout();
         printf("%s: opening file failed because the file name address 0x%08lX is in an invalid segment\n", selfie_name, vaddr);
@@ -608,10 +609,10 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, u
   if (var)
     set_word_symbolic(sword, var);
   else if (sym) {
-    set_word_symbolic(sword, smt_variable("m", SIZEOFUINT64 * 8));
+    set_word_symbolic(sword, smt_variable("m", TARGETWORDSIZEINBITS));
 
     w = w
-      + dprintf(output_fd, "(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym)
+      + dprintf(output_fd, "(assert (= %s %s)); store in ", get_word_symbolic(sword), sym)
       + print_code_context_for_instruction(pc)
       + dprintf(output_fd, "\n");
   } else
@@ -749,7 +750,7 @@ void constrain_load() {
     use_stdout();
 
     // symbolic memory addresses not yet supported
-    printf("%s: symbolic memory address in ld instruction at 0x%lX", selfie_name, pc);
+    printf("%s: symbolic memory address in load instruction at 0x%lX", selfie_name, pc);
     print_code_line_number_for_instruction(pc, code_start);
     printf("\n");
 
@@ -758,7 +759,7 @@ void constrain_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -770,7 +771,7 @@ void constrain_load() {
           if (sword) {
             *(registers + rd) = get_word_value(sword);
 
-            if (get_number_of_bits(sword) < WORDSIZEINBITS)
+            if (get_number_of_bits(sword) < TARGETWORDSIZEINBITS)
               *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
             else
               *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
@@ -818,7 +819,7 @@ void constrain_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, WORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -828,7 +829,7 @@ void constrain_store() {
           *(registers + rs2),
           (char*) *(reg_sym + rs2),
           0,
-          WORDSIZEINBITS);
+          TARGETWORDSIZEINBITS);
 
         // keep track of instruction address for profiling stores
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -1282,7 +1283,7 @@ char* bv_zero_extension(uint64_t bits) {
 
   string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
-  sprintf(string, "(_ zero_extend %lu)", WORDSIZEINBITS - bits);
+  sprintf(string, "(_ zero_extend %lu)", TARGETWORDSIZEINBITS - bits);
 
   return string;
 }

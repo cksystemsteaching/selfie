@@ -462,17 +462,17 @@ void model_syscalls(uint64_t cursor_nid) {
         reg_nids + REG_A2, // nid of current value of $a2 register
         reg_nids + REG_A0) // nid of current value of $a0 register
     + dprintf(output_fd, "%lu ugte 1 %lu %lu ; $a2 - $a0 >= %lu bytes\n",
-        cursor_nid + 1, // nid of this line
-        cursor_nid,     // nid of $a2 - $a0
-        20 + WORDSIZE,  // nid of word size
-        WORDSIZE)       // word size
+        cursor_nid + 1,      // nid of this line
+        cursor_nid,          // nid of $a2 - $a0
+        20 + TARGETWORDSIZE, // nid of target word size
+        TARGETWORDSIZE)      // word size
     + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; read %lu bytes if $a2 - $a0 >= %lu bytes, or else $a2 - $a0 bytes\n",
-        cursor_nid + 2, // nid of this line
-        cursor_nid + 1, // nid of $a2 - $a0 >= 8 (4) bytes
-        20 + WORDSIZE,  // nid of word size
-        cursor_nid,     // nid of $a2 - $a0
-        WORDSIZE,       // word size
-        WORDSIZE);      // word size
+        cursor_nid + 2,      // nid of this line
+        cursor_nid + 1,      // nid of $a2 - $a0 >= 8 (4) bytes
+        20 + TARGETWORDSIZE, // nid of target word size
+        cursor_nid,          // nid of $a2 - $a0
+        TARGETWORDSIZE,      // target word size
+        TARGETWORDSIZE);     // target word size
 
   increment_nid = cursor_nid + 2;
 
@@ -620,7 +620,7 @@ void model_syscalls(uint64_t cursor_nid) {
   } else {
     RAM_address = 0;
 
-    while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
+    while (RAM_address < (data_size + heap_size + stack_size) / TARGETWORDSIZE) {
       // if address $a1 + $a0 == RAM address write input at RAM address
       cursor_nid = model_RAM_access(cursor_nid, paddr_nid, RAM_address,
         input_nid, *(RAM_write_flow_nid + RAM_address));
@@ -831,14 +831,14 @@ void model_syscalls(uint64_t cursor_nid) {
     *(reg_flow_nids + LO_FLOW + REG_T1) = cursor_nid;
 
     w = w
-      + dprintf(output_fd, "%lu sub 2 %lu %lu ; $a0 - WORDSIZE\n",
-          cursor_nid + 1,    // nid of this line
-          reg_nids + REG_A0, // nid of current value of $a0 register
-          20 + WORDSIZE)     // nid of word size
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 - WORDSIZE if brk ecall is active and $a0 is valid\n",
+      + dprintf(output_fd, "%lu sub 2 %lu %lu ; $a0 - TARGETWORDSIZE\n",
+          cursor_nid + 1,      // nid of this line
+          reg_nids + REG_A0,   // nid of current value of $a0 register
+          20 + TARGETWORDSIZE) // nid of target word size
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; upper bound on $t1 = $a0 - TARGETWORDSIZE if brk ecall is active and $a0 is valid\n",
           cursor_nid + 2,                       // nid of this line
           valid_brk_nid,                        // nid of brk ecall is active and $a0 is valid
-          cursor_nid + 1,                       // nid of current value of $a0 register - WORDSIZE
+          cursor_nid + 1,                       // nid of current value of $a0 register - TARGETWORDSIZE
           *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
     *(reg_flow_nids + UP_FLOW + REG_T1) = cursor_nid + 2;
@@ -1224,9 +1224,9 @@ void model_data_flow_sltu() {
 
       // unsigned-extend $rs1 < $rs2 by word size in bits - 1 to word size in bits
       + dprintf(output_fd, "%lu uext 2 %lu %lu\n",
-          current_nid + 1,    // nid of this line
-          current_nid,        // nid of $rs1 < $rs2
-          WORDSIZEINBITS - 1) // unsigned-extend by word size in bits - 1
+          current_nid + 1,          // nid of this line
+          current_nid,              // nid of $rs1 < $rs2
+          TARGETWORDSIZEINBITS - 1) // unsigned-extend by target word size in bits - 1
 
       // if this instruction is active set $rd = $rs1 < $rs2
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
@@ -1325,7 +1325,7 @@ void model_data_flow_load() {
       // read 0 if address $rs1 + imm does not match any RAM address (must not happen)
       RAM_read_flow_nid = 20;
 
-      while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
+      while (RAM_address < (data_size + heap_size + stack_size) / TARGETWORDSIZE) {
         // if address $rs1 + imm == RAM address read RAM[$rs1 + imm] at RAM address
         RAM_read_flow_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
           pc_nid(memory_nid, RAM_address) + 2, RAM_read_flow_nid);
@@ -1442,7 +1442,7 @@ void model_data_flow_store() {
   } else {
     RAM_address = 0;
 
-    while (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE) {
+    while (RAM_address < (data_size + heap_size + stack_size) / TARGETWORDSIZE) {
       // if address $rs1 + imm == RAM address write current value of $rs2 register at RAM address
       current_nid = model_RAM_access(current_nid, paddr_nid, RAM_address,
         reg_nids + rs2, *(RAM_write_flow_nid + RAM_address));
@@ -1460,7 +1460,7 @@ void model_data_flow_store() {
       current_nid = current_nid + 2;
       RAM_address = RAM_address + 1;
 
-      if (RAM_address < (data_size + heap_size + stack_size) / WORDSIZE)
+      if (RAM_address < (data_size + heap_size + stack_size) / TARGETWORDSIZE)
         w = w + dprintf(output_fd, "\n");
       else
         w = w + dprintf(output_fd, " ; ");
@@ -1821,7 +1821,7 @@ uint64_t model_RAM_access(uint64_t cursor_nid, uint64_t address_nid, uint64_t RA
 
 uint64_t compute_linear_address(uint64_t vaddr) {
   if (linear_address_space)
-    return vaddr / WORDSIZE;
+    return vaddr / TARGETWORDSIZE;
   else
     return vaddr;
 }
@@ -1837,7 +1837,7 @@ uint64_t compute_physical_address(uint64_t vaddr) {
           // vaddr in heap segment
           vaddr = vaddr - heap_start + data_size;
         else if (vaddr >= stack_start)
-          if (vaddr <= stack_start + stack_size - WORDSIZE)
+          if (vaddr <= stack_start + stack_size - TARGETWORDSIZE)
             // vaddr in stack segment
             vaddr = vaddr - stack_start + data_size + heap_size;
           else
@@ -1850,7 +1850,7 @@ uint64_t compute_physical_address(uint64_t vaddr) {
       exit(EXITCODE_MODELINGERROR);
 
     // bypass linear address space
-    return vaddr / WORDSIZE;
+    return vaddr / TARGETWORDSIZE;
   }
 
   return compute_linear_address(vaddr);
@@ -2480,7 +2480,7 @@ void beator(uint64_t entry_pc) {
 
   w = w
     + dprintf(output_fd, "1 sort bitvec 1 ; Boolean\n")
-    + dprintf(output_fd, "2 sort bitvec %lu ; %lu-bit machine word\n", WORDSIZEINBITS, WORDSIZEINBITS);
+    + dprintf(output_fd, "2 sort bitvec %lu ; %lu-bit machine word\n", TARGETWORDSIZEINBITS, TARGETWORDSIZEINBITS);
 
   if (linear_address_space + MMU + RAM + MMURAM == 0)
     w = w + dprintf(output_fd, "3 sort array 2 2 ; %lu-bit physical memory\n", paddr_space_size);
@@ -2509,7 +2509,7 @@ void beator(uint64_t entry_pc) {
   stack_size  = VIRTUALMEMORYSIZE * GIGABYTE - stack_start;
 
   if (MMU + RAM + MMURAM > 0) {
-    paddr_space_size = number_of_bits((data_size + heap_size + stack_size) / WORDSIZE);
+    paddr_space_size = number_of_bits((data_size + heap_size + stack_size) / TARGETWORDSIZE);
 
     w = w
       + dprintf(output_fd, "\n6 sort bitvec %lu ; %lu-bit physical address\n",
@@ -2578,35 +2578,35 @@ void beator(uint64_t entry_pc) {
   if (linear_address_space) {
     w = w
       + dprintf(output_fd, "; start of data segment in %lu-bit linear memory\n", laddr_space_size)
-      + dprintf(output_fd, "40 constd 4 %lu ; 0x%lX\n", data_start / WORDSIZE, data_start / WORDSIZE)
+      + dprintf(output_fd, "40 constd 4 %lu ; 0x%lX\n", data_start / TARGETWORDSIZE, data_start / TARGETWORDSIZE)
       + dprintf(output_fd, "; end of data segment in %lu-bit linear memory\n", laddr_space_size)
-      + dprintf(output_fd, "41 constd 4 %lu ; 0x%lX\n\n", (data_start + data_size) / WORDSIZE, (data_start + data_size) / WORDSIZE)
+      + dprintf(output_fd, "41 constd 4 %lu ; 0x%lX\n\n", (data_start + data_size) / TARGETWORDSIZE, (data_start + data_size) / TARGETWORDSIZE)
 
       + dprintf(output_fd, "; start of heap segment in %lu-bit linear memory (initial program break)\n", laddr_space_size)
-      + dprintf(output_fd, "42 constd 4 %lu ; 0x%lX\n", heap_start / WORDSIZE, heap_start / WORDSIZE)
+      + dprintf(output_fd, "42 constd 4 %lu ; 0x%lX\n", heap_start / TARGETWORDSIZE, heap_start / TARGETWORDSIZE)
       + dprintf(output_fd, "; current end of heap segment in %lu-bit linear memory (current program break)\n", laddr_space_size)
-      + dprintf(output_fd, "43 constd 4 %lu ; 0x%lX\n\n", get_program_break(current_context) / WORDSIZE, get_program_break(current_context) / WORDSIZE);
+      + dprintf(output_fd, "43 constd 4 %lu ; 0x%lX\n\n", get_program_break(current_context) / TARGETWORDSIZE, get_program_break(current_context) / TARGETWORDSIZE);
 
     if (fixed_heap_segment)
       w = w
         + dprintf(output_fd, "; allowed end of heap segment in %lu-bit linear memory (with %luB allowance)\n", laddr_space_size, heap_allowance)
-        + dprintf(output_fd, "44 constd 4 %lu ; 0x%lX\n", (heap_start + heap_size) / WORDSIZE, (heap_start + heap_size) / WORDSIZE)
+        + dprintf(output_fd, "44 constd 4 %lu ; 0x%lX\n", (heap_start + heap_size) / TARGETWORDSIZE, (heap_start + heap_size) / TARGETWORDSIZE)
         + dprintf(output_fd, "; allowed start of stack segment in %lu-bit linear memory (with %luB allowance)\n", laddr_space_size, stack_allowance)
-        + dprintf(output_fd, "45 constd 4 %lu ; 0x%lX\n\n", stack_start / WORDSIZE, stack_start / WORDSIZE);
+        + dprintf(output_fd, "45 constd 4 %lu ; 0x%lX\n\n", stack_start / TARGETWORDSIZE, stack_start / TARGETWORDSIZE);
 
     if (MMU)
       w = w
         + dprintf(output_fd, "; offset of heap segment in %lu-bit linear memory\n", laddr_space_size)
-        + dprintf(output_fd, "46 constd 4 %lu ; 0x%lX\n", (heap_start - data_size) / WORDSIZE, (heap_start - data_size) / WORDSIZE)
+        + dprintf(output_fd, "46 constd 4 %lu ; 0x%lX\n", (heap_start - data_size) / TARGETWORDSIZE, (heap_start - data_size) / TARGETWORDSIZE)
         + dprintf(output_fd, "; offset of stack segment in %lu-bit linear memory\n", laddr_space_size)
-        + dprintf(output_fd, "47 constd 4 %lu ; 0x%lX\n\n", (stack_start - data_size - heap_size) / WORDSIZE, (stack_start - data_size - heap_size) / WORDSIZE);
+        + dprintf(output_fd, "47 constd 4 %lu ; 0x%lX\n\n", (stack_start - data_size - heap_size) / TARGETWORDSIZE, (stack_start - data_size - heap_size) / TARGETWORDSIZE);
   }
 
   w = w
     // avoiding 2^32 for 32-bit version
     + dprintf(output_fd, "; highest address in 32-bit virtual address space (4GB)\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n",
-      VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE, VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
+      VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE, VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE)
 
     + dprintf(output_fd, "; kernel-mode flag\n\n")
 
@@ -2656,7 +2656,7 @@ void beator(uint64_t entry_pc) {
       + dprintf(output_fd, "94 input 2 4-byte-input\n\n");
 
   w = w
-    + dprintf(output_fd, "; 32 %lu-bit general-purpose registers\n\n", WORDSIZEINBITS)
+    + dprintf(output_fd, "; 32 %lu-bit general-purpose registers\n\n", TARGETWORDSIZEINBITS)
     + dprintf(output_fd, "; non-zero initial register values\n");
 
   i = 0;
@@ -2707,9 +2707,9 @@ void beator(uint64_t entry_pc) {
           data_start);          // start of data segment in hexadecimal
       else if (i == UP_FLOW)
         w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX highest address in 32-bit virtual address space (4GB)\n",
-          *(reg_flow_nids + i),                     // nid of this line
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE,  // highest address in 32-bit virtual address space (4GB)
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE); // highest address in 32-bit virtual address space (4GB) in hexadecimal
+          *(reg_flow_nids + i),                           // nid of this line
+          VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE,  // highest address in 32-bit virtual address space (4GB)
+          VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE); // highest address in 32-bit virtual address space (4GB) in hexadecimal
       else {
         w = w + dprintf(output_fd, "%lu state 2 ", *(reg_flow_nids + i));
 
@@ -2767,7 +2767,7 @@ void beator(uint64_t entry_pc) {
       i = i + 1;
     }
 
-  w = w + dprintf(output_fd, "\n; %lu-bit program counter encoded in Boolean flags\n\n", WORDSIZEINBITS);
+  w = w + dprintf(output_fd, "\n; %lu-bit program counter encoded in Boolean flags\n\n", TARGETWORDSIZEINBITS);
 
   // 3 more digits to accommodate code, data, heap, and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
@@ -2816,14 +2816,14 @@ void beator(uint64_t entry_pc) {
 
     data_flow_nid = 0;
 
-    RAM_write_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * SIZEOFUINT64);
+    RAM_write_flow_nid = smalloc((data_size + heap_size + stack_size) / TARGETWORDSIZE * SIZEOFUINT64);
   }
 
   w = w + dprintf(output_fd, "; data segment\n\n");
 
   // assert: data segment is not empty
 
-  while (pc <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
+  while (pc <= VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE) {
     if (pc == data_start + data_size) {
       pc = heap_start;
 
@@ -2832,7 +2832,7 @@ void beator(uint64_t entry_pc) {
     }
 
     if (pc == heap_start + heap_size) {
-      // assert: stack pointer <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+      // assert: stack pointer <= VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE
       pc = stack_start;
 
       w = w + dprintf(output_fd, "\n; stack segment\n\n");
@@ -2935,11 +2935,11 @@ void beator(uint64_t entry_pc) {
       }
     }
 
-    if (pc + WORDSIZE == 0)
+    if (pc + TARGETWORDSIZE == 0)
       // check overflow to terminate loop
       pc = UINT64_MAX;
     else
-      pc = pc + WORDSIZE;
+      pc = pc + TARGETWORDSIZE;
   }
 
   if (RAM + MMURAM == 0) {
@@ -3174,7 +3174,7 @@ void beator(uint64_t entry_pc) {
   } else {
     i = 0;
 
-    while (i < (data_size + heap_size + stack_size) / WORDSIZE) {
+    while (i < (data_size + heap_size + stack_size) / TARGETWORDSIZE) {
       w = w + dprintf(output_fd, "%lu next 2 %lu %lu RAM-word-%lu\n",
         current_nid,               // nid of this line
         pc_nid(memory_nid, i) + 2, // nid of RAM
@@ -3288,7 +3288,7 @@ uint64_t selfie_model() {
     vaddr_mask_nid  = 23;
     vaddr_alignment = 2;
 
-    vaddr_space_size = WORDSIZEINBITS;
+    vaddr_space_size = TARGETWORDSIZEINBITS;
     paddr_space_size = vaddr_space_size;
   }
 
@@ -3338,7 +3338,7 @@ uint64_t selfie_model() {
             get_argument();
 
             if (number_of_remaining_arguments() > 1) {
-              heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+              heap_allowance = round_up(atoi(peek_argument(1)), TARGETWORDSIZE);
 
               get_argument();
             } else
@@ -3349,7 +3349,7 @@ uint64_t selfie_model() {
             get_argument();
 
             if (number_of_remaining_arguments() > 1) {
-              stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+              stack_allowance = round_up(atoi(peek_argument(1)), TARGETWORDSIZE);
 
               get_argument();
             } else

@@ -225,10 +225,8 @@ uint64_t UINT_MAX;   // maximum numerical value of a target-dependent unsigned i
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
-uint64_t WORDSIZE       = 8;  // (double) word size in bytes, must be the same as SIZEOFUINT64
-uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
-
-uint64_t MEMORYWORDSIZE = 8; // target-dependent memory word size
+uint64_t TARGETWORDSIZE       = 8;  // target-dependent word size in bytes
+uint64_t TARGETWORDSIZEINBITS = 64; // TARGETWORDSIZE * 8
 
 uint64_t SINGLEWORDSIZE       = 4;  // single word size in bytes
 uint64_t SINGLEWORDSIZEINBITS = 32; // single word size in bits
@@ -356,11 +354,9 @@ void init_library() {
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
   INT64_MAX = INT64_MIN - 1;
 
-  // WORDSIZE must be the same as SIZEOFUINT64
-  WORDSIZE       = SIZEOFUINT64;
-  WORDSIZEINBITS = WORDSIZE * 8;
-
-  MEMORYWORDSIZE = WORDSIZE;
+  // target-dependent word size
+  TARGETWORDSIZE       = SIZEOFUINT64;
+  TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
@@ -1388,7 +1384,7 @@ uint64_t L1_ICACHE_ASSOCIATIVITY = 4;
 
 // L1 cache-block size
 // assert: cache-block sizes are powers of 2
-// assert: L1_xCACHE_BLOCK_SIZE >= MEMORYWORDSIZE
+// assert: L1_xCACHE_BLOCK_SIZE >= TARGETWORDSIZE
 // assert: L1_xCACHE_SIZE / L1_xCACHE_ASSOCIATIVITY >= L1_xCACHE_BLOCK_SIZE
 uint64_t L1_DCACHE_BLOCK_SIZE = 16; // in bytes
 uint64_t L1_ICACHE_BLOCK_SIZE = 16; // in bytes
@@ -1614,7 +1610,7 @@ uint64_t GC_REUSE = 1; // reuse memory with freelist by default
 
 uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
 
-uint64_t GC_WORDSIZE = 8; // SIZEOFUINT64 for library variant, otherwise MEMORYWORDSIZE
+uint64_t GC_WORDSIZE = 8; // SIZEOFUINT64 for library variant, otherwise TARGETWORDSIZE
 
 uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
 uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
@@ -2413,7 +2409,8 @@ void init_32_bit_target() {
     SIZEOFUINT = 4;
     UINT_MAX   = two_to_the_power_of(32) - 1;
 
-    MEMORYWORDSIZE = 4;
+    TARGETWORDSIZE       = 4;
+    TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
   }
 
   MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
@@ -4239,7 +4236,7 @@ void tfree(uint64_t number_of_temporaries) {
 void save_temporaries() {
   while (allocated_temporaries > 0) {
     // push temporary onto stack
-    emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
+    emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
     emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
@@ -4252,7 +4249,7 @@ void restore_temporaries(uint64_t number_of_temporaries) {
 
     // restore temporary from stack
     emit_load(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+    emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
   }
 }
 
@@ -4416,7 +4413,7 @@ void load_integer(uint64_t value) {
 
     if (entry == (uint64_t*) 0) {
       // allocate memory for big integer in data segment
-      data_size = data_size + MEMORYWORDSIZE;
+      data_size = data_size + TARGETWORDSIZE;
 
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
@@ -4435,7 +4432,7 @@ void load_string(char* string) {
   length = string_length(string) + 1;
 
   // allocate memory for string in data segment
-  data_size = data_size + round_up(length, MEMORYWORDSIZE);
+  data_size = data_size + round_up(length, TARGETWORDSIZE);
 
   create_symbol_table_entry(GLOBAL_TABLE, string, line_number, STRING, UINT64STAR_T, 0, -data_size);
 
@@ -4484,13 +4481,13 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_par
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   // allocate memory for return address
-  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
 
   // save return address
   emit_store(REG_SP, 0, REG_RA);
 
   // allocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
 
   // save caller's frame pointer
   emit_store(REG_SP, 0, REG_S0);
@@ -4520,13 +4517,13 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_load(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   // restore return address
   emit_load(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and (non-variadic) actual parameters
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE + number_of_parameter_bytes);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE + number_of_parameter_bytes);
 
   // return
   emit_jalr(REG_ZR, REG_RA, 0);
@@ -4584,7 +4581,7 @@ uint64_t compile_call(char* procedure) {
     emit_addi(REG_SP, REG_SP, 0);
 
     // push first parameter onto stack
-    emit_store(REG_SP, number_of_parameters * MEMORYWORDSIZE, current_temporary());
+    emit_store(REG_SP, number_of_parameters * TARGETWORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -4596,7 +4593,7 @@ uint64_t compile_call(char* procedure) {
       compile_expression();
 
       // push next parameter onto stack
-      emit_store(REG_SP, number_of_parameters * MEMORYWORDSIZE, current_temporary());
+      emit_store(REG_SP, number_of_parameters * TARGETWORDSIZE, current_temporary());
 
       tfree(1);
 
@@ -4604,7 +4601,7 @@ uint64_t compile_call(char* procedure) {
     }
 
     // now we know the number of actual parameters
-    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * MEMORYWORDSIZE));
+    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * TARGETWORDSIZE));
 
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
@@ -4628,7 +4625,7 @@ uint64_t compile_call(char* procedure) {
   if (entry != (uint64_t*) 0)
     if (signed_less_than(get_value(entry), 0))
       // deallocate variadic parameters
-      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * MEMORYWORDSIZE);
+      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * TARGETWORDSIZE);
 
   // assert: allocated_temporaries == 0
 
@@ -5487,10 +5484,10 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       number_of_parameters = 1;
 
-      // 2 * MEMORYWORDSIZE offset to skip frame pointer and link
-      // additional offset (number_of_parameters - 1) * MEMORYWORDSIZE
+      // 2 * TARGETWORDSIZE offset to skip frame pointer and link
+      // additional offset (number_of_parameters - 1) * TARGETWORDSIZE
       // since actual parameters are pushed onto stack in reverse
-      set_address(entry, 2 * MEMORYWORDSIZE + (number_of_parameters - 1) * MEMORYWORDSIZE);
+      set_address(entry, 2 * TARGETWORDSIZE + (number_of_parameters - 1) * TARGETWORDSIZE);
 
       while (is_possibly_parameter(is_variadic)) {
         get_symbol();
@@ -5504,7 +5501,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
           number_of_parameters = number_of_parameters + 1;
 
-          set_address(entry, 2 * MEMORYWORDSIZE + (number_of_parameters - 1) * MEMORYWORDSIZE);
+          set_address(entry, 2 * TARGETWORDSIZE + (number_of_parameters - 1) * TARGETWORDSIZE);
         }
       }
 
@@ -5586,7 +5583,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     number_of_local_variable_bytes = 0;
 
     while (symbol == SYM_UINT64) {
-      number_of_local_variable_bytes = number_of_local_variable_bytes + MEMORYWORDSIZE;
+      number_of_local_variable_bytes = number_of_local_variable_bytes + TARGETWORDSIZE;
 
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
@@ -5619,9 +5616,9 @@ void compile_procedure(char* procedure, uint64_t type) {
       return_branches = 0;
 
       if (is_variadic)
-        procedure_epilogue(-number_of_parameters * MEMORYWORDSIZE);
+        procedure_epilogue(-number_of_parameters * TARGETWORDSIZE);
       else
-        procedure_epilogue(number_of_parameters * MEMORYWORDSIZE);
+        procedure_epilogue(number_of_parameters * TARGETWORDSIZE);
 
       get_symbol();
     } else {
@@ -5708,7 +5705,7 @@ void compile_cstar() {
 
           if (entry == (uint64_t*) 0) {
             // allocate memory for global variable in data segment
-            data_size = data_size + MEMORYWORDSIZE;
+            data_size = data_size + TARGETWORDSIZE;
 
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
           } else {
@@ -5747,12 +5744,12 @@ void macro_var_start() {
         get_symbol();
 
         // skip the return address, frame pointer and non-variadic parameters
-        s0_offset = 2 * MEMORYWORDSIZE - get_value(current_procedure) * MEMORYWORDSIZE;
+        s0_offset = 2 * TARGETWORDSIZE - get_value(current_procedure) * TARGETWORDSIZE;
 
         load_integer(s0_offset);
 
         // address of first variadic parameter is:
-        // S0 + 2 * MEMORYWORDSIZE + #non-variadic parameters * MEMORYWORDSIZE
+        // S0 + 2 * TARGETWORDSIZE + #non-variadic parameters * TARGETWORDSIZE
         emit_add(current_temporary(), current_temporary(), REG_S0);
 
         // store address in variable passed as macro argument
@@ -5796,8 +5793,8 @@ void macro_var_arg() {
         // store variadic parameter as return value of macro
         emit_load(REG_A0, current_temporary(), 0);
 
-        // increment var_list_variable pointer by one parameter size (MEMORYWORDSIZE)
-        emit_addi(current_temporary(), current_temporary(), MEMORYWORDSIZE);
+        // increment var_list_variable pointer by one parameter size (TARGETWORDSIZE)
+        emit_addi(current_temporary(), current_temporary(), TARGETWORDSIZE);
 
         // store incremented address in variable passed as macro argument
         emit_store(REG_S0, var_list_address, current_temporary());
@@ -5886,7 +5883,7 @@ void emit_bootstrapping() {
   code_start = PK_CODE_START;
 
   // code size must be memory-word-aligned
-  if (code_size % MEMORYWORDSIZE != 0)
+  if (code_size % TARGETWORDSIZE != 0)
     emit_nop();
 
   // start of data segment must be page-aligned for ELF program header
@@ -5931,7 +5928,7 @@ void emit_bootstrapping() {
     emit_ecall();
 
     // memory-word-align current program break
-    emit_round_up(REG_A0, MEMORYWORDSIZE);
+    emit_round_up(REG_A0, TARGETWORDSIZE);
 
     // set program break to word-aligned program break
     emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
@@ -5959,18 +5956,18 @@ void emit_bootstrapping() {
     talloc();
 
     emit_load(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
+    emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
     emit_store(REG_SP, 0, current_temporary());
 
-    //   sp  sp+MEMWRDSZ sp+2*MEMORYWORDSIZE
+    //   sp  sp+TRGTWRDSZ sp+2*TARGETWORDSIZE
     //    |      |        |
     //    V      V        V
     // | argc | argc | argv[0] | argv[1] | ... | argv[n]
 
     // then overwrite below-top argc with &argv
 
-    emit_addi(current_temporary(), REG_SP, 2 * MEMORYWORDSIZE);
-    emit_store(REG_SP, MEMORYWORDSIZE, current_temporary());
+    emit_addi(current_temporary(), REG_SP, 2 * TARGETWORDSIZE);
+    emit_store(REG_SP, TARGETWORDSIZE, current_temporary());
 
     tfree(1);
 
@@ -5989,7 +5986,7 @@ void emit_bootstrapping() {
   }
 
   // we exit with exit code in return register pushed onto the stack
-  emit_addi(REG_SP, REG_SP, -MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, -TARGETWORDSIZE);
   emit_store(REG_SP, 0, REG_A0);
 
   // discount NOPs in profile that were generated for program entry
@@ -6035,7 +6032,7 @@ void selfie_compile() {
 
   // allocate zeroed memory for storing source code line numbers
   code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zmalloc(MAX_DATA_SIZE / MEMORYWORDSIZE * SIZEOFUINT64);
+  data_line_number = zmalloc(MAX_DATA_SIZE / TARGETWORDSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -6853,7 +6850,7 @@ void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number)
   store_data(data_size + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (data_size + offset) / MEMORYWORDSIZE) = source_line_number;
+    *(data_line_number + (data_size + offset) / TARGETWORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -6865,12 +6862,12 @@ void emit_string_data(uint64_t* entry) {
 
   i = 0;
 
-  l = round_up(string_length(s) + 1, MEMORYWORDSIZE);
+  l = round_up(string_length(s) + 1, TARGETWORDSIZE);
 
   while (i < l) {
     emit_data_word(load_word((uint64_t*) s, i, 1), get_address(entry) + i, get_line_number(entry));
 
-    i = i + MEMORYWORDSIZE;
+    i = i + TARGETWORDSIZE;
   }
 }
 
@@ -7230,7 +7227,7 @@ void emit_exit() {
   emit_load(REG_A0, REG_SP, 0);
 
   // remove the exit code from the stack
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   // load the correct syscall number and invoke syscall
   emit_addi(REG_A7, REG_ZR, SYSCALL_EXIT);
@@ -7264,13 +7261,13 @@ void emit_read() {
   create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_READ);
 
@@ -7316,7 +7313,7 @@ void implement_read(uint64_t* context) {
 
   read_total = 0;
 
-  bytes_to_read = MEMORYWORDSIZE;
+  bytes_to_read = TARGETWORDSIZE;
 
   failed = 0;
 
@@ -7324,7 +7321,7 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_virtual_address_valid(vbuffer, MEMORYWORDSIZE))
+    if (is_virtual_address_valid(vbuffer, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7337,7 +7334,7 @@ void implement_read(uint64_t* context) {
             size = size - actually_read;
 
             if (size > 0)
-              vbuffer = vbuffer + MEMORYWORDSIZE;
+              vbuffer = vbuffer + TARGETWORDSIZE;
           } else {
             if (signed_less_than(0, actually_read))
               read_total = read_total + actually_read;
@@ -7388,13 +7385,13 @@ void emit_write() {
   create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
 
@@ -7439,7 +7436,7 @@ void implement_write(uint64_t* context) {
 
   written_total = 0;
 
-  bytes_to_write = MEMORYWORDSIZE;
+  bytes_to_write = TARGETWORDSIZE;
 
   failed = 0;
 
@@ -7447,7 +7444,7 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_virtual_address_valid(vbuffer, MEMORYWORDSIZE))
+    if (is_virtual_address_valid(vbuffer, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
@@ -7460,7 +7457,7 @@ void implement_write(uint64_t* context) {
             size = size - actually_written;
 
             if (size > 0)
-              vbuffer = vbuffer + MEMORYWORDSIZE;
+              vbuffer = vbuffer + TARGETWORDSIZE;
           } else {
             if (signed_less_than(0, actually_written))
               written_total = written_total + actually_written;
@@ -7511,13 +7508,13 @@ void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A2, REG_SP, 0); // flags
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A3, REG_SP, 0); // mode
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   // DIRFD_AT_FDCWD makes sure that openat behaves like open
   emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD);
@@ -7536,7 +7533,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH) {
-    if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+    if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           store_word((uint64_t*) s, i, 1, load_virtual_memory(get_pt(context), vaddr));
@@ -7546,11 +7543,11 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
-        // MEMORYWORDSIZE may be less than SIZEOFUINT64
+        // TARGETWORDSIZE may be less than SIZEOFUINT64
         j = i % SIZEOFUINT64;
 
         // check if string ends in the current word
-        while (j - i % SIZEOFUINT64 < MEMORYWORDSIZE) {
+        while (j - i % SIZEOFUINT64 < TARGETWORDSIZE) {
           if (load_character((char*) ((uint64_t*) s + i / SIZEOFUINT64), j) == 0)
             return 1;
 
@@ -7558,10 +7555,10 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         }
 
         // advance to the next word in virtual memory
-        vaddr = vaddr + MEMORYWORDSIZE;
+        vaddr = vaddr + TARGETWORDSIZE;
 
         // advance to the corresponding word in our memory
-        i = i + MEMORYWORDSIZE;
+        i = i + TARGETWORDSIZE;
       } else {
         printf("%s: opening file failed because the file name address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
 
@@ -7649,7 +7646,7 @@ void emit_malloc() {
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
-  data_size = data_size + MEMORYWORDSIZE;
+  data_size = data_size + TARGETWORDSIZE;
 
   // define global variable _bump for storing malloc's bump pointer
   // use bump_name string to obtain unique hash
@@ -7662,10 +7659,10 @@ void emit_malloc() {
   talloc();
 
   emit_load(current_temporary(), REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   // round up to target-dependent memory word size
-  emit_round_up(current_temporary(), MEMORYWORDSIZE);
+  emit_round_up(current_temporary(), TARGETWORDSIZE);
 
   // allocate register to compute new bump pointer
   talloc();
@@ -7709,7 +7706,7 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
   current_program_break = get_program_break(context);
 
-  if (is_virtual_address_valid(new_program_break, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(new_program_break, TARGETWORDSIZE))
     if (is_address_between_stack_and_heap(context, new_program_break)) {
       if (debug_brk)
         printf("%s: setting program break to 0x%08lX\n", selfie_name, (uint64_t) new_program_break);
@@ -7798,10 +7795,10 @@ void emit_switch() {
   create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 2, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_load(REG_A1, REG_SP, 0); // number of instructions to execute
-  emit_addi(REG_SP, REG_SP, MEMORYWORDSIZE);
+  emit_addi(REG_SP, REG_SP, TARGETWORDSIZE);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_SWITCH);
 
@@ -8082,7 +8079,7 @@ void fill_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  // cache block size / SIZEOFUINT64 (not MEMORYWORDSIZE)
+  // cache block size / SIZEOFUINT64 (not TARGETWORDSIZE)
   number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
 
   block_memory = get_block_memory(cache_block);
@@ -8134,7 +8131,7 @@ void flush_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  // cache block size / SIZEOFUINT64 (not MEMORYWORDSIZE)
+  // cache block size / SIZEOFUINT64 (not TARGETWORDSIZE)
   number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
 
   block_memory = get_block_memory(cache_block);
@@ -8334,7 +8331,7 @@ uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
 }
 
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
-  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
 
   return is_page_mapped(table, get_page_of_virtual_address(vaddr));
 }
@@ -8344,7 +8341,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   uint64_t frame;
   uint64_t paddr;
 
-  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   page = get_page_of_virtual_address(vaddr);
@@ -8365,14 +8362,14 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 }
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
-  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   return load_physical_memory(tlb(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
-  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
   store_physical_memory(tlb(table, vaddr), data);
@@ -8380,7 +8377,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     return load_data_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
   else
@@ -8389,7 +8386,7 @@ uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
 
 void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     store_data_in_cache(vaddr, (uint64_t) tlb(table, vaddr), data);
   else
@@ -8398,7 +8395,7 @@ void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data)
 
 uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
-    // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+    // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
     return load_instruction_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
   else
@@ -8493,7 +8490,7 @@ void implement_gc_brk(uint64_t* context) {
     // assert: _bump pointer is last entry in data segment
 
     // updating the _bump pointer of the program (for consistency)
-    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - MEMORYWORDSIZE, get_program_break(context));
+    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - TARGETWORDSIZE, get_program_break(context));
 
     sc_brk = sc_brk + 1;
 
@@ -8638,7 +8635,7 @@ void gc_init_selfie(uint64_t* context) {
   if (is_gc_library(context))
     GC_WORDSIZE = SIZEOFUINT64;
   else
-    GC_WORDSIZE = MEMORYWORDSIZE;
+    GC_WORDSIZE = TARGETWORDSIZE;
 
   set_data_and_heap_segments_gc(context);
 
@@ -8682,7 +8679,7 @@ uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
   if (is_gc_library(context))
     return *((uint64_t*) address);
   else
-    // assert: is_virtual_address_valid(address, MEMORYWORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, TARGETWORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       return load_virtual_memory(get_pt(context), address);
     else
@@ -8693,7 +8690,7 @@ void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
   if (is_gc_library(context))
     *((uint64_t*) address) = value;
   else
-    // assert: is_virtual_address_valid(address, MEMORYWORDSIZE) == 1
+    // assert: is_virtual_address_valid(address, TARGETWORDSIZE) == 1
     if (is_virtual_address_mapped(get_pt(context), address))
       store_virtual_memory(get_pt(context), address, value);
 }
@@ -8871,7 +8868,7 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t object_end;
 
   if (is_gc_library(context) == 0)
-    if (is_virtual_address_valid(gc_address, MEMORYWORDSIZE) == 0)
+    if (is_virtual_address_valid(gc_address, TARGETWORDSIZE) == 0)
       return;
 
   metadata = get_metadata_if_address_is_valid(context, gc_address);
@@ -9341,7 +9338,7 @@ void print_load_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
         printf(",mem[0x%lX]==0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
@@ -9356,7 +9353,7 @@ void print_load_before() {
 }
 
 void print_load_after(uint64_t vaddr) {
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(" -> ");
       print_register_value(rd);
@@ -9369,7 +9366,7 @@ void record_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(*(registers + rd));
 }
@@ -9383,7 +9380,7 @@ uint64_t do_load() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -9432,7 +9429,7 @@ void print_store_before() {
   print(": ");
   print_register_hexadecimal(rs1);
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       print(",");
       print_register_value(rs2);
@@ -9448,7 +9445,7 @@ void print_store_before() {
 }
 
 void print_store_after(uint64_t vaddr) {
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
       printf(" -> mem[0x%lX]==", vaddr);
       print_register_value(rs2);
@@ -9460,7 +9457,7 @@ void record_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE))
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr))
       record_state(load_virtual_memory(pt, vaddr));
 }
@@ -9473,7 +9470,7 @@ uint64_t do_store() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (is_virtual_address_valid(vaddr, MEMORYWORDSIZE)) {
+  if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
         update_register_counters();
@@ -9733,7 +9730,7 @@ void undo_ecall() {
 
 uint64_t print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    return dprintf(output_fd, "(~%lu)", *(data_line_number + (pc - code_size) / MEMORYWORDSIZE));
+    return dprintf(output_fd, "(~%lu)", *(data_line_number + (pc - code_size) / TARGETWORDSIZE));
   else
     return 0;
 }
@@ -9851,7 +9848,7 @@ void selfie_disassemble(uint64_t verbose) {
       + print_data()
       + dprintf(output_fd, "\n");
 
-    pc = pc + MEMORYWORDSIZE;
+    pc = pc + TARGETWORDSIZE;
   }
 
   disassemble_verbose = 0;
@@ -9991,7 +9988,7 @@ void fetch() {
     if (is_code_address(current_context, pc)) {
       // assert: is_virtual_address_mapped(pt, pc) == 1
 
-      if (pc % MEMORYWORDSIZE == 0)
+      if (pc % TARGETWORDSIZE == 0)
         ir = get_low_word(load_cached_instruction_word(pt, pc));
       else
         ir = get_high_word(load_cached_instruction_word(pt, pc - INSTRUCTIONSIZE));
@@ -10560,7 +10557,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - MEMORYWORDSIZE));
+  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
@@ -10727,7 +10724,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
       set_PTE_for_page(table, page, frame);
 
       // exploit spatial locality in page table caching
-      if (page <= get_page_of_virtual_address(get_program_break(context) - MEMORYWORDSIZE)) {
+      if (page <= get_page_of_virtual_address(get_program_break(context) - TARGETWORDSIZE)) {
         set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
         set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
       } else {
@@ -10847,7 +10844,7 @@ uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
   // is address in stack segment?
   if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - MEMORYWORDSIZE)
+    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - TARGETWORDSIZE)
       return 1;
 
   return 0;
@@ -10933,7 +10930,7 @@ uint64_t pexcess() {
   if (pavailable())
     return 1;
   else if (allocated_page_frame_memory + MEGABYTE <=
-            2 * total_page_frame_memory * SIZEOFUINT64 / MEMORYWORDSIZE)
+            2 * total_page_frame_memory * SIZEOFUINT64 / TARGETWORDSIZE)
     // tolerate twice (four times) as much memory mapped on demand than physically available
     // (single word on 32-bit target occupies double word on 64-bit system)
     return 1;
@@ -10951,7 +10948,7 @@ uint64_t* palloc() {
   uint64_t frame;
 
   // single word on 32-bit target occupies double word on 64-bit system
-  double_for_single_word = SIZEOFUINT64 / MEMORYWORDSIZE;
+  double_for_single_word = SIZEOFUINT64 / TARGETWORDSIZE;
 
   // assert: total_page_frame_memory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
@@ -10994,7 +10991,7 @@ void pfree(uint64_t* frame) {
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
-  // assert: is_virtual_address_valid(vaddr, MEMORYWORDSIZE) == 1
+  // assert: is_virtual_address_valid(vaddr, TARGETWORDSIZE) == 1
 
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
@@ -11028,7 +11025,7 @@ void up_load_binary(uint64_t* context) {
   while (baddr < code_size) {
     map_and_store(context, get_code_seg_start(context) + baddr, load_code(baddr));
 
-    baddr = baddr + MEMORYWORDSIZE;
+    baddr = baddr + TARGETWORDSIZE;
   }
 
   baddr = 0;
@@ -11036,7 +11033,7 @@ void up_load_binary(uint64_t* context) {
   while (baddr < data_size) {
     map_and_store(context, get_data_seg_start(context) + baddr, load_data(baddr));
 
-    baddr = baddr + MEMORYWORDSIZE;
+    baddr = baddr + TARGETWORDSIZE;
   }
 
   set_name(context, binary_name);
@@ -11046,7 +11043,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   uint64_t bytes;
   uint64_t i;
 
-  bytes = round_up(string_length(s) + 1, MEMORYWORDSIZE);
+  bytes = round_up(string_length(s) + 1, TARGETWORDSIZE);
 
   // allocate memory for storing string
   SP = SP - bytes;
@@ -11056,7 +11053,7 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   while (i < bytes) {
     map_and_store(context, SP + i, load_word((uint64_t*) s, i, 1));
 
-    i = i + MEMORYWORDSIZE;
+    i = i + TARGETWORDSIZE;
   }
 
   return SP;
@@ -11093,13 +11090,13 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
 
   // allocate memory for termination of env table
-  SP = SP - MEMORYWORDSIZE;
+  SP = SP - TARGETWORDSIZE;
 
   // push null value to terminate env table
   map_and_store(context, SP, 0);
 
   // allocate memory for termination of argv table
-  SP = SP - MEMORYWORDSIZE;
+  SP = SP - TARGETWORDSIZE;
 
   // push null value to terminate argv table
   map_and_store(context, SP, 0);
@@ -11109,7 +11106,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push argv table onto the stack
   while (i > 0) {
     // allocate memory for argv table entry
-    SP = SP - MEMORYWORDSIZE;
+    SP = SP - TARGETWORDSIZE;
 
     i = i - 1;
 
@@ -11118,7 +11115,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   }
 
   // allocate memory for argc
-  SP = SP - MEMORYWORDSIZE;
+  SP = SP - TARGETWORDSIZE;
 
   // push argc
   map_and_store(context, SP, argc);
