@@ -506,7 +506,7 @@ void model_syscalls(uint64_t cursor_nid) {
         cursor_nid + 4, // nid of this line
         increment_nid); // nid of increment
 
-  if (IS64BITSYSTEM) {
+  if (IS64BITTARGET) {
     w = w
       + dprintf(output_fd, "%lu ite 2 %lu 94 %lu ; unsigned-extended 4-byte input if increment == 4\n",
           cursor_nid + 5, // nid of this line
@@ -2556,7 +2556,7 @@ void beator(uint64_t entry_pc) {
     + dprintf(output_fd, "10 zero 1\n11 one 1\n\n")
     + dprintf(output_fd, "20 zero 2\n21 one 2\n22 constd 2 2\n23 constd 2 3\n24 constd 2 4\n");
 
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     w = w + dprintf(output_fd, "25 constd 2 5\n26 constd 2 6\n27 constd 2 7\n28 constd 2 8\n");
 
   w = w
@@ -2630,7 +2630,7 @@ void beator(uint64_t entry_pc) {
     + dprintf(output_fd, "72 sort bitvec 16 ; 2 bytes\n")
     + dprintf(output_fd, "73 sort bitvec 24 ; 3 bytes\n");
 
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     w = w
       + dprintf(output_fd, "74 sort bitvec 32 ; 4 bytes\n")
       + dprintf(output_fd, "75 sort bitvec 40 ; 5 bytes\n")
@@ -2642,7 +2642,7 @@ void beator(uint64_t entry_pc) {
     + dprintf(output_fd, "82 input 72 2-byte-input\n")
     + dprintf(output_fd, "83 input 73 3-byte-input\n");
 
-  if (IS64BITSYSTEM)
+  if (IS64BITTARGET)
     w = w
       + dprintf(output_fd, "84 input 74 4-byte-input\n")
       + dprintf(output_fd, "85 input 75 5-byte-input\n")
@@ -3292,7 +3292,7 @@ uint64_t selfie_model() {
   RAM_option                  = "--RAM";
   MMURAM_option               = "--MMURAM";
 
-  if (IS64BITSYSTEM == 0) {
+  if (IS64BITTARGET == 0) {
     // assert: 32-bit system
     vaddr_mask_nid  = 23;
     vaddr_alignment = 2;
