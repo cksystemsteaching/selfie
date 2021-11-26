@@ -1588,8 +1588,6 @@ void gc_collect(uint64_t* context);
 
 void print_gc_profile(uint64_t* context);
 
-void gc_arguments();
-
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
 uint64_t* gc_malloc(uint64_t size) {
@@ -2377,6 +2375,8 @@ void init_32_bit_target();
 void init_system();
 
 void turn_on_gc_library(uint64_t period, char* name);
+
+void experimental_features();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -9019,24 +9019,6 @@ void print_gc_profile(uint64_t* context) {
   println();
 }
 
-void gc_arguments() {
-  if (string_compare(argument, "-gc")) {
-    GC_ON = GC_ENABLED;
-
-    get_argument();
-  } else if (string_compare(argument, "-nrgc")) {
-    GC_ON    = GC_ENABLED;
-    GC_REUSE = GC_DISABLED;
-
-    get_argument();
-  } else if (string_compare(argument, "-nr")) {
-    GC_REUSE = GC_DISABLED;
-
-    get_argument();
-  } else
-    GC_ON = GC_DISABLED;
-}
-
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
@@ -11644,7 +11626,7 @@ uint64_t selfie(uint64_t extras) {
     while (number_of_remaining_arguments() > 0) {
       get_argument();
 
-      gc_arguments();
+      experimental_features();
 
       if (string_compare(argument, "-c"))
         selfie_compile();
@@ -11682,6 +11664,24 @@ uint64_t selfie(uint64_t extras) {
 
     return EXITCODE_NOERROR;
   }
+}
+
+void experimental_features() {
+  if (string_compare(argument, "-gc")) {
+    GC_ON = GC_ENABLED;
+
+    get_argument();
+  } else if (string_compare(argument, "-nrgc")) {
+    GC_ON    = GC_ENABLED;
+    GC_REUSE = GC_DISABLED;
+
+    get_argument();
+  } else if (string_compare(argument, "-nr")) {
+    GC_REUSE = GC_DISABLED;
+
+    get_argument();
+  } else
+    GC_ON = GC_DISABLED;
 }
 
 uint64_t exit_selfie(uint64_t exit_code, char* extras) {
