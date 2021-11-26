@@ -320,34 +320,43 @@ uint64_t generate_ecall_address_and_block_checks(uint64_t cursor_nid, uint64_t c
 
   if (check_block_access) {
     w = w
-      // if read or write ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
+      // if read or write ecall is active record $a1 + (($a2 - 1) / 8(4)) * 8(4) if $a2 > 0, and
       // $a1 otherwise, as address for checking address validity
       + dprintf(output_fd, "%lu dec 2 %lu ; $a2 - 1\n",
           cursor_nid,        // nid of this line
           reg_nids + REG_A2) // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu not 2 27 ; not 7\n",
-          cursor_nid + 1) // nid of this line
-      + dprintf(output_fd, "%lu and 2 %lu %lu ; reset 3 LSBs of $a2 - 1\n",
-          cursor_nid + 2, // nid of this line
-          cursor_nid,     // nid of $a2 - 1
-          cursor_nid + 1) // nid of not 7
-      + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / 8) * 8\n",
+      + dprintf(output_fd, "%lu not 2 %lu ; not %lu\n",
+          cursor_nid + 1,                           // nid of this line
+          vaddr_mask_nid,                           // nid of bit mask
+          two_to_the_power_of(vaddr_alignment) - 1) // virtual address alignment in decimal
+      + dprintf(output_fd, "%lu and 2 %lu %lu ; reset %lu LSBs of $a2 - 1\n",
+          cursor_nid + 2,  // nid of this line
+          cursor_nid,      // nid of $a2 - 1
+          cursor_nid + 1,  // nid of preceding line
+          vaddr_alignment) // virtual address alignment in bits
+      + dprintf(output_fd, "%lu add 2 %lu %lu ; $a1 + (($a2 - 1) / %lu) * %lu\n",
           cursor_nid + 3,    // nid of this line
           reg_nids + REG_A1, // nid of current value of $a1 register
-          cursor_nid + 2)    // nid of (($a2 - 1) / 8) * 8
+          cursor_nid + 2,    // nid of (($a2 - 1) / 8(4)) * 8(4)
+          TARGETWORDSIZE,    // target word size in bytes
+          TARGETWORDSIZE)    // target word size in bytes
       + dprintf(output_fd, "%lu ugt 1 %lu 20 ; $a2 > 0\n",
           cursor_nid + 4,    // nid of this line
           reg_nids + REG_A2) // nid of current value of $a2 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / %lu) * %lu if $a2 > 0, and $a1 otherwise\n",
           cursor_nid + 5,    // nid of this line
           cursor_nid + 4,    // nid of $a2 > 0
-          cursor_nid + 3,    // nid of $a1 + (($a2 - 1) / 8) * 8
-          reg_nids + REG_A1) // nid of current value of $a1 register
-      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / 8) * 8 is end address of buffer for checking address validity\n",
-          cursor_nid + 6,       // nid of this line
-          current_ecall_nid,    // nid of read or write ecall is active
-          cursor_nid + 5,       // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
-          access_flow_end_nid); // nid of address of most recent memory access
+          cursor_nid + 3,    // nid of $a1 + (($a2 - 1) / 8(4)) * 8(4)
+          reg_nids + REG_A1, // nid of current value of $a1 register
+          TARGETWORDSIZE,    // target word size in bytes
+          TARGETWORDSIZE)    // target word size in bytes
+      + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; $a1 + (($a2 - 1) / %lu) * %lu is end address of buffer for checking address validity\n",
+          cursor_nid + 6,      // nid of this line
+          current_ecall_nid,   // nid of read or write ecall is active
+          cursor_nid + 5,      // nid of $a1 + (($a2 - 1) / 8(4)) * 8(4) if $a2 > 0, and $a1 otherwise
+          access_flow_end_nid, // nid of address of most recent memory access
+          TARGETWORDSIZE,      // target word size in bytes
+          TARGETWORDSIZE);     // target word size in bytes
 
     access_flow_end_nid = cursor_nid + 6;
 
