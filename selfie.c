@@ -822,8 +822,8 @@ uint64_t is_system_register(uint64_t reg);
 uint64_t is_argument_register(uint64_t reg);
 uint64_t is_temporary_register(uint64_t reg);
 
-uint64_t read_register(uint64_t reg);
-void     write_register(uint64_t reg);
+void read_register(uint64_t reg);
+void write_register(uint64_t reg);
 
 void update_register_counters();
 
@@ -2031,6 +2031,9 @@ void reset_register_access_counters() {
   reads_per_register  = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
   writes_per_register = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
 
+  // zero register is initialized by definition
+  *(writes_per_register + REG_ZR) = 1;
+
   // stack and frame pointer registers are initialized by boot loader
   *(writes_per_register + REG_SP) = 1;
   *(writes_per_register + REG_S0) = 1;
@@ -2594,26 +2597,25 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
 uint64_t is_signed_integer(uint64_t n, uint64_t b) {
   // assert: 0 < b <= SIZEOFUINT64INBITS
   if (n < two_to_the_power_of(b - 1))
-    // assert: 0 <= n < 2^(b - 1)
     return 1;
   else if (n >= -two_to_the_power_of(b - 1))
-    // assert: -2^(b - 1) <= n < 2^64
     return 1;
   else
     return 0;
 }
 
 uint64_t sign_extend(uint64_t n, uint64_t b) {
-  // assert: 0 <= n <= 2^b
-  // assert: 0 < b < SIZEOFUINT64INBITS
+  // assert: -2^(b - 1) <= n < 2^(b - 1)
+  // assert: 0 < b <= SIZEOFUINT64INBITS
   if (n < two_to_the_power_of(b - 1))
     return n;
-  else
+  else if (b < SIZEOFUINT64INBITS)
     return n - two_to_the_power_of(b);
+  else
+    return n;
 }
 
 uint64_t sign_shrink(uint64_t n, uint64_t b) {
-  // assert: -2^(b - 1) <= n < 2^(b - 1)
   // assert: 0 < b <= SIZEOFUINT64INBITS
   return get_bits(n, 0, b);
 }
@@ -6210,34 +6212,46 @@ uint64_t is_temporary_register(uint64_t reg) {
     return 0;
 }
 
-uint64_t read_register(uint64_t reg) {
-  if (reg != REG_ZR) {
-    if (*(writes_per_register + reg) > 0)
-      // register has been written to before
-      *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
-    else {
+void read_register(uint64_t reg) {
+  if (*(writes_per_register + reg) > 0)
+    // register has been written to before
+    *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
+  else {
+    print_instruction();
+    print(": reading from uninitialized register ");
+    print_register_name(reg);
+    println();
+
+    throw_exception(EXCEPTION_UNINITIALIZEDREGISTER, reg);
+  }
+}
+
+void read_register_immediate(uint64_t reg, uint64_t immediate) {
+  if (immediate != 0)
+    if (is_signed_integer(*(registers + reg), TARGETWORDSIZEINBITS) == 0) {
       print_instruction();
-      print(": reading from uninitialized register ");
+      print(": reading unwrapped value from register ");
       print_register_name(reg);
       println();
 
       throw_exception(EXCEPTION_UNINITIALIZEDREGISTER, reg);
 
-      return 0;
+      return;
     }
-  }
 
-  return 1;
+  read_register(reg);
 }
 
 void write_register(uint64_t reg) {
+  *(registers + reg) = sign_extend(sign_shrink(*(registers + reg), TARGETWORDSIZEINBITS), TARGETWORDSIZEINBITS);
+
   *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
 void update_register_counters() {
-  if (read_register(rs1))
-    if (read_register(rs2))
-      write_register(rd);
+  read_register(rs1);
+  read_register(rs2);
+  write_register(rd);
 }
 
 // -----------------------------------------------------------------
@@ -8350,6 +8364,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   frame = get_frame_for_page(table, page);
 
   // map virtual address to physical address
+  // (single word on 32-bit target occupies double word on 64-bit system)
   paddr = (vaddr - page * PAGESIZE) * (SIZEOFUINT64 / TARGETWORDSIZE) + frame;
 
   if (debug_tlb)
@@ -9081,8 +9096,6 @@ void do_lui() {
 
   uint64_t next_rd_value;
 
-  update_register_counters();
-
   if (rd != REG_ZR) {
     // semantics of lui
     next_rd_value = left_shift(imm, 12);
@@ -9093,6 +9106,8 @@ void do_lui() {
       nopc_lui = nopc_lui + 1;
   } else
     nopc_lui = nopc_lui + 1;
+
+  write_register(rd);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -9133,7 +9148,7 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
-  update_register_counters();
+  read_register_immediate(rs1, imm);
 
   if (rd != REG_ZR) {
     // semantics of addi
@@ -9145,6 +9160,8 @@ void do_addi() {
       nopc_addi = nopc_addi + 1;
   } else
     nopc_addi = nopc_addi + 1;
+
+  write_register(rd);
 
   pc = pc + INSTRUCTIONSIZE;
 
