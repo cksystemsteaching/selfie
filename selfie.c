@@ -8350,7 +8350,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   frame = get_frame_for_page(table, page);
 
   // map virtual address to physical address
-  paddr = vaddr - page * PAGESIZE + frame;
+  paddr = (vaddr - page * PAGESIZE) * (SIZEOFUINT64 / TARGETWORDSIZE) + frame;
 
   if (debug_tlb)
     printf("%s: tlb access:\n vaddr: 0x%08lX\n page: 0x%04lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
