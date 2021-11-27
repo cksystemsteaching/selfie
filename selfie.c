@@ -6085,7 +6085,8 @@ void selfie_compile() {
 
       number_of_source_files = number_of_source_files + 1;
 
-      printf("%s: selfie compiling %s with starc\n", selfie_name, source_name);
+      printf("%s: selfie compiling %s to %lu-bit RISC-U with %lu-bit starc\n", selfie_name,
+        source_name, TARGETWORDSIZEINBITS, SIZEOFUINT64INBITS);
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
@@ -7128,9 +7129,10 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
-  printf("%s: %lu bytes with %lu instructions and %lu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
     ELF_HEADER_SIZE + code_size + data_size,
     code_size / INSTRUCTIONSIZE,
+    TARGETWORDSIZEINBITS,
     data_size,
     binary_name);
 }
@@ -7213,10 +7215,11 @@ void selfie_load() {
         if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            printf("%s: %lu bytes with %lu instructions and %lu bytes of data loaded from %s\n",
+            printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_SIZE + code_size + data_size,
               code_size / INSTRUCTIONSIZE,
+              TARGETWORDSIZEINBITS,
               data_size,
               binary_name);
 
@@ -9904,9 +9907,10 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-  printf("%s: %lu characters of assembly with %lu instructions and %lu bytes of data written into %s\n", selfie_name,
+  printf("%s: %lu characters of assembly with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
     code_size / INSTRUCTIONSIZE,
+    TARGETWORDSIZEINBITS,
     data_size,
     assembly_name);
 }
@@ -11552,7 +11556,8 @@ uint64_t selfie_run(uint64_t machine) {
 
   run = 1;
 
-  printf("%s: selfie executing %s with %luMB physical memory", selfie_name,
+  printf("%s: selfie executing %lu-bit RISC-U binary %s with %luMB physical memory", selfie_name,
+    TARGETWORDSIZEINBITS,
     binary_name,
     total_page_frame_memory / MEGABYTE);
 
@@ -11560,23 +11565,23 @@ uint64_t selfie_run(uint64_t machine) {
     gc_init(current_context);
 
     printf(", gcing every %lu mallocs, ", GC_PERIOD);
-    if (GC_REUSE) print("reusing memory"); else print("not reusing memory");
+    if (GC_REUSE) printf("reusing memory"); else printf("not reusing memory");
   }
 
   if (machine == DIPSTER) {
     debug          = 1;
     debug_syscalls = 1;
-    print(", debugger");
+    printf(", debugger");
     machine = MIPSTER;
   } else if (machine == RIPSTER) {
     debug  = 1;
     record = 1;
     init_replay_engine();
-    print(", replay");
+    printf(", replay");
     machine = MIPSTER;
   }
 
-  print(" on ");
+  printf(" on %lu-bit ", SIZEOFUINT64INBITS);
 
   if (machine == MIPSTER)
     exit_code = mipster(current_context);
@@ -11595,7 +11600,8 @@ uint64_t selfie_run(uint64_t machine) {
   debug_syscalls = 0;
   debug          = 0;
 
-  printf("%s: selfie terminating %s with exit code %ld\n", selfie_name,
+  printf("%s: selfie terminating %lu-bit RISC-U binary %s with exit code %ld\n", selfie_name,
+    TARGETWORDSIZEINBITS,
     get_name(current_context),
     sign_extend(exit_code, SYSCALL_BITWIDTH));
 
