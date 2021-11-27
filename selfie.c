@@ -9501,6 +9501,8 @@ uint64_t do_store() {
   if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
+        read_register_wrap(rs2, 0);
+
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
           store_cached_virtual_memory(pt, vaddr, *(registers + rs2));
