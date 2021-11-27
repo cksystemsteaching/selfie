@@ -997,6 +997,7 @@ uint64_t funct7 = 0;
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
+void reset_binary();
 void reset_instruction_counters();
 
 uint64_t get_total_number_of_instructions();
@@ -1078,6 +1079,9 @@ void selfie_load();
 
 // page-aligned ELF header size for storing file header, program header, code size
 uint64_t ELF_HEADER_SIZE = 4096;
+
+uint64_t ELFCLASS64 = 2;
+uint64_t ELFCLASS32 = 1;
 
 uint64_t MAX_CODE_SIZE = 262144; // 256KB
 uint64_t MAX_DATA_SIZE = 65536;  // 64KB
@@ -1170,6 +1174,21 @@ uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted inst
 uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data word
 
 // ------------------------- INITIALIZATION ------------------------
+
+void reset_binary() {
+  ELF_header = (uint64_t*) 0;
+
+  code_binary = (uint64_t*) 0;
+  code_start  = 0;
+  code_size   = 0;
+
+  data_binary = (uint64_t*) 0;
+  data_start  = 0;
+  data_size   = 0;
+
+  code_line_number = (uint64_t*) 0;
+  data_line_number = (uint64_t*) 0;
+}
 
 void reset_instruction_counters() {
   ic_lui   = 0;
@@ -1746,6 +1765,7 @@ uint64_t* MNEMONICS; // assembly mnemonics of instructions
 // -----------------------------------------------------------------
 
 void init_disassembler();
+void reset_disassembler();
 
 char* get_mnemonic(uint64_t ins);
 
@@ -1771,6 +1791,16 @@ void init_disassembler() {
   *(MNEMONICS + DIVU)  = (uint64_t) "divu";
   *(MNEMONICS + REMU)  = (uint64_t) "remu";
   *(MNEMONICS + SLTU)  = (uint64_t) "sltu";
+
+  reset_disassembler();
+
+  *(MNEMONICS + BEQ)   = (uint64_t) "beq";
+  *(MNEMONICS + JAL)   = (uint64_t) "jal";
+  *(MNEMONICS + JALR)  = (uint64_t) "jalr";
+  *(MNEMONICS + ECALL) = (uint64_t) "ecall";
+}
+
+void reset_disassembler() {
   if (IS64BITTARGET) {
     *(MNEMONICS + LOAD)  = (uint64_t) "ld";
     *(MNEMONICS + STORE) = (uint64_t) "sd";
@@ -1778,10 +1808,6 @@ void init_disassembler() {
     *(MNEMONICS + LOAD)  = (uint64_t) "lw";
     *(MNEMONICS + STORE) = (uint64_t) "sw";
   }
-  *(MNEMONICS + BEQ)   = (uint64_t) "beq";
-  *(MNEMONICS + JAL)   = (uint64_t) "jal";
-  *(MNEMONICS + JALR)  = (uint64_t) "jalr";
-  *(MNEMONICS + ECALL) = (uint64_t) "ecall";
 }
 
 // -----------------------------------------------------------------
@@ -2376,9 +2402,8 @@ char* argument = (char*) 0;
 
 void init_selfie(uint64_t argc, uint64_t* argv);
 
-void init_32_bit_target();
-
 void init_system();
+void init_target();
 
 void turn_on_gc_library(uint64_t period, char* name);
 
@@ -2409,29 +2434,6 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
   selfie_name = get_argument();
 }
 
-void init_32_bit_target() {
-  IS64BITTARGET = 0;
-
-  if (IS64BITSYSTEM) {
-    SIZEOFTARGETUINT = 4;
-    TARGETUINT_MAX   = two_to_the_power_of(32) - 1;
-
-    TARGETWORDSIZE       = 4;
-    TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
-  }
-
-  MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
-
-  // configuring ELF32 file header
-
-  EI_CLASS = 1; // file class is 1 (ELFCLASS32)
-
-  e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
-
-  e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
-  e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
-}
-
 void init_system() {
   uint64_t selfie_fd;
 
@@ -2443,8 +2445,7 @@ void init_system() {
   if (SIZEOFUINT64INBITS != 64) {
     if (SIZEOFUINT64INBITS == 32) {
       IS64BITSYSTEM = 0;
-
-      init_32_bit_target();
+      IS64BITTARGET = 0;
     } else
       // selfie only supports 32-bit and 64-bit systems
       exit(EXITCODE_SYSTEMERROR);
@@ -2478,6 +2479,56 @@ void init_system() {
   else
     // Linux file opening flags are the default for Linux, selfie, and bare-metal hosts
     O_CREAT_TRUNC_WRONLY = LINUX_O_CREAT_TRUNC_WRONLY;
+}
+
+void init_target() {
+  if (IS64BITTARGET) {
+    if (IS64BITSYSTEM) {
+      SIZEOFTARGETUINT = SIZEOFUINT64;
+      TARGETUINT_MAX   = UINT64_MAX;
+
+      TARGETWORDSIZE       = SIZEOFUINT64;
+      TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
+
+      MAX_INTEGER_LENGTH = 20; // 2^64-1 requires 20 decimal digits
+
+      // configuring ELF64 file header
+
+      EI_CLASS = ELFCLASS64; // file class is 2 (ELFCLASS64)
+
+      e_phoff = 64; // program header offset 0x40 (ELFCLASS64)
+
+      e_ehsize    = 64; // elf header size 64 bytes (ELFCLASS64)
+      e_phentsize = 56; // size of program header entry 56 bytes (ELFCLASS64)
+    } else
+      // selfie does not support 64-bit targets on 32-bit systems
+      exit(EXITCODE_SYSTEMERROR);
+  } else {
+    if (IS64BITSYSTEM) {
+      SIZEOFTARGETUINT = SINGLEWORDSIZE;
+      TARGETUINT_MAX   = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
+
+      TARGETWORDSIZE       = SINGLEWORDSIZE;
+      TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
+    } else {
+      SIZEOFTARGETUINT = SIZEOFUINT64;
+      TARGETUINT_MAX   = UINT64_MAX;
+
+      TARGETWORDSIZE       = SIZEOFUINT64;
+      TARGETWORDSIZEINBITS = TARGETWORDSIZE * 8;
+    }
+
+    MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
+
+    // configuring ELF32 file header
+
+    EI_CLASS = ELFCLASS32; // file class is 1 (ELFCLASS32)
+
+    e_phoff = 52; // program header offset 0x34 (ELFCLASS32)
+
+    e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
+    e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
+  }
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -6028,13 +6079,11 @@ void selfie_compile() {
 
   binary_name = source_name;
 
-  // allocate memory for storing binary
+  reset_binary();
+
+  // allocate zeroed memory for storing binary
   code_binary = zmalloc(MAX_CODE_SIZE);
-  code_start  = 0;
-  code_size   = 0;
   data_binary = zmalloc(MAX_DATA_SIZE);
-  data_start  = 0;
-  data_size   = 0;
 
   // allocate zeroed memory for storing source code line numbers
   code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * SIZEOFUINT64);
@@ -6926,20 +6975,21 @@ uint64_t* encode_elf_header() {
 
   // store all data necessary for creating a minimal and valid file and program header
 
-  if (IS64BITTARGET) {
+  store_word(header, 0, 0, EI_MAG0
+              + left_shift(EI_MAG1, 8)
+              + left_shift(EI_MAG2, 16)
+              + left_shift(EI_MAG3, 24));
+  store_word(header, 4, 0, EI_CLASS
+              + left_shift(EI_DATA, 8)
+              + left_shift(EI_VERSION, 16)
+              + left_shift(EI_OSABI, 24));
+  store_word(header, 8, 0, EI_ABIVERSION); // ignoring 24 LSBs of EI_PAD
+  store_word(header, 12, 0, EI_PAD);       // ignoring 24 MSBs of EI_PAD
+  store_word(header, 16, 0, e_type + left_shift(e_machine, 16));
+  store_word(header, 20, 0, e_version);
+
+  if (EI_CLASS == ELFCLASS64) {
     // RISC-U ELF64 file header
-    store_word(header, 0, 1, EI_MAG0
-                + left_shift(EI_MAG1, 8)
-                + left_shift(EI_MAG2, 16)
-                + left_shift(EI_MAG3, 24)
-                + left_shift(EI_CLASS, 32)
-                + left_shift(EI_DATA, 40)
-                + left_shift(EI_VERSION, 48)
-                + left_shift(EI_OSABI, 56));
-    store_word(header, 8, 1, EI_ABIVERSION + left_shift(EI_PAD, 8));
-    store_word(header, 16, 1, e_type
-                + left_shift(e_machine, 16)
-                + left_shift(e_version, 32));
     store_word(header, 24, 1, e_entry);
     store_word(header, 32, 1, e_phoff);
     store_word(header, 40, 1, e_shoff);
@@ -6952,18 +7002,6 @@ uint64_t* encode_elf_header() {
                 + left_shift(e_shstrndx, 48));
   } else {
     // RISC-U ELF32 file header
-    store_word(header, 0, 0, EI_MAG0
-                + left_shift(EI_MAG1, 8)
-                + left_shift(EI_MAG2, 16)
-                + left_shift(EI_MAG3, 24));
-    store_word(header, 4, 0, EI_CLASS
-                + left_shift(EI_DATA, 8)
-                + left_shift(EI_VERSION, 16)
-                + left_shift(EI_OSABI, 24));
-    store_word(header, 8, 0, EI_ABIVERSION); // ignoring 24 LSBs of EI_PAD
-    store_word(header, 12, 0, EI_PAD);       // ignoring 24 MSBs of EI_PAD
-    store_word(header, 16, 0, e_type + left_shift(e_machine, 16));
-    store_word(header, 20, 0, e_version);
     store_word(header, 24, 0, e_entry);
     store_word(header, 28, 0, e_phoff);
     store_word(header, 32, 0, e_shoff);
@@ -6996,6 +7034,15 @@ uint64_t* encode_elf_header() {
   return header;
 }
 
+void decode_elf_header(uint64_t* header) {
+  EI_CLASS = get_bits(load_word(header, 4, 0), 0, 8);
+
+  if (EI_CLASS == ELFCLASS64)
+    IS64BITTARGET = 1;
+  else
+    IS64BITTARGET = 0;
+}
+
 uint64_t get_elf_program_header_offset(uint64_t ph_index) {
   return e_ehsize + e_phentsize * ph_index;
 }
@@ -7005,7 +7052,7 @@ void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 
   ph_offset = get_elf_program_header_offset(ph_index);
 
-  if (IS64BITTARGET) {
+  if (EI_CLASS == ELFCLASS64) {
     // RISC-U ELF64 program header
     store_word(header, ph_offset + 0, 1, p_type + left_shift(p_flags, 32));
     store_word(header, ph_offset + 8, 1, p_offset);
@@ -7028,7 +7075,7 @@ void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 }
 
 void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
-  if (IS64BITTARGET)
+  if (EI_CLASS == ELFCLASS64)
     p_filesz = load_word(header, get_elf_program_header_offset(ph_index) + 32, 1);
   else
     p_filesz = load_word(header, get_elf_program_header_offset(ph_index) + 16, 0);
@@ -7037,6 +7084,8 @@ void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
 uint64_t validate_elf_header(uint64_t* header) {
   uint64_t* valid_header;
   uint64_t i;
+
+  decode_elf_header(header);
 
   // must match binary bootstrapping
   code_start = PK_CODE_START;
@@ -7186,25 +7235,24 @@ void selfie_load() {
     exit(EXITCODE_IOERROR);
   }
 
+  // no source line numbers in binaries
+  reset_binary();
+
   // this call makes sure ELF_header is mapped for reading into it
   ELF_header = allocate_elf_header();
 
   // make sure code and data binaries are also mapped for reading into them
   code_binary = touch(smalloc(MAX_CODE_SIZE), MAX_CODE_SIZE);
-  code_start  = 0;
-  code_size   = 0;
   data_binary = touch(smalloc(MAX_DATA_SIZE), MAX_DATA_SIZE);
-  data_start  = 0;
-  data_size   = 0;
-
-  // no source line numbers in binaries
-  code_line_number = (uint64_t*) 0;
-  data_line_number = (uint64_t*) 0;
 
   number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_SIZE);
 
   if (number_of_read_bytes == ELF_HEADER_SIZE) {
     if (validate_elf_header(ELF_header)) {
+      init_target();
+
+      reset_disassembler();
+
       code_size_with_padding = round_up(code_size, p_align);
 
       number_of_read_bytes = sign_extend(read(fd, code_binary, code_size_with_padding), SYSCALL_BITWIDTH);
@@ -11681,18 +11729,13 @@ uint64_t selfie(uint64_t extras) {
     print_host_os();
     println();
 
-    if (string_compare(peek_argument(0), "-m32")) {
-      init_32_bit_target();
-
-      get_argument();
-    }
-
     init_scanner();
     init_bootstrapping();
 
     init_register();
-    init_disassembler();
     init_interpreter();
+
+    init_disassembler();
 
     while (number_of_remaining_arguments() > 0) {
       get_argument();
@@ -11738,7 +11781,23 @@ uint64_t selfie(uint64_t extras) {
 }
 
 void experimental_features() {
-  if (string_compare(argument, "-gc")) {
+  if (string_compare(argument, "-m32")) {
+    IS64BITTARGET = 0;
+
+    init_target();
+    reset_disassembler();
+    reset_binary();
+
+    get_argument();
+  } else if (string_compare(argument, "-m64")) {
+    IS64BITTARGET = 1;
+
+    init_target();
+    reset_disassembler();
+    reset_binary();
+
+    get_argument();
+  } else if (string_compare(argument, "-gc")) {
     GC_ON = GC_ENABLED;
 
     get_argument();
@@ -11778,8 +11837,8 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-
   init_system();
+  init_target();
 
   exit_code = selfie(0);
 
