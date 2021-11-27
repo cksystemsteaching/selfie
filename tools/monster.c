@@ -757,13 +757,13 @@ void constrain_load() {
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
+  read_register(rs1);
+
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
-        update_register_counters();
-
         // semantics of load double word
         if (rd != REG_ZR) {
           sword = load_symbolic_memory(vaddr);
@@ -780,6 +780,8 @@ void constrain_load() {
             *(reg_sym + rd)   = 0;
           }
         }
+
+        write_register(rd);
 
         // keep track of instruction address for profiling loads
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -817,13 +819,13 @@ void constrain_store() {
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
+  read_register(rs1);
+
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
-        update_register_counters();
-
         // semantics of store double word
         store_symbolic_memory(vaddr,
           *(registers + rs2),

@@ -822,10 +822,11 @@ uint64_t is_system_register(uint64_t reg);
 uint64_t is_argument_register(uint64_t reg);
 uint64_t is_temporary_register(uint64_t reg);
 
+void read_register_wrap(uint64_t reg, uint64_t wrap);
 void read_register(uint64_t reg);
-void write_register(uint64_t reg);
 
-void update_register_counters();
+void write_register_wrap(uint64_t reg, uint64_t wrap);
+void write_register(uint64_t reg);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1874,6 +1875,7 @@ uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
 uint64_t EXCEPTION_INVALIDADDRESS        = 6;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
 uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
+uint64_t EXCEPTION_INTEGEROVERFLOW       = 9;
 
 uint64_t* EXCEPTIONS; // textual representation of exceptions
 
@@ -1973,7 +1975,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNINITIALIZEDREGISTER + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_INTEGEROVERFLOW + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -1984,6 +1986,7 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
+  *(EXCEPTIONS + EXCEPTION_INTEGEROVERFLOW)       = (uint64_t) "integer overflow";
 }
 
 void reset_interpreter() {
@@ -6212,11 +6215,22 @@ uint64_t is_temporary_register(uint64_t reg) {
     return 0;
 }
 
-void read_register(uint64_t reg) {
-  if (*(writes_per_register + reg) > 0)
+void read_register_wrap(uint64_t reg, uint64_t wrap) {
+  if (*(writes_per_register + reg) > 0) {
     // register has been written to before
     *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
-  else {
+
+    // tolerate unwrapped values in register-to-register transfers
+    if (wrap)
+      if (*(registers + reg) > TARGETUINT_MAX) {
+        print_instruction();
+        print(": reading unwrapped value from register ");
+        print_register_name(reg);
+        println();
+
+        throw_exception(EXCEPTION_INTEGEROVERFLOW, reg);
+      }
+  } else {
     print_instruction();
     print(": reading from uninitialized register ");
     print_register_name(reg);
@@ -6226,32 +6240,19 @@ void read_register(uint64_t reg) {
   }
 }
 
-void read_register_immediate(uint64_t reg, uint64_t immediate) {
-  if (immediate != 0)
-    if (is_signed_integer(*(registers + reg), TARGETWORDSIZEINBITS) == 0) {
-      print_instruction();
-      print(": reading unwrapped value from register ");
-      print_register_name(reg);
-      println();
-
-      throw_exception(EXCEPTION_UNINITIALIZEDREGISTER, reg);
-
-      return;
-    }
-
-  read_register(reg);
+void read_register(uint64_t reg) {
+  read_register_wrap(reg, 1);
 }
 
-void write_register(uint64_t reg) {
-  *(registers + reg) = sign_extend(sign_shrink(*(registers + reg), TARGETWORDSIZEINBITS), TARGETWORDSIZEINBITS);
+void write_register_wrap(uint64_t reg, uint64_t wrap) {
+  if (wrap)
+    *(registers + reg) = sign_shrink(*(registers + reg), TARGETWORDSIZEINBITS);
 
   *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
-void update_register_counters() {
-  read_register(rs1);
-  read_register(rs2);
-  write_register(rd);
+void write_register(uint64_t reg) {
+  write_register_wrap(reg, 1);
 }
 
 // -----------------------------------------------------------------
@@ -9148,7 +9149,7 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
-  read_register_immediate(rs1, imm);
+  read_register_wrap(rs1, imm);
 
   if (rd != REG_ZR) {
     // semantics of addi
@@ -9185,7 +9186,8 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 void do_add() {
   uint64_t next_rd_value;
 
-  update_register_counters();
+  read_register(rs1);
+  read_register(rs2);
 
   if (rd != REG_ZR) {
     // semantics of add
@@ -9198,6 +9200,8 @@ void do_add() {
   } else
     nopc_add = nopc_add + 1;
 
+  write_register(rd);
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
@@ -9206,7 +9210,8 @@ void do_add() {
 void do_sub() {
   uint64_t next_rd_value;
 
-  update_register_counters();
+  read_register(rs1);
+  read_register(rs2);
 
   if (rd != REG_ZR) {
     // semantics of sub
@@ -9219,6 +9224,8 @@ void do_sub() {
   } else
     nopc_sub = nopc_sub + 1;
 
+  write_register(rd);
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
@@ -9227,7 +9234,8 @@ void do_sub() {
 void do_mul() {
   uint64_t next_rd_value;
 
-  update_register_counters();
+  read_register(rs1);
+  read_register(rs2);
 
   if (rd != REG_ZR) {
     // semantics of mul
@@ -9242,6 +9250,8 @@ void do_mul() {
   } else
     nopc_mul = nopc_mul + 1;
 
+  write_register(rd);
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
@@ -9253,7 +9263,8 @@ void do_divu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
-    update_register_counters();
+    read_register(rs1);
+    read_register(rs2);
 
     if (rd != REG_ZR) {
       // semantics of divu
@@ -9265,6 +9276,8 @@ void do_divu() {
         nopc_divu = nopc_divu + 1;
     } else
       nopc_divu = nopc_divu + 1;
+
+    write_register(rd);
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -9279,7 +9292,8 @@ void do_remu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
-    update_register_counters();
+    read_register(rs1);
+    read_register(rs2);
 
     if (rd != REG_ZR) {
       // semantics of remu
@@ -9291,6 +9305,8 @@ void do_remu() {
         nopc_remu = nopc_remu + 1;
     } else
       nopc_remu = nopc_remu + 1;
+
+    write_register(rd);
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -9304,7 +9320,8 @@ void do_sltu() {
 
   uint64_t next_rd_value;
 
-  update_register_counters();
+  read_register(rs1);
+  read_register(rs2);
 
   if (rd != REG_ZR) {
     // semantics of sltu
@@ -9319,6 +9336,8 @@ void do_sltu() {
       nopc_sltu = nopc_sltu + 1;
   } else
     nopc_sltu = nopc_sltu + 1;
+
+  write_register(rd);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -9378,13 +9397,13 @@ uint64_t do_load() {
 
   // load (double) word
 
+  read_register(rs1);
+
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_read(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
-        update_register_counters();
-
         if (rd != REG_ZR) {
           // semantics of load (double) word
           next_rd_value = load_cached_virtual_memory(pt, vaddr);
@@ -9395,6 +9414,8 @@ uint64_t do_load() {
             nopc_load = nopc_load + 1;
         } else
           nopc_load = nopc_load + 1;
+
+        write_register_wrap(rd, 0);
 
         // keep track of instruction address for profiling loads
         a = (pc - code_start) / INSTRUCTIONSIZE;
@@ -9468,13 +9489,13 @@ uint64_t do_store() {
 
   // store (double) word
 
+  read_register(rs1);
+
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, TARGETWORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
-        update_register_counters();
-
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
           store_cached_virtual_memory(pt, vaddr, *(registers + rs2));
@@ -9544,7 +9565,8 @@ void record_beq() {
 void do_beq() {
   // branch on equal
 
-  update_register_counters();
+  read_register(rs1);
+  read_register(rs2);
 
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
@@ -9591,8 +9613,6 @@ void do_jal() {
 
   // jump and link
 
-  update_register_counters();
-
   if (rd != REG_ZR) {
     // first link
     *(registers + rd) = pc + INSTRUCTIONSIZE;
@@ -9628,6 +9648,8 @@ void do_jal() {
       nopc_jal = nopc_jal + 1;
   }
 
+  write_register(rd);
+
   ic_jal = ic_jal + 1;
 }
 
@@ -9652,7 +9674,7 @@ void do_jalr() {
 
   // jump and link register
 
-  update_register_counters();
+  read_register(rs1);
 
   // prepare jump rs1-relative with LSB reset
   next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
@@ -9672,6 +9694,8 @@ void do_jalr() {
     // jump
     pc = next_pc;
   }
+
+  write_register(rd);
 
   ic_jalr = ic_jalr + 1;
 }
