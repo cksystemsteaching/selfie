@@ -2614,7 +2614,7 @@ uint64_t sign_extend(uint64_t n, uint64_t b) {
 
 uint64_t sign_shrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
-  // assert: 0 < b < SIZEOFUINT64INBITS
+  // assert: 0 < b <= SIZEOFUINT64INBITS
   return get_bits(n, 0, b);
 }
 

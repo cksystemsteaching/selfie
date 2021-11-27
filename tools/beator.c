@@ -951,13 +951,16 @@ void model_data_flow_lui() {
     reset_bounds();
 
     w = w
-      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX << 12\n", current_nid, left_shift(imm, 12), imm)
+      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX << 12\n",
+        current_nid,                            // nid of this line
+        left_shift(imm, 12),                    // signed immediate value left-shifted by 12 bits
+        sign_shrink(imm, TARGETWORDSIZEINBITS)) // immediate value in hexadecimal
 
       // if this instruction is active set $rd = imm << 12
       + dprintf(output_fd, "%lu ite 2 %lu %lu %lu ; ",
           current_nid + 1,        // nid of this line
           pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-          current_nid,            // nid of immediate argument left-shifted by 12 bits
+          current_nid,            // nid of immediate value left-shifted by 12 bits
           *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
     *(reg_flow_nids + rd) = current_nid + 1;
@@ -979,7 +982,10 @@ void model_data_flow_addi() {
     if (imm == 0)
       result_nid = reg_nids + rs1;
     else {
-      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n", current_nid, imm, imm);
+      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+        current_nid,                             // nid of this line
+        imm,                                     // signed immediate value
+        sign_shrink(imm, TARGETWORDSIZEINBITS)); // immediate value in hexadecimal
 
       if (rs1 == REG_ZR) {
         result_nid = current_nid;
@@ -1706,7 +1712,10 @@ uint64_t model_virtual_address() {
     return reg_nids + rs1; // nid of current value of $rs1 register
   else {
     w = w
-      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n", current_nid, imm, imm)
+      + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+          current_nid,                            // nid of this line
+          imm,                                    // signed immediate value
+          sign_shrink(imm, TARGETWORDSIZEINBITS)) // immediate value in hexadecimal
 
       // compute $rs1 + imm
       + dprintf(output_fd, "%lu add 2 %lu %lu\n",
@@ -2674,11 +2683,11 @@ void beator(uint64_t entry_pc) {
     if (i == 0)
       w = w + dprintf(output_fd, "\n");
     else if (*(registers + i) != 0)
-      w = w + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX for %s\n",
-        reg_value_nids + i,    // nid of this line
-        *(registers + i),      // initial value with sign
-        *(registers + i),      // initial value in hexadecimal as comment
-        get_register_name(i)); // register name as comment
+      w = w + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX for %s\n",
+        reg_value_nids + i,                                  // nid of this line
+        sign_shrink(*(registers + i), TARGETWORDSIZEINBITS), // unsigned initial value
+        *(registers + i),                                    // initial value in hexadecimal as comment
+        get_register_name(i));                               // register name as comment
 
     i = i + 1;
   }
@@ -2748,12 +2757,12 @@ void beator(uint64_t entry_pc) {
         reg_nids + i,          // nid of to-be-initialized register
         get_register_name(i)); // register name as comment
     else
-      w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %ld\n",
-        reg_init_nids + i,    // nid of this line
-        reg_nids + i,         // nid of to-be-initialized register
-        reg_value_nids + i,   // nid of initial value
-        get_register_name(i), // register name as comment
-        *(registers + i));    // initial value with sign
+      w = w + dprintf(output_fd, "%lu init 2 %lu %lu %s ; initial value is %lu\n",
+        reg_init_nids + i,                                    // nid of this line
+        reg_nids + i,                                         // nid of to-be-initialized register
+        reg_value_nids + i,                                   // nid of unsigned initial value
+        get_register_name(i),                                 // register name as comment
+        sign_shrink(*(registers + i), TARGETWORDSIZEINBITS)); // unsigned initial value
 
     i = i + 1;
   }
@@ -2911,7 +2920,7 @@ void beator(uint64_t entry_pc) {
       // load non-zero memory word, use sign
       if (RAM + MMURAM > 0) {
         w = w
-          + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+          + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX word\n",
               current_nid + 1,          // nid of this line
               memory_word, memory_word) // value of memory word at current address
           // implementing memory word as state variable, after constd for paddr
@@ -2930,7 +2939,7 @@ void beator(uint64_t entry_pc) {
         data_flow_nid = current_nid + 4;
       } else {
         w = w
-          + dprintf(output_fd, "%lu constd 2 %ld ; 0x%lX\n",
+          + dprintf(output_fd, "%lu constd 2 %lu ; 0x%lX word\n",
               current_nid + 1,          // nid of this line
               memory_word, memory_word) // value of memory word at current address
           + dprintf(output_fd, "%lu write %lu %lu %lu %lu\n",
