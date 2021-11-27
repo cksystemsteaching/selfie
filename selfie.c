@@ -7836,6 +7836,8 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   else
     *(registers + REG_A6) = (uint64_t) from_context;
 
+  write_register(REG_A6);
+
   timer = timeout;
 
   if (debug_switch) {
@@ -7863,6 +7865,9 @@ void implement_switch() {
     print(" |- ");
     print_register_value(REG_A6);
   }
+
+  read_register(REG_A0);
+  read_register(REG_A1);
 
   to_context = (uint64_t*) *(registers + REG_A0);
   timeout    =             *(registers + REG_A1);
@@ -9711,6 +9716,8 @@ void record_ecall() {
 }
 
 void do_ecall() {
+  read_register(REG_A7);
+
   ic_ecall = ic_ecall + 1;
 
   if (redo) {
@@ -9735,9 +9742,24 @@ void do_ecall() {
 
       implement_switch();
     }
-  else
+  else {
+    read_register(REG_A0);
+
+    if (*(registers + REG_A7) != SYSCALL_EXIT) {
+      if (*(registers + REG_A7) != SYSCALL_BRK) {
+        read_register(REG_A1);
+        read_register(REG_A2);
+
+        if (*(registers + REG_A7) == SYSCALL_OPENAT)
+          read_register(REG_A3);
+      }
+
+      write_register(REG_A0);
+    }
+
     // all system calls other than switch are handled by exception
     throw_exception(EXCEPTION_SYSCALL, *(registers + REG_A7));
+  }
 }
 
 void undo_ecall() {
