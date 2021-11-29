@@ -44,6 +44,18 @@ def get_constant_bits_value(constant_names: List[int], qubits_to_fix: Dict[int, 
             raise Exception("not excepted gate called at tools.get_constant_bits_value:", gate_name)
     return None
 
+def get_model_single_var(value):
+    if value == 0:
+        linear_coeff = 2
+        bias = 0
+    elif value == 1:
+        linear_coeff = -2
+        bias = 2
+    else:
+        raise Exception("getting model for single variable failed. Value is not binary.")
+
+    return linear_coeff, bias
+
 class InputPropagationFile:
     file = None
 
@@ -170,6 +182,9 @@ def optimized_get_twos_complement(bitset1: List[int], current_n: int, bqm: dimod
             qubits_to_fix[name] = 1
         else:
             qubits_to_fix[name] = 0
+        linear_coeff, add_offset = get_model_single_var(qubits_to_fix[name])
+        bqm.offset += add_offset
+        bqm.add_linear(name, linear_coeff)
 
     result = optimized_bitwise_add(flipped_qword[current_n], qubitset_one[current_n], current_n, bqm, qubits_to_fix)
 
@@ -183,13 +198,18 @@ def optimized_unsigned_less_than(bitset1: List[int], bitset2: List[int], current
     copy_bitset1 = bitset1.copy()
     copy_bitset1.append(random_name1)
     qubits_to_fix[random_name1] = 0
-    bqm.add_variable(random_name1)
+    linear_coeff, add_offset = get_model_single_var(0)
+    bqm.add_variable(random_name1, linear_coeff)
+    bqm.offset += add_offset
 
     random_name2 = GlobalIndexer.get_name_index()  # add an extra qubit to take the twos complement
     copy_bitset2 = bitset2.copy()
     copy_bitset2.append(random_name2)
     qubits_to_fix[random_name2] = 0
-    bqm.add_variable(random_name2)
+    linear_coeff, add_offset = get_model_single_var(0)
+    bqm.add_variable(random_name2, linear_coeff)
+    bqm.offset += add_offset
+
     qword_2c_bitset2 = optimized_get_twos_complement(copy_bitset2, current_n, bqm, qubits_to_fix)
     bitset2_2c = qword_2c_bitset2[current_n]
 
@@ -254,14 +274,22 @@ def optimized_half_adder(input1: int, input2: int, bqm: dimod.BinaryQuadraticMod
         result = get_qubit_name()
         qubits_to_fix[carry] = value_input1 and value_input2
         qubits_to_fix[result] = (value_input1 + value_input2) % 2
-        bqm.add_variable(carry)
-        bqm.add_variable(result)
+
+        linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+        bqm.add_variable(carry, linear_carry)
+        bqm.offset += offset_carry
+
+        linear_result, offset_result = get_model_single_var(qubits_to_fix[result])
+        bqm.add_variable(result, linear_result)
+        bqm.offset += offset_result
     elif value_input1 is not None and value_input2 is None:
         if value_input1 == 0:
             carry = get_qubit_name()
             qubits_to_fix[carry] = 0
+            linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+            bqm.add_variable(carry, linear_carry)
+            bqm.offset += offset_carry
             result = input2
-            bqm.add_variable(carry)
         else:
             carry = input2
             result = get_qubit_name()
@@ -272,8 +300,10 @@ def optimized_half_adder(input1: int, input2: int, bqm: dimod.BinaryQuadraticMod
         if value_input2 == 0:
             carry = get_qubit_name()
             qubits_to_fix[carry] = 0
+            linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+            bqm.add_variable(carry, linear_carry)
+            bqm.offset += offset_carry
             result = input1
-            bqm.add_variable(carry)
         else:
             carry = input1
             result = get_qubit_name()
@@ -353,8 +383,14 @@ def optimized_full_adder(input1: int, input2: int, input3: int, bqm: dimod.Binar
         carry = get_qubit_name()
         qubits_to_fix[carry] = (value_input1 + value_input2 + value_input3) > 1
         qubits_to_fix[result] = (value_input1 + value_input2 + value_input3) % 2
-        bqm.add_variable(carry)
-        bqm.add_variable(result)
+
+        linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+        bqm.add_variable(carry, linear_carry)
+        bqm.offset += offset_carry
+
+        linear_result, offset_result = get_model_single_var(qubits_to_fix[result])
+        bqm.add_variable(result, linear_result)
+        bqm.offset += offset_result
     elif are_there_2_known_variables():
         not_none_vars, none_vars = get_variables_names()
         xi = not_none_vars[0]
@@ -366,8 +402,12 @@ def optimized_full_adder(input1: int, input2: int, input3: int, bqm: dimod.Binar
 
         if value_xi == 1 and value_xj == 1:
             carry = get_qubit_name()
-            bqm.add_variable(carry)
             qubits_to_fix[carry] = 1
+
+            linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+            bqm.add_variable(carry, linear_carry)
+            bqm.offset += offset_carry
+
             result = xk
         elif value_xi != value_xj:
             carry = xk
@@ -377,8 +417,11 @@ def optimized_full_adder(input1: int, input2: int, input3: int, bqm: dimod.Binar
             InputPropagationFile.write_rule(R_NOT, result, [xk], qubits_to_fix)
         else:
             carry = get_qubit_name()
-            bqm.add_variable(carry)
             qubits_to_fix[carry] = 0
+            linear_carry, offset_carry = get_model_single_var(qubits_to_fix[carry])
+            bqm.add_variable(carry, linear_carry)
+            bqm.offset += offset_carry
+
             result = xk
     else:
         # we cannot do constant propagation
@@ -434,6 +477,9 @@ def optimized_bitwise_add(bitset1: List[int], bitset2: List[int], current_n: int
 
     if fix_last_carry:
         qubits_to_fix[carry] = 0
+        linear_carry, offset_carry = get_model_single_var(0)
+        bqm.add_variable(carry, linear_carry)
+        bqm.offset += offset_carry
 
     result_qword.append_state(result_qubits, current_n)
 
@@ -448,21 +494,32 @@ def optimized_multiplication(bitset1: List[int], bitset2: List[int], current_n: 
         for i in range(0, shift):
             name_result = get_qubit_name()
             temp_result.append(name_result)
-            bqm.add_variable(name_result)
             qubits_to_fix[name_result] = 0
+
+            linear, offset = get_model_single_var(0)
+            bqm.add_variable(name_result, linear)
+            bqm.offset += offset
 
         value_operand2 = get_qubit_value(qubit_name, qubits_to_fix)
         for bit in bitset1:
             value_bit = get_qubit_value(bit, qubits_to_fix)
             if value_bit is not None and value_operand2 is not None:
                 result_name = get_qubit_name()
-                bqm.add_variable(result_name)
                 qubits_to_fix[result_name] = value_bit and value_operand2
+
+                linear, offset = get_model_single_var(qubits_to_fix[result_name])
+                bqm.add_variable(result_name, linear)
+                bqm.offset += offset
+
                 temp_result.append(result_name)
             elif value_bit == 0 or value_operand2 == 0:
                 result_name = get_qubit_name()
                 qubits_to_fix[result_name] = 0
-                bqm.add_variable(result_name)
+
+                linear, offset = get_model_single_var(qubits_to_fix[result_name])
+                bqm.add_variable(result_name, linear)
+                bqm.offset += offset
+
                 temp_result.append(result_name)
             else:
                 result_name = get_qubit_name()
@@ -477,6 +534,9 @@ def optimized_multiplication(bitset1: List[int], bitset2: List[int], current_n: 
             name = get_qubit_name()
             bqm.add_variable(name)
             qubits_to_fix[name] = 0
+            linear, offset = get_model_single_var(qubits_to_fix[name])
+            bqm.add_variable(name, linear)
+            bqm.offset += offset
             bits.append(name)
         return bits
 
@@ -550,11 +610,15 @@ def create_constant_qubit_value(number: int, size_in_bits: int, bqm: dimod.Binar
 
     for (bit, name) in zip(bits, result_qword[0]):
         qubits_to_fix[name] = bit
+
+        linear, offset = get_model_single_var(qubits_to_fix[name])
+        bqm.add_variable(name, linear)
+        bqm.offset += offset
     return result_qword
 
 
 def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadraticModel,
-                   qubits_to_fix: Dict[int, int]) -> List[int]:
+                   qubits_to_fix: Dict[int, int], current_n = None) -> List[int]:
     assert len(bitset1) == len(bitset2)
     result = []
     for (bit1, bit2) in zip(bitset1, bitset2):
@@ -562,18 +626,26 @@ def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuad
         value_x1 = get_qubit_value(bit1, qubits_to_fix)
         value_x2 = get_qubit_value(bit2, qubits_to_fix)
         # build circuit
-
         if bit1 == bit2:
+            print("equal bits")
             name_result = get_qubit_name()
-            bqm.add_variable(name_result)
             qubits_to_fix[name_result] = 1
             result.append(name_result)
+
+            linear, offset = get_model_single_var(1)
+            bqm.add_variable(name_result, linear)
+            bqm.offset += offset
         elif value_x1 is not None and value_x2 is not None:
             name_result = get_qubit_name()
-            bqm.add_variable(name_result)
             qubits_to_fix[name_result] = value_x1 == value_x2
+
+            linear, offset = get_model_single_var(qubits_to_fix[name_result])
+            bqm.add_variable(name_result, linear)
+            bqm.offset += offset
+
             result.append(name_result)
         elif (value_x1 is not None and value_x2 is None) or (value_x1 is None and value_x2 is not None):
+
             if value_x1 is None:
                 name_none = bit1
                 target_value = value_x2
@@ -607,12 +679,6 @@ def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuad
             }
 
             model = get_XNOR(var_names)
-            if value_x1 is not None and value_x2 is not None:
-                qubits_to_fix[nx1] = not value_x1
-                qubits_to_fix[nx2] = not value_x2
-                qubits_to_fix[nand1] = not (value_x1 and value_x2)
-                qubits_to_fix[nand2] = not ((not value_x1) and (not value_x2))
-                qubits_to_fix[name_result] = value_x1 == value_x2
             bqm.update(model)
             InputPropagationFile.write_rule(R_NOT, nx1, [bit1], qubits_to_fix)
             InputPropagationFile.write_rule(R_NOT, nx2, [bit2], qubits_to_fix)
@@ -634,16 +700,23 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
         value_x2 = get_qubit_value(bit2, qubits_to_fix)
 
         if bit1 == bit2:
+            print("equal bits")
             name_result = get_qubit_name()
-            bqm.add_variable(name_result)
             qubits_to_fix[name_result] = 0
             result.append(name_result)
 
+            linear, offset = get_model_single_var(0)
+            bqm.offset += offset
+            bqm.add_variable(name_result, linear)
+
         elif value_x1 is not None and value_x2 is not None:
             name_result = get_qubit_name()
-            bqm.add_variable(name_result)
             qubits_to_fix[name_result] = value_x1 != value_x2
             result.append(name_result)
+
+            linear, offset = get_model_single_var(value_x1 != value_x2)
+            bqm.offset += offset
+            bqm.add_variable(name_result, linear)
         elif (value_x1 is not None and value_x2 is None) or (value_x1 is None and value_x2 is not None):
             if value_x1 is None:
                 name_none = bit1
@@ -678,11 +751,12 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
 
             model = get_XOR(var_names)
             if value_x1 is not None and value_x2 is not None:
-                qubits_to_fix[nx1] = not value_x1
-                qubits_to_fix[nx2] = not value_x2
-                qubits_to_fix[nand1] = not (value_x1 and value_x2)
-                qubits_to_fix[nand2] = not ((not value_x1) and (not value_x2))
-                qubits_to_fix[name_result] = value_x1 != value_x2
+                raise Exception("not expected constants and XOR")
+                # qubits_to_fix[nx1] = not value_x1
+                # qubits_to_fix[nx2] = not value_x2
+                # qubits_to_fix[nand1] = not (value_x1 and value_x2)
+                # qubits_to_fix[nand2] = not ((not value_x1) and (not value_x2))
+                # qubits_to_fix[name_result] = value_x1 != value_x2
             bqm.update(model)
             InputPropagationFile.write_rule(R_NOT, nx1, [bit1], qubits_to_fix)
             InputPropagationFile.write_rule(R_NOT, nx2, [bit2], qubits_to_fix)
@@ -703,8 +777,12 @@ def optimized_bits_and(_bits: List[int], bqm: dimod.BinaryQuadraticModel, curren
     const_value = get_constant_bits_value(const_names, qubits_to_fix, AND)
     if const_value is not None:
         result_name = GlobalIndexer.get_name_index()
-        bqm.add_variable(result_name)
         qubits_to_fix[result_name] = const_value
+
+        linear, offset = get_model_single_var(const_value)
+        bqm.offset += offset
+        bqm.add_variable(result_name, linear)
+
         qword_result = QWord(1)
         qword_result.append_state([result_name], current_n)
         return qword_result
@@ -712,8 +790,12 @@ def optimized_bits_and(_bits: List[int], bqm: dimod.BinaryQuadraticModel, curren
     if len(bits) == 0:
         # all values are 1
         result_name = GlobalIndexer.get_name_index()
-        bqm.add_variable(result_name)
         qubits_to_fix[result_name] = 1
+
+        linear, offset = get_model_single_var(1)
+        bqm.offset += offset
+        bqm.add_variable(result_name, linear)
+
         qword_result = QWord(1)
         qword_result.append_state([result_name], current_n)
         return qword_result
@@ -743,7 +825,7 @@ def optimized_bits_and(_bits: List[int], bqm: dimod.BinaryQuadraticModel, curren
 
 def optimized_is_equal(bitset1: List[int], bitset2: List[int], current_n: int, bqm: dimod.BinaryQuadraticModel,
                        qubits_to_fix: Dict[int, int]) -> QWord:
-    xnor_result = optimized_xnor(bitset1, bitset2, bqm, qubits_to_fix)
+    xnor_result = optimized_xnor(bitset1, bitset2, bqm, qubits_to_fix, current_n)
     return optimized_bits_and(xnor_result, bqm, current_n, qubits_to_fix)
 
 
@@ -758,7 +840,11 @@ def optimized_bitwise_or(bitset1: List[int], bitset2: List[int], current_n: int,
         if is_bit1_constant and is_bit2_constant:
             name_bit_result = get_qubit_name()
             qubits_to_fix[name_bit_result] = qubits_to_fix[bit1] or qubits_to_fix[bit2]
-            bqm.add_variable(name_bit_result)
+
+            linear, offset = get_model_single_var(qubits_to_fix[name_bit_result])
+            bqm.offset += offset
+            bqm.add_variable(name_bit_result, linear)
+
             result_bits.append(name_bit_result)
             InputPropagationFile.write_rule(OR, name_bit_result, [bit1, bit2], qubits_to_fix)
 
@@ -797,14 +883,18 @@ def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_t
     const_value = get_constant_bits_value(const_names, qubits_to_fix, OR)
     if const_value is not None:
         result_name = GlobalIndexer.get_name_index()
-        bqm.add_variable(result_name)
+        linear_coeff, add_offset = get_model_single_var(const_value)
+        bqm.add_variable(result_name, linear_coeff)
+        bqm.offset += add_offset
         qubits_to_fix[result_name] = const_value
         return result_name
 
     if len(bits) == 0:
         # all values are 0
         result_name = GlobalIndexer.get_name_index()
-        bqm.add_variable(result_name)
+        linear_coeff, add_offset = get_model_single_var(0)
+        bqm.add_variable(result_name, linear_coeff)
+        bqm.offset += add_offset
         qubits_to_fix[result_name] = 0
         return result_name
     elif len(bits) == 1:

@@ -130,8 +130,13 @@ class Instruction:
             raise Exception(f"Not valid instruction: {self}")
 
     def raise_error(self):
-
         pass
+        # this function is for debugging purposes
+        # if self.name not in [STATE, INPUT, SORT, CONSTD]:
+        #     bias = self.evaluate_bqm()
+        #     if bias > 0:
+        #         raise Exception(self.id, self.name, self.current_n)
+
 
     def get_last_qubitset(self, name: str, qword: QWord) -> List[int]:
         if name in [STATE, INPUT]:
@@ -349,6 +354,7 @@ class Instruction:
 
     @staticmethod
     def or_bad_states():
+
         result = optimized_bits_or(Instruction.bad_states, Instruction.bqm, Instruction.qubits_to_fix)
         Instruction.qubits_to_fix[result] = 1  # make any bad state happen
         return result  # returns the qubit name
@@ -576,6 +582,8 @@ class Ite(Instruction):
 
         # compute true part
         qubit_condition = self.get_last_qubitset(condition.name, qword_condition)
+        assert len(qubit_condition) == 1
+
         result_qword = QWord(sort.size_in_bits)
         if qubit_condition[0] in Instruction.qubits_to_fix.keys():
             condition_value = Instruction.qubits_to_fix[qubit_condition[0]]
@@ -622,6 +630,9 @@ class Ite(Instruction):
                     result_qubits.append(false_qubit)
                 else:
                     if true_value == 1 and false_value == 0:
+                        # if Instruction.current_n > 18:
+                        #result_qubits.append(qubit_condition[0])
+                        # else:
                         temp_name = get_qubit_name()
                         Instruction.qubits_to_fix[temp_name] = 1
                         result_name = get_qubit_name()
@@ -629,7 +640,6 @@ class Ite(Instruction):
                         result_qubits.append(result_name)
                         InputPropagationFile.write_rule(R_AND, result_name, [qubit_condition[0], temp_name],
                                                         Instruction.qubits_to_fix)
-                        Instruction.bqm.update(model)
                     else:
                         # true=0 and false=1
                         result_name = get_qubit_name()
@@ -731,7 +741,9 @@ class Write(Instruction):
                     result_qubits[local_memory_offset * Instruction.WORD_SIZE + i] = new_name
                     # qubit_name = qubits_memory[local_memory_offset*WORD_SIZE+i]
                     Instruction.qubits_to_fix[new_name] = Instruction.qubits_to_fix[qubits_value[i]]
-                    Instruction.bqm.add_variable(new_name)
+                    linear, offset = get_model_single_var(Instruction.qubits_to_fix[qubits_value[i]])
+                    Instruction.bqm.offset += offset
+                    Instruction.bqm.add_variable(new_name, linear)
                 result_qword.append_state(result_qubits, Instruction.current_n)
                 return result_qword
             else:
@@ -845,7 +857,9 @@ class Uext(Instruction):
             name = get_qubit_name()
             result_qubits.append(name)
             Instruction.qubits_to_fix[name] = 0
-            Instruction.bqm.add_variable(name)
+            linear, offset = get_model_single_var(0)
+            Instruction.bqm.add_variable(name, linear)
+            Instruction.bqm.offset += offset
         qword_result.append_state(result_qubits, Instruction.current_n)
         return qword_result
 
@@ -1041,7 +1055,9 @@ class Urem(Instruction):
                 qubit_name = get_qubit_name()
                 Instruction.qubits_to_fix[qubit_name] = res
                 result_qubitset.append(qubit_name)
-                Instruction.bqm.add_variable(qubit_name)
+                linear, offset = get_model_single_var(res)
+                Instruction.bqm.add_variable(qubit_name, linear)
+                Instruction.bqm.offset += offset
             qword_result = QWord(len(bitset1))
             qword_result.append_state(result_qubitset, Instruction.current_n)
             return qword_result
@@ -1128,14 +1144,19 @@ class Read(Instruction):
                         if actual_qubit in Instruction.qubits_to_fix.keys():
                             value_actual_qubit = Instruction.qubits_to_fix[actual_qubit]
                             bit_name = get_qubit_name()
-                            Instruction.bqm.add_variable(bit_name)
+
                             Instruction.qubits_to_fix[bit_name] = value_address_bit and value_actual_qubit
+                            linear, offset = get_model_single_var(Instruction.qubits_to_fix[bit_name])
+                            Instruction.bqm.add_variable(bit_name, linear)
+                            Instruction.bqm.offset += offset
                             actual_word.append(bit_name)
                         else:
                             if value_address_bit == 0:
                                 bit_name = get_qubit_name()
-                                Instruction.bqm.add_variable(bit_name)
                                 Instruction.qubits_to_fix[bit_name] = 0
+                                linear, offset = get_model_single_var(Instruction.qubits_to_fix[bit_name])
+                                Instruction.bqm.add_variable(bit_name, linear)
+                                Instruction.bqm.offset += offset
                                 actual_word.append(bit_name)
                             else:
                                 actual_word.append(actual_qubit)
