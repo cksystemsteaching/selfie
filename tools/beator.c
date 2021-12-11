@@ -3250,9 +3250,11 @@ void beator(uint64_t entry_pc) {
 
     generate_address_alignment_check(access_flow_start_nid);
 
-    w = w + dprintf(output_fd, "; is end address of memory access word-aligned?\n\n");
+    if (check_block_access) {
+      w = w + dprintf(output_fd, "; is end address of memory access word-aligned?\n\n");
 
-    generate_address_alignment_check(access_flow_end_nid);
+      generate_address_alignment_check(access_flow_end_nid);
+    }
   }
 
   if (segmentation_faults) {
@@ -3262,9 +3264,11 @@ void beator(uint64_t entry_pc) {
 
     generate_segmentation_faults(access_flow_start_nid);
 
-    w = w + dprintf(output_fd, "; is end address of memory access in a valid segment?\n\n");
+    if (check_block_access) {
+      w = w + dprintf(output_fd, "; is end address of memory access in a valid segment?\n\n");
 
-    generate_segmentation_faults(access_flow_end_nid);
+      generate_segmentation_faults(access_flow_end_nid);
+    }
   }
 
   if (check_block_access) {
