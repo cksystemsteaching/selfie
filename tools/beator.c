@@ -1018,12 +1018,11 @@ void model_data_flow_addi() {
 }
 
 void model_control_flow_addi() {
-  if (rd != REG_ZR)
+  if (rs1 == REG_ZR)
     if (imm != 0)
-      if (rs1 == REG_ZR)
-        if (rd == REG_A7)
-          // assert: next instruction is ecall
-          reg_a7 = imm;
+      if (rd == REG_A7)
+        // assert: next instruction is ecall
+        reg_a7 = imm;
 
   model_control_flow_lui_add_sub_mul_divu_remu_sltu_load_store();
 }
