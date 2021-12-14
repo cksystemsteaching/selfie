@@ -870,7 +870,7 @@ void model_syscalls(uint64_t cursor_nid) {
   }
 
 
-  w = w + dprintf(output_fd, "\n%lu next 1 60 %lu ; update kernel-mode flag\n",
+  w = w + dprintf(output_fd, "\n%lu next 1 60 %lu ; updating kernel-mode flag\n",
     current_ecall_nid + pcs_nid / 10, // nid of this line
     kernel_mode_flow_nid);            // nid of most recent update of kernel-mode flag
 }
