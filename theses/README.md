@@ -1,6 +1,11 @@
 # Bachelor Theses on Selfie
 
 
+## RISC-U Binary Optimization for Selfie by David Pape, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_pape/bachelor_thesis_pape.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_pape))
+  
+Optimizers are part of any modern compiler, and their practical importance in writing performant code cannot be understated. Still, they introduce major complexity, and its complement: bugs. In this work, we present a binary optimizer for RISC-U, a small subset of RISC-V and the target architecture of selfies[@selfie] educational compiler. To address the complexity issue, our optimizer is structured as a standalone binary, keeping the compiler simple. Since this comes at the cost of compile-time information, a binary analyzer is a prerequisite. With it, our optimizer is able to remove redundant instructions and apply several peephole optimizations, leading to a roughly five percent speedup.
+
+
 ## Linear-Time Static Analysis of RISC-V Binary Code by Thomas Wulz, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_wulz/bachelor_thesis_wulz.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_wulz))
 
 Selfie is, among other things, a compiler from a small subset of C (C*) to a small subset of RISC-V (RISC-U).
