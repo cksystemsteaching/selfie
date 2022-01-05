@@ -1,8 +1,6 @@
 # QUBOT
 
-QUBOT is a bounded model checker that runs in polynomial time. It generates a Binary Quadratic Model (BQM), specifically a Quadratic Unconstrained Binary Optimization (QUBO) model, from a given BTOR2 file and a given number of timesteps *n*.
-
-QUBOs are special functions that quantum annealers can process and solve in constant time regardless of the number of variables the QUBO has, as far as the Quantum Processor Unit (QPU) has enough qubits to represent all the binary variables.
+QUBOT is a bounded model checker and a symbolic execution engine. It generates a Binary Quadratic Model (BQM) in polynomic time, specifically a Quadratic Unconstrained Binary Optimization (QUBO) model, from a given BTOR2 file and a given number of timesteps *n*. QUBOs are special functions that quantum annealers can optimize.
 
 The purpose of QUBOT is to build a function whose ground state (global minimum value) equals 0 for all inputs that cause any bad state of a given BTOR2 file (e.g bad memory accesses, division by 0, etc.) in *n* or less arbitrarly executed instructions.
 
