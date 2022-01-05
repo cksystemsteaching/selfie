@@ -11,12 +11,72 @@ import dimod
 from bit_transformation.more_gates.xnor import get_XNOR
 from bit_transformation.more_gates.xor import get_XOR
 import re
+from z3 import BitVec,BitVecVal, Extract, unknown, sat, unsat, simplify
+from z3 import Solver as Z3Solver
+
+
+class Solver:
+    solver = Z3Solver()
+    is_solver_valid = True
+    @staticmethod
+    def solve_with_value(nid, timestep, value, index, variables):
+        z3_variable = simplify(variables[nid][timestep])
+        Solver.solver.push() # push new frame
+        Solver.solver.add(Extract(index, index, z3_variable) == value)
+        result = Solver.solver.check()
+        Solver.solver.pop() # remove frame
+        return result
+
+    @staticmethod
+    def add_value(nid, timestep, value, index, variables):
+        z3_variable = simplify(variables[nid][timestep])
+        Solver.solver.add(Extract(index, index, z3_variable) == value)
+
+    @staticmethod
+    def try_fixing_variables(states, qubits_to_fix, variables):
+        if Solver.is_solver_valid:
+            is_there_change = True
+            for id in states.keys():
+                qword = states[id]
+                for timestep in qword.states.keys():
+                    for (index, qubit) in enumerate(qword.states[timestep]):
+                        if qubit not in qubits_to_fix.keys():
+                            zero_value = Solver.solve_with_value(id, timestep, 0, index, variables)
+                            one_value = Solver.solve_with_value(id, timestep, 1, index, variables)
+
+                            if zero_value != unknown and one_value != unknown:
+                                is_there_change = True
+                                if zero_value != one_value:
+                                    if one_value == sat:
+                                        qubits_to_fix[qubit] = 1
+                                        Solver.add_value(id, timestep, 1, index, variables)
+
+                                    else:
+                                        qubits_to_fix[qubit] = 0
+                                        Solver.add_value(id, timestep, 0, index, variables)
+                                    print(zero_value, one_value, id, timestep)
+                                elif zero_value == unsat:
+                                    raise Exception("Solver does not satisfies with any value!")
+                            else:
+                                print("solver timed out")
+            Solver.is_solver_valid = is_there_change
 
 
 def get_qubit_value(qubit_name: int, qubits_to_fix: Dict[int, int]) -> Optional[int]:
     if qubit_name in qubits_to_fix.keys():
         return qubits_to_fix[qubit_name]
     return None
+
+def get_word_value(qubit_names: List[int], qubits_to_fix: Dict[int, int]):
+    binary_representation = []
+    for name in qubit_names:
+        if name not in qubits_to_fix.keys():
+            raise Exception("[get_word_value] name not in qubits_to_fix")
+        binary_representation.append(qubits_to_fix[name])
+
+    return get_decimal_representation(binary_representation)
+
+
 
 def separate_constants(qubit_names: List[int], qubits_to_fix: Dict[int, int]) -> (List[int], List[int]):
     constant_names = []
@@ -56,13 +116,52 @@ def get_model_single_var(value):
 
     return linear_coeff, bias
 
+def z3_constants_procedure(result, current_n, bitvec_size, bqm, qubits_to_fix):
+    binary_string = result.as_binary_string()
+    result_bitset = get_bitset_from_binary_str(binary_string, bitvec_size, bqm, qubits_to_fix)
+
+    result_qword = QWord(bitvec_size)
+    result_qword.append_state(result_bitset, current_n)
+    return result_qword
+
+def get_bitset_from_binary_str(binary_string, bitvec_size, bqm, qubits_to_fix):
+    binary_string = [int(i) for i in binary_string]
+
+    result_bitset = []
+    for bit in binary_string:
+        name = get_qubit_name()
+        linear_coeff, offset = get_model_single_var(bit)
+        bqm.add_variable(name, linear_coeff)
+        bqm.offset += offset
+        result_bitset.append(name)
+        qubits_to_fix[name] = bit
+
+    while len(result_bitset) < bitvec_size:
+        name = get_qubit_name()
+        linear_coeff, offset = get_model_single_var(0)
+        bqm.add_variable(name, linear_coeff)
+        bqm.offset += offset
+        result_bitset.append(name)
+        qubits_to_fix[name] = 0
+    return result_bitset
+
+
+
+
 class InputPropagationFile:
     file = None
+    rules = {}
+    intermediate_rules = {}
 
     @staticmethod
     def write_rule(rule_name, target, operands, qubits_to_fix):
         value_target = get_qubit_value(target, qubits_to_fix)
         if value_target is None:
+            InputPropagationFile.rules[target] = {
+                "rule_name": rule_name,
+                "operands": operands
+            }
+
             line = f"{rule_name} {target}"
             for operand in operands:
                 line += f" {operand}"
@@ -70,6 +169,22 @@ class InputPropagationFile:
             InputPropagationFile.file.write(line)
         else:
             qubits_to_fix[target] = value_target
+
+    @staticmethod
+    def update_qubits_to_fix(qubits_to_fix):
+
+        if Solver.is_solver_valid:
+            def are_operands_constants(operands):
+                for operand in operands:
+                    if operand not in qubits_to_fix.keys():
+                        return False
+                return True
+
+            for target in InputPropagationFile.rules.keys():
+                operands = InputPropagationFile.rules[target]["operands"]
+                if are_operands_constants(operands):
+                    qubits_to_fix[target] = get_rule_value(InputPropagationFile.rules[target]["rule_name"], operands, qubits_to_fix)
+                    #InputPropagationFile.rules.pop(target)
 
     @staticmethod
     def close_file():
@@ -627,7 +742,6 @@ def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuad
         value_x2 = get_qubit_value(bit2, qubits_to_fix)
         # build circuit
         if bit1 == bit2:
-            print("equal bits")
             name_result = get_qubit_name()
             qubits_to_fix[name_result] = 1
             result.append(name_result)

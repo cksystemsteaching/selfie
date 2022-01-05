@@ -7,7 +7,7 @@ from dimod import ExactSolver, SampleSet
 from tools import *
 from settings import *
 import time
-from qword_tools import InputPropagationFile
+from qword_tools import InputPropagationFile, Solver
 import json
 
 class BTor2BQM:
@@ -25,7 +25,12 @@ class BTor2BQM:
             raise Exception("number of instructions to execute cannot be less than 1.")
 
     def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, qubit_growth_file=None) -> dimod.BinaryQuadraticModel:
+                   input_nid=81, qubit_growth_file=None, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
+        if z3_solver_timeout is not None:
+            # set timeout (in milliseconds)
+            print("setting custom z3_solver_timeout: ", z3_solver_timeout)
+            Solver.solver.set("timeout", z3_solver_timeout)
+
         model_name = filename.split("/")[-1].split(".")[0]
         print("started building", filename, f"for {self.n} timesteps")
         Instruction.output_dir = output_path
