@@ -25,11 +25,11 @@ class BTor2BQM:
             raise Exception("number of instructions to execute cannot be less than 1.")
 
     def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, qubit_growth_file=None, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
+                   input_nid=81, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
         if z3_solver_timeout is not None:
             # set timeout (in milliseconds)
             print("setting custom z3_solver_timeout: ", z3_solver_timeout)
-            Solver.solver.set("timeout", z3_solver_timeout)
+            Solver.timeout = z3_solver_timeout
 
         model_name = filename.split("/")[-1].split(".")[0]
         print("started building", filename, f"for {self.n} timesteps")
@@ -44,6 +44,7 @@ class BTor2BQM:
         Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort, setting=current_settings)
 
         assert len(Instruction.all_instructions.keys()) > 0
+
         total_time = 0
         previous_qubit_count = 0
         for i in range(1, self.n + 1):
@@ -59,10 +60,6 @@ class BTor2BQM:
                     # pass
                     Instruction(instruction).execute()
             tn = time.perf_counter()
-            if qubit_growth_file != None:
-                current_qubit_count = len(Instruction.bqm.linear.keys()) - len(Instruction.qubits_to_fix.keys())
-                qubit_growth_file.write(f"{model_name},{i},{current_qubit_count-previous_qubit_count}\n")
-                previous_qubit_count = current_qubit_count
 
             # print(f"built bqm in {tn - t0} seconds for {i}-th instruction")
             total_time += tn-t0
@@ -72,20 +69,12 @@ class BTor2BQM:
         total_time += tn-t0
         InputPropagationFile.close_file()
 
-        #print(f"took {total_time}s to build bqm of {self.n} instructions")
-        # print("BQM count variables: ", len(Instruction.bqm.adj.keys()))
-        # print("Offset (before):", Instruction.bqm.offset)
-
         with open(f"{Instruction.output_dir}qubits_to_fix.json", "w") as outfile:
             json.dump(Instruction.qubits_to_fix, outfile)
         t0_fix = time.perf_counter()
         Instruction.fix_qubits()
         tn_fix = time.perf_counter()
         time_to_fix = tn_fix - t0_fix
-
-        # print(Instruction.bqm.offset)
-        # print("BQM count linear(after): ", len(Instruction.bqm.adj.keys()))
-        # print("Offset (after):", Instruction.bqm.offset)
 
         with open(f"{Instruction.output_dir}context.json", "w") as file:
             context = {
