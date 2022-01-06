@@ -24,14 +24,13 @@ class BTor2BQM:
         if n <= 0:
             raise Exception("number of instructions to execute cannot be less than 1.")
 
-    def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
+    def set_parameters(self, z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort):
+
         if z3_solver_timeout is not None:
             # set timeout (in milliseconds)
             print("setting custom z3_solver_timeout: ", z3_solver_timeout)
             Solver.timeout = z3_solver_timeout
 
-        model_name = filename.split("/")[-1].split(".")[0]
         print("started building", filename, f"for {self.n} timesteps")
         Instruction.output_dir = output_path
         current_settings = get_btor2_settings(filename)
@@ -41,40 +40,15 @@ class BTor2BQM:
         Instruction.initialize_states = initialize_states
 
         Instruction.clean_static_variables()
-        Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort, setting=current_settings)
+
+        Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort,
+                                                 setting=current_settings)
 
         assert len(Instruction.all_instructions.keys()) > 0
 
-        total_time = 0
-        previous_qubit_count = 0
-        for i in range(1, self.n + 1):
-            Instruction.current_n = i
-            t0 = time.perf_counter()
-            for instruction in Instruction.all_instructions.values():
-                if instruction[1] == INIT and i == 1:
-                    if with_init:
-                        Instruction(instruction).execute()
-                elif instruction[1] == NEXT:
-                    Instruction(instruction).execute()
-                elif instruction[1] == BAD:
-                    # pass
-                    Instruction(instruction).execute()
-            tn = time.perf_counter()
-
-            # print(f"built bqm in {tn - t0} seconds for {i}-th instruction")
-            total_time += tn-t0
-        t0 = time.perf_counter()
-        Instruction.or_bad_states()
-        tn = time.perf_counter()
-        total_time += tn-t0
-        InputPropagationFile.close_file()
-
+    def write_output_files(self, input_nid, total_time, time_to_fix):
         with open(f"{Instruction.output_dir}qubits_to_fix.json", "w") as outfile:
             json.dump(Instruction.qubits_to_fix, outfile)
-        t0_fix = time.perf_counter()
-        Instruction.fix_qubits()
-        tn_fix = time.perf_counter()
-        time_to_fix = tn_fix - t0_fix
 
         with open(f"{Instruction.output_dir}context.json", "w") as file:
             context = {
@@ -95,6 +69,38 @@ class BTor2BQM:
                 for (n, bias) in neighbours.items():
                     if v < n:
                         file.write(f"{v} {n} {bias}\n")
+
+    def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
+                   input_nid=81, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
+
+        self.set_parameters(z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort)
+        total_time = 0
+        for i in range(1, self.n + 1):
+            Instruction.current_n = i
+            t0 = time.perf_counter()
+            for instruction in Instruction.all_instructions.values():
+                if instruction[1] == INIT and i == 1:
+                    if with_init:
+                        Instruction(instruction).execute()
+                elif instruction[1] == NEXT:
+                    Instruction(instruction).execute()
+                elif instruction[1] == BAD:
+                    Instruction(instruction).execute()
+            tn = time.perf_counter()
+            total_time += tn-t0
+
+        t0 = time.perf_counter()
+        Instruction.or_bad_states()
+        tn = time.perf_counter()
+        total_time += tn-t0
+
+        t0_fix = time.perf_counter()
+        Instruction.fix_qubits()
+        tn_fix = time.perf_counter()
+        time_to_fix = tn_fix - t0_fix
+        InputPropagationFile.close_file()
+        self.write_output_files(input_nid, total_time, time_to_fix)
+
         return Instruction.bqm
 
     @staticmethod
