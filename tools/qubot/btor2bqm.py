@@ -24,7 +24,7 @@ class BTor2BQM:
         if n <= 0:
             raise Exception("number of instructions to execute cannot be less than 1.")
 
-    def set_parameters(self, z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort):
+    def set_parameters(self, z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort, qpu_size):
 
         if z3_solver_timeout is not None:
             # set timeout (in milliseconds)
@@ -45,6 +45,8 @@ class BTor2BQM:
                                                  setting=current_settings)
 
         assert len(Instruction.all_instructions.keys()) > 0
+
+        Instruction.QPU_SIZE = qpu_size
 
     def write_output_files(self, input_nid, total_time, time_to_fix):
         with open(f"{Instruction.output_dir}qubits_to_fix.json", "w") as outfile:
@@ -71,12 +73,17 @@ class BTor2BQM:
                         file.write(f"{v} {n} {bias}\n")
 
     def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, z3_solver_timeout=None) -> dimod.BinaryQuadraticModel:
+                   input_nid=81, z3_solver_timeout=None, QPU_SIZE=6000) -> dimod.BinaryQuadraticModel:
 
-        self.set_parameters(z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort)
+        self.set_parameters(z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort, QPU_SIZE)
         total_time = 0
-        for i in range(1, self.n + 1):
+
+        should_add_timestep = True
+        i = 1
+        while should_add_timestep:
             Instruction.current_n = i
+            if i > self.n:
+                break
             t0 = time.perf_counter()
             for instruction in Instruction.all_instructions.values():
                 if instruction[1] == INIT and i == 1:
@@ -86,8 +93,12 @@ class BTor2BQM:
                     Instruction(instruction).execute()
                 elif instruction[1] == BAD:
                     Instruction(instruction).execute()
+
+            # if error occur we should exit the loop, SMT-SOLVER finds the answer
+            should_add_timestep = not Instruction.does_bad_state_occur()
             tn = time.perf_counter()
             total_time += tn-t0
+            i += 1
 
         t0 = time.perf_counter()
         Instruction.or_bad_states()

@@ -28,6 +28,8 @@ class Instruction:
     z3_variables: Dict[int, Dict[int, Any]] = {} # nid -> timestep -> z3_variable
     memory_bitvectors: Dict[int, Any] = {}
     z3_bad_states: List[Any] = []
+    ored_z3_bad_states_pointer: Any = None
+    ored_bad_states_pointer = None
 
     # model settings
     ADDRESS_WORD_SIZE = 4  # address are described by 32 bit numbers
@@ -48,6 +50,8 @@ class Instruction:
 
     output_dir = "input_checker_files_slice/"
     counter = 0
+
+    QPU_SIZE = 6000
 
     # END static attributes
 
@@ -146,7 +150,6 @@ class Instruction:
         #     if bias > 0:
         #         raise Exception(self.id, self.name, self.current_n)
 
-
     def get_last_qubitset(self, name: str, qword: QWord) -> List[int]:
         if name in [STATE, INPUT]:
             if self.current_n - 1 in qword.states.keys():
@@ -162,7 +165,6 @@ class Instruction:
             raise Exception(f"Cannot determine prev. state for instruction {self.instruction}")
 
         return qword[self.current_n]
-
 
     def get_timestep(self, name, qword):
         if name in [STATE, INPUT]:
@@ -359,11 +361,11 @@ class Instruction:
             Instruction.z3_variables[nid][timestep] = BitVecVal(value, bitvec_size)
 
 
-
     @staticmethod
     def add_qubits_to_fix_from_bitset(names, values):
         for (name, value) in zip(names, values):
             Instruction.qubits_to_fix[name] = value
+
 
     @staticmethod
     def clean_static_variables():
@@ -380,9 +382,10 @@ class Instruction:
         Instruction.bad_states_to_line_no = {}
         Instruction.z3_variables = dict()
         Solver.solver = Z3Solver()
-        Instruction.z3_unknown_variables = set()
         Instruction.memory_bitvectors = {}
         Instruction.z3_bad_states = []
+        Instruction.ored_z3_bad_States_pointer = None
+        Instruction.ored_bad_states_pointer = None
 
     @staticmethod
     def is_constant(qubit_names):
@@ -406,6 +409,60 @@ class Instruction:
 
         return result
 
+
+    @staticmethod
+    def does_bad_state_occur() -> bool:
+        Solver.solver.push() # push new context
+        z3_expr = Instruction.get_z3_or_bad_expression()
+        Solver.solver.add(z3_expr == True)
+        Solver.solver.set("timeout", Solver.timeout)
+        result = Solver.solver.check()
+        print(f"({Instruction.current_n}) Solver result {result}")
+
+        if result == sat:
+            Instruction.or_bad_states()
+            print("optimizing model")
+            Instruction.optimize_model()
+            return True
+        if result == unsat:
+            Solver.solver.pop()
+        else:
+            # it times out
+            # runs checker just to estimate size of model
+            is_model_coherent, temp_qubits_to_fix = Solver.estimate_model_size(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
+            print(f"is_model_coherent {is_model_coherent}")
+
+            if is_model_coherent:
+                # Instruction.qubits_to_fix.update(temp_qubits_to_fix)
+                intermediate_qubits_to_fix = InputPropagationFile.simulated_update_qubits_to_fix(Instruction.qubits_to_fix, temp_qubits_to_fix)
+                total_qubits = len(Instruction.bqm.adj.keys())
+                qubits_solved = len(temp_qubits_to_fix.keys()) + len(Instruction.qubits_to_fix.keys()) + len(intermediate_qubits_to_fix.keys())
+
+                qubits_needed = total_qubits - qubits_solved
+
+                print(f"qubits_needed {qubits_needed}")
+                if qubits_needed >= Instruction.QPU_SIZE:
+                    Instruction.qubits_to_fix.update(temp_qubits_to_fix)
+                    Instruction.qubits_to_fix.update(intermediate_qubits_to_fix)
+                    Instruction.or_bad_states()
+                    Instruction.optimize_model()
+                    return True
+                Solver.solver.pop()
+            else:
+                # model is incoherent
+                Solver.solver.pop()
+                # we should update the expresion to z3_expr == False ?
+        return False
+
+
+    @staticmethod
+    def get_z3_or_bad_expression():
+        assert len(Instruction.z3_bad_states) > 0
+        z3_expr = Instruction.bad_states[0] == 1
+        for i in range(1, len(Instruction.z3_bad_states)):
+            z3_expr = Z3Or(z3_expr, Instruction.z3_bad_states[i] == 1)
+        return z3_expr
+
     @staticmethod
     def add_z3_or_bad_states_expresion():
         assert len(Instruction.z3_bad_states) > 0
@@ -416,7 +473,17 @@ class Instruction:
 
         Solver.solver.add(z3_expr == True)
 
+    @staticmethod
+    def optimize_model():
+        previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
+        Solver.try_fixing_variables(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
+        future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
+        print(f"or bad states ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
 
+        previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
+        InputPropagationFile.update_qubits_to_fix(Instruction.qubits_to_fix)
+        future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
+        print(f"qubits_to_fix_updated ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
 
     @staticmethod
     def or_bad_states():
@@ -424,12 +491,16 @@ class Instruction:
         result = optimized_bits_or(Instruction.bad_states, Instruction.bqm, Instruction.qubits_to_fix)
         Instruction.qubits_to_fix[result] = 1  # make any bad state happen
 
-        Instruction.add_z3_or_bad_states_expresion()
-        previous_variable_count = len(Instruction.bqm.linear.keys()) - len(Instruction.qubits_to_fix.keys())
-        Solver.try_fixing_variables(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
-        InputPropagationFile.update_qubits_to_fix(Instruction.qubits_to_fix)
-        future_variable_count = len(Instruction.bqm.linear.keys()) -  len(Instruction.qubits_to_fix.keys())
-        print(f"or bad states (solver called): {previous_variable_count} -> {future_variable_count}")
+        # Instruction.add_z3_or_bad_states_expresion()
+        # previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
+        # Solver.try_fixing_variables(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
+        # future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
+        # print(f"or bad states ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
+        #
+        # previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
+        # InputPropagationFile.update_qubits_to_fix(Instruction.qubits_to_fix)
+        # future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
+        # print(f"qubits_to_fix_updated ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
 
         return result  # returns the qubit name
 
@@ -1672,6 +1743,18 @@ class Bad(Instruction):
 
         timestep = self.get_timestep(bad_state.name, bad_state_qword)
         Instruction.z3_variables[self.id][Instruction.current_n] = Instruction.z3_variables[bad_state.id][timestep]
+
+        if Instruction.ored_z3_bad_states_pointer is None:
+            Instruction.ored_z3_bad_states_pointer = Instruction.z3_variables[bad_state.id][timestep] == 1
+
+            assert Instruction.ored_bad_states_pointer is None
+            Instruction.ored_bad_states_pointer = bad_state_qubits[0]
+        else:
+            Instruction.ored_z3_bad_states_pointer = Z3Or(Instruction.ored_z3_bad_states_pointer, Instruction.z3_variables[bad_state.id][timestep] == 1)
+
+            assert Instruction.ored_bad_states_pointer is not None
+            Instruction.ored_bad_states_pointer = optimized_bits_or([Instruction.ored_bad_states_pointer,bad_state_qubits[0]], Instruction.bqm, Instruction.qubits_to_fix)
+
         Instruction.z3_bad_states.append(Instruction.z3_variables[self.id][Instruction.current_n])
         assert compare_qubo_z3_results(Instruction.z3_variables[self.id][Instruction.current_n],
                                        qword_result[Instruction.current_n], Instruction.qubits_to_fix)
