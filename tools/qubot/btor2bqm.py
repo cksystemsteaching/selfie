@@ -95,15 +95,15 @@ class BTor2BQM:
                     Instruction(instruction).execute()
 
             # if error occur we should exit the loop, SMT-SOLVER finds the answer
-            should_add_timestep = not Instruction.does_bad_state_occur()
+            should_add_timestep = not Instruction.does_bad_state_occur(top_iter=self.n)
             tn = time.perf_counter()
             total_time += tn-t0
             i += 1
 
-        t0 = time.perf_counter()
-        Instruction.or_bad_states()
-        tn = time.perf_counter()
-        total_time += tn-t0
+        # t0 = time.perf_counter()
+        # Instruction.or_bad_states()
+        # tn = time.perf_counter()
+        # total_time += tn-t0
 
         t0_fix = time.perf_counter()
         Instruction.fix_qubits()

@@ -288,6 +288,93 @@ def get_rule_value(rule, inputs, qubits_to_fix):
         raise Exception("UNKNOWN RULE")
 
 
+
+def get_rule_value_from_values(rule, inputs):
+    if rule == NAND:
+        value1 = inputs[0]
+        value2 = inputs[1]
+        return not (value1 and value2)
+    elif rule == R_AND:
+        assert len(inputs) == 2
+        value1 = inputs[0]
+        value2 = inputs[1]
+        if value1 is None or value2 is None:
+            return None
+
+        return value1 and value2
+    elif rule == OR:
+        assert len(inputs) == 2
+        value1 = inputs[0]
+        value2 = inputs[1]
+        if value1 is None or value2 is None:
+            return None
+        return value1 or value2
+    elif rule == XNOR:
+        value1 = inputs[0]
+        value2 = inputs[1]
+        return value1 == value2
+    elif rule == XOR:
+        value1 = inputs[0]
+        value2 = inputs[1]
+        return value1 != value2
+    elif rule == AUX_HALF_ADDER:
+        value1 = inputs[0]
+        value2 = inputs[1]
+        if value1 is None or value2 is None:
+            return None
+        return value1 and (not value2)
+    elif rule == AUX_FULL_ADDER:
+        value_input1 = inputs[0]
+        value_input2 = inputs[1]
+        value_input3 = inputs[2]
+        if value_input1 == 0:
+            if value_input2 == 0:
+                return 0
+            else:
+                # in2 = 1
+                if value_input3 == 0:
+                    return 1
+                else:
+                    return 0
+        else:
+            # in1 == 1
+            if value_input2 == 1:
+                return 1
+            else:
+                # in2 == 0
+                if value_input3 == 1:
+                    return 0
+                else:
+                    return 1
+    elif rule == R_NOT:
+        value1 = inputs[0]
+        return not value1
+    elif rule == CARRY_HALF_ADDER:
+        return get_rule_value_from_values(R_AND, inputs)
+    elif rule == CARRY_FULL_ADDER:
+        value_input1 = inputs[0]
+        value_input2 = inputs[1]
+        value_input3 = inputs[2]
+        return (value_input1 + value_input2 + value_input3) > 1
+    elif rule == RESULT_HALF_ADDER:
+        value_input1 = inputs[0]
+        value_input2 = inputs[1]
+        return (value_input1 + value_input2) % 2
+    elif rule == RESULT_FULL_ADDER:
+        value_input1 = inputs[0]
+        value_input2 = inputs[1]
+        value_input3 = inputs[2]
+        return (value_input1 + value_input2 + value_input3) % 2
+    elif rule == MATRIARCH1:
+        value1 = inputs[0]
+        value2 = inputs[1]
+        if value1 is None or value2 is None:
+            return None
+        return (not value1) and value2
+    else:
+        raise Exception("UNKNOWN RULE")
+
+
 def get_decimal_from_z3(z3_expr):
     if type(z3_expr) != BitVecNumRef:
         return None

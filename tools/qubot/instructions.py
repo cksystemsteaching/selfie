@@ -200,12 +200,12 @@ class Instruction:
             Instruction.z3_variables[self.id] = dict()
         if self.name in [NEXT, SORT, INIT]:
             result = self.specific_subclass.execute()
-            # self.raise_error()
+            self.raise_error()
             return result
 
         if isinstance(self.specific_subclass, State):
             result = self.specific_subclass.execute()
-            # self.raise_error()
+            self.raise_error()
             return result
 
         if self.id in Instruction.created_states_ids.keys():
@@ -411,9 +411,9 @@ class Instruction:
 
 
     @staticmethod
-    def does_bad_state_occur() -> bool:
+    def does_bad_state_occur(top_iter=100) -> bool:
         Solver.solver.push() # push new context
-        z3_expr = Instruction.get_z3_or_bad_expression()
+        z3_expr = Instruction.ored_z3_bad_states_pointer #Instruction.get_z3_or_bad_expression()
         Solver.solver.add(z3_expr == True)
         Solver.solver.set("timeout", Solver.timeout)
         result = Solver.solver.check()
@@ -422,10 +422,16 @@ class Instruction:
         if result == sat:
             Instruction.or_bad_states()
             print("optimizing model")
+            Instruction.qubits_to_fix[Instruction.ored_bad_states_pointer] = 1
             Instruction.optimize_model()
+
             return True
         if result == unsat:
             Solver.solver.pop()
+            Instruction.qubits_to_fix[Instruction.ored_bad_states_pointer] = 0
+            Solver.solver.add(z3_expr == False)
+            if Instruction.current_n == top_iter:
+                print(f"No input causes a bad state in {top_iter} iterations.")
         else:
             # it times out
             # runs checker just to estimate size of model
@@ -433,7 +439,6 @@ class Instruction:
             print(f"is_model_coherent {is_model_coherent}")
 
             if is_model_coherent:
-                # Instruction.qubits_to_fix.update(temp_qubits_to_fix)
                 intermediate_qubits_to_fix = InputPropagationFile.simulated_update_qubits_to_fix(Instruction.qubits_to_fix, temp_qubits_to_fix)
                 total_qubits = len(Instruction.bqm.adj.keys())
                 qubits_solved = len(temp_qubits_to_fix.keys()) + len(Instruction.qubits_to_fix.keys()) + len(intermediate_qubits_to_fix.keys())
@@ -441,16 +446,41 @@ class Instruction:
                 qubits_needed = total_qubits - qubits_solved
 
                 print(f"qubits_needed {qubits_needed}")
-                if qubits_needed >= Instruction.QPU_SIZE:
+                if qubits_needed >= Instruction.QPU_SIZE or Instruction.current_n == top_iter:
+                    file = open("./debug_output/qubits_to_fix.txt", "w")
+                    file.write(" ".join([str(x) for x in Instruction.qubits_to_fix.keys()]))
+                    file.close()
+
+                    file = open("./debug_output/adj.txt", "w")
+                    file.write(" ".join([str(x) for x in Instruction.bqm.adj.keys()]))
+                    file.close()
+
+                    file = open("./debug_output/temp_qubits_to_fix.txt", "w")
+                    file.write(" ".join([str(x) for x in temp_qubits_to_fix.keys()]))
+                    file.close()
+
+                    file = open("./debug_output/intermediate_qubits_to_fix.txt", "w")
+                    file.write(" ".join([str(x) for x in intermediate_qubits_to_fix.keys()]))
+                    file.close()
+
                     Instruction.qubits_to_fix.update(temp_qubits_to_fix)
                     Instruction.qubits_to_fix.update(intermediate_qubits_to_fix)
+
+                    file = open("./debug_output/qubits_to_fix2.txt", "w")
+                    file.write(" ".join([str(x) for x in Instruction.qubits_to_fix.keys()]))
+                    file.close()
+
                     Instruction.or_bad_states()
                     Instruction.optimize_model()
+
+
                     return True
                 Solver.solver.pop()
             else:
                 # model is incoherent
                 Solver.solver.pop()
+                Solver.solver.add(z3_expr == False)
+                Instruction.qubits_to_fix[Instruction.ored_bad_states_pointer] = 0
                 # we should update the expresion to z3_expr == False ?
         return False
 
@@ -488,8 +518,8 @@ class Instruction:
     @staticmethod
     def or_bad_states():
 
-        result = optimized_bits_or(Instruction.bad_states, Instruction.bqm, Instruction.qubits_to_fix)
-        Instruction.qubits_to_fix[result] = 1  # make any bad state happen
+        # result = optimized_bits_or(Instruction.bad_states, Instruction.bqm, Instruction.qubits_to_fix)
+        Instruction.qubits_to_fix[Instruction.ored_bad_states_pointer] = 1  # make any bad state happen
 
         # Instruction.add_z3_or_bad_states_expresion()
         # previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
@@ -502,7 +532,7 @@ class Instruction:
         # future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
         # print(f"qubits_to_fix_updated ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
 
-        return result  # returns the qubit name
+        return Instruction.ored_bad_states_pointer  # returns the qubit name
 
     @staticmethod
     def get_variables_count():
@@ -887,9 +917,11 @@ class Ite(Instruction):
                         #result_qubits.append(qubit_condition[0])
                         # else:
                         temp_name = get_qubit_name()
+
                         Instruction.qubits_to_fix[temp_name] = 1
                         result_name = get_qubit_name()
                         model, _ = get_model(Config.AND, [temp_name, condition_qubit, result_name])
+                        Instruction.bqm.update(model)
                         result_qubits.append(result_name)
                         InputPropagationFile.write_rule(R_AND, result_name, [qubit_condition[0], temp_name],
                                                         Instruction.qubits_to_fix)

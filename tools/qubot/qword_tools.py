@@ -249,6 +249,8 @@ class InputPropagationFile:
 
 
             for target in InputPropagationFile.rules.keys():
+                if target in qubits_to_fix1.keys() or target in qubits_to_fix2.keys():
+                    continue
                 operands = InputPropagationFile.rules[target]["operands"]
                 if are_operands_constants(operands):
                     operand_values = get_operand_values(operands)
