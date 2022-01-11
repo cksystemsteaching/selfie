@@ -30,6 +30,7 @@ class Instruction:
     z3_bad_states: List[Any] = []
     ored_z3_bad_states_pointer: Any = None
     ored_bad_states_pointer = None
+    input_nids: set[int] = set()
 
     # model settings
     ADDRESS_WORD_SIZE = 4  # address are described by 32 bit numbers
@@ -386,6 +387,7 @@ class Instruction:
         Instruction.z3_bad_states = []
         Instruction.ored_z3_bad_States_pointer = None
         Instruction.ored_bad_states_pointer = None
+        Instruction.input_nids = set()
 
     @staticmethod
     def is_constant(qubit_names):
@@ -435,7 +437,7 @@ class Instruction:
         else:
             # it times out
             # runs checker just to estimate size of model
-            is_model_coherent, temp_qubits_to_fix = Solver.estimate_model_size(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
+            is_model_coherent, temp_qubits_to_fix = Solver.estimate_model_size(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables, Instruction.input_nids)
             print(f"is_model_coherent {is_model_coherent}")
 
             if is_model_coherent:
@@ -506,7 +508,7 @@ class Instruction:
     @staticmethod
     def optimize_model():
         previous_variable_count = len(Instruction.bqm.adj.keys()) - len(Instruction.qubits_to_fix.keys())
-        Solver.try_fixing_variables(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables)
+        Solver.try_fixing_variables(Instruction.created_states_ids, Instruction.qubits_to_fix, Instruction.z3_variables, Instruction.input_nids)
         future_variable_count = len(Instruction.bqm.adj.keys()) -  len(Instruction.qubits_to_fix.keys())
         print(f"or bad states ({Solver.timeout}): {previous_variable_count} -> {future_variable_count}")
 
@@ -588,7 +590,7 @@ class Input(Instruction):
                 #Instruction.add_qubits_to_fix_from_bitset(result_qword[Instruction.current_n], bit_representation)
                 Instruction.set_z3_variable(self.id,result_qword, Instruction.current_n, GlobalIndexer.get_name2_index())
         else:
-
+            Instruction.input_nids.add(self.id)
             # this instruction's id does not exists yet.
             result_qword = QWord(sort.size_in_bits)
             result_qword.name = f"{self.id}_input_{self.current_n}"

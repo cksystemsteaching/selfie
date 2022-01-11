@@ -36,10 +36,12 @@ class Solver:
         Solver.solver.add(Extract(index, index, z3_variable) == value)
 
     @staticmethod
-    def estimate_model_size(states, qubits_to_fix, variables) -> (bool,int, Dict[int, int]):
+    def estimate_model_size(states, qubits_to_fix, variables, input_nids) -> (bool,int, Dict[int, int]):
         temp_qubits_to_fix: Dict[int, int] = dict()
 
         for id in states.keys():
+            if id not in input_nids:
+                continue
             qword = states[id]
             for timestep in qword.states.keys():
                 for (index, qubit) in enumerate(qword.states[timestep]):
@@ -67,10 +69,12 @@ class Solver:
 
 
     @staticmethod
-    def try_fixing_variables(states, qubits_to_fix, variables):
+    def try_fixing_variables(states, qubits_to_fix, variables, input_nids):
         if Solver.is_solver_valid:
             is_there_change = True
             for id in states.keys():
+                if id not in input_nids:
+                    continue
                 qword = states[id]
                 for timestep in qword.states.keys():
                     for (index, qubit) in enumerate(qword.states[timestep]):
