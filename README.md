@@ -3654,9 +3654,9 @@ High-level programming languages enable *scalability* of coding through librarie
 
 While there have been many different ways to introduce people to programming, our approach is new and arguably quite different from all of them and thus risky but worth a shot simply because people are different and there may be quite a few that can benefit from that. We introduce you to programming by introducing basic language elements, starting with the simplest and slowly making our way up to the more complex. At the same point we show you how each element is actually implemented in selfie using real code written in the language we introduce here. In short, you learn programming by example where each example illustrates how the meaning of a particular language element is actually created on the machine. Since we do that starting with the simplest elements and then moving towards the more complex, the code examples also increase in complexity, covering increasingly complex models of computation and algorithms, which show you how precisely defined problems are solved on a computer.
 
-This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well defined.
+This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well-defined, representative, and highly relevant in practice.
 
-### Literal
+### Literals versus Identifiers
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
@@ -3666,7 +3666,15 @@ This takes us to the two key challenges in programming education. The first is o
 
 ![Scanning Character and String Literals](figures/scanning-character-string-literals.png "Scanning Character and String Literals")
 
-### Expression
+![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
+
+![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
+
+![Scanner](figures/scanner.png "Scanner")
+
+### Expressions
+
+![Expressions](figures/expressions.png "Expressions")
 
 ```
 PSH: :                                                   n * n + 1 - n / 2 + 42
@@ -3694,14 +3702,15 @@ POP: { ("+" | "-") term }:
      :
 ```
 
-### Variable
-### Assignment
+### Variables versus Procedures
 
-### Conditional
+### Assignments
 
-### Loop
+### Conditionals
 
-### Procedure
+### Loops
+
+### Procedures
 
 ### Library
 
