@@ -3657,6 +3657,15 @@ While there have been many different ways to introduce people to programming, ou
 This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well defined.
 
 ### Literal
+
+![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
+
+![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
+
+![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
+
+![Scanning Character and String Literals](figures/scanning-character-string-literals.png "Scanning Character and String Literals")
+
 ### Expression
 
 ```
