@@ -48,14 +48,15 @@ First [install](../README.md) selfie either in the cloud or locally on your mach
 Then, on the web:
 
 1. Create an account on [github.com](https://github.com) unless you already have one.
-2. Create a [new](https://github.com/new), empty repository, name it `myselfie`, and set it to private.
-3. Invite your teacher, for example, the GitHub user [ckirsch](https://github.com/ckirsch), to the repository as your only collaborator.
+2. [Set up SSH-key authentication for GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh) if you haven't done it yet.
+3. Create a [new](https://github.com/new), empty repository, name it `myselfie`, and set it to private.
+4. Invite your teacher, for example, the GitHub user [ckirsch](https://github.com/ckirsch), to the repository as your only collaborator.
 
 And then, in a terminal where your selfie installation is:
 
 1. Change directory to the root directory of your selfie installation (from https://github.com/cksystemsteaching/selfie).
 2. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
-3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin https://github.com/<yourusername>/myselfie.git`
+3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin git@github.com:<yourusername>/myselfie.git`
 4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
 5. Mirror your installation to your `myselfie` repository on GitHub: `git push --mirror origin`
 6. Set up the main branch of your installation to push to your `myselfie` repository: `git branch --set-upstream-to=origin/main main`
