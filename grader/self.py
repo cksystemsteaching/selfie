@@ -193,6 +193,23 @@ def check_struct_execution() -> List[Check]:
                                 'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
+def check_logical_and_or_not() -> List[Check]:
+    return check_compilable('logical-not.c',
+                         'logical not operator compiled') + \
+        check_mipster_execution('logical-not.c', 42,
+                                'logical not operator works when executed with MIPSTER') + \
+        check_compilable('logical-and.c',
+                         'logical and operator compiled') + \
+        check_mipster_execution('logical-and.c', 42,
+                                'logical and operator works when executed with MIPSTER') + \
+        check_compilable('logical-or.c',
+                         'logical or operator compiled') + \
+        check_mipster_execution('logical-or.c', 42,
+                                'logical or operator works when executed with MIPSTER') + \
+        check_mipster_execution('advanced-logical-expressions.c', 42,
+                                'advanced boolean expressions work when executed with MIPSTER') + \
+        check_mipster_execution('precedence.c', 42,
+                                'operator precedence works correctly when executed with MIPSTER')
 def check_assembler_parser() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
                            'selfie can parse its own implementation in assembly') + \
@@ -335,6 +352,9 @@ assignments: List[Assignment] = [
     Assignment('for-loop', 'Compiler', 'for-loop',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
                check_for_loop),
+    Assignment('logical-and-or-not', 'Compiler', 'logical',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-logical-and-or-not',
+               check_logical_and_or_not),
     Assignment('assembler-parser', 'Systems', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
                check_assembler_parser),
