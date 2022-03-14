@@ -1,3 +1,13 @@
+uint64_t endless() {
+  uint64_t x;
+
+  while (1) {
+    x = 1;
+  }
+
+  return x;
+}
+
 int main(int argc, char** argv) {
   uint64_t a;
   uint64_t b;
@@ -14,14 +24,4 @@ int main(int argc, char** argv) {
       return 42;
   else
     return 0;
-}
-
-uint64_t endless() {
-  uint64_t x;
-
-  while (1) {
-    x = 1;
-  }
-
-  return x;
 }
