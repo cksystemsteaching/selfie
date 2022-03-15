@@ -13,7 +13,7 @@
 #
 # -----------------------------------------------------------------------------
 # usage: validator.py [-h] [-d] [-e BAD_EXIT_CODE] [-s SELFIE_PATH]
-#                     [-m MODELER_PATH] [-b BTORMC_PATH] [-ts SELFIE_TIMEOUT]
+#                     [-m BEATOR_PATH] [-b BTORMC_PATH] [-ts SELFIE_TIMEOUT]
 #                     [-tb BTORMC_TIMEOUT] [-kmax KMAX] [-mem MEMORY]
 #                     in_file
 #
@@ -27,8 +27,8 @@
 #                         value for non-zero exit code bad-state
 #   -s SELFIE_PATH, --selfie SELFIE_PATH
 #                         path to selfie executable
-#   -m MODELER_PATH, --modeler MODELER_PATH
-#                         path to modeler.selfie
+#   -m BEATOR_PATH, --beator BEATOR_PATH
+#                         path to beator.selfie
 #   -b BTORMC_PATH, --btormc BTORMC_PATH
 #                         path to btormc executable
 #   -ts SELFIE_TIMEOUT, --timeout_selfie SELFIE_TIMEOUT
@@ -36,7 +36,7 @@
 #                         10s, 5m, 1h)
 #   -tb BTORMC_TIMEOUT, --timeout_btormc BTORMC_TIMEOUT
 #                         timeout for execution of btormc with the generated
-#                         btor2 file (example: 10s, 5m, 1h)
+#                         btor2 file (example: 10s, 10m, 1h)
 #   -kmax KMAX            -kmax parameter for btormc
 #   -mem MEMORY, --memory MEMORY
 #                         memory [MB] for mipster
@@ -301,14 +301,14 @@ arguments.add_argument("-e", "--exitcode", dest="bad_exit_code", type=int, defau
                        help="value for non-zero exit code bad-state")
 arguments.add_argument("-s", "--selfie", dest="selfie_path", default="./selfie",
                        help="path to selfie executable")
-arguments.add_argument("-m", "--modeler", dest="modeler_path", default="./modeler",
-                        help="path to modeler")
+arguments.add_argument("-m", "--beator", dest="beator_path", default="./beator",
+                        help="path to beator")
 arguments.add_argument("-b", "--btormc", dest="btormc_path", default="btormc",
                        help="path to btormc executable")
 arguments.add_argument("-ts", "--timeout_selfie", dest="selfie_timeout", default="10s",
                        help="timeout for execution of in_file on mipster (example: 10s, 5m, 1h)")
-arguments.add_argument("-tb", "--timeout_btormc", dest="btormc_timeout", default="5m",
-                       help="timeout for execution of btormc with the generated btor2 file (example: 10s, 5m, 1h)")
+arguments.add_argument("-tb", "--timeout_btormc", dest="btormc_timeout", default="10m",
+                       help="timeout for execution of btormc with the generated btor2 file (example: 10s, 10m, 1h)")
 arguments.add_argument("-kmax", dest="kmax", type=int, default=10000, help="-kmax parameter for btormc")
 arguments.add_argument("-mem", "--memory", dest="memory", type=int, default="2", help="memory [MB] for mipster")
 arguments.add_argument(dest="in_file", help="input C* file")
@@ -323,13 +323,13 @@ if args.debug:
     print("\033[94mtemp directory built")
 
 # --------- generating btor2 file -----------------------------
-print("\033[93mgenerating BTOR2 file using modeler...\033[0m")
+print("\033[93mgenerating BTOR2 file using beator...\033[0m")
 
 if args.debug:
-    system(args.modeler_path + " -c " + args.in_file + " - " + str(args.bad_exit_code))
+    system(args.beator_path + " -c " + args.in_file + " - " + str(args.bad_exit_code))
 else:
-    # modeler output is discarded
-    system(args.modeler_path + " -c " + args.in_file + " - " + str(args.bad_exit_code) + " 1 > /dev/null")
+    # beator output is discarded
+    system(args.beator_path + " -c " + args.in_file + " - " + str(args.bad_exit_code) + " 1 > /dev/null")
 
 btor_name = path.splitext(args.in_file)[0]
 system("mv " + btor_name + ".btor2 ./temp/model.btor2")

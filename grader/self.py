@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Copyright (c) 2015-2021, the Selfie Project authors. All rights reserved.
+Copyright (c) the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is governed
 by a BSD license that can be found in the LICENSE file.
 
@@ -193,6 +193,40 @@ def check_struct_execution() -> List[Check]:
                                 'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
+def check_logical_and_or_not() -> List[Check]:
+    return check_compilable('logical-not.c',
+                         'logical not operator compiled') + \
+        check_mipster_execution('logical-not.c', 42,
+                                'logical not operator works when executed with MIPSTER') + \
+        check_compilable('logical-and.c',
+                         'logical and operator compiled') + \
+        check_mipster_execution('logical-and.c', 42,
+                                'logical and operator works when executed with MIPSTER') + \
+        check_compilable('logical-or.c',
+                         'logical or operator compiled') + \
+        check_mipster_execution('logical-or.c', 42,
+                                'logical or operator works when executed with MIPSTER') + \
+        check_mipster_execution('advanced-logical-expressions.c', 42,
+                                'advanced boolean expressions work when executed with MIPSTER') + \
+        check_mipster_execution('precedence.c', 42,
+                                'operator precedence works correctly when executed with MIPSTER')
+
+
+def check_lazy_eval() -> List[Check]:
+    return check_mipster_execution('logical-and.c', 42,
+                                'logical and operator still works when executed with MIPSTER') + \
+        check_mipster_execution('logical-or.c', 42,
+                                'logical or operator still works when executed with MIPSTER') + \
+        check_mipster_execution('advanced-logical-expressions.c', 42,
+                                'advanced boolean expressions still work when executed with MIPSTER') + \
+        check_mipster_execution('precedence.c', 42,
+                                'operator precedence still works correctly when executed with MIPSTER') + \
+        check_mipster_execution('lazy-eval-and.c', 42,
+                                'lazy evaluation with logical and works when executed with MIPSTER') + \
+        check_mipster_execution('lazy-eval-or.c', 42,
+                                'lazy evaluation with logical or works when executed with MIPSTER')
+
+
 def check_assembler_parser() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
                            'selfie can parse its own implementation in assembly') + \
@@ -214,7 +248,7 @@ def check_self_assemblation() -> List[Check]:
     return check_execution('./selfie -c selfie.c -s selfie1.s',
                            'preparation: selfie can compile and assemble its own source', mandatory=True) + \
         check_execution('./selfie -a selfie1.s -o selfie1.m -m 128 -c selfie.c -o selfie2.m',
-                        'selfie can re-assemble its own binary file', mandatory=True) + \
+                        'selfie can re-assemble its own binary file', mandatory=True, timeout=120) + \
         check_execution('diff -q selfie1.m selfie2.m',
                         'both binary files are exactly the same', mandatory=True)
 
@@ -335,6 +369,12 @@ assignments: List[Assignment] = [
     Assignment('for-loop', 'Compiler', 'for-loop',
                REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
                check_for_loop),
+    Assignment('logical-and-or-not', 'Compiler', 'logical',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-logical-and-or-not',
+               check_logical_and_or_not),
+    Assignment('lazy-evaluation', 'Compiler', 'lazy-eval',
+               REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-lazy-evaluation',
+               check_lazy_eval),
     Assignment('assembler-parser', 'Systems', 'assembler',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
                check_assembler_parser),

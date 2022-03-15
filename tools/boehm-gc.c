@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015-2021, the Selfie Project authors. All rights reserved.
+Copyright (c) the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
 
@@ -241,7 +241,7 @@ uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
     set_chunk_heap_bump_gc(context, get_chunk_heap_bump_gc(context) + GC_CHUNK_SIZE / SIZEOFUINT64);
 
     if ((uint64_t) get_chunk_heap_bump_gc(context) >= ((uint64_t) get_chunk_heap_start_gc(context) + GC_CHUNK_HEAP_SIZE)) {
-      printf1("%s: chunk heap size exceeded\n", selfie_name);
+      printf("%s: chunk heap size exceeded\n", selfie_name);
 
       exit(EXITCODE_OUTOFVIRTUALMEMORY);
     }
@@ -275,7 +275,7 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
   uint64_t* next_it;
 
   coso_entry = get_chunk_list_pointer(entry);
-  object_size = get_chunk_object_size(entry) / SIZEOFUINT64; // in words
+  object_size = get_chunk_object_size(entry) / SIZEOFUINT64; // in memory words
 
   zero_chunk_allocbits(entry);
 
@@ -576,7 +576,7 @@ uint64_t* allocate_object(uint64_t* context, uint64_t size) {
 
   small_object_free_list = get_small_object_free_lists_gc(context) + (size / SIZEOFUINT64 - 1);
 
-  // assert: size is a multiple of WORDSIZE and given in bytes
+  // assert: size is a multiple of GC_WORDSIZE and given in bytes
 
   if (*(small_object_free_list) == 0)
     fill_small_object_free_list(context, allocate_chunk(context, size));
@@ -670,14 +670,14 @@ void gc_init_boehm(uint64_t* context) {
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE; // object size in order to fit 2 objects into one chunk
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_MAX_SMALL_OBJECT_SIZE / 2;
 
-  set_small_object_free_lists_gc(context, smalloc_system(GC_CHUNK_MAX_SMALL_OBJECT_SIZE)); // collector not initialised -> allocate using bump pointer allocator
+  set_small_object_free_lists_gc(context, smalloc_system(GC_CHUNK_MAX_SMALL_OBJECT_SIZE)); // collector not initialized -> allocate using bump pointer allocator
   zero_memory(get_small_object_free_lists_gc(context), GC_CHUNK_MAX_SMALL_OBJECT_SIZE);
 
   align_chunk_allocator(context); // note: chunk heap needs to be aligned!
 
   set_chunk_heap_start_gc(context, allocate_new_memory(context, GC_CHUNK_HEAP_SIZE));
   if (get_chunk_heap_start_gc(context) == (uint64_t*) 0)
-    printf1("%s: could not initialise gc (chunk heap allocation)\n", (uint64_t) get_chunk_heap_start_gc(context));
+    printf("%s: could not initialize gc (chunk heap allocation)\n", (uint64_t) get_chunk_heap_start_gc(context));
 
   set_chunk_heap_bump_gc(context, get_chunk_heap_start_gc(context));
 }
@@ -746,7 +746,7 @@ uint64_t mark_object_boehm(uint64_t* context, uint64_t gc_address) {
   while (object_start < object_end) {
     mark_object(context, object_start);
 
-    object_start = object_start + SIZEOFUINT64;
+    object_start = object_start + GC_WORDSIZE;
   }
 
   return 1;

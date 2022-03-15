@@ -1,3 +1,3 @@
-0x0(~1): lui t0,0x10
-0x4(~1): addi t0,t0
-0x8(~1): .8byte 0x6F57206F6C6C6548
+lui t0,0x10
+addi t0,t0
+.8byte 0x6F57206F6C6C6548

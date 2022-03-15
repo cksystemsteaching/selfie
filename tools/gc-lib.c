@@ -1,7 +1,7 @@
 int main(int argc, char** argv) {
   uint64_t exit_code;
 
-  init_library(); // necessary for boehm variant
+  init_library();
 
   turn_on_gc_library(12000, ""); // use library variant of gc
 
