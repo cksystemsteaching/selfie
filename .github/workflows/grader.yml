@@ -10,7 +10,7 @@ on:
       assignmentid:
         description: 'Assignment ID'     
         required: true
-        default: 'skip ci'
+        default: 'self-compile'
 
 jobs:
   auto-grade-selfie-assignment:
