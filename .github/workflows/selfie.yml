@@ -40,7 +40,7 @@ jobs:
   make-all-on-macos:
     name: Make all of selfie on macOS
     runs-on: macos-latest
-    if: !github.event.repository.private
+    if: ${{ !github.event.repository.private }}
 
     steps:
     - name: Checkout selfie
@@ -57,7 +57,7 @@ jobs:
   make-all-on-windows:
     name: Make all of selfie on Windows
     runs-on: windows-latest
-    if: !github.event.repository.private
+    if: ${{ !github.event.repository.private }}
 
     steps:
     - name: Checkout selfie
