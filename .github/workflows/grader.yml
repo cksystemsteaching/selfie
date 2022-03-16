@@ -22,6 +22,7 @@ jobs:
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
+    if: ${{ (matrix.os == 'ubuntu-latest') || (!github.event.repository.private) }}
 
     steps:
     - name: Checkout selfie

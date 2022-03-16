@@ -18,6 +18,7 @@ on:
   schedule:
     # trigger fridays at 12am
     - cron: '0 0 * * 5'
+  workflow_dispatch
 
 jobs:
   make-all-on-linux:
@@ -39,6 +40,7 @@ jobs:
   make-all-on-macos:
     name: Make all of selfie on macOS
     runs-on: macos-latest
+    if: ${{ (matrix.os == 'ubuntu-latest') || (!github.event.repository.private) }}
 
     steps:
     - name: Checkout selfie
@@ -55,6 +57,7 @@ jobs:
   make-all-on-windows:
     name: Make all of selfie on Windows
     runs-on: windows-latest
+    if: ${{ (matrix.os == 'ubuntu-latest') || (!github.event.repository.private) }}
 
     steps:
     - name: Checkout selfie
@@ -71,6 +74,7 @@ jobs:
   make-everything-on-docker:
     name: Make everything of selfie on docker
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'cksystemsteaching/selfie' }}
 
     # usage:
     #
@@ -93,4 +97,3 @@ jobs:
         docker run cksystemsteaching/selfie make clean
         echo '${{ secrets.DOCKERHUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push cksystemsteaching/selfie
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'cksystemsteaching/selfie' }}
