@@ -22,7 +22,6 @@ jobs:
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
-    if: ${{ (matrix.os == 'ubuntu-latest') || (!github.event.repository.private) }}
 
     steps:
     - name: Checkout selfie
@@ -34,6 +33,7 @@ jobs:
     # extract assignment from "commit message [assignment]"
     - name: Parse commit message
       run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
-      if: github.event_name == 'push'
+      if: ${{ (github.event_name == 'push') && ((matrix.os == 'ubuntu-latest') || (!github.event.repository.private)) }}
     - name: Autograde assignment
       run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
+      if: ${{ (matrix.os == 'ubuntu-latest') || (!github.event.repository.private) }}
