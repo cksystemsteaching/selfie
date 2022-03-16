@@ -5,6 +5,12 @@ on:
     paths:
     - '**.c'
     - '**.yml'
+  workflow_dispatch:
+    inputs:
+      assignmentid:
+        description: 'Assignment ID'     
+        required: true
+        default: 'skip ci'
 
 jobs:
   auto-grade-selfie-assignment:
@@ -15,6 +21,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
 
     steps:
     - name: Checkout selfie
@@ -26,5 +33,6 @@ jobs:
     # extract assignment from "commit message [assignment]"
     - name: Parse commit message
       run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
+      if: github.event_name == 'push'
     - name: Autograde assignment
       run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
