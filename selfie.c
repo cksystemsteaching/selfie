@@ -5264,6 +5264,25 @@ void compile_statement() {
       get_symbol();
   }
 
+  // while statement?
+  if (symbol == SYM_WHILE) {
+    compile_while();
+  }
+  // if statement?
+  else if (symbol == SYM_IF) {
+    compile_if();
+  }
+  // return statement?
+  else if (symbol == SYM_RETURN) {
+    compile_return();
+
+    if (symbol == SYM_SEMICOLON)
+      get_symbol();
+    else
+      syntax_error_symbol(SYM_SEMICOLON);
+  }
+  // ["*"] variable "=" expression | call
+  else {
   // ["*"]
   if (symbol == SYM_ASTERISK) {
     get_symbol();
@@ -5377,22 +5396,6 @@ void compile_statement() {
     } else
       syntax_error_unexpected();
   }
-  // while statement?
-  else if (symbol == SYM_WHILE) {
-    compile_while();
-  }
-  // if statement?
-  else if (symbol == SYM_IF) {
-    compile_if();
-  }
-  // return statement?
-  else if (symbol == SYM_RETURN) {
-    compile_return();
-
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
   }
 
   // assert: allocated_temporaries == 0
