@@ -5376,16 +5376,18 @@ void compile_statement() {
         offset = get_address(entry);
 
         if (is_signed_integer(offset, 12)) {
-          emit_store(get_scope(entry), offset, current_temporary());
+          talloc();
 
-          tfree(1);
+          emit_addi(current_temporary(), get_scope(entry), offset);
         } else {
           load_upper_base_address(entry);
 
-          emit_store(current_temporary(), sign_extend(get_bits(offset, 0, 12), 12), previous_temporary());
-
-          tfree(2);
+          emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
         }
+
+        emit_store(current_temporary(), 0, previous_temporary());
+
+        tfree(2);
 
         number_of_assignments = number_of_assignments + 1;
 
