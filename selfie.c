@@ -5283,119 +5283,119 @@ void compile_statement() {
   }
   // ["*"] variable "=" expression | call
   else {
-  // ["*"]
-  if (symbol == SYM_ASTERISK) {
-    get_symbol();
-
-    // "*" variable
-    if (symbol == SYM_IDENTIFIER) {
-      ltype = load_variable_or_big_int(identifier, VARIABLE);
-
-      if (ltype != UINT64STAR_T)
-        type_warning(UINT64STAR_T, ltype);
-
-      get_symbol();
-    // "*" "(" expression ")"
-    } else if (symbol == SYM_LPARENTHESIS) {
+    // ["*"]
+    if (symbol == SYM_ASTERISK) {
       get_symbol();
 
-      ltype = compile_expression();
+      // "*" variable
+      if (symbol == SYM_IDENTIFIER) {
+        ltype = load_variable_or_big_int(identifier, VARIABLE);
 
-      if (ltype != UINT64STAR_T)
-        type_warning(UINT64STAR_T, ltype);
+        if (ltype != UINT64STAR_T)
+          type_warning(UINT64STAR_T, ltype);
 
-      if (symbol == SYM_RPARENTHESIS)
         get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else {
-      syntax_error_symbol(SYM_LPARENTHESIS);
-
-      return;
-    }
-
-    // "*" ( variable | "(" expression ")" ) "=" expression
-    if (symbol == SYM_ASSIGN) {
-      get_symbol();
-
-      rtype = compile_expression();
-
-      if (rtype != UINT64_T)
-        type_warning(UINT64_T, rtype);
-
-      emit_store(previous_temporary(), 0, current_temporary());
-
-      tfree(2);
-
-      number_of_assignments = number_of_assignments + 1;
-    } else {
-      syntax_error_symbol(SYM_ASSIGN);
-
-      tfree(1);
-    }
-
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
-  }
-  // variable "=" expression | call
-  else if (symbol == SYM_IDENTIFIER) {
-    variable_or_procedure_name = identifier;
-
-    get_symbol();
-
-    // procedure call
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_call(variable_or_procedure_name);
-
-      // reset return register to initial return value
-      // for missing return expressions
-      emit_addi(REG_A0, REG_ZR, 0);
-
-      if (symbol == SYM_SEMICOLON)
+      // "*" "(" expression ")"
+      } else if (symbol == SYM_LPARENTHESIS) {
         get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
 
-    // variable "=" expression
-    } else if (symbol == SYM_ASSIGN) {
-      entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
+        ltype = compile_expression();
 
-      ltype = get_type(entry);
+        if (ltype != UINT64STAR_T)
+          type_warning(UINT64STAR_T, ltype);
 
-      get_symbol();
-
-      rtype = compile_expression();
-
-      if (ltype != rtype)
-        type_warning(ltype, rtype);
-
-      offset = get_address(entry);
-
-      if (is_signed_integer(offset, 12)) {
-        emit_store(get_scope(entry), offset, current_temporary());
-
-        tfree(1);
+        if (symbol == SYM_RPARENTHESIS)
+          get_symbol();
+        else
+          syntax_error_symbol(SYM_RPARENTHESIS);
       } else {
-        load_upper_base_address(entry);
+        syntax_error_symbol(SYM_LPARENTHESIS);
 
-        emit_store(current_temporary(), sign_extend(get_bits(offset, 0, 12), 12), previous_temporary());
-
-        tfree(2);
+        return;
       }
 
-      number_of_assignments = number_of_assignments + 1;
+      // "*" ( variable | "(" expression ")" ) "=" expression
+      if (symbol == SYM_ASSIGN) {
+        get_symbol();
+
+        rtype = compile_expression();
+
+        if (rtype != UINT64_T)
+          type_warning(UINT64_T, rtype);
+
+        emit_store(previous_temporary(), 0, current_temporary());
+
+        tfree(2);
+
+        number_of_assignments = number_of_assignments + 1;
+      } else {
+        syntax_error_symbol(SYM_ASSIGN);
+
+        tfree(1);
+      }
 
       if (symbol == SYM_SEMICOLON)
         get_symbol();
       else
         syntax_error_symbol(SYM_SEMICOLON);
-    } else
-      syntax_error_unexpected();
-  }
+    }
+    // variable "=" expression | call
+    else if (symbol == SYM_IDENTIFIER) {
+      variable_or_procedure_name = identifier;
+
+      get_symbol();
+
+      // procedure call
+      if (symbol == SYM_LPARENTHESIS) {
+        get_symbol();
+
+        compile_call(variable_or_procedure_name);
+
+        // reset return register to initial return value
+        // for missing return expressions
+        emit_addi(REG_A0, REG_ZR, 0);
+
+        if (symbol == SYM_SEMICOLON)
+          get_symbol();
+        else
+          syntax_error_symbol(SYM_SEMICOLON);
+
+      // variable "=" expression
+      } else if (symbol == SYM_ASSIGN) {
+        entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
+
+        ltype = get_type(entry);
+
+        get_symbol();
+
+        rtype = compile_expression();
+
+        if (ltype != rtype)
+          type_warning(ltype, rtype);
+
+        offset = get_address(entry);
+
+        if (is_signed_integer(offset, 12)) {
+          emit_store(get_scope(entry), offset, current_temporary());
+
+          tfree(1);
+        } else {
+          load_upper_base_address(entry);
+
+          emit_store(current_temporary(), sign_extend(get_bits(offset, 0, 12), 12), previous_temporary());
+
+          tfree(2);
+        }
+
+        number_of_assignments = number_of_assignments + 1;
+
+        if (symbol == SYM_SEMICOLON)
+          get_symbol();
+        else
+          syntax_error_symbol(SYM_SEMICOLON);
+      } else
+        syntax_error_unexpected();
+    }
   }
 
   // assert: allocated_temporaries == 0
