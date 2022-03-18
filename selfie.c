@@ -5296,7 +5296,7 @@ void compile_statement() {
       dereference = 1;
     }
 
-    // ( ["*"] variable | "*" "(" expression ")" ) "=" expression | call
+    // ["*"] variable "=" expression | call
     if (symbol == SYM_IDENTIFIER) {
       variable_or_procedure_name = identifier;
 
@@ -5311,9 +5311,9 @@ void compile_statement() {
         // reset return register to initial return value
         // for missing return expressions
         emit_addi(REG_A0, REG_ZR, 0);
-
-      // variable "=" expression
-      } else {
+      }
+      // ["*"] variable "=" expression
+      else {
         entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
         ltype = get_type(entry);
@@ -5337,7 +5337,9 @@ void compile_statement() {
 
         assignment = 1;
       }
-    } else if (symbol == SYM_LPARENTHESIS) {
+    }
+    // "*" "(" expression ")" = "expression"
+    else if (symbol == SYM_LPARENTHESIS) {
       if (dereference == 0) {
         syntax_error_symbol(SYM_ASTERISK);
 
@@ -5348,6 +5350,8 @@ void compile_statement() {
 
       ltype = compile_expression();
 
+      // assert: allocated_temporaries == 1
+
       assignment = 1;
 
       if (symbol == SYM_RPARENTHESIS)
@@ -5355,9 +5359,10 @@ void compile_statement() {
       else
         syntax_error_symbol(SYM_RPARENTHESIS);
     } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
+      syntax_error_symbol(SYM_IDENTIFIER);
 
     if (assignment) {
+      // address stored in current temporary
       // assert: allocated_temporaries == 1
 
       if (symbol == SYM_ASSIGN) {
@@ -5374,9 +5379,6 @@ void compile_statement() {
 
         // assert: allocated_temporaries == 2
 
-        if (dereference)
-          ltype = UINT64_T;
-
         if (ltype != rtype)
           type_warning(ltype, rtype);
 
@@ -5389,6 +5391,8 @@ void compile_statement() {
         number_of_assignments = number_of_assignments + 1;
       } else {
         syntax_error_symbol(SYM_ASSIGN);
+
+        // assert: allocated_temporaries == 1
 
         tfree(1);
       }
