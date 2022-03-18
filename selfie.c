@@ -5252,6 +5252,7 @@ void compile_statement() {
   char* variable_or_procedure_name;
   uint64_t* entry;
   uint64_t offset;
+  uint64_t assignment;
 
   // assert: allocated_temporaries == 0
 
@@ -5283,6 +5284,8 @@ void compile_statement() {
   }
   // ["*"] variable "=" expression | call
   else {
+    assignment = 0;
+
     // ["*"]
     if (symbol == SYM_ASTERISK) {
       get_symbol();
@@ -5380,23 +5383,35 @@ void compile_statement() {
           emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
         }
 
-        rtype = compile_expression();
+        // assert: allocated_temporaries == 1
 
-        if (ltype != rtype)
-          type_warning(ltype, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
-
-        tfree(2);
-
-        number_of_assignments = number_of_assignments + 1;
-
-        if (symbol == SYM_SEMICOLON)
-          get_symbol();
-        else
-          syntax_error_symbol(SYM_SEMICOLON);
+        assignment = 1;
       } else
         syntax_error_unexpected();
+    }
+
+    if (assignment) {
+      // assert: allocated_temporaries == 1
+
+      rtype = compile_expression();
+
+      // assert: allocated_temporaries == 2
+
+      if (ltype != rtype)
+        type_warning(ltype, rtype);
+
+      emit_store(previous_temporary(), 0, current_temporary());
+
+      tfree(2);
+
+      // assert: allocated_temporaries == 0
+
+      number_of_assignments = number_of_assignments + 1;
+
+      if (symbol == SYM_SEMICOLON)
+        get_symbol();
+      else
+        syntax_error_symbol(SYM_SEMICOLON);
     }
   }
 
