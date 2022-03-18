@@ -5253,6 +5253,7 @@ void compile_statement() {
   uint64_t* entry;
   uint64_t offset;
   uint64_t assignment;
+  uint64_t dereference;
 
   // assert: allocated_temporaries == 0
 
@@ -5286,9 +5287,13 @@ void compile_statement() {
   else {
     assignment = 0;
 
+    dereference = 0;
+
     // ["*"]
     if (symbol == SYM_ASTERISK) {
       get_symbol();
+
+      dereference = 1;
 
       // "*" variable
       if (symbol == SYM_IDENTIFIER) {
@@ -5296,6 +5301,8 @@ void compile_statement() {
 
         if (ltype != UINT64STAR_T)
           type_warning(UINT64STAR_T, ltype);
+
+        assignment = 1;
 
         get_symbol();
       // "*" "(" expression ")"
@@ -5306,6 +5313,8 @@ void compile_statement() {
 
         if (ltype != UINT64STAR_T)
           type_warning(UINT64STAR_T, ltype);
+
+        assignment = 1;
 
         if (symbol == SYM_RPARENTHESIS)
           get_symbol();
@@ -5319,28 +5328,27 @@ void compile_statement() {
 
       // "*" ( variable | "(" expression ")" ) "=" expression
       if (symbol == SYM_ASSIGN) {
-        get_symbol();
+        if (assignment)
+          // assert: allocated_temporaries == 1
+          get_symbol();
 
-        rtype = compile_expression();
+        else
+          // assert: allocated_temporaries == 0
+          syntax_error_unexpected();
 
-        if (rtype != UINT64_T)
-          type_warning(UINT64_T, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
-
-        tfree(2);
-
-        number_of_assignments = number_of_assignments + 1;
       } else {
         syntax_error_symbol(SYM_ASSIGN);
 
-        tfree(1);
-      }
+        if (assignment) {
+          // assert: allocated_temporaries == 1
 
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+          tfree(1);
+
+          assignment = 0;
+        }
+
+        // assert: allocated_temporaries == 0
+      }
     }
     // variable "=" expression | call
     else if (symbol == SYM_IDENTIFIER) {
@@ -5396,6 +5404,9 @@ void compile_statement() {
       rtype = compile_expression();
 
       // assert: allocated_temporaries == 2
+
+      if (dereference)
+        ltype = UINT64_T;
 
       if (ltype != rtype)
         type_warning(ltype, rtype);
