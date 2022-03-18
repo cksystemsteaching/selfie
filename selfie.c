@@ -5362,11 +5362,16 @@ void compile_statement() {
 
       // variable "=" expression
       } else if (symbol == SYM_ASSIGN) {
-        get_symbol();
-
         entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
         ltype = get_type(entry);
+
+        get_symbol();
+
+        rtype = compile_expression();
+
+        if (ltype != rtype)
+          type_warning(ltype, rtype);
 
         offset = get_address(entry);
 
@@ -5380,12 +5385,7 @@ void compile_statement() {
           emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
         }
 
-        rtype = compile_expression();
-
-        if (ltype != rtype)
-          type_warning(ltype, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
+        emit_store(current_temporary(), 0, previous_temporary());
 
         tfree(2);
 
