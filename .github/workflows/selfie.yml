@@ -24,6 +24,7 @@ jobs:
   make-all-on-linux:
     name: Make all of selfie on Linux
     runs-on: ubuntu-latest
+    if: ${{ (!github.event.repository.private) || (github.ref == 'refs/heads/main') }}
 
     steps:
     - name: Checkout selfie
@@ -74,6 +75,7 @@ jobs:
   make-everything-on-docker:
     name: Make everything of selfie on docker
     runs-on: ubuntu-latest
+    if: ${{ (!github.event.repository.private) || (github.ref == 'refs/heads/main') }}
 
     # usage:
     #
