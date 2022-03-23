@@ -19,6 +19,7 @@ jobs:
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
+    if: ${{ (!github.event.repository.private) || (github.ref == 'refs/heads/main') }}
 
     steps:
     - name: Checkout selfie
