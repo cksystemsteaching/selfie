@@ -52,7 +52,7 @@ jobs:
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
-    if: ${{ ((github.event.inputs.oslinux == 'true') || (github.event.inputs.oslinux == true)) && ((!github.event.repository.private) || (github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch')) }}
+    if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.oslinux == 'true')) && ((!github.event.repository.private) || (github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch')) }}
 
     steps:
     - name: Checkout selfie
@@ -74,7 +74,7 @@ jobs:
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
-    if: ${{ ((github.event.inputs.osmacos == 'true') || (github.event.inputs.osmacos == true)) && ((!github.event.repository.private) || (github.event_name == 'workflow_dispatch')) }}
+    if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.osmacos == 'true')) && ((!github.event.repository.private) || (github.event_name == 'workflow_dispatch')) }}
 
     steps:
     - name: Checkout selfie
