@@ -43,7 +43,7 @@ on:
         description: 'Run on macOS'
         type: boolean
         required: true
-        defaut: true
+        default: true
 
 jobs:
   auto-grade-selfie-assignment-on-linux:
