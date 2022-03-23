@@ -8,9 +8,32 @@ on:
   workflow_dispatch:
     inputs:
       assignmentid:
-        description: 'Assignment ID'     
+        description: 'Assignment ID'
+        type: choice
         required: true
-        default: 'self-compile'
+        options:
+        - bootstrapping
+        - self-compile
+        - print-your-name
+        - hex-literal
+        - bitwise-shift-compilation
+        - bitwise-shift-execution
+        - bitwise-and-or-not
+        - array
+        - array-multidimensional
+        - struct-declaration
+        - struct-execution
+        - for-loop
+        - logical-and-or-not
+        - lazy-evaluation
+        - assembler-parser
+        - self-assembler
+        - processes
+        - fork-wait
+        - fork-wait-exit
+        - lock
+        - threads
+        - treiber-stack
 
 jobs:
   auto-grade-selfie-assignment-on-linux:
