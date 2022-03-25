@@ -325,10 +325,10 @@ def check_threads() -> List[Check]:
 def check_treiber_stack() -> List[Check]:
     return check_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c') + \
         check_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c') + \
-        check_execution('./selfie -c treiber-stack.c <assignment>stack-push.c -m 128',
+        check_execution('./selfie -c <assignment>stack-push.c -m 128',
                         'all pushed elements are actually in the treiber-stack',
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7])) + \
-        check_execution('./selfie -c treiber-stack.c <assignment>stack-pop.c -m 128',
+        check_execution('./selfie -c <assignment>stack-pop.c -m 128',
                         'all treiber-stack elements can be popped ',
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
