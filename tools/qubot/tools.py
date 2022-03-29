@@ -40,7 +40,7 @@ def read_file(filename: str, modify_memory_sort: bool = False, setting: Dict[str
         temp = cleaned_line.lower().split()
         if len(temp) > 0:
 
-            if int(temp[0]) == 3 or int(temp[0]) == 5 and modify_memory_sort:
+            if (int(temp[0]) == 3 or int(temp[0]) == 5) and modify_memory_sort:
                 # this is memory sort. We need to modify this so it matches with our definition of memory
                 memory_size = setting['word_size'] * (setting['size_datasegment'] + setting['size_heap'] + setting['size_stack'])
                 temp = [temp[0], "sort", "bitvec", str(memory_size)]
@@ -53,15 +53,16 @@ def read_file(filename: str, modify_memory_sort: bool = False, setting: Dict[str
 def get_btor2_settings(filename: str) -> Dict[str, int]:
     WORD_SIZE = 64
     file = open(filename, 'r')
-    result = {}
+    result = {"begin_datasegment": 0, "begin_heap": 0}
 
     is_4_bit_address_space = False
     is_29_bit_address_space = False
     is_constant_propagation = False
     lines = file.readlines()
+
     for i in range(len(lines)):
         line = lines[i]
-        if "./modeler-32" in line:
+        if "./beator-32" in line:
             WORD_SIZE = 32
         elif "with --constant-propagation" in line:
             is_constant_propagation = True
@@ -122,8 +123,7 @@ def get_btor2_settings(filename: str) -> Dict[str, int]:
         result["address_word_size"] = WORD_SIZE
         result["address_step_size"] = int(WORD_SIZE/8)
         result["begin_stack"] = 4294967296
-
-    assert len(result.keys()) == 9
+    # assert len(result.keys()) == 9
     return result
 
 

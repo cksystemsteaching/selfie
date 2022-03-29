@@ -61,15 +61,24 @@ class InputPropagationFile:
 
     @staticmethod
     def write_rule(rule_name, target, operands, qubits_to_fix):
-        value_target = get_qubit_value(target, qubits_to_fix)
-        if value_target is None:
-            line = f"{rule_name} {target}"
+        if rule_name == QUOTIENT or rule_name == REMAINDER:
+            line = f"{rule_name}"
+            for t in target:
+                line += f" {t}"
             for operand in operands:
                 line += f" {operand}"
             line += "\n"
             InputPropagationFile.file.write(line)
         else:
-            qubits_to_fix[target] = value_target
+            value_target = get_qubit_value(target, qubits_to_fix)
+            if value_target is None:
+                line = f"{rule_name} {target}"
+                for operand in operands:
+                    line += f" {operand}"
+                line += "\n"
+                InputPropagationFile.file.write(line)
+            else:
+                qubits_to_fix[target] = value_target
 
     @staticmethod
     def close_file():
@@ -486,7 +495,7 @@ def optimized_bitwise_add(bitset1: List[int], bitset2: List[int], current_n: int
     return result_qword
 
 def optimized_multiplication(bitset1: List[int], bitset2: List[int], current_n: int, bqm: dimod.BinaryQuadraticModel,
-                             qubits_to_fix: Dict[int, int]):
+                             qubits_to_fix: Dict[int, int], fix_last_qubit: bool=False):
     assert len(bitset1) == len(bitset2)
 
     def multiply_by_digit(bitset1, qubit_name, shift):
@@ -564,10 +573,18 @@ def optimized_divide(dividend: List[int], divisor: List[int], current_n: int, bq
     qword_quotient = QWord(word_size)
     qword_quotient.create_state(bqm, current_n)
 
+    merged_inputs = []
+    for e in dividend:
+        merged_inputs.append(e)
+    for e in divisor:
+        merged_inputs.append(e)
+    InputPropagationFile.write_rule(QUOTIENT, qword_quotient[current_n], merged_inputs, qubits_to_fix)
+
     multiplication_qword = optimized_multiplication(divisor, qword_quotient[current_n], current_n, bqm, qubits_to_fix)
 
     qword_remainder = QWord(word_size)
     qword_remainder.create_state(bqm, current_n)
+    InputPropagationFile.write_rule(REMAINDER, qword_remainder[current_n], merged_inputs, qubits_to_fix)
 
     sum_qword = optimized_bitwise_add(multiplication_qword[current_n], qword_remainder[current_n], current_n, bqm,
                                       qubits_to_fix, True) # fix the last carry to be equal to 0
@@ -577,15 +594,36 @@ def optimized_divide(dividend: List[int], divisor: List[int], current_n: int, bq
     assert len(is_equal_qword[current_n]) == 1
     is_equal_qubit = is_equal_qword[current_n][0]
     assert isinstance(is_equal_qubit, int)
-    qubits_to_fix[is_equal_qubit] = 1
+    # qubits_to_fix[is_equal_qubit] = 1
 
-    # now add the constraint that the remainded cannot be greater than or equal to divisor
+    # now add the constraint that the remainder cannot be greater than or equal to divisor
     is_less_than_qword = optimized_unsigned_less_than(qword_remainder[current_n], divisor, current_n, bqm,
                                                       qubits_to_fix)
     assert len(is_less_than_qword[current_n]) == 1
     is_less_qubit = is_less_than_qword[current_n][0]
     assert isinstance(is_less_qubit, int)
-    qubits_to_fix[is_less_qubit] = 1
+    # qubits_to_fix[is_less_qubit] = 1
+
+    good_division_const_result = GlobalIndexer.get_name_index()
+    decision_variables = [is_equal_qubit, is_less_qubit, good_division_const_result]
+    model, _ = get_model(Config.AND, decision_variables)
+    bqm.update(model)
+
+    # if remainder is not less than the divisor, then the divisor must be 0
+    qubitset_zero = QWord(len(divisor))
+    qubitset_zero.create_state(bqm, current_n)
+    for qubit in qubitset_zero[current_n]:
+        qubits_to_fix[qubit] = 0
+    is_divisor_0_qword = optimized_is_equal(divisor, qubitset_zero[current_n], current_n, bqm, qubits_to_fix)
+    assert(len(is_divisor_0_qword) == 1)
+    is_divisor_0_qubit = is_divisor_0_qword[current_n][0]
+    assert isinstance(is_divisor_0_qubit, int)
+
+    result_or = GlobalIndexer.get_name_index()
+    decision_variables = [good_division_const_result, is_divisor_0_qubit, result_or]
+    model, _ = get_model(Config.OR, decision_variables)
+    bqm.update(model)
+    qubits_to_fix[result_or] = 1
 
     return qword_quotient, qword_remainder
 
@@ -627,7 +665,6 @@ def optimized_xnor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuad
         value_x2 = get_qubit_value(bit2, qubits_to_fix)
         # build circuit
         if bit1 == bit2:
-            print("equal bits")
             name_result = get_qubit_name()
             qubits_to_fix[name_result] = 1
             result.append(name_result)
@@ -700,7 +737,6 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
         value_x2 = get_qubit_value(bit2, qubits_to_fix)
 
         if bit1 == bit2:
-            print("equal bits")
             name_result = get_qubit_name()
             qubits_to_fix[name_result] = 0
             result.append(name_result)
@@ -751,7 +787,7 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
 
             model = get_XOR(var_names)
             if value_x1 is not None and value_x2 is not None:
-                raise Exception("not expected constants and XOR")
+                raise Exception("not expected constants in XOR")
                 # qubits_to_fix[nx1] = not value_x1
                 # qubits_to_fix[nx2] = not value_x2
                 # qubits_to_fix[nand1] = not (value_x1 and value_x2)
@@ -876,7 +912,8 @@ def optimized_bitwise_or(bitset1: List[int], bitset2: List[int], current_n: int,
 
 def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_to_fix: Dict[int, int]) -> int:
 
-    assert len(bits) > 1
+    if len(bits) == 1:
+        return bits[0]
 
     const_names, bits = separate_constants(bits, qubits_to_fix)
 
@@ -898,7 +935,14 @@ def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_t
         qubits_to_fix[result_name] = 0
         return result_name
     elif len(bits) == 1:
-        return bits[0]
+        or_result = GlobalIndexer.get_name_index()
+        temp_qubit = GlobalIndexer.get_name_index()
+        qubits_to_fix[temp_qubit] = 0
+        decision_variables = [temp_qubit, bits[0], or_result]
+        model, _ = get_model(Config.OR, decision_variables)
+        InputPropagationFile.write_rule(OR, or_result, [temp_qubit, bits[0]], qubits_to_fix)
+        bqm.update(model)
+        return or_result
 
     intermediate_result = GlobalIndexer.get_name_index()
     decision_variables = [bits[0], bits[1], intermediate_result]

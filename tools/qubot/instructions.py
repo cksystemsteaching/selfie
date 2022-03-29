@@ -1,3 +1,5 @@
+from typing import Set
+
 from dimod import BinaryQuadraticModel
 from qword_tools import *
 from bqm_input_checker import InputChecker
@@ -19,7 +21,7 @@ class Instruction:
     initialize_states: bool = True
     bad_states: List[int] = []
     bad_states_to_line_no: Dict[int, int] = {}
-
+    input_nids: List[List[int]] = []
     # model settings
     ADDRESS_WORD_SIZE = 4  # address are described by 32 bit numbers
 
@@ -329,6 +331,7 @@ class Instruction:
         Instruction.address_to_local_offsets = {}
         Instruction.bad_states = []
         Instruction.bad_states_to_line_no = {}
+        Instruction.input_nids = []
 
     @staticmethod
     def is_constant(qubit_names):
@@ -392,19 +395,20 @@ class Input(Instruction):
     def execute(self) -> Optional[QWord]:
         sort = self.get_sort().execute()
         if self.id in Instruction.created_states_ids.keys():
-            pass
             #if already exists a hashmap for this id
             result_qword = Instruction.created_states_ids[self.id]
             #
             # # we need a set of qubits for the current timestep
             if not (Instruction.current_n in Instruction.created_states_ids[self.id].states.keys()):
                 result_qword.create_state(Instruction.bqm, Instruction.current_n)
+                Instruction.input_nids.append(Instruction.created_states_ids[self.id][Instruction.current_n])
         else:
             # this instruction's id does not exists yet.
             result_qword = QWord(sort.size_in_bits)
             result_qword.name = f"{self.id}_input_{self.current_n}"
             result_qword.create_state(Instruction.bqm, 1)
             Instruction.created_states_ids[self.id] = result_qword
+            Instruction.input_nids.append(Instruction.created_states_ids[self.id][1])
         return Instruction.created_states_ids[self.id]  # result_qword
 
 
@@ -568,7 +572,6 @@ class Ite(Instruction):
         condition = Instruction(self.get_instruction_at_index(3))
 
         qword_condition = condition.execute()
-
         assert qword_condition.size_in_bits == 1
 
         if self.instruction[3][0] == '-':

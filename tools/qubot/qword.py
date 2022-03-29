@@ -10,7 +10,7 @@ class QWord:
     """
     size_in_bits: int
     name: str
-    states: Dict[int, list[int]]  # we don't use a vector cause we will create qwords whose first record is
+    states: Dict[int, List[int]]  # we don't use a vector cause we will create qwords whose first record is
     # not necessarily a first step
     last_n: int
 
@@ -59,7 +59,7 @@ class QWord:
         return qubits
 
     @property
-    def top(self) -> Optional[list[int]]:
+    def top(self) -> Optional[List[int]]:
         if self.states[self.last_n]:
             if len(self.states[self.last_n]) > 0:
                 return self.states[self.last_n]

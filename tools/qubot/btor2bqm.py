@@ -1,9 +1,11 @@
-from typing import Dict
+from typing import Dict, Tuple, Set
 
 from dwave.system import DWaveSampler, EmbeddingComposite
 from greedy import SteepestDescentComposite
 from instructions import Instruction, State
 from dimod import ExactSolver, SampleSet
+
+from qword import QWord
 from tools import *
 from settings import *
 import time
@@ -21,16 +23,22 @@ class BTor2BQM:
         :param n: number of instructions to execute
         '''
         self.n = n
-        if n <= 0:
-            raise Exception("number of instructions to execute cannot be less than 1.")
+        # if n <= 0:
+        #     raise Exception("number of instructions to execute cannot be less than 1.")
 
     def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, qubit_growth_file=None) -> dimod.BinaryQuadraticModel:
+                   input_nid=81, qubit_growth_file=None, log_file=None) -> Tuple[dimod.BinaryQuadraticModel, float, int]:
         model_name = filename.split("/")[-1].split(".")[0]
-        print("started building", filename, f"for {self.n} timesteps")
+        if log_file:
+            log_file.write(f"started building for {self.n} timesteps\n")
+        else:
+            print("started building", filename, f"for {self.n} timesteps")
         Instruction.output_dir = output_path
         current_settings = get_btor2_settings(filename)
-        print(current_settings)
+        if log_file:
+            log_file.write(f"{current_settings}\n")
+        else:
+            print(current_settings)
         Instruction.set_setting(current_settings)
         InputPropagationFile.open_file(Instruction.output_dir)
         Instruction.initialize_states = initialize_states
@@ -39,6 +47,7 @@ class BTor2BQM:
         Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort, setting=current_settings)
 
         assert len(Instruction.all_instructions.keys()) > 0
+        print(Instruction.all_instructions)
         total_time = 0
         previous_qubit_count = 0
         for i in range(1, self.n + 1):
@@ -84,7 +93,7 @@ class BTor2BQM:
 
         with open(f"{Instruction.output_dir}context.json", "w") as file:
             context = {
-                "input": Instruction.created_states_ids[input_nid][1],
+                "input": Instruction.input_nids,#Instruction.created_states_ids[input_nid][1],
                 "offset": Instruction.bqm.offset,
                 "bad_states": Instruction.bad_states,
                 "bad_states_to_line_no": Instruction.bad_states_to_line_no,
@@ -101,7 +110,7 @@ class BTor2BQM:
                 for (n, bias) in neighbours.items():
                     if v < n:
                         file.write(f"{v} {n} {bias}\n")
-        return Instruction.bqm
+        return Instruction.bqm, round(total_time+time_to_fix,2), len(Instruction.bqm.adj.keys())
 
     @staticmethod
     def get_variable_value(line_number: int, timestep: int, result: SampleSet) -> None:
