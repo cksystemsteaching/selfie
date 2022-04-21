@@ -8,6 +8,10 @@ This book is the result of many years of teaching and working with students and 
 
 The programming language C\* in which selfie is written is a tiny subset of the programming language C developed by Dennis Ritchie. The design of the selfie compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich. RISC-U, the target language of the selfie compiler, is inspired by the RISC-V community around Professor David Patterson from UC Berkeley. The selfie garbage collector is inspired by the conservative garbage collector of Hans Boehm. The design of the selfie microkernel is inspired by microkernels of Professor Jochen Liedtke from University of Karlsruhe.
 
+#### License
+
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-nd/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License</a>.
+
 ## Table of Content
 
 1. Introduction
@@ -3717,6 +3721,7 @@ POP: { ("+" | "-") term }:
 ### Apps
 
 ### Life
+
 ### Recommended Readings
 
 ## Tools
@@ -3726,6 +3731,7 @@ POP: { ("+" | "-") term }:
 ### Interpreter
 
 ### Virtual Machine
+
 ### Virtual Memory
 
 ### Virtual Time
@@ -3737,6 +3743,7 @@ POP: { ("+" | "-") term }:
 ### Cloud Computing
 
 ### Life
+
 ### Recommended Readings
 
 ## Glossary
