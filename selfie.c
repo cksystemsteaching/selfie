@@ -231,6 +231,10 @@ uint64_t UINT_MAX;       // maximum numerical value of target-dependent unsigned
 uint64_t WORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
+// amount of entries of the context struct
+// contexts are extended in the symbolic execution engine and the Boehm garbage collector
+uint64_t CONTEXTENTRIES;
+
 uint64_t CHAR_EOF          =  -1; // end of file
 uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
 uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
@@ -349,6 +353,9 @@ void init_library() {
   // compute 64-bit signed integer range using unsigned integer arithmetic
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
   INT64_MAX = INT64_MIN - 1;
+
+  // 9 uint64_t entries and 16 uint64_t* entries
+  CONTEXTENTRIES = 9 + 16;
 
   // target-dependent, see init_target()
   SIZEOFUINT     = SIZEOFUINT64;
@@ -2145,10 +2152,9 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 
 uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
 
-// CAUTION: contexts are extended in the symbolic execution engine and the Boehm garbage collector!
-
 uint64_t* allocate_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
+  // SIZEOFUINT64 == SIZEOFUINT64STAR (always, so no need to differentiate although it would be nicer)
+  return smalloc(CONTEXTENTRIES * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
