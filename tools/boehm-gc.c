@@ -30,28 +30,28 @@ void sweep_boehm(uint64_t* context);
 // --- boehm gc context extension ---
 
 // +----+-------------------------+
-// | 25 | chunk heap start        | start of the chunk heap segment
-// | 26 | chunk heap bump         | bump pointer of chunk heap segment
-// | 27 | chunk used list head    | pointer to head of the chunk used list
-// | 28 | chunk free list head    | pointer to head of the chunk free list
-// | 29 | small object free lists | pointer to array containing all small object free lists
+// | +0 | chunk heap start        | start of the chunk heap segment
+// | +1 | chunk heap bump         | bump pointer of chunk heap segment
+// | +2 | chunk used list head    | pointer to head of the chunk used list
+// | +3 | chunk free list head    | pointer to head of the chunk free list
+// | +4 | small object free lists | pointer to array containing all small object free lists
 // +----+-------------------------+
 
 uint64_t* allocate_context() {
-  return smalloc(14 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
+  return smalloc(CONTEXTENTRIES * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR);
 }
 
-uint64_t* get_chunk_heap_start(uint64_t* context)           { return (uint64_t*) *(context + 25); }
-uint64_t* get_chunk_heap_bump(uint64_t* context)            { return (uint64_t*) *(context + 26); }
-uint64_t* get_chunk_used_list_head(uint64_t* context)       { return (uint64_t*) *(context + 27); }
-uint64_t* get_chunk_free_list_head(uint64_t* context)       { return (uint64_t*) *(context + 28); }
-uint64_t* get_small_object_free_lists(uint64_t* context)    { return (uint64_t*) *(context + 29); }
+uint64_t* get_chunk_heap_start(uint64_t* context)           { return (uint64_t*) *(context + CONTEXTENTRIES); }
+uint64_t* get_chunk_heap_bump(uint64_t* context)            { return (uint64_t*) *(context + CONTEXTENTRIES + 1); }
+uint64_t* get_chunk_used_list_head(uint64_t* context)       { return (uint64_t*) *(context + CONTEXTENTRIES + 2); }
+uint64_t* get_chunk_free_list_head(uint64_t* context)       { return (uint64_t*) *(context + CONTEXTENTRIES + 3); }
+uint64_t* get_small_object_free_lists(uint64_t* context)    { return (uint64_t*) *(context + CONTEXTENTRIES + 4); }
 
-void set_chunk_heap_start(uint64_t* context, uint64_t* chunk_heap_start)                { *(context + 25) = (uint64_t) chunk_heap_start; }
-void set_chunk_heap_bump(uint64_t* context, uint64_t* chunk_heap_bump)                  { *(context + 26) = (uint64_t) chunk_heap_bump; }
-void set_chunk_used_list_head(uint64_t* context, uint64_t* chunk_used_list_head)        { *(context + 27) = (uint64_t) chunk_used_list_head; }
-void set_chunk_free_list_head(uint64_t* context, uint64_t* chunk_free_list_head)        { *(context + 28) = (uint64_t) chunk_free_list_head; }
-void set_small_object_free_lists(uint64_t* context, uint64_t* small_object_free_lists)  { *(context + 29) = (uint64_t) small_object_free_lists; }
+void set_chunk_heap_start(uint64_t* context, uint64_t* chunk_heap_start)                { *(context + CONTEXTENTRIES)     = (uint64_t) chunk_heap_start; }
+void set_chunk_heap_bump(uint64_t* context, uint64_t* chunk_heap_bump)                  { *(context + CONTEXTENTRIES + 1) = (uint64_t) chunk_heap_bump; }
+void set_chunk_used_list_head(uint64_t* context, uint64_t* chunk_used_list_head)        { *(context + CONTEXTENTRIES + 2) = (uint64_t) chunk_used_list_head; }
+void set_chunk_free_list_head(uint64_t* context, uint64_t* chunk_free_list_head)        { *(context + CONTEXTENTRIES + 3) = (uint64_t) chunk_free_list_head; }
+void set_small_object_free_lists(uint64_t* context, uint64_t* small_object_free_lists)  { *(context + CONTEXTENTRIES + 4) = (uint64_t) small_object_free_lists; }
 
 // getters and setters with different access in library/kernel
 
