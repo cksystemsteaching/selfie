@@ -3660,6 +3660,12 @@ While there have been many different ways to introduce people to programming, ou
 
 This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well-defined, representative, and highly relevant in practice.
 
+The first problem we focus on is how to make the machine read code. Seeing that makes you realize how you read code as a human. The machine just mimics that. Code written in a high-level programming language is just a sequence of characters encoded in our case in UTF-8. We read from left to right and so does the machine. The challenge is to recognize as soon as possible into reading when we have seen something potentially meaningful such as an integer literal, an identifier, or even a whole procedure, or else something meaningless, that is, a sequence of characters that is not part of our language. In that case, we speak of a syntax error and reject the sequence as something that is not code in our language. In more abstract terms, the problem is thus to detect efficiently whether a given sequence of characters is in our language or not. This is called a membership test in formal languages.
+
+The common solution is to read on two different levels: firstly, on the level of individual *symbols* made up from sequences of characters such as integer literals and identifiers, and secondly, on the level of a sequence of symbols that ultimately constitutes a program. The first level is called *scanning*, the second *parsing*. A *scanner* detects symbols in a sequence of characters, a *parser* detects the program structure in a sequence of symbols.
+
+Scanning is easier than parsing, so we begin with that.
+
 ### Literals versus Identifiers
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
