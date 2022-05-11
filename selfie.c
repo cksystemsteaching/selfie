@@ -417,6 +417,7 @@ uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
 
 void get_symbol();
+void expect_symbol(uint64_t expected_symbol);
 
 void handle_escape_sequence();
 
@@ -3931,6 +3932,13 @@ void get_symbol() {
   }
 }
 
+void expect_symbol(uint64_t expected_symbol) {
+  if (symbol == expected_symbol)
+    get_symbol();
+  else
+    syntax_error_symbol(expected_symbol);
+}
+
 void handle_escape_sequence() {
   // ignoring the backslash
   number_of_ignored_characters = number_of_ignored_characters + 1;
@@ -4728,19 +4736,13 @@ uint64_t compile_factor() {
 
       cast = compile_type();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      expect_symbol(SYM_RPARENTHESIS);
 
     // not a cast: "(" expression ")"
     } else {
       type = compile_expression();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      expect_symbol(SYM_RPARENTHESIS);
 
       // assert: allocated_temporaries == n + 1
 
@@ -4825,10 +4827,7 @@ uint64_t compile_factor() {
 
     type = compile_expression();
 
-    if (symbol == SYM_RPARENTHESIS)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_RPARENTHESIS);
+    expect_symbol(SYM_RPARENTHESIS);
   } else {
     syntax_error_unexpected();
 
