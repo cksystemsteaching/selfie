@@ -726,7 +726,7 @@ Let us now instruct selfie to show us the compiled code during actual execution 
 
 A debugger is a software tool for finding flaws in software called *bugs*. Lots of information will fly by in your terminal. Here is an interesting snippet that involves the `add t0,t0,t1` instruction:
 
-```
+```asm
 ...
 pc==0x10154(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
 pc==0x10158(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
@@ -1299,61 +1299,61 @@ So, subtraction is special. Suppose we would like to subtract 7 from 85. To do t
 
 The negative complement or *radix complement* of a number depends on the *radix* or base of the notation in which the number is written down. The radix complement of a decimal number is thus the *tens complement* of that number. To calculate the tens complement we first need to decide the maximum number of digits we support in any of the involved numbers. For the example here, we need at least 2 digits (because of 85). The tens complement of 7 (with a maximum of 2 digits) is:
 
-```
+```c
 100 - 7 = 93
 ```
 
 So, 93 represents -7 here. If we were to support 3 digits the tens complement of 7 would be:
 
-```
+```c
 1000 - 7 = 993
 ```
 
 and so on. The only issue is that calculating the tens complement is not much easier than subtraction itself. But, calculating the *diminished radix complement* is! The diminished tens complement or *nines complement* of 7 with a maximum of 2 digits is:
 
-```
+```c
 99 - 7 = 92
 ```
 
 If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated by subtracting *digit by digit*! Since here we support 2 digits but `7` is only 1 digit, we extend `7` to `07` and then subtract `07` from `99` digit by digit:
 
-```
+```c
 9 - 0 = 9
 ```
 
 and
 
-```
+```c
 9 - 7 = 2
 ```
 
 However, we need the radix complement, not the diminished radix complement. The difference though is only an increment by 1. So, calculating the radix complement is done by first calculating the diminished radix complement and then increment the result by 1.
 
-```
+```c
 99 - 07 + 1 = 92 + 1 = 93
 ```
 
 The full story is now as follows:
 
-```
+```c
 85 - 7 = 85 + (100 - 7) - 100 = 85 + (100 - 1 - 7 + 1) - 100 = 85 + (99 - 7 + 1) - 100
 ```
 
 The two subtractions, 99 - 7, that is, 99 - 07 as well as 85 + (...) - 100 are both easy to do, just subtract digit by digit:
 
-```
+```c
 85 + (99 - 07 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
 ```
 
 Who would have thought that subtraction can in fact be reduced to digit-by-digit subtraction and addition? Of course, going through the above calculation may still appear to be more complicated to you than just calculating `85 - 7` in one step. However, the difference is that each individual step of the above calculation is easier than subtracting two arbitrary numbers in one step. That becomes more evident with bigger numbers. Just try calculating:
 
-```
+```c
 2345 - 432
 ```
 
 in one step versus using tens complement via nines complement. For the latter we need 4 digits here to calculate the result:
 
-```
+```c
 2345 + (10000 - 432) - 10000 = 2345 + (10000 - 1 - 432 + 1) - 10000 = 2345 + (9999 - 432 + 1) - 10000
 ```
 
@@ -1687,7 +1687,7 @@ and:
 
 This kind of makes sense because with seven bits:
 
-```
+```c
 63+63=63+(1+62)=(63+1)+62=-64+62=-2
 ```
 
@@ -2625,7 +2625,7 @@ When executed, the instruction makes the CPU copy the value in register `t0` to 
 
 Using the `-d` option, selfie executes the self-compiled code, similar to the `-m` option, but additionally outputs every instruction it executes. As mentioned before, the 'd' stands for *debugger* which is a software tool for finding bugs in code. Look for the following line at the beginning of the debugger's output:
 
-```
+```asm
 pc==0x10008(~1): addi gp,t0,0: t0==69640(0x11008) |- gp==0x0 -> gp==0x11008
 ```
 
