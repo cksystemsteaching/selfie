@@ -145,13 +145,13 @@ In order to interact with selfie effectively and, more importantly, with joy, we
 
 Once you have a terminal with selfie up and running in a directory called, say, `selfie`, type in the terminal (also called *console*):
 
-```
+```bash
 cd selfie
 ```
 
 The next command is optional. It checks out the version of selfie we used when writing the book:
 
-```
+```bash
 git checkout elementary-computer-science
 ```
 
@@ -159,31 +159,31 @@ Without that command you simply use the latest version of selfie where the outpu
 
 Then type:
 
-```
+```bash
 make
 ```
 
 and finally:
 
-```
+```bash
 ./selfie
 ```
 
 Selfie responds with what is called its *synopsis*. Just that synopsis is already written in a formal language called a *regular expression* that specifies exactly how you can invoke selfie:
 
-```
+```bash
 synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 ```
 
 The synopsis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
 
-```
+```bash
 ./selfie -c selfie.c
 ```
 
 or equivalently:
 
-```
+```bash
 make self
 ```
 
@@ -191,19 +191,19 @@ Selfie responds with even more cryptic information but you may safely ignore tha
 
 An important feature of selfie is that you actually have a chance to understand all of it, unlike most modern software systems that are based on the same basic principles but drown you in seemingly prohibitive complexity. Sure, even selfie may appear complex and you can verify that by taking a look at `selfie.c` on selfie's homepage or in your terminal by typing:
 
-```
+```bash
 more selfie.c
 ```
 
 Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. By the way, the best way to read, and eventually write code is to use an advanced text editor. We recommend to use the *Atom* text editor, which is free, or the *Sublime Text* editor, which is not free. Selfie and this book was written on Sublime Text. Now, let us try something really cool:
 
-```
+```bash
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
 or simply:
 
-```
+```bash
 make self-self
 ```
 
@@ -249,7 +249,7 @@ Most importantly, take your time! We go through almost every detail and motivate
 
 The following example is C\* code that implements a simple *numerical function* in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
 
-```
+```c
 int double(int n) {
   return n + n;
 }
@@ -269,7 +269,7 @@ The reason why we first look at numerical functions written in code is because s
 
 So, let us try and use selfie to run the `double` procedure on some actual number, say, `42` also called an *integer literal*. Here is the C\* *program* to do that:
 
-```
+```c
 int double(int n) {
   return n + n;
 }
@@ -281,7 +281,7 @@ int main() {
 
 We have prepared that code in a text file called `double.c` in the `examples` folder of the selfie system. So, just type in your terminal:
 
-```
+```bash
 ./selfie -c examples/double.c -m 1
 ```
 
@@ -295,7 +295,7 @@ There are a number of important concepts here. There are *procedure definitions*
 
 Importantly, there can only be one procedure definition per procedure (name) but as many procedure calls of the same procedure as you like. Makes sense? Okay, then let us try to change the definition or in fact implementation of `double`:
 
-```
+```c
 int double(int n) {
   return 2 * n;
 }
@@ -303,7 +303,7 @@ int double(int n) {
 
 This version of `double` computes the same value as the previous version of `double`, just using multiplication rather than addition, that is, `2` times `n` or simply `2 * n` rather than `n + n`. We can obviously implement other procedures as well such as a procedure that computes the square value of an integer `n`:
 
-```
+```c
 int square(int n) {
   return n * n;
 }
@@ -311,7 +311,7 @@ int square(int n) {
 
 In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
 
-```
+```c
 int fancy(int n) {
   return n * (n + 1) - n / 2 + 42;
 }
@@ -321,7 +321,7 @@ In C\* and many other programming languages, such arithmetic expressions are sta
 
 Let us now experiment with something that goes beyond arithmetic expressions. How about a procedure that returns the larger of two given values? Here is a procedure called `max` that does exactly that:
 
-```
+```c
 int max(int n, int m) {
   if (n < m)
   	return m;
@@ -336,7 +336,7 @@ Again, the code can be read like a sentence in English: define a procedure `max`
 
 Conditional statements are a powerful concept for controlling program execution. They allow us to make a choice on anything we are interested in and we can use any number of them to form a whole sequence of choices. However, any such sequence must be finite because programs are finite artifacts. But what if we would like our program to do something where, at the time of writing the program, we do not know how much work is involved and in particular how many choices need to be made when running the program? The concept that allows us to do that is called a *loop statement* which is even more powerful than a conditional statement. Here is an example written in C\* featuring a `while` *loop* over a *variable* `c`:
 
-```
+```c
 int count(int n) {
   int c;
 
@@ -381,7 +381,7 @@ Interestingly, the elements of C\* you have seen so far are enough to do anythin
 
 Let us analyze what `count` really does. The procedure effectively returns, well, the value of `n`, after "counting" from `0` to `n`. In other words, `count(n)` implements the *identity* function, at least for `n == 0` and for all *positive* values of `n`, that is, all numbers greater than `0`. Let us ignore *negative* values of `n`, that is, numbers less than `0`, for now. In that case, we could also implement `count` as follows:
 
-```
+```c
 int count(int n) {
   return n;
 }
@@ -399,7 +399,7 @@ Their performance may nevertheless be similar for small values of `n` because co
 
 While avoiding linear time here is easy using the second version, it may be more difficult to do so in other circumstances. Here is a code example that runs in linear time in the value of `n` and is not so easy to make faster while producing the same result. It computes the *factorial* of a positive integer `n` iteratively in a loop:
 
-```
+```c
 int factorial(int n) {
   int f;
 
@@ -421,7 +421,7 @@ The above code reads in English as follows: define a procedure `factorial` with 
 
 Now, there is one more thing that is truly remarkable. Instead of computing the factorial iteratively in a loop, we may also compute it *recursively* using code that looks quite different and yet computes exactly the same result as the iterative version:
 
-```
+```c
 int factorial(int n) {
   if (n > 1)
   	return n * factorial(n - 1);
@@ -444,7 +444,7 @@ In our example, the `factorial` procedure, given an integer value for `n`, calls
 
 Nevertheless, similar to the iterative version of `factorial`, we still need to argue that this version of `factorial` also computes the factorial of a positive integer `n` in finitely many steps. For simplicity, let us do that just for a given integer value of `n`, say, `4` by looking at the execution of the code as follows:
 
-```
+```c
 factorial(4) == 4 * factorial(3) == 4 * (3 * factorial(2)) == 4 * (3 * (2 * factorial(1))) == 4 * (3 * (2 * 1))
 ```
 
@@ -466,7 +466,7 @@ The values are stored in memory automatically because each time a procedure such
 
 The good news, however, is that in some cases we can change the recursive version such that it only requires constant space while still using a special form of recursion called *tail recursion*. Consider the following code which computes exactly the same function as the iterative and recursive versions but only requires constant space to run:
 
-```
+```c
 int tail_recursive(int f, int n) {
   if (n > 1)
   	return tail_recursive(f * n, n - 1);
@@ -481,7 +481,7 @@ int factorial(int n) {
 
 A recursive procedure is *tail-recursive* if every procedure call done by the procedure is tail-recursive. A procedure call is *tail-recursive* if it is the *last* operation done before returning hence the name. The statement `return tail_recursive(f * n, n - 1);` does exactly that. It is a tail-recursive procedure call by the procedure `tail_recursive` to itself. In contrast, the procedure call `factorial(n - 1)` in the statement `return n * factorial(n - 1);` of the recursive version of `factorial` is not tail-recursive because, before returning, `n` still needs to be multiplied by the value returned by `factorial(n - 1)` which requires remembering the value of `n` in each call to `factorial`. Let us have a look at the execution of the code, again for `n == 4`:
 
-```
+```c
 factorial(4) == tail_recursive(1, 4) == tail_recursive(1 * 4, 3) == tail_recursive(4 * 3, 2) == tail_recursive(12 * 2, 1) == 24
 ```
 
@@ -489,7 +489,7 @@ That looks quite similar to what the iterative version does! It computes `1 * 4 
 
 Before moving on, we take another look at iteration versus recursion. The following code is yet another implementation of factorial revealing that iteration and tail-recursion is essentially the same thing. It involves the use of a *global variable* `f`, in contrast to a *local variable* `f`, as in the iterative version. The text to the right of any double slashes `//` is called a *comment* and just meant to help us understand the code and the point we are trying to make. Comments are completely ignored by the machine. For the machine, it is as if they are not there:
 
-```
+```c
 int f; // global variable (!)
 
 void tail_recursive(int n) {
@@ -535,7 +535,7 @@ By now, you have seen all features of C\* except pointers. We have shown you wha
 
 Before moving on, let us have a look at the output of selfie when compiling itself to machine code:
 
-```
+```bash
 ./selfie -c selfie.c
 ```
 
@@ -585,7 +585,7 @@ If you are interested in Python, check out the automatic *grader* of the selfie 
 
 So, how do we run a program written in C\*? Let us have a closer look at the above example of running the `double` procedure stored in a file called `double.c`:
 
-```
+```c
 1 int double(int n) {
 2   return n + n;
 3 }
@@ -597,7 +597,7 @@ So, how do we run a program written in C\*? Let us have a closer look at the abo
 
 using selfie as follows:
 
-```
+```bash
 ./selfie -c examples/double.c -m 1
 ```
 
@@ -607,7 +607,7 @@ Selfie follows a workflow that is standard for programming languages such as C. 
 
 Okay, that is all very nice and cool but how can we see what is actually going on? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`, or we can have selfie execute the compiled code and output in our terminal every single machine instruction that it actually executes. Let us try generating the assembly file first using selfie's *disassembler*:
 
-```
+```bash
 ./selfie -c examples/double.c -S double.s
 ```
 
@@ -615,7 +615,7 @@ Make sure to use an uppercase `S` in the `-S` option. The lowercase version `-s`
 
 The relevant part of `double.s` looks as follows, with some code omitted (`...`) and some comments (`//`) and formatting (`---`) added by us:
 
-```
+```asm
 ...
 ---
 0x140(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
@@ -674,7 +674,7 @@ There exists such a correspondence for all C\* code which makes reading machine 
 
 Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get the basic idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
 
-```
+```asm
 0x15C(~2): 0x006282B3: add t0,t0,t1
 ```
 
@@ -720,7 +720,7 @@ What you see here is what the processor sees when executing `add t0,t0,t1`. It s
 
 Let us now instruct selfie to show us the compiled code during actual execution using the `-d 1` option which invokes the system's *debugger*:
 
-```
+```bash
 ./selfie -c examples/double.c -d 1
 ```
 
@@ -737,7 +737,7 @@ pc==0x10160(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
 
 We focus on this part in particular:
 
-```
+```asm
 ... add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
 ```
 
@@ -771,7 +771,7 @@ In the following, we give you an example by introducing a formal language whose 
 
 Actually, we already saw EBNF before. Let us quickly go back to self-compiling selfie but this time also running selfie right after self-compilation:
 
-```
+```bash
 ./selfie -c selfie.c -m 1
 ```
 
@@ -820,7 +820,7 @@ Let us begin with something simple. How do we specify what, say, the syntax of a
 
 In EBNF, a decimal number, or in fact the *language of decimal numbers* is defined by the following grammar:
 
-```
+```ebnf
 decimal_number = digit { digit } .
 
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
@@ -840,7 +840,7 @@ The right-hand side (RHS) of `=` is an EBNF *expression* of non-terminals, termi
 
 So, how about defining what a hexadecimal number is? Here is the EBNF for that:
 
-```
+```ebnf
 hexadecimal_number = "0x" hexadecimal_digit { hexadecimal_digit } .
 
 hexadecimal_digit = digit | "A" | "B" | "C" | "D" | "E" | "F" .
@@ -848,13 +848,13 @@ hexadecimal_digit = digit | "A" | "B" | "C" | "D" | "E" | "F" .
 
 Not so hard either, right? There is one thing that the grammars for decimal and hexadecimal numbers have in common. They can both be reduced to a single EBNF production by something we call *substitution*. Here, we just take the second production and substitute it into the RHS of the first production in all places where the non-terminal in the LHS of the second production occurs. The result for the grammar of decimal numbers, for example, is:
 
-```
+```ebnf
 decimal_number = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" { "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" } .
 ```
 
 The important point is that we got rid of all non-terminals in the RHS of the production for decimal numbers. But why would we do that? It is harder to read for sure and introduces a lot of *redundancy*. Well, on the other hand, it is now easy to fix the `00000` bug using parentheses in the right place (which is also where your `non_zero_digit` non-terminal should be):
 
-```
+```ebnf
 decimal_number = "0" | ( "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ) { "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" } .
 ```
 
@@ -870,7 +870,7 @@ For any regular expression there exists an FSM that can be implemented in C\*, f
 
 There are, however, grammars that cannot be expressed in a single EBNF production and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF production. For simplicity, we show you here a context-free grammar in EBNF that defines C\* assignments involving just a subset of all possible arithmetic C\* expressions which nevertheless still require a context-free grammar:
 
-```
+```ebnf
 assignment = variable "=" expression .
 
 expression = term { ( "+" | "-" ) term } .
@@ -900,7 +900,7 @@ Let us go through the EBNF of an `expression` step by step. An `expression` is a
 The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors.
 Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
 
-```
+```c
 int fancy(int n) {
   return n * (n + 1) - n / 2 + 42;
 }
@@ -954,7 +954,7 @@ More precisely, a PDA is a finite state machine plus a *stack*. Similar to regul
 
 There is one thing that is important to realize here. All we do with these grammars and machines is formalizing the process of reading that we as humans do without even noticing what is happening. By going through this exercise of formalization we not only enable us to build software that can do this for us incredibly fast and efficiently but also sharpen our own understanding of notation and its meaning. Here is the final step demonstrating that. How about defining the syntax of EBNF using EBNF? The following EBNF does exactly that:
 
-```
+```ebnf
 EBNF = { production } .
 
 production = non_terminal "=" expression "." .
@@ -972,7 +972,7 @@ character = letter | digit | ... .
 
 By now, you should be able to read the EBNF just like sentences in English. There are a few aspects we should point out. Here, by `expression` we mean an EBNF expression, not an arithmetic expression. However, syntactically they are quite similar which is why we use the same terminology. Even EBNF productions and assignments are almost identical, syntactically! There are also two EBNF operators of which you have seen only one but probably without noticing. An EBNF term is a sequence of factors which are connected by the (invisible) *sequential composition* operator `" "` between them that has in fact precedence over the choice operator `|`, just like `*` over `+`, for example. And there is the *optionality* operator `[ ]` that we have not used yet. Anything in between those brackets may appear in a sentence but does not have to. The synopsis of selfie uses those. To see the synopsis again, this time without self-compilation, just type in your terminal:
 
-```
+```bash
 ./selfie
 ```
 
@@ -1022,13 +1022,13 @@ Based on what we know about binary encodings of numbers and characters, we then 
 
 Before we go into the details, try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
 
-```
+```bash
 make selfie.h
 ```
 
 and then:
 
-```
+```bash
 ./selfie -c selfie.h examples/encoding.c -m 1
 ```
 
@@ -1044,7 +1044,7 @@ The output of selfie shows that 85 is in fact 1010101 in binary which in turn ma
 
 You may also want to take a look at the program `examples/encoding.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
 
-```
+```bash
 more examples/encoding.c
 ```
 
@@ -1437,7 +1437,7 @@ Practice this with different numbers as well!
 
 There is also a program for printing negative numbers with selfie, try:
 
-```
+```bash
 ./selfie -c selfie.h examples/negative.c -m 1
 ```
 
@@ -1592,7 +1592,7 @@ There is also agreement to use *signed integers* to represent whole numbers from
 
 You may also use selfie to see what it has to say about those bounds, try:
 
-```
+```bash
 ./selfie -c selfie.h examples/bounds.c -m 1
 ```
 
@@ -1713,7 +1713,7 @@ Both again make kind of sense given that with seven bits we have that `-64 = 63 
 
 Selfie also has to say something about overflows, of course, just for 64-bit integers:
 
-```
+```bash
 ./selfie -c selfie.h examples/overflows.c -m 1
 ```
 
@@ -1805,7 +1805,7 @@ ASCII is great but what about Greek letters, Chinese letters, and so on, but als
 
 To see ASCII and UTF-8 at work, you can also try:
 
-```
+```bash
 hexdump -C selfie.c | more
 ```
 
@@ -1871,7 +1871,7 @@ So, in addition to encoding unsigned and signed integers as well as characters i
 
 Selfie simulates a 32-bit main memory address space and up to 4GB of main memory storage. Try self-compilation as before in the selfie chapter:
 
-```
+```bash
 ./selfie -c selfie.c -m 3 -c selfie.c
 ```
 
@@ -1944,13 +1944,13 @@ Since for the machine a folder is just a file, we can immediately create an elab
 
 Let us take a look at how selfie is organized. In the following, we assume that selfie is installed in the *home* folder of your machine. If not, you will need to replace the '\~' character in the next command with the path to your selfie installation. To get started, make sure that your terminal and in fact the *shell* you are using is currently in the selfie folder by typing:
 
-```
+```bash
 cd ~/selfie
 ```
 
 Then try:
 
-```
+```bash
 pwd
 ```
 
@@ -1962,25 +1962,25 @@ This command shows the path to the current folder, that is, the selfie folder wh
 
 Now, try:
 
-```
+```bash
 ls -la
 ```
 
 This command shows the content of the selfie folder. It does that by listing everything in the file that represents the selfie folder. Try to explore the tree of selfie files and folders by typing, for example:
 
-```
+```bash
 cd examples
 ```
 
 followed again by `pwd` and then `ls -la`. Each subfolder contains a `README.md` file written in *markdown* that explains the content of the folder. Try:
 
-```
+```bash
 more README.md
 ```
 
 In order to get one level up in the tree, try:
 
-```
+```bash
 cd ..
 ```
 
@@ -2067,19 +2067,19 @@ Machine code or just code is a sequence of *machine instructions* where each ins
 
 To get another glimpse of what machine code looks like, try selfie's disassembler on selfie:
 
-```
+```bash
 ./selfie -c selfie.c -S selfie.s
 ```
 
 and then:
 
-```
+```bash
 more selfie.s
 ```
 
 The output should be similar to this:
 
-```
+```asm
 0x0(~1): 0x0003E2B7: lui t0,0x3E
 0x4(~1): 0x9E828293: addi t0,t0,-1560
 0x8(~1): 0x00028193: addi gp,t0,0
@@ -2113,13 +2113,13 @@ The challenge is of course how to put them together to make the machine do anyth
 
 Machine code is stored in files as a sequence of bytes, just like text, images, video, audio, and so on. The big difference is that machine code is *executable*, that is, it can instruct a machine to do something. The well-known file extension `.exe` indicates that on Windows machines. Selfie generates machine code (without the human-readable assembly) using option `-o` and file extension `.m` as follows:
 
-```
+```bash
 ./selfie -c selfie.c -o selfie.m
 ```
 
 You can take a look at `selfie.m` using a hex editor or by typing:
 
-```
+```bash
 hexdump -C selfie.m
 ```
 
@@ -2291,7 +2291,7 @@ RISC-U instructions are encoded in 32 bits (4 bytes) each and stored next to eac
 
 Let us take another look at what selfie tells us about those 14 instructions when self-compiling. First, try:
 
-```
+```bash
 ./selfie -c selfie.c
 ```
 
@@ -2313,7 +2313,7 @@ Selfie reports that it generated 42,322 RISC-U machine instructions as well as 1
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
-```
+```c
 int count(int n) {
   int c;
 
@@ -2332,7 +2332,7 @@ int main() {
 
 You can find the source code in a text file called `count.c` in the `examples` folder of the selfie system. The human-readable assembly code for the program is obtained as before using selfie's disassembler:
 
-```
+```bash
 ./selfie -c examples/count.c -S count.s
 ```
 
@@ -2362,7 +2362,7 @@ The only instructions missing are the `mul` and `divu` instructions. However, th
 
 Selfie generates `126` instructions for the program of which we show only those instructions that are actually executed when running the code. The instructions not shown are code for I/O and memory management which is not used here. The assembly code in `count.s` begins with the following instructions which initialize the machine before running the actual code for `main` and `count`, and then wrap up when done:
 
-```
+```asm
 0x0(~1): 0x000112B7: lui t0,0x11
 0x4(~1): 0x00828293: addi t0,t0,8
 0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
@@ -2400,13 +2400,13 @@ It may be hard to believe but after reading this chapter you will be able to und
 
 For now, let us focus on the `jal` instruction from the above code:
 
-```
+```asm
 0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
 ```
 
 As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A8`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
 
-```
+```asm
 0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
@@ -2433,19 +2433,19 @@ As stated in the comments, after initializing various aspects of the machine, th
 
 The very last instruction of `main`:
 
-```
+```asm
 0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 makes the processor return to the instruction that follows the `jal ra,87[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
-```
+```asm
 0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
 ```
 
 calls the code for `count` at address `0x140` which is right here:
 
-```
+```asm
 ...
 0x140(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
 0x144(~4): 0x00113023: sd ra,0(sp)
@@ -2484,7 +2484,7 @@ calls the code for `count` at address `0x140` which is right here:
 
 And again, the very last instruction of `count`:
 
-```
+```asm
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
@@ -2494,7 +2494,7 @@ Notice that in `count.s` the code for `count` actually appears before the code f
 
 Let us execute the program and see what happens:
 
-```
+```bash
 ./selfie -c examples/count.c -m 1
 ```
 
@@ -2538,7 +2538,7 @@ The first two RISC-U instructions we introduce are the `lui` and `addi` instruct
 
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
-```
+```asm
 0x44(~1): 0x01010293: addi t0,sp,16
 ```
 
@@ -2579,7 +2579,7 @@ Notice that the `immediate` value `16` is data encoded in code whereas the `rs1`
 
 Let us go back to the example. You might ask yourself how `addi t0,sp,16` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction taken from the running example:
 
-```
+```asm
 0x1C(~1): 0x00800293: addi t0,zero,8
 ```
 
@@ -2591,13 +2591,13 @@ The actual addition of the 64-bit integer in a register and the sign-extended ve
 
 Let us explore two more important use cases of `addi`, other than just initializing registers with immediate values, taken from the running example:
 
-```
+```asm
 0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
 ```
 
 obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
 
-```
+```asm
 0x3C(~1): 0xFF810113: addi sp,sp,-8
 ```
 
@@ -2613,13 +2613,13 @@ Most importantly, everything to the left of the colon is *syntax*, that is, just
 
 The execution of an instruction such as `addi` changes the state of the machine to a new state. Let us go back to the copying example to see how:
 
-```
+```asm
 0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
 ```
 
 When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. To see that in action try:
 
-```
+```bash
 ./selfie -c examples/count.c -d 1 | more
 ```
 
@@ -2655,7 +2655,7 @@ Interestingly, multiplying and dividing binary numbers with powers of 2, such as
 
 Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x11008` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x11008` into the 8 MSBs `0x11` and the 12 LSBs `0x008` (which is obviously 8 in decimal) and then do what the first three instructions in the running example do:
 
-```
+```asm
 0x0(~1): 0x000112B7: lui t0,0x11
 0x4(~1): 0x00828293: addi t0,t0,8
 0x8(~1): 0x00028193: addi gp,t0,0      // initialize gp register
@@ -2692,7 +2692,7 @@ The U-Format encodes two parameters, a 20-bit `immediate` value and an `rd`regis
 
 Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions, taken from the debugger's output:
 
-```
+```asm
 pc==0x10000(~1): lui t0,0x11: |- t0==0x0 -> t0==0x11000
 pc==0x10004(~1): addi t0,t0,8: t0==69632(0x11000) |- t0==69632(0x11000) -> t0==69640(0x11008)
 pc==0x10008(~1): addi gp,t0,0: t0==69640(0x11008) |- gp==0x0 -> gp==0x11008
@@ -2712,13 +2712,13 @@ While identifying a register is easy since there are only 32, identifying a memo
 
 Well, the `lui` and `addi` instructions come to our rescue here. Just one of each allows us to initialize a register with any 32-bit value we like! We can then interpret the value in that register as memory address. That's exactly what `ld` and `sd` do. In fact, since they only need to identify two registers, similar to the `addi` instruction, there are 12 bits left for an immediate value in their encoding which is interpreted as an offset relative to the address. Thus the addressing mode of `ld` and `sd` is called *register-relative addressing*. Let us take a look at an `sd` instruction from our running example:
 
-```
+```asm
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
 ```
 
 This instruction copies the value in register `a0` to memory at address `gp - 8`. The strange notation `-8(gp)` indicates that the value in register `gp` is interpreted as address plus the offset `-8`. The output of the debugger tells us what exactly is going on:
 
-```
+```asm
 pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0 -> mem[0x11000]==a0==73728(0x12000)
 ```
 
@@ -2746,13 +2746,13 @@ So, what is stored in dynamic memory? Well, there is a *stack segment* in the hi
 
 Interestingly, the `sp` register is, besides the program counter `pc`, the only register that is initialized by the bootloader and not the code loaded by the bootloader. In other words, when the machine starts executing any code, `sp`, and `pc`, of course, are already initialized whereas all other registers are not. However, the actual content of the stack still requires some initialization which is performed by the following instruction:
 
-```
+```asm
 0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ```
 
 And let us take a look at what the debugger says about this instruction when executing it:
 
-```
+```asm
 pc==0x10048(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
 ```
 
@@ -2760,13 +2760,13 @@ So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to
 
 Now, let us focus on the heap segment, or *heap* for short, and then go back to the instruction `sd a0,-8(gp)` we discussed earlier. The heap is memory for storing information at runtime. Initially, the heap is empty but then may grow in size typically way beyond the other segments. While the heap can only grow but not shrink, the information stored on the heap may become obsolete during code execution. This may happen in any order depending on what the code does during execution hence the name heap. Since the heap can only grow we only need to remember the end of the heap segment which initially is of course equal to the start. The instruction:
 
-```
+```asm
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
 ```
 
 does exactly that. Another look at the output of the debugger tells us what exactly is going on:
 
-```
+```asm
 pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0 -> mem[0x11000]==a0==73728(0x12000)
 ```
 
@@ -2801,13 +2801,13 @@ In order to validate your findings you may want to have another look at the sour
 
 Let us now take a look at the `ld` instruction for loading a double word from memory into a register. Right before our example program exits with exit code `10000`, after the code of the `main` procedure returned, there is the following `ld` instruction:
 
-```
+```asm
 0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
 ```
 
 It copies the value at address `sp + 0` from memory, in fact, from the stack to register `a0`. That value is `10000` and the return value of `main` which is now being prepared to become the exit code of the program. The debugger confirms that:
 
-```
+```asm
 pc==0x10058(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
 ```
 
@@ -2815,7 +2815,7 @@ Coincidentally, the value of `a0` was already `10000` before executing the instr
 
 Let us take a look at another example. This time it is machine code that has a direct correspondence to the source code in `count.c`. The following two `ld` instructions have been generated by the selfie compiler to load the values of `c` and `n` from memory at addresses `s0 - 8` and `s0 + 16` into registers `t0` and `t1`, respectively:
 
-```
+```asm
 0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 ```
@@ -2828,7 +2828,7 @@ The reason why we use a frame pointer instead of a stack pointer is because, unl
 
 Here is what the debugger has to say about what happens when executing both `ld` instructions for the first time:
 
-```
+```asm
 pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
 pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
 ```
@@ -2837,7 +2837,7 @@ The high value of `s0` indicates that the `s0` register indeed points to the sta
 
 Here is another `ld` instruction that loads the value of `c` into register `t0` to prepare calculating `c + 1` inside the body of the while loop in `count.c`:
 
-```
+```asm
 0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
 ```
 
@@ -2851,7 +2851,7 @@ Similar to the `addi` instruction, `ld` uses a source register `rs1` but interpr
 
 Before moving on, it is time to reflect on what we have seen so far in this chapter. The two instruction pairs `lui` and `addi` as well as `ld` and `sd` facilitate data flow by allowing us to initialize registers and memory to any value we like, address memory anywhere we want, and copy data from registers to memory, from register to register, and from memory back to registers. Because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another look at selfie's output when self-compiling gives us a quantitative idea of the importance of these instructions. Try:
 
-```
+```bash
 ./selfie -c selfie.c -m 3 -c selfie.c
 ```
 
@@ -2879,7 +2879,7 @@ Our next topic are the classical arithmetic instructions that most CPUs feature 
 
 RISC-U features five arithmetic instructions for addition (`add`), subtraction (`sub`), multiplication (`mul`), unsigned division (`divu`), and unsigned remainder (`remu`). The arithmetic C\* operators `+`, `-`, `*`, `/`, and `%` are implemented by `add`, `sub`, `mul`, `divu`, and `remu`, respectively. Here is an instance of an `add` instruction from our running example:
 
-```
+```asm
 0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
 0x174(~7): 0x00100313: addi t1,zero,1
 0x178(~7): 0x006282B3: add t0,t0,t1
@@ -2888,7 +2888,7 @@ RISC-U features five arithmetic instructions for addition (`add`), subtraction (
 
 This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld t0,-8(s0)` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi t1,zero,1` instruction loads the value `1` into register `t1`. The `add t0,t0,t1` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd t0,-8(s0)` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. When executing the four instructions the debugger confirms that:
 
-```
+```asm
 pc==0x10170(~7): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==1(0x1) -> t0==0(0x0)==mem[0xFFFFFF90]
 pc==0x10174(~7): addi t1,zero,1: zero==0(0x0) |- t1==10000(0x2710) -> t1==1(0x1)
 pc==0x10178(~7): add t0,t0,t1: t0==0(0x0),t1==1(0x1) |- t0==0(0x0) -> t0==1(0x1)
@@ -2936,7 +2936,7 @@ Both C\* and RISC-U only support unsigned integer division and remainder operato
 
 Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1` in our running example of which we have already seen the two `ld` instructions:
 
-```
+```asm
 0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 0x168(~6): 0x0062B2B3: sltu t0,t0,t1
@@ -2947,7 +2947,7 @@ After loading the values of `c` and `n` from the stack into registers `t0` and `
 
 However, a quick look at the output of the debugger when executing the four instructions for the first time does not hurt. Here, the value of `c` stored in memory on the stack at address `0xFFFFFF90` is still `0` while the value of `n` stored at `0xFFFFFFA8` is `10000`, meaning `c < n` is true:
 
-```
+```asm
 pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
 pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
 pc==0x10168(~6): sltu t0,t0,t1: t0==0(0x0),t1==10000(0x2710) |- t0==0(0x0) -> t0==1(0x1)
@@ -2978,7 +2978,7 @@ The RISC-U ISA features three control-flow instructions: the *conditional branch
 
 We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x184]` instruction in our running example, this time in its full context:
 
-```
+```asm
 0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
 0x164(~6): 0x01043303: ld t1,16(s0)
 0x168(~6): 0x0062B2B3: sltu t0,t0,t1
@@ -2998,13 +2998,13 @@ We first focus on the `beq` instruction and then explain the `jal` and `jalr` in
 
 The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x184]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x10184`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x10170`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop. The output of the debugger shows exactly that, firstly when executing another iteration of the `while` loop:
 
-```
+```asm
 pc==0x1016C(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x1016C -> pc==0x10170
 ```
 
 and secondly when terminating the `while` loop:
 
-```
+```asm
 pc==0x1016C(~6): beq t0,zero,6: t0==0(0x0),zero==0(0x0) |- pc==0x1016C -> pc==0x10184
 ```
 
@@ -3031,19 +3031,19 @@ Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the e
 
 Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
 
-```
+```asm
 0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
 ```
 
 Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x160`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
 
-```
+```asm
 pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
 ```
 
 You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates for a given `while` loop both the *forward-branching* `beq` instruction (with a positive immediate value) and the *backward-jumping* `jal` instruction (with a negative immediate value). Selfie also generates *forward-jumping* `jal` instructions, that is, for implementing `if` and `return` statements, see the `compile_if` and the `compile_return` procedure, respectively. For example, the `return c;` statement in our running example is implemented by the following three instructions:
 
-```
+```asm
 0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
 0x188(~9): 0x00028513: addi a0,t0,0
 0x18C(~9): 0x0040006F: jal zero,1[0x190]
@@ -3051,7 +3051,7 @@ You may also want to take a look at the `compile_while` procedure in `selfie.c` 
 
 with a forward-jumping `jal` instruction that, in this case, is actually redundant and could be removed since it always behaves like a `nop`. However, the code shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last four instructions implementing the `return count(10000)` statement, for example:
 
-```
+```asm
 0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
 0x1D4(~13): 0x00000513: addi a0,zero,0
 0x1D8(~13): 0x00028513: addi a0,t0,0
@@ -3081,37 +3081,37 @@ Similar to the immediate value of a `beq` instruction, the immediate value of a 
 
 So, here is a `jal` instruction from our running example that actually uses a register other than `zero` for linking:
 
-```
+```asm
 0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
 ```
 
 This instruction links, that is, saves the value of `pc + 4`, which is here `0x1004C + 4` equals to `0x10050`, in the `ra` register and then makes the CPU jump `87` instructions forward to the instruction in memory at address `0x101A8` which is the first instruction that implements the `main` procedure. The debugger confirms that:
 
-```
+```asm
 pc==0x1004C(~1): jal ra,87: |- ra==0x0,pc==0x1004C -> pc==0x101A8,ra==0x10050
 ```
 
 The idea of linking is to save the address of the next instruction in memory at `pc + 4` as *return address* in a register. Here we use the `ra` register where, you guessed right, `ra` stands for *return address*. Eventually, control is supposed to return to that address by setting the `pc` to that address when the code we jump to is done. We already saw above that returning to that address is done by a `jalr` instruction. The following instruction from our running example does exactly that:
 
-```
+```asm
 0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 It takes the value of the `ra` register, adds `0` to it, and then sets the `pc` to the result, that is, to `ra + 0`. For confirmation, let us have a look at what the debugger says:
 
-```
+```asm
 pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
 ```
 
 Looks good! So, in fact, we always use a `jal` instruction involving the `ra` register in conjunction with a `jalr` instruction, again involving the `ra` register, to facilitate calling code that implements a procedure. The call of a procedure is done by `jal` and the eventual return from the procedure is done by `jalr`. More precisely, the very last instruction implementing a procedure is always a `jalr zero,0(ra)` instruction. For example, the last instruction of the `count` procedure is:
 
-```
+```asm
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
 There is, however, a catch. What if a procedure calls another procedure before returning such as when `main` calls `count` before returning? In that case, the value of the `ra` register would be overwritten before returning. We therefore need to save its value and then restore it right before returning. Our running example actually shows you how this is done. The implementation of each procedure begins with a block of code called *prologue* and ends with a block of code called *epilogue*. For example, here is the prologue of `main`:
 
-```
+```asm
 0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
@@ -3121,7 +3121,7 @@ There is, however, a catch. What if a procedure calls another procedure before r
 
 and the epilogue of `main`:
 
-```
+```asm
 0x1E0(~14): 0x00040113: addi sp,s0,0      // }
 0x1E4(~14): 0x00013403: ld s0,0(sp)
 0x1E8(~14): 0x00810113: addi sp,sp,8
@@ -3134,7 +3134,7 @@ The `count` procedure has a similar prologue and epilogue. The prologue saves th
 
 Let us have a quick look at the output of the debugger right before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x10050`:
 
-```
+```asm
 pc==0x101EC(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x10050 |- ra==0x101D0 -> ra==0x10050==mem[0xFFFFFFB8]
 pc==0x101F0(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
 pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
@@ -3182,7 +3182,7 @@ Relevant for us here is that system calls are logically like procedure calls, po
 
 Let us have a look at the code from our running example that terminates execution of the program using the `exit` system call which happens to be identified by system call number `93`:
 
-```
+```asm
 0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
 0x54(~1): 0x00A13023: sd a0,0(sp)
 0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
@@ -3211,7 +3211,7 @@ Well, most of us do not have access to RISC-V hardware, at least not yet. We can
 
 Selfie implements an emulator called *mipster* that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ mipster throughout the book for a number of reasons. First of all, the design of mipster is simple and educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before, ultimately leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
 
-```
+```bash
 ./selfie -c selfie.c -m 1
 ```
 
@@ -3225,7 +3225,7 @@ Selfie maintains what we call a *machine context* for emulating a RISC-U machine
 
 There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space but usually much less physical memory. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with just an estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB rather than 3MB of physical memory:
 
-```
+```bash
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
@@ -3246,7 +3246,7 @@ In this case, 2.31MB of the available 2MB of physical memory were needed, that i
 
 Another important point we should mention is how console arguments are handled. How does selfie know about the options we use in the terminal? Take a look at the `main` procedure in `selfie.c`:
 
-```
+```c
 int main(int argc, char** argv) {
   ...
 }
@@ -3254,7 +3254,7 @@ int main(int argc, char** argv) {
 
 There are two formal parameters `argc` and `argv`. Whenever selfie or any other program written in C is invoked, the console arguments are passed to the `main` procedure as actual parameters of `argc` and `argv`. In particular, the value of `argc` is the number of console arguments including the name of the invoked program and the value of `argv` is a pointer to a contiguous piece of memory or *vector* containing pointers to the strings of the console arguments. The `c` in `argc` stands for counter and the `v` in `argv` stands for vector. For example, invoking selfie as above:
 
-```
+```bash
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
@@ -3308,13 +3308,13 @@ argv: *
 
 as if we invoked selfie by saying:
 
-```
+```bash
 selfie.c -c selfie.c
 ```
 
 which corresponds to:
 
-```
+```bash
 ./selfie -c selfie.c
 ```
 
@@ -3322,7 +3322,7 @@ with the only difference that `./selfie` is machine code of the computer on whic
 
 How about repeating that pattern? Can we do that? Yes, of course, try:
 
-```
+```bash
 ./selfie -c selfie.c -m 4 -c selfie.c -m 2 -c selfie.c
 ```
 
@@ -3332,7 +3332,7 @@ In this case, selfie compiles itself, then runs the compiled code to compile its
 
 Let us focus on code execution now. After creating and booting a new machine context in the `selfie_run` procedure, the `mipster` procedure is invoked to execute the code in that context. The details of the `mipster` procedure are not yet important. The only thing that matters here is that `mipster` invokes, via the procedure `mipster_switch`, the RISC-U interpreter implemented by the procedure `run_until_exception`:
 
-```
+```c
 void run_until_exception() {
   trap = 0;
 
@@ -3358,7 +3358,7 @@ An exception may occur for a number of reasons, for example, when a division by 
 
 The 14 RISC-U instructions are implemented by procedures prefixed `do_` which are invoked by the `execute` procedure. Those `do_` procedures define the exact semantics of the instructions. As example, consider the procedure `do_lui` which obviously implements the `lui` instruction:
 
-```
+```c
 void do_lui() {
   // load upper immediate
 
@@ -3387,13 +3387,13 @@ Most of the code is actually for profiling. Only the lines involving the local v
 
 For all instructions, there are also procedures prefixed `print_` which are used by selfie's debugger and disassembler for printing instructions. Moreover, selfie's debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively. Studying those procedures is recommended to deepen your understanding of the semantics of each instruction. There is also an easy way to invoke the debugger on a simple example, just try:
 
-```
+```bash
 make debug
 ```
 
 There is one more thing before we move on. Selfie's mipster supports *replay* using the option `-r` instead of `-m`: Try, for example:
 
-```
+```bash
 make replay
 ```
 
@@ -3462,7 +3462,7 @@ Moreover, most caches have limited *set associativity*, or just *associativity* 
 
 Lastly, caches usually cache, in a *cache block* or *cache line*, not just a single instruction or memory word at a time, but two or even more that are located next to each other in memory. For example, mipster's default cache configuration is a *2-way set associative 16KB L1 instruction cache* and a *3-way set associative 32KB L1 data cache*, both with 16B cache lines. Other choices are possible as well, see the source code of selfie. To see it in action, just use the `-L1` option instead of the `-m` option, or even simpler, try:
 
-```
+```bash
 make cache
 ```
 
@@ -3532,19 +3532,19 @@ Algorithmic complexity holds the key to make things faster, and by that we mean 
 
 While less ambitious, improving constant factors in hardware and software performance is still very important and may also be extremely difficult. Depending on the improvement, even new applications are possible as well. Try the following in your terminal:
 
-```
+```bash
 ./selfie -c selfie.c -o selfie.m
 ```
 
 followed by:
 
-```
+```bash
 ./selfie -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
 or, equivalently, just try:
 
-```
+```bash
 make emu
 ```
 
@@ -3574,7 +3574,7 @@ Selfie running on mipster instance *U* took 59,944 RISC-U instructions and 0.19M
 
 What if we stack even more mipsters onto each other just to see what happens? On my laptop, I ran three mipster instances, calling the third mipster instance *S*, assuming that *S* runs in between mipster instances *H* and *U*, and allocating 4MB rather than 2MB of physical memory to *H*:
 
-```
+```bash
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
@@ -3582,13 +3582,13 @@ This took a few hours to complete, as opposed to a few seconds for just the two 
 
 But how is this relevant in practice? Well, there is a reason why we called the three mipster instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U*, all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
-```
+```bash
 ./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
 ```
 
 or, equivalently:
 
-```
+```bash
 make os
 ```
 
