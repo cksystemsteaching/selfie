@@ -5221,10 +5221,7 @@ void compile_return() {
 
   // assert: allocated_temporaries == 0
 
-  if (symbol == SYM_RETURN)
-    get_symbol();
-  else
-    syntax_error_symbol(SYM_RETURN);
+  expect_symbol(SYM_RETURN);
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
@@ -5290,10 +5287,7 @@ void compile_statement() {
       if (ltype != UINT64STAR_T)
         type_warning(UINT64STAR_T, ltype);
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      expect_symbol(SYM_RPARENTHESIS);
     } else {
       syntax_error_symbol(SYM_LPARENTHESIS);
 
@@ -5320,10 +5314,7 @@ void compile_statement() {
       tfree(1);
     }
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    expect_symbol(SYM_SEMICOLON);
   }
   // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
@@ -5341,10 +5332,7 @@ void compile_statement() {
       // for missing return expressions
       emit_addi(REG_A0, REG_ZR, 0);
 
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      expect_symbol(SYM_SEMICOLON);
 
     // variable "=" expression
     } else if (symbol == SYM_ASSIGN) {
@@ -5375,10 +5363,7 @@ void compile_statement() {
 
       number_of_assignments = number_of_assignments + 1;
 
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      expect_symbol(SYM_SEMICOLON);
     } else
       syntax_error_unexpected();
   }
@@ -5394,10 +5379,7 @@ void compile_statement() {
   else if (symbol == SYM_RETURN) {
     compile_return();
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    expect_symbol(SYM_SEMICOLON);
   }
 
   // assert: allocated_temporaries == 0
@@ -5480,10 +5462,7 @@ uint64_t compile_initialization(uint64_t type) {
 
       cast = compile_type();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      expect_symbol(SYM_RPARENTHESIS);
     }
 
     // optional: -
@@ -5503,10 +5482,7 @@ uint64_t compile_initialization(uint64_t type) {
     else
       syntax_error_unexpected();
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    expect_symbol(SYM_SEMICOLON);
   } else
     syntax_error_symbol(SYM_ASSIGN);
 
@@ -5564,10 +5540,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         }
       }
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      expect_symbol(SYM_RPARENTHESIS);
     } else
       get_symbol();
   } else
@@ -5647,10 +5620,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
 
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      expect_symbol(SYM_SEMICOLON);
     }
 
     procedure_prologue(number_of_local_variable_bytes);
@@ -5879,10 +5849,7 @@ void macro_var_end() {
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
 
-    if (symbol == SYM_RPARENTHESIS)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_RPARENTHESIS);
+    expect_symbol(SYM_RPARENTHESIS);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 }
