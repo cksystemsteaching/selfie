@@ -418,6 +418,7 @@ uint64_t identifier_or_keyword();
 
 void get_symbol();
 void expect_symbol(uint64_t expected_symbol);
+void require_symbol(uint64_t expected_symbol);
 
 void handle_escape_sequence();
 
@@ -3939,6 +3940,16 @@ void expect_symbol(uint64_t expected_symbol) {
     syntax_error_symbol(expected_symbol);
 }
 
+void require_symbol(uint64_t expected_symbol) {
+  if (symbol == expected_symbol)
+    get_symbol();
+  else {
+    syntax_error_symbol(expected_symbol);
+    
+    exit(EXITCODE_PARSERERROR);
+  }
+}
+
 void handle_escape_sequence() {
   // ignoring the backslash
   number_of_ignored_characters = number_of_ignored_characters + 1;
@@ -5092,13 +5103,7 @@ void compile_while() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          if (symbol == SYM_RBRACE)
-            get_symbol();
-          else {
-            syntax_error_symbol(SYM_RBRACE);
-
-            exit(EXITCODE_PARSERERROR);
-          }
+          require_symbol(SYM_RBRACE);
         } else
           // only one statement without {}
           compile_statement();
@@ -5156,13 +5161,7 @@ void compile_if() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          if (symbol == SYM_RBRACE)
-            get_symbol();
-          else {
-            syntax_error_symbol(SYM_RBRACE);
-
-            exit(EXITCODE_PARSERERROR);
-          }
+          require_symbol(SYM_RBRACE);
         } else
         // only one statement without {}
           compile_statement();
@@ -5187,13 +5186,7 @@ void compile_if() {
             while (is_not_rbrace_or_eof())
               compile_statement();
 
-            if (symbol == SYM_RBRACE)
-              get_symbol();
-            else {
-              syntax_error_symbol(SYM_RBRACE);
-
-              exit(EXITCODE_PARSERERROR);
-            }
+            require_symbol(SYM_RBRACE);
 
           // only one statement without {}
           } else
