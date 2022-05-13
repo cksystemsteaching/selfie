@@ -417,8 +417,8 @@ uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
 
 void get_symbol();
-void expect_symbol(uint64_t expected_symbol);
-void require_symbol(uint64_t expected_symbol);
+void get_expected_symbol(uint64_t expected_symbol);
+void get_required_symbol(uint64_t expected_symbol);
 
 void handle_escape_sequence();
 
@@ -3933,14 +3933,14 @@ void get_symbol() {
   }
 }
 
-void expect_symbol(uint64_t expected_symbol) {
+void get_expected_symbol(uint64_t expected_symbol) {
   if (symbol == expected_symbol)
     get_symbol();
   else
     syntax_error_symbol(expected_symbol);
 }
 
-void require_symbol(uint64_t expected_symbol) {
+void get_required_symbol(uint64_t expected_symbol) {
   if (symbol == expected_symbol)
     get_symbol();
   else {
@@ -4747,13 +4747,13 @@ uint64_t compile_factor() {
 
       cast = compile_type();
 
-      expect_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
 
     // not a cast: "(" expression ")"
     } else {
       type = compile_expression();
 
-      expect_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
 
       // assert: allocated_temporaries == n + 1
 
@@ -4838,7 +4838,7 @@ uint64_t compile_factor() {
 
     type = compile_expression();
 
-    expect_symbol(SYM_RPARENTHESIS);
+    get_expected_symbol(SYM_RPARENTHESIS);
   } else {
     syntax_error_unexpected();
 
@@ -5103,7 +5103,7 @@ void compile_while() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          require_symbol(SYM_RBRACE);
+          get_required_symbol(SYM_RBRACE);
         } else
           // only one statement without {}
           compile_statement();
@@ -5161,7 +5161,7 @@ void compile_if() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          require_symbol(SYM_RBRACE);
+          get_required_symbol(SYM_RBRACE);
         } else
         // only one statement without {}
           compile_statement();
@@ -5186,7 +5186,7 @@ void compile_if() {
             while (is_not_rbrace_or_eof())
               compile_statement();
 
-            require_symbol(SYM_RBRACE);
+            get_required_symbol(SYM_RBRACE);
 
           // only one statement without {}
           } else
@@ -5214,7 +5214,7 @@ void compile_return() {
 
   // assert: allocated_temporaries == 0
 
-  expect_symbol(SYM_RETURN);
+  get_expected_symbol(SYM_RETURN);
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
@@ -5280,7 +5280,7 @@ void compile_statement() {
       if (ltype != UINT64STAR_T)
         type_warning(UINT64STAR_T, ltype);
 
-      expect_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     } else {
       syntax_error_symbol(SYM_LPARENTHESIS);
 
@@ -5307,7 +5307,7 @@ void compile_statement() {
       tfree(1);
     }
 
-    expect_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   }
   // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
@@ -5325,7 +5325,7 @@ void compile_statement() {
       // for missing return expressions
       emit_addi(REG_A0, REG_ZR, 0);
 
-      expect_symbol(SYM_SEMICOLON);
+      get_expected_symbol(SYM_SEMICOLON);
 
     // variable "=" expression
     } else if (symbol == SYM_ASSIGN) {
@@ -5356,7 +5356,7 @@ void compile_statement() {
 
       number_of_assignments = number_of_assignments + 1;
 
-      expect_symbol(SYM_SEMICOLON);
+      get_expected_symbol(SYM_SEMICOLON);
     } else
       syntax_error_unexpected();
   }
@@ -5372,7 +5372,7 @@ void compile_statement() {
   else if (symbol == SYM_RETURN) {
     compile_return();
 
-    expect_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   }
 
   // assert: allocated_temporaries == 0
@@ -5455,7 +5455,7 @@ uint64_t compile_initialization(uint64_t type) {
 
       cast = compile_type();
 
-      expect_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     }
 
     // optional: -
@@ -5475,7 +5475,7 @@ uint64_t compile_initialization(uint64_t type) {
     else
       syntax_error_unexpected();
 
-    expect_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   } else
     syntax_error_symbol(SYM_ASSIGN);
 
@@ -5533,7 +5533,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         }
       }
 
-      expect_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     } else
       get_symbol();
   } else
@@ -5613,7 +5613,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
 
-      expect_symbol(SYM_SEMICOLON);
+      get_expected_symbol(SYM_SEMICOLON);
     }
 
     procedure_prologue(number_of_local_variable_bytes);
@@ -5842,7 +5842,7 @@ void macro_var_end() {
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
 
-    expect_symbol(SYM_RPARENTHESIS);
+    get_expected_symbol(SYM_RPARENTHESIS);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 }
