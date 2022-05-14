@@ -180,9 +180,9 @@ RUN apt-get update \
        ca-certificates \
        make git \
        gcc gdb libc6-dev-i386-amd64-cross lib32gcc-9-dev \
-       python3.8 \
+       python3.10 \
        device-tree-compiler gcc-riscv64-linux-gnu \
-  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
+  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
   && apt-get install -y --no-install-recommends \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
