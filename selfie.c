@@ -3934,17 +3934,13 @@ void get_symbol() {
 }
 
 uint64_t get_expected_symbol(uint64_t expected_symbol) {
-  uint64_t found;
-
   if (symbol == expected_symbol) {
     get_symbol();
-    found = 1;
-  } else {
-    syntax_error_symbol(expected_symbol);
-    found = 0;
+    return 1;
   }
 
-  return found;
+  syntax_error_symbol(expected_symbol);
+  return 0;
 }
 
 void get_required_symbol(uint64_t required_symbol) {
