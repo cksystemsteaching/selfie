@@ -417,8 +417,8 @@ uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
 
 void get_symbol();
-void get_expected_symbol(uint64_t expected_symbol);
-void get_required_symbol(uint64_t expected_symbol);
+uint64_t get_expected_symbol(uint64_t expected_symbol);
+void get_required_symbol(uint64_t required_symbol);
 
 void handle_escape_sequence();
 
@@ -3933,21 +3933,23 @@ void get_symbol() {
   }
 }
 
-void get_expected_symbol(uint64_t expected_symbol) {
-  if (symbol == expected_symbol)
+uint64_t get_expected_symbol(uint64_t expected_symbol) {
+  uint64_t found;
+
+  if (symbol == expected_symbol) {
     get_symbol();
-  else
+    found = 1;
+  } else {
     syntax_error_symbol(expected_symbol);
+    found = 0;
+  }
+
+  return found;
 }
 
-void get_required_symbol(uint64_t expected_symbol) {
-  if (symbol == expected_symbol)
-    get_symbol();
-  else {
-    syntax_error_symbol(expected_symbol);
-    
+void get_required_symbol(uint64_t required_symbol) {
+  if (get_expected_symbol(required_symbol) == 0) 
     exit(EXITCODE_PARSERERROR);
-  }
 }
 
 void handle_escape_sequence() {
