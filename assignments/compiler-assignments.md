@@ -124,9 +124,19 @@ Implement support of and code generation for `for` loops in C\*.
 
 
 
+## Assignment `logical-and-or-not`:
+
+Implement code generation for boolean operators `&&`, `||`, and `!` in C\*.
+
+- Before coding, extend the grammar in **grammar.md** accordingly.
+- Do not modify any files other than **grammar.md** and **selfie.c**.
+- Use the `logical-and-or-not` target in the grader to determine your grade.
+
+
+
 ## Assignment `lazy-evaluation`:
 
-Implement code generation for boolean logical operators `&&`, `||`, and `!` in C\* such that lazy evaluation is used.
+Change the boolean operators `&&`, `||`, and `!` such that lazy evaluation is used.
 
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
