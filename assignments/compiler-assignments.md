@@ -122,3 +122,14 @@ Implement support of and code generation for `for` loops in C\*.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
 - Use the `for-loop` target in the grader to determine your grade.
 
+
+
+## Assignment `lazy-evaluation`:
+
+Implement code generation for boolean logical operators `&&`, `||`, and `!` in C\* such that lazy evaluation is used.
+
+- Before coding, extend the grammar in **grammar.md** accordingly.
+- Do not modify any files other than **grammar.md** and **selfie.c**.
+- Use the `lazy-evaluation` target in the grader to determine your grade.
+
+
