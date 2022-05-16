@@ -90,9 +90,9 @@ Implement support of threads (`phtread_create()`, `pthread_join()`, and `pthread
 
 
 
-## Assignment `treiber-stack`:
+## Assignment `threadsafe-malloc`:
 
-Make the current `malloc()` implementation thread-safe by implementing support of and using the atomic instructions `lr` and `sc` in RISC-U.
+Make the current `malloc()` implementation thread-safe by implementing support of and using the atomic instructions `lr` and `sc` in RISC-U. This requires implementing support of load-reserved and store-conditional routines as well (`lr()` and `sc()`).
 
 - Use the `threadsafe-malloc` target in the grader to determine your grade.
 
@@ -100,7 +100,7 @@ Make the current `malloc()` implementation thread-safe by implementing support o
 
 ## Assignment `treiber-stack`:
 
-Implement support of the Treiber stack (`init_stack()`, `push()`, and `pop()`). This requires implementing support of load-reserved and store-conditional routines as well (`lr()` and `sc()`).
+Implement support of the Treiber stack (`init_stack()`, `push()`, and `pop()`).
 
 - Use the `treiber-stack` target in the grader to determine your grade.
 

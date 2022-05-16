@@ -1,5 +1,3 @@
-uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
-
 uint64_t pthread_create();
 uint64_t pthread_join(uint64_t* wstatus);
 

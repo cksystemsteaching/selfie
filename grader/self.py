@@ -325,8 +325,14 @@ def check_threads() -> List[Check]:
 def check_threadsafe_malloc() -> List[Check]:
     return check_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c') + \
         check_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c') + \
+        check_mipster_execution('no-switch-malloc.c',
+                                'Hello World!    ',
+                                'malloc() does not force a context switch on MIPSTER') + \
+        check_hypster_execution('no-switch-malloc.c',
+                                'Hello World!    ',
+                                'malloc() does not force a context switch on HYPSTER') + \
         check_mipster_execution('threadsafe-malloc.c', 42,
-                                'malloc is thread-safe on MIPSTER') +\
+                                'malloc is thread-safe on MIPSTER') + \
         check_hypster_execution('threadsafe-malloc.c', 42,
                                 'malloc is thread-safe on HYPSTER')
 
