@@ -7766,6 +7766,8 @@ void emit_malloc() {
   emit_store(get_scope(entry), get_address(entry), REG_A0);
   emit_addi(REG_A0, current_temporary(), 0);
 
+  // gc_brk syscall skips up to this point, see implement_gc_brk
+
   tfree(2);
 
   emit_jalr(REG_ZR, REG_RA, 0);
