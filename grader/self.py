@@ -322,10 +322,17 @@ def check_threads() -> List[Check]:
                                 'two threads correctly calculate the sum from 1 to 20 with Dekker\'s algorithm on HYPSTER')
 
 
-def check_treiber_stack() -> List[Check]:
+def check_threadsafe_malloc() -> List[Check]:
     return check_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c') + \
         check_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c') + \
-        check_execution('./selfie -c <assignment>stack-push.c -m 128',
+        check_mipster_execution('threadsafe-malloc.c', 42,
+                                'malloc is thread-safe on MIPSTER') +\
+        check_hypster_execution('threadsafe-malloc.c', 42,
+                                'malloc is thread-safe on HYPSTER')
+
+
+def check_treiber_stack() -> List[Check]:
+    return check_execution('./selfie -c <assignment>stack-push.c -m 128',
                         'all pushed elements are actually in the treiber-stack',
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7])) + \
         check_execution('./selfie -c <assignment>stack-pop.c -m 128',
@@ -396,6 +403,9 @@ assignments: List[Assignment] = [
     Assignment('threads', 'Systems', 'threads',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threads',
                check_threads),
+    Assignment('threadsafe-malloc', 'Systems', 'threadsafe-malloc',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
+               check_threadsafe_malloc),
     Assignment('treiber-stack', 'Systems', 'treiber-stack',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
                check_treiber_stack)
