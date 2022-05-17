@@ -179,7 +179,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
        make git \
-       gcc gdb libc6-dev-i386-amd64-cross lib32gcc-9-dev \
+       gcc gdb libc6-dev-i386-amd64-cross lib32gcc-10-dev \
        python3.10 \
        device-tree-compiler gcc-riscv64-linux-gnu \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
