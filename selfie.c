@@ -3127,7 +3127,7 @@ void print_hexadecimal_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
-  print("0x");print_hexadecimal_no_prefix(n, a);
+  printf("0x");print_hexadecimal_no_prefix(n, a);
 }
 
 void print_octal_no_prefix(uint64_t n, uint64_t a) {
@@ -3135,7 +3135,7 @@ void print_octal_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_octal(uint64_t n, uint64_t a) {
-  print("0o");print_octal_no_prefix(n, a);
+  printf("0o");print_octal_no_prefix(n, a);
 }
 
 void print_binary_no_prefix(uint64_t n, uint64_t a) {
@@ -3143,7 +3143,7 @@ void print_binary_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_binary(uint64_t n, uint64_t a) {
-  print("0b");print_binary_no_prefix(n, a);
+  printf("0b");print_binary_no_prefix(n, a);
 }
 
 uint64_t print_format(char* s, uint64_t i, char* a) {

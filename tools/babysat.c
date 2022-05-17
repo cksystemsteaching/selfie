@@ -151,18 +151,15 @@ void selfie_print_dimacs() {
     variable = 0;
 
     while (variable < number_of_sat_variables) {
-      if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable) == TRUE) {
-        print_integer(variable + 1);
-        print(" ");
-      } else if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable + 1) == TRUE) {
-        print_integer(-(variable + 1));
-        print(" ");
-      }
+      if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable) == TRUE)
+        printf("%ld ", variable + 1);
+      else if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable + 1) == TRUE)
+        printf("%ld ", -(variable + 1));
 
       variable = variable + 1;
     }
 
-    print("0\n");
+    printf("0\n");
 
     clause = clause + 1;
   }
