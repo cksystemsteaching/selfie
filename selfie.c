@@ -9138,12 +9138,12 @@ uint64_t print_lui() {
 }
 
 void print_lui_before() {
-  print(": |- ");
+  printf(": |- ");
   print_register_hexadecimal(rd);
 }
 
 void print_lui_after() {
-  print(" -> ");
+  printf(" -> ");
   print_register_hexadecimal(rd);
 }
 
@@ -9192,14 +9192,14 @@ uint64_t print_addi() {
 }
 
 void print_addi_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(" |- ");
+  printf(" |- ");
   print_register_value(rd);
 }
 
 void print_addi_add_sub_mul_divu_remu_sltu_after() {
-  print(" -> ");
+  printf(" -> ");
   print_register_value(rd);
 }
 
@@ -9234,11 +9234,11 @@ uint64_t print_add_sub_mul_divu_remu_sltu() {
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(",");
+  printf(",");
   print_register_value(rs2);
-  print(" |- ");
+  printf(" |- ");
   print_register_value(rd);
 }
 
@@ -9413,7 +9413,7 @@ void print_load_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
@@ -9427,13 +9427,13 @@ void print_load_before() {
       return;
     }
 
-  print(" |-");
+  printf(" |-");
 }
 
 void print_load_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print(" -> ");
+      printf(" -> ");
       print_register_value(rd);
       printf("==mem[0x%lX]", vaddr);
     }
@@ -9506,12 +9506,12 @@ void print_store_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print(",");
+      printf(",");
       print_register_value(rs2);
       if (is_system_register(rd))
         printf(" |- mem[0x%lX]==0x%lX", vaddr, load_virtual_memory(pt, vaddr));
@@ -9521,7 +9521,7 @@ void print_store_before() {
       return;
     }
 
-  print(" |-");
+  printf(" |-");
 }
 
 void print_store_after(uint64_t vaddr) {
@@ -9608,9 +9608,9 @@ uint64_t print_beq() {
 }
 
 void print_beq_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(",");
+  printf(",");
   print_register_value(rs2);
   printf(" |- pc==0x%lX", pc);
 }
@@ -9653,10 +9653,10 @@ uint64_t print_jal() {
 }
 
 void print_jal_before() {
-  print(": |- ");
+  printf(": |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print(",");
+    printf(",");
   }
   printf("pc==0x%lX", pc);
 }
@@ -9664,7 +9664,7 @@ void print_jal_before() {
 void print_jal_jalr_after() {
   print_beq_after();
   if (rd != REG_ZR) {
-    print(",");
+    printf(",");
     print_register_hexadecimal(rd);
   }
 }
@@ -9720,12 +9720,12 @@ uint64_t print_jalr() {
 }
 
 void print_jalr_before() {
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
-  print(" |- ");
+  printf(" |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print(",");
+    printf(",");
   }
   printf("pc==0x%lX", pc);
 }
