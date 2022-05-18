@@ -35,8 +35,6 @@ int main(int argc, char** argv) {
   if (thread != 0)
     force_switch();
 
-  // assert: thread == 1
-
   counter = 1111108;
 
   i = 4;
