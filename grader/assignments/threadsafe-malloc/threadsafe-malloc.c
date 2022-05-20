@@ -2,20 +2,10 @@ uint64_t pthread_create();
 uint64_t pthread_join(uint64_t* wstatus);
 void pthread_exit(uint64_t code);
 
+uint64_t wait(uint64_t* wstatus);
+
 uint64_t thread;
-
-void force_switch() {
-  uint64_t pid;
-
-  // forces a switch
-  pid = pthread_create();
-
-  // newly created thread immediately runs out
-  if (pid == 0)
-    pthread_exit(0);
-  else
-    pthread_join((uint64_t*) 0);
-}
+uint64_t loop;
 
 int main(int argc, char** argv) {
   uint64_t pid;
@@ -23,6 +13,8 @@ int main(int argc, char** argv) {
   uint64_t i;
   uint64_t* p1;
   uint64_t* p2;
+  uint64_t counter;
+  uint64_t zero;
 
   thread = -1;
 
@@ -33,28 +25,98 @@ int main(int argc, char** argv) {
 
   // make sure the child thread is running first
   if (thread != 0)
-    force_switch();
+    wait((uint64_t*) 0);
 
-  counter = 1111108;
+  // assert: thread == 1
 
-  i = 4;
+  //counter = 1111108;
 
-  if (pid) {
+  if (pid == 0) {
+    // child
+
+    // ------------------------------ 1st ------------------------------
+
+    zero = 0;
+
+    counter = 0;
+
+    loop = 1;
+
+    i = 0;
+
+    // force a context switch, reset the timer
+    wait((uint64_t*) 0);
+
+    // ------------------------------ 3rd ------------------------------
+
+    while(zero < loop)
+      counter = counter + 1;
+
+    // endless loop forces context switch by timeout
+
+    // ------------------------------ 5th ------------------------------
+
+    counter = counter - 2;
+
+    // force a context switch, reset the timer
+    wait((uint64_t*) 0);
+
+    // ------------------------------ 7th ------------------------------
+
+    // 3 jalr instruction leftover from wait()
+
+    // 9 instructions per loop
+    // 1111109 * 9 = 9999981
+    while (i < counter)
+      i = i + 1;
+
+    // 4 instructions on loop end
+
+    // so far: 3 + 9999981 + 4 = 9999988
+
+    // 12 instructions left
+
+    // lr is 10th instruction of malloc() call
+
+    // context switch should happen in here by timeout
+    // after lr but before sc
+    p2 = malloc(16);
+
+    // ------------------------------ 9th ------------------------------
+
+    *p2 = 18;
+    *(p2 + 1) = 19;
+
+    return (uint64_t) p2;
+
+  } else {
     // parent
 
-    // --------------- 2nd ---------------
+    // ------------------------------ 2nd ------------------------------
 
-    // reset the timer
-    force_switch();
+    // force a context switch, reset the timer
+    wait((uint64_t*) 0);
 
-    // --------------- 4th ---------------
+    // ------------------------------ 4th ------------------------------
+
+    loop = 0;
+
+    // force a context switch, reset the timer
+    wait((uint64_t*) 0);
+
+    // ------------------------------ 6th ------------------------------
+
+    // force a context switch, reset the timer
+    wait((uint64_t*) 0);
+
+    // ------------------------------ 8th ------------------------------
 
     p1 = malloc(16);
-    p2 = malloc(16);
+    p2 = malloc(8);
 
     pthread_join(p2); // switch
 
-    // --------------- 6th ---------------
+    // ------------------------------ 10th ------------------------------
 
     // p2 points to other p2 which points to 2 and 3
 
@@ -65,43 +127,8 @@ int main(int argc, char** argv) {
     *p1 = 2;
     *(p1 + 1) = 3;
 
+    // 10 = 2 + 3 + 2 + 3
+    // 42 = 2 + 3 + 18 + 19 (thread-safe)
     return *p1 + *(p1 + 1) + *p2 + *(p2 + 1);
-  } else {
-    // child
-
-    // --------------- 1st ---------------
-
-    // reset the timer
-    force_switch();
-
-    // --------------- 3rd ---------------
-
-    // 9 instructions from force_switch()
-
-    // 2 instructions
-    i = 0;
-
-    // 9 instructions per loop
-    // 1111108 * 9 = 9999972
-    while (i < counter)
-      i = i + 1;
-
-    // 4 instructions on loop end
-
-    // so far 9 + 2 + 9999972 + 4 = 9999987
-
-    // 13 instructions left before switch by timeout
-
-    // lr is 12th instruction of malloc() call
-
-    // switch should happen in here after lr but before sc
-    p2 = malloc(16);
-
-    // --------------- 5th ---------------
-
-    *p2 = 18;
-    *(p2 + 1) = 19;
-
-    return (uint64_t) p2;
   }
 }
