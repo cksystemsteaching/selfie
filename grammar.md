@@ -48,8 +48,9 @@ procedure         = "(" [ variable { "," variable } [ "," "..." ] ] ")" ( ";" |
 
 variable          = type identifier .
 
-statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
-                    call ";" | while | if | return ";" .
+statement         = call ";" | while | if | return ";" | assignment ";" .
+
+assignment        = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
 

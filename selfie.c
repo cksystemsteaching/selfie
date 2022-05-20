@@ -695,6 +695,7 @@ void type_warning(uint64_t expected, uint64_t found);
 
 void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
 uint64_t* get_variable_or_big_int(char* variable, uint64_t class);
+uint64_t  load_variable_address(uint64_t* entry);
 void      load_upper_base_address(uint64_t* entry);
 uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
 void      load_integer(uint64_t value);
@@ -714,6 +715,7 @@ uint64_t  compile_expression();
 void      compile_while();
 void      compile_if();
 void      compile_return();
+void      compile_assignment();
 void      compile_statement();
 uint64_t  compile_type();
 uint64_t* compile_variable(uint64_t offset);
@@ -4448,6 +4450,29 @@ void load_upper_base_address(uint64_t* entry) {
   // assert: allocated_temporaries == n + 1
 }
 
+uint64_t load_variable_address(uint64_t* entry) {
+  uint64_t offset;
+
+  // assert: n = allocated_temporaries
+
+  offset = get_address(entry);
+
+  if (is_signed_integer(offset, 12)) {
+    talloc();
+
+    emit_addi(current_temporary(), get_scope(entry), offset);
+  } else {
+    load_upper_base_address(entry);
+
+    emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of variable or big integer is grammar attribute
+  return get_type(entry);
+}
+
 uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   uint64_t* entry;
   uint64_t offset;
@@ -5239,15 +5264,116 @@ void compile_return() {
   number_of_return = number_of_return + 1;
 }
 
-void compile_statement() {
+void compile_assignment() {
   uint64_t ltype;
   uint64_t rtype;
   char* variable_or_procedure_name;
   uint64_t* entry;
-  uint64_t offset;
   uint64_t assignment;
   uint64_t dereference;
 
+  assignment = 0;
+
+  dereference = 0;
+
+  // ["*"]
+  if (symbol == SYM_ASTERISK) {
+    get_symbol();
+
+    dereference = 1;
+  }
+
+  // ["*"] variable "=" expression | call
+  if (symbol == SYM_IDENTIFIER) {
+    variable_or_procedure_name = identifier;
+
+    get_symbol();
+
+    // procedure call
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_call(variable_or_procedure_name);
+
+      // reset return register to initial return value
+      // for missing return expressions
+      emit_addi(REG_A0, REG_ZR, 0);
+    }
+    // ["*"] variable "=" expression
+    else {
+      entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
+
+      ltype = load_variable_address(entry);
+
+      // assert: allocated_temporaries == 1
+
+      if (dereference)
+        emit_load(current_temporary(), current_temporary(), 0);
+
+      // assert: allocated_temporaries == 1
+
+      // we expect an assignment
+      assignment = 1;
+    }
+  }
+  // "*" "(" expression ")" = "expression"
+  else if (symbol == SYM_LPARENTHESIS) {
+    if (dereference == 0) {
+      syntax_error_symbol(SYM_ASTERISK);
+
+      dereference = 1;
+    }
+
+    get_symbol();
+
+    ltype = compile_expression();
+
+    // assert: allocated_temporaries == 1
+
+    assignment = 1;
+
+    get_expected_symbol(SYM_RPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_IDENTIFIER);
+
+  if (assignment) {
+    // address stored in current temporary
+    // assert: allocated_temporaries == 1
+
+    if (symbol == SYM_ASSIGN) {
+      get_symbol();
+
+      if (dereference) {
+        if (ltype != UINT64STAR_T)
+          type_warning(UINT64STAR_T, ltype);
+        else
+          ltype = UINT64_T;
+      }
+
+      rtype = compile_expression();
+
+      // assert: allocated_temporaries == 2
+
+      if (ltype != rtype)
+        type_warning(ltype, rtype);
+
+      emit_store(previous_temporary(), 0, current_temporary());
+
+      tfree(1);
+
+      // assert: allocated_temporaries == 1
+
+      number_of_assignments = number_of_assignments + 1;
+    } else
+      syntax_error_symbol(SYM_ASSIGN);
+
+    // assert: allocated_temporaries == 1
+
+    tfree(1);
+  }
+}
+
+void compile_statement() {
   // assert: allocated_temporaries == 0
 
   while (look_for_statement()) {
@@ -5275,115 +5401,7 @@ void compile_statement() {
   }
   // ( ["*"] variable | "*" "(" expression ")" ) "=" expression | call
   else {
-    assignment = 0;
-
-    dereference = 0;
-
-    // ["*"]
-    if (symbol == SYM_ASTERISK) {
-      get_symbol();
-
-      dereference = 1;
-    }
-
-    // ["*"] variable "=" expression | call
-    if (symbol == SYM_IDENTIFIER) {
-      variable_or_procedure_name = identifier;
-
-      get_symbol();
-
-      // procedure call
-      if (symbol == SYM_LPARENTHESIS) {
-        get_symbol();
-
-        compile_call(variable_or_procedure_name);
-
-        // reset return register to initial return value
-        // for missing return expressions
-        emit_addi(REG_A0, REG_ZR, 0);
-      }
-      // ["*"] variable "=" expression
-      else {
-        entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
-
-        ltype = get_type(entry);
-
-        offset = get_address(entry);
-
-        if (is_signed_integer(offset, 12)) {
-          talloc();
-
-          emit_addi(current_temporary(), get_scope(entry), offset);
-        } else {
-          load_upper_base_address(entry);
-
-          emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
-        }
-
-        if (dereference)
-          emit_load(current_temporary(), current_temporary(), 0);
-
-        // assert: allocated_temporaries == 1
-
-        assignment = 1;
-      }
-    }
-    // "*" "(" expression ")" = "expression"
-    else if (symbol == SYM_LPARENTHESIS) {
-      if (dereference == 0) {
-        syntax_error_symbol(SYM_ASTERISK);
-
-        dereference = 1;
-      }
-
-      get_symbol();
-
-      ltype = compile_expression();
-
-      // assert: allocated_temporaries == 1
-
-      assignment = 1;
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_IDENTIFIER);
-
-    if (assignment) {
-      // address stored in current temporary
-      // assert: allocated_temporaries == 1
-
-      if (symbol == SYM_ASSIGN) {
-        get_symbol();
-
-        if (dereference) {
-          if (ltype != UINT64STAR_T)
-            type_warning(UINT64STAR_T, ltype);
-          else
-            ltype = UINT64_T;
-        }
-
-        rtype = compile_expression();
-
-        // assert: allocated_temporaries == 2
-
-        if (ltype != rtype)
-          type_warning(ltype, rtype);
-
-        emit_store(previous_temporary(), 0, current_temporary());
-
-        tfree(2);
-
-        // assert: allocated_temporaries == 0
-
-        number_of_assignments = number_of_assignments + 1;
-      } else {
-        syntax_error_symbol(SYM_ASSIGN);
-
-        // assert: allocated_temporaries == 1
-
-        tfree(1);
-      }
-    }
+    compile_assignment();
 
     get_expected_symbol(SYM_SEMICOLON);
   }
