@@ -249,14 +249,14 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
 
     parser.add_argument('-q', action='store_true', default=False,
             help='print grade only', dest='quiet')
+    parser.add_argument('-s', action='store_true', default=False,
+            help='do not show the processing spinner', dest='simple')
     parser.add_argument('-b', default=None, metavar="<file>",
             help='bulk grade assignments given as github commit links in file',
             dest='bulk_file')
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
-    parser.add_argument('-s', action='store_false', default=True,
-            help='do not show the processing spinner', dest='simple')
     parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
             type=parse_truncate_range,
             help='truncates the amount of leading and trailing lines',

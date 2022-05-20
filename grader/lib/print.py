@@ -109,7 +109,7 @@ spinner_thread = None
 def print_processing(msg, command=''):
     global spinner_thread
 
-    if is_in_simple_mode():
+    if not is_in_simple_mode():
         if command:
             msg = msg + ": \033[33m$ " + command + "\033[0m"
 
