@@ -12,6 +12,7 @@ from lib.model import Assignment, Check, CheckResult
 from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
 from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
+                       enter_simple_mode, leave_simple_mode,
                        print_message, print_warning, print_grade, print_processing,
                        stop_processing_spinner, print_passed, print_failed,
                        reset_truncate, set_truncate)
@@ -254,6 +255,8 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
+    parser.add_argument('-s', action='store_false', default=True,
+            help='do not show the processing spinner', dest='simple')
     parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
             type=parse_truncate_range,
             help='truncates the amount of leading and trailing lines',
@@ -272,6 +275,9 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
 
         if args.quiet:
             enter_quiet_mode()
+
+        if args.simple:
+            enter_simple_mode()
 
         if args.truncate:
             set_truncate(*args.truncate)
