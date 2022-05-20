@@ -231,6 +231,10 @@ uint64_t UINT_MAX;       // maximum numerical value of target-dependent unsigned
 uint64_t WORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
+// amount of entries of the context struct
+// contexts are extended in the symbolic execution engine and the Boehm garbage collector
+uint64_t CONTEXTENTRIES;
+
 uint64_t CHAR_EOF          =  -1; // end of file
 uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
 uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
@@ -350,6 +354,9 @@ void init_library() {
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
   INT64_MAX = INT64_MIN - 1;
 
+  // 9 uint64_t entries and 16 uint64_t* entries
+  CONTEXTENTRIES = 9 + 16;
+
   // target-dependent, see init_target()
   SIZEOFUINT     = SIZEOFUINT64;
   UINT_MAX       = UINT64_MAX;
@@ -410,6 +417,8 @@ uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
 
 void get_symbol();
+uint64_t get_expected_symbol(uint64_t expected_symbol);
+void get_required_symbol(uint64_t required_symbol);
 
 void handle_escape_sequence();
 
@@ -2145,10 +2154,9 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 
 uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
 
-// CAUTION: contexts are extended in the symbolic execution engine and the Boehm garbage collector!
-
 uint64_t* allocate_context() {
-  return smalloc(9 * SIZEOFUINT64STAR + 16 * SIZEOFUINT64);
+  // SIZEOFUINT64 == SIZEOFUINT64STAR (always, so no need to differentiate although it would be nicer)
+  return smalloc(CONTEXTENTRIES * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -3121,7 +3129,7 @@ void print_hexadecimal_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
-  print("0x");print_hexadecimal_no_prefix(n, a);
+  printf("0x");print_hexadecimal_no_prefix(n, a);
 }
 
 void print_octal_no_prefix(uint64_t n, uint64_t a) {
@@ -3129,7 +3137,7 @@ void print_octal_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_octal(uint64_t n, uint64_t a) {
-  print("0o");print_octal_no_prefix(n, a);
+  printf("0o");print_octal_no_prefix(n, a);
 }
 
 void print_binary_no_prefix(uint64_t n, uint64_t a) {
@@ -3137,7 +3145,7 @@ void print_binary_no_prefix(uint64_t n, uint64_t a) {
 }
 
 void print_binary(uint64_t n, uint64_t a) {
-  print("0b");print_binary_no_prefix(n, a);
+  printf("0b");print_binary_no_prefix(n, a);
 }
 
 uint64_t print_format(char* s, uint64_t i, char* a) {
@@ -3923,6 +3931,21 @@ void get_symbol() {
 
     number_of_scanned_symbols = number_of_scanned_symbols + 1;
   }
+}
+
+uint64_t get_expected_symbol(uint64_t expected_symbol) {
+  if (symbol == expected_symbol) {
+    get_symbol();
+    return 1;
+  }
+
+  syntax_error_symbol(expected_symbol);
+  return 0;
+}
+
+void get_required_symbol(uint64_t required_symbol) {
+  if (get_expected_symbol(required_symbol) == 0) 
+    exit(EXITCODE_PARSERERROR);
 }
 
 void handle_escape_sequence() {
@@ -4722,19 +4745,13 @@ uint64_t compile_factor() {
 
       cast = compile_type();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
 
     // not a cast: "(" expression ")"
     } else {
       type = compile_expression();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
 
       // assert: allocated_temporaries == n + 1
 
@@ -4819,10 +4836,7 @@ uint64_t compile_factor() {
 
     type = compile_expression();
 
-    if (symbol == SYM_RPARENTHESIS)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_RPARENTHESIS);
+    get_expected_symbol(SYM_RPARENTHESIS);
   } else {
     syntax_error_unexpected();
 
@@ -5087,13 +5101,7 @@ void compile_while() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          if (symbol == SYM_RBRACE)
-            get_symbol();
-          else {
-            syntax_error_symbol(SYM_RBRACE);
-
-            exit(EXITCODE_PARSERERROR);
-          }
+          get_required_symbol(SYM_RBRACE);
         } else
           // only one statement without {}
           compile_statement();
@@ -5151,13 +5159,7 @@ void compile_if() {
           while (is_not_rbrace_or_eof())
             compile_statement();
 
-          if (symbol == SYM_RBRACE)
-            get_symbol();
-          else {
-            syntax_error_symbol(SYM_RBRACE);
-
-            exit(EXITCODE_PARSERERROR);
-          }
+          get_required_symbol(SYM_RBRACE);
         } else
         // only one statement without {}
           compile_statement();
@@ -5182,13 +5184,7 @@ void compile_if() {
             while (is_not_rbrace_or_eof())
               compile_statement();
 
-            if (symbol == SYM_RBRACE)
-              get_symbol();
-            else {
-              syntax_error_symbol(SYM_RBRACE);
-
-              exit(EXITCODE_PARSERERROR);
-            }
+            get_required_symbol(SYM_RBRACE);
 
           // only one statement without {}
           } else
@@ -5216,10 +5212,7 @@ void compile_return() {
 
   // assert: allocated_temporaries == 0
 
-  if (symbol == SYM_RETURN)
-    get_symbol();
-  else
-    syntax_error_symbol(SYM_RETURN);
+  get_expected_symbol(SYM_RETURN);
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
@@ -5278,10 +5271,7 @@ void compile_statement() {
   else if (symbol == SYM_RETURN) {
     compile_return();
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   }
   // ( ["*"] variable | "*" "(" expression ")" ) "=" expression | call
   else {
@@ -5354,10 +5344,7 @@ void compile_statement() {
 
       assignment = 1;
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     } else
       syntax_error_symbol(SYM_IDENTIFIER);
 
@@ -5398,10 +5385,7 @@ void compile_statement() {
       }
     }
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   }
 
   // assert: allocated_temporaries == 0
@@ -5484,10 +5468,7 @@ uint64_t compile_initialization(uint64_t type) {
 
       cast = compile_type();
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     }
 
     // optional: -
@@ -5507,10 +5488,7 @@ uint64_t compile_initialization(uint64_t type) {
     else
       syntax_error_unexpected();
 
-    if (symbol == SYM_SEMICOLON)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_SEMICOLON);
+    get_expected_symbol(SYM_SEMICOLON);
   } else
     syntax_error_symbol(SYM_ASSIGN);
 
@@ -5568,10 +5546,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         }
       }
 
-      if (symbol == SYM_RPARENTHESIS)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+      get_expected_symbol(SYM_RPARENTHESIS);
     } else
       get_symbol();
   } else
@@ -5651,10 +5626,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       // offset of local variables relative to frame pointer is negative
       compile_variable(-number_of_local_variable_bytes);
 
-      if (symbol == SYM_SEMICOLON)
-        get_symbol();
-      else
-        syntax_error_symbol(SYM_SEMICOLON);
+      get_expected_symbol(SYM_SEMICOLON);
     }
 
     procedure_prologue(number_of_local_variable_bytes);
@@ -5883,10 +5855,7 @@ void macro_var_end() {
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
 
-    if (symbol == SYM_RPARENTHESIS)
-      get_symbol();
-    else
-      syntax_error_symbol(SYM_RPARENTHESIS);
+    get_expected_symbol(SYM_RPARENTHESIS);
   } else
     syntax_error_symbol(SYM_IDENTIFIER);
 }
@@ -9141,12 +9110,12 @@ uint64_t print_lui() {
 }
 
 void print_lui_before() {
-  print(": |- ");
+  printf(": |- ");
   print_register_hexadecimal(rd);
 }
 
 void print_lui_after() {
-  print(" -> ");
+  printf(" -> ");
   print_register_hexadecimal(rd);
 }
 
@@ -9195,14 +9164,14 @@ uint64_t print_addi() {
 }
 
 void print_addi_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(" |- ");
+  printf(" |- ");
   print_register_value(rd);
 }
 
 void print_addi_add_sub_mul_divu_remu_sltu_after() {
-  print(" -> ");
+  printf(" -> ");
   print_register_value(rd);
 }
 
@@ -9237,11 +9206,11 @@ uint64_t print_add_sub_mul_divu_remu_sltu() {
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(",");
+  printf(",");
   print_register_value(rs2);
-  print(" |- ");
+  printf(" |- ");
   print_register_value(rd);
 }
 
@@ -9416,7 +9385,7 @@ void print_load_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
@@ -9430,13 +9399,13 @@ void print_load_before() {
       return;
     }
 
-  print(" |-");
+  printf(" |-");
 }
 
 void print_load_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print(" -> ");
+      printf(" -> ");
       print_register_value(rd);
       printf("==mem[0x%lX]", vaddr);
     }
@@ -9509,12 +9478,12 @@ void print_store_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print(",");
+      printf(",");
       print_register_value(rs2);
       if (is_system_register(rd))
         printf(" |- mem[0x%lX]==0x%lX", vaddr, load_virtual_memory(pt, vaddr));
@@ -9524,7 +9493,7 @@ void print_store_before() {
       return;
     }
 
-  print(" |-");
+  printf(" |-");
 }
 
 void print_store_after(uint64_t vaddr) {
@@ -9611,9 +9580,9 @@ uint64_t print_beq() {
 }
 
 void print_beq_before() {
-  print(": ");
+  printf(": ");
   print_register_value(rs1);
-  print(",");
+  printf(",");
   print_register_value(rs2);
   printf(" |- pc==0x%lX", pc);
 }
@@ -9656,10 +9625,10 @@ uint64_t print_jal() {
 }
 
 void print_jal_before() {
-  print(": |- ");
+  printf(": |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print(",");
+    printf(",");
   }
   printf("pc==0x%lX", pc);
 }
@@ -9667,7 +9636,7 @@ void print_jal_before() {
 void print_jal_jalr_after() {
   print_beq_after();
   if (rd != REG_ZR) {
-    print(",");
+    printf(",");
     print_register_hexadecimal(rd);
   }
 }
@@ -9723,12 +9692,12 @@ uint64_t print_jalr() {
 }
 
 void print_jalr_before() {
-  print(": ");
+  printf(": ");
   print_register_hexadecimal(rs1);
-  print(" |- ");
+  printf(" |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print(",");
+    printf(",");
   }
   printf("pc==0x%lX", pc);
 }

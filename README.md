@@ -23,7 +23,7 @@ Selfie is designed as 64-bit system and requires as such a 64-bit system to run 
 2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
 3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
 4. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
-5. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
+5. Book: There is a free book in early draft form based on selfie called [Elementary Computer Science: From Bits and Bytes to the Big Picture](https://github.com/ckirsch/book) reaching out to everyone with an interest in learning about computer science.
 6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
 7. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
 8. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)

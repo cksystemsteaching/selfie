@@ -5,16 +5,54 @@ on:
     paths:
     - '**.c'
     - '**.yml'
+  workflow_dispatch:
+    inputs:
+      assignmentid:
+        description: 'Assignment ID'
+        type: choice
+        required: true
+        options:
+        - bootstrapping
+        - self-compile
+        - print-your-name
+        - hex-literal
+        - bitwise-shift-compilation
+        - bitwise-shift-execution
+        - bitwise-and-or-not
+        - array
+        - array-multidimensional
+        - struct-declaration
+        - struct-execution
+        - for-loop
+        - logical-and-or-not
+        - lazy-evaluation
+        - assembler-parser
+        - self-assembler
+        - processes
+        - fork-wait
+        - fork-wait-exit
+        - lock
+        - threads
+        - treiber-stack
+      oslinux:
+        description: 'Run on Linux'
+        type: boolean
+        required: true
+        default: true
+      osmacos:
+        description: 'Run on macOS'
+        type: boolean
+        required: true
+        default: true
 
 jobs:
-  auto-grade-selfie-assignment:
-    name: Run autograder
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  auto-grade-selfie-assignment-on-linux:
+    name: Run autograder on linux
+    runs-on: ubuntu-latest
     env:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
+    if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.oslinux == 'true')) && ((!github.event.repository.private) || (github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch')) }}
 
     steps:
     - name: Checkout selfie
@@ -26,5 +64,28 @@ jobs:
     # extract assignment from "commit message [assignment]"
     - name: Parse commit message
       run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
+      if: ${{ github.event_name == 'push' }}
+    - name: Autograde assignment
+      run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
+
+  auto-grade-selfie-assignment-on-macos:
+    name: Run autograder on macOS
+    runs-on: macos-latest
+    env:
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASSIGNMENT: ${{ github.event.inputs.assignmentid }}
+    if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.osmacos == 'true')) && ((!github.event.repository.private) || (github.event_name == 'workflow_dispatch')) }}
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Use Python 3.7.x
+      uses: actions/setup-python@v1
+      with:
+        python-version: "3.7.x"
+    # extract assignment from "commit message [assignment]"
+    - name: Parse commit message
+      run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
+      if: ${{ github.event_name == 'push' }}
     - name: Autograde assignment
       run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
