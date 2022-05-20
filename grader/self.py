@@ -405,7 +405,7 @@ assignments: List[Assignment] = [
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threads',
                check_threads),
     Assignment('threadsafe-malloc', 'Systems', 'threadsafe-malloc',
-               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
+               REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threadsafe-malloc',
                check_threadsafe_malloc),
     Assignment('treiber-stack', 'Systems', 'treiber-stack',
                REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
