@@ -24,6 +24,8 @@ class Assignment:
     category: str
     description: str
     create_checks: Callable[[], List[Check]]
+    dependents: []
+    dependencies: []
 
     def __hash__(self):
         return hash(self.name)
