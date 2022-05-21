@@ -320,7 +320,7 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
         args = parser.parse_args(argv[1:])
 
         if args.assignment is None:
-            if args.dependency_tree or args.dependencies:
+            if args.dependency_tree:
                 print(print_dependency_tree(all_assignments), end = '')
                 exit()
             else:
