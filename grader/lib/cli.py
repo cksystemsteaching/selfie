@@ -136,6 +136,8 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
         for dependency in a.dependencies:
             l = l + checkDependencies(dependency)
 
+        set_assignment_name(a.category)
+
         l = l + check(a)
 
         return l
@@ -148,13 +150,13 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     else:
         baseline_results = [ ]
 
-    set_assignment_name(assignment.category)
-
     print_message('executing test \'{}\''.format(assignment.name))
 
     if include_dependencies:
         results = baseline_results + checkDependencies(assignment)
     else:
+        set_assignment_name(assignment.category)
+
         results = baseline_results + check(assignment)
 
     set_assignment_name('')
