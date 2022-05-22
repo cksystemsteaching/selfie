@@ -132,17 +132,24 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     def check(a: Assignment):
         return list(map(execute_with_output, a.create_checks()))
 
-    def checkDependencies(a: Assignment):
+    def check_dependencies(a: Assignment):
         l = []
 
         if a.parent is not None:
-            l = l + checkDependencies(a.parent)
+            l = l + check_dependencies(a.parent)
 
         set_assignment_name(a.category)
 
         l = l + check(a)
 
         return l
+
+    def print_dependencies(a: Assignment):
+        if a.parent is not None:
+            print_dependencies(a.parent)
+            print_message(', ', end='')
+
+        print_message('\'{}\''.format(a.name), end='')
 
     def change_result_to_mandatory(r: CheckResult):
         return CheckResult(r.result, r.msg, r.output, r.warning, r.should_succeed, r.command, True)
@@ -152,11 +159,18 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     else:
         baseline_results = [ ]
 
-    print_message('executing test \'{}\''.format(assignment.name))
-
     if include_dependencies:
-        results = baseline_results + checkDependencies(assignment)
+        print_message('executing test \'{}\' with dependencies ['.format(assignment.name), end='')
+
+        if assignment.parent is not None:
+            print_dependencies(assignment.parent)
+        
+        print_message(']')
+
+        results = baseline_results + check_dependencies(assignment)
     else:
+        print_message('executing test \'{}\''.format(assignment.name))
+
         set_assignment_name(assignment.category)
 
         results = baseline_results + check(assignment)
