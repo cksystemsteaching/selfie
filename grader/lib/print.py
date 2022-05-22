@@ -7,6 +7,7 @@ from typing import List, Tuple
 from lib.model import Assignment
 from lib.string import nfind, nrfind
 
+
 def println(line='', end='\n', loud=False):
     if loud:
         print_loud(line, end=end)
@@ -108,12 +109,13 @@ spinner_thread = None
 def print_processing(msg, command=''):
     global spinner_thread
 
-    if command:
-        msg = msg + ": \033[33m$ " + command + "\033[0m"
+    if not is_in_simple_mode():
+        if command:
+            msg = msg + ": \033[33m$ " + command + "\033[0m"
 
-    spinner_thread = SpinnerThread(msg)
-    spinner_thread.daemon = True  # die when parent dies
-    spinner_thread.start()
+        spinner_thread = SpinnerThread(msg)
+        spinner_thread.daemon = True  # die when parent dies
+        spinner_thread.start()
 
 
 def stop_processing_spinner():
@@ -146,6 +148,23 @@ def leave_quiet_mode():
         sys.stdout.close()
 
     sys.stdout = sys.__stdout__
+
+
+simple_mode = False
+
+def is_in_simple_mode():
+    return simple_mode
+
+def enter_simple_mode():
+    global simple_mode
+
+    simple_mode = True
+
+def leave_simple_mode():
+    global simple_mode
+
+    if simple_mode:
+        simple_mode = False
 
 
 truncate_lines: Tuple[int, int] = (-1, -1)
