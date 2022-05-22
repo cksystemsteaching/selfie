@@ -333,8 +333,8 @@ def check_treiber_stack() -> List[Check]:
                         success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
-assignment_bootstrapping = Assignment('bootstrapping', 'General', '', '', check_bootstrapping, dependents = [], dependencies = [])
-assignment_self_compile = Assignment('self-compile', 'General', '', '', check_self_compilation, dependents = [], dependencies = [])
+assignment_bootstrapping = Assignment('bootstrapping', 'General', '', '', check_bootstrapping)
+assignment_self_compile = Assignment('self-compile', 'General', '', '', check_self_compilation)
 
 
 baseline_assignments: List[Assignment] = [
@@ -345,64 +345,64 @@ baseline_assignments: List[Assignment] = [
 
 assignment_print_your_name = Assignment('print-your-name', 'General', '',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-print-your-name',
-           check_print_your_name, dependents = [], dependencies = [])
+           check_print_your_name)
 assignment_hex_literal = Assignment('hex-literal', 'Compiler', 'hex-literal',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-hex-literal',
-           check_hex_literal, dependents = [], dependencies = [])
+           check_hex_literal)
 assignment_bitwise_shift_compilation = Assignment('bitwise-shift-compilation', 'Compiler', 'bitwise-shift',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-shift-compilation',
-           check_bitwise_shift_compilation, dependents = [], dependencies = [])
+           check_bitwise_shift_compilation)
 assignment_bitwise_shift_execution = Assignment('bitwise-shift-execution', 'Compiler', 'bitwise-shift',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-shift-execution',
-           check_bitwise_shift_execution, dependents = [], dependencies = [assignment_bitwise_shift_compilation])
+           check_bitwise_shift_execution, parent = assignment_bitwise_shift_compilation)
 assignment_bitwise_and_or_not = Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logic',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-and-or-not',
-           check_bitwise_and_or_not, dependents = [], dependencies = [])
+           check_bitwise_and_or_not)
 assignment_array = Assignment('array', 'Compiler', 'array',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
-           check_array, dependents = [], dependencies = [])
+           check_array)
 assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
-           check_multidimensional_array, dependents = [], dependencies = [assignment_array])
+           check_multidimensional_array, parent = assignment_array)
 assignment_struct_declaration = Assignment('struct-declaration', 'Compiler', 'struct',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-declaration',
-           check_struct_declaration, dependents = [], dependencies = [])
+           check_struct_declaration)
 assignment_struct_execution = Assignment('struct-execution', 'Compiler', 'struct',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
-           check_struct_execution, dependents = [], dependencies = [assignment_struct_declaration])
+           check_struct_execution, parent = assignment_struct_declaration)
 assignment_for_loop = Assignment('for-loop', 'Compiler', 'for-loop',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
-           check_for_loop, dependents = [], dependencies = [])
+           check_for_loop)
 assignment_logical_and_or_not = Assignment('logical-and-or-not', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-logical-and-or-not',
-           check_logical_and_or_not, dependents = [], dependencies = [])
+           check_logical_and_or_not)
 assignment_lazy_eval = Assignment('lazy-evaluation', 'Compiler', 'lazy-eval',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-lazy-evaluation',
-           check_lazy_eval, dependents = [], dependencies = [assignment_logical_and_or_not])
+           check_lazy_eval, parent = assignment_logical_and_or_not)
 assignment_assembler_parser = Assignment('assembler-parser', 'Systems', 'assembler',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
-           check_assembler_parser, dependents = [], dependencies = [])
+           check_assembler_parser)
 assignment_self_assemblation = Assignment('self-assembler', 'Systems', 'assembler',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-self-assembler',
-           check_self_assemblation, dependents = [], dependencies = [assignment_assembler_parser])
+           check_self_assemblation, parent = assignment_assembler_parser)
 assignment_processes = Assignment('processes', 'Systems', 'processes',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-processes',
-           check_processes, dependents = [], dependencies = [])
+           check_processes)
 assignment_fork_and_wait = Assignment('fork-wait', 'Systems', 'fork-wait',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait',
-           check_fork_and_wait, dependents = [], dependencies = [assignment_processes])
+           check_fork_and_wait, parent = assignment_processes)
 assignment_fork_wait_exit = Assignment('fork-wait-exit', 'Systems', 'fork-wait',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait-exit',
-           check_fork_wait_exit, dependents = [], dependencies = [assignment_fork_and_wait])
+           check_fork_wait_exit, parent = assignment_fork_and_wait)
 assignment_lock = Assignment('lock', 'Systems', 'lock',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-lock',
-           check_lock, dependents = [], dependencies = [])
+           check_lock)
 assignment_threads = Assignment('threads', 'Systems', 'threads',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threads',
-           check_threads, dependents = [], dependencies = [assignment_fork_and_wait])
+           check_threads, parent = assignment_fork_wait_exit)
 assignment_treiber_stack = Assignment('treiber-stack', 'Systems', 'treiber-stack',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
-           check_treiber_stack, dependents = [], dependencies = [assignment_threads])
+           check_treiber_stack, parent = assignment_threads)
 
 
 assignments: List[Assignment] = [
@@ -430,8 +430,8 @@ assignments: List[Assignment] = [
 
 
 for assignment in assignments:
-    for dependency in assignment.dependencies:
-        dependency.dependents.append(assignment)
+    if assignment.parent is not None:
+        assignment.parent.children.append(assignment)
 
 
 def main(args: List[str]) -> None:

@@ -58,21 +58,23 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
     return stream.getvalue()
 
 def print_dependency_tree(assignments: List[Assignment]):
-    def print_assignment_with_dependencies(assignment, stream, depth):
+    def print_assignment_with_dependents(assignment, stream, depth):
         for i in range(depth):
             print('| ', file=stream, end='')
 
         print('|-{}'.format(assignment.name), file=stream)
 
-        for dependency in assignment.dependents:
-            print_assignment_with_dependencies(dependency, stream, depth + 1)
+        for dependent in assignment.children:
+            print_assignment_with_dependents(dependent, stream, depth + 1)
 
     def print_assignment_of_lecture(lecture, stream):
         print(lecture + ' Assignments:', file=stream)
 
         for assignment in filter(lambda x: x.lecture is lecture, assignments.copy()):
-            if assignment.dependencies == []:
-                print_assignment_with_dependencies(assignment, stream, 0);
+            if assignment.parent is None:
+                print_assignment_with_dependents(assignment, stream, 0);
+
+        print(file=stream)
 
     stream = StringIO()
 
@@ -133,8 +135,8 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     def checkDependencies(a: Assignment):
         l = []
 
-        for dependency in a.dependencies:
-            l = l + checkDependencies(dependency)
+        if a.parent is not None:
+            l = l + checkDependencies(a.parent)
 
         set_assignment_name(a.category)
 
