@@ -693,11 +693,12 @@ void syntax_error_unexpected();
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
 
-void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
-uint64_t* get_variable_or_big_int(char* variable, uint64_t class);
-uint64_t  load_variable_address(uint64_t* entry);
 void      load_upper_base_address(uint64_t* entry);
-uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
+uint64_t* get_variable(char* variable);
+uint64_t  load_variable_address(char* variable);
+uint64_t  load_variable(char* variable);
+void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
+uint64_t  load_big_int(char* variable);
 void      load_integer(uint64_t value);
 void      load_string(char* string);
 
@@ -4373,6 +4374,94 @@ void type_warning(uint64_t expected, uint64_t found) {
   print(" found\n");
 }
 
+void load_upper_base_address(uint64_t* entry) {
+  uint64_t lower;
+  uint64_t upper;
+
+  // assert: n = allocated_temporaries
+
+  lower = get_bits(get_address(entry),  0, 12);
+  upper = get_bits(get_address(entry), 12, 20);
+
+  if (lower >= two_to_the_power_of(11))
+    // add 1 which is effectively 2^12 to cancel sign extension of lower
+    upper = upper + 1;
+
+  talloc();
+
+  // calculate upper part of base address relative to global or frame pointer
+  emit_lui(current_temporary(), sign_extend(upper, 20));
+  emit_add(current_temporary(), get_scope(entry), current_temporary());
+
+  // assert: allocated_temporaries == n + 1
+}
+
+uint64_t* get_variable(char* variable) {
+  uint64_t* entry;
+
+  entry = get_scoped_symbol_table_entry(variable, VARIABLE);
+
+  if (entry != (uint64_t*) 0)
+    return entry;
+  else {
+    syntax_error_undeclared_identifier(variable);
+
+    exit(EXITCODE_PARSERERROR);
+  }
+}
+
+uint64_t load_variable_address(char* variable) {
+  uint64_t* entry;
+  uint64_t offset;
+
+  // assert: n = allocated_temporaries
+
+  entry = get_variable(variable);
+
+  offset = get_address(entry);
+
+  if (is_signed_integer(offset, 12)) {
+    talloc();
+
+    emit_addi(current_temporary(), get_scope(entry), offset);
+  } else {
+    load_upper_base_address(entry);
+
+    emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of variable is grammar attribute
+  return get_type(entry);
+}
+
+uint64_t load_variable(char* variable) {
+  uint64_t* entry;
+  uint64_t offset;
+
+  // assert: n = allocated_temporaries
+
+  entry = get_variable(variable);
+
+  offset = get_address(entry);
+
+  if (is_signed_integer(offset, 12)) {
+    talloc();
+
+    emit_load(current_temporary(), get_scope(entry), offset);
+  } else {
+    load_upper_base_address(entry);
+
+    emit_load(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of variable is grammar attribute
+  return get_type(entry);
+}
+
 void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   uint64_t lower;
   uint64_t upper;
@@ -4410,76 +4499,13 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   }
 }
 
-uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
-  uint64_t* entry;
-
-  if (class == BIGINT)
-    return search_global_symbol_table(variable_or_big_int, class);
-  else {
-    entry = get_scoped_symbol_table_entry(variable_or_big_int, class);
-
-    if (entry != (uint64_t*) 0)
-      return entry;
-    else {
-      syntax_error_undeclared_identifier(variable_or_big_int);
-
-      exit(EXITCODE_PARSERERROR);
-    }
-  }
-}
-
-void load_upper_base_address(uint64_t* entry) {
-  uint64_t lower;
-  uint64_t upper;
-
-  // assert: n = allocated_temporaries
-
-  lower = get_bits(get_address(entry),  0, 12);
-  upper = get_bits(get_address(entry), 12, 20);
-
-  if (lower >= two_to_the_power_of(11))
-    // add 1 which is effectively 2^12 to cancel sign extension of lower
-    upper = upper + 1;
-
-  talloc();
-
-  // calculate upper part of base address relative to global or frame pointer
-  emit_lui(current_temporary(), sign_extend(upper, 20));
-  emit_add(current_temporary(), get_scope(entry), current_temporary());
-
-  // assert: allocated_temporaries == n + 1
-}
-
-uint64_t load_variable_address(uint64_t* entry) {
-  uint64_t offset;
-
-  // assert: n = allocated_temporaries
-
-  offset = get_address(entry);
-
-  if (is_signed_integer(offset, 12)) {
-    talloc();
-
-    emit_addi(current_temporary(), get_scope(entry), offset);
-  } else {
-    load_upper_base_address(entry);
-
-    emit_addi(current_temporary(), current_temporary(), sign_extend(get_bits(offset, 0, 12), 12));
-  }
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of variable or big integer is grammar attribute
-  return get_type(entry);
-}
-
-uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
+uint64_t load_big_int(char* big_int) {
   uint64_t* entry;
   uint64_t offset;
 
   // assert: n = allocated_temporaries
 
-  entry = get_variable_or_big_int(variable_or_big_int, class);
+  entry = search_global_symbol_table(big_int, BIGINT);
 
   offset = get_address(entry);
 
@@ -4495,7 +4521,7 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
 
   // assert: allocated_temporaries == n + 1
 
-  // type of variable or big integer is grammar attribute
+  // type of big integer is grammar attribute
   return get_type(entry);
 }
 
@@ -4520,7 +4546,7 @@ void load_integer(uint64_t value) {
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
 
-    load_variable_or_big_int(integer, BIGINT);
+    load_big_int(integer);
   }
 
   // assert: allocated_temporaries == n + 1
@@ -4827,7 +4853,7 @@ uint64_t compile_factor() {
       emit_addi(REG_A0, REG_ZR, 0);
     } else
       // variable access: identifier
-      type = load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
+      type = load_variable(variable_or_procedure_name);
 
   // integer literal?
   } else if (symbol == SYM_INTEGER) {
@@ -5268,7 +5294,6 @@ void compile_assignment() {
   uint64_t ltype;
   uint64_t rtype;
   char* variable_or_procedure_name;
-  uint64_t* entry;
   uint64_t assignment;
   uint64_t dereference;
 
@@ -5301,9 +5326,7 @@ void compile_assignment() {
     }
     // ["*"] variable "=" expression
     else {
-      entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
-
-      ltype = load_variable_address(entry);
+      ltype = load_variable_address(variable_or_procedure_name);
 
       // assert: allocated_temporaries == 1
 
