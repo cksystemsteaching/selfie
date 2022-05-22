@@ -5302,6 +5302,8 @@ void compile_assignment() {
   uint64_t assignment;
   uint64_t dereference;
 
+  // assert: allocated_temporaries == 0
+
   assignment = 0;
 
   dereference = 0;
@@ -5331,12 +5333,12 @@ void compile_assignment() {
     }
     // ["*"] variable "=" expression
     else {
-      ltype = load_variable_address(variable_or_procedure_name);
-
-      // assert: allocated_temporaries == 1
-
       if (dereference)
-        emit_load(current_temporary(), current_temporary(), 0);
+        // load from address, value is in temporary
+        ltype = load_variable(variable_or_procedure_name);
+      else
+        // address is in temporary
+        ltype = load_variable_address(variable_or_procedure_name);
 
       // assert: allocated_temporaries == 1
 
