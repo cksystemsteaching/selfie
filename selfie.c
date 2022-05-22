@@ -4446,6 +4446,11 @@ uint64_t load_variable(char* variable) {
 
   offset = get_address(entry);
 
+  // the following if-construct is equivalent to just doing:
+  //   load_variable_address(variable);
+  //   emit_load(current_temporary(), 0, current_temporary());
+  // but it requires 1 less instruction this way
+
   if (is_signed_integer(offset, 12)) {
     talloc();
 
