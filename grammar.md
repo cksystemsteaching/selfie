@@ -50,7 +50,7 @@ variable          = type identifier .
 
 statement         = call ";" | while | if | return ";" | assignment ";" .
 
-assignment        = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression
+assignment        = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
 
 call              = identifier "(" [ expression { "," expression } ] ")" .
 
