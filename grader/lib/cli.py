@@ -62,7 +62,7 @@ def print_dependency_tree(assignments: List[Assignment]):
         for i in range(depth):
             print('| ', file=stream, end='')
 
-        print('|-{}'.format(assignment.name), file=stream)
+        print('|- {}'.format(assignment.name), file=stream)
 
         for dependent in assignment.children:
             print_assignment_with_dependents(dependent, stream, depth + 1)
