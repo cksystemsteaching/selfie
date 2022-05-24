@@ -328,8 +328,8 @@ def check_threadsafe_malloc() -> List[Check]:
         check_mipster_execution('no-switch-malloc.c',
                                 "Hello World!    ",
                                 'malloc() does not force a context switch') + \
-        check_mipster_execution('threadsafe-malloc.c', 42,
-                                'malloc() is thread-safe', timeout=120)
+        check_execution('./selfie -c <assignment>threadsafe-malloc.c -m 128',
+                        'malloc() is thread-safe', success_criteria=42, timeout=120)
 
 
 def check_treiber_stack() -> List[Check]:
