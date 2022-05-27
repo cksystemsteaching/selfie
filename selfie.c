@@ -5295,58 +5295,44 @@ void compile_return() {
   number_of_return = number_of_return + 1;
 }
 
-void compile_assignment() {
+void compile_assignment(char* variable_name) {
   uint64_t ltype;
   uint64_t rtype;
-  char* variable_or_procedure_name;
-  uint64_t assignment;
   uint64_t dereference;
 
   // assert: allocated_temporaries == 0
 
-  assignment = 0;
+  ltype = 0;
 
   dereference = 0;
 
-  // ["*"]
-  if (symbol == SYM_ASTERISK) {
-    get_symbol();
+  // variable_name can be a string already or just 0
+  // if it is just 0 we expect "*"
+  if (variable_name == (char*) 0) {
+    // "*"
+    if (get_expected_symbol(SYM_ASTERISK)) {
+      dereference = 1;
 
-    dereference = 1;
-  }
+      if (symbol == SYM_IDENTIFIER) {
+        variable_name = identifier;
 
-  // ["*"] variable "=" expression | call
-  if (symbol == SYM_IDENTIFIER) {
-    variable_or_procedure_name = identifier;
-
-    get_symbol();
-
-    // procedure call
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_call(variable_or_procedure_name);
-
-      // reset return register to initial return value
-      // for missing return expressions
-      emit_addi(REG_A0, REG_ZR, 0);
-    }
-    // ["*"] variable "=" expression
-    else {
-      if (dereference)
-        // load from address, value is in temporary
-        ltype = load_variable(variable_or_procedure_name);
-      else
-        // address is in temporary
-        ltype = load_variable_address(variable_or_procedure_name);
-
-      // assert: allocated_temporaries == 1
-
-      // we expect an assignment
-      assignment = 1;
+        get_symbol();
+      }
     }
   }
-  // "*" "(" expression ")" = "expression"
+
+  // ["*"] variable "=" expression
+  if (variable_name != (char*) 0) {
+    if (dereference)
+      // load from address, value is in temporary
+      ltype = load_variable(variable_name);
+    else
+      // address is in temporary
+      ltype = load_variable_address(variable_name);
+
+    // assert: allocated_temporaries == 1
+  }
+  // "*" "(" expression ")" = expression
   else if (symbol == SYM_LPARENTHESIS) {
     if (dereference == 0) {
       syntax_error_symbol(SYM_ASTERISK);
@@ -5360,50 +5346,54 @@ void compile_assignment() {
 
     // assert: allocated_temporaries == 1
 
-    assignment = 1;
-
     get_expected_symbol(SYM_RPARENTHESIS);
-  } else
+  } else {
     syntax_error_symbol(SYM_IDENTIFIER);
 
-  if (assignment) {
-    // address stored in current temporary
-    // assert: allocated_temporaries == 1
+    // we expect: allocated_temporaries == 1
+    // this way we do not have to exit right away
+    // and can keep running the compiler
+    talloc();
+  }
 
-    if (symbol == SYM_ASSIGN) {
-      get_symbol();
+  // address stored in current temporary
+  // assert: allocated_temporaries == 1
 
-      if (dereference) {
-        if (ltype != UINT64STAR_T)
-          type_warning(UINT64STAR_T, ltype);
-        else
-          ltype = UINT64_T;
-      }
+  if (symbol == SYM_ASSIGN) {
+    get_symbol();
 
-      rtype = compile_expression();
+    if (dereference) {
+      if (ltype != UINT64STAR_T)
+        type_warning(UINT64STAR_T, ltype);
+      else
+        ltype = UINT64_T;
+    }
 
-      // assert: allocated_temporaries == 2
+    rtype = compile_expression();
 
-      if (ltype != rtype)
-        type_warning(ltype, rtype);
+    // assert: allocated_temporaries == 2
 
-      emit_store(previous_temporary(), 0, current_temporary());
+    if (ltype != rtype)
+      type_warning(ltype, rtype);
 
-      tfree(1);
-
-      // assert: allocated_temporaries == 1
-
-      number_of_assignments = number_of_assignments + 1;
-    } else
-      syntax_error_symbol(SYM_ASSIGN);
-
-    // assert: allocated_temporaries == 1
+    emit_store(previous_temporary(), 0, current_temporary());
 
     tfree(1);
-  }
+
+    // assert: allocated_temporaries == 1
+
+    number_of_assignments = number_of_assignments + 1;
+  } else
+    syntax_error_symbol(SYM_ASSIGN);
+
+  // assert: allocated_temporaries == 1
+
+  tfree(1);
 }
 
 void compile_statement() {
+  char* variable_or_procedure_name;
+
   // assert: allocated_temporaries == 0
 
   while (look_for_statement()) {
@@ -5429,9 +5419,31 @@ void compile_statement() {
 
     get_expected_symbol(SYM_SEMICOLON);
   }
-  // ( ["*"] variable | "*" "(" expression ")" ) "=" expression | call
+  // call ";" | assignment ";"
   else {
-    compile_assignment();
+    if (symbol == SYM_IDENTIFIER) {
+      variable_or_procedure_name = identifier;
+
+      get_symbol();
+
+      // procedure call
+      if (symbol == SYM_LPARENTHESIS) {
+        get_symbol();
+
+        compile_call(variable_or_procedure_name);
+
+        // reset return register to initial return value
+        // for missing return expressions
+        emit_addi(REG_A0, REG_ZR, 0);
+
+      // if it is not a call it has to be an assignment
+      } else
+        // variable name already found
+        compile_assignment(variable_or_procedure_name);
+
+    // might be "*"
+    } else
+      compile_assignment((char*) 0);
 
     get_expected_symbol(SYM_SEMICOLON);
   }
