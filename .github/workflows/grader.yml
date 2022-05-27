@@ -66,7 +66,7 @@ jobs:
       run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
       if: ${{ github.event_name == 'push' }}
     - name: Autograde assignment
-      run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
+      run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py -s $ASSIGNMENT; fi
 
   auto-grade-selfie-assignment-on-macos:
     name: Run autograder on macOS
@@ -88,4 +88,4 @@ jobs:
       run: echo "ASSIGNMENT=$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')" >> $GITHUB_ENV
       if: ${{ github.event_name == 'push' }}
     - name: Autograde assignment
-      run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
+      run: if [ "$ASSIGNMENT" != 'skip ci' ]; then ./grader/self.py -s $ASSIGNMENT; fi
