@@ -698,7 +698,7 @@ uint64_t* get_variable(char* variable);
 uint64_t  load_variable_address(char* variable);
 uint64_t  load_variable(char* variable);
 void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
-uint64_t  load_big_int(char* variable);
+uint64_t  load_big_integer(char* big_integer);
 void      load_integer(uint64_t value);
 void      load_string(char* string);
 
@@ -4504,13 +4504,13 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   }
 }
 
-uint64_t load_big_int(char* big_int) {
+uint64_t load_big_integer(char* big_integer) {
   uint64_t* entry;
   uint64_t offset;
 
   // assert: n = allocated_temporaries
 
-  entry = search_global_symbol_table(big_int, BIGINT);
+  entry = search_global_symbol_table(big_integer, BIGINT);
 
   offset = get_address(entry);
 
@@ -4551,7 +4551,7 @@ void load_integer(uint64_t value) {
       create_symbol_table_entry(GLOBAL_TABLE, integer, line_number, BIGINT, UINT64_T, value, -data_size);
     }
 
-    load_big_int(integer);
+    load_big_integer(integer);
   }
 
   // assert: allocated_temporaries == n + 1
