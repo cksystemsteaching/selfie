@@ -708,20 +708,21 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes);
 void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 uint64_t  compile_macro(uint64_t* entry);
+
+void      compile_return();
 uint64_t  compile_call(char* procedure);
-uint64_t  compile_factor();
-uint64_t  compile_term();
-uint64_t  compile_simple_expression();
-uint64_t  compile_expression();
+void      compile_procedure(char* procedure, uint64_t type);
 void      compile_while();
 void      compile_if();
-void      compile_return();
+uint64_t  compile_factor();
+uint64_t  compile_term();
+uint64_t  compile_arithmetic();
+uint64_t  compile_expression();
 void      compile_assignment();
 void      compile_statement();
 uint64_t  compile_type();
 uint64_t* compile_variable(uint64_t offset);
 uint64_t  compile_initialization(uint64_t type);
-void      compile_procedure(char* procedure, uint64_t type);
 void      compile_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -4677,6 +4678,38 @@ uint64_t compile_macro(uint64_t* entry) {
   return get_type(entry);
 }
 
+void compile_return() {
+  uint64_t type;
+
+  // assert: allocated_temporaries == 0
+
+  get_expected_symbol(SYM_RETURN);
+
+  // optional: expression
+  if (symbol != SYM_SEMICOLON) {
+    type = compile_expression();
+
+    if (type != return_type)
+      type_warning(return_type, type);
+
+    // save value of expression in return register
+    emit_addi(REG_A0, current_temporary(), 0);
+
+    tfree(1);
+  } else if (return_type != VOID_T)
+    type_warning(return_type, VOID_T);
+
+  // jump to procedure epilogue through fixup chain using absolute address
+  emit_jal(REG_ZR, return_branches);
+
+  // new head of fixup chain
+  return_branches = code_size - INSTRUCTIONSIZE;
+
+  // assert: allocated_temporaries == 0
+
+  number_of_return = number_of_return + 1;
+}
+
 uint64_t compile_call(char* procedure) {
   uint64_t* entry;
   uint64_t number_of_temporaries;
@@ -4770,6 +4803,317 @@ uint64_t compile_call(char* procedure) {
 
   // return type is grammar attribute
   return type;
+}
+
+void compile_procedure(char* procedure, uint64_t type) {
+  uint64_t is_variadic;
+  uint64_t number_of_parameters;
+  uint64_t* entry;
+  uint64_t number_of_local_variable_bytes;
+
+  local_symbol_table = (uint64_t*) 0;
+
+  // assuming procedure is not variadic
+  is_variadic = 0;
+
+  number_of_parameters = 0;
+
+  // try parsing formal parameters
+
+  if (symbol == SYM_LPARENTHESIS) {
+    get_symbol();
+
+    if (symbol != SYM_RPARENTHESIS) {
+      entry = compile_variable(0);
+
+      number_of_parameters = 1;
+
+      // 2 * WORDSIZE offset to skip frame pointer and link
+      // additional offset (number_of_parameters - 1) * WORDSIZE
+      // since actual parameters are pushed onto stack in reverse
+      set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
+
+      while (is_possibly_parameter(is_variadic)) {
+        get_symbol();
+
+        if (symbol == SYM_ELLIPSIS) {
+          get_symbol();
+
+          is_variadic = 1;
+        } else {
+          entry = compile_variable(0);
+
+          number_of_parameters = number_of_parameters + 1;
+
+          set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
+        }
+      }
+
+      get_expected_symbol(SYM_RPARENTHESIS);
+    } else
+      get_symbol();
+  } else
+    syntax_error_symbol(SYM_LPARENTHESIS);
+
+  if (is_variadic)
+    // negative number of parameters indicates procedure is variadic
+    number_of_parameters = -number_of_parameters;
+
+  // try parsing rest of procedure declaration or definition
+
+  // bootstrap selfie implementation of *printf procedures
+  procedure = remove_prefix_from_printf_procedures(procedure);
+
+  // look up procedure to see if it has been called, declared, or even defined
+  entry = search_global_symbol_table(procedure, PROCEDURE);
+
+  if (entry == (uint64_t*) 0)
+    // procedure never called nor declared nor defined
+    entry = create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
+  else if (get_type(entry) == UNDECLARED_T)
+    // procedure already called but neither declared nor defined
+    set_type(entry, type);
+
+  if (symbol == SYM_SEMICOLON) {
+    // this is a procedure declaration
+
+    if (get_type(entry) != type)
+      // procedure already declared or even defined before;
+      // warn about mismatching return type but otherwise ignore
+      type_warning(get_type(entry), type);
+
+    get_symbol();
+
+  } else if (symbol == SYM_LBRACE) {
+    // this is a procedure definition
+
+    if (is_undefined_procedure(entry)) {
+      set_line_number(entry, line_number);
+
+      if (get_type(entry) != type) {
+        // procedure already declared but with different return type
+        type_warning(get_type(entry), type);
+
+        // return type of definition counts
+        set_type(entry, type);
+      }
+
+      if (get_address(entry) != 0)
+        // procedure already called but not defined
+        fixlink_relative(get_address(entry), code_size);
+
+      set_address(entry, code_size);
+
+      if (string_compare(procedure, main_name)) {
+        // first source containing main procedure provides binary name
+        binary_name = source_name;
+
+        // account for initial call to main procedure
+        number_of_calls = number_of_calls + 1;
+      }
+    } else {
+      // procedure already defined
+      print_line_number("warning", line_number);
+      printf("redefinition of procedure %s ignored\n", procedure);
+    }
+
+    get_symbol();
+
+    // try parsing local variable declarations
+
+    number_of_local_variable_bytes = 0;
+
+    while (symbol == SYM_UINT64) {
+      number_of_local_variable_bytes = number_of_local_variable_bytes + WORDSIZE;
+
+      // offset of local variables relative to frame pointer is negative
+      compile_variable(-number_of_local_variable_bytes);
+
+      get_expected_symbol(SYM_SEMICOLON);
+    }
+
+    procedure_prologue(number_of_local_variable_bytes);
+
+    // macros require access to current procedure
+    current_procedure = entry;
+
+    // create a fixup chain for return statements
+    return_branches = 0;
+
+    return_type = type;
+
+    while (is_not_rbrace_or_eof())
+      // assert: allocated_temporaries == 0
+      compile_statement();
+
+    return_type = 0;
+
+    if (symbol == SYM_RBRACE) {
+      fixlink_relative(return_branches, code_size);
+
+      return_branches = 0;
+
+      if (is_variadic)
+        procedure_epilogue(-number_of_parameters * WORDSIZE);
+      else
+        procedure_epilogue(number_of_parameters * WORDSIZE);
+
+      get_symbol();
+    } else {
+      syntax_error_symbol(SYM_RBRACE);
+
+      exit(EXITCODE_PARSERERROR);
+    }
+  } else
+    syntax_error_unexpected();
+
+  current_procedure = (uint64_t*) 0;
+
+  local_symbol_table = (uint64_t*) 0;
+
+  // assert: allocated_temporaries == 0
+}
+
+void compile_while() {
+  uint64_t jump_back_to_while;
+  uint64_t branch_forward_to_end;
+
+  // assert: allocated_temporaries == 0
+
+  jump_back_to_while = code_size;
+
+  branch_forward_to_end = 0;
+
+  // while ( expression )
+  if (symbol == SYM_WHILE) {
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_expression();
+
+      // we do not know where to branch, fixup later
+      branch_forward_to_end = code_size;
+
+      emit_beq(current_temporary(), REG_ZR, 0);
+
+      tfree(1);
+
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        // zero or more statements: { statement }
+        if (symbol == SYM_LBRACE) {
+          get_symbol();
+
+          while (is_not_rbrace_or_eof())
+            compile_statement();
+
+          get_required_symbol(SYM_RBRACE);
+        } else
+          // only one statement without {}
+          compile_statement();
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else
+      syntax_error_symbol(SYM_LPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_WHILE);
+
+  // we use JAL for the unconditional jump back to the loop condition because:
+  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
+  // 2. GCC also uses JAL for the unconditional back jump of a while loop
+  emit_jal(REG_ZR, jump_back_to_while - code_size);
+
+  if (branch_forward_to_end != 0)
+    // first instruction after loop body will be generated here
+    // now we have the address for the conditional branch from above
+    fixup_relative_BFormat(branch_forward_to_end);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_while = number_of_while + 1;
+}
+
+void compile_if() {
+  uint64_t branch_forward_to_else_or_end;
+  uint64_t jump_forward_to_end;
+
+  // assert: allocated_temporaries == 0
+
+  // if ( expression )
+  if (symbol == SYM_IF) {
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_expression();
+
+      // if the "if" case is not true we branch to "else" (if provided)
+      branch_forward_to_else_or_end = code_size;
+
+      emit_beq(current_temporary(), REG_ZR, 0);
+
+      tfree(1);
+
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        // zero or more statements: { statement }
+        if (symbol == SYM_LBRACE) {
+          get_symbol();
+
+          while (is_not_rbrace_or_eof())
+            compile_statement();
+
+          get_required_symbol(SYM_RBRACE);
+        } else
+        // only one statement without {}
+          compile_statement();
+
+        //optional: else
+        if (symbol == SYM_ELSE) {
+          get_symbol();
+
+          // if the "if" case was true we skip the "else" case
+          // by unconditionally jumping to the end
+          jump_forward_to_end = code_size;
+
+          emit_jal(REG_ZR, 0);
+
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branch_forward_to_else_or_end);
+
+          // zero or more statements: { statement }
+          if (symbol == SYM_LBRACE) {
+            get_symbol();
+
+            while (is_not_rbrace_or_eof())
+              compile_statement();
+
+            get_required_symbol(SYM_RBRACE);
+
+          // only one statement without {}
+          } else
+            compile_statement();
+
+          // if the "if" case was true we unconditionally jump here
+          fixup_relative_JFormat(jump_forward_to_end, code_size);
+        } else
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branch_forward_to_else_or_end);
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else
+      syntax_error_symbol(SYM_LPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_IF);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_if = number_of_if + 1;
 }
 
 uint64_t compile_factor() {
@@ -4969,7 +5313,7 @@ uint64_t compile_term() {
   return ltype;
 }
 
-uint64_t compile_simple_expression() {
+uint64_t compile_arithmetic() {
   uint64_t ltype;
   uint64_t operator_symbol;
   uint64_t rtype;
@@ -5049,7 +5393,7 @@ uint64_t compile_expression() {
 
   // assert: n = allocated_temporaries
 
-  ltype = compile_simple_expression();
+  ltype = compile_arithmetic();
 
   // assert: allocated_temporaries == n + 1
 
@@ -5059,7 +5403,7 @@ uint64_t compile_expression() {
 
     get_symbol();
 
-    rtype = compile_simple_expression();
+    rtype = compile_arithmetic();
 
     // assert: allocated_temporaries == n + 2
 
@@ -5119,180 +5463,6 @@ uint64_t compile_expression() {
 
   // type of expression is grammar attribute
   return ltype;
-}
-
-void compile_while() {
-  uint64_t jump_back_to_while;
-  uint64_t branch_forward_to_end;
-
-  // assert: allocated_temporaries == 0
-
-  jump_back_to_while = code_size;
-
-  branch_forward_to_end = 0;
-
-  // while ( expression )
-  if (symbol == SYM_WHILE) {
-    get_symbol();
-
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_expression();
-
-      // we do not know where to branch, fixup later
-      branch_forward_to_end = code_size;
-
-      emit_beq(current_temporary(), REG_ZR, 0);
-
-      tfree(1);
-
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
-
-        // zero or more statements: { statement }
-        if (symbol == SYM_LBRACE) {
-          get_symbol();
-
-          while (is_not_rbrace_or_eof())
-            compile_statement();
-
-          get_required_symbol(SYM_RBRACE);
-        } else
-          // only one statement without {}
-          compile_statement();
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
-  } else
-    syntax_error_symbol(SYM_WHILE);
-
-  // we use JAL for the unconditional jump back to the loop condition because:
-  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
-  // 2. GCC also uses JAL for the unconditional back jump of a while loop
-  emit_jal(REG_ZR, jump_back_to_while - code_size);
-
-  if (branch_forward_to_end != 0)
-    // first instruction after loop body will be generated here
-    // now we have the address for the conditional branch from above
-    fixup_relative_BFormat(branch_forward_to_end);
-
-  // assert: allocated_temporaries == 0
-
-  number_of_while = number_of_while + 1;
-}
-
-void compile_if() {
-  uint64_t branch_forward_to_else_or_end;
-  uint64_t jump_forward_to_end;
-
-  // assert: allocated_temporaries == 0
-
-  // if ( expression )
-  if (symbol == SYM_IF) {
-    get_symbol();
-
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_expression();
-
-      // if the "if" case is not true we branch to "else" (if provided)
-      branch_forward_to_else_or_end = code_size;
-
-      emit_beq(current_temporary(), REG_ZR, 0);
-
-      tfree(1);
-
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
-
-        // zero or more statements: { statement }
-        if (symbol == SYM_LBRACE) {
-          get_symbol();
-
-          while (is_not_rbrace_or_eof())
-            compile_statement();
-
-          get_required_symbol(SYM_RBRACE);
-        } else
-        // only one statement without {}
-          compile_statement();
-
-        //optional: else
-        if (symbol == SYM_ELSE) {
-          get_symbol();
-
-          // if the "if" case was true we skip the "else" case
-          // by unconditionally jumping to the end
-          jump_forward_to_end = code_size;
-
-          emit_jal(REG_ZR, 0);
-
-          // if the "if" case was not true we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
-
-          // zero or more statements: { statement }
-          if (symbol == SYM_LBRACE) {
-            get_symbol();
-
-            while (is_not_rbrace_or_eof())
-              compile_statement();
-
-            get_required_symbol(SYM_RBRACE);
-
-          // only one statement without {}
-          } else
-            compile_statement();
-
-          // if the "if" case was true we unconditionally jump here
-          fixup_relative_JFormat(jump_forward_to_end, code_size);
-        } else
-          // if the "if" case was not true we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
-  } else
-    syntax_error_symbol(SYM_IF);
-
-  // assert: allocated_temporaries == 0
-
-  number_of_if = number_of_if + 1;
-}
-
-void compile_return() {
-  uint64_t type;
-
-  // assert: allocated_temporaries == 0
-
-  get_expected_symbol(SYM_RETURN);
-
-  // optional: expression
-  if (symbol != SYM_SEMICOLON) {
-    type = compile_expression();
-
-    if (type != return_type)
-      type_warning(return_type, type);
-
-    // save value of expression in return register
-    emit_addi(REG_A0, current_temporary(), 0);
-
-    tfree(1);
-  } else if (return_type != VOID_T)
-    type_warning(return_type, VOID_T);
-
-  // jump to procedure epilogue through fixup chain using absolute address
-  emit_jal(REG_ZR, return_branches);
-
-  // new head of fixup chain
-  return_branches = code_size - INSTRUCTIONSIZE;
-
-  // assert: allocated_temporaries == 0
-
-  number_of_return = number_of_return + 1;
 }
 
 void compile_assignment(char* variable_name) {
@@ -5560,175 +5730,6 @@ uint64_t compile_initialization(uint64_t type) {
 
   // initial value is grammar attribute
   return initial_value;
-}
-
-void compile_procedure(char* procedure, uint64_t type) {
-  uint64_t is_variadic;
-  uint64_t number_of_parameters;
-  uint64_t* entry;
-  uint64_t number_of_local_variable_bytes;
-
-  local_symbol_table = (uint64_t*) 0;
-
-  // assuming procedure is not variadic
-  is_variadic = 0;
-
-  number_of_parameters = 0;
-
-  // try parsing formal parameters
-
-  if (symbol == SYM_LPARENTHESIS) {
-    get_symbol();
-
-    if (symbol != SYM_RPARENTHESIS) {
-      entry = compile_variable(0);
-
-      number_of_parameters = 1;
-
-      // 2 * WORDSIZE offset to skip frame pointer and link
-      // additional offset (number_of_parameters - 1) * WORDSIZE
-      // since actual parameters are pushed onto stack in reverse
-      set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
-
-      while (is_possibly_parameter(is_variadic)) {
-        get_symbol();
-
-        if (symbol == SYM_ELLIPSIS) {
-          get_symbol();
-
-          is_variadic = 1;
-        } else {
-          entry = compile_variable(0);
-
-          number_of_parameters = number_of_parameters + 1;
-
-          set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
-        }
-      }
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-    } else
-      get_symbol();
-  } else
-    syntax_error_symbol(SYM_LPARENTHESIS);
-
-  if (is_variadic)
-    // negative number of parameters indicates procedure is variadic
-    number_of_parameters = -number_of_parameters;
-
-  // try parsing rest of procedure declaration or definition
-
-  // bootstrap selfie implementation of *printf procedures
-  procedure = remove_prefix_from_printf_procedures(procedure);
-
-  // look up procedure to see if it has been called, declared, or even defined
-  entry = search_global_symbol_table(procedure, PROCEDURE);
-
-  if (entry == (uint64_t*) 0)
-    // procedure never called nor declared nor defined
-    entry = create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
-  else if (get_type(entry) == UNDECLARED_T)
-    // procedure already called but neither declared nor defined
-    set_type(entry, type);
-
-  if (symbol == SYM_SEMICOLON) {
-    // this is a procedure declaration
-
-    if (get_type(entry) != type)
-      // procedure already declared or even defined before;
-      // warn about mismatching return type but otherwise ignore
-      type_warning(get_type(entry), type);
-
-    get_symbol();
-
-  } else if (symbol == SYM_LBRACE) {
-    // this is a procedure definition
-
-    if (is_undefined_procedure(entry)) {
-      set_line_number(entry, line_number);
-
-      if (get_type(entry) != type) {
-        // procedure already declared but with different return type
-        type_warning(get_type(entry), type);
-
-        // return type of definition counts
-        set_type(entry, type);
-      }
-
-      if (get_address(entry) != 0)
-        // procedure already called but not defined
-        fixlink_relative(get_address(entry), code_size);
-
-      set_address(entry, code_size);
-
-      if (string_compare(procedure, main_name)) {
-        // first source containing main procedure provides binary name
-        binary_name = source_name;
-
-        // account for initial call to main procedure
-        number_of_calls = number_of_calls + 1;
-      }
-    } else {
-      // procedure already defined
-      print_line_number("warning", line_number);
-      printf("redefinition of procedure %s ignored\n", procedure);
-    }
-
-    get_symbol();
-
-    // try parsing local variable declarations
-
-    number_of_local_variable_bytes = 0;
-
-    while (symbol == SYM_UINT64) {
-      number_of_local_variable_bytes = number_of_local_variable_bytes + WORDSIZE;
-
-      // offset of local variables relative to frame pointer is negative
-      compile_variable(-number_of_local_variable_bytes);
-
-      get_expected_symbol(SYM_SEMICOLON);
-    }
-
-    procedure_prologue(number_of_local_variable_bytes);
-
-    // macros require access to current procedure
-    current_procedure = entry;
-
-    // create a fixup chain for return statements
-    return_branches = 0;
-
-    return_type = type;
-
-    while (is_not_rbrace_or_eof())
-      // assert: allocated_temporaries == 0
-      compile_statement();
-
-    return_type = 0;
-
-    if (symbol == SYM_RBRACE) {
-      fixlink_relative(return_branches, code_size);
-
-      return_branches = 0;
-
-      if (is_variadic)
-        procedure_epilogue(-number_of_parameters * WORDSIZE);
-      else
-        procedure_epilogue(number_of_parameters * WORDSIZE);
-
-      get_symbol();
-    } else {
-      syntax_error_symbol(SYM_RBRACE);
-
-      exit(EXITCODE_PARSERERROR);
-    }
-  } else
-    syntax_error_unexpected();
-
-  current_procedure = (uint64_t*) 0;
-
-  local_symbol_table = (uint64_t*) 0;
-
-  // assert: allocated_temporaries == 0
 }
 
 void compile_cstar() {
