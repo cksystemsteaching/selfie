@@ -720,6 +720,7 @@ uint64_t  compile_arithmetic();
 uint64_t  compile_expression();
 void      compile_assignment();
 void      compile_statement();
+uint64_t  compile_value();
 uint64_t  compile_type();
 uint64_t* compile_variable(uint64_t offset);
 uint64_t  compile_initialization(uint64_t type);
@@ -5204,21 +5205,9 @@ uint64_t compile_factor() {
       // variable access: identifier
       type = load_variable(variable_or_procedure_name);
 
-  // integer literal?
-  } else if (symbol == SYM_INTEGER) {
-    load_integer(literal);
-
-    get_symbol();
-
-    type = UINT64_T;
-
-  // character literal?
-  } else if (symbol == SYM_CHARACTER) {
-    talloc();
-
-    emit_addi(current_temporary(), REG_ZR, literal);
-
-    get_symbol();
+  // integer or character literal?
+  } else if (is_int_or_char_literal()) {
+    load_integer(compile_value());
 
     type = UINT64_T;
 
@@ -5621,6 +5610,18 @@ void compile_statement() {
   // assert: allocated_temporaries == 0
 }
 
+uint64_t compile_value() {
+  if (is_int_or_char_literal())
+    get_symbol();
+  else {
+    syntax_error_symbol(SYM_INTEGER);
+
+    return 0;
+  }
+
+  return literal;
+}
+
 uint64_t compile_type() {
   uint64_t type;
 
@@ -5706,17 +5707,15 @@ uint64_t compile_initialization(uint64_t type) {
       integer_is_signed = 1;
 
       get_symbol();
+    }
 
+    initial_value = compile_value();
+
+    if (integer_is_signed) {
       integer_is_signed = 0;
 
-      initial_value = -literal;
-    } else
-      initial_value = literal;
-
-    if (is_int_or_char_literal())
-      get_symbol();
-    else
-      syntax_error_unexpected();
+      initial_value = -initial_value;
+    }
 
     get_expected_symbol(SYM_SEMICOLON);
   } else
