@@ -12,6 +12,7 @@ from lib.model import Assignment, Check, CheckResult
 from lib.grade import grade
 from lib.checks import set_home_path, set_assignment_name
 from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
+                       enter_simple_mode, leave_simple_mode,
                        print_message, print_warning, print_grade, print_processing,
                        stop_processing_spinner, print_passed, print_failed,
                        reset_truncate, set_truncate)
@@ -32,6 +33,7 @@ For more detailed information about its usage, please consult the README.
 bulk_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
+include_dependencies = False
 
 
 def error(msg):
@@ -55,6 +57,32 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
 
     return stream.getvalue()
 
+def print_dependency_tree(assignments: List[Assignment]):
+    def print_assignment_with_dependents(assignment, stream, depth):
+        for i in range(depth):
+            print('| ', file=stream, end='')
+
+        print('|- {}'.format(assignment.name), file=stream)
+
+        for dependent in assignment.children:
+            print_assignment_with_dependents(dependent, stream, depth + 1)
+
+    def print_assignment_of_lecture(lecture, stream):
+        print(lecture + ' Assignments:', file=stream)
+
+        for assignment in filter(lambda x: x.lecture is lecture, assignments.copy()):
+            if assignment.parent is None:
+                print_assignment_with_dependents(assignment, stream, 0);
+
+        print(file=stream)
+
+    stream = StringIO()
+
+    print_assignment_of_lecture('General', stream)
+    print_assignment_of_lecture('Compiler', stream)
+    print_assignment_of_lecture('Systems', stream)
+
+    return stream.getvalue()
 
 def parse_assignment(args: str, assignments: List[Assignment]) -> Optional[Assignment]:
     if not args:
@@ -104,6 +132,25 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     def check(a: Assignment):
         return list(map(execute_with_output, a.create_checks()))
 
+    def check_dependencies(a: Assignment):
+        l = []
+
+        if a.parent is not None:
+            l = l + check_dependencies(a.parent)
+
+        set_assignment_name(a.category)
+
+        l = l + check(a)
+
+        return l
+
+    def print_dependencies(a: Assignment):
+        if a.parent is not None:
+            print_dependencies(a.parent)
+            print_message(', ', end='')
+
+        print_message('\'{}\''.format(a.name), end='')
+
     def change_result_to_mandatory(r: CheckResult):
         return CheckResult(r.result, r.msg, r.output, r.warning, r.should_succeed, r.command, True)
 
@@ -112,11 +159,21 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
     else:
         baseline_results = [ ]
 
-    set_assignment_name(assignment.category)
+    if include_dependencies:
+        print_message('executing test \'{}\' with dependencies ['.format(assignment.name), end='')
 
-    print_message('executing test \'{}\''.format(assignment.name))
+        if assignment.parent is not None:
+            print_dependencies(assignment.parent)
+        
+        print_message(']')
 
-    results = baseline_results + check(assignment)
+        results = baseline_results + check_dependencies(assignment)
+    else:
+        print_message('executing test \'{}\''.format(assignment.name))
+
+        set_assignment_name(assignment.category)
+
+        results = baseline_results + check(assignment)
 
     set_assignment_name('')
 
@@ -126,6 +183,12 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
         print_warning(reason)
 
     print_grade(grade_value)
+
+
+def enable_grade_dependencies():
+    global include_dependencies
+
+    include_dependencies = True
 
 
 def enable_bulk_grader(file):
@@ -248,6 +311,10 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
 
     parser.add_argument('-q', action='store_true', default=False,
             help='print grade only', dest='quiet')
+    parser.add_argument('-s', action='store_true', default=False,
+            help='do not show the processing spinner', dest='simple')
+    parser.add_argument('-a', action='store_true', default=False,
+            help='grade all dependencies', dest='dependencies')
     parser.add_argument('-b', default=None, metavar="<file>",
             help='bulk grade assignments given as github commit links in file',
             dest='bulk_file')
@@ -258,20 +325,32 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
             type=parse_truncate_range,
             help='truncates the amount of leading and trailing lines',
             dest='truncate')
+    parser.add_argument('--dependency-tree', action='store_true', default=False,
+            help='show all assignments as dependency tree', dest='dependency_tree')
     parser.add_argument('assignment', metavar='assignment', nargs='?',
             type=curried_parse_assignment, help='grade this assignment')
 
     try:
-        if len(argv) <= 1:
-            parser.print_help()
-            exit()
-
         set_home_path(Path(os.path.abspath(os.path.dirname(argv[0]))))
 
         args = parser.parse_args(argv[1:])
 
+        if args.assignment is None:
+            if args.dependency_tree:
+                print(print_dependency_tree(all_assignments), end = '')
+                exit()
+            else:
+                parser.print_help()
+                exit()
+
         if args.quiet:
             enter_quiet_mode()
+
+        if args.simple:
+            enter_simple_mode()
+
+        if args.dependencies:
+            enable_grade_dependencies()
 
         if args.truncate:
             set_truncate(*args.truncate)
