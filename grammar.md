@@ -35,43 +35,45 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar      = { variable [ "=" [ cast ] [ "-" ] value ] ";" |
-               ( "void" | type ) identifier procedure } .
+cstar          = { variable [ initialization ] ";" |
+                   ( "void" | type ) identifier procedure } .
 
-variable   = type identifier .
+initialization = "=" [ cast ] [ "-" ] value .
 
-type       = "uint64_t" [ "*" ] .
+variable       = type identifier .
 
-cast       = "(" type ")" .
+type           = "uint64_t" [ "*" ] .
 
-value      = integer_literal | character_literal .
+cast           = "(" type ")" .
 
-statement  = assignment ";" | if | while | call ";" | return ";" .
+value          = integer_literal | character_literal .
 
-assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
+statement      = assignment ";" | if | while | call ";" | return ";" .
 
-expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
+assignment     = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
 
-arithmetic = term { ( "+" | "-" ) term } .
+expression     = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
 
-term       = factor { ( "*" | "/" | "%" ) factor } .
+arithmetic     = term { ( "+" | "-" ) term } .
 
-factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+term           = factor { ( "*" | "/" | "%" ) factor } .
 
-literal    = value | string_literal .
+factor         = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 
-if         = "if" "(" expression ")"
-               ( statement | "{" { statement } "}" )
-             [ "else"
-               ( statement | "{" { statement } "}" ) ] .
+literal        = value | string_literal .
 
-while      = "while" "(" expression ")"
-               ( statement | "{" { statement } "}" ) .
+if             = "if" "(" expression ")"
+                   ( statement | "{" { statement } "}" )
+                 [ "else"
+                   ( statement | "{" { statement } "}" ) ] .
 
-procedure  = "(" [ variable { "," variable } [ "," "..." ] ] ")" ( ";" |
-             "{" { variable ";" } { statement } "}" ) .
+while          = "while" "(" expression ")"
+                   ( statement | "{" { statement } "}" ) .
 
-call       = identifier "(" [ expression { "," expression } ] ")" .
+procedure      = "(" [ variable { "," variable } [ "," "..." ] ] ")" ( ";" |
+                 "{" { variable ";" } { statement } "}" ) .
 
-return     = "return" [ expression ] .
+call           = identifier "(" [ expression { "," expression } ] ")" .
+
+return         = "return" [ expression ] .
 ```
