@@ -6228,7 +6228,8 @@ uint64_t is_temporary_register(uint64_t reg) {
 void read_register_wrap(uint64_t reg, uint64_t wrap) {
   if (*(writes_per_register + reg) > 0) {
     // register has been written to before
-    *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
+    if (*(reads_per_register + reg) < UINT64_MAX)
+      *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
 
     // tolerate unwrapped values in register-to-register transfers
     if (wrap)
@@ -6258,7 +6259,8 @@ void write_register_wrap(uint64_t reg, uint64_t wrap) {
   if (wrap)
     *(registers + reg) = sign_shrink(*(registers + reg), WORDSIZEINBITS);
 
-  *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
+  if (*(writes_per_register + reg) < UINT64_MAX)
+    *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
 void write_register(uint64_t reg) {
