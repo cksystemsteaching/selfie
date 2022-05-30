@@ -673,6 +673,7 @@ uint64_t is_int_or_char_literal();
 uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
+uint64_t is_literal();
 uint64_t is_possibly_parameter(uint64_t is_already_variadic);
 
 uint64_t look_for_factor();
@@ -714,14 +715,15 @@ uint64_t  compile_call(char* procedure);
 void      compile_procedure(char* procedure, uint64_t type);
 void      compile_while();
 void      compile_if();
-uint64_t  compile_factor();
-uint64_t  compile_term();
-uint64_t  compile_arithmetic();
-uint64_t  compile_expression();
+uint64_t  compile_literal();    // returns type
+uint64_t  compile_factor();     // returns type
+uint64_t  compile_term();       // returns type
+uint64_t  compile_arithmetic(); // returns type
+uint64_t  compile_expression(); // returns type
 void      compile_assignment();
 void      compile_statement();
-uint64_t  compile_value();
-uint64_t  compile_type();
+uint64_t  compile_value();      // returns immediate
+uint64_t  compile_type();       // returns type
 uint64_t* compile_variable(uint64_t offset);
 uint64_t  compile_initialization(uint64_t type);
 void      compile_cstar();
@@ -4198,6 +4200,17 @@ uint64_t is_comparison() {
     return 0;
 }
 
+uint64_t is_literal() {
+  if (symbol == SYM_INTEGER)
+    return 1;
+  else if (symbol == SYM_CHARACTER)
+    return 1;
+  else if (symbol == SYM_STRING)
+    return 1;
+  else
+    return 0;
+}
+
 uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
   if (symbol == SYM_COMMA)
     if (is_already_variadic == 0)
@@ -5117,6 +5130,35 @@ void compile_if() {
   number_of_if = number_of_if + 1;
 }
 
+uint64_t compile_literal() {
+  // assert: allocated_temporaries == 0
+
+  if (is_int_or_char_literal()) {
+    load_integer(compile_value());
+
+    // assert: allocated_temporaries == 1
+
+    return UINT64_T;
+  } else if (symbol == SYM_STRING) {
+    load_string(string);
+
+    // assert: allocated_temporaries == 1
+
+    get_symbol();
+
+    return UINT64STAR_T;
+  } else {
+    syntax_error_unexpected();
+
+    // we must allocate an additional temporary
+    load_integer(0);
+
+    // assert: allocated_temporaries == 1
+
+    return UINT64_T;
+  }
+}
+
 uint64_t compile_factor() {
   uint64_t has_cast;
   uint64_t cast;
@@ -5205,19 +5247,9 @@ uint64_t compile_factor() {
       // variable access: identifier
       type = load_variable(variable_or_procedure_name);
 
-  // integer or character literal?
-  } else if (is_int_or_char_literal()) {
-    load_integer(compile_value());
-
-    type = UINT64_T;
-
-  // string literal?
-  } else if (symbol == SYM_STRING) {
-    load_string(string);
-
-    get_symbol();
-
-    type = UINT64STAR_T;
+  // integer, character or string literal?
+  } else if (is_literal()) {
+    type = compile_literal();
 
   // "(" expression ")" ?
   } else if (symbol == SYM_LPARENTHESIS) {
