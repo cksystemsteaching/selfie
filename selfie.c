@@ -1096,7 +1096,7 @@ uint64_t ELF_HEADER_SIZE = 4096;
 uint64_t ELFCLASS64 = 2;
 uint64_t ELFCLASS32 = 1;
 
-uint64_t MAX_CODE_SIZE = 524288; // 256KB
+uint64_t MAX_CODE_SIZE = 524288; // 512KB
 uint64_t MAX_DATA_SIZE = 65536;  // 64KB
 
 uint64_t PK_CODE_START = 65536; // start of code segment at 0x10000 (according to RISC-V pk)
