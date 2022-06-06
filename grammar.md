@@ -10,18 +10,18 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `...`
+C\* Symbols: `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `...`
 
 with:
 
 ```
-integer_literal   = digit { digit } .
+integer    = digit { digit } .
 
-character_literal = "'" printable_character "'" .
+character  = "'" printable_character "'" .
 
-string_literal    = """ { printable_character } """ .
+string     = """ { printable_character } """ .
 
-identifier        = letter { letter | digit | "_" } .
+identifier = letter { letter | digit | "_" } .
 ```
 
 and:
@@ -35,45 +35,42 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar          = { variable [ initialization ] ";" |
-                   ( "void" | type ) identifier procedure } .
+cstar      = { variable [ "=" [ cast ] [ "-" ] value ] ";" | ( "void" | type ) procedure } .
 
-initialization = "=" [ cast ] [ "-" ] value .
+variable   = type identifier .
 
-variable       = type identifier .
+type       = "uint64_t" [ "*" ] .
 
-type           = "uint64_t" [ "*" ] .
+cast       = "(" type ")" .
 
-cast           = "(" type ")" .
+value      = integer | character .
 
-value          = integer_literal | character_literal .
+statement  = assignment ";" | if | while | call ";" | return ";" .
 
-statement      = assignment ";" | if | while | call ";" | return ";" .
+assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
 
-assignment     = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
+expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
 
-expression     = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
+arithmetic = term { ( "+" | "-" ) term } .
 
-arithmetic     = term { ( "+" | "-" ) term } .
+term       = factor { ( "*" | "/" | "%" ) factor } .
 
-term           = factor { ( "*" | "/" | "%" ) factor } .
+factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 
-factor         = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+literal    = value | string .
 
-literal        = value | string_literal .
+if         = "if" "(" expression ")"
+               ( statement | "{" { statement } "}" )
+             [ "else"
+               ( statement | "{" { statement } "}" ) ] .
 
-if             = "if" "(" expression ")"
-                   ( statement | "{" { statement } "}" )
-                 [ "else"
-                   ( statement | "{" { statement } "}" ) ] .
+while      = "while" "(" expression ")"
+               ( statement | "{" { statement } "}" ) .
 
-while          = "while" "(" expression ")"
-                   ( statement | "{" { statement } "}" ) .
+procedure  = identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
+             ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-procedure      = "(" [ variable { "," variable } [ "," "..." ] ] ")" ( ";" |
-                 "{" { variable ";" } { statement } "}" ) .
+call       = identifier "(" [ expression { "," expression } ] ")" .
 
-call           = identifier "(" [ expression { "," expression } ] ")" .
-
-return         = "return" [ expression ] .
+return     = "return" [ expression ] .
 ```
