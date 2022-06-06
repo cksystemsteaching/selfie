@@ -417,8 +417,6 @@ uint64_t identifier_string_match(uint64_t string_index);
 uint64_t identifier_or_keyword();
 
 void get_symbol();
-uint64_t get_expected_symbol(uint64_t expected_symbol);
-void get_required_symbol(uint64_t required_symbol);
 
 void handle_escape_sequence();
 
@@ -662,23 +660,8 @@ void reset_symbol_tables() {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- PARSER -----------------------------
+// ---------------------- REGISTER ALLOCATOR -----------------------
 // -----------------------------------------------------------------
-
-void reset_parser();
-
-uint64_t is_not_rbrace_or_eof();
-uint64_t is_expression();
-uint64_t is_int_or_char_literal();
-uint64_t is_mult_or_div_or_rem();
-uint64_t is_plus_or_minus();
-uint64_t is_comparison();
-uint64_t is_literal();
-uint64_t is_possibly_parameter(uint64_t is_already_variadic);
-
-uint64_t look_for_factor();
-uint64_t look_for_statement();
-uint64_t look_for_type();
 
 void     talloc();
 uint64_t current_temporary();
@@ -686,47 +669,82 @@ uint64_t previous_temporary();
 uint64_t next_temporary();
 void     tfree(uint64_t number_of_temporaries);
 
-void save_temporaries();
-void restore_temporaries(uint64_t number_of_temporaries);
+// -----------------------------------------------------------------
+// ---------------------------- PARSER -----------------------------
+// -----------------------------------------------------------------
+
+void reset_parser();
+
+uint64_t is_value();
+uint64_t is_expression();
+uint64_t is_comparison();
+uint64_t is_plus_or_minus();
+uint64_t is_mult_or_div_or_rem();
+uint64_t is_factor();
+uint64_t is_literal();
+
+uint64_t is_not_rbrace_or_eof();
+uint64_t is_possibly_parameter(uint64_t is_already_variadic);
+
+uint64_t look_for_type();
+uint64_t look_for_statement();
+uint64_t look_for_factor();
 
 void syntax_error_symbol(uint64_t expected);
 void syntax_error_unexpected();
+
+uint64_t get_expected_symbol(uint64_t expected_symbol);
+void     get_required_symbol(uint64_t required_symbol);
+
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
+
+uint64_t variable_initialization(uint64_t type);
+
+void compile_cstar();
+
+uint64_t* compile_variable(uint64_t offset); // returns variable
+
+uint64_t compile_type();  // returns type
+uint64_t compile_value(); // returns value
+
+void compile_statement();
 
 void      load_upper_base_address(uint64_t* entry);
 uint64_t* get_variable(char* variable);
 uint64_t  load_variable_address(char* variable);
 uint64_t  load_variable(char* variable);
-void      load_small_and_medium_integer(uint64_t reg, uint64_t value);
-uint64_t  load_big_integer(char* big_integer);
-void      load_integer(uint64_t value);
-void      load_string(char* string);
 
-uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters);
+void compile_assignment();
+
+uint64_t compile_expression(); // returns type
+uint64_t compile_arithmetic(); // returns type
+uint64_t compile_term();       // returns type
+uint64_t compile_factor();     // returns type
+
+void     load_small_and_medium_integer(uint64_t reg, uint64_t value);
+uint64_t load_big_integer(char* big_integer);
+void     load_integer(uint64_t value);
+void     load_string(char* string);
+
+uint64_t compile_literal(); // returns type
+
+void compile_if();
+void compile_while();
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes);
 void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
-uint64_t  compile_macro(uint64_t* entry);
+void compile_procedure(char* procedure, uint64_t type);
 
-void      compile_return();
-uint64_t  compile_call(char* procedure);
-void      compile_procedure(char* procedure, uint64_t type);
-void      compile_while();
-void      compile_if();
-uint64_t  compile_literal();    // returns type
-uint64_t  compile_factor();     // returns type
-uint64_t  compile_term();       // returns type
-uint64_t  compile_arithmetic(); // returns type
-uint64_t  compile_expression(); // returns type
-void      compile_assignment();
-void      compile_statement();
-uint64_t  compile_value();      // returns immediate
-uint64_t  compile_type();       // returns type
-uint64_t* compile_variable(uint64_t offset);
-uint64_t  compile_initialization(uint64_t type);
-void      compile_cstar();
+void save_temporaries();
+void restore_temporaries(uint64_t number_of_temporaries);
+
+uint64_t macro_expand(uint64_t* entry);
+uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters);
+
+uint64_t compile_call(char* procedure); // returns type
+void     compile_return();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -3940,21 +3958,6 @@ void get_symbol() {
   }
 }
 
-uint64_t get_expected_symbol(uint64_t expected_symbol) {
-  if (symbol == expected_symbol) {
-    get_symbol();
-    return 1;
-  }
-
-  syntax_error_symbol(expected_symbol);
-  return 0;
-}
-
-void get_required_symbol(uint64_t required_symbol) {
-  if (get_expected_symbol(required_symbol) == 0) 
-    exit(EXITCODE_PARSERERROR);
-}
-
 void handle_escape_sequence() {
   // ignoring the backslash
   number_of_ignored_characters = number_of_ignored_characters + 1;
@@ -4123,150 +4126,8 @@ uint64_t report_undefined_procedures() {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- PARSER -----------------------------
+// ---------------------- REGISTER ALLOCATOR -----------------------
 // -----------------------------------------------------------------
-
-uint64_t is_not_rbrace_or_eof() {
-  if (symbol == SYM_RBRACE)
-    return 0;
-  else if (symbol == SYM_EOF)
-    return 0;
-  else
-    return 1;
-}
-
-uint64_t is_expression() {
-  if (symbol == SYM_MINUS)
-    return 1;
-  else if (symbol == SYM_LPARENTHESIS)
-    return 1;
-  else if (symbol == SYM_IDENTIFIER)
-    return 1;
-  else if (symbol == SYM_INTEGER)
-    return 1;
-  else if (symbol == SYM_ASTERISK)
-    return 1;
-  else if (symbol == SYM_STRING)
-    return 1;
-  else if (symbol == SYM_CHARACTER)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_int_or_char_literal() {
-  if (symbol == SYM_INTEGER)
-    return 1;
-  else if (symbol == SYM_CHARACTER)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_mult_or_div_or_rem() {
-  if (symbol == SYM_ASTERISK)
-    return 1;
-  else if (symbol == SYM_DIVISION)
-    return 1;
-  else if (symbol == SYM_REMAINDER)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_plus_or_minus() {
-  if (symbol == SYM_MINUS)
-    return 1;
-  else if (symbol == SYM_PLUS)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_comparison() {
-  if (symbol == SYM_EQUALITY)
-    return 1;
-  else if (symbol == SYM_NOTEQ)
-    return 1;
-  else if (symbol == SYM_LT)
-    return 1;
-  else if (symbol == SYM_GT)
-    return 1;
-  else if (symbol == SYM_LEQ)
-    return 1;
-  else if (symbol == SYM_GEQ)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_literal() {
-  if (symbol == SYM_INTEGER)
-    return 1;
-  else if (symbol == SYM_CHARACTER)
-    return 1;
-  else if (symbol == SYM_STRING)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
-  if (symbol == SYM_COMMA)
-    if (is_already_variadic == 0)
-      return 1;
-
-  return 0;
-}
-
-uint64_t look_for_factor() {
-  if (symbol == SYM_ASTERISK)
-    return 0;
-  else if (symbol == SYM_MINUS)
-    return 0;
-  else if (symbol == SYM_IDENTIFIER)
-    return 0;
-  else if (symbol == SYM_INTEGER)
-    return 0;
-  else if (symbol == SYM_CHARACTER)
-    return 0;
-  else if (symbol == SYM_STRING)
-    return 0;
-  else if (symbol == SYM_LPARENTHESIS)
-    return 0;
-  else if (symbol == SYM_EOF)
-    return 0;
-  else
-    return 1;
-}
-
-uint64_t look_for_statement() {
-  if (symbol == SYM_ASTERISK)
-    return 0;
-  else if (symbol == SYM_IDENTIFIER)
-    return 0;
-  else if (symbol == SYM_WHILE)
-    return 0;
-  else if (symbol == SYM_IF)
-    return 0;
-  else if (symbol == SYM_RETURN)
-    return 0;
-  else if (symbol == SYM_EOF)
-    return 0;
-  else
-    return 1;
-}
-
-uint64_t look_for_type() {
-  if (symbol == SYM_UINT64)
-    return 0;
-  else if (symbol == SYM_VOID)
-    return 0;
-  else if (symbol == SYM_EOF)
-    return 0;
-  else
-    return 1;
-}
 
 void talloc() {
   // we use registers REG_T0-REG_T6 for temporaries
@@ -4328,24 +4189,136 @@ void tfree(uint64_t number_of_temporaries) {
   }
 }
 
-void save_temporaries() {
-  while (allocated_temporaries > 0) {
-    // push temporary onto stack
-    emit_addi(REG_SP, REG_SP, -WORDSIZE);
-    emit_store(REG_SP, 0, current_temporary());
+// -----------------------------------------------------------------
+// ---------------------------- PARSER -----------------------------
+// -----------------------------------------------------------------
 
-    tfree(1);
-  }
+uint64_t is_value() {
+  if (symbol == SYM_INTEGER)
+    return 1;
+  else if (symbol == SYM_CHARACTER)
+    return 1;
+  else
+    return 0;
 }
 
-void restore_temporaries(uint64_t number_of_temporaries) {
-  while (allocated_temporaries < number_of_temporaries) {
-    talloc();
+uint64_t is_expression() {
+  return is_factor();
+}
 
-    // restore temporary from stack
-    emit_load(current_temporary(), REG_SP, 0);
-    emit_addi(REG_SP, REG_SP, WORDSIZE);
-  }
+uint64_t is_comparison() {
+  if (symbol == SYM_EQUALITY)
+    return 1;
+  else if (symbol == SYM_NOTEQ)
+    return 1;
+  else if (symbol == SYM_LT)
+    return 1;
+  else if (symbol == SYM_GT)
+    return 1;
+  else if (symbol == SYM_LEQ)
+    return 1;
+  else if (symbol == SYM_GEQ)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_plus_or_minus() {
+  if (symbol == SYM_PLUS)
+    return 1;
+  else if (symbol == SYM_MINUS)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_mult_or_div_or_rem() {
+  if (symbol == SYM_ASTERISK)
+    return 1;
+  else if (symbol == SYM_DIVISION)
+    return 1;
+  else if (symbol == SYM_REMAINDER)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_factor() {
+  if (symbol == SYM_LPARENTHESIS)
+    return 1;
+  else if (symbol == SYM_MINUS)
+    return 1;
+  else if (symbol == SYM_ASTERISK)
+    return 1;
+  else if (is_literal())
+    return 1;
+  else if (symbol == SYM_IDENTIFIER)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_literal() {
+  if (is_value())
+    return 1;
+  else if (symbol == SYM_STRING)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_not_rbrace_or_eof() {
+  if (symbol == SYM_RBRACE)
+    return 0;
+  else if (symbol == SYM_EOF)
+    return 0;
+  else
+    return 1;
+}
+
+uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
+  if (symbol == SYM_COMMA)
+    if (is_already_variadic == 0)
+      return 1;
+
+  return 0;
+}
+
+uint64_t look_for_type() {
+  if (symbol == SYM_UINT64)
+    return 0;
+  else if (symbol == SYM_VOID)
+    return 0;
+  else if (symbol == SYM_EOF)
+    return 0;
+  else
+    return 1;
+}
+
+uint64_t look_for_statement() {
+  if (symbol == SYM_ASTERISK)
+    return 0;
+  else if (symbol == SYM_IDENTIFIER)
+    return 0;
+  else if (symbol == SYM_IF)
+    return 0;
+  else if (symbol == SYM_WHILE)
+    return 0;
+  else if (symbol == SYM_RETURN)
+    return 0;
+  else if (symbol == SYM_EOF)
+    return 0;
+  else
+    return 1;
+}
+
+uint64_t look_for_factor() {
+  if (is_factor())
+    return 0;
+  else if (symbol == SYM_EOF)
+    return 0;
+  else
+    return 1;
 }
 
 void syntax_error_symbol(uint64_t expected) {
@@ -4365,6 +4338,23 @@ void syntax_error_unexpected() {
   print(" found\n");
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
+}
+
+uint64_t get_expected_symbol(uint64_t expected_symbol) {
+  if (symbol == expected_symbol) {
+    get_symbol();
+
+    return 1;
+  }
+
+  syntax_error_symbol(expected_symbol);
+
+  return 0;
+}
+
+void get_required_symbol(uint64_t required_symbol) {
+  if (get_expected_symbol(required_symbol) == 0)
+    exit(EXITCODE_PARSERERROR);
 }
 
 void print_type(uint64_t type) {
@@ -4387,6 +4377,271 @@ void type_warning(uint64_t expected, uint64_t found) {
   print(" expected but ");
   print_type(found);
   print(" found\n");
+}
+
+uint64_t variable_initialization(uint64_t type) {
+  uint64_t initial_value;
+  uint64_t has_cast;
+  uint64_t cast;
+
+  initial_value = 0;
+
+  has_cast = 0;
+
+  if (symbol == SYM_ASSIGN) {
+    get_symbol();
+
+    // optional: [ cast ]
+    if (symbol == SYM_LPARENTHESIS) {
+      has_cast = 1;
+
+      get_symbol();
+
+      cast = compile_type();
+
+      get_expected_symbol(SYM_RPARENTHESIS);
+    }
+
+    // optional: -
+    if (symbol == SYM_MINUS) {
+      integer_is_signed = 1;
+
+      get_symbol();
+    }
+
+    initial_value = compile_value();
+
+    if (integer_is_signed) {
+      integer_is_signed = 0;
+
+      initial_value = -initial_value;
+    }
+
+    get_expected_symbol(SYM_SEMICOLON);
+  } else
+    syntax_error_symbol(SYM_ASSIGN);
+
+  if (has_cast) {
+    if (type != cast)
+      type_warning(type, cast);
+  } else if (type != UINT64_T)
+    type_warning(type, UINT64_T);
+
+  // initial value is grammar attribute
+  return initial_value;
+}
+
+void compile_cstar() {
+  uint64_t type;
+  char* variable_or_procedure_name;
+  uint64_t current_line_number;
+  uint64_t initial_value;
+  uint64_t* entry;
+
+  while (symbol != SYM_EOF) {
+    while (look_for_type()) {
+      syntax_error_unexpected();
+
+      if (symbol == SYM_EOF)
+        exit(EXITCODE_PARSERERROR);
+      else
+        get_symbol();
+    }
+
+    if (symbol == SYM_VOID) {
+      // void identifier ...
+      // procedure declaration or definition
+      get_symbol();
+
+      if (symbol == SYM_ASTERISK) {
+        // we tolerate void* return types for bootstrapping
+        get_symbol();
+
+        type = UINT64STAR_T;
+      } else
+        type = VOID_T;
+
+      if (symbol == SYM_IDENTIFIER) {
+        variable_or_procedure_name = identifier;
+
+        get_symbol();
+
+        compile_procedure(variable_or_procedure_name, type);
+      } else
+        syntax_error_symbol(SYM_IDENTIFIER);
+    } else {
+      type = compile_type();
+
+      if (symbol == SYM_IDENTIFIER) {
+        variable_or_procedure_name = identifier;
+
+        get_symbol();
+
+        if (symbol == SYM_LPARENTHESIS)
+          // type identifier "(" ...
+          // procedure declaration or definition
+          compile_procedure(variable_or_procedure_name, type);
+        else {
+          current_line_number = line_number;
+
+          if (symbol == SYM_SEMICOLON) {
+            // type identifier ";" ...
+            // global variable declaration
+            get_symbol();
+
+            // uninitialized global variables are initialized to 0
+            initial_value = 0;
+          } else
+            // type identifier "=" ...
+            // global variable definition
+            initial_value = variable_initialization(type);
+
+          entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
+
+          if (entry == (uint64_t*) 0) {
+            // allocate memory for global variable in data segment
+            data_size = data_size + WORDSIZE;
+
+            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
+          } else {
+            // global variable already declared or defined
+            print_line_number("warning", current_line_number);
+            printf("redefinition of global variable %s ignored\n", variable_or_procedure_name);
+          }
+        }
+      } else
+        syntax_error_symbol(SYM_IDENTIFIER);
+    }
+  }
+}
+
+uint64_t* compile_variable(uint64_t offset) {
+  uint64_t type;
+  uint64_t* entry;
+
+  type = compile_type();
+
+  if (symbol == SYM_IDENTIFIER) {
+    // TODO: check if identifier has already been declared
+    entry = create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, offset);
+
+    get_symbol();
+  } else {
+    syntax_error_symbol(SYM_IDENTIFIER);
+
+    entry = create_symbol_table_entry(LOCAL_TABLE, "no_name", line_number, VARIABLE, type, 0, offset);
+  }
+
+  return entry;
+}
+
+uint64_t compile_type() {
+  uint64_t type;
+
+  type = UINT64_T;
+
+  if (symbol == SYM_UINT64) {
+    get_symbol();
+
+    while (symbol == SYM_UINT64)
+      // we tolerate multiple uint64_t aliases for bootstrapping
+      get_symbol();
+
+    while (symbol == SYM_ASTERISK) {
+      // we tolerate pointer to pointers for bootstrapping
+      type = UINT64STAR_T;
+
+      get_symbol();
+    }
+  } else if (symbol == SYM_VOID) {
+    get_symbol();
+
+    // we tolerate casts to void for bootstrapping
+    type = UINT64_T;
+
+    while (symbol == SYM_ASTERISK) {
+      // we tolerate pointer to pointers for bootstrapping
+      type = UINT64STAR_T;
+
+      get_symbol();
+    }
+  } else
+    syntax_error_symbol(SYM_UINT64);
+
+  // type is grammar attribute
+  return type;
+}
+
+uint64_t compile_value() {
+  if (is_value())
+    get_symbol();
+  else {
+    syntax_error_symbol(SYM_INTEGER);
+
+    return 0;
+  }
+
+  return literal;
+}
+
+void compile_statement() {
+  char* variable_or_procedure_name;
+
+  // assert: allocated_temporaries == 0
+
+  while (look_for_statement()) {
+    syntax_error_unexpected();
+
+    if (symbol == SYM_EOF)
+      exit(EXITCODE_PARSERERROR);
+    else
+      get_symbol();
+  }
+
+  // while statement?
+  if (symbol == SYM_WHILE) {
+    compile_while();
+  }
+  // if statement?
+  else if (symbol == SYM_IF) {
+    compile_if();
+  }
+  // return statement?
+  else if (symbol == SYM_RETURN) {
+    compile_return();
+
+    get_expected_symbol(SYM_SEMICOLON);
+  }
+  // call ";" | assignment ";"
+  else {
+    if (symbol == SYM_IDENTIFIER) {
+      variable_or_procedure_name = identifier;
+
+      get_symbol();
+
+      // procedure call
+      if (symbol == SYM_LPARENTHESIS) {
+        get_symbol();
+
+        compile_call(variable_or_procedure_name);
+
+        // reset return register to initial return value
+        // for missing return expressions
+        emit_addi(REG_A0, REG_ZR, 0);
+
+      // if it is not a call it has to be an assignment
+      } else
+        // variable name already found
+        compile_assignment(variable_or_procedure_name);
+
+    // might be "*"
+    } else
+      compile_assignment((char*) 0);
+
+    get_expected_symbol(SYM_SEMICOLON);
+  }
+
+  // assert: allocated_temporaries == 0
 }
 
 void load_upper_base_address(uint64_t* entry) {
@@ -4480,6 +4735,429 @@ uint64_t load_variable(char* variable) {
 
   // type of variable is grammar attribute
   return get_type(entry);
+}
+
+void compile_assignment(char* variable_name) {
+  uint64_t ltype;
+  uint64_t rtype;
+  uint64_t dereference;
+
+  // assert: allocated_temporaries == 0
+
+  ltype = 0;
+
+  dereference = 0;
+
+  // variable_name can be a string already or just 0
+  // if it is just 0 we expect "*"
+  if (variable_name == (char*) 0) {
+    // "*"
+    if (get_expected_symbol(SYM_ASTERISK)) {
+      dereference = 1;
+
+      if (symbol == SYM_IDENTIFIER) {
+        variable_name = identifier;
+
+        get_symbol();
+      }
+    }
+  }
+
+  // ["*"] variable "=" expression
+  if (variable_name != (char*) 0) {
+    if (dereference)
+      // load from address, value is in temporary
+      ltype = load_variable(variable_name);
+    else
+      // address is in temporary
+      ltype = load_variable_address(variable_name);
+
+    // assert: allocated_temporaries == 1
+  }
+  // "*" "(" expression ")" = expression
+  else if (symbol == SYM_LPARENTHESIS) {
+    if (dereference == 0) {
+      syntax_error_symbol(SYM_ASTERISK);
+
+      dereference = 1;
+    }
+
+    get_symbol();
+
+    ltype = compile_expression();
+
+    // assert: allocated_temporaries == 1
+
+    get_expected_symbol(SYM_RPARENTHESIS);
+  } else {
+    syntax_error_symbol(SYM_IDENTIFIER);
+
+    // we expect: allocated_temporaries == 1
+    // this way we do not have to exit right away
+    // and can keep running the compiler
+    talloc();
+  }
+
+  // address stored in current temporary
+  // assert: allocated_temporaries == 1
+
+  if (symbol == SYM_ASSIGN) {
+    get_symbol();
+
+    if (dereference) {
+      if (ltype != UINT64STAR_T)
+        type_warning(UINT64STAR_T, ltype);
+      else
+        ltype = UINT64_T;
+    }
+
+    rtype = compile_expression();
+
+    // assert: allocated_temporaries == 2
+
+    if (ltype != rtype)
+      type_warning(ltype, rtype);
+
+    emit_store(previous_temporary(), 0, current_temporary());
+
+    tfree(1);
+
+    // assert: allocated_temporaries == 1
+
+    number_of_assignments = number_of_assignments + 1;
+  } else
+    syntax_error_symbol(SYM_ASSIGN);
+
+  // assert: allocated_temporaries == 1
+
+  tfree(1);
+}
+
+uint64_t compile_expression() {
+  uint64_t ltype;
+  uint64_t operator_symbol;
+  uint64_t rtype;
+
+  // assert: n = allocated_temporaries
+
+  ltype = compile_arithmetic();
+
+  // assert: allocated_temporaries == n + 1
+
+  //optional: ==, !=, <, >, <=, >= simple_expression
+  if (is_comparison()) {
+    operator_symbol = symbol;
+
+    get_symbol();
+
+    rtype = compile_arithmetic();
+
+    // assert: allocated_temporaries == n + 2
+
+    if (ltype != rtype)
+      type_warning(ltype, rtype);
+
+    // for lack of boolean type
+    ltype = UINT64_T;
+
+    if (operator_symbol == SYM_EQUALITY) {
+      // a == b iff unsigned b - a < 1
+      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
+      emit_addi(current_temporary(), REG_ZR, 1);
+      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
+
+      tfree(1);
+
+    } else if (operator_symbol == SYM_NOTEQ) {
+      // a != b iff unsigned 0 < b - a
+      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
+
+      tfree(1);
+
+      emit_sltu(current_temporary(), REG_ZR, current_temporary());
+
+    } else if (operator_symbol == SYM_LT) {
+      // a < b
+      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
+
+      tfree(1);
+
+    } else if (operator_symbol == SYM_GT) {
+      // a > b iff b < a
+      emit_sltu(previous_temporary(), current_temporary(), previous_temporary());
+
+      tfree(1);
+
+    } else if (operator_symbol == SYM_LEQ) {
+      // a <= b iff 1 - (b < a)
+      emit_sltu(previous_temporary(), current_temporary(), previous_temporary());
+      emit_addi(current_temporary(), REG_ZR, 1);
+      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
+
+      tfree(1);
+
+    } else if (operator_symbol == SYM_GEQ) {
+      // a >= b iff 1 - (a < b)
+      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
+      emit_addi(current_temporary(), REG_ZR, 1);
+      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
+
+      tfree(1);
+    }
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of expression is grammar attribute
+  return ltype;
+}
+
+uint64_t compile_arithmetic() {
+  uint64_t ltype;
+  uint64_t operator_symbol;
+  uint64_t rtype;
+
+  // assert: n = allocated_temporaries
+
+  ltype = compile_term();
+
+  // assert: allocated_temporaries == n + 1
+
+  // + or - ?
+  while (is_plus_or_minus()) {
+    operator_symbol = symbol;
+
+    get_symbol();
+
+    rtype = compile_term();
+
+    // assert: allocated_temporaries == n + 2
+
+    if (operator_symbol == SYM_PLUS) {
+      if (ltype == UINT64STAR_T) {
+        if (rtype == UINT64_T)
+          // UINT64STAR_T + UINT64_T
+          // pointer arithmetic: left_term + right_term * SIZEOFUINT
+          emit_multiply_by(current_temporary(), SIZEOFUINT);
+        else
+          // UINT64STAR_T + UINT64STAR_T
+          syntax_error_message("(uint64_t*) + (uint64_t*) is undefined");
+      } else if (rtype == UINT64STAR_T) {
+        // UINT64_T + UINT64STAR_T
+        // pointer arithmetic: left_term * SIZEOFUINT + right_term
+        emit_multiply_by(previous_temporary(), SIZEOFUINT);
+
+        ltype = UINT64STAR_T;
+      }
+
+      emit_add(previous_temporary(), previous_temporary(), current_temporary());
+
+    } else if (operator_symbol == SYM_MINUS) {
+      if (ltype == UINT64STAR_T) {
+        if (rtype == UINT64_T) {
+          // UINT64STAR_T - UINT64_T
+          // pointer arithmetic: left_term - right_term * SIZEOFUINT
+          emit_multiply_by(current_temporary(), SIZEOFUINT);
+          emit_sub(previous_temporary(), previous_temporary(), current_temporary());
+        } else {
+          // UINT64STAR_T - UINT64STAR_T
+          // pointer arithmetic: (left_term - right_term) / SIZEOFUINT
+          emit_sub(previous_temporary(), previous_temporary(), current_temporary());
+          emit_addi(current_temporary(), REG_ZR, SIZEOFUINT);
+          emit_divu(previous_temporary(), previous_temporary(), current_temporary());
+
+          ltype = UINT64_T;
+        }
+      } else if (rtype == UINT64STAR_T)
+        // UINT64_T - UINT64STAR_T
+        syntax_error_message("(uint64_t) - (uint64_t*) is undefined");
+      else
+        // UINT64_T - UINT64_T
+        emit_sub(previous_temporary(), previous_temporary(), current_temporary());
+    }
+
+    tfree(1);
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of simple expression is grammar attribute
+  return ltype;
+}
+
+uint64_t compile_term() {
+  uint64_t ltype;
+  uint64_t operator_symbol;
+  uint64_t rtype;
+
+  // assert: n = allocated_temporaries
+
+  ltype = compile_factor();
+
+  // assert: allocated_temporaries == n + 1
+
+  // * / or % ?
+  while (is_mult_or_div_or_rem()) {
+    operator_symbol = symbol;
+
+    get_symbol();
+
+    rtype = compile_factor();
+
+    // assert: allocated_temporaries == n + 2
+
+    if (ltype != rtype)
+      type_warning(ltype, rtype);
+
+    if (operator_symbol == SYM_ASTERISK)
+      emit_mul(previous_temporary(), previous_temporary(), current_temporary());
+    else if (operator_symbol == SYM_DIVISION)
+      emit_divu(previous_temporary(), previous_temporary(), current_temporary());
+    else if (operator_symbol == SYM_REMAINDER)
+      emit_remu(previous_temporary(), previous_temporary(), current_temporary());
+
+    tfree(1);
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  // type of term is grammar attribute
+  return ltype;
+}
+
+uint64_t compile_factor() {
+  uint64_t has_cast;
+  uint64_t cast;
+  uint64_t type;
+  uint64_t negative;
+  uint64_t dereference;
+  char* variable_or_procedure_name;
+
+  // assert: n = allocated_temporaries
+
+  while (look_for_factor()) {
+    syntax_error_unexpected();
+
+    if (symbol == SYM_EOF)
+      exit(EXITCODE_PARSERERROR);
+    else
+      get_symbol();
+  }
+
+  // optional: cast
+  if (symbol == SYM_LPARENTHESIS) {
+    get_symbol();
+
+    // cast: "(" "uint64_t" [ "*" ] ")"
+    if (symbol == SYM_UINT64) {
+      has_cast = 1;
+
+      cast = compile_type();
+
+      get_expected_symbol(SYM_RPARENTHESIS);
+
+    // not a cast: "(" expression ")"
+    } else {
+      type = compile_expression();
+
+      get_expected_symbol(SYM_RPARENTHESIS);
+
+      // assert: allocated_temporaries == n + 1
+
+      return type;
+    }
+  } else
+    has_cast = 0;
+
+  // optional: -
+  if (symbol == SYM_MINUS) {
+    negative = 1;
+
+    integer_is_signed = 1;
+
+    get_symbol();
+
+    integer_is_signed = 0;
+  } else
+    negative = 0;
+
+  // optional: dereference
+  if (symbol == SYM_ASTERISK) {
+    dereference = 1;
+
+    get_symbol();
+  } else
+    dereference = 0;
+
+  // variable or call?
+  if (symbol == SYM_IDENTIFIER) {
+    variable_or_procedure_name = identifier;
+
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      // procedure call: identifier "(" ... ")"
+      type = compile_call(variable_or_procedure_name);
+
+      talloc();
+
+      // retrieve return value
+      emit_addi(current_temporary(), REG_A0, 0);
+
+      // reset return register to initial return value
+      // for missing return expressions
+      emit_addi(REG_A0, REG_ZR, 0);
+    } else
+      // variable access: identifier
+      type = load_variable(variable_or_procedure_name);
+
+  // integer, character or string literal?
+  } else if (is_literal()) {
+    type = compile_literal();
+
+  // "(" expression ")" ?
+  } else if (symbol == SYM_LPARENTHESIS) {
+    get_symbol();
+
+    type = compile_expression();
+
+    get_expected_symbol(SYM_RPARENTHESIS);
+  } else {
+    syntax_error_unexpected();
+
+    type = UINT64_T;
+  }
+
+  if (dereference) {
+    if (type != UINT64STAR_T)
+      type_warning(UINT64STAR_T, type);
+
+    // dereference
+    emit_load(current_temporary(), current_temporary(), 0);
+
+    type = UINT64_T;
+  }
+
+  if (negative) {
+    if (type != UINT64_T) {
+      type_warning(UINT64_T, type);
+
+      type = UINT64_T;
+    }
+
+    emit_sub(current_temporary(), REG_ZR, current_temporary());
+  }
+
+  // assert: allocated_temporaries == n + 1
+
+  if (has_cast)
+    // cast is grammar attribute
+    return cast;
+  else
+    // type of factor is grammar attribute
+    return type;
 }
 
 void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
@@ -4591,40 +5269,175 @@ void load_string(char* string) {
   // assert: allocated_temporaries == n + 1
 }
 
-uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters) {
-  uint64_t type;
+uint64_t compile_literal() {
+  // assert: allocated_temporaries == 0
 
-  if (entry == (uint64_t*) 0) {
-    // procedure never called nor declared nor defined
+  if (is_value()) {
+    load_integer(compile_value());
 
-    // return type will be determined by procedure declaration or definition
-    type = UNDECLARED_T;
+    // assert: allocated_temporaries == 1
 
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, code_size);
+    return UINT64_T;
+  } else if (symbol == SYM_STRING) {
+    load_string(string);
 
-    emit_jal(REG_RA, 0);
+    // assert: allocated_temporaries == 1
 
+    get_symbol();
+
+    return UINT64STAR_T;
   } else {
-    type = get_type(entry);
+    syntax_error_unexpected();
 
-    if (get_address(entry) == 0) {
-      // procedure declared but never called nor defined
-      set_address(entry, code_size);
+    // we must allocate an additional temporary
+    load_integer(0);
 
-      emit_jal(REG_RA, 0);
-    } else if (get_opcode(load_instruction(get_address(entry))) == OP_JAL) {
-      // procedure called and possibly declared but not defined
+    // assert: allocated_temporaries == 1
 
-      // create fixup chain using absolute address
-      emit_jal(REG_RA, get_address(entry));
-      set_address(entry, code_size - INSTRUCTIONSIZE);
-    } else
-      // procedure defined, use relative address
-      emit_jal(REG_RA, get_address(entry) - code_size);
+    return UINT64_T;
   }
+}
 
-  // return type is grammar attribute
-  return type;
+void compile_if() {
+  uint64_t branch_forward_to_else_or_end;
+  uint64_t jump_forward_to_end;
+
+  // assert: allocated_temporaries == 0
+
+  // if ( expression )
+  if (symbol == SYM_IF) {
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_expression();
+
+      // if the "if" case is not true we branch to "else" (if provided)
+      branch_forward_to_else_or_end = code_size;
+
+      emit_beq(current_temporary(), REG_ZR, 0);
+
+      tfree(1);
+
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        // zero or more statements: { statement }
+        if (symbol == SYM_LBRACE) {
+          get_symbol();
+
+          while (is_not_rbrace_or_eof())
+            compile_statement();
+
+          get_required_symbol(SYM_RBRACE);
+        } else
+        // only one statement without {}
+          compile_statement();
+
+        //optional: else
+        if (symbol == SYM_ELSE) {
+          get_symbol();
+
+          // if the "if" case was true we skip the "else" case
+          // by unconditionally jumping to the end
+          jump_forward_to_end = code_size;
+
+          emit_jal(REG_ZR, 0);
+
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branch_forward_to_else_or_end);
+
+          // zero or more statements: { statement }
+          if (symbol == SYM_LBRACE) {
+            get_symbol();
+
+            while (is_not_rbrace_or_eof())
+              compile_statement();
+
+            get_required_symbol(SYM_RBRACE);
+
+          // only one statement without {}
+          } else
+            compile_statement();
+
+          // if the "if" case was true we unconditionally jump here
+          fixup_relative_JFormat(jump_forward_to_end, code_size);
+        } else
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branch_forward_to_else_or_end);
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else
+      syntax_error_symbol(SYM_LPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_IF);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_if = number_of_if + 1;
+}
+
+void compile_while() {
+  uint64_t jump_back_to_while;
+  uint64_t branch_forward_to_end;
+
+  // assert: allocated_temporaries == 0
+
+  jump_back_to_while = code_size;
+
+  branch_forward_to_end = 0;
+
+  // while ( expression )
+  if (symbol == SYM_WHILE) {
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      compile_expression();
+
+      // we do not know where to branch, fixup later
+      branch_forward_to_end = code_size;
+
+      emit_beq(current_temporary(), REG_ZR, 0);
+
+      tfree(1);
+
+      if (symbol == SYM_RPARENTHESIS) {
+        get_symbol();
+
+        // zero or more statements: { statement }
+        if (symbol == SYM_LBRACE) {
+          get_symbol();
+
+          while (is_not_rbrace_or_eof())
+            compile_statement();
+
+          get_required_symbol(SYM_RBRACE);
+        } else
+          // only one statement without {}
+          compile_statement();
+      } else
+        syntax_error_symbol(SYM_RPARENTHESIS);
+    } else
+      syntax_error_symbol(SYM_LPARENTHESIS);
+  } else
+    syntax_error_symbol(SYM_WHILE);
+
+  // we use JAL for the unconditional jump back to the loop condition because:
+  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
+  // 2. GCC also uses JAL for the unconditional back jump of a while loop
+  emit_jal(REG_ZR, jump_back_to_while - code_size);
+
+  if (branch_forward_to_end != 0)
+    // first instruction after loop body will be generated here
+    // now we have the address for the conditional branch from above
+    fixup_relative_BFormat(branch_forward_to_end);
+
+  // assert: allocated_temporaries == 0
+
+  number_of_while = number_of_while + 1;
 }
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
@@ -4675,148 +5488,6 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
 
   // return
   emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-uint64_t compile_macro(uint64_t* entry) {
-  char* name;
-
-  name = get_string(entry);
-
-  if (string_compare(name, "var_start"))
-    macro_var_start();
-  else if (string_compare(name, "var_arg"))
-    macro_var_arg();
-  else if (string_compare(name, "var_end"))
-    macro_var_end();
-
-  return get_type(entry);
-}
-
-void compile_return() {
-  uint64_t type;
-
-  // assert: allocated_temporaries == 0
-
-  get_expected_symbol(SYM_RETURN);
-
-  // optional: expression
-  if (symbol != SYM_SEMICOLON) {
-    type = compile_expression();
-
-    if (type != return_type)
-      type_warning(return_type, type);
-
-    // save value of expression in return register
-    emit_addi(REG_A0, current_temporary(), 0);
-
-    tfree(1);
-  } else if (return_type != VOID_T)
-    type_warning(return_type, VOID_T);
-
-  // jump to procedure epilogue through fixup chain using absolute address
-  emit_jal(REG_ZR, return_branches);
-
-  // new head of fixup chain
-  return_branches = code_size - INSTRUCTIONSIZE;
-
-  // assert: allocated_temporaries == 0
-
-  number_of_return = number_of_return + 1;
-}
-
-uint64_t compile_call(char* procedure) {
-  uint64_t* entry;
-  uint64_t number_of_temporaries;
-  uint64_t number_of_parameters;
-  uint64_t allocate_memory_on_stack;
-  uint64_t type;
-
-  entry = search_symbol_table(library_symbol_table, procedure, MACRO);
-
-  if (entry != (uint64_t*) 0)
-    // actually expanding a macro, not calling a procedure
-    return compile_macro(entry);
-
-  entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
-
-  // assert: n = allocated_temporaries
-
-  number_of_temporaries = allocated_temporaries;
-
-  save_temporaries();
-
-  // assert: allocated_temporaries == 0
-
-  number_of_parameters = 0;
-
-  if (is_expression()) {
-    compile_expression();
-
-    // TODO: check if types/number of parameters is correct
-
-    // allocate memory on stack for actual parameters
-    allocate_memory_on_stack = code_size;
-
-    // we do not yet know how many, fixup later
-    emit_addi(REG_SP, REG_SP, 0);
-
-    // push first parameter onto stack
-    emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
-
-    tfree(1);
-
-    number_of_parameters = number_of_parameters + 1;
-
-    while (symbol == SYM_COMMA) {
-      get_symbol();
-
-      compile_expression();
-
-      // push next parameter onto stack
-      emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
-
-      tfree(1);
-
-      number_of_parameters = number_of_parameters + 1;
-    }
-
-    // now we know the number of actual parameters
-    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * WORDSIZE));
-
-    if (symbol == SYM_RPARENTHESIS) {
-      get_symbol();
-
-      type = procedure_call(entry, procedure, number_of_parameters);
-    } else {
-      syntax_error_symbol(SYM_RPARENTHESIS);
-
-      type = UINT64_T;
-    }
-  } else if (symbol == SYM_RPARENTHESIS) {
-    get_symbol();
-
-    type = procedure_call(entry, procedure, 0);
-  } else {
-    syntax_error_symbol(SYM_RPARENTHESIS);
-
-    type = UINT64_T;
-  }
-
-  if (entry != (uint64_t*) 0)
-    if (signed_less_than(get_value(entry), 0))
-      // deallocate variadic parameters
-      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * WORDSIZE);
-
-  // assert: allocated_temporaries == 0
-
-  restore_temporaries(number_of_temporaries);
-
-  // assert: allocated_temporaries == n
-
-  number_of_calls = number_of_calls + 1;
-
-  // return type is grammar attribute
-  return type;
 }
 
 void compile_procedure(char* procedure, uint64_t type) {
@@ -4988,863 +5659,203 @@ void compile_procedure(char* procedure, uint64_t type) {
   // assert: allocated_temporaries == 0
 }
 
-void compile_while() {
-  uint64_t jump_back_to_while;
-  uint64_t branch_forward_to_end;
-
-  // assert: allocated_temporaries == 0
-
-  jump_back_to_while = code_size;
-
-  branch_forward_to_end = 0;
-
-  // while ( expression )
-  if (symbol == SYM_WHILE) {
-    get_symbol();
-
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_expression();
-
-      // we do not know where to branch, fixup later
-      branch_forward_to_end = code_size;
-
-      emit_beq(current_temporary(), REG_ZR, 0);
-
-      tfree(1);
-
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
-
-        // zero or more statements: { statement }
-        if (symbol == SYM_LBRACE) {
-          get_symbol();
-
-          while (is_not_rbrace_or_eof())
-            compile_statement();
-
-          get_required_symbol(SYM_RBRACE);
-        } else
-          // only one statement without {}
-          compile_statement();
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
-  } else
-    syntax_error_symbol(SYM_WHILE);
-
-  // we use JAL for the unconditional jump back to the loop condition because:
-  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
-  // 2. GCC also uses JAL for the unconditional back jump of a while loop
-  emit_jal(REG_ZR, jump_back_to_while - code_size);
-
-  if (branch_forward_to_end != 0)
-    // first instruction after loop body will be generated here
-    // now we have the address for the conditional branch from above
-    fixup_relative_BFormat(branch_forward_to_end);
-
-  // assert: allocated_temporaries == 0
-
-  number_of_while = number_of_while + 1;
-}
-
-void compile_if() {
-  uint64_t branch_forward_to_else_or_end;
-  uint64_t jump_forward_to_end;
-
-  // assert: allocated_temporaries == 0
-
-  // if ( expression )
-  if (symbol == SYM_IF) {
-    get_symbol();
-
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      compile_expression();
-
-      // if the "if" case is not true we branch to "else" (if provided)
-      branch_forward_to_else_or_end = code_size;
-
-      emit_beq(current_temporary(), REG_ZR, 0);
-
-      tfree(1);
-
-      if (symbol == SYM_RPARENTHESIS) {
-        get_symbol();
-
-        // zero or more statements: { statement }
-        if (symbol == SYM_LBRACE) {
-          get_symbol();
-
-          while (is_not_rbrace_or_eof())
-            compile_statement();
-
-          get_required_symbol(SYM_RBRACE);
-        } else
-        // only one statement without {}
-          compile_statement();
-
-        //optional: else
-        if (symbol == SYM_ELSE) {
-          get_symbol();
-
-          // if the "if" case was true we skip the "else" case
-          // by unconditionally jumping to the end
-          jump_forward_to_end = code_size;
-
-          emit_jal(REG_ZR, 0);
-
-          // if the "if" case was not true we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
-
-          // zero or more statements: { statement }
-          if (symbol == SYM_LBRACE) {
-            get_symbol();
-
-            while (is_not_rbrace_or_eof())
-              compile_statement();
-
-            get_required_symbol(SYM_RBRACE);
-
-          // only one statement without {}
-          } else
-            compile_statement();
-
-          // if the "if" case was true we unconditionally jump here
-          fixup_relative_JFormat(jump_forward_to_end, code_size);
-        } else
-          // if the "if" case was not true we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
-      } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
-    } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
-  } else
-    syntax_error_symbol(SYM_IF);
-
-  // assert: allocated_temporaries == 0
-
-  number_of_if = number_of_if + 1;
-}
-
-uint64_t compile_literal() {
-  // assert: allocated_temporaries == 0
-
-  if (is_int_or_char_literal()) {
-    load_integer(compile_value());
-
-    // assert: allocated_temporaries == 1
-
-    return UINT64_T;
-  } else if (symbol == SYM_STRING) {
-    load_string(string);
-
-    // assert: allocated_temporaries == 1
-
-    get_symbol();
-
-    return UINT64STAR_T;
-  } else {
-    syntax_error_unexpected();
-
-    // we must allocate an additional temporary
-    load_integer(0);
-
-    // assert: allocated_temporaries == 1
-
-    return UINT64_T;
-  }
-}
-
-uint64_t compile_factor() {
-  uint64_t has_cast;
-  uint64_t cast;
-  uint64_t type;
-  uint64_t negative;
-  uint64_t dereference;
-  char* variable_or_procedure_name;
-
-  // assert: n = allocated_temporaries
-
-  while (look_for_factor()) {
-    syntax_error_unexpected();
-
-    if (symbol == SYM_EOF)
-      exit(EXITCODE_PARSERERROR);
-    else
-      get_symbol();
-  }
-
-  // optional: cast
-  if (symbol == SYM_LPARENTHESIS) {
-    get_symbol();
-
-    // cast: "(" "uint64_t" [ "*" ] ")"
-    if (symbol == SYM_UINT64) {
-      has_cast = 1;
-
-      cast = compile_type();
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-
-    // not a cast: "(" expression ")"
-    } else {
-      type = compile_expression();
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-
-      // assert: allocated_temporaries == n + 1
-
-      return type;
-    }
-  } else
-    has_cast = 0;
-
-  // optional: -
-  if (symbol == SYM_MINUS) {
-    negative = 1;
-
-    integer_is_signed = 1;
-
-    get_symbol();
-
-    integer_is_signed = 0;
-  } else
-    negative = 0;
-
-  // optional: dereference
-  if (symbol == SYM_ASTERISK) {
-    dereference = 1;
-
-    get_symbol();
-  } else
-    dereference = 0;
-
-  // variable or call?
-  if (symbol == SYM_IDENTIFIER) {
-    variable_or_procedure_name = identifier;
-
-    get_symbol();
-
-    if (symbol == SYM_LPARENTHESIS) {
-      get_symbol();
-
-      // procedure call: identifier "(" ... ")"
-      type = compile_call(variable_or_procedure_name);
-
-      talloc();
-
-      // retrieve return value
-      emit_addi(current_temporary(), REG_A0, 0);
-
-      // reset return register to initial return value
-      // for missing return expressions
-      emit_addi(REG_A0, REG_ZR, 0);
-    } else
-      // variable access: identifier
-      type = load_variable(variable_or_procedure_name);
-
-  // integer, character or string literal?
-  } else if (is_literal()) {
-    type = compile_literal();
-
-  // "(" expression ")" ?
-  } else if (symbol == SYM_LPARENTHESIS) {
-    get_symbol();
-
-    type = compile_expression();
-
-    get_expected_symbol(SYM_RPARENTHESIS);
-  } else {
-    syntax_error_unexpected();
-
-    type = UINT64_T;
-  }
-
-  if (dereference) {
-    if (type != UINT64STAR_T)
-      type_warning(UINT64STAR_T, type);
-
-    // dereference
-    emit_load(current_temporary(), current_temporary(), 0);
-
-    type = UINT64_T;
-  }
-
-  if (negative) {
-    if (type != UINT64_T) {
-      type_warning(UINT64_T, type);
-
-      type = UINT64_T;
-    }
-
-    emit_sub(current_temporary(), REG_ZR, current_temporary());
-  }
-
-  // assert: allocated_temporaries == n + 1
-
-  if (has_cast)
-    // cast is grammar attribute
-    return cast;
-  else
-    // type of factor is grammar attribute
-    return type;
-}
-
-uint64_t compile_term() {
-  uint64_t ltype;
-  uint64_t operator_symbol;
-  uint64_t rtype;
-
-  // assert: n = allocated_temporaries
-
-  ltype = compile_factor();
-
-  // assert: allocated_temporaries == n + 1
-
-  // * / or % ?
-  while (is_mult_or_div_or_rem()) {
-    operator_symbol = symbol;
-
-    get_symbol();
-
-    rtype = compile_factor();
-
-    // assert: allocated_temporaries == n + 2
-
-    if (ltype != rtype)
-      type_warning(ltype, rtype);
-
-    if (operator_symbol == SYM_ASTERISK)
-      emit_mul(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_DIVISION)
-      emit_divu(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_REMAINDER)
-      emit_remu(previous_temporary(), previous_temporary(), current_temporary());
+void save_temporaries() {
+  while (allocated_temporaries > 0) {
+    // push temporary onto stack
+    emit_addi(REG_SP, REG_SP, -WORDSIZE);
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
   }
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of term is grammar attribute
-  return ltype;
 }
 
-uint64_t compile_arithmetic() {
-  uint64_t ltype;
-  uint64_t operator_symbol;
-  uint64_t rtype;
-
-  // assert: n = allocated_temporaries
-
-  ltype = compile_term();
-
-  // assert: allocated_temporaries == n + 1
-
-  // + or - ?
-  while (is_plus_or_minus()) {
-    operator_symbol = symbol;
-
-    get_symbol();
-
-    rtype = compile_term();
-
-    // assert: allocated_temporaries == n + 2
-
-    if (operator_symbol == SYM_PLUS) {
-      if (ltype == UINT64STAR_T) {
-        if (rtype == UINT64_T)
-          // UINT64STAR_T + UINT64_T
-          // pointer arithmetic: left_term + right_term * SIZEOFUINT
-          emit_multiply_by(current_temporary(), SIZEOFUINT);
-        else
-          // UINT64STAR_T + UINT64STAR_T
-          syntax_error_message("(uint64_t*) + (uint64_t*) is undefined");
-      } else if (rtype == UINT64STAR_T) {
-        // UINT64_T + UINT64STAR_T
-        // pointer arithmetic: left_term * SIZEOFUINT + right_term
-        emit_multiply_by(previous_temporary(), SIZEOFUINT);
-
-        ltype = UINT64STAR_T;
-      }
-
-      emit_add(previous_temporary(), previous_temporary(), current_temporary());
-
-    } else if (operator_symbol == SYM_MINUS) {
-      if (ltype == UINT64STAR_T) {
-        if (rtype == UINT64_T) {
-          // UINT64STAR_T - UINT64_T
-          // pointer arithmetic: left_term - right_term * SIZEOFUINT
-          emit_multiply_by(current_temporary(), SIZEOFUINT);
-          emit_sub(previous_temporary(), previous_temporary(), current_temporary());
-        } else {
-          // UINT64STAR_T - UINT64STAR_T
-          // pointer arithmetic: (left_term - right_term) / SIZEOFUINT
-          emit_sub(previous_temporary(), previous_temporary(), current_temporary());
-          emit_addi(current_temporary(), REG_ZR, SIZEOFUINT);
-          emit_divu(previous_temporary(), previous_temporary(), current_temporary());
-
-          ltype = UINT64_T;
-        }
-      } else if (rtype == UINT64STAR_T)
-        // UINT64_T - UINT64STAR_T
-        syntax_error_message("(uint64_t) - (uint64_t*) is undefined");
-      else
-        // UINT64_T - UINT64_T
-        emit_sub(previous_temporary(), previous_temporary(), current_temporary());
-    }
-
-    tfree(1);
-  }
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of simple expression is grammar attribute
-  return ltype;
-}
-
-uint64_t compile_expression() {
-  uint64_t ltype;
-  uint64_t operator_symbol;
-  uint64_t rtype;
-
-  // assert: n = allocated_temporaries
-
-  ltype = compile_arithmetic();
-
-  // assert: allocated_temporaries == n + 1
-
-  //optional: ==, !=, <, >, <=, >= simple_expression
-  if (is_comparison()) {
-    operator_symbol = symbol;
-
-    get_symbol();
-
-    rtype = compile_arithmetic();
-
-    // assert: allocated_temporaries == n + 2
-
-    if (ltype != rtype)
-      type_warning(ltype, rtype);
-
-    // for lack of boolean type
-    ltype = UINT64_T;
-
-    if (operator_symbol == SYM_EQUALITY) {
-      // a == b iff unsigned b - a < 1
-      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
-      emit_addi(current_temporary(), REG_ZR, 1);
-      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
-
-      tfree(1);
-
-    } else if (operator_symbol == SYM_NOTEQ) {
-      // a != b iff unsigned 0 < b - a
-      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
-
-      tfree(1);
-
-      emit_sltu(current_temporary(), REG_ZR, current_temporary());
-
-    } else if (operator_symbol == SYM_LT) {
-      // a < b
-      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
-
-      tfree(1);
-
-    } else if (operator_symbol == SYM_GT) {
-      // a > b iff b < a
-      emit_sltu(previous_temporary(), current_temporary(), previous_temporary());
-
-      tfree(1);
-
-    } else if (operator_symbol == SYM_LEQ) {
-      // a <= b iff 1 - (b < a)
-      emit_sltu(previous_temporary(), current_temporary(), previous_temporary());
-      emit_addi(current_temporary(), REG_ZR, 1);
-      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
-
-      tfree(1);
-
-    } else if (operator_symbol == SYM_GEQ) {
-      // a >= b iff 1 - (a < b)
-      emit_sltu(previous_temporary(), previous_temporary(), current_temporary());
-      emit_addi(current_temporary(), REG_ZR, 1);
-      emit_sub(previous_temporary(), current_temporary(), previous_temporary());
-
-      tfree(1);
-    }
-  }
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of expression is grammar attribute
-  return ltype;
-}
-
-void compile_assignment(char* variable_name) {
-  uint64_t ltype;
-  uint64_t rtype;
-  uint64_t dereference;
-
-  // assert: allocated_temporaries == 0
-
-  ltype = 0;
-
-  dereference = 0;
-
-  // variable_name can be a string already or just 0
-  // if it is just 0 we expect "*"
-  if (variable_name == (char*) 0) {
-    // "*"
-    if (get_expected_symbol(SYM_ASTERISK)) {
-      dereference = 1;
-
-      if (symbol == SYM_IDENTIFIER) {
-        variable_name = identifier;
-
-        get_symbol();
-      }
-    }
-  }
-
-  // ["*"] variable "=" expression
-  if (variable_name != (char*) 0) {
-    if (dereference)
-      // load from address, value is in temporary
-      ltype = load_variable(variable_name);
-    else
-      // address is in temporary
-      ltype = load_variable_address(variable_name);
-
-    // assert: allocated_temporaries == 1
-  }
-  // "*" "(" expression ")" = expression
-  else if (symbol == SYM_LPARENTHESIS) {
-    if (dereference == 0) {
-      syntax_error_symbol(SYM_ASTERISK);
-
-      dereference = 1;
-    }
-
-    get_symbol();
-
-    ltype = compile_expression();
-
-    // assert: allocated_temporaries == 1
-
-    get_expected_symbol(SYM_RPARENTHESIS);
-  } else {
-    syntax_error_symbol(SYM_IDENTIFIER);
-
-    // we expect: allocated_temporaries == 1
-    // this way we do not have to exit right away
-    // and can keep running the compiler
+void restore_temporaries(uint64_t number_of_temporaries) {
+  while (allocated_temporaries < number_of_temporaries) {
     talloc();
+
+    // restore temporary from stack
+    emit_load(current_temporary(), REG_SP, 0);
+    emit_addi(REG_SP, REG_SP, WORDSIZE);
   }
-
-  // address stored in current temporary
-  // assert: allocated_temporaries == 1
-
-  if (symbol == SYM_ASSIGN) {
-    get_symbol();
-
-    if (dereference) {
-      if (ltype != UINT64STAR_T)
-        type_warning(UINT64STAR_T, ltype);
-      else
-        ltype = UINT64_T;
-    }
-
-    rtype = compile_expression();
-
-    // assert: allocated_temporaries == 2
-
-    if (ltype != rtype)
-      type_warning(ltype, rtype);
-
-    emit_store(previous_temporary(), 0, current_temporary());
-
-    tfree(1);
-
-    // assert: allocated_temporaries == 1
-
-    number_of_assignments = number_of_assignments + 1;
-  } else
-    syntax_error_symbol(SYM_ASSIGN);
-
-  // assert: allocated_temporaries == 1
-
-  tfree(1);
 }
 
-void compile_statement() {
-  char* variable_or_procedure_name;
+uint64_t macro_expand(uint64_t* entry) {
+  char* name;
 
-  // assert: allocated_temporaries == 0
+  name = get_string(entry);
 
-  while (look_for_statement()) {
-    syntax_error_unexpected();
+  if (string_compare(name, "var_start"))
+    macro_var_start();
+  else if (string_compare(name, "var_arg"))
+    macro_var_arg();
+  else if (string_compare(name, "var_end"))
+    macro_var_end();
 
-    if (symbol == SYM_EOF)
-      exit(EXITCODE_PARSERERROR);
-    else
-      get_symbol();
-  }
-
-  // while statement?
-  if (symbol == SYM_WHILE) {
-    compile_while();
-  }
-  // if statement?
-  else if (symbol == SYM_IF) {
-    compile_if();
-  }
-  // return statement?
-  else if (symbol == SYM_RETURN) {
-    compile_return();
-
-    get_expected_symbol(SYM_SEMICOLON);
-  }
-  // call ";" | assignment ";"
-  else {
-    if (symbol == SYM_IDENTIFIER) {
-      variable_or_procedure_name = identifier;
-
-      get_symbol();
-
-      // procedure call
-      if (symbol == SYM_LPARENTHESIS) {
-        get_symbol();
-
-        compile_call(variable_or_procedure_name);
-
-        // reset return register to initial return value
-        // for missing return expressions
-        emit_addi(REG_A0, REG_ZR, 0);
-
-      // if it is not a call it has to be an assignment
-      } else
-        // variable name already found
-        compile_assignment(variable_or_procedure_name);
-
-    // might be "*"
-    } else
-      compile_assignment((char*) 0);
-
-    get_expected_symbol(SYM_SEMICOLON);
-  }
-
-  // assert: allocated_temporaries == 0
+  // return type is grammar attribute
+  return get_type(entry);
 }
 
-uint64_t compile_value() {
-  if (is_int_or_char_literal())
-    get_symbol();
-  else {
-    syntax_error_symbol(SYM_INTEGER);
-
-    return 0;
-  }
-
-  return literal;
-}
-
-uint64_t compile_type() {
+uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters) {
   uint64_t type;
 
-  type = UINT64_T;
+  if (entry == (uint64_t*) 0) {
+    // procedure never called nor declared nor defined
 
-  if (symbol == SYM_UINT64) {
-    get_symbol();
+    // return type will be determined by procedure declaration or definition
+    type = UNDECLARED_T;
 
-    while (symbol == SYM_UINT64)
-      // we tolerate multiple uint64_t aliases for bootstrapping
-      get_symbol();
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, code_size);
 
-    while (symbol == SYM_ASTERISK) {
-      // we tolerate pointer to pointers for bootstrapping
-      type = UINT64STAR_T;
+    emit_jal(REG_RA, 0);
 
-      get_symbol();
-    }
-  } else if (symbol == SYM_VOID) {
-    get_symbol();
+  } else {
+    type = get_type(entry);
 
-    // we tolerate casts to void for bootstrapping
-    type = UINT64_T;
+    if (get_address(entry) == 0) {
+      // procedure declared but never called nor defined
+      set_address(entry, code_size);
 
-    while (symbol == SYM_ASTERISK) {
-      // we tolerate pointer to pointers for bootstrapping
-      type = UINT64STAR_T;
+      emit_jal(REG_RA, 0);
+    } else if (get_opcode(load_instruction(get_address(entry))) == OP_JAL) {
+      // procedure called and possibly declared but not defined
 
-      get_symbol();
-    }
-  } else
-    syntax_error_symbol(SYM_UINT64);
+      // create fixup chain using absolute address
+      emit_jal(REG_RA, get_address(entry));
+      set_address(entry, code_size - INSTRUCTIONSIZE);
+    } else
+      // procedure defined, use relative address
+      emit_jal(REG_RA, get_address(entry) - code_size);
+  }
 
-  // type is grammar attribute
+  // return type is grammar attribute
   return type;
 }
 
-uint64_t* compile_variable(uint64_t offset) {
-  uint64_t type;
+uint64_t compile_call(char* procedure) {
   uint64_t* entry;
-
-  type = compile_type();
-
-  if (symbol == SYM_IDENTIFIER) {
-    // TODO: check if identifier has already been declared
-    entry = create_symbol_table_entry(LOCAL_TABLE, identifier, line_number, VARIABLE, type, 0, offset);
-
-    get_symbol();
-  } else {
-    syntax_error_symbol(SYM_IDENTIFIER);
-
-    entry = create_symbol_table_entry(LOCAL_TABLE, "no_name", line_number, VARIABLE, type, 0, offset);
-  }
-
-  return entry;
-}
-
-uint64_t compile_initialization(uint64_t type) {
-  uint64_t initial_value;
-  uint64_t has_cast;
-  uint64_t cast;
-
-  initial_value = 0;
-
-  has_cast = 0;
-
-  if (symbol == SYM_ASSIGN) {
-    get_symbol();
-
-    // optional: [ cast ]
-    if (symbol == SYM_LPARENTHESIS) {
-      has_cast = 1;
-
-      get_symbol();
-
-      cast = compile_type();
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-    }
-
-    // optional: -
-    if (symbol == SYM_MINUS) {
-      integer_is_signed = 1;
-
-      get_symbol();
-    }
-
-    initial_value = compile_value();
-
-    if (integer_is_signed) {
-      integer_is_signed = 0;
-
-      initial_value = -initial_value;
-    }
-
-    get_expected_symbol(SYM_SEMICOLON);
-  } else
-    syntax_error_symbol(SYM_ASSIGN);
-
-  if (has_cast) {
-    if (type != cast)
-      type_warning(type, cast);
-  } else if (type != UINT64_T)
-    type_warning(type, UINT64_T);
-
-  // initial value is grammar attribute
-  return initial_value;
-}
-
-void compile_cstar() {
+  uint64_t number_of_temporaries;
+  uint64_t number_of_parameters;
+  uint64_t allocate_memory_on_stack;
   uint64_t type;
-  char* variable_or_procedure_name;
-  uint64_t current_line_number;
-  uint64_t initial_value;
-  uint64_t* entry;
 
-  while (symbol != SYM_EOF) {
-    while (look_for_type()) {
-      syntax_error_unexpected();
+  entry = search_symbol_table(library_symbol_table, procedure, MACRO);
 
-      if (symbol == SYM_EOF)
-        exit(EXITCODE_PARSERERROR);
-      else
-        get_symbol();
-    }
+  if (entry != (uint64_t*) 0)
+    // actually expanding a macro, not calling a procedure
+    return macro_expand(entry);
 
-    if (symbol == SYM_VOID) {
-      // void identifier ...
-      // procedure declaration or definition
+  entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
+
+  // assert: n = allocated_temporaries
+
+  number_of_temporaries = allocated_temporaries;
+
+  save_temporaries();
+
+  // assert: allocated_temporaries == 0
+
+  number_of_parameters = 0;
+
+  if (is_expression()) {
+    compile_expression();
+
+    // TODO: check if types/number of parameters is correct
+
+    // allocate memory on stack for actual parameters
+    allocate_memory_on_stack = code_size;
+
+    // we do not yet know how many, fixup later
+    emit_addi(REG_SP, REG_SP, 0);
+
+    // push first parameter onto stack
+    emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+
+    tfree(1);
+
+    number_of_parameters = number_of_parameters + 1;
+
+    while (symbol == SYM_COMMA) {
       get_symbol();
 
-      if (symbol == SYM_ASTERISK) {
-        // we tolerate void* return types for bootstrapping
-        get_symbol();
+      compile_expression();
 
-        type = UINT64STAR_T;
-      } else
-        type = VOID_T;
+      // push next parameter onto stack
+      emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
 
-      if (symbol == SYM_IDENTIFIER) {
-        variable_or_procedure_name = identifier;
+      tfree(1);
 
-        get_symbol();
+      number_of_parameters = number_of_parameters + 1;
+    }
 
-        compile_procedure(variable_or_procedure_name, type);
-      } else
-        syntax_error_symbol(SYM_IDENTIFIER);
+    // now we know the number of actual parameters
+    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * WORDSIZE));
+
+    if (symbol == SYM_RPARENTHESIS) {
+      get_symbol();
+
+      type = procedure_call(entry, procedure, number_of_parameters);
     } else {
-      type = compile_type();
+      syntax_error_symbol(SYM_RPARENTHESIS);
 
-      if (symbol == SYM_IDENTIFIER) {
-        variable_or_procedure_name = identifier;
-
-        get_symbol();
-
-        if (symbol == SYM_LPARENTHESIS)
-          // type identifier "(" ...
-          // procedure declaration or definition
-          compile_procedure(variable_or_procedure_name, type);
-        else {
-          current_line_number = line_number;
-
-          if (symbol == SYM_SEMICOLON) {
-            // type identifier ";" ...
-            // global variable declaration
-            get_symbol();
-
-            // uninitialized global variables are initialized to 0
-            initial_value = 0;
-          } else
-            // type identifier "=" ...
-            // global variable definition
-            initial_value = compile_initialization(type);
-
-          entry = search_global_symbol_table(variable_or_procedure_name, VARIABLE);
-
-          if (entry == (uint64_t*) 0) {
-            // allocate memory for global variable in data segment
-            data_size = data_size + WORDSIZE;
-
-            create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -data_size);
-          } else {
-            // global variable already declared or defined
-            print_line_number("warning", current_line_number);
-            printf("redefinition of global variable %s ignored\n", variable_or_procedure_name);
-          }
-        }
-      } else
-        syntax_error_symbol(SYM_IDENTIFIER);
+      type = UINT64_T;
     }
+  } else if (symbol == SYM_RPARENTHESIS) {
+    get_symbol();
+
+    type = procedure_call(entry, procedure, 0);
+  } else {
+    syntax_error_symbol(SYM_RPARENTHESIS);
+
+    type = UINT64_T;
   }
+
+  if (entry != (uint64_t*) 0)
+    if (signed_less_than(get_value(entry), 0))
+      // deallocate variadic parameters
+      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * WORDSIZE);
+
+  // assert: allocated_temporaries == 0
+
+  restore_temporaries(number_of_temporaries);
+
+  // assert: allocated_temporaries == n
+
+  number_of_calls = number_of_calls + 1;
+
+  // return type is grammar attribute
+  return type;
+}
+
+void compile_return() {
+  uint64_t type;
+
+  // assert: allocated_temporaries == 0
+
+  get_expected_symbol(SYM_RETURN);
+
+  // optional: expression
+  if (symbol != SYM_SEMICOLON) {
+    type = compile_expression();
+
+    if (type != return_type)
+      type_warning(return_type, type);
+
+    // save value of expression in return register
+    emit_addi(REG_A0, current_temporary(), 0);
+
+    tfree(1);
+  } else if (return_type != VOID_T)
+    type_warning(return_type, VOID_T);
+
+  // jump to procedure epilogue through fixup chain using absolute address
+  emit_jal(REG_ZR, return_branches);
+
+  // new head of fixup chain
+  return_branches = code_size - INSTRUCTIONSIZE;
+
+  // assert: allocated_temporaries == 0
+
+  number_of_return = number_of_return + 1;
 }
 
 // -----------------------------------------------------------------
