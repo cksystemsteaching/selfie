@@ -4565,9 +4565,9 @@ uint64_t compile_type() {
       get_symbol();
     }
   } else if (symbol == SYM_VOID) {
+    // we tolerate casts to void for bootstrapping
     get_symbol();
 
-    // we tolerate casts to void for bootstrapping
     type = UINT64_T;
 
     while (symbol == SYM_ASTERISK) {
@@ -4609,45 +4609,37 @@ void compile_statement() {
       get_symbol();
   }
 
-  // while statement?
-  if (symbol == SYM_WHILE) {
-    compile_while();
-  }
-  // if statement?
-  else if (symbol == SYM_IF) {
-    compile_if();
-  }
-  // return statement?
-  else if (symbol == SYM_RETURN) {
-    compile_return();
+  if (symbol == SYM_ASTERISK) {
+    // must be assignment
+    compile_assignment((char*) 0);
 
     get_expected_symbol(SYM_SEMICOLON);
-  }
-  // call ";" | assignment ";"
-  else {
-    if (symbol == SYM_IDENTIFIER) {
-      variable_or_procedure_name = identifier;
+  } else if (symbol == SYM_IDENTIFIER) {
+    variable_or_procedure_name = identifier;
 
+    get_symbol();
+
+    if (symbol != SYM_LPARENTHESIS)
+      // must be assignment
+      compile_assignment(variable_or_procedure_name);
+    else {
+      // is call
       get_symbol();
 
-      // procedure call
-      if (symbol == SYM_LPARENTHESIS) {
-        get_symbol();
+      compile_call(variable_or_procedure_name);
 
-        compile_call(variable_or_procedure_name);
+      // reset return register to initial return value
+      // for missing return expressions
+      emit_addi(REG_A0, REG_ZR, 0);
+    }
 
-        // reset return register to initial return value
-        // for missing return expressions
-        emit_addi(REG_A0, REG_ZR, 0);
-
-      // if it is not a call it has to be an assignment
-      } else
-        // variable name already found
-        compile_assignment(variable_or_procedure_name);
-
-    // might be "*"
-    } else
-      compile_assignment((char*) 0);
+    get_expected_symbol(SYM_SEMICOLON);
+  } else if (symbol == SYM_IF)
+    compile_if();
+  else if (symbol == SYM_WHILE)
+    compile_while();
+  else if (symbol == SYM_RETURN) {
+    compile_return();
 
     get_expected_symbol(SYM_SEMICOLON);
   }
