@@ -710,10 +710,9 @@ uint64_t compile_value(); // returns value
 
 void compile_statement();
 
-void      load_upper_base_address(uint64_t* entry);
-uint64_t* get_variable(char* variable);
-void      load_value_or_address(uint64_t* entry, uint64_t address);
-uint64_t  load_variable_or_address(char* variable, uint64_t address);
+uint64_t load_upper_base_address(uint64_t* entry);
+void     load_value_or_address(uint64_t* entry, uint64_t address);
+uint64_t load_variable_or_address(char* variable, uint64_t address);
 
 void compile_assignment();
 
@@ -4647,7 +4646,7 @@ void compile_statement() {
   // assert: allocated_temporaries == 0
 }
 
-void load_upper_base_address(uint64_t* entry) {
+uint64_t load_upper_base_address(uint64_t* entry) {
   uint64_t lower;
   uint64_t upper;
 
@@ -4667,20 +4666,8 @@ void load_upper_base_address(uint64_t* entry) {
   emit_add(current_temporary(), get_scope(entry), current_temporary());
 
   // assert: allocated_temporaries == n + 1
-}
 
-uint64_t* get_variable(char* variable) {
-  uint64_t* entry;
-
-  entry = get_scoped_symbol_table_entry(variable, VARIABLE);
-
-  if (entry != (uint64_t*) 0)
-    return entry;
-  else {
-    syntax_error_undeclared_identifier(variable);
-
-    exit(EXITCODE_PARSERERROR);
-  }
+  return sign_extend(lower, 12);
 }
 
 void load_value_or_address(uint64_t* entry, uint64_t address) {
@@ -4694,9 +4681,7 @@ void load_value_or_address(uint64_t* entry, uint64_t address) {
 
     base = get_scope(entry);
   } else {
-    offset = sign_extend(get_bits(offset, 0, 12), 12);
-
-    load_upper_base_address(entry);
+    offset = load_upper_base_address(entry);
 
     base = current_temporary();
   }
@@ -4716,7 +4701,13 @@ uint64_t load_variable_or_address(char* variable, uint64_t address) {
 
   // assert: n = allocated_temporaries
 
-  entry = get_variable(variable);
+  entry = get_scoped_symbol_table_entry(variable, VARIABLE);
+
+  if (entry == (uint64_t*) 0) {
+    syntax_error_undeclared_identifier(variable);
+
+    exit(EXITCODE_PARSERERROR);
+  }
 
   load_value_or_address(entry, address);
 
@@ -4737,7 +4728,7 @@ void compile_assignment(char* variable_name) {
     // variable_name is identifier
     dereference = 0;
 
-    // load variable address into temporary
+    // load variable address
     ltype = load_variable_or_address(variable_name, 1);
   } else {
     // "*" identifier | "*" "(" expression ")"
@@ -4750,12 +4741,12 @@ void compile_assignment(char* variable_name) {
 
       get_symbol();
 
-      // load variable value (as address) into temporary
+      // load variable value (as address)
       ltype = load_variable_or_address(variable_name, 0);
     } else if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
-      // load expression value (as address) into temporary
+      // load expression value (as address)
       ltype = compile_expression();
 
       get_expected_symbol(SYM_RPARENTHESIS);
