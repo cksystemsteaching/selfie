@@ -4719,10 +4719,10 @@ uint64_t load_variable(char* variable) {
 
   offset = get_address(entry);
 
-  // the following if-construct is equivalent to just doing:
-  //   load_variable_address(variable);
-  //   emit_load(current_temporary(), 0, current_temporary());
-  // but it requires 1 less instruction this way
+  // the following code is an optimization (by one addi) of:
+
+  // load_variable_address(variable);
+  // emit_load(current_temporary(), 0, current_temporary());
 
   if (is_signed_integer(offset, 12)) {
     talloc();
@@ -4741,68 +4741,44 @@ uint64_t load_variable(char* variable) {
 }
 
 void compile_assignment(char* variable_name) {
+  uint64_t dereference;
   uint64_t ltype;
   uint64_t rtype;
-  uint64_t dereference;
 
   // assert: allocated_temporaries == 0
 
-  ltype = 0;
-
-  dereference = 0;
-
-  // variable_name can be a string already or just 0
-  // if it is just 0 we expect "*"
-  if (variable_name == (char*) 0) {
-    // "*"
-    if (get_expected_symbol(SYM_ASTERISK)) {
-      dereference = 1;
-
-      if (symbol == SYM_IDENTIFIER) {
-        variable_name = identifier;
-
-        get_symbol();
-      }
-    }
-  }
-
-  // ["*"] variable "=" expression
   if (variable_name != (char*) 0) {
-    if (dereference)
-      // load from address, value is in temporary
-      ltype = load_variable(variable_name);
-    else
-      // address is in temporary
-      ltype = load_variable_address(variable_name);
+    // variable_name is identifier
+    dereference = 0;
 
-    // assert: allocated_temporaries == 1
-  }
-  // "*" "(" expression ")" = expression
-  else if (symbol == SYM_LPARENTHESIS) {
-    if (dereference == 0) {
-      syntax_error_symbol(SYM_ASTERISK);
-
-      dereference = 1;
-    }
-
-    get_symbol();
-
-    ltype = compile_expression();
-
-    // assert: allocated_temporaries == 1
-
-    get_expected_symbol(SYM_RPARENTHESIS);
+    // load variable address into temporary
+    ltype = load_variable_address(variable_name);
   } else {
-    syntax_error_symbol(SYM_IDENTIFIER);
+    // "*" identifier | "*" "(" expression ")"
+    get_required_symbol(SYM_ASTERISK);
 
-    // we expect: allocated_temporaries == 1
-    // this way we do not have to exit right away
-    // and can keep running the compiler
-    talloc();
+    dereference = 1;
+
+    if (symbol == SYM_IDENTIFIER) {
+      variable_name = identifier;
+
+      get_symbol();
+
+      // load variable value (as address) into temporary
+      ltype = load_variable(variable_name);
+    } else if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      // load expression value (as address) into temporary
+      ltype = compile_expression();
+
+      get_expected_symbol(SYM_RPARENTHESIS);
+    }
   }
+
+  // assert: allocated_temporaries == 1
 
   // address stored in current temporary
-  // assert: allocated_temporaries == 1
 
   if (symbol == SYM_ASSIGN) {
     get_symbol();
@@ -4834,6 +4810,8 @@ void compile_assignment(char* variable_name) {
   // assert: allocated_temporaries == 1
 
   tfree(1);
+
+  // assert: allocated_temporaries == 0
 }
 
 uint64_t compile_expression() {
