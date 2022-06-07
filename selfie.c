@@ -701,7 +701,7 @@ void type_warning(uint64_t expected, uint64_t found);
 
 uint64_t variable_initialization(uint64_t type);
 
-void compile_cstar();
+void compile_cstar(); // grammar top symbol, parser entry
 
 uint64_t* compile_variable(uint64_t offset); // returns variable
 
