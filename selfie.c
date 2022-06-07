@@ -3738,38 +3738,45 @@ void get_symbol() {
         symbol = identifier_or_keyword();
 
       } else if (is_digit(character)) {
-        // accommodate integer and null for termination
-        integer = string_alloc(MAX_INTEGER_LENGTH);
-
-        i = 0;
-
-        while (is_digit(character)) {
-          if (i >= MAX_INTEGER_LENGTH) {
-            if (integer_is_signed)
-              syntax_error_message("signed integer out of bound");
-            else
-              syntax_error_message("integer out of bound");
-
-            exit(EXITCODE_SCANNERERROR);
-          }
-
-          store_character(integer, i, character);
-
-          i = i + 1;
-
+        if (character == '0') {
+          // 0 is 0, not 00, 000, etc.
           get_character();
-        }
 
-        store_character(integer, i, 0); // null-terminated string
+          literal = 0;
+        } else {
+          // accommodate integer and null for termination
+          integer = string_alloc(MAX_INTEGER_LENGTH);
 
-        literal = atoi(integer);
+          i = 0;
 
-        if (integer_is_signed)
-          if (literal > INT64_MIN) {
-              syntax_error_message("signed integer out of bound");
+          while (is_digit(character)) {
+            if (i >= MAX_INTEGER_LENGTH) {
+              if (integer_is_signed)
+                syntax_error_message("signed integer out of bound");
+              else
+                syntax_error_message("integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
+
+            store_character(integer, i, character);
+
+            i = i + 1;
+
+            get_character();
+          }
+
+          store_character(integer, i, 0); // null-terminated string
+
+          literal = atoi(integer);
+
+          if (integer_is_signed)
+            if (literal > INT64_MIN) {
+                syntax_error_message("signed integer out of bound");
+
+                exit(EXITCODE_SCANNERERROR);
+              }
+        }
 
         symbol = SYM_INTEGER;
 
