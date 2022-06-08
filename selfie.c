@@ -4759,6 +4759,18 @@ void compile_assignment(char* variable_name) {
       ltype = compile_expression();
 
       get_expected_symbol(SYM_RPARENTHESIS);
+    } else {
+      syntax_error_symbol(SYM_IDENTIFIER);
+
+      // we need allocated_temporaries == 1
+      // to keep running the compiler
+      talloc();
+
+      // loading 0 to trigger store at address 0
+      emit_addi(current_temporary(), REG_ZR, 0);
+
+      // but no further warning below
+      ltype = UINT64STAR_T;
     }
   }
 
