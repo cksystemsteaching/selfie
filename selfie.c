@@ -710,7 +710,7 @@ uint64_t compile_value(); // returns value
 
 void compile_statement();
 
-uint64_t load_upper_base_address(uint64_t* entry);
+uint64_t load_upper_value(uint64_t reg, uint64_t value);
 void     load_value_or_address(uint64_t* entry, uint64_t address);
 uint64_t load_variable_or_address(char* variable, uint64_t address);
 
@@ -4646,26 +4646,28 @@ void compile_statement() {
   // assert: allocated_temporaries == 0
 }
 
-uint64_t load_upper_base_address(uint64_t* entry) {
+uint64_t load_upper_value(uint64_t reg, uint64_t value) {
   uint64_t lower;
   uint64_t upper;
 
-  // assert: n = allocated_temporaries
+  // assert: -2^31 <= value < 2^31
 
-  lower = get_bits(get_address(entry),  0, 12);
-  upper = get_bits(get_address(entry), 12, 20);
+  lower = get_bits(value,  0, 12);
+  upper = get_bits(value, 12, 20);
 
-  if (lower >= two_to_the_power_of(11))
+  if (lower >= two_to_the_power_of(11)) {
     // add 1 which is effectively 2^12 to cancel sign extension of lower
     upper = upper + 1;
 
-  talloc();
+    // assert: 0 < upper <= 2^(32-12)
+    emit_lui(reg, sign_extend(upper, 20));
 
-  // calculate upper part of base address relative to global or frame pointer
-  emit_lui(current_temporary(), sign_extend(upper, 20));
-  emit_add(current_temporary(), get_scope(entry), current_temporary());
-
-  // assert: allocated_temporaries == n + 1
+    if (upper == two_to_the_power_of(19))
+      // upper overflowed, cancel sign extension
+      emit_sub(reg, REG_ZR, reg);
+  } else
+    // assert: 0 < upper < 2^(32-12)
+    emit_lui(reg, sign_extend(upper, 20));
 
   return sign_extend(lower, 12);
 }
@@ -4674,14 +4676,19 @@ void load_value_or_address(uint64_t* entry, uint64_t address) {
   uint64_t offset;
   uint64_t base;
 
+  // assert: n = allocated_temporaries
+
   offset = get_address(entry);
+  base   = get_scope(entry);
 
-  if (is_signed_integer(offset, 12)) {
-    talloc();
+  talloc();
 
-    base = get_scope(entry);
-  } else {
-    offset = load_upper_base_address(entry);
+  if (is_signed_integer(offset, 12) == 0) {
+    // offset does not fit as 12-bit immediate value
+    offset = load_upper_value(current_temporary(), offset);
+
+    // calculate new base
+    emit_add(current_temporary(), base, current_temporary());
 
     base = current_temporary();
   }
@@ -4692,8 +4699,10 @@ void load_value_or_address(uint64_t* entry, uint64_t address) {
   else
     // load value at address which is short for:
     // emit_addi(current_temporary(), base, offset);
-    // emit_load(current_temporary(), 0, current_temporary());
+    // emit_load(current_temporary(), current_temporary(), 0);
     emit_load(current_temporary(), base, offset);
+
+  // assert: allocated_temporaries == n + 1
 }
 
 uint64_t load_variable_or_address(char* variable, uint64_t address) {
@@ -5116,9 +5125,6 @@ uint64_t compile_factor() {
 }
 
 void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
-  uint64_t lower;
-  uint64_t upper;
-
   // assert: -2^31 <= value < 2^31
 
   if (is_signed_integer(value, 12)) {
@@ -5130,25 +5136,9 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
     // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
     // are loaded with one lui and one addi into a register plus
     // an additional sub to cancel sign extension if necessary
+    value = load_upper_value(reg, value);
 
-    lower = get_bits(value,  0, 12);
-    upper = get_bits(value, 12, 20);
-
-    if (lower >= two_to_the_power_of(11)) {
-      // add 1 which is effectively 2^12 to cancel sign extension of lower
-      upper = upper + 1;
-
-      // assert: 0 < upper <= 2^(32-12)
-      emit_lui(reg, sign_extend(upper, 20));
-
-      if (upper == two_to_the_power_of(19))
-        // upper overflowed, cancel sign extension
-        emit_sub(reg, REG_ZR, reg);
-    } else
-      // assert: 0 < upper < 2^(32-12)
-      emit_lui(reg, sign_extend(upper, 20));
-
-    emit_addi(reg, reg, sign_extend(lower, 12));
+    emit_addi(reg, reg, value);
   }
 }
 
