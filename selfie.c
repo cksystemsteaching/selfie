@@ -5127,12 +5127,11 @@ uint64_t compile_factor() {
 void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   // assert: -2^31 <= value < 2^31
 
-  if (is_signed_integer(value, 12)) {
+  if (is_signed_integer(value, 12))
     // integers with -2^11 <= value < 2^11
     // are loaded with one addi into a register
-
     emit_addi(reg, REG_ZR, value);
-  } else {
+  else {
     // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
     // are loaded with one lui and one addi into a register plus
     // an additional sub to cancel sign extension if necessary
