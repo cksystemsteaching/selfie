@@ -5410,11 +5410,9 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
     if (is_signed_integer(-number_of_local_variable_bytes, 12))
       emit_addi(REG_SP, REG_SP, -number_of_local_variable_bytes);
     else {
-      load_integer(-number_of_local_variable_bytes);
+      syntax_error_message("too many local variables");
 
-      emit_add(REG_SP, REG_SP, current_temporary());
-
-      tfree(1);
+      exit(EXITCODE_COMPILERERROR);
     }
   }
 }
@@ -5432,8 +5430,14 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // restore return address
   emit_load(REG_RA, REG_SP, 0);
 
-  // deallocate memory for return address and (non-variadic) actual parameters
-  emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
+  if (is_signed_integer(WORDSIZE + number_of_parameter_bytes, 12))
+    // deallocate memory for return address and (non-variadic) actual parameters
+    emit_addi(REG_SP, REG_SP, WORDSIZE + number_of_parameter_bytes);
+  else {
+    syntax_error_message("too many formal parameters");
+
+    exit(EXITCODE_COMPILERERROR);
+  }
 
   // return
   emit_jalr(REG_ZR, REG_RA, 0);
