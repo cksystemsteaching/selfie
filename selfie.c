@@ -5249,18 +5249,20 @@ void compile_if() {
 
   // assert: allocated_temporaries == 0
 
-  // if ( expression )
   if (symbol == SYM_IF) {
     get_symbol();
 
     if (symbol == SYM_LPARENTHESIS) {
+      // "if" "(" expression ")"
       get_symbol();
 
       compile_expression();
 
-      // if the "if" case is not true we branch to "else" (if provided)
+      // if the "if" condition is false we skip the true case
+      // by branching to "else" (if provided)
       branch_forward_to_else_or_end = code_size;
 
+      // the target address is still unknown, using 0 for now
       emit_beq(current_temporary(), REG_ZR, 0);
 
       tfree(1);
@@ -5268,8 +5270,8 @@ void compile_if() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
-        // zero or more statements: { statement }
         if (symbol == SYM_LBRACE) {
+          // zero or more statements: "{" { statement } "}"
           get_symbol();
 
           while (is_neither_rbrace_nor_eof())
@@ -5277,39 +5279,39 @@ void compile_if() {
 
           get_required_symbol(SYM_RBRACE);
         } else
-        // only one statement without {}
+          // only one statement without {}
           compile_statement();
 
-        //optional: else
         if (symbol == SYM_ELSE) {
+          // optional: "else"
           get_symbol();
 
-          // if the "if" case was true we skip the "else" case
+          // if the "if" condition was true we skip "else"
           // by unconditionally jumping to the end
           jump_forward_to_end = code_size;
 
+          // the target address is still unknown, using 0 for now
           emit_jal(REG_ZR, 0);
 
-          // if the "if" case was not true we branch here
+          // if the "if" condition was false we branch here
           fixup_relative_BFormat(branch_forward_to_else_or_end);
 
-          // zero or more statements: { statement }
           if (symbol == SYM_LBRACE) {
+            // zero or more statements: "{" { statement } "}"
             get_symbol();
 
             while (is_neither_rbrace_nor_eof())
               compile_statement();
 
             get_required_symbol(SYM_RBRACE);
-
-          // only one statement without {}
           } else
+            // only one statement without "{" "}"
             compile_statement();
 
-          // if the "if" case was true we unconditionally jump here
+          // if the "if" condition was true we unconditionally jump here
           fixup_relative_JFormat(jump_forward_to_end, code_size);
         } else
-          // if the "if" case was not true we branch here
+          // if the "if" condition was false we branch here
           fixup_relative_BFormat(branch_forward_to_else_or_end);
       } else
         syntax_error_symbol(SYM_RPARENTHESIS);
@@ -5333,8 +5335,8 @@ void compile_while() {
 
   branch_forward_to_end = 0;
 
-  // while ( expression )
   if (symbol == SYM_WHILE) {
+    // "while" "(" expression ")"
     get_symbol();
 
     if (symbol == SYM_LPARENTHESIS) {
@@ -5342,9 +5344,11 @@ void compile_while() {
 
       compile_expression();
 
-      // we do not know where to branch, fixup later
+      // if the "while" condition is false
+      // we skip the "while" body by branching to the end
       branch_forward_to_end = code_size;
 
+      // the target address is still unknown, using 0 for now
       emit_beq(current_temporary(), REG_ZR, 0);
 
       tfree(1);
@@ -5352,8 +5356,8 @@ void compile_while() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
-        // zero or more statements: { statement }
         if (symbol == SYM_LBRACE) {
+          // zero or more statements: "{" { statement } "}"
           get_symbol();
 
           while (is_neither_rbrace_nor_eof())
@@ -5361,7 +5365,7 @@ void compile_while() {
 
           get_required_symbol(SYM_RBRACE);
         } else
-          // only one statement without {}
+          // only one statement without "{" "}"
           compile_statement();
       } else
         syntax_error_symbol(SYM_RPARENTHESIS);
