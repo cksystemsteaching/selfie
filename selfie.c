@@ -675,6 +675,7 @@ void     tfree(uint64_t number_of_temporaries);
 
 void reset_parser();
 
+uint64_t is_type();
 uint64_t is_value();
 uint64_t is_expression();
 uint64_t is_comparison();
@@ -714,7 +715,7 @@ uint64_t load_upper_value(uint64_t reg, uint64_t value);
 void     load_value_or_address(uint64_t* entry, uint64_t address);
 uint64_t load_variable_or_address(char* variable, uint64_t address);
 
-void compile_assignment();
+void compile_assignment(char* variable);
 
 uint64_t compile_expression(); // returns type
 uint64_t compile_arithmetic(); // returns type
@@ -736,11 +737,11 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 void compile_procedure(char* procedure, uint64_t type);
 
-void save_temporaries();
-void restore_temporaries(uint64_t number_of_temporaries);
+uint64_t save_temporaries();
+void     restore_temporaries(uint64_t number_of_temporaries);
 
 uint64_t macro_expand(uint64_t* entry);
-uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters);
+uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_actual_parameters);
 
 uint64_t compile_call(char* procedure); // returns type
 void     compile_return();
@@ -751,7 +752,7 @@ uint64_t allocated_temporaries = 0; // number of allocated temporaries
 
 uint64_t* current_procedure = (uint64_t*) 0; // currently parsed procedure definition
 
-uint64_t return_branches = 0; // fixup chain for return statements
+uint64_t return_jumps = 0; // fixup chain for return statements
 
 uint64_t return_type = 0; // return type of currently parsed procedure
 
@@ -4550,10 +4551,10 @@ uint64_t compile_type() {
 
   type = UINT64_T;
 
-  if (symbol == SYM_UINT64) {
+  if (is_type()) {
     get_symbol();
 
-    while (symbol == SYM_UINT64)
+    while (is_type())
       // we tolerate multiple uint64_t aliases for bootstrapping
       get_symbol();
 
@@ -4726,19 +4727,21 @@ uint64_t load_variable_or_address(char* variable, uint64_t address) {
   return get_type(entry);
 }
 
-void compile_assignment(char* variable_name) {
+void compile_assignment(char* variable) {
   uint64_t dereference;
   uint64_t ltype;
   uint64_t rtype;
 
+  // assert: identifier has already been parsed if variable != (char*) 0
+
   // assert: allocated_temporaries == 0
 
-  if (variable_name != (char*) 0) {
-    // variable_name is identifier
+  if (variable != (char*) 0) {
+    // variable is identifier
     dereference = 0;
 
     // load variable address
-    ltype = load_variable_or_address(variable_name, 1);
+    ltype = load_variable_or_address(variable, 1);
   } else {
     // "*" identifier | "*" "(" expression ")"
     get_required_symbol(SYM_ASTERISK);
@@ -4746,12 +4749,12 @@ void compile_assignment(char* variable_name) {
     dereference = 1;
 
     if (symbol == SYM_IDENTIFIER) {
-      variable_name = identifier;
+      variable = identifier;
 
       get_symbol();
 
       // load variable value (as address)
-      ltype = load_variable_or_address(variable_name, 0);
+      ltype = load_variable_or_address(variable, 0);
     } else if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
@@ -5025,16 +5028,15 @@ uint64_t compile_factor() {
   if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
 
-    // cast: "(" "uint64_t" [ "*" ] ")"
-    if (symbol == SYM_UINT64) {
+    if (is_type()) {
+      // cast: "(" "uint64_t" [ "*" ] ")"
       has_cast = 1;
 
       cast = compile_type();
 
       get_expected_symbol(SYM_RPARENTHESIS);
-
-    // not a cast: "(" expression ")"
     } else {
+      // not a cast but: "(" expression ")"
       type = compile_expression();
 
       get_expected_symbol(SYM_RPARENTHESIS);
@@ -5275,6 +5277,7 @@ void compile_if() {
           get_symbol();
 
           while (is_neither_rbrace_nor_eof())
+            // assert: allocated_temporaries == 0
             compile_statement();
 
           get_required_symbol(SYM_RBRACE);
@@ -5301,6 +5304,7 @@ void compile_if() {
             get_symbol();
 
             while (is_neither_rbrace_nor_eof())
+              // assert: allocated_temporaries == 0
               compile_statement();
 
             get_required_symbol(SYM_RBRACE);
@@ -5361,6 +5365,7 @@ void compile_while() {
           get_symbol();
 
           while (is_neither_rbrace_nor_eof())
+            // assert: allocated_temporaries == 0
             compile_statement();
 
           get_required_symbol(SYM_RBRACE);
@@ -5445,16 +5450,18 @@ void procedure_epilogue(uint64_t number_of_parameter_bytes) {
 
 void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_variadic;
-  uint64_t number_of_parameters;
+  uint64_t number_of_formal_parameters;
   uint64_t* entry;
   uint64_t number_of_local_variable_bytes;
+
+  // assert: identifier has already been parsed
 
   local_symbol_table = (uint64_t*) 0;
 
   // assuming procedure is not variadic
   is_variadic = 0;
 
-  number_of_parameters = 0;
+  number_of_formal_parameters = 0;
 
   // try parsing formal parameters
 
@@ -5462,16 +5469,18 @@ void compile_procedure(char* procedure, uint64_t type) {
     get_symbol();
 
     if (symbol != SYM_RPARENTHESIS) {
+      // try parsing first formal parameter
       entry = compile_variable(0);
 
-      number_of_parameters = 1;
+      number_of_formal_parameters = 1;
 
       // 2 * WORDSIZE offset to skip frame pointer and link
-      // additional offset (number_of_parameters - 1) * WORDSIZE
+      // additional offset (number_of_formal_parameters - 1) * WORDSIZE
       // since actual parameters are pushed onto stack in reverse
-      set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
+      set_address(entry, 2 * WORDSIZE + (number_of_formal_parameters - 1) * WORDSIZE);
 
       while (is_possibly_parameter(is_variadic)) {
+        // try parsing next formal parameter
         get_symbol();
 
         if (symbol == SYM_ELLIPSIS) {
@@ -5481,9 +5490,9 @@ void compile_procedure(char* procedure, uint64_t type) {
         } else {
           entry = compile_variable(0);
 
-          number_of_parameters = number_of_parameters + 1;
+          number_of_formal_parameters = number_of_formal_parameters + 1;
 
-          set_address(entry, 2 * WORDSIZE + (number_of_parameters - 1) * WORDSIZE);
+          set_address(entry, 2 * WORDSIZE + (number_of_formal_parameters - 1) * WORDSIZE);
         }
       }
 
@@ -5494,8 +5503,8 @@ void compile_procedure(char* procedure, uint64_t type) {
     syntax_error_symbol(SYM_LPARENTHESIS);
 
   if (is_variadic)
-    // negative number of parameters indicates procedure is variadic
-    number_of_parameters = -number_of_parameters;
+    // negative number of formal parameters indicates procedure is variadic
+    number_of_formal_parameters = -number_of_formal_parameters;
 
   // try parsing rest of procedure declaration or definition
 
@@ -5507,7 +5516,8 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   if (entry == (uint64_t*) 0)
     // procedure never called nor declared nor defined
-    entry = create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, 0);
+    entry = create_symbol_table_entry(GLOBAL_TABLE,
+      procedure, line_number, PROCEDURE, type, number_of_formal_parameters, 0);
   else if (get_type(entry) == UNDECLARED_T)
     // procedure already called but neither declared nor defined
     set_type(entry, type);
@@ -5561,7 +5571,8 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     number_of_local_variable_bytes = 0;
 
-    while (symbol == SYM_UINT64) {
+    while (is_type()) {
+      // try parsing next local variable declaration
       number_of_local_variable_bytes = number_of_local_variable_bytes + WORDSIZE;
 
       // offset of local variables relative to frame pointer is negative
@@ -5570,13 +5581,15 @@ void compile_procedure(char* procedure, uint64_t type) {
       get_expected_symbol(SYM_SEMICOLON);
     }
 
+    // try parsing statements in procedure body
+
     procedure_prologue(number_of_local_variable_bytes);
 
     // macros require access to current procedure
     current_procedure = entry;
 
     // create a fixup chain for return statements
-    return_branches = 0;
+    return_jumps = 0;
 
     return_type = type;
 
@@ -5587,14 +5600,15 @@ void compile_procedure(char* procedure, uint64_t type) {
     return_type = 0;
 
     if (symbol == SYM_RBRACE) {
-      fixlink_relative(return_branches, code_size);
+      // all return statements jump here
+      fixlink_relative(return_jumps, code_size);
 
-      return_branches = 0;
+      return_jumps = 0;
 
       if (is_variadic)
-        procedure_epilogue(-number_of_parameters * WORDSIZE);
+        procedure_epilogue(-number_of_formal_parameters * WORDSIZE);
       else
-        procedure_epilogue(number_of_parameters * WORDSIZE);
+        procedure_epilogue(number_of_formal_parameters * WORDSIZE);
 
       get_symbol();
     } else {
@@ -5612,7 +5626,11 @@ void compile_procedure(char* procedure, uint64_t type) {
   // assert: allocated_temporaries == 0
 }
 
-void save_temporaries() {
+uint64_t save_temporaries() {
+  uint64_t number_of_temporaries;
+
+  number_of_temporaries = allocated_temporaries;
+
   while (allocated_temporaries > 0) {
     // push temporary onto stack
     emit_addi(REG_SP, REG_SP, -WORDSIZE);
@@ -5620,6 +5638,8 @@ void save_temporaries() {
 
     tfree(1);
   }
+
+  return number_of_temporaries;
 }
 
 void restore_temporaries(uint64_t number_of_temporaries) {
@@ -5648,7 +5668,7 @@ uint64_t macro_expand(uint64_t* entry) {
   return get_type(entry);
 }
 
-uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_parameters) {
+uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_actual_parameters) {
   uint64_t type;
 
   if (entry == (uint64_t*) 0) {
@@ -5657,7 +5677,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_par
     // return type will be determined by procedure declaration or definition
     type = UNDECLARED_T;
 
-    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_parameters, code_size);
+    create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, number_of_actual_parameters, code_size);
 
     emit_jal(REG_RA, 0);
 
@@ -5687,9 +5707,12 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_par
 uint64_t compile_call(char* procedure) {
   uint64_t* entry;
   uint64_t number_of_temporaries;
-  uint64_t number_of_parameters;
   uint64_t allocate_memory_on_stack;
+  uint64_t number_of_actual_parameters;
+  uint64_t number_of_formal_parameters;
   uint64_t type;
+
+  // assert: identifier "(" has already been parsed
 
   entry = search_symbol_table(library_symbol_table, procedure, MACRO);
 
@@ -5697,75 +5720,80 @@ uint64_t compile_call(char* procedure) {
     // actually expanding a macro, not calling a procedure
     return macro_expand(entry);
 
-  entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
-
   // assert: n = allocated_temporaries
 
-  number_of_temporaries = allocated_temporaries;
-
-  save_temporaries();
+  number_of_temporaries = save_temporaries();
 
   // assert: allocated_temporaries == 0
 
-  number_of_parameters = 0;
-
   if (is_expression()) {
+    // try parsing first actual parameter
     compile_expression();
 
-    // TODO: check if types/number of parameters is correct
+    // TODO: check if types of actual and formal parameters match
 
-    // allocate memory on stack for actual parameters
+    // remember where to allocate memory on stack for actual parameters
     allocate_memory_on_stack = code_size;
 
-    // we do not yet know how many, fixup later
+    // we do not yet know how many bytes are needed, fixup later
     emit_addi(REG_SP, REG_SP, 0);
 
-    // push first parameter onto stack
-    emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+    // push first actual parameter onto top (!) of stack
+    emit_store(REG_SP, 0, current_temporary());
 
     tfree(1);
 
-    number_of_parameters = number_of_parameters + 1;
+    number_of_actual_parameters = 1;
 
     while (symbol == SYM_COMMA) {
+      // try parsing next actual parameter
       get_symbol();
 
       compile_expression();
 
-      // push next parameter onto stack
-      emit_store(REG_SP, number_of_parameters * WORDSIZE, current_temporary());
+      // push next actual parameter onto stack in reverse (!) order
+      emit_store(REG_SP, number_of_actual_parameters * WORDSIZE, current_temporary());
 
       tfree(1);
 
-      number_of_parameters = number_of_parameters + 1;
+      number_of_actual_parameters = number_of_actual_parameters + 1;
     }
 
     // now we know the number of actual parameters
-    fixup_IFormat(allocate_memory_on_stack, -(number_of_parameters * WORDSIZE));
+    fixup_IFormat(allocate_memory_on_stack, -(number_of_actual_parameters * WORDSIZE));
+  } else
+    number_of_actual_parameters = 0;
 
-    if (symbol == SYM_RPARENTHESIS) {
-      get_symbol();
-
-      type = procedure_call(entry, procedure, number_of_parameters);
-    } else {
-      syntax_error_symbol(SYM_RPARENTHESIS);
-
-      type = UINT64_T;
-    }
-  } else if (symbol == SYM_RPARENTHESIS) {
+  if (symbol == SYM_RPARENTHESIS) {
+    // ready to call procedure
     get_symbol();
 
-    type = procedure_call(entry, procedure, 0);
+    entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
+
+    type = procedure_call(entry, procedure, number_of_actual_parameters);
+
+    if (entry != (uint64_t*) 0) {
+      // procedure declared or defined before this call
+      number_of_formal_parameters = get_value(entry);
+
+      if (signed_less_than(number_of_formal_parameters, 0)) {
+        // variadic procedure
+        number_of_formal_parameters = -number_of_formal_parameters;
+
+        if (number_of_actual_parameters > number_of_formal_parameters)
+          // deallocate variadic actual parameters
+          emit_addi(REG_SP, REG_SP,
+            (number_of_actual_parameters - number_of_formal_parameters) * WORDSIZE);
+        else if (number_of_actual_parameters < number_of_formal_parameters)
+          syntax_error_message("fewer actual than formal parameters");
+      } else if (number_of_actual_parameters != number_of_formal_parameters)
+        syntax_error_message("different number of actual and formal parameters");
+    }
   } else {
     syntax_error_symbol(SYM_RPARENTHESIS);
 
     type = UINT64_T;
   }
-
-  if (entry != (uint64_t*) 0)
-    if (signed_less_than(get_value(entry), 0))
-      // deallocate variadic parameters
-      emit_addi(REG_SP, REG_SP, (number_of_parameters + get_value(entry)) * WORDSIZE);
 
   // assert: allocated_temporaries == 0
 
@@ -5801,10 +5829,10 @@ void compile_return() {
     type_warning(return_type, VOID_T);
 
   // jump to procedure epilogue through fixup chain using absolute address
-  emit_jal(REG_ZR, return_branches);
+  emit_jal(REG_ZR, return_jumps);
 
   // new head of fixup chain
-  return_branches = code_size - INSTRUCTIONSIZE;
+  return_jumps = code_size - INSTRUCTIONSIZE;
 
   // assert: allocated_temporaries == 0
 
