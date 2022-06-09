@@ -3043,7 +3043,7 @@ void put_character(char c) {
       if (OS != SELFIE)
         // on bootlevel zero use printf to print on console
         // to keep output synchronized with other printf output
-        written_bytes = printf("%c", (char) c);
+        written_bytes = printf("%c", c);
       else
         // on non-zero bootlevel use write to print on console
         // to avoid infinite loop back to printf
@@ -4710,6 +4710,8 @@ uint64_t load_variable_or_address(char* variable, uint64_t address) {
 
   if (entry == (uint64_t*) 0) {
     syntax_error_undeclared_identifier(variable);
+
+    // TODO: declare global variable to continue parsing
 
     exit(EXITCODE_PARSERERROR);
   }
@@ -9154,11 +9156,7 @@ void print_gc_profile(uint64_t* context) {
 
 uint64_t print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    if (output_fd == 1)
-      // use printf to serialize with other printfs
-      return printf("(~%lu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
-    else
-      return dprintf(output_fd, "(~%lu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    return dprintf(output_fd, "(~%lu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
   else
     return 0;
 }
@@ -10485,12 +10483,11 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf(",%lu(%lu.%.2lu%%)@0x%lX",
-      c,
+    printf(",%lu(%lu.%.2lu%%)@0x%lX", c,
       percentage_format_integral_2(total, c),
-      percentage_format_fractional_2(total, c),
-      a);
-    print_code_line_number_for_instruction(a, 0);
+      percentage_format_fractional_2(total, c), a);
+    if (code_line_number != (uint64_t*) 0)
+      printf("(~%lu)", *(code_line_number + a / INSTRUCTIONSIZE));
 
     return c;
   } else {
