@@ -399,9 +399,7 @@ void print_symbol(uint64_t symbol);
 void print_line_number(char* message, uint64_t line);
 
 void syntax_error_message(char* message);
-void syntax_error_character(char character);
-void syntax_error_undeclared_identifier(char* name);
-void syntax_error_unexpected_identifier(char* expected);
+void syntax_error_expected_character(char character);
 
 void get_character();
 
@@ -691,11 +689,14 @@ uint64_t is_neither_type_nor_void();
 uint64_t is_not_statement();
 uint64_t is_not_factor();
 
-void syntax_error_symbol(uint64_t expected);
-void syntax_error_unexpected();
+void syntax_error_expected_symbol(uint64_t expected);
+void syntax_error_unexpected_symbol();
 
 uint64_t get_expected_symbol(uint64_t expected_symbol);
 void     get_required_symbol(uint64_t required_symbol);
+
+void syntax_error_undeclared_identifier(char* name);
+void syntax_error_unexpected_identifier(char* expected);
 
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
@@ -3469,26 +3470,12 @@ void syntax_error_message(char* message) {
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
-void syntax_error_character(char expected) {
+void syntax_error_expected_character(char expected) {
   print_line_number("syntax error", line_number);
   print_character(expected);
   printf(" expected but ");
   print_character(character);
   printf(" found\n");
-
-  number_of_syntax_errors = number_of_syntax_errors + 1;
-}
-
-void syntax_error_undeclared_identifier(char* name) {
-  print_line_number("syntax error", line_number);
-  printf("%s undeclared\n", name);
-
-  number_of_syntax_errors = number_of_syntax_errors + 1;
-}
-
-void syntax_error_unexpected_identifier(char* expected) {
-  print_line_number("syntax error", line_number);
-  printf("%s expected but %s found\n", expected, identifier);
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
@@ -3791,11 +3778,11 @@ void get_symbol() {
         if (character == CHAR_SINGLEQUOTE)
           get_character();
         else if (character == CHAR_EOF) {
-          syntax_error_character(CHAR_SINGLEQUOTE);
+          syntax_error_expected_character(CHAR_SINGLEQUOTE);
 
           exit(EXITCODE_SCANNERERROR);
         } else
-          syntax_error_character(CHAR_SINGLEQUOTE);
+          syntax_error_expected_character(CHAR_SINGLEQUOTE);
 
         symbol = SYM_CHARACTER;
 
@@ -3829,7 +3816,7 @@ void get_symbol() {
         if (character == CHAR_DOUBLEQUOTE)
           get_character();
         else {
-          syntax_error_character(CHAR_DOUBLEQUOTE);
+          syntax_error_expected_character(CHAR_DOUBLEQUOTE);
 
           exit(EXITCODE_SCANNERERROR);
         }
@@ -3904,7 +3891,7 @@ void get_symbol() {
         if (character == CHAR_EQUAL)
           get_character();
         else
-          syntax_error_character(CHAR_EQUAL);
+          syntax_error_expected_character(CHAR_EQUAL);
 
         symbol = SYM_NOTEQ;
 
@@ -3937,9 +3924,9 @@ void get_symbol() {
           if (character == CHAR_DOT)
             get_character();
           else
-            syntax_error_character(CHAR_DOT);
+            syntax_error_expected_character(CHAR_DOT);
         } else
-          syntax_error_character(CHAR_DOT);
+          syntax_error_expected_character(CHAR_DOT);
 
         symbol = SYM_ELLIPSIS;
 
@@ -4326,7 +4313,7 @@ uint64_t is_not_factor() {
     return 1;
 }
 
-void syntax_error_symbol(uint64_t expected) {
+void syntax_error_expected_symbol(uint64_t expected) {
   print_line_number("syntax error", line_number);
   print_symbol(expected);
   printf(" expected but ");
@@ -4336,7 +4323,7 @@ void syntax_error_symbol(uint64_t expected) {
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
-void syntax_error_unexpected() {
+void syntax_error_unexpected_symbol() {
   print_line_number("syntax error", line_number);
   printf("unexpected symbol ");
   print_symbol(symbol);
@@ -4352,7 +4339,7 @@ uint64_t get_expected_symbol(uint64_t expected_symbol) {
     return 1;
   }
 
-  syntax_error_symbol(expected_symbol);
+  syntax_error_expected_symbol(expected_symbol);
 
   return 0;
 }
@@ -4360,6 +4347,20 @@ uint64_t get_expected_symbol(uint64_t expected_symbol) {
 void get_required_symbol(uint64_t required_symbol) {
   if (get_expected_symbol(required_symbol) == 0)
     exit(EXITCODE_PARSERERROR);
+}
+
+void syntax_error_undeclared_identifier(char* name) {
+  print_line_number("syntax error", line_number);
+  printf("%s undeclared\n", name);
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
+}
+
+void syntax_error_unexpected_identifier(char* expected) {
+  print_line_number("syntax error", line_number);
+  printf("%s expected but %s found\n", expected, identifier);
+
+  number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void print_type(uint64_t type) {
@@ -4424,7 +4425,7 @@ uint64_t variable_initialization(uint64_t type) {
 
     get_expected_symbol(SYM_SEMICOLON);
   } else
-    syntax_error_symbol(SYM_ASSIGN);
+    syntax_error_expected_symbol(SYM_ASSIGN);
 
   if (has_cast) {
     if (type != cast)
@@ -4445,7 +4446,7 @@ void compile_cstar() {
 
   while (symbol != SYM_EOF) {
     while (is_neither_type_nor_void()) {
-      syntax_error_unexpected();
+      syntax_error_unexpected_symbol();
 
       if (symbol == SYM_EOF)
         exit(EXITCODE_PARSERERROR);
@@ -4493,7 +4494,7 @@ void compile_cstar() {
           // procedure declaration or definition
           compile_procedure(variable_or_procedure_name, type);
       } else
-        syntax_error_symbol(SYM_IDENTIFIER);
+        syntax_error_expected_symbol(SYM_IDENTIFIER);
     } else {
       // not a type, must be void
       get_symbol();
@@ -4515,7 +4516,7 @@ void compile_cstar() {
 
         compile_procedure(variable_or_procedure_name, type);
       } else
-        syntax_error_symbol(SYM_IDENTIFIER);
+        syntax_error_expected_symbol(SYM_IDENTIFIER);
     }
   }
 }
@@ -4532,7 +4533,7 @@ uint64_t* compile_variable(uint64_t offset) {
 
     get_symbol();
   } else {
-    syntax_error_symbol(SYM_IDENTIFIER);
+    syntax_error_expected_symbol(SYM_IDENTIFIER);
 
     entry = create_symbol_table_entry(LOCAL_TABLE, "no_name", line_number, VARIABLE, type, 0, offset);
   }
@@ -4571,7 +4572,7 @@ uint64_t compile_type() {
       get_symbol();
     }
   } else
-    syntax_error_symbol(SYM_UINT64);
+    syntax_error_expected_symbol(SYM_UINT64);
 
   // type is grammar attribute
   return type;
@@ -4581,7 +4582,7 @@ uint64_t compile_value() {
   if (is_value())
     get_symbol();
   else {
-    syntax_error_symbol(SYM_INTEGER);
+    syntax_error_expected_symbol(SYM_INTEGER);
 
     return 0;
   }
@@ -4595,7 +4596,7 @@ void compile_statement() {
   // assert: allocated_temporaries == 0
 
   while (is_not_statement()) {
-    syntax_error_unexpected();
+    syntax_error_unexpected_symbol();
 
     if (symbol == SYM_EOF)
       exit(EXITCODE_PARSERERROR);
@@ -4757,7 +4758,7 @@ void compile_assignment(char* variable) {
 
       get_expected_symbol(SYM_RPARENTHESIS);
     } else {
-      syntax_error_symbol(SYM_IDENTIFIER);
+      syntax_error_unexpected_symbol();
 
       // we need allocated_temporaries == 1
       // to keep running the compiler
@@ -4800,7 +4801,7 @@ void compile_assignment(char* variable) {
 
     number_of_assignments = number_of_assignments + 1;
   } else
-    syntax_error_symbol(SYM_ASSIGN);
+    syntax_error_expected_symbol(SYM_ASSIGN);
 
   // assert: allocated_temporaries == 1
 
@@ -5010,7 +5011,7 @@ uint64_t compile_factor() {
   // assert: n = allocated_temporaries
 
   while (is_not_factor()) {
-    syntax_error_unexpected();
+    syntax_error_unexpected_symbol();
 
     if (symbol == SYM_EOF)
       exit(EXITCODE_PARSERERROR);
@@ -5096,7 +5097,7 @@ uint64_t compile_factor() {
 
     get_expected_symbol(SYM_RPARENTHESIS);
   } else {
-    syntax_error_unexpected();
+    syntax_error_unexpected_symbol();
 
     type = UINT64_T;
   }
@@ -5228,7 +5229,7 @@ uint64_t compile_literal() {
 
     return UINT64STAR_T;
   } else {
-    syntax_error_unexpected();
+    syntax_error_unexpected_symbol();
 
     // we must allocate an additional temporary
     load_integer(0);
@@ -5312,11 +5313,11 @@ void compile_if() {
           // if the "if" condition was false we branch here
           fixup_relative_BFormat(branch_forward_to_else_or_end);
       } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+        syntax_error_expected_symbol(SYM_RPARENTHESIS);
     } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
+      syntax_error_expected_symbol(SYM_LPARENTHESIS);
   } else
-    syntax_error_symbol(SYM_IF);
+    syntax_error_expected_symbol(SYM_IF);
 
   // assert: allocated_temporaries == 0
 
@@ -5367,11 +5368,11 @@ void compile_while() {
           // only one statement without "{" "}"
           compile_statement();
       } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+        syntax_error_expected_symbol(SYM_RPARENTHESIS);
     } else
-      syntax_error_symbol(SYM_LPARENTHESIS);
+      syntax_error_expected_symbol(SYM_LPARENTHESIS);
   } else
-    syntax_error_symbol(SYM_WHILE);
+    syntax_error_expected_symbol(SYM_WHILE);
 
   // we use JAL for the unconditional jump back to the loop condition because:
   // 1. the RISC-V doc recommends to do so to not disturb branch prediction
@@ -5494,7 +5495,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     } else
       get_symbol();
   } else
-    syntax_error_symbol(SYM_LPARENTHESIS);
+    syntax_error_expected_symbol(SYM_LPARENTHESIS);
 
   if (is_variadic)
     // negative number of formal parameters indicates procedure is variadic
@@ -5606,12 +5607,12 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       get_symbol();
     } else {
-      syntax_error_symbol(SYM_RBRACE);
+      syntax_error_expected_symbol(SYM_RBRACE);
 
       exit(EXITCODE_PARSERERROR);
     }
   } else
-    syntax_error_unexpected();
+    syntax_error_unexpected_symbol();
 
   current_procedure = (uint64_t*) 0;
 
@@ -5785,7 +5786,7 @@ uint64_t compile_call(char* procedure) {
         syntax_error_message("different number of actual and formal parameters");
     }
   } else {
-    syntax_error_symbol(SYM_RPARENTHESIS);
+    syntax_error_expected_symbol(SYM_RPARENTHESIS);
 
     type = UINT64_T;
   }
@@ -5877,7 +5878,7 @@ void macro_var_start() {
       get_symbol();
     }
   } else
-    syntax_error_symbol(SYM_IDENTIFIER);
+    syntax_error_expected_symbol(SYM_IDENTIFIER);
 }
 
 void macro_var_arg() {
@@ -5915,14 +5916,14 @@ void macro_var_arg() {
 
         tfree(1);
       } else
-        syntax_error_symbol(SYM_RPARENTHESIS);
+        syntax_error_expected_symbol(SYM_RPARENTHESIS);
     } else {
       syntax_error_undeclared_identifier(identifier);
 
       get_symbol();
     }
   } else
-    syntax_error_symbol(SYM_IDENTIFIER);
+    syntax_error_expected_symbol(SYM_IDENTIFIER);
 }
 
 // implementation of va_start, va_arg, and va_end is platform-specific;
@@ -5936,7 +5937,7 @@ void macro_var_end() {
 
     get_expected_symbol(SYM_RPARENTHESIS);
   } else
-    syntax_error_symbol(SYM_IDENTIFIER);
+    syntax_error_expected_symbol(SYM_IDENTIFIER);
 }
 
 // -----------------------------------------------------------------
