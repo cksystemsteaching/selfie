@@ -25,7 +25,7 @@ void do_stuff() {
 
   z = gc_malloc(8); // object 5
   if (((uint64_t) z) != validation_address_4 - check_offset) {
-    print("test 4 failed (local variable inside function)!\n");
+    printf("test 4 failed (local variable inside function)!\n");
     exit(1);
   }
 
@@ -97,21 +97,21 @@ int main(int argc, char** argv) {
   x = gc_malloc(8); // object 1
   if (((uint64_t) x) != validation_address_1 - check_offset) {
     printf("0x%08lX - 0x%lX\n", (uint64_t) x, validation_address_1 - check_offset);
-    print("test 1 failed!\n");
+    printf("test 1 failed!\n");
     exit(1);
   }
 
   // --- test 2 ---
   *x = (uint64_t) gc_malloc(8); // object 2
   if (*x != validation_address_2 - check_offset) {
-    print("test 2 failed!\n");
+    printf("test 2 failed!\n");
     exit(1);
   }
 
   // --- test 3 ---
   y = gc_malloc(8); // object 3
   if (((uint64_t) y) != validation_address_3 - check_offset) {
-    print("test 3 failed (first allocation)!\n");
+    printf("test 3 failed (first allocation)!\n");
     exit(1);
   }
 
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 
   y = gc_malloc(8); // object 4
   if (((uint64_t) y) != validation_address_3 - check_offset) {
-    print("test 3 failed (reuse)! make sure gc period is set to 0!\n");
+    printf("test 3 failed (reuse)! make sure gc period is set to 0!\n");
     exit(1);
   }
 
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
   z = gc_malloc(8); // object 6
   if (((uint64_t) z) != validation_address_4 - check_offset) {
-    print("test 4 failed (local variable)! make sure gc period is set to 0!\n");
+    printf("test 4 failed (local variable)! make sure gc period is set to 0!\n");
     exit(1);
   }
 
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
 
   z = gc_malloc(16); // object 7
   if (((uint64_t) z) != validation_address_5 - check_offset) {
-    print("test 5 failed!\n");
+    printf("test 5 failed!\n");
     exit(1);
   }
 
@@ -146,13 +146,13 @@ int main(int argc, char** argv) {
 
   w = gc_malloc(8); // object 8
   if (((uint64_t) w) != validation_address_1 - check_offset) {
-    print("test 6 failed! make sure gc period is set to 0!\n");
+    printf("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);
   }
 
   x = gc_malloc(8); // object 9
   if (((uint64_t) x) != validation_address_2 - check_offset) {
-    print("test 6 failed! make sure gc period is set to 0!\n");
+    printf("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);
   }
 

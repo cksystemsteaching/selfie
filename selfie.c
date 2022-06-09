@@ -134,11 +134,11 @@ uint64_t is_signed_integer(uint64_t n, uint64_t b);
 uint64_t sign_extend(uint64_t n, uint64_t b);
 uint64_t sign_shrink(uint64_t n, uint64_t b);
 
-uint64_t load_character(char* s, uint64_t i);
-char*    store_character(char* s, uint64_t i, uint64_t c);
+char  load_character(char* s, uint64_t i);
+char* store_character(char* s, uint64_t i, char c);
 
-uint64_t is_letter(uint64_t c);
-uint64_t is_digit(uint64_t c);
+uint64_t is_letter(char c);
+uint64_t is_digit(char c);
 
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
@@ -161,12 +161,12 @@ uint64_t ratio_format_fractional_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_integral_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b);
 
-void put_character(uint64_t c);
+void put_character(char c);
 
 void print(char* s);
 void println();
 
-void print_character(uint64_t c);
+void print_character(char c);
 void print_string(char* s);
 void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
@@ -235,34 +235,34 @@ uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 // contexts are extended in the symbolic execution engine and the Boehm garbage collector
 uint64_t CONTEXTENTRIES;
 
-uint64_t CHAR_EOF          =  -1; // end of file
-uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
-uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
-uint64_t CHAR_LF           =  10; // ASCII code 10 = line feed
-uint64_t CHAR_CR           =  13; // ASCII code 13 = carriage return
-uint64_t CHAR_SPACE        = ' ';
-uint64_t CHAR_UNDERSCORE   = '_';
-uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
-uint64_t CHAR_DOUBLEQUOTE  = '"';
-uint64_t CHAR_COMMA        = ',';
-uint64_t CHAR_SEMICOLON    = ';';
-uint64_t CHAR_LPARENTHESIS = '(';
-uint64_t CHAR_RPARENTHESIS = ')';
-uint64_t CHAR_LBRACE       = '{';
-uint64_t CHAR_RBRACE       = '}';
-uint64_t CHAR_PLUS         = '+';
-uint64_t CHAR_DASH         = '-';
-uint64_t CHAR_ASTERISK     = '*';
-uint64_t CHAR_SLASH        = '/';
-uint64_t CHAR_PERCENTAGE   = '%';
-uint64_t CHAR_EQUAL        = '=';
-uint64_t CHAR_EXCLAMATION  = '!';
-uint64_t CHAR_LT           = '<';
-uint64_t CHAR_GT           = '>';
-uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
-uint64_t CHAR_DOT          = '.';
+char CHAR_EOF          =  -1; // end of file
+char CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
+char CHAR_TAB          =   9; // ASCII code 9  = tabulator
+char CHAR_LF           =  10; // ASCII code 10 = line feed
+char CHAR_CR           =  13; // ASCII code 13 = carriage return
+char CHAR_SPACE        = ' ';
+char CHAR_UNDERSCORE   = '_';
+char CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
+char CHAR_DOUBLEQUOTE  = '"';
+char CHAR_COMMA        = ',';
+char CHAR_SEMICOLON    = ';';
+char CHAR_LPARENTHESIS = '(';
+char CHAR_RPARENTHESIS = ')';
+char CHAR_LBRACE       = '{';
+char CHAR_RBRACE       = '}';
+char CHAR_PLUS         = '+';
+char CHAR_DASH         = '-';
+char CHAR_ASTERISK     = '*';
+char CHAR_SLASH        = '/';
+char CHAR_PERCENTAGE   = '%';
+char CHAR_EQUAL        = '=';
+char CHAR_EXCLAMATION  = '!';
+char CHAR_LT           = '<';
+char CHAR_GT           = '>';
+char CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+char CHAR_DOT          = '.';
 
-uint64_t* character_buffer; // buffer for reading and writing characters
+char* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
 
@@ -364,8 +364,8 @@ void init_library() {
   WORDSIZEINBITS = WORDSIZE * 8;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = smalloc(SIZEOFUINT64);
-  *character_buffer = 0;
+  character_buffer  = (char*) smalloc(1);
+  *character_buffer = (char) 0;
 
   // accommodate at least SIZEOFUINT64INBITS numbers for itoa, no mapping needed
   integer_buffer = string_alloc(SIZEOFUINT64INBITS);
@@ -399,7 +399,7 @@ void print_symbol(uint64_t symbol);
 void print_line_number(char* message, uint64_t line);
 
 void syntax_error_message(char* message);
-void syntax_error_character(uint64_t character);
+void syntax_error_character(char character);
 void syntax_error_undeclared_identifier(char* name);
 void syntax_error_unexpected_identifier(char* expected);
 
@@ -408,7 +408,7 @@ void get_character();
 uint64_t is_character_new_line();
 uint64_t is_character_whitespace();
 
-uint64_t find_next_character();
+char find_next_character();
 
 uint64_t is_character_letter_or_digit_or_underscore();
 uint64_t is_character_not_double_quote_or_new_line_or_eof();
@@ -481,7 +481,7 @@ uint64_t literal = 0; // numerical value of most recently scanned integer or cha
 
 uint64_t integer_is_signed = 0; // enforce INT64_MIN limit if '-' was scanned before
 
-uint64_t character; // most recently read character
+char character; // most recently read character
 
 uint64_t number_of_read_characters = 0;
 
@@ -2704,7 +2704,7 @@ uint64_t sign_shrink(uint64_t n, uint64_t b) {
   return get_bits(n, 0, b);
 }
 
-uint64_t load_character(char* s, uint64_t i) {
+char load_character(char* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
@@ -2719,7 +2719,7 @@ uint64_t load_character(char* s, uint64_t i) {
   return get_bits(*((uint64_t*) s + a), (i % SIZEOFUINT64) * 8, 8);
 }
 
-char* store_character(char* s, uint64_t i, uint64_t c) {
+char* store_character(char* s, uint64_t i, char c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
@@ -2737,7 +2737,7 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   return s;
 }
 
-uint64_t is_letter(uint64_t c) {
+uint64_t is_letter(char c) {
   // ASCII codes for lower- and uppercase letters are in contiguous intervals
   if (c >= 'a')
     if (c <= 'z')
@@ -2753,7 +2753,7 @@ uint64_t is_letter(uint64_t c) {
     return 0;
 }
 
-uint64_t is_digit(uint64_t c) {
+uint64_t is_digit(char c) {
   // ASCII codes for digits are in a contiguous interval
   if (c >= '0')
     if (c <= '9')
@@ -3025,7 +3025,7 @@ uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b) {
     return 0;
 }
 
-void put_character(uint64_t c) {
+void put_character(char c) {
   uint64_t written_bytes;
 
   if (output_buffer) {
@@ -3046,11 +3046,11 @@ void put_character(uint64_t c) {
       else
         // on non-zero bootlevel use write to print on console
         // to avoid infinite loop back to printf
-        written_bytes = write(output_fd, character_buffer, 1);
+        written_bytes = write(output_fd, (uint64_t*) character_buffer, 1);
     } else
       // try to write 1 character from character_buffer
       // into file with output_fd file descriptor
-      written_bytes = write(output_fd, character_buffer, 1);
+      written_bytes = write(output_fd, (uint64_t*) character_buffer, 1);
 
     if (written_bytes != 1) {
       // output failed
@@ -3088,39 +3088,36 @@ void print(char* s) {
 }
 
 void println() {
-  put_character(CHAR_LF);
+  // not used in printf implementation
+  printf("\n");
 }
 
-void print_character(uint64_t c) {
-  put_character(CHAR_SINGLEQUOTE);
-
+void print_character(char c) {
+  // not used in printf implementation
   if (c == CHAR_EOF)
-    print("end of file");
+    printf("'end of file'");
   else if (c == CHAR_TAB)
-    print("tabulator");
+    printf("'tabulator'");
   else if (c == CHAR_LF)
-    print("line feed");
+    printf("'line feed'");
   else if (c == CHAR_CR)
-    print("carriage return");
+    printf("'carriage return'");
   else
-    put_character(c);
-
-  put_character(CHAR_SINGLEQUOTE);
+    printf("'%c'", c);
 }
 
 void print_string(char* s) {
-  put_character(CHAR_DOUBLEQUOTE);
-
-  print(s);
-
-  put_character(CHAR_DOUBLEQUOTE);
+  // not used in printf implementation
+  printf("\"%s\"", s);
 }
 
 void print_unsigned_integer(uint64_t n) {
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
 void print_integer(uint64_t n) {
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 10, 1, 0));
 }
 
@@ -3136,6 +3133,7 @@ void print_fractional(uint64_t n, uint64_t p) {
     p = p - 1;
   }
 
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
@@ -3150,6 +3148,7 @@ void unprint_integer(uint64_t n) {
 }
 
 void print_hexadecimal_no_prefix(uint64_t n, uint64_t a) {
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 16, 0, a));
 }
 
@@ -3158,6 +3157,7 @@ void print_hexadecimal(uint64_t n, uint64_t a) {
 }
 
 void print_octal_no_prefix(uint64_t n, uint64_t a) {
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 8, 0, a));
 }
 
@@ -3166,6 +3166,7 @@ void print_octal(uint64_t n, uint64_t a) {
 }
 
 void print_binary_no_prefix(uint64_t n, uint64_t a) {
+  // use print, not printf to avoid recursion
   print(itoa(n, integer_buffer, 2, 0, a));
 }
 
@@ -3451,14 +3452,10 @@ uint64_t* zmalloc(uint64_t size) {
 // -----------------------------------------------------------------
 
 void print_symbol(uint64_t symbol) {
-  put_character(CHAR_DOUBLEQUOTE);
-
   if (symbol == SYM_EOF)
-    print("end of file");
+    print_string("end of file");
   else
-    print((char*) *(SYMBOLS + symbol));
-
-  put_character(CHAR_DOUBLEQUOTE);
+    print_string((char*) *(SYMBOLS + symbol));
 }
 
 void print_line_number(char* message, uint64_t line) {
@@ -3472,12 +3469,12 @@ void syntax_error_message(char* message) {
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
-void syntax_error_character(uint64_t expected) {
+void syntax_error_character(char expected) {
   print_line_number("syntax error", line_number);
   print_character(expected);
-  print(" expected but ");
+  printf(" expected but ");
   print_character(character);
-  print(" found\n");
+  printf(" found\n");
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
@@ -3491,10 +3488,7 @@ void syntax_error_undeclared_identifier(char* name) {
 
 void syntax_error_unexpected_identifier(char* expected) {
   print_line_number("syntax error", line_number);
-  print_string(expected);
-  print(" expected but ");
-  print_string(identifier);
-  print(" found\n");
+  printf("%s expected but %s found\n", expected, identifier);
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
@@ -3506,7 +3500,7 @@ void get_character() {
 
   // try to read 1 character into character_buffer
   // from file with source_fd file descriptor
-  number_of_read_bytes = read(source_fd, character_buffer, 1);
+  number_of_read_bytes = read(source_fd, (uint64_t*) character_buffer, 1);
 
   if (number_of_read_bytes == 1) {
     // store the read character in the global variable called character
@@ -3541,7 +3535,7 @@ uint64_t is_character_whitespace() {
     return is_character_new_line();
 }
 
-uint64_t find_next_character() {
+char find_next_character() {
   uint64_t in_single_line_comment;
   uint64_t in_multi_line_comment;
 
@@ -4335,18 +4329,18 @@ uint64_t is_not_factor() {
 void syntax_error_symbol(uint64_t expected) {
   print_line_number("syntax error", line_number);
   print_symbol(expected);
-  print(" expected but ");
+  printf(" expected but ");
   print_symbol(symbol);
-  print(" found\n");
+  printf(" found\n");
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
 
 void syntax_error_unexpected() {
   print_line_number("syntax error", line_number);
-  print("unexpected symbol ");
+  printf("unexpected symbol ");
   print_symbol(symbol);
-  print(" found\n");
+  printf(" found\n");
 
   number_of_syntax_errors = number_of_syntax_errors + 1;
 }
@@ -4370,24 +4364,24 @@ void get_required_symbol(uint64_t required_symbol) {
 
 void print_type(uint64_t type) {
   if (type == UINT64_T)
-    print("uint64_t");
+    printf("uint64_t");
   else if (type == UINT64STAR_T)
-    print("uint64_t*");
+    printf("uint64_t*");
   else if (type == VOID_T)
-    print("void");
+    printf("void");
   else if (type == UNDECLARED_T)
-    print("undeclared");
+    printf("undeclared");
   else
-    print("unknown");
+    printf("unknown");
 }
 
 void type_warning(uint64_t expected, uint64_t found) {
   print_line_number("warning", line_number);
-  print("type mismatch, ");
+  printf("type mismatch, ");
   print_type(expected);
-  print(" expected but ");
+  printf(" expected but ");
   print_type(found);
-  print(" found\n");
+  printf(" found\n");
 }
 
 uint64_t variable_initialization(uint64_t type) {
@@ -5673,6 +5667,7 @@ uint64_t procedure_call(uint64_t* entry, char* procedure, uint64_t number_of_act
 
   if (entry == (uint64_t*) 0) {
     // procedure never called nor declared nor defined
+    syntax_error_undeclared_identifier(procedure);
 
     // return type will be determined by procedure declaration or definition
     type = UNDECLARED_T;

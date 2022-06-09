@@ -463,7 +463,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
 
               printf("%s: detected symbolic value ", selfie_name);
               print_symbolic_memory(sword);
-              print(" in filename of open call\n");
+              printf(" in filename of open call\n");
 
               exit(EXITCODE_SYMBOLICEXECUTIONERROR);
             } else
