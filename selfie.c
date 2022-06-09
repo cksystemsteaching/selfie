@@ -3945,7 +3945,7 @@ void get_symbol() {
 
       } else {
         print_line_number("syntax error", line_number);
-        print("found unknown character ");
+        printf("found unknown character ");
         print_character(character);
         println();
 
@@ -6278,7 +6278,7 @@ char* get_register_name(uint64_t reg) {
 }
 
 void print_register_name(uint64_t reg) {
-  print(get_register_name(reg));
+  printf("%s", get_register_name(reg));
 }
 
 uint64_t is_stack_register(uint64_t reg) {
@@ -6329,7 +6329,7 @@ void read_register_wrap(uint64_t reg, uint64_t wrap) {
     if (wrap)
       if (*(registers + reg) > UINT_MAX) {
         print_instruction();
-        print(": reading unwrapped value from register ");
+        printf(": reading unwrapped value from register ");
         print_register_name(reg);
         println();
 
@@ -6337,7 +6337,7 @@ void read_register_wrap(uint64_t reg, uint64_t wrap) {
       }
   } else {
     print_instruction();
-    print(": reading from uninitialized register ");
+    printf(": reading from uninitialized register ");
     print_register_name(reg);
     println();
 
@@ -6691,27 +6691,27 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
 void print_instruction_counters() {
   printf("%s: init:    ", selfie_name);
   print_instruction_counter_with_nops(ic_lui, nopc_lui, LUI);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_addi, nopc_addi, ADDI);
   println();
 
   printf("%s: memory:  ", selfie_name);
   print_instruction_counter_with_nops(ic_load, nopc_load, LOAD);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_store, nopc_store, STORE);
   println();
 
   printf("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic_add, nopc_add, ADD);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_sub, nopc_sub, SUB);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_mul, nopc_mul, MUL);
   println();
 
   printf("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic_divu, nopc_divu, DIVU);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_remu, nopc_remu, REMU);
   println();
 
@@ -6721,9 +6721,9 @@ void print_instruction_counters() {
 
   printf("%s: control: ", selfie_name);
   print_instruction_counter_with_nops(ic_beq, nopc_beq, BEQ);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_jal, nopc_jal, JAL);
-  print(", ");
+  printf(", ");
   print_instruction_counter_with_nops(ic_jalr, nopc_jalr, JALR);
   println();
 
@@ -7365,9 +7365,9 @@ void implement_exit(uint64_t* context) {
   uint64_t signed_int_exit_code;
 
   if (debug_syscalls) {
-    print("(exit): ");
+    printf("(exit): ");
     print_register_hexadecimal(REG_A0);
-    print(" |- ->\n");
+    printf(" |- ->\n");
   }
 
   signed_int_exit_code = *(get_regs(context) + REG_A0);
@@ -7414,13 +7414,13 @@ void implement_read(uint64_t* context) {
   uint64_t actually_read;
 
   if (debug_syscalls) {
-    print("(read): ");
+    printf("(read): ");
     print_register_value(REG_A0);
-    print(",");
+    printf(",");
     print_register_hexadecimal(REG_A1);
-    print(",");
+    printf(",");
     print_register_value(REG_A2);
-    print(" |- ");
+    printf(" |- ");
     print_register_value(REG_A0);
   }
 
@@ -7498,7 +7498,7 @@ void implement_read(uint64_t* context) {
     printf("%s: actually read %lu bytes from file with descriptor %lu\n", selfie_name, read_total, fd);
 
   if (debug_syscalls) {
-    print(" -> ");
+    printf(" -> ");
     print_register_value(REG_A0);
     println();
   }
@@ -7537,13 +7537,13 @@ void implement_write(uint64_t* context) {
   uint64_t actually_written;
 
   if (debug_syscalls) {
-    print("(write): ");
+    printf("(write): ");
     print_register_value(REG_A0);
-    print(",");
+    printf(",");
     print_register_hexadecimal(REG_A1);
-    print(",");
+    printf(",");
     print_register_value(REG_A2);
-    print(" |- ");
+    printf(" |- ");
     print_register_value(REG_A0);
   }
 
@@ -7621,7 +7621,7 @@ void implement_write(uint64_t* context) {
     printf("%s: actually wrote %lu bytes into file with descriptor %lu\n", selfie_name, written_total, fd);
 
   if (debug_syscalls) {
-    print(" -> ");
+    printf(" -> ");
     print_register_value(REG_A0);
     println();
   }
@@ -7709,15 +7709,15 @@ void implement_openat(uint64_t* context) {
   uint64_t fd;
 
   if (debug_syscalls) {
-    print("(openat): ");
+    printf("(openat): ");
     print_register_hexadecimal(REG_A0);
-    print(",");
+    printf(",");
     print_register_hexadecimal(REG_A1);
-    print(",");
+    printf(",");
     print_register_hexadecimal(REG_A2);
-    print(",");
+    printf(",");
     print_register_octal(REG_A3);
-    print(" |- ");
+    printf(" |- ");
     print_register_value(REG_A1);
   }
 
@@ -7752,7 +7752,7 @@ void implement_openat(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_syscalls) {
-    print(" -> ");
+    printf(" -> ");
     print_register_value(REG_A0);
     println();
   }
@@ -7866,9 +7866,9 @@ void implement_brk(uint64_t* context) {
   new_program_break = try_brk(context, new_program_break);
 
   if (debug_syscalls) {
-    print("(brk): ");
+    printf("(brk): ");
     print_register_hexadecimal(REG_A0);
-    print(" |- ");
+    printf(" |- ");
     print_register_hexadecimal(REG_A0);
   }
 
@@ -7882,7 +7882,7 @@ void implement_brk(uint64_t* context) {
     *(get_regs(context) + REG_A0) = previous_program_break;
 
   if (debug_syscalls) {
-    print(" -> ");
+    printf(" -> ");
     print_register_hexadecimal(REG_A0);
     println();
   }
@@ -7965,11 +7965,11 @@ void implement_switch() {
   uint64_t timeout;
 
   if (debug_syscalls) {
-    print("(switch): ");
+    printf("(switch): ");
     print_register_hexadecimal(REG_A0);
-    print(",");
+    printf(",");
     print_register_value(REG_A1);
-    print(" |- ");
+    printf(" |- ");
     print_register_value(REG_A6);
   }
 
@@ -7987,7 +7987,7 @@ void implement_switch() {
   current_context = do_switch(current_context, to_context, timeout);
 
   if (debug_syscalls) {
-    print(" -> ");
+    printf(" -> ");
     print_register_hexadecimal(REG_A6);
     println();
   }
@@ -8595,7 +8595,7 @@ void implement_gc_brk(uint64_t* context) {
   // if not, fall back to the default brk syscall
   if (program_break > get_program_break(context)) {
     if (debug_syscalls) {
-      print("(gc_brk): ");
+      printf("(gc_brk): ");
       print_register_hexadecimal(REG_A0);
     }
 
@@ -8603,7 +8603,7 @@ void implement_gc_brk(uint64_t* context) {
     size = program_break - get_program_break(context);
 
     if (debug_syscalls) {
-      print(" |- ");
+      printf(" |- ");
       print_register_hexadecimal(REG_A0);
     }
 
@@ -8611,7 +8611,7 @@ void implement_gc_brk(uint64_t* context) {
     *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
 
     if (debug_syscalls) {
-      print(" -> ");
+      printf(" -> ");
       print_register_hexadecimal(REG_A0);
       println();
     }
@@ -9143,7 +9143,7 @@ void print_gc_profile(uint64_t* context) {
     percentage_format_fractional_2(gc_mem_mallocated, gc_mem_metadata),
     gc_num_ungced_mallocs);
   if (is_gc_library(context) == 0)
-    print(" (external)");
+    printf(" (external)");
   println();
 }
 
@@ -10096,7 +10096,7 @@ void print_register_value(uint64_t reg) {
 }
 
 void print_exception(uint64_t exception, uint64_t fault) {
-  print((char*) *(EXCEPTIONS + exception));
+  printf("%s", (char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
     printf(" at page 0x%04lX", (uint64_t) fault);
@@ -10111,7 +10111,7 @@ void print_exception(uint64_t exception, uint64_t fault) {
   else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
     printf(" at address 0x%08lX", (uint64_t) fault);
   else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
-    print(" ");print_register_name(fault);
+    printf(" ");print_register_name(fault);
   }
 }
 
@@ -10120,7 +10120,7 @@ void throw_exception(uint64_t exception, uint64_t fault) {
     if (get_exception(current_context) != exception) {
       printf("%s: context 0x%08lX throws exception: ", selfie_name, (uint64_t) current_context);
       print_exception(exception, fault);
-      print(" in presence of existing exception: ");
+      printf(" in presence of existing exception: ");
       print_exception(get_exception(current_context), get_fault(current_context));
       println();
 
@@ -10493,7 +10493,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
     return c;
   } else {
-    print(",0(0.00%)");
+    printf(",0(0.00%%)");
 
     return 0;
   }
@@ -10642,17 +10642,17 @@ void print_profile(uint64_t* context) {
 
 void print_host_os() {
   if (OS == SELFIE)
-    print("selfie");
+    printf("selfie");
   else if (OS == LINUX)
-    print("Linux");
+    printf("Linux");
   else if (OS == MACOS)
-    print("macOS");
+    printf("macOS");
   else if (OS == WINDOWS)
-    print("Windows");
+    printf("Windows");
   else if (OS == BAREMETAL)
-    print("bare metal");
+    printf("bare metal");
   else
-    print("unknown");
+    printf("unknown");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -11390,7 +11390,7 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  print("mipster\n");
+  printf("mipster\n");
   printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   timeout = TIMESLICE;
@@ -11417,7 +11417,7 @@ uint64_t mipster(uint64_t* to_context) {
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
-  print("hypster\n");
+  printf("hypster\n");
   printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   while (1) {
@@ -11542,7 +11542,7 @@ void map_unmapped_pages(uint64_t* context) {
 }
 
 uint64_t minster(uint64_t* to_context) {
-  print("minster\n");
+  printf("minster\n");
   printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // virtual is like physical memory in initial context up to memory size
@@ -11555,7 +11555,7 @@ uint64_t minster(uint64_t* to_context) {
 }
 
 uint64_t mobster(uint64_t* to_context) {
-  print("mobster\n");
+  printf("mobster\n");
   printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   // does not handle page faults, relies on fancy hypsters to do that
