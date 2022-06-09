@@ -154,7 +154,7 @@ void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64
 
 uint64_t number_of_bits(uint64_t n);
 
-void beator();
+void beator(uint64_t entry_pc);
 
 uint64_t selfie_model();
 
