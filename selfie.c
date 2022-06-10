@@ -231,37 +231,6 @@ uint64_t UINT_MAX;       // maximum numerical value of target-dependent unsigned
 uint64_t WORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 
-// amount of entries of the context struct
-// contexts are extended in the symbolic execution engine and the Boehm garbage collector
-uint64_t CONTEXTENTRIES;
-
-char CHAR_EOF          =  -1; // end of file
-char CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
-char CHAR_TAB          =   9; // ASCII code 9  = tabulator
-char CHAR_LF           =  10; // ASCII code 10 = line feed
-char CHAR_CR           =  13; // ASCII code 13 = carriage return
-char CHAR_SPACE        = ' ';
-char CHAR_UNDERSCORE   = '_';
-char CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
-char CHAR_DOUBLEQUOTE  = '"';
-char CHAR_COMMA        = ',';
-char CHAR_SEMICOLON    = ';';
-char CHAR_LPARENTHESIS = '(';
-char CHAR_RPARENTHESIS = ')';
-char CHAR_LBRACE       = '{';
-char CHAR_RBRACE       = '}';
-char CHAR_PLUS         = '+';
-char CHAR_DASH         = '-';
-char CHAR_ASTERISK     = '*';
-char CHAR_SLASH        = '/';
-char CHAR_PERCENTAGE   = '%';
-char CHAR_EQUAL        = '=';
-char CHAR_EXCLAMATION  = '!';
-char CHAR_LT           = '<';
-char CHAR_GT           = '>';
-char CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
-char CHAR_DOT          = '.';
-
 char* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
@@ -354,9 +323,6 @@ void init_library() {
   INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
   INT64_MAX = INT64_MIN - 1;
 
-  // 9 uint64_t entries and 16 uint64_t* entries
-  CONTEXTENTRIES = 9 + 16;
-
   // target-dependent, see init_target()
   SIZEOFUINT     = SIZEOFUINT64;
   UINT_MAX       = UINT64_MAX;
@@ -420,6 +386,33 @@ void handle_escape_sequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+char CHAR_EOF          =  -1; // end of file
+char CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
+char CHAR_TAB          =   9; // ASCII code 9  = tabulator
+char CHAR_LF           =  10; // ASCII code 10 = line feed
+char CHAR_CR           =  13; // ASCII code 13 = carriage return
+char CHAR_SPACE        = ' ';
+char CHAR_UNDERSCORE   = '_';
+char CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
+char CHAR_DOUBLEQUOTE  = '"';
+char CHAR_COMMA        = ',';
+char CHAR_SEMICOLON    = ';';
+char CHAR_LPARENTHESIS = '(';
+char CHAR_RPARENTHESIS = ')';
+char CHAR_LBRACE       = '{';
+char CHAR_RBRACE       = '}';
+char CHAR_PLUS         = '+';
+char CHAR_DASH         = '-';
+char CHAR_ASTERISK     = '*';
+char CHAR_SLASH        = '/';
+char CHAR_PERCENTAGE   = '%';
+char CHAR_EQUAL        = '=';
+char CHAR_EXCLAMATION  = '!';
+char CHAR_LT           = '<';
+char CHAR_GT           = '>';
+char CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+char CHAR_DOT          = '.';
+
 uint64_t SYM_EOF = -1; // end of file
 
 // C* symbols
@@ -469,7 +462,17 @@ uint64_t MAX_STRING_LENGTH     = 128; // maximum number of characters in a strin
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+char character; // most recently read character
+
+uint64_t number_of_read_characters = 0;
+
 uint64_t line_number = 1; // current line number for error reporting
+
+uint64_t number_of_ignored_characters = 0;
+uint64_t number_of_comments           = 0;
+uint64_t number_of_scanned_symbols    = 0;
+
+uint64_t number_of_syntax_errors = 0; // the number of encountered syntax errors
 
 char* identifier = (char*) 0; // stores scanned identifier as string
 char* integer    = (char*) 0; // stores scanned integer as string
@@ -479,17 +482,7 @@ uint64_t literal = 0; // numerical value of most recently scanned integer or cha
 
 uint64_t integer_is_signed = 0; // enforce INT64_MIN limit if '-' was scanned before
 
-char character; // most recently read character
-
-uint64_t number_of_read_characters = 0;
-
 uint64_t symbol; // most recently recognized symbol
-
-uint64_t number_of_ignored_characters = 0;
-uint64_t number_of_comments           = 0;
-uint64_t number_of_scanned_symbols    = 0;
-
-uint64_t number_of_syntax_errors = 0; // the number of encountered syntax errors
 
 char*    source_name = (char*) 0; // name of source file
 uint64_t source_fd   = 0; // file descriptor of open source file
@@ -539,9 +532,9 @@ void init_scanner () {
 }
 
 void reset_scanner() {
-  line_number = 1;
-
   number_of_read_characters = 0;
+
+  line_number = 1;
 
   get_character();
 
@@ -2177,6 +2170,10 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 23 | gcs counter     | number of gc runs in gc period
 // | 24 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
+
+// number of entries of a machine context: 9 uint64_t plus 16 uint64_t* entries
+// extended in the symbolic execution engine and the Boehm garbage collector
+uint64_t CONTEXTENTRIES = 25;
 
 uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
 
