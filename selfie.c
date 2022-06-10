@@ -4659,8 +4659,33 @@ uint64_t load_upper_value(uint64_t reg, uint64_t value) {
     emit_lui(reg, sign_extend(upper, 20));
 
     if (upper == two_to_the_power_of(19))
-      // upper overflowed, cancel sign extension
+      // for example, value == 2147481600, in binary:
+
+      // ..00 0111 1111 1111 1111 1111 1000 0000 0000
+      //      ======================== --------------
+      //               upper               lower
+
+      // ..00 1000 0000 0000 0000 0000 1000 0000 0000
+      //      ======================== --------------
+      //             upper + 1             lower
+
+      // ..11 1000 0000 0000 0000 0000 0000 0000 0000 = (upper + 1) sign-extended << 12
+      // ..11 1111 1111 1111 1111 1111 1000 0000 0000 = lower sign-extended
+      // ++++++++++++++++++++++++++++++++++++++++++++
+      // ..11 0111 1111 1111 1111 1111 1000 0000 0000 = incorrect with 64 bits
+
+      // upper overflowed, cancel sign extension (redundant for 32-bit systems)
       emit_sub(reg, REG_ZR, reg);
+
+      // ..11 1000 0000 0000 0000 0000 0000 0000 0000 = (upper + 1) sign-extended << 12
+      // --------------------------------------------
+      // ..00 0111 1111 1111 1111 1111 1111 1111 1111 = one'complement
+      // ..00 0000 0000 0000 0000 0000 0000 0000 0001 = 1
+      // ++++++++++++++++++++++++++++++++++++++++++++
+      // ..00 1000 0000 0000 0000 0000 0000 0000 0000 = 0 - ((upper + 1) sign-extended << 12)
+      // ..11 1111 1111 1111 1111 1111 1000 0000 0000 = lower sign-extended
+      // ++++++++++++++++++++++++++++++++++++++++++++
+      // ..00 0111 1111 1111 1111 1111 1000 0000 0000 = correct with 32-bit and 64-bit systems
   } else
     // assert: 0 < upper < 2^(32-12)
     emit_lui(reg, sign_extend(upper, 20));
