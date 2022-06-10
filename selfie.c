@@ -9173,11 +9173,11 @@ uint64_t print_code_context_for_instruction(uint64_t address) {
     else
       return w + dprintf(output_fd, ": ");
   } else if (model)
-    return dprintf(output_fd,"0x%lX", address)
+    return dprintf(output_fd, "0x%lX", address)
       + print_code_line_number_for_instruction(address, code_start)
       + dprintf(output_fd, ": ");
   else if (disassemble_verbose)
-    return dprintf(output_fd,"0x%lX", address)
+    return dprintf(output_fd, "0x%lX", address)
       + print_code_line_number_for_instruction(address, 0)
       + dprintf(output_fd, ": 0x%08lX: ", (uint64_t) ir);
   else
@@ -9186,7 +9186,7 @@ uint64_t print_code_context_for_instruction(uint64_t address) {
 
 uint64_t print_lui() {
   return print_code_context_for_instruction(pc) +
-    dprintf(output_fd,"%s %s,0x%lX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
+    dprintf(output_fd, "%s %s,0x%lX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
 }
 
 void print_lui_before() {
@@ -9699,7 +9699,7 @@ uint64_t print_jal() {
   w = print_code_context_for_instruction(pc)
     + dprintf(output_fd, "%s %s,%ld", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
   if (disassemble_verbose)
-    return w + dprintf(output_fd,"[0x%lX]", pc + imm);
+    return w + dprintf(output_fd, "[0x%lX]", pc + imm);
   else
     return w;
 }
