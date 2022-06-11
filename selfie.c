@@ -5,7 +5,7 @@ governed by a BSD license that can be found in the LICENSE file.
 
 Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
-in Austria. For further information and code please refer to:
+in Austria. For further information please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
@@ -77,6 +77,11 @@ RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
 Jochen Liedtke from University of Karlsruhe. The garbage collector
 is inspired by the conservative garbage collector of Hans Boehm.
+
+All of selfie including its source code is available at:
+
+https://github.com/cksystemsteaching/selfie
+
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -193,7 +198,7 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
 // during bootstrapping the "selfie_" prefix of *printf procedures is removed
 char* remove_prefix_from_printf_procedures(char* procedure);
 
-// malloc
+// selfie's malloc interface
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -563,7 +568,7 @@ uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t is_library_procedure(char* name);
 uint64_t report_undefined_procedures();
 
-// symbol table entry:
+// symbol table entry
 // +---+---------+
 // | 0 | next    | pointer to next entry
 // | 1 | string  | identifier string, big integer as string, string literal
@@ -1305,7 +1310,7 @@ uint64_t debug_switch = 0;
 // ----------------------------- CACHE -----------------------------
 // -----------------------------------------------------------------
 
-// cache struct
+// cache
 // +---+------------------+
 // | 0 | cache memory     | pointer to actual cache consisting of pointers to cache blocks
 // | 1 | cache size       | cache size in bytes
@@ -1336,7 +1341,7 @@ void set_cache_hits(uint64_t* cache, uint64_t cache_hits)             { *(cache 
 void set_cache_misses(uint64_t* cache, uint64_t cache_misses)         { *(cache + 5) = cache_misses; }
 void set_cache_timer(uint64_t* cache, uint64_t cache_timer)           { *(cache + 6) = cache_timer; }
 
-// cache block struct:
+// cache block
 // +---+------------+
 // | 0 | valid flag | valid block or not
 // | 1 | tag        | unique identifier within a set
@@ -1546,7 +1551,7 @@ void implement_gc_brk(uint64_t* context);
 
 uint64_t is_gc_library(uint64_t* context);
 
-// metadata entry:
+// gc metadata entry
 // +----+---------+
 // |  0 | next    | pointer to next entry
 // |  1 | memory  | pointer to allocated memory
@@ -2141,7 +2146,7 @@ uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
 
-// context struct:
+// machine context
 // +----+-----------------+
 // |  0 | next context    | pointer to next context
 // |  1 | prev context    | pointer to previous context
