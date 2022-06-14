@@ -35,11 +35,13 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar      = { variable [ "=" [ cast ] [ "-" ] value ] ";" | ( "void" | type ) procedure } .
+cstar      = { variable [ initialize ] ";" | procedure } .
 
 variable   = type identifier .
 
 type       = "uint64_t" [ "*" ] .
+
+initialize = "=" [ cast ] [ "-" ] value .
 
 cast       = "(" type ")" .
 
@@ -67,7 +69,7 @@ if         = "if" "(" expression ")"
 while      = "while" "(" expression ")"
                ( statement | "{" { statement } "}" ) .
 
-procedure  = identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
+procedure  = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
              ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 call       = identifier "(" [ expression { "," expression } ] ")" .
