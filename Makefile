@@ -170,7 +170,7 @@ mon: monster selfie.h selfie
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
 
-# Translate *.c including selfie.c into SMT-LIB model
+# Translate *-35.c and *-10.c files into SMT-LIB model
 %-35.smt: %-35.c monster
 	./monster -c $< - 0 35 --merge-enabled
 %-10.smt: %-10.c monster
@@ -181,7 +181,7 @@ smts-1 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-1-*.c))
 smts-2 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-2-*.c))
 smts-3 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-3-*.c))
 
-# Run monster on *.c files in symbolic
+# Run monster on *.c files in symbolic folder
 smt: $(smts-1) $(smts-2) $(smts-3)
 
 # Compile beator.c with selfie.h as library into beator executable
@@ -203,7 +203,7 @@ beat: beator selfie.h selfie
 # Gather symbolic execution example files as .btor2 files
 btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 
-# Run beator on *.c files in symbolic and even on selfie
+# Run beator on *.c files in symbolic folder and even on selfie
 btor2: $(btor2s) selfie.btor2
 
 # Consider these targets as targets, not files
@@ -300,4 +300,4 @@ clean:
 	rm -f examples/symbolic/*.btor2
 	rm -f tools/*.btor2
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat monster beator beator-32
+	rm -f babysat buzzr monster beator beator-32
