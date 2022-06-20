@@ -50,10 +50,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt beat btor2 all
+.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt beat btor2
+all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
 
 # Self-compile selfie
 self: selfie
@@ -157,6 +157,32 @@ babysat: tools/babysat.c selfie.h
 sat: babysat selfie selfie.h
 	./babysat examples/sat/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/sat/rivest.cnf
+
+# Compile buzzr.c with selfie.h as library into buzzr executable
+buzzr: tools/buzzr.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Run buzzr, the symbolic execution engine, natively and as RISC-U executable
+brr: buzzr selfie.h selfie
+	./buzzr
+	./selfie -c selfie.h tools/buzzr.c -m 1
+
+# Prevent make from deleting intermediate target buzzr
+.SECONDARY: buzzr
+
+# Buzz *-35.c and *-10.c files
+%-35.bzz: %-35.c buzzr
+	./buzzr -c $< - 10
+%-10.bzz: %-10.c buzzr
+	./buzzr -c $< - 10
+
+# Gather symbolic execution example files as .bzz files
+bzz-1 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-1-*.c))
+bzz-2 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-2-*.c))
+bzz-3 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-3-*.c))
+
+# Run buzzr on *.c files in symbolic folder
+bzz: $(bzz-1) $(bzz-2) $(bzz-3)
 
 # Compile monster.c with selfie.h as library into monster executable
 monster: tools/monster.c selfie.h
