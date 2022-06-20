@@ -2405,7 +2405,7 @@ uint64_t next_page_frame = 0;
 uint64_t allocated_page_frame_memory = 0;
 uint64_t free_page_frame_memory      = 0;
 
-uint64_t exit_on_read = 0;
+uint64_t exit_on_read = 0; // used in beator
 
 // -----------------------------------------------------------------
 // ------------------- CONSOLE ARGUMENT SCANNER --------------------
@@ -11315,6 +11315,7 @@ uint64_t handle_system_call(uint64_t* context) {
       implement_brk(context);
   } else if (a7 == SYSCALL_READ) {
     if (exit_on_read) {
+      // used in beator
       set_exit_code(context, sign_shrink(EXITCODE_NOERROR, SYSCALL_BITWIDTH));
 
       return EXIT;
