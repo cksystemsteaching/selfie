@@ -45,7 +45,9 @@ def check_print_your_name() -> List[Check]:
 
 
 def check_hex_literal() -> List[Check]:
-    return check_compilable('all-digit-characters.c',
+    return check_execution('./selfie -c <assignment>decimal-zero-prefix.c -m 128',
+                           'no regression: selfie can still parse integer literals prefixed with 0', 42, mandatory=True) + \
+        check_compilable('all-digit-characters.c',
                             'hex integer literal with all characters compiled') + \
         check_mipster_execution('all-digit-characters.c', 42,
                                 'hex integer literal with all characters has the right value') + \
