@@ -324,7 +324,8 @@ uint64_t handle_propr_exception(uint64_t* context);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t exited_on_read = 0;
+uint64_t exited_on_timeout = 0;
+uint64_t exited_on_read    = 0;
 
 // -----------------------------------------------------------------
 // --------------------- CONSTANT PROPAGATION ----------------------
@@ -3529,7 +3530,8 @@ uint64_t selfie_model() {
         printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
         printf("%s: constant propagation with ", selfie_name);
 
-        exited_on_read = 0;
+        exited_on_timeout = 0;
+        exited_on_read    = 0;
 
         run = 1;
 
@@ -3537,7 +3539,9 @@ uint64_t selfie_model() {
 
         run = 0;
 
-        if (exited_on_read == 0) {
+        if (exited_on_timeout)
+          printf("%s: constant propagation could not find read call\n", selfie_name);
+        else if (exited_on_read == 0) {
           printf("%s: constant propagation yields empty model\n", selfie_name);
 
           exit(EXITCODE_MODELINGERROR);
@@ -3619,6 +3623,14 @@ uint64_t handle_propr_system_call(uint64_t* context) {
   return DONOTEXIT;
 }
 
+uint64_t handle_propr_timer(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  exited_on_timeout = 1;
+
+  return EXIT;
+}
+
 uint64_t handle_propr_exception(uint64_t* context) {
   uint64_t exception;
 
@@ -3631,7 +3643,7 @@ uint64_t handle_propr_exception(uint64_t* context) {
   else if (exception == EXCEPTION_DIVISIONBYZERO)
     return handle_division_by_zero(context);
   else if (exception == EXCEPTION_TIMER)
-    return handle_timer(context);
+    return handle_propr_timer(context);
   else {
     printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
     print_exception(exception, get_fault(context));
