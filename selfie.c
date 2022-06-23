@@ -205,6 +205,9 @@ uint64_t round_up(uint64_t n, uint64_t m);
 void zero_memory(uint64_t* memory, uint64_t size);
 
 uint64_t* smalloc(uint64_t size); // use this to allocate memory, not malloc
+uint64_t* smalloc_system(uint64_t size); // internal use only!
+
+uint64_t* zalloc(uint64_t size);  // internal use only!
 uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
