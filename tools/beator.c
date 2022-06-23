@@ -95,6 +95,15 @@ void model_control_flow_jalr();
 void model_data_flow_ecall();
 void model_control_flow_ecall();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// 4 more digits to accommodate code, data, heap, and stack with
+// 1000*4 lines per 32-bit instruction (pc increments by 4) and
+// 1000*8(4) lines per 64-bit (32-bit) machine word in memory segments
+
+uint64_t PC_NID_DIGITS = 4;    // 10^4 == 10000
+uint64_t PC_NID_FACTOR = 1000; // 1000*8(4) fit into 10000
+
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
@@ -886,7 +895,7 @@ void model_syscalls(uint64_t cursor_nid) {
 // -----------------------------------------------------------------
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
-  return nid + pc * 100;
+  return nid + pc * PC_NID_FACTOR;
 }
 
 uint64_t is_procedure_call(uint64_t instruction, uint64_t link) {
@@ -2786,10 +2795,7 @@ void beator(uint64_t entry_pc) {
 
   w = w + dprintf(output_fd, "\n; %lu-bit program counter encoded in Boolean flags\n\n", WORDSIZEINBITS);
 
-  // 3 more digits to accommodate code, data, heap, and stack with
-  // 100*4 lines per 32-bit instruction (pc increments by 4) and
-  // 100*8(4) lines per 64-bit (32-bit) machine word in memory segments
-  pcs_nid = ten_to_the_power_of(log_ten(heap_start + heap_size + stack_size) + 3);
+  pcs_nid = ten_to_the_power_of(log_ten(heap_start + heap_size + stack_size) + PC_NID_DIGITS);
 
   pc = code_start;
 
@@ -3119,13 +3125,14 @@ void beator(uint64_t entry_pc) {
         + dprintf(output_fd, "\n");
     }
 
-    if (current_nid >= pc_nid(control_nid, pc) + 400) {
+    if (current_nid >= pc_nid(control_nid, pc) + PC_NID_FACTOR * 4) {
       // the instruction at pc is reachable by too many other instructions
 
       // report the error on the console
       output_fd = 1;
 
-      printf("%s: too many in-edges at instruction address %lu[0x%lX] detected\n", selfie_name, pc, pc);
+      printf("%s: cannot handle %lu in-edges at instruction address %lu[0x%lX]\n", selfie_name,
+        current_nid - pc_nid(control_nid, pc), pc, pc);
 
       exit(EXITCODE_MODELINGERROR);
     }
