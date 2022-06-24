@@ -202,10 +202,10 @@ char* remove_prefix_from_printf_procedures(char* procedure);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
-void zero_memory(uint64_t* memory, uint64_t size);
-
 uint64_t* smalloc(uint64_t size); // use this to allocate memory, not malloc
 uint64_t* smalloc_system(uint64_t size); // internal use only!
+
+void zero_memory(uint64_t* memory, uint64_t size);
 
 uint64_t* zalloc(uint64_t size);  // internal use only!
 uint64_t* zmalloc(uint64_t size); // use this to allocate zeroed memory
@@ -1882,8 +1882,8 @@ void reset_interpreter();
 void reset_nop_counters();
 
 void reset_source_profile();
-void reset_register_access_counters();
-void reset_segments_access_counters();
+void reset_registers_profile();
+void reset_segments_profile();
 
 void reset_profiler();
 
@@ -2007,10 +2007,12 @@ uint64_t* iterations_per_loop = (uint64_t*) 0; // number of executed iterations 
 uint64_t* loads_per_instruction  = (uint64_t*) 0; // number of executed loads per load instruction
 uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores per store instruction
 
-// register access counters
+// registers profile
 
 uint64_t* reads_per_register  = (uint64_t*) 0;
 uint64_t* writes_per_register = (uint64_t*) 0;
+
+uint64_t stack_peak = 0;
 
 uint64_t stack_register_reads  = 0;
 uint64_t stack_register_writes = 0;
@@ -2021,7 +2023,7 @@ uint64_t argument_register_writes = 0;
 uint64_t temporary_register_reads  = 0;
 uint64_t temporary_register_writes = 0;
 
-// segments access counters
+// segments profile
 
 uint64_t data_reads  = 0;
 uint64_t data_writes = 0;
@@ -2090,7 +2092,7 @@ void reset_source_profile() {
   stores_per_instruction = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
-void reset_register_access_counters() {
+void reset_registers_profile() {
   reads_per_register  = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
   writes_per_register = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
 
@@ -2104,6 +2106,8 @@ void reset_register_access_counters() {
   // a6 register is written to by the kernel
   *(writes_per_register + REG_A6) = 1;
 
+  stack_peak = VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE;
+
   stack_register_reads      = 0;
   stack_register_writes     = 0;
   argument_register_reads   = 0;
@@ -2112,7 +2116,7 @@ void reset_register_access_counters() {
   temporary_register_writes = 0;
 }
 
-void reset_segments_access_counters() {
+void reset_segments_profile() {
   data_reads   = 0;
   data_writes  = 0;
   stack_reads  = 0;
@@ -2126,8 +2130,8 @@ void reset_profiler() {
   reset_memory_counters();
   reset_nop_counters();
   reset_source_profile();
-  reset_register_access_counters();
-  reset_segments_access_counters();
+  reset_registers_profile();
+  reset_segments_profile();
   reset_all_cache_counters();
 }
 
@@ -3362,21 +3366,6 @@ uint64_t round_up(uint64_t n, uint64_t m) {
     return n - n % m + m;
 }
 
-void zero_memory(uint64_t* memory, uint64_t size) {
-  uint64_t i;
-
-  size = round_up(size, SIZEOFUINT64) / SIZEOFUINT64;
-
-  i = 0;
-
-  while (i < size) {
-    // erase memory by setting it to 0
-    *(memory + i) = 0;
-
-    i = i + 1;
-  }
-}
-
 uint64_t* smalloc(uint64_t size) {
   // use this procedure, instead of malloc, for heap allocation
   // to ensure a defined program exit if no memory can be allocated
@@ -3416,6 +3405,21 @@ uint64_t* smalloc_system(uint64_t size) {
   USE_GC_LIBRARY = gc;
 
   return memory;
+}
+
+void zero_memory(uint64_t* memory, uint64_t size) {
+  uint64_t i;
+
+  size = round_up(size, SIZEOFUINT64) / SIZEOFUINT64;
+
+  i = 0;
+
+  while (i < size) {
+    // erase memory by setting it to 0
+    *(memory + i) = 0;
+
+    i = i + 1;
+  }
 }
 
 uint64_t* zalloc(uint64_t size) {
@@ -6369,6 +6373,10 @@ void read_register(uint64_t reg) {
 void write_register_wrap(uint64_t reg, uint64_t wrap) {
   if (wrap)
     *(registers + reg) = sign_shrink(*(registers + reg), WORDSIZEINBITS);
+
+  if (reg == REG_SP)
+    if (*(registers + REG_SP) < stack_peak)
+      stack_peak = *(registers + REG_SP);
 
   if (*(writes_per_register + reg) < UINT64_MAX)
     *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
@@ -10604,6 +10612,9 @@ void print_profile(uint64_t* context) {
     get_total_number_of_instructions(),
     percentage_format_integral_2(get_total_number_of_instructions(), get_total_number_of_nops()),
     percentage_format_fractional_2(get_total_number_of_instructions(), get_total_number_of_nops()));
+  printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
+    ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - stack_peak, KILOBYTE),
+    ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - stack_peak, KILOBYTE));
   printf("%s:          %lu.%.2luMB allocated in %lu mallocs\n", selfie_name,
     ratio_format_integral_2(mc_brk, MEGABYTE),
     ratio_format_fractional_2(mc_brk, MEGABYTE),
