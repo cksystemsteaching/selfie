@@ -2699,7 +2699,7 @@ void beator(uint64_t entry_pc) {
     // avoiding 2^32 for 32-bit version
     + dprintf(output_fd, "; highest address in 32-bit virtual address space (4GB)\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n",
-      VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE, VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
+      HIGHESTVIRTUALADDRESS, HIGHESTVIRTUALADDRESS)
 
     + dprintf(output_fd, "; kernel-mode flag\n\n")
 
@@ -2800,9 +2800,9 @@ void beator(uint64_t entry_pc) {
           data_start);          // start of data segment in hexadecimal
       else if (i == UP_FLOW)
         w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX highest address in 32-bit virtual address space (4GB)\n",
-          *(reg_flow_nids + i),                     // nid of this line
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE,  // highest address in 32-bit virtual address space (4GB)
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE); // highest address in 32-bit virtual address space (4GB) in hexadecimal
+          *(reg_flow_nids + i),   // nid of this line
+          HIGHESTVIRTUALADDRESS,  // highest address in 32-bit virtual address space (4GB)
+          HIGHESTVIRTUALADDRESS); // highest address in 32-bit virtual address space (4GB) in hexadecimal
       else {
         w = w + dprintf(output_fd, "%lu state 2 ", *(reg_flow_nids + i));
 
@@ -2913,7 +2913,7 @@ void beator(uint64_t entry_pc) {
 
   // assert: data segment is not empty
 
-  while (pc <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
+  while (pc <= HIGHESTVIRTUALADDRESS) {
     if (pc == data_start + data_size) {
       pc = heap_start;
 
@@ -2922,7 +2922,7 @@ void beator(uint64_t entry_pc) {
     }
 
     if (pc == heap_start + heap_size) {
-      // assert: stack pointer <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+      // assert: stack pointer <= HIGHESTVIRTUALADDRESS
       pc = stack_start;
 
       w = w + dprintf(output_fd, "\n; stack segment\n\n");

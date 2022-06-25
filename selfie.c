@@ -1499,6 +1499,8 @@ uint64_t GIGABYTE = 1073741824; // 1GB (GiB: 2^30B)
 
 uint64_t VIRTUALMEMORYSIZE = 4; // 4GB of virtual memory (avoiding 32-bit overflow)
 
+uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+
 uint64_t PAGESIZE = 4096; // 4KB virtual pages
 
 uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
@@ -2106,7 +2108,7 @@ void reset_registers_profile() {
   // a6 register is written to by the kernel
   *(writes_per_register + REG_A6) = 1;
 
-  stack_peak = VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE;
+  stack_peak = HIGHESTVIRTUALADDRESS;
 
   stack_register_reads      = 0;
   stack_register_writes     = 0;
@@ -2547,15 +2549,15 @@ void init_target() {
       SIZEOFUINT = SINGLEWORDSIZE;
       UINT_MAX   = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
 
-      WORDSIZE       = SINGLEWORDSIZE;
-      WORDSIZEINBITS = WORDSIZE * 8;
+      WORDSIZE = SINGLEWORDSIZE;
     } else {
       SIZEOFUINT = SIZEOFUINT64;
       UINT_MAX   = UINT64_MAX;
 
-      WORDSIZE       = SIZEOFUINT64;
-      WORDSIZEINBITS = WORDSIZE * 8;
+      WORDSIZE = SIZEOFUINT64;
     }
+
+    WORDSIZEINBITS = WORDSIZE * 8;
 
     MAX_INTEGER_LENGTH = 10; // 2^32-1 requires 10 decimal digits
 
@@ -2568,6 +2570,8 @@ void init_target() {
     e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
     e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
   }
+
+  HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -8479,7 +8483,7 @@ uint64_t get_virtual_address_of_page_start(uint64_t page) {
 
 uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
   // is address virtual?
-  if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - alignment)
+  if (vaddr <= HIGHESTVIRTUALADDRESS + (WORDSIZE - alignment))
     // is address aligned?
     if (vaddr % alignment == 0)
       return 1;
@@ -10743,7 +10747,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE));
+  set_lowest_hi_page(context, get_page_of_virtual_address(HIGHESTVIRTUALADDRESS));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
   if (parent != MY_CONTEXT) {
@@ -11030,7 +11034,7 @@ uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
 uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
   // is address in stack segment?
   if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
+    if (vaddr <= HIGHESTVIRTUALADDRESS)
       return 1;
 
   return 0;
