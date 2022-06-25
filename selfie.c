@@ -1499,19 +1499,21 @@ uint64_t GIGABYTE = 1073741824; // 1GB (GiB: 2^30B)
 
 uint64_t VIRTUALMEMORYSIZE = 4; // 4GB of virtual memory (avoiding 32-bit overflow)
 
-uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
-
 uint64_t PAGESIZE = 4096; // 4KB virtual pages
 
 uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
 
-uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / SIZEOFUINT64STAR
-
 uint64_t PAGETABLETREE = 1; // two-level page table is default
 
-// ------------------------ GLOBAL VARIABLES -----------------------
+uint64_t PHYSICALMEMORYSIZE = 0; // total amount of physical memory available for frames
 
-uint64_t total_page_frame_memory = 0; // total amount of memory available for frames
+// target-dependent, see init_target()
+uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+
+// host-dependent, see init_memory()
+uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / SIZEOFUINT64STAR
+
+// ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t mc_brk = 0; // memory counter for brk syscall
 
@@ -1523,9 +1525,9 @@ void init_memory(uint64_t megabytes) {
   if (megabytes > 4096)
     megabytes = 4096;
 
-  total_page_frame_memory = megabytes * MEGABYTE;
+  PHYSICALMEMORYSIZE = megabytes * MEGABYTE;
 
-  // reinitialize in case SIZEOFUINT64STAR is not 8
+  // host-dependent: reinitialize in case SIZEOFUINT64STAR is not 8
   NUMBEROFLEAFPTES = PAGESIZE / SIZEOFUINT64STAR;
 }
 
@@ -10633,9 +10635,9 @@ void print_profile(uint64_t* context) {
   printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %luMB) mapped memory\n", selfie_name,
     ratio_format_integral_2(pused(), MEGABYTE),
     ratio_format_fractional_2(pused(), MEGABYTE),
-    percentage_format_integral_2(total_page_frame_memory, pused()),
-    percentage_format_fractional_2(total_page_frame_memory, pused()),
-    total_page_frame_memory / MEGABYTE);
+    percentage_format_integral_2(PHYSICALMEMORYSIZE, pused()),
+    percentage_format_fractional_2(PHYSICALMEMORYSIZE, pused()),
+    PHYSICALMEMORYSIZE / MEGABYTE);
 
   if (GC_ON) {
     printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
@@ -11110,7 +11112,7 @@ uint64_t is_valid_segment_write(uint64_t vaddr) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= total_page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= PHYSICALMEMORYSIZE)
     return 1;
   else
     return 0;
@@ -11120,7 +11122,7 @@ uint64_t pexcess() {
   if (pavailable())
     return 1;
   else if (allocated_page_frame_memory + MEGABYTE <=
-            2 * total_page_frame_memory * SIZEOFUINT64 / WORDSIZE)
+            2 * PHYSICALMEMORYSIZE * SIZEOFUINT64 / WORDSIZE)
     // tolerate twice (four times) as much memory mapped on demand than physically available
     // (single word on 32-bit target occupies double word on 64-bit system)
     return 1;
@@ -11140,7 +11142,7 @@ uint64_t* palloc() {
   // single word on 32-bit target occupies double word on 64-bit system
   double_for_single_word = SIZEOFUINT64 / WORDSIZE;
 
-  // assert: total_page_frame_memory is equal to or a multiple of MEGABYTE
+  // assert: PHYSICALMEMORYSIZE is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
@@ -11692,7 +11694,7 @@ uint64_t selfie_run(uint64_t machine) {
   printf("%s: selfie executing %lu-bit RISC-U binary %s with %luMB physical memory", selfie_name,
     WORDSIZEINBITS,
     binary_name,
-    total_page_frame_memory / MEGABYTE);
+    PHYSICALMEMORYSIZE / MEGABYTE);
 
   if (GC_ON) {
     gc_init(current_context);

@@ -362,7 +362,7 @@ uint64_t selfie_buzz() {
 
       printf("%s: buzzing %s with %luMB physical memory\n", selfie_name,
         binary_name,
-        total_page_frame_memory / MEGABYTE);
+        PHYSICALMEMORYSIZE / MEGABYTE);
       printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
       keep_buzzing = 1;
