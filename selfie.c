@@ -1505,7 +1505,8 @@ uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
 
 uint64_t PAGETABLETREE = 1; // two-level page table is default
 
-uint64_t PHYSICALMEMORYSIZE = 0; // total amount of physical memory available for frames
+uint64_t PHYSICALMEMORYSIZE   = 0; // total amount of physical memory available for frames
+uint64_t PHYSICALMEMORYEXCESS = 2; // tolerate more allocation than physically available
 
 // target-dependent, see init_target()
 uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
@@ -1522,7 +1523,9 @@ uint64_t mc_mapped_heap = 0; // memory counter for mapped heap
 // ------------------------- INITIALIZATION ------------------------
 
 void init_memory(uint64_t megabytes) {
-  if (megabytes > 4096)
+  if (megabytes < 1)
+    megabytes = 1;
+  else if (megabytes > 4096)
     megabytes = 4096;
 
   PHYSICALMEMORYSIZE = megabytes * MEGABYTE;
@@ -2335,7 +2338,6 @@ void reset_microkernel() {
 // -----------------------------------------------------------------
 
 uint64_t pavailable();
-uint64_t pexcess();
 uint64_t pused();
 
 uint64_t* palloc();
@@ -11112,19 +11114,9 @@ uint64_t is_valid_segment_write(uint64_t vaddr) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= PHYSICALMEMORYSIZE)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t pexcess() {
-  if (pavailable())
-    return 1;
   else if (allocated_page_frame_memory + MEGABYTE <=
-            2 * PHYSICALMEMORYSIZE * SIZEOFUINT64 / WORDSIZE)
-    // tolerate twice (four times) as much memory mapped on demand than physically available
-    // (single word on 32-bit target occupies double word on 64-bit system)
+            PHYSICALMEMORYEXCESS * PHYSICALMEMORYSIZE * SIZEOFUINT64 / WORDSIZE)
+    // single word on 32-bit target occupies double word on 64-bit system
     return 1;
   else
     return 0;
@@ -11146,7 +11138,7 @@ uint64_t* palloc() {
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
-    if (pexcess()) {
+    if (pavailable()) {
       free_page_frame_memory = MEGABYTE * double_for_single_word;
 
       // on boot level zero allocate zeroed memory
@@ -11356,17 +11348,25 @@ uint64_t handle_system_call(uint64_t* context) {
 uint64_t handle_page_fault(uint64_t* context) {
   uint64_t page;
 
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
   page = get_fault(context);
 
-  // TODO: reuse frames
-  map_page(context, page, (uint64_t) palloc());
+  if (pavailable()) {
+    set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  if (is_heap_address(context, get_virtual_address_of_page_start(page)))
-    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
+    // TODO: reuse frames
+    map_page(context, page, (uint64_t) palloc());
 
-  return DONOTEXIT;
+    if (is_heap_address(context, get_virtual_address_of_page_start(page)))
+      mc_mapped_heap = mc_mapped_heap + PAGESIZE;
+
+    return DONOTEXIT;
+  } else {
+    printf("%s: page fault at 0x%lX out of physical memory\n", selfie_name, page);
+
+    set_exit_code(context, EXITCODE_OUTOFPHYSICALMEMORY);
+
+    return EXIT;
+  }
 }
 
 uint64_t handle_division_by_zero(uint64_t* context) {

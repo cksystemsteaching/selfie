@@ -265,7 +265,7 @@ uint64_t handle_buzzed_page_fault(uint64_t* context) {
   page = get_fault(context);
 
   // TODO: reuse frames
-  if (pexcess())
+  if (pavailable())
     map_page(context, page, (uint64_t) palloc());
   else {
     set_exit_code(context, sign_shrink(EXITCODE_OUTOFPHYSICALMEMORY, SYSCALL_BITWIDTH));
@@ -394,7 +394,7 @@ uint64_t selfie_buzz() {
                 buzzed_input,
                 sign_extend(exit_code, SYSCALL_BITWIDTH));
 
-          if (pexcess() == 0)
+          if (pavailable() == 0)
             keep_buzzing = 0;
         } else
           keep_buzzing = 0;
