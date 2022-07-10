@@ -162,10 +162,10 @@ sat: babysat selfie selfie.h
 buzzr: tools/buzzr.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Run buzzr, the symbolic execution engine, natively and as RISC-U executable
+# Run buzzr, the symbolic execution engine, natively and as RISC-U executable on itself
 brr: buzzr selfie.h selfie
-	./buzzr
-	./selfie -c selfie.h tools/buzzr.c -m 1
+	./buzzr -c selfie.h tools/buzzr.c - 1
+	./selfie -c selfie.h tools/buzzr.c -m 2 -c selfie.h tools/buzzr.c - 1
 
 # Prevent make from deleting intermediate target buzzr
 .SECONDARY: buzzr
@@ -188,10 +188,11 @@ bzz: $(bzz-1) $(bzz-2) $(bzz-3)
 monster: tools/monster.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Run monster, the symbolic execution engine, natively and as RISC-U executable
+# Run monster, the symbolic execution engine, natively and as RISC-U executable on itself
 mon: monster selfie.h selfie
-	./monster
-	./selfie -c selfie.h tools/monster.c -m 1
+	./monster -c selfie.h tools/monster.c - 0 10
+	./selfie -c selfie.h tools/monster.c -m 3 -c selfie.h tools/monster.c - 0 10
+# output differs slightly because of different filenames
 
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
@@ -218,6 +219,8 @@ beator: tools/beator.c selfie.h
 beat: beator selfie.h selfie
 	./beator -c selfie.h tools/beator.c - 0 --check-block-access
 	./selfie -c selfie.h tools/beator.c -m 1
+# RISC-U executable also works on itself but output differs slightly
+# because of different filenames and values of a6 register
 
 # Prevent make from deleting intermediate target beator
 .SECONDARY: beator
@@ -324,6 +327,7 @@ clean:
 	rm -f examples/*.s
 	rm -f examples/symbolic/*.smt
 	rm -f examples/symbolic/*.btor2
+	rm -f tools/*.smt
 	rm -f tools/*.btor2
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
 	rm -f babysat buzzr monster beator beator-32
