@@ -59,7 +59,7 @@ uint64_t handle_buzzed_exception(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t EXITCODE_OUTOFTIME = 1;
+uint64_t EXITCODE_OUTOFTIME = 100;
 
 // -----------------------------------------------------------------
 // ------------------------- BUZZING ENGINE ------------------------
