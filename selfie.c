@@ -11570,6 +11570,9 @@ void map_unmapped_pages(uint64_t* context) {
 
     page = page + 1;
   }
+
+  // allowing more palloc for caching tree page tables
+  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS + 1;
 }
 
 uint64_t minster(uint64_t* to_context) {
