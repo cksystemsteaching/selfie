@@ -717,9 +717,10 @@ void compile_statement();
 uint64_t load_upper_value(uint64_t reg, uint64_t value);
 uint64_t load_upper_address(uint64_t* entry);
 
-void load_value(uint64_t* entry);
+uint64_t load_value(uint64_t* entry);
 
 uint64_t* get_variable_entry(char* variable);
+uint64_t  load_variable(char* variable);
 
 void compile_assignment(char* variable);
 
@@ -4697,7 +4698,7 @@ uint64_t load_upper_address(uint64_t* entry) {
   offset = get_address(entry);
 
   if (is_signed_integer(offset, 12) == 0) {
-    // offset does not fit as 12-bit immediate value
+    // offset does not fit 12-bit immediate value
     talloc();
 
     offset = load_upper_value(current_temporary(), offset);
@@ -4706,11 +4707,11 @@ uint64_t load_upper_address(uint64_t* entry) {
     emit_add(current_temporary(), get_scope(entry), current_temporary());
   }
 
-  // base changed to current_temporary() if offset != get_address(entry)
+  // base changed to current temporary if offset != get_address(entry)
   return offset;
 }
 
-void load_value(uint64_t* entry) {
+uint64_t load_value(uint64_t* entry) {
   uint64_t offset;
 
   // assert: n = allocated_temporaries
@@ -4725,6 +4726,8 @@ void load_value(uint64_t* entry) {
     emit_load(current_temporary(), current_temporary(), offset);
 
   // assert: allocated_temporaries == n + 1
+
+  return get_type(entry);
 }
 
 uint64_t* get_variable_entry(char* variable) {
@@ -4735,12 +4738,16 @@ uint64_t* get_variable_entry(char* variable) {
   if (entry == (uint64_t*) 0) {
     syntax_error_undeclared_identifier(variable);
 
-    // TODO: declare global variable to continue parsing
+    // TODO: declare global variables to continue parsing
 
     exit(EXITCODE_PARSERERROR);
   }
 
   return entry;
+}
+
+uint64_t load_variable(char* variable) {
+  return load_value(get_variable_entry(variable));
 }
 
 void compile_assignment(char* variable) {
@@ -4782,12 +4789,8 @@ void compile_assignment(char* variable) {
 
       get_symbol();
 
-      entry = get_variable_entry(variable);
-
       // load variable value (as address)
-      load_value(entry);
-
-      ltype = get_type(entry);
+      ltype = load_variable(variable);
     } else if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
@@ -5046,7 +5049,6 @@ uint64_t compile_factor() {
   uint64_t negative;
   uint64_t dereference;
   char* variable_or_procedure;
-  uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
@@ -5111,15 +5113,10 @@ uint64_t compile_factor() {
 
     get_symbol();
 
-    if (symbol != SYM_LPARENTHESIS) {
+    if (symbol != SYM_LPARENTHESIS)
       // variable access: identifier ...
-      entry = get_variable_entry(variable_or_procedure);
-
-      // load variable value (as address)
-      load_value(entry);
-
-      type = get_type(entry);
-    } else {
+      type = load_variable(variable_or_procedure);
+    else {
       // procedure call: identifier "(" ... ")"
       get_symbol();
 
@@ -5202,12 +5199,10 @@ uint64_t load_big_integer(char* big_integer) {
 
   entry = search_global_symbol_table(big_integer, BIGINT);
 
-  load_value(entry);
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of big integer is grammar attribute
-  return get_type(entry);
+  return
+    // type of big integer is grammar attribute
+    load_value(entry);
+    // assert: allocated_temporaries == n + 1
 }
 
 void load_integer(uint64_t value) {
