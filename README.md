@@ -17,69 +17,75 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 1. Introduction
 
 2. Selfie
-2.1. Recommended Readings
+
+   1. Recommended Readings
 
 3. Language
-3.1. Programming Language C\*
-3.2. RISC-U Machine Code
-3.3. EBNF Grammar
-3.4. Recommended Readings
+
+   1. Programming Language C\*
+   2. RISC-U Machine Code
+   3. EBNF Grammar
+   4. Recommended Readings
 
 4. Information
-4.1. Bits
-4.2. Numbers
-4.3. Boolean Algebra
-4.4. Negative Numbers
-4.5. Integers
-4.6. Overflows
-4.7. Characters
-4.8. Bytes
-4.9. Memory
-4.10. Text
-4.11. Files
-4.12. Images
-4.13. Video
-4.14. Audio
-4.15. Code
-4.16. Apps
-4.17. Life
-4.18. Recommended Readings
+
+   1. Bits
+   2. Numbers
+   3. Boolean Algebra
+   4. Negative Numbers
+   5. Integers
+   6. Overflows
+   7. Characters
+   8. Bytes
+   9. Memory
+   10. Text
+   11. Files
+   12. Images
+   13. Video
+   14. Audio
+   15. Code
+   16. Apps
+   17. Life
+   18. Recommended Readings
 
 5. Machine
-5.1. Model
-5.2. Processor
-5.3. Memory
-5.4. Input/Output
-5.5. Instructions
-5.6. Emulation
-5.7. Performance
-5.8. Life
-5.9. Recommended Readings
+
+   1. Model
+   2. Processor
+   3. Memory
+   4. Input/Output
+   5. Instructions
+   6. Emulation
+   7. Performance
+   8. Life
+   9. Recommended Readings
 
 6. Programming
-6.1. Literal
-6.2. Expression
-6.3. Variable
-6.4. Assignment
-6.5. Conditional
-6.6. Loop
-6.7. Procedure
-6.8. Libraries
-6.9. Apps
-6.10. Life
-6.11. Recommended Readings
+
+   1. Literal
+   2. Expression
+   3. Variable
+   4. Assignment
+   5. Conditional
+   6. Loop
+   7. Procedure
+   8. Libraries
+   9. Apps
+   10. Life
+   11. Recommended Readings
 
 7. Tools
-7.1. Compiler
-7.2. Interpreter
-7.3. Virtual Machine
-7.4. Virtual Memory
-7.5. Virtual Time
-7.6. Virtual Machine Monitor
-7.7. Computing as Utility
-7.8. Cloud Computing
-7.9. Life
-7.10. Recommended Readings
+
+   1. Compiler
+   2. Interpreter
+   3. Virtual Machine
+   4. Virtual Memory
+   5. Virtual Time
+   6. Virtual Machine Monitor
+   7. Computing as Utility
+   8. Cloud Computing
+   9. Life
+   10. Recommended Readings
 
 8. Glossary
 
