@@ -715,8 +715,11 @@ uint64_t compile_value(); // returns value
 void compile_statement();
 
 uint64_t load_upper_value(uint64_t reg, uint64_t value);
-void     load_value_or_address(uint64_t* entry, uint64_t address);
-uint64_t load_variable_or_address(char* variable, uint64_t address);
+uint64_t load_upper_address(uint64_t* entry);
+
+void load_value(uint64_t* entry);
+
+uint64_t* get_variable_entry(char* variable);
 
 void compile_assignment(char* variable);
 
@@ -4688,43 +4691,44 @@ uint64_t load_upper_value(uint64_t reg, uint64_t value) {
   return sign_extend(lower, 12);
 }
 
-void load_value_or_address(uint64_t* entry, uint64_t address) {
+uint64_t load_upper_address(uint64_t* entry) {
   uint64_t offset;
-  uint64_t base;
-
-  // assert: n = allocated_temporaries
 
   offset = get_address(entry);
-  base   = get_scope(entry);
-
-  talloc();
 
   if (is_signed_integer(offset, 12) == 0) {
     // offset does not fit as 12-bit immediate value
+    talloc();
+
     offset = load_upper_value(current_temporary(), offset);
 
     // calculate new base
-    emit_add(current_temporary(), base, current_temporary());
-
-    base = current_temporary();
+    emit_add(current_temporary(), get_scope(entry), current_temporary());
   }
 
-  if (address)
-    // just load address, not value at address
-    emit_addi(current_temporary(), base, offset);
-  else
-    // load value at address which is short for:
-    // emit_addi(current_temporary(), base, offset);
-    // emit_load(current_temporary(), current_temporary(), 0);
-    emit_load(current_temporary(), base, offset);
+  // base changed to current_temporary() if offset != get_address(entry)
+  return offset;
+}
+
+void load_value(uint64_t* entry) {
+  uint64_t offset;
+
+  // assert: n = allocated_temporaries
+
+  offset = load_upper_address(entry);
+
+  if (offset == get_address(entry)) {
+    talloc();
+
+    emit_load(current_temporary(), get_scope(entry), offset);
+  } else
+    emit_load(current_temporary(), current_temporary(), offset);
 
   // assert: allocated_temporaries == n + 1
 }
 
-uint64_t load_variable_or_address(char* variable, uint64_t address) {
+uint64_t* get_variable_entry(char* variable) {
   uint64_t* entry;
-
-  // assert: n = allocated_temporaries
 
   entry = get_scoped_symbol_table_entry(variable, VARIABLE);
 
@@ -4736,16 +4740,14 @@ uint64_t load_variable_or_address(char* variable, uint64_t address) {
     exit(EXITCODE_PARSERERROR);
   }
 
-  load_value_or_address(entry, address);
-
-  // assert: allocated_temporaries == n + 1
-
-  // type of variable is grammar attribute
-  return get_type(entry);
+  return entry;
 }
 
 void compile_assignment(char* variable) {
   uint64_t dereference;
+  uint64_t* entry;
+  uint64_t base;
+  uint64_t offset;
   uint64_t ltype;
   uint64_t rtype;
 
@@ -4757,8 +4759,18 @@ void compile_assignment(char* variable) {
     // variable is identifier
     dereference = 0;
 
-    // load variable address
-    ltype = load_variable_or_address(variable, 1);
+    entry = get_variable_entry(variable);
+
+    base = get_scope(entry);
+
+    // load variable upper address
+    offset = load_upper_address(entry);
+
+    if (offset != get_address(entry))
+      // assert: allocated_temporaries == 1
+      base = current_temporary();
+
+    ltype = get_type(entry);
   } else {
     // "*" identifier | "*" "(" expression ")"
     get_required_symbol(SYM_ASTERISK);
@@ -4770,8 +4782,12 @@ void compile_assignment(char* variable) {
 
       get_symbol();
 
+      entry = get_variable_entry(variable);
+
       // load variable value (as address)
-      ltype = load_variable_or_address(variable, 0);
+      load_value(entry);
+
+      ltype = get_type(entry);
     } else if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
@@ -4792,11 +4808,13 @@ void compile_assignment(char* variable) {
       // but no further warning below
       ltype = UINT64STAR_T;
     }
+
+    // assert: allocated_temporaries == 1
+    base   = current_temporary();
+    offset = 0;
   }
 
-  // assert: allocated_temporaries == 1
-
-  // address stored in current temporary
+  // base + offset is address where to store
 
   if (symbol == SYM_ASSIGN) {
     get_symbol();
@@ -4810,24 +4828,23 @@ void compile_assignment(char* variable) {
 
     rtype = compile_expression();
 
-    // assert: allocated_temporaries == 2
-
     if (ltype != rtype)
       type_warning(ltype, rtype);
 
-    emit_store(previous_temporary(), 0, current_temporary());
+    emit_store(base, offset, current_temporary());
 
     tfree(1);
-
-    // assert: allocated_temporaries == 1
 
     number_of_assignments = number_of_assignments + 1;
   } else
     syntax_error_expected_symbol(SYM_ASSIGN);
 
-  // assert: allocated_temporaries == 1
-
-  tfree(1);
+  if (dereference)
+    // assert: allocated_temporaries == 1
+    tfree(1);
+  else if (offset != get_address(entry))
+    // assert: allocated_temporaries == 1
+    tfree(1);
 
   // assert: allocated_temporaries == 0
 }
@@ -5029,6 +5046,7 @@ uint64_t compile_factor() {
   uint64_t negative;
   uint64_t dereference;
   char* variable_or_procedure;
+  uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
@@ -5093,10 +5111,15 @@ uint64_t compile_factor() {
 
     get_symbol();
 
-    if (symbol != SYM_LPARENTHESIS)
+    if (symbol != SYM_LPARENTHESIS) {
       // variable access: identifier ...
-      type = load_variable_or_address(variable_or_procedure, 0);
-    else {
+      entry = get_variable_entry(variable_or_procedure);
+
+      // load variable value (as address)
+      load_value(entry);
+
+      type = get_type(entry);
+    } else {
       // procedure call: identifier "(" ... ")"
       get_symbol();
 
@@ -5179,7 +5202,7 @@ uint64_t load_big_integer(char* big_integer) {
 
   entry = search_global_symbol_table(big_integer, BIGINT);
 
-  load_value_or_address(entry, 0);
+  load_value(entry);
 
   // assert: allocated_temporaries == n + 1
 
