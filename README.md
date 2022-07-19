@@ -17,69 +17,75 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 1. Introduction
 
 2. Selfie
-2.1. Recommended Readings
+
+   1. Recommended Readings
 
 3. Language
-3.1. Programming Language C\*
-3.2. RISC-U Machine Code
-3.3. EBNF Grammar
-3.4. Recommended Readings
+
+   1. Programming Language C\*
+   2. RISC-U Machine Code
+   3. EBNF Grammar
+   4. Recommended Readings
 
 4. Information
-4.1. Bits
-4.2. Numbers
-4.3. Boolean Algebra
-4.4. Negative Numbers
-4.5. Integers
-4.6. Overflows
-4.7. Characters
-4.8. Bytes
-4.9. Memory
-4.10. Text
-4.11. Files
-4.12. Images
-4.13. Video
-4.14. Audio
-4.15. Code
-4.16. Apps
-4.17. Life
-4.18. Recommended Readings
+
+   1. Bits
+   2. Numbers
+   3. Boolean Algebra
+   4. Negative Numbers
+   5. Integers
+   6. Overflows
+   7. Characters
+   8. Bytes
+   9. Memory
+   10. Text
+   11. Files
+   12. Images
+   13. Video
+   14. Audio
+   15. Code
+   16. Apps
+   17. Life
+   18. Recommended Readings
 
 5. Machine
-5.1. Model
-5.2. Processor
-5.3. Memory
-5.4. Input/Output
-5.5. Instructions
-5.6. Emulation
-5.7. Performance
-5.8. Life
-5.9. Recommended Readings
+
+   1. Model
+   2. Processor
+   3. Memory
+   4. Input/Output
+   5. Instructions
+   6. Emulation
+   7. Performance
+   8. Life
+   9. Recommended Readings
 
 6. Programming
-6.1. Literal
-6.2. Expression
-6.3. Variable
-6.4. Assignment
-6.5. Conditional
-6.6. Loop
-6.7. Procedure
-6.8. Libraries
-6.9. Apps
-6.10. Life
-6.11. Recommended Readings
+
+   1. Literal
+   2. Expression
+   3. Variable
+   4. Assignment
+   5. Conditional
+   6. Loop
+   7. Procedure
+   8. Libraries
+   9. Apps
+   10. Life
+   11. Recommended Readings
 
 7. Tools
-7.1. Compiler
-7.2. Interpreter
-7.3. Virtual Machine
-7.4. Virtual Memory
-7.5. Virtual Time
-7.6. Virtual Machine Monitor
-7.7. Computing as Utility
-7.8. Cloud Computing
-7.9. Life
-7.10. Recommended Readings
+
+   1. Compiler
+   2. Interpreter
+   3. Virtual Machine
+   4. Virtual Memory
+   5. Virtual Time
+   6. Virtual Machine Monitor
+   7. Computing as Utility
+   8. Cloud Computing
+   9. Life
+   10. Recommended Readings
 
 8. Glossary
 
@@ -544,30 +550,29 @@ The first few lines of output give you an idea of the size of the system in term
 ```
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
-./selfie: selfie compiling selfie.c with starc
-./selfie: 335664 characters read in 11627 lines and 1590 comments
-./selfie: with 201910(60.15%) characters in 47178 actual symbols
-./selfie: 469 global variables, 611 procedures, 454 string literals
-./selfie: 2844 calls, 1333 assignments, 92 while, 886 if, 535 return
+./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
+./selfie: 346238 characters read in 11936 lines and 1705 comments
+./selfie: with 206143(59.53%) characters in 48013 actual symbols
+./selfie: 480 global variables, 629 procedures, 469 string literals
+./selfie: 2882 calls, 1335 assignments, 91 while, 891 if, 580 return
 ...
 ```
 
-For example, there are 469 global variables and 611 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+For example, there are 480 global variables and 629 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
 ...
-...
-./selfie: 183840 bytes generated with 42260 instructions and 14800 bytes of data
-./selfie: init:    lui: 2533(5.99%), addi: 14110(33.38%)
-./selfie: memory:  ld: 7456(17.64%), sd: 6913(16.35%)
-./selfie: compute: add: 3474(8.22%), sub: 743(1.75%), mul: 528(1.24%)
-./selfie: compute: divu: 80(0.18%), remu: 29(0.06%)
-./selfie: compare: sltu: 720(1.70%)
-./selfie: control: beq: 982(2.32%), jal: 4073(9.63%), jalr: 611(1.44%)
+./selfie: 197784 bytes generated with 45602 instructions and 15376 bytes of data
+./selfie: init:    lui: 2621(5.74%), addi: 16230(35.59%)
+./selfie: memory:  ld: 7917(17.36%), sd: 7481(16.40%)
+./selfie: compute: add: 3551(7.78%), sub: 718(1.57%), mul: 495(1.08%)
+./selfie: compute: divu: 88(0.19%), remu: 31(0.06%)
+./selfie: compare: sltu: 698(1.53%)
+./selfie: control: beq: 986(2.16%), jal: 4149(9.09%), jalr: 629(1.37%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,474 `add` instructions which is 8.22% of all 42,260 generated instructions. In the following, let us take a closer look using the `double.c` example.
+What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,551 `add` instructions which is 7.78% of all 45,602 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -778,35 +783,36 @@ Actually, we already saw EBNF before. Let us quickly go back to self-compiling s
 The output of the selfie compiler is the same as before. The interesting part is the output of selfie after that when running itself:
 
 ```
-./selfie: selfie executing selfie.c with 1MB physical memory on mipster
-./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+./selfie: selfie executing 64-bit RISC-U binary selfie.c with 1MB physical memory on 64-bit mipster
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 synopsis: selfie.c { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
-./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: selfie.c exiting with exit code 0
-./selfie: selfie terminating selfie.c with exit code 0
+./selfie: selfie terminating 64-bit RISC-U binary selfie.c with exit code 0
 ```
 
 Selfie responds with its synopsis which is written in EBNF! But have a look at the rest of the output first before we talk about EBNF:
 
 ```
 ...
-./selfie: ---------------------------------------------------------------------
-./selfie: summary: 59944 executed instructions [22.31% nops]
-./selfie:          0.00MB allocated in 6 mallocs
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 61607 executed instructions [21.61% nops]
+./selfie:          0.48KB peak stack size
+./selfie:          0.00MB allocated in 5 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
-./selfie:          0.19MB(19.53% of 1MB) mapped memory
-./selfie: ---------------------------------------------------------------------
-./selfie: init:    lui: 276(0.46%)[0.00%], addi: 23451(39.12%)[19.12%]
-./selfie: memory:  ld: 13937(23.25%)[14.09%], sd: 8737(14.57%)[46.24%]
-./selfie: compute: add: 1715(2.86%)[5.94%], sub: 668(1.11%)[19.16%], mul: 1514(2.52%)[9.64%]
-./selfie: compute: divu: 658(1.09%)[7.75%], remu: 667(1.11%)[14.99%]
-./selfie: compare: sltu: 985(1.64%)[25.48%]
-./selfie: control: beq: 1253(2.09%)[62.17%], jal: 4026(6.71%)[33.06%], jalr: 1925(3.21%)[0.00%]
-./selfie: system:  ecall: 132(0.22%)
+./selfie:          0.20MB(20.70% of 1MB) mapped memory
+./selfie: --------------------------------------------------------------------------------
+./selfie: init:    lui: 283(0.45%)[0.00%], addi: 24643(40.00%)[17.74%]
+./selfie: memory:  ld: 14150(22.96%)[14.84%], sd: 8924(14.48%)[44.16%]
+./selfie: compute: add: 1726(2.80%)[5.90%], sub: 670(1.08%)[19.10%], mul: 1524(2.47%)[9.58%]
+./selfie: compute: divu: 662(1.07%)[7.70%], remu: 670(1.08%)[14.92%]
+./selfie: compare: sltu: 989(1.60%)[25.37%]
+./selfie: control: beq: 1258(2.04%)[62.32%], jal: 4044(6.56%)[33.06%], jalr: 1933(3.13%)[0.00%]
+./selfie: system:  ecall: 131(0.21%)
 ...
 ```
 
-Selfie reports how many instructions it took just to print its synopsis: 59,944 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,715 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it took just to print its synopsis: 61,607 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,726 times which is 2.80% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -964,7 +970,7 @@ term       = factor { " " factor } .
 factor     = non_terminal | terminal |
              "{" expression "}" | "[" expression "]" | "(" expression ")" .
 
-non-terminal = variable .
+non_terminal = variable .
 terminal     = """ { character } """ .
 
 character = letter | digit | ... .
@@ -1813,17 +1819,17 @@ If `hexdump` is not available on your machine, you can use a so-called *hex edit
 
 ```
 00000000  2f 2a 0a 43 6f 70 79 72  69 67 68 74 20 28 63 29  |/*.Copyright (c)|
-00000010  20 32 30 31 35 2d 32 30  32 31 2c 20 74 68 65 20  | 2015-2021, the |
-00000020  53 65 6c 66 69 65 20 50  72 6f 6a 65 63 74 20 61  |Selfie Project a|
-00000030  75 74 68 6f 72 73 2e 20  41 6c 6c 20 72 69 67 68  |uthors. All righ|
-00000040  74 73 20 72 65 73 65 72  76 65 64 2e 0a 50 6c 65  |ts reserved..Ple|
-00000050  61 73 65 20 73 65 65 20  74 68 65 20 41 55 54 48  |ase see the AUTH|
-00000060  4f 52 53 20 66 69 6c 65  20 66 6f 72 20 64 65 74  |ORS file for det|
-00000070  61 69 6c 73 2e 20 55 73  65 20 6f 66 20 74 68 69  |ails. Use of thi|
+00000010  20 74 68 65 20 53 65 6c  66 69 65 20 50 72 6f 6a  | the Selfie Proj|
+00000020  65 63 74 20 61 75 74 68  6f 72 73 2e 20 41 6c 6c  |ect authors. All|
+00000030  20 72 69 67 68 74 73 20  72 65 73 65 72 76 65 64  | rights reserved|
+00000040  2e 0a 50 6c 65 61 73 65  20 73 65 65 20 74 68 65  |..Please see the|
+00000050  20 41 55 54 48 4f 52 53  20 66 69 6c 65 20 66 6f  | AUTHORS file fo|
+00000060  72 20 64 65 74 61 69 6c  73 2e 20 55 73 65 20 6f  |r details. Use o|
+00000070  66 20 74 68 69 73 20 73  6f 75 72 63 65 20 63 6f  |f this source co|
 ...
 ```
 
-Notice, for example, the very first ASCII character '/' in `selfie.c`. That character is UTF-8-encoded by `00101111` in binary, which is here denoted by `2f` in hexadecimal. In other words, `selfie.c` is really just a long sequence of bits (around 2 million) where every eighth bit is set to 0 (because of ASCII) and the number of bits in that sequence is a multiple of eight (because of UTF-8). The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
+Notice, for example, the very first ASCII character '/' in `selfie.c`. That character is UTF-8-encoded by `00101111` in binary, which is here denoted by `2f` in hexadecimal. In other words, `selfie.c` is really just a long sequence of bits (around 2.7 million) where every eighth bit is set to 0 (because of ASCII) and the number of bits in that sequence is a multiple of eight (because of UTF-8). The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
 
 ### Bytes
 
@@ -1879,18 +1885,19 @@ Here, the relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: selfie executing selfie.c with 3MB physical memory on mipster
+./selfie: selfie executing 64-bit RISC-U binary selfie.c with 3MB physical memory on 64-bit mipster
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 377578224 executed instructions [21.85% nops]
-./selfie:          2.40MB allocated in 24201 mallocs
-./selfie:          2.11MB(87.98% of 2.40MB) actually accessed
-./selfie:          2.31MB(77.08% of 3MB) mapped memory
+./selfie: summary: 397477136 executed instructions [21.53% nops]
+./selfie:          2.92KB peak stack size
+./selfie:          3.22MB allocated in 23836 mallocs
+./selfie:          2.17MB(67.23% of 3.22MB) actually accessed
+./selfie:          2.37MB(79.30% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 2.40MB of main memory but ended up *accessing* only 2.11MB, that is, using only 87.98% of the 2.40MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.31MB of (mapped) memory which is 77.08% of the 3MB available storage (physical memory).
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.22MB of main memory but ended up *accessing* only 2.17MB, that is, using only 67.23% of the 3.22MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.37MB of (mapped) memory which is 79.30% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.92KB at its peak. That memory is part of the 2.37MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2079,9 +2086,9 @@ more selfie.s
 
 The output should be similar to this:
 
-```asm
-0x0(~1): 0x0003E2B7: lui t0,0x3E
-0x4(~1): 0x9E828293: addi t0,t0,-1560
+```
+0x0(~1): 0x000412B7: lui t0,0x41
+0x4(~1): 0xC1028293: addi t0,t0,-1008
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2099,11 +2106,11 @@ The output should be similar to this:
 0x40(~1): 0x00513023: sd t0,0(sp)
 0x44(~1): 0x01010293: addi t0,sp,16
 0x48(~1): 0x00513423: sd t0,8(sp)
-0x4C(~1): 0x450290EF: jal ra,42260[0x2949C]
+0x4C(~1): 0x7742C0EF: jal ra,45533[0x2C7C0]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 42,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 45,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
@@ -3656,13 +3663,15 @@ High-level programming languages enable *scalability* of coding through librarie
 
 ### Languages, Models, Algorithms
 
-While there have been many different ways to introduce people to programming, our approach is new and arguably quite different from all of them and thus risky but worth a shot simply because people are different and there may be quite a few that can benefit from that. We introduce you to programming by introducing basic language elements, starting with the simplest and slowly making our way up to the more complex. At the same point we show you how each element is actually implemented in selfie using real code written in the language we introduce here. In short, you learn programming by example where each example illustrates how the meaning of a particular language element is actually created on the machine. Since we do that starting with the simplest elements and then moving towards the more complex, the code examples also increase in complexity, covering increasingly complex models of computation and algorithms, which show you how precisely defined problems are solved on a computer.
+While there have been many different ways to introduce people to programming, our approach is new and arguably quite different from all of them and thus risky but worth a shot simply because people are different and there may be quite a few that can benefit from that. We introduce you to programming by introducing basic language elements, starting with the simplest and slowly making our way up to the more complex. At the same time we show you how each element is actually implemented in selfie using real code written in the language we introduce here. In short, you learn programming by example where each example illustrates how the meaning of a particular language element is actually created on the machine. Since we do that starting with the simplest elements and then moving towards the more complex, the code examples also increase in complexity, covering increasingly complex models of computation and algorithms, which show you how precisely defined problems are solved on a computer.
 
-This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well-defined, representative, and highly relevant in practice.
+This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Only then you are able to check if your program is actually a proper solution. Students often rush to program a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Keep that in mind as we are going through the material. The advantage of our approach is that the problems for which we are trying to program solutions are well-defined, representative, and highly relevant in practice.
 
-The first problem we focus on is how to make the machine read code. Seeing that makes you realize how you read code as a human. The machine just mimics that. Code written in a high-level programming language is just a sequence of characters encoded in our case in UTF-8. We read from left to right and so does the machine. The challenge is to recognize as soon as possible into reading when we have seen something potentially meaningful such as an integer literal, an identifier, or even a whole procedure, or else something meaningless, that is, a sequence of characters that is not part of our language. In that case, we speak of a syntax error and reject the sequence as something that is not code in our language. In more abstract terms, the problem is thus to detect efficiently whether a given sequence of characters is in our language or not. This is called a membership test in formal languages.
+The first problem we focus on is how to make the machine read code. Seeing that makes you realize how you actually read code as a human. The machine just mimics that albeit in a much more systematic fashion. Code written in a high-level programming language is just a sequence of characters usually encoded in UTF-8. We read from left to right and so does the machine. The challenge is to recognize as soon as possible into reading when we have seen something potentially meaningful such as an integer literal, an identifier, or even a whole procedure, or else something meaningless, that is, a sequence of characters that is not part of our language. In that case, we speak of a syntax error and reject the sequence as something that is not code in our language. In more abstract terms, the problem is thus to detect efficiently whether a given sequence of characters is in our language or not. In formal languages this is called a membership test.
 
-The common solution is to read on two different levels: firstly, on the level of individual *symbols* made up from sequences of characters such as integer literals and identifiers, and secondly, on the level of a sequence of symbols that ultimately constitutes a program. The first level is called *scanning*, the second *parsing*. A *scanner* detects symbols in a sequence of characters, a *parser* detects the program structure in a sequence of symbols.
+The common solution is to read a sequence of characters on two different levels: firstly, on the level of individual *symbols* made up from sequences of characters such as integer literals and identifiers, and secondly, on the level of a sequence of symbols that ultimately constitutes a program. The first level is called *scanning*, the second *parsing*. A *scanner* detects symbols in a sequence of characters which are then handed over as a sequence of symbols to a *parser* which detects the program structure in that sequence.
+
+Scanning and parsing combined...
 
 Scanning is easier than parsing, so we begin with that.
 
