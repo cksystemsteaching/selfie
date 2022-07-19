@@ -1813,17 +1813,17 @@ If `hexdump` is not available on your machine, you can use a so-called *hex edit
 
 ```
 00000000  2f 2a 0a 43 6f 70 79 72  69 67 68 74 20 28 63 29  |/*.Copyright (c)|
-00000010  20 32 30 31 35 2d 32 30  32 31 2c 20 74 68 65 20  | 2015-2021, the |
-00000020  53 65 6c 66 69 65 20 50  72 6f 6a 65 63 74 20 61  |Selfie Project a|
-00000030  75 74 68 6f 72 73 2e 20  41 6c 6c 20 72 69 67 68  |uthors. All righ|
-00000040  74 73 20 72 65 73 65 72  76 65 64 2e 0a 50 6c 65  |ts reserved..Ple|
-00000050  61 73 65 20 73 65 65 20  74 68 65 20 41 55 54 48  |ase see the AUTH|
-00000060  4f 52 53 20 66 69 6c 65  20 66 6f 72 20 64 65 74  |ORS file for det|
-00000070  61 69 6c 73 2e 20 55 73  65 20 6f 66 20 74 68 69  |ails. Use of thi|
+00000010  20 74 68 65 20 53 65 6c  66 69 65 20 50 72 6f 6a  | the Selfie Proj|
+00000020  65 63 74 20 61 75 74 68  6f 72 73 2e 20 41 6c 6c  |ect authors. All|
+00000030  20 72 69 67 68 74 73 20  72 65 73 65 72 76 65 64  | rights reserved|
+00000040  2e 0a 50 6c 65 61 73 65  20 73 65 65 20 74 68 65  |..Please see the|
+00000050  20 41 55 54 48 4f 52 53  20 66 69 6c 65 20 66 6f  | AUTHORS file fo|
+00000060  72 20 64 65 74 61 69 6c  73 2e 20 55 73 65 20 6f  |r details. Use o|
+00000070  66 20 74 68 69 73 20 73  6f 75 72 63 65 20 63 6f  |f this source co|
 ...
 ```
 
-Notice, for example, the very first ASCII character '/' in `selfie.c`. That character is UTF-8-encoded by `00101111` in binary, which is here denoted by `2f` in hexadecimal. In other words, `selfie.c` is really just a long sequence of bits (around 2 million) where every eighth bit is set to 0 (because of ASCII) and the number of bits in that sequence is a multiple of eight (because of UTF-8). The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
+Notice, for example, the very first ASCII character '/' in `selfie.c`. That character is UTF-8-encoded by `00101111` in binary, which is here denoted by `2f` in hexadecimal. In other words, `selfie.c` is really just a long sequence of bits (around 2.7 million) where every eighth bit is set to 0 (because of ASCII) and the number of bits in that sequence is a multiple of eight (because of UTF-8). The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
 
 ### Bytes
 
@@ -1879,18 +1879,19 @@ Here, the relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: selfie executing selfie.c with 3MB physical memory on mipster
+./selfie: selfie executing 64-bit RISC-U binary selfie.c with 3MB physical memory on 64-bit mipster
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 377578224 executed instructions [21.85% nops]
-./selfie:          2.40MB allocated in 24201 mallocs
-./selfie:          2.11MB(87.98% of 2.40MB) actually accessed
-./selfie:          2.31MB(77.08% of 3MB) mapped memory
+./selfie: summary: 397477136 executed instructions [21.53% nops]
+./selfie:          2.92KB peak stack size
+./selfie:          3.22MB allocated in 23836 mallocs
+./selfie:          2.17MB(67.23% of 3.22MB) actually accessed
+./selfie:          2.37MB(79.30% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 2.40MB of main memory but ended up *accessing* only 2.11MB, that is, using only 87.98% of the 2.40MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.31MB of (mapped) memory which is 77.08% of the 3MB available storage (physical memory).
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.22MB of main memory but ended up *accessing* only 2.17MB, that is, using only 67.23% of the 3.22MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.37MB of (mapped) memory which is 79.30% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.92KB at its peak. That memory is part of the 2.37MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2080,8 +2081,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x0003E2B7: lui t0,0x3E
-0x4(~1): 0x9E828293: addi t0,t0,-1560
+0x0(~1): 0x000412B7: lui t0,0x41
+0x4(~1): 0xC1028293: addi t0,t0,-1008
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2099,11 +2100,11 @@ The output should be similar to this:
 0x40(~1): 0x00513023: sd t0,0(sp)
 0x44(~1): 0x01010293: addi t0,sp,16
 0x48(~1): 0x00513423: sd t0,8(sp)
-0x4C(~1): 0x450290EF: jal ra,42260[0x2949C]
+0x4C(~1): 0x7742C0EF: jal ra,45533[0x2C7C0]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 42,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 45,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
