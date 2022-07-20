@@ -3737,7 +3737,6 @@ void get_symbol() {
         store_character(identifier, i, 0); // null-terminated string
 
         symbol = identifier_or_keyword();
-
       } else if (is_digit(character)) {
         if (character == '0') {
           // 0 is 0, not 00, 000, etc.
@@ -3780,7 +3779,6 @@ void get_symbol() {
         }
 
         symbol = SYM_INTEGER;
-
       } else if (character == CHAR_SINGLEQUOTE) {
         get_character();
 
@@ -3805,7 +3803,6 @@ void get_symbol() {
           syntax_error_expected_character(CHAR_SINGLEQUOTE);
 
         symbol = SYM_CHARACTER;
-
       } else if (character == CHAR_DOUBLEQUOTE) {
         get_character();
 
@@ -3844,57 +3841,46 @@ void get_symbol() {
         store_character(string, i, 0); // null-terminated string
 
         symbol = SYM_STRING;
-
       } else if (character == CHAR_COMMA) {
         get_character();
 
         symbol = SYM_COMMA;
-
       } else if (character == CHAR_SEMICOLON) {
         get_character();
 
         symbol = SYM_SEMICOLON;
-
       } else if (character == CHAR_LPARENTHESIS) {
         get_character();
 
         symbol = SYM_LPARENTHESIS;
-
       } else if (character == CHAR_RPARENTHESIS) {
         get_character();
 
         symbol = SYM_RPARENTHESIS;
-
       } else if (character == CHAR_LBRACE) {
         get_character();
 
         symbol = SYM_LBRACE;
-
       } else if (character == CHAR_RBRACE) {
         get_character();
 
         symbol = SYM_RBRACE;
-
       } else if (character == CHAR_PLUS) {
         get_character();
 
         symbol = SYM_PLUS;
-
       } else if (character == CHAR_DASH) {
         get_character();
 
         symbol = SYM_MINUS;
-
       } else if (character == CHAR_ASTERISK) {
         get_character();
 
         symbol = SYM_ASTERISK;
-
       } else if (character == CHAR_PERCENTAGE) {
         get_character();
 
         symbol = SYM_REMAINDER;
-
       } else if (character == CHAR_EQUAL) {
         get_character();
 
@@ -3904,7 +3890,6 @@ void get_symbol() {
           symbol = SYM_EQUALITY;
         } else
           symbol = SYM_ASSIGN;
-
       } else if (character == CHAR_EXCLAMATION) {
         get_character();
 
@@ -3914,7 +3899,6 @@ void get_symbol() {
           syntax_error_expected_character(CHAR_EQUAL);
 
         symbol = SYM_NOTEQ;
-
       } else if (character == CHAR_LT) {
         get_character();
 
@@ -3924,7 +3908,6 @@ void get_symbol() {
           symbol = SYM_LEQ;
         } else
           symbol = SYM_LT;
-
       } else if (character == CHAR_GT) {
         get_character();
 
@@ -3934,7 +3917,6 @@ void get_symbol() {
           symbol = SYM_GEQ;
         } else
           symbol = SYM_GT;
-
       } else if (character == CHAR_DOT) {
         get_character();
 
@@ -3949,7 +3931,6 @@ void get_symbol() {
           syntax_error_expected_character(CHAR_DOT);
 
         symbol = SYM_ELLIPSIS;
-
       } else {
         print_line_number("syntax error", line_number);
         printf("found unknown character ");
@@ -5064,7 +5045,6 @@ uint64_t compile_factor() {
     else
       get_symbol();
   }
-
   // optional: cast
   if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
@@ -5088,7 +5068,6 @@ uint64_t compile_factor() {
     }
   } else
     has_cast = 0;
-
   // optional: "-"
   if (symbol == SYM_MINUS) {
     negative = 1;
@@ -5100,7 +5079,6 @@ uint64_t compile_factor() {
     integer_is_signed = 0;
   } else
     negative = 0;
-
   // optional: "*"
   if (symbol == SYM_ASTERISK) {
     dereference = 1;
@@ -5157,14 +5135,12 @@ uint64_t compile_factor() {
 
     type = UINT64_T;
   }
-
   if (negative) {
     if (type != UINT64_T) {
       type_warning(UINT64_T, type);
 
       type = UINT64_T;
     }
-
     // subtract from 0
     emit_sub(current_temporary(), REG_ZR, current_temporary());
   }
