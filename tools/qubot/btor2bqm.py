@@ -1,13 +1,15 @@
-from typing import Dict
+from typing import Dict, Tuple, Set
 
 from dwave.system import DWaveSampler, EmbeddingComposite
 from greedy import SteepestDescentComposite
 from instructions import Instruction, State
 from dimod import ExactSolver, SampleSet
+
+from qword import QWord
 from tools import *
 from settings import *
 import time
-from qword_tools import InputPropagationFile, Solver
+from qword_tools import InputPropagationFile
 import json
 
 class BTor2BQM:
@@ -21,40 +23,77 @@ class BTor2BQM:
         :param n: number of instructions to execute
         '''
         self.n = n
-        if n <= 0:
-            raise Exception("number of instructions to execute cannot be less than 1.")
+        # if n <= 0:
+        #     raise Exception("number of instructions to execute cannot be less than 1.")
 
-    def set_parameters(self, z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort, qpu_size):
-
-        if z3_solver_timeout is not None:
-            # set timeout (in milliseconds)
-            print("setting custom z3_solver_timeout: ", z3_solver_timeout)
-            Solver.timeout = z3_solver_timeout
-
-        print("started building", filename, f"for {self.n} timesteps")
+    def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
+                   input_nid=81, qubit_growth_file=None, log_file=None) -> Tuple[dimod.BinaryQuadraticModel, float, int]:
+        model_name = filename.split("/")[-1].split(".")[0]
+        if log_file:
+            log_file.write(f"started building for {self.n} timesteps\n")
+        else:
+            print("started building", filename, f"for {self.n} timesteps")
         Instruction.output_dir = output_path
         current_settings = get_btor2_settings(filename)
-        print(current_settings)
+        if log_file:
+            log_file.write(f"{current_settings}\n")
+        else:
+            print(current_settings)
         Instruction.set_setting(current_settings)
         InputPropagationFile.open_file(Instruction.output_dir)
         Instruction.initialize_states = initialize_states
 
         Instruction.clean_static_variables()
-
-        Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort,
-                                                 setting=current_settings)
+        Instruction.all_instructions = read_file(filename, modify_memory_sort=modify_memory_sort, setting=current_settings)
 
         assert len(Instruction.all_instructions.keys()) > 0
+        print(Instruction.all_instructions)
+        total_time = 0
+        previous_qubit_count = 0
+        for i in range(1, self.n + 1):
+            Instruction.current_n = i
+            t0 = time.perf_counter()
+            for instruction in Instruction.all_instructions.values():
+                if instruction[1] == INIT and i == 1:
+                    if with_init:
+                        Instruction(instruction).execute()
+                elif instruction[1] == NEXT:
+                    Instruction(instruction).execute()
+                elif instruction[1] == BAD:
+                    # pass
+                    Instruction(instruction).execute()
+            tn = time.perf_counter()
+            if qubit_growth_file != None:
+                current_qubit_count = len(Instruction.bqm.linear.keys()) - len(Instruction.qubits_to_fix.keys())
+                qubit_growth_file.write(f"{model_name},{i},{current_qubit_count-previous_qubit_count}\n")
+                previous_qubit_count = current_qubit_count
 
-        Instruction.QPU_SIZE = qpu_size
+            # print(f"built bqm in {tn - t0} seconds for {i}-th instruction")
+            total_time += tn-t0
+        t0 = time.perf_counter()
+        Instruction.or_bad_states()
+        tn = time.perf_counter()
+        total_time += tn-t0
+        InputPropagationFile.close_file()
 
-    def write_output_files(self, input_nid, total_time, time_to_fix):
+        #print(f"took {total_time}s to build bqm of {self.n} instructions")
+        # print("BQM count variables: ", len(Instruction.bqm.adj.keys()))
+        # print("Offset (before):", Instruction.bqm.offset)
+
         with open(f"{Instruction.output_dir}qubits_to_fix.json", "w") as outfile:
             json.dump(Instruction.qubits_to_fix, outfile)
+        t0_fix = time.perf_counter()
+        Instruction.fix_qubits()
+        tn_fix = time.perf_counter()
+        time_to_fix = tn_fix - t0_fix
+
+        # print(Instruction.bqm.offset)
+        # print("BQM count linear(after): ", len(Instruction.bqm.adj.keys()))
+        # print("Offset (after):", Instruction.bqm.offset)
 
         with open(f"{Instruction.output_dir}context.json", "w") as file:
             context = {
-                "input": Instruction.created_states_ids[input_nid][1],
+                "input": Instruction.input_nids,#Instruction.created_states_ids[input_nid][1],
                 "offset": Instruction.bqm.offset,
                 "bad_states": Instruction.bad_states,
                 "bad_states_to_line_no": Instruction.bad_states_to_line_no,
@@ -71,48 +110,7 @@ class BTor2BQM:
                 for (n, bias) in neighbours.items():
                     if v < n:
                         file.write(f"{v} {n} {bias}\n")
-
-    def parse_file(self, filename: str, output_path: str, with_init=True, initialize_states=True, modify_memory_sort=True,
-                   input_nid=81, z3_solver_timeout=None, QPU_SIZE=6000) -> dimod.BinaryQuadraticModel:
-
-        self.set_parameters(z3_solver_timeout, filename, output_path, initialize_states, modify_memory_sort, QPU_SIZE)
-        total_time = 0
-
-        should_add_timestep = True
-        i = 1
-        while should_add_timestep:
-            Instruction.current_n = i
-            if i > self.n:
-                break
-            t0 = time.perf_counter()
-            for instruction in Instruction.all_instructions.values():
-                if instruction[1] == INIT and i == 1:
-                    if with_init:
-                        Instruction(instruction).execute()
-                elif instruction[1] == NEXT:
-                    Instruction(instruction).execute()
-                elif instruction[1] == BAD:
-                    Instruction(instruction).execute()
-
-            # if error occur we should exit the loop, SMT-SOLVER finds the answer
-            should_add_timestep = not Instruction.does_bad_state_occur(top_iter=self.n)
-            tn = time.perf_counter()
-            total_time += tn-t0
-            i += 1
-
-        # t0 = time.perf_counter()
-        # Instruction.or_bad_states()
-        # tn = time.perf_counter()
-        # total_time += tn-t0
-
-        t0_fix = time.perf_counter()
-        Instruction.fix_qubits()
-        tn_fix = time.perf_counter()
-        time_to_fix = tn_fix - t0_fix
-        InputPropagationFile.close_file()
-        self.write_output_files(input_nid, total_time, time_to_fix)
-
-        return Instruction.bqm
+        return Instruction.bqm, round(total_time+time_to_fix,2), len(Instruction.bqm.adj.keys())
 
     @staticmethod
     def get_variable_value(line_number: int, timestep: int, result: SampleSet) -> None:
