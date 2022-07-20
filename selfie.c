@@ -4719,10 +4719,13 @@ uint64_t load_value(uint64_t* entry) {
   offset = load_upper_address(entry);
 
   if (offset == get_address(entry)) {
+    // offset fits 12-bit immediate value
     talloc();
 
     emit_load(current_temporary(), get_scope(entry), offset);
   } else
+    // assert: current temporary is scope register + 20-MSB part of original offset
+    // assert: offset is remaining 12-LSB part of original offset
     emit_load(current_temporary(), current_temporary(), offset);
 
   // assert: allocated_temporaries == n + 1
@@ -4770,7 +4773,7 @@ void compile_assignment(char* variable) {
 
     base = get_scope(entry);
 
-    // load variable upper address
+    // load variable upper address, if needed
     offset = load_upper_address(entry);
 
     if (offset != get_address(entry))
@@ -4817,7 +4820,7 @@ void compile_assignment(char* variable) {
     offset = 0;
   }
 
-  // base + offset is address where to store
+  // assert: base + offset is address where to store
 
   if (symbol == SYM_ASSIGN) {
     get_symbol();
@@ -4834,6 +4837,7 @@ void compile_assignment(char* variable) {
     if (ltype != rtype)
       type_warning(ltype, rtype);
 
+    // assign value of RHS in current temporary to LHS at base + offset
     emit_store(base, offset, current_temporary());
 
     tfree(1);
