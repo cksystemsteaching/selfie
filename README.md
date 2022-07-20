@@ -551,28 +551,28 @@ The first few lines of output give you an idea of the size of the system in term
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
 ./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
-./selfie: 346238 characters read in 11936 lines and 1705 comments
-./selfie: with 206143(59.53%) characters in 48013 actual symbols
-./selfie: 480 global variables, 629 procedures, 469 string literals
-./selfie: 2882 calls, 1335 assignments, 91 while, 891 if, 580 return
+./selfie: 346447 characters read in 11954 lines and 1699 comments
+./selfie: with 206502(59.60%) characters in 48118 actual symbols
+./selfie: 480 global variables, 631 procedures, 469 string literals
+./selfie: 2893 calls, 1340 assignments, 91 while, 894 if, 583 return
 ...
 ```
 
-For example, there are 480 global variables and 629 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+For example, there are 480 global variables and 631 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
 ...
-./selfie: 197784 bytes generated with 45602 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(5.74%), addi: 16230(35.59%)
-./selfie: memory:  ld: 7917(17.36%), sd: 7481(16.40%)
-./selfie: compute: add: 3551(7.78%), sub: 718(1.57%), mul: 495(1.08%)
-./selfie: compute: divu: 88(0.19%), remu: 31(0.06%)
-./selfie: compare: sltu: 698(1.53%)
-./selfie: control: beq: 986(2.16%), jal: 4149(9.09%), jalr: 629(1.37%)
+./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
+./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
+./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
+./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
+./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
+./selfie: compare: sltu: 701(1.61%)
+./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,551 `add` instructions which is 7.78% of all 45,602 generated instructions. In the following, let us take a closer look using the `double.c` example.
+What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,551 `add` instructions which is 8.17% of all 43,440 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -796,23 +796,23 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 61607 executed instructions [21.61% nops]
-./selfie:          0.48KB peak stack size
+./selfie: summary: 60251 executed instructions [22.32% nops]
+./selfie:          0.46KB peak stack size
 ./selfie:          0.00MB allocated in 5 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
-./selfie:          0.20MB(20.70% of 1MB) mapped memory
+./selfie:          0.19MB(19.92% of 1MB) mapped memory
 ./selfie: --------------------------------------------------------------------------------
-./selfie: init:    lui: 283(0.45%)[0.00%], addi: 24643(40.00%)[17.74%]
-./selfie: memory:  ld: 14150(22.96%)[14.84%], sd: 8924(14.48%)[44.16%]
-./selfie: compute: add: 1726(2.80%)[5.90%], sub: 670(1.08%)[19.10%], mul: 1524(2.47%)[9.58%]
-./selfie: compute: divu: 662(1.07%)[7.70%], remu: 670(1.08%)[14.92%]
-./selfie: compare: sltu: 989(1.60%)[25.37%]
-./selfie: control: beq: 1258(2.04%)[62.32%], jal: 4044(6.56%)[33.06%], jalr: 1933(3.13%)[0.00%]
+./selfie: init:    lui: 283(0.46%)[0.00%], addi: 23559(39.10%)[19.10%]
+./selfie: memory:  ld: 14014(23.25%)[14.10%], sd: 8788(14.58%)[46.38%]
+./selfie: compute: add: 1726(2.86%)[5.90%], sub: 670(1.11%)[19.10%], mul: 1524(2.52%)[9.58%]
+./selfie: compute: divu: 662(1.09%)[7.70%], remu: 670(1.11%)[14.92%]
+./selfie: compare: sltu: 989(1.64%)[25.37%]
+./selfie: control: beq: 1258(2.08%)[62.32%], jal: 4044(6.71%)[33.06%], jalr: 1933(3.20%)[0.00%]
 ./selfie: system:  ecall: 131(0.21%)
 ...
 ```
 
-Selfie reports how many instructions it took just to print its synopsis: 61,607 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,726 times which is 2.80% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it took just to print its synopsis: 60,251 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,726 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -1889,15 +1889,15 @@ Here, the relevant part of the output should be similar to this:
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 397477136 executed instructions [21.53% nops]
-./selfie:          2.92KB peak stack size
-./selfie:          3.22MB allocated in 23836 mallocs
-./selfie:          2.17MB(67.23% of 3.22MB) actually accessed
-./selfie:          2.37MB(79.30% of 3MB) mapped memory
+./selfie: summary: 389332147 executed instructions [21.84% nops]
+./selfie:          2.64KB peak stack size
+./selfie:          3.23MB allocated in 23888 mallocs
+./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
+./selfie:          2.35MB(78.38% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.22MB of main memory but ended up *accessing* only 2.17MB, that is, using only 67.23% of the 3.22MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.37MB of (mapped) memory which is 79.30% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.92KB at its peak. That memory is part of the 2.37MB of (mapped) memory.
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.15MB, that is, using only 66.54% of the 3.23MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.35MB of (mapped) memory which is 78.38% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.64KB at its peak. That memory is part of the 2.35MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2087,7 +2087,7 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x000412B7: lui t0,0x41
+0x0(~1): 0x0003F2B7: lui t0,0x3F
 0x4(~1): 0xC1028293: addi t0,t0,-1008
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
@@ -2106,11 +2106,11 @@ The output should be similar to this:
 0x40(~1): 0x00513023: sd t0,0(sp)
 0x44(~1): 0x01010293: addi t0,sp,16
 0x48(~1): 0x00513423: sd t0,8(sp)
-0x4C(~1): 0x7742C0EF: jal ra,45533[0x2C7C0]
+0x4C(~1): 0x5C42A0EF: jal ra,43377[0x2A610]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 45,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 43,500 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
@@ -2306,17 +2306,17 @@ The relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: 197784 bytes generated with 45602 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(5.74%), addi: 16230(35.59%)
-./selfie: memory:  ld: 7917(17.36%), sd: 7481(16.40%)
-./selfie: compute: add: 3551(7.78%), sub: 718(1.57%), mul: 495(1.08%)
-./selfie: compute: divu: 88(0.19%), remu: 31(0.06%)
-./selfie: compare: sltu: 698(1.53%)
-./selfie: control: beq: 986(2.16%), jal: 4149(9.09%), jalr: 629(1.37%)
+./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
+./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
+./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
+./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
+./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
+./selfie: compare: sltu: 701(1.61%)
+./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 45,602 RISC-U machine instructions as well as 15,376 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 35.59% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 43,440 RISC-U machine instructions as well as 15,376 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 33.56% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2866,15 +2866,15 @@ The relevant output should be similar to this:
 
 ```
 ...
-./selfie: summary: 389332147 executed instructions [21.84% nops]
+./selfie: summary: 389358917 executed instructions [21.84% nops]
 ...
-./selfie: init:    lui: 816304(0.20%)[0.00%], addi: 160111267(41.12%)[20.61%]
-./selfie: memory:  ld: 87463300(22.46%)[14.05%], sd: 56835148(14.59%)[27.07%]
-./selfie: compute: add: 9240101(2.37%)[26.80%], sub: 4373084(1.12%)[9.28%], mul: 9155592(2.35%)[38.57%]
+./selfie: init:    lui: 816304(0.20%)[0.00%], addi: 160120965(41.12%)[20.61%]
+./selfie: memory:  ld: 87469271(22.46%)[14.05%], sd: 56838289(14.59%)[27.07%]
+./selfie: compute: add: 9240671(2.37%)[26.79%], sub: 4374208(1.12%)[9.28%], mul: 9155592(2.35%)[38.57%]
 ./selfie: compute: divu: 3607169(0.92%)[43.48%], remu: 3698058(0.94%)[53.37%]
-./selfie: compare: sltu: 5828713(1.49%)[2.26%]
-./selfie: control: beq: 8225416(2.11%)[59.83%], jal: 26581411(6.82%)[35.13%], jalr: 13025220(3.34%)[0.00%]
-./selfie: system:  ecall: 371364(0.09%)
+./selfie: compare: sltu: 5829837(1.49%)[2.26%]
+./selfie: control: beq: 8227413(2.11%)[59.83%], jal: 26583416(6.82%)[35.12%], jalr: 13026077(3.34%)[0.00%]
+./selfie: system:  ecall: 371647(0.09%)
 ...
 ```
 
@@ -3240,7 +3240,7 @@ As mentioned before, selfie reports how much physical memory was actually needed
 
 ```
 ...
-./selfie: summary: 389332147 executed instructions [21.84% nops]
+./selfie: summary: 389358917 executed instructions [21.84% nops]
 ./selfie:          2.64KB peak stack size
 ./selfie:          3.23MB allocated in 23888 mallocs
 ./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
@@ -3479,8 +3479,8 @@ Check out the first appearance of L1 cache profiling data in the output:
 ```
 ...
 ./selfie: L1 caches:     accesses,hits,misses
-./selfie: data:          384773949,356465574(92.64%),28308375(7.35%)
-./selfie: instruction:   1022405896,925611809(90.53%),96794087(9.46%)
+./selfie: data:          384783061,356471246(92.64%),28311815(7.35%)
+./selfie: instruction:   1022432666,925629531(90.53%),96803135(9.46%)
 ...
 ```
 
