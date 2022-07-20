@@ -11,112 +11,12 @@ import dimod
 from bit_transformation.more_gates.xnor import get_XNOR
 from bit_transformation.more_gates.xor import get_XOR
 import re
-from z3 import BitVec,BitVecVal, Extract, unknown, sat, unsat, simplify
-from z3 import Solver as Z3Solver
-import time
-
-
-class Solver:
-    solver = Z3Solver()
-    is_solver_valid = True
-    timeout = 1000 # default timesout in 1000 milliseconds
-    @staticmethod
-    def solve_with_value(nid, timestep, value, index, variables):
-        z3_variable = simplify(variables[nid][timestep])
-        Solver.solver.push() # push new frame
-        Solver.solver.add(Extract(index, index, z3_variable) == value)
-        Solver.solver.set("timeout", Solver.timeout)
-        result = Solver.solver.check()
-        Solver.solver.pop() # remove frame
-        return result
-
-    @staticmethod
-    def add_value(nid, timestep, value, index, variables):
-        z3_variable = simplify(variables[nid][timestep])
-        Solver.solver.add(Extract(index, index, z3_variable) == value)
-
-    @staticmethod
-    def estimate_model_size(states, qubits_to_fix, variables, input_nids) -> (bool,int, Dict[int, int]):
-        temp_qubits_to_fix: Dict[int, int] = dict()
-
-        for id in states.keys():
-            if id not in input_nids:
-                continue
-            qword = states[id]
-            for timestep in qword.states.keys():
-                for (index, qubit) in enumerate(qword.states[timestep]):
-                    if (qubit not in qubits_to_fix.keys()) and (qubit not in temp_qubits_to_fix.keys()):
-                        zero_value = Solver.solve_with_value(id, timestep, 0, index, variables)
-                        one_value = Solver.solve_with_value(id, timestep, 1, index, variables)
-
-                        if zero_value != unknown and one_value != unknown:
-                            if zero_value != one_value:
-                                if one_value == sat:
-                                    temp_qubits_to_fix[qubit] = 1
-                                    Solver.add_value(id, timestep, 1, index, variables)
-
-                                else:
-                                    temp_qubits_to_fix[qubit] = 0
-                                    Solver.add_value(id, timestep, 0, index, variables)
-                            elif zero_value == unsat and one_value == unsat:
-                                return False, temp_qubits_to_fix
-                            else:
-                                print("satisfies with any value")
-                        else:
-                            pass
-                            print("solver timed out")
-        return True, temp_qubits_to_fix
-
-
-    @staticmethod
-    def try_fixing_variables(states, qubits_to_fix, variables, input_nids):
-        if Solver.is_solver_valid:
-            is_there_change = True
-            for id in states.keys():
-                if id not in input_nids:
-                    continue
-                qword = states[id]
-                for timestep in qword.states.keys():
-                    for (index, qubit) in enumerate(qword.states[timestep]):
-                        if qubit not in qubits_to_fix.keys():
-                            zero_value = Solver.solve_with_value(id, timestep, 0, index, variables)
-                            one_value = Solver.solve_with_value(id, timestep, 1, index, variables)
-
-                            if zero_value != unknown and one_value != unknown:
-                                is_there_change = True
-                                if zero_value != one_value:
-                                    if one_value == sat:
-                                        qubits_to_fix[qubit] = 1
-                                        Solver.add_value(id, timestep, 1, index, variables)
-
-                                    else:
-                                        qubits_to_fix[qubit] = 0
-                                        Solver.add_value(id, timestep, 0, index, variables)
-                                elif zero_value == unsat and one_value == unsat:
-                                    raise Exception("Solver does not satisfies with any value!")
-                                else:
-                                    print("satisfies with any value")
-                            else:
-                                pass
-                                print("solver timed out")
-            Solver.is_solver_valid = is_there_change
 
 
 def get_qubit_value(qubit_name: int, qubits_to_fix: Dict[int, int]) -> Optional[int]:
     if qubit_name in qubits_to_fix.keys():
         return qubits_to_fix[qubit_name]
     return None
-
-def get_word_value(qubit_names: List[int], qubits_to_fix: Dict[int, int]):
-    binary_representation = []
-    for name in qubit_names:
-        if name not in qubits_to_fix.keys():
-            raise Exception("[get_word_value] name not in qubits_to_fix")
-        binary_representation.append(qubits_to_fix[name])
-
-    return get_decimal_representation(binary_representation)
-
-
 
 def separate_constants(qubit_names: List[int], qubits_to_fix: Dict[int, int]) -> (List[int], List[int]):
     constant_names = []
@@ -156,112 +56,29 @@ def get_model_single_var(value):
 
     return linear_coeff, bias
 
-def z3_constants_procedure(result, current_n, bitvec_size, bqm, qubits_to_fix):
-    binary_string = result.as_binary_string()
-    result_bitset = get_bitset_from_binary_str(binary_string, bitvec_size, bqm, qubits_to_fix)
-
-    result_qword = QWord(bitvec_size)
-    result_qword.append_state(result_bitset, current_n)
-    return result_qword
-
-def get_bitset_from_binary_str(binary_string, bitvec_size, bqm, qubits_to_fix):
-    binary_string = [int(i) for i in binary_string]
-
-    result_bitset = []
-    for bit in binary_string:
-        name = get_qubit_name()
-        linear_coeff, offset = get_model_single_var(bit)
-        bqm.add_variable(name, linear_coeff)
-        bqm.offset += offset
-        result_bitset.append(name)
-        qubits_to_fix[name] = bit
-
-    while len(result_bitset) < bitvec_size:
-        name = get_qubit_name()
-        linear_coeff, offset = get_model_single_var(0)
-        bqm.add_variable(name, linear_coeff)
-        bqm.offset += offset
-        result_bitset.append(name)
-        qubits_to_fix[name] = 0
-    return result_bitset
-
-
-
-
 class InputPropagationFile:
     file = None
-    rules = {}
-    intermediate_rules = {}
 
     @staticmethod
     def write_rule(rule_name, target, operands, qubits_to_fix):
-        value_target = get_qubit_value(target, qubits_to_fix)
-        if value_target is None:
-            InputPropagationFile.rules[target] = {
-                "rule_name": rule_name,
-                "operands": operands
-            }
-
-            line = f"{rule_name} {target}"
+        if rule_name == QUOTIENT or rule_name == REMAINDER:
+            line = f"{rule_name}"
+            for t in target:
+                line += f" {t}"
             for operand in operands:
                 line += f" {operand}"
             line += "\n"
             InputPropagationFile.file.write(line)
         else:
-            qubits_to_fix[target] = value_target
-
-    @staticmethod
-    def update_qubits_to_fix(qubits_to_fix):
-
-        if Solver.is_solver_valid:
-            def are_operands_constants(operands):
+            value_target = get_qubit_value(target, qubits_to_fix)
+            if value_target is None:
+                line = f"{rule_name} {target}"
                 for operand in operands:
-                    if operand not in qubits_to_fix.keys():
-                        return False
-                return True
-
-            for target in InputPropagationFile.rules.keys():
-                operands = InputPropagationFile.rules[target]["operands"]
-                if are_operands_constants(operands):
-                    qubits_to_fix[target] = get_rule_value(InputPropagationFile.rules[target]["rule_name"], operands, qubits_to_fix)
-                    #InputPropagationFile.rules.pop(target)
-    @staticmethod
-    def simulated_update_qubits_to_fix(qubits_to_fix1, qubits_to_fix2):
-        temp_qubits_to_fix: Dict[int, int] = dict()
-
-        if Solver.is_solver_valid:
-            def are_operands_constants(operands):
-                for operand in operands:
-                    if (operand not in qubits_to_fix1.keys()) and (operand not in qubits_to_fix2.keys()) and (operand not in temp_qubits_to_fix.keys()):
-                        return False
-                return True
-
-            def get_operand_values(operands):
-                values = []
-                for operand in operands:
-                    if operand in temp_qubits_to_fix.keys():
-                        values.append(temp_qubits_to_fix[operand])
-
-                    elif operand in qubits_to_fix2.keys():
-                        values.append(qubits_to_fix2[operand])
-                    else:
-                        values.append(qubits_to_fix1[operand])
-
-                return values
-
-
-
-
-            for target in InputPropagationFile.rules.keys():
-                if target in qubits_to_fix1.keys() or target in qubits_to_fix2.keys():
-                    continue
-                operands = InputPropagationFile.rules[target]["operands"]
-                if are_operands_constants(operands):
-                    operand_values = get_operand_values(operands)
-                    temp_qubits_to_fix[target] = get_rule_value_from_values(InputPropagationFile.rules[target]["rule_name"], operand_values)
-                    #InputPropagationFile.rules.pop(target)
-        return temp_qubits_to_fix
-
+                    line += f" {operand}"
+                line += "\n"
+                InputPropagationFile.file.write(line)
+            else:
+                qubits_to_fix[target] = value_target
 
     @staticmethod
     def close_file():
@@ -678,7 +495,7 @@ def optimized_bitwise_add(bitset1: List[int], bitset2: List[int], current_n: int
     return result_qword
 
 def optimized_multiplication(bitset1: List[int], bitset2: List[int], current_n: int, bqm: dimod.BinaryQuadraticModel,
-                             qubits_to_fix: Dict[int, int]):
+                             qubits_to_fix: Dict[int, int], fix_last_qubit: bool=False):
     assert len(bitset1) == len(bitset2)
 
     def multiply_by_digit(bitset1, qubit_name, shift):
@@ -756,10 +573,18 @@ def optimized_divide(dividend: List[int], divisor: List[int], current_n: int, bq
     qword_quotient = QWord(word_size)
     qword_quotient.create_state(bqm, current_n)
 
+    merged_inputs = []
+    for e in dividend:
+        merged_inputs.append(e)
+    for e in divisor:
+        merged_inputs.append(e)
+    InputPropagationFile.write_rule(QUOTIENT, qword_quotient[current_n], merged_inputs, qubits_to_fix)
+
     multiplication_qword = optimized_multiplication(divisor, qword_quotient[current_n], current_n, bqm, qubits_to_fix)
 
     qword_remainder = QWord(word_size)
     qword_remainder.create_state(bqm, current_n)
+    InputPropagationFile.write_rule(REMAINDER, qword_remainder[current_n], merged_inputs, qubits_to_fix)
 
     sum_qword = optimized_bitwise_add(multiplication_qword[current_n], qword_remainder[current_n], current_n, bqm,
                                       qubits_to_fix, True) # fix the last carry to be equal to 0
@@ -769,15 +594,36 @@ def optimized_divide(dividend: List[int], divisor: List[int], current_n: int, bq
     assert len(is_equal_qword[current_n]) == 1
     is_equal_qubit = is_equal_qword[current_n][0]
     assert isinstance(is_equal_qubit, int)
-    qubits_to_fix[is_equal_qubit] = 1
+    # qubits_to_fix[is_equal_qubit] = 1
 
-    # now add the constraint that the remainded cannot be greater than or equal to divisor
+    # now add the constraint that the remainder cannot be greater than or equal to divisor
     is_less_than_qword = optimized_unsigned_less_than(qword_remainder[current_n], divisor, current_n, bqm,
                                                       qubits_to_fix)
     assert len(is_less_than_qword[current_n]) == 1
     is_less_qubit = is_less_than_qword[current_n][0]
     assert isinstance(is_less_qubit, int)
-    qubits_to_fix[is_less_qubit] = 1
+    # qubits_to_fix[is_less_qubit] = 1
+
+    good_division_const_result = GlobalIndexer.get_name_index()
+    decision_variables = [is_equal_qubit, is_less_qubit, good_division_const_result]
+    model, _ = get_model(Config.AND, decision_variables)
+    bqm.update(model)
+
+    # if remainder is not less than the divisor, then the divisor must be 0
+    qubitset_zero = QWord(len(divisor))
+    qubitset_zero.create_state(bqm, current_n)
+    for qubit in qubitset_zero[current_n]:
+        qubits_to_fix[qubit] = 0
+    is_divisor_0_qword = optimized_is_equal(divisor, qubitset_zero[current_n], current_n, bqm, qubits_to_fix)
+    assert(len(is_divisor_0_qword) == 1)
+    is_divisor_0_qubit = is_divisor_0_qword[current_n][0]
+    assert isinstance(is_divisor_0_qubit, int)
+
+    result_or = GlobalIndexer.get_name_index()
+    decision_variables = [good_division_const_result, is_divisor_0_qubit, result_or]
+    model, _ = get_model(Config.OR, decision_variables)
+    bqm.update(model)
+    qubits_to_fix[result_or] = 1
 
     return qword_quotient, qword_remainder
 
@@ -941,7 +787,7 @@ def optimized_xor(bitset1: List[int], bitset2: List[int], bqm: dimod.BinaryQuadr
 
             model = get_XOR(var_names)
             if value_x1 is not None and value_x2 is not None:
-                raise Exception("not expected constants and XOR")
+                raise Exception("not expected constants in XOR")
                 # qubits_to_fix[nx1] = not value_x1
                 # qubits_to_fix[nx2] = not value_x2
                 # qubits_to_fix[nand1] = not (value_x1 and value_x2)
@@ -1066,7 +912,8 @@ def optimized_bitwise_or(bitset1: List[int], bitset2: List[int], current_n: int,
 
 def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_to_fix: Dict[int, int]) -> int:
 
-    assert len(bits) > 1
+    if len(bits) == 1:
+        return bits[0]
 
     const_names, bits = separate_constants(bits, qubits_to_fix)
 
@@ -1088,7 +935,14 @@ def optimized_bits_or(bits: List[int], bqm: dimod.BinaryQuadraticModel, qubits_t
         qubits_to_fix[result_name] = 0
         return result_name
     elif len(bits) == 1:
-        return bits[0]
+        or_result = GlobalIndexer.get_name_index()
+        temp_qubit = GlobalIndexer.get_name_index()
+        qubits_to_fix[temp_qubit] = 0
+        decision_variables = [temp_qubit, bits[0], or_result]
+        model, _ = get_model(Config.OR, decision_variables)
+        InputPropagationFile.write_rule(OR, or_result, [temp_qubit, bits[0]], qubits_to_fix)
+        bqm.update(model)
+        return or_result
 
     intermediate_result = GlobalIndexer.get_name_index()
     decision_variables = [bits[0], bits[1], intermediate_result]

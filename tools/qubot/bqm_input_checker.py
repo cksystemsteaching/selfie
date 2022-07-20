@@ -140,7 +140,7 @@ class InputChecker:
 
             return (not value1) and value2
         else:
-            raise Exception("UNKNOWN RULE")
+            raise Exception(f"UNKNOWN RULE: {rule}")
 
     @staticmethod
     def get_rules_from_file(filename):
@@ -148,8 +148,29 @@ class InputChecker:
         rules = {}
         for line in file.readlines():
             temp = line.split()
-            inputs = [int(x) for x in temp[2:]]
-            rules[int(temp[1])] = {'rule': temp[0], 'inputs': inputs}
+
+            rule = temp[0]
+            if rule == QUOTIENT or rule == REMAINDER:
+                value = {'rule': rule}
+                qubits = [int(x) for x in temp[1:]]
+                assert(len(qubits) % 3 == 0) # we have 3 bitvectors
+
+                bitvector_size = len(qubits)//3
+                dividend = []
+                divisor = []
+                for i in range(bitvector_size):
+                    dividend.append(qubits[bitvector_size + i])
+                    divisor.append(qubits[bitvector_size*2 + i])
+
+                assert(len(dividend) == len(divisor))
+                value["dividend"] = dividend
+                value["divisor"] = divisor
+                for i in range(bitvector_size):
+                    value['index'] = i
+                    rules[qubits[i]] = value
+            else:
+                inputs = [int(x) for x in temp[2:]]
+                rules[int(temp[1])] = {'rule': rule, 'inputs': inputs}
         file.close()
         return rules
 
@@ -157,11 +178,40 @@ class InputChecker:
     def solve_dependency(name, rules):
         if not (name in InputChecker.qubits_to_fix):
             if name in rules.keys():
-                for input_ in rules[name]['inputs']:
-                    InputChecker.solve_dependency(input_, rules)
-                value = InputChecker.get_rule_value(rules[name]['rule'], rules[name]['inputs'])
+                if rules[name]['rule'] == QUOTIENT or rules[name]['rule'] == REMAINDER:
+                    dividend = []
+                    divisor = []
+                    for (dependecy1, dependency2) in zip(rules[name]['dividend'], rules[name]['divisor']):
+                        InputChecker.solve_dependency(dependecy1, rules)
+                        InputChecker.solve_dependency(dependency2, rules)
 
-                InputChecker.qubits_to_fix[name] = value
+                        val = get_qubit_value(dependecy1, InputChecker.qubits_to_fix)
+                        assert(val is not None)
+                        dividend.append(int(val))
+
+                        val = get_qubit_value(dependency2, InputChecker.qubits_to_fix)
+                        assert(val is not None)
+                        divisor.append(int(val))
+                    dec_divisor = get_decimal_representation(divisor)
+                    dec_dividend = get_decimal_representation(dividend)
+                    if dec_divisor == 0:
+
+                        InputChecker.qubits_to_fix[name] = 0
+                    else:
+                        if  rules[name]['rule'] == QUOTIENT:
+                            dec_result = dec_dividend // dec_divisor
+                        else:
+                            assert(rules[name]['rule'] == REMAINDER)
+                            dec_result = dec_dividend % dec_divisor
+                        assert(len(rules[name]['divisor']) == len(rules[name]['dividend']))
+                        bin_result = get_bit_repr_of_number(dec_result, len(rules[name]['divisor']))
+                        InputChecker.qubits_to_fix[name] = bin_result[rules[name]['index']]
+                else:
+                    for input_ in rules[name]['inputs']:
+                        InputChecker.solve_dependency(input_, rules)
+                    value = InputChecker.get_rule_value(rules[name]['rule'], rules[name]['inputs'])
+
+                    InputChecker.qubits_to_fix[name] = value
             else:
                 InputChecker.qubits_to_fix[name] = 0
 
@@ -239,13 +289,16 @@ class InputChecker:
                 InputChecker.process_coo(f"{directory_path}adj.coo")
                 InputChecker.offset = context['offset']
 
-                input_names = context['input']
-                input_values = get_bit_repr_of_number(input_value, len(input_names))
-                input_mapping = {}
+                input_vectors = context['input']
+                if len(input_vectors) > 0:
+                    input_values = get_bit_repr_of_number(input_value, len(input_vectors[0]))
+                    input_mapping = {}
 
-                for (name, val) in zip(input_names, input_values):
-                    input_mapping[name] = val
-
+                    for input_names in input_vectors:
+                        for (name, val) in zip(input_names, input_values):
+                            input_mapping[name] = val
+                else:
+                    input_mapping = {}
                 bias = InputChecker.run_input(input_mapping, qubits_to_fix,
                                               f"{directory_path}input_propagation.unicorn")
                 bad_states_to_line_no = {int(k): v for (k, v) in context['bad_states_to_line_no'].items()}
