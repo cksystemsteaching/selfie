@@ -2348,7 +2348,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ```
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
-./selfie: selfie compiling examples/count.c with starc
+./selfie: selfie compiling examples/count.c to 64-bit RISC-U with 64-bit starc
 ./selfie: 123 characters read in 14 lines and 0 comments
 ./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
@@ -2362,7 +2362,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: compare: sltu: 1(0.79%)
 ./selfie: control: beq: 5(3.96%), jal: 5(3.96%), jalr: 7(5.55%)
 ./selfie: system:  ecall: 8(6.34%)
-./selfie: 4455 characters of assembly with 126 instructions and 8 bytes of data written into count.s
+./selfie: 4584 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
 ```
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
@@ -2509,10 +2509,10 @@ Here is the relevant output:
 
 ```
 ...
-./selfie: selfie executing examples/count.c with 1MB physical memory on mipster
+./selfie: selfie executing 64-bit RISC-U binary examples/count.c with 1MB physical memory on 64-bit mipster
 ...
 ./selfie: examples/count.c exiting with exit code 10000
-./selfie: selfie terminating examples/count.c with exit code 10000
+./selfie: selfie terminating 64-bit RISC-U binary examples/count.c with exit code 10000
 ...
 ./selfie: summary: 90067 executed instructions [22.22% nops]
 ...
