@@ -3688,7 +3688,9 @@ Scanning is easier than parsing, so we begin with that.
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
-![Scanning Character and String Literals](figures/scanning-character-string-literals.png "Scanning Character and String Literals")
+![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
+
+![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
