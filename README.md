@@ -3680,7 +3680,7 @@ Scanning and parsing combined...
 
 Scanning is easier than parsing, so we begin with that.
 
-### Literals versus Identifiers
+### Literals
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
@@ -3696,9 +3696,11 @@ Scanning is easier than parsing, so we begin with that.
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
-![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
-
 ![Scanner](figures/scanner.png "Scanner")
+
+### Variables
+
+![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
 
 ### Expressions
 
@@ -3729,8 +3731,6 @@ POP: { ("*" | "/") factor } { ("+" | "-") term }:
 POP: { ("+" | "-") term }:
      :
 ```
-
-### Variables versus Procedures
 
 ### Assignments
 
