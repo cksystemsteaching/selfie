@@ -3694,6 +3694,8 @@ Scanning is easier than parsing, so we begin with that.
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
+![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
+
 ![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
 
 ![Scanner](figures/scanner.png "Scanner")
