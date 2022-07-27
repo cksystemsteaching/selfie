@@ -1,0 +1,11 @@
+python main.py 1 ./test_files/ite.btor2 ./qasm_files/ite.qasm
+python main.py 1 ./test_files/add.btor2 ./qasm_files/add.qasm
+python main.py 1 ./test_files/and.btor2 ./qasm_files/and.qasm
+python main.py 1 ./test_files/sub.btor2 ./qasm_files/sub.qasm
+python main.py 1 ./test_files/ulte.btor2 ./qasm_files/ulte.qasm
+python main.py 1 ./test_files/eq.btor2 ./qasm_files/eq.qasm
+python main.py 1 ./test_files/rem.btor2 ./qasm_files/rem.qasm
+python main.py 1 ./test_files/ult.btor2 ./qasm_files/ult.qasm
+python main.py 1 ./test_files/mul.btor2 ./qasm_files/mul.qasm
+python main.py 1 ./test_files/not.btor2 ./qasm_files/not.qasm
+python main.py 1 ./test_files/div.btor2 ./qasm_files/div.qasm

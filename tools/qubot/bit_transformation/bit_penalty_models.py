@@ -10,12 +10,12 @@ import itertools
 class Models:
     models: Dict[Config, Any] = {}
     energies: Dict[Config, Any] = {}
-    preloaded_configs: List[Config] = [Config.MATRIARCH1, Config.AND, Config.NAND, Config.OR, Config.NOT]
+    preloaded_configs: List[Config] = [Config.MATRIARCH1, Config.AND, Config.NAND, Config.OR, Config.NOT, Config.XOR]
 
     @staticmethod
     def get_model(config: Config):
         if config not in Models.models.keys():
-            if config != Config.XOR and config != Config.XNOR:
+            if config != Config.XNOR:
                 if config in Models.preloaded_configs:
                     if config == Config.AND:
                         linear = {'x1':0,'x2':0, 'z':6}
@@ -37,6 +37,10 @@ class Models:
                         linear = {'x1': -2, 'x2':-2}
                         quadratic = {('x1', 'x2'): 4}
                         offset = 2
+                    elif config == Config.XOR:
+                        linear = {'x1': 1, 'x2': 1, 'z': 1, 'a': 4}
+                        quadratic = {('x1', 'x2'): 2, ('x1', 'z'): -2, ('x2', 'z'): -2,('x1', 'a'): -4,
+                                     ('x2', 'a'): -4, ('a', 'z'): 4}
                     else:
                         raise Exception("Strange Error. Tried to return prebuilded model, but this model does not exists.")
 

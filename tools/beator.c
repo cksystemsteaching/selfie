@@ -95,6 +95,15 @@ void model_control_flow_jalr();
 void model_data_flow_ecall();
 void model_control_flow_ecall();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// 4 more digits to accommodate code, data, heap, and stack with
+// 1000*4 lines per 32-bit instruction (pc increments by 4) and
+// 1000*8(4) lines per 64-bit (32-bit) machine word in memory segments
+
+uint64_t PC_NID_DIGITS = 4;    // 10^4 == 10000
+uint64_t PC_NID_FACTOR = 1000; // 1000*8(4) fit into 10000
+
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
@@ -118,19 +127,32 @@ uint64_t compute_physical_address(uint64_t vaddr);
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
+uint64_t already_seen_instruction(uint64_t address);
 uint64_t is_statically_live_instruction(uint64_t address);
-void     mark_statically_live_instruction(uint64_t address, uint64_t mark);
+void     mark_instruction(uint64_t address, uint64_t mark);
 
-uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark);
-void     static_dead_code_elimination(uint64_t entry_pc, uint64_t exit_pc);
+uint64_t get_return_mark(uint64_t address);
+void     mark_return(uint64_t address, uint64_t mark);
+
+uint64_t mark_statically_live_code(uint64_t start_address, uint64_t callee_address,
+  uint64_t entry_pc, uint64_t mark);
+
+void static_dead_code_elimination(uint64_t start_address, uint64_t entry_pc);
 
 void translate_to_model();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t DEAD = 0;
+uint64_t SEEN = 1;
+uint64_t LIVE = 2;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t exit_procedure_entry = 0;
+uint64_t exit_wrapper_address = 0;
 
-uint64_t* statically_live_code = (uint64_t*) 0;
+uint64_t* statically_live_code   = (uint64_t*) 0;
+uint64_t* statically_live_return = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -154,7 +176,7 @@ void generate_block_access_check(uint64_t flow_nid, uint64_t lo_flow_nid, uint64
 
 uint64_t number_of_bits(uint64_t n);
 
-void beator();
+void beator(uint64_t entry_pc);
 
 uint64_t selfie_model();
 
@@ -286,6 +308,30 @@ uint64_t up_flow_end_nid = 50; // nid of most recent update of current upper bou
 
 // keep track of pc flags of ecalls, 10 is nid of 1-bit 0
 uint64_t ecall_flow_nid = 10;
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ---------------------------- KERNEL -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t handle_propr_system_call(uint64_t* context);
+uint64_t handle_propr_exception(uint64_t* context);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t exited_on_timeout = 0;
+uint64_t exited_on_read    = 0;
+
+// -----------------------------------------------------------------
+// --------------------- CONSTANT PROPAGATION ----------------------
+// -----------------------------------------------------------------
+
+uint64_t propr(uint64_t* to_context);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -886,7 +932,7 @@ void model_syscalls(uint64_t cursor_nid) {
 // -----------------------------------------------------------------
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
-  return nid + pc * 100;
+  return nid + pc * PC_NID_FACTOR;
 }
 
 uint64_t is_procedure_call(uint64_t instruction, uint64_t link) {
@@ -1877,39 +1923,59 @@ uint64_t compute_physical_address(uint64_t vaddr) {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-uint64_t is_statically_live_instruction(uint64_t address) {
+uint64_t already_seen_instruction(uint64_t address) {
   if (statically_live_code != (uint64_t*) 0)
-    return *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE);
+    return *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE) == SEEN;
   else
     return 1;
 }
 
-void mark_statically_live_instruction(uint64_t address, uint64_t mark) {
+uint64_t is_statically_live_instruction(uint64_t address) {
+  if (statically_live_code != (uint64_t*) 0)
+    return *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE) == LIVE;
+  else
+    return 1;
+}
+
+void mark_instruction(uint64_t address, uint64_t mark) {
   *(statically_live_code + (address - code_start) / INSTRUCTIONSIZE) = mark;
 }
 
-uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_t mark) {
+uint64_t get_return_mark(uint64_t address) {
+  return *(statically_live_return + (address - code_start) / INSTRUCTIONSIZE);
+}
+
+void mark_return(uint64_t address, uint64_t mark) {
+  *(statically_live_return + (address - code_start) / INSTRUCTIONSIZE) = mark;
+}
+
+uint64_t mark_statically_live_code(uint64_t start_address, uint64_t callee_address,
+  uint64_t entry_pc, uint64_t mark) {
   uint64_t next_pc;
 
-  pc = callee_pc;
+  pc = start_address;
 
   while (1) {
     if (pc < code_start)
-      exit(1);
+      // segfaulting pc
+      exit(EXITCODE_MODELINGERROR);
     else if (pc >= code_start + code_size)
-      exit(1);
-    else if (pc == exit_pc) {
-      // procedure containing exit pc does not return to jal
-      exit_procedure_entry = callee_pc;
+      // segfaulting pc
+      exit(EXITCODE_MODELINGERROR);
 
-      return 1;
-    }
+    if (pc == entry_pc)
+      // from here on mark as live
+      mark = LIVE;
 
-    if (is_statically_live_instruction(pc) != mark)
-      mark_statically_live_instruction(pc, mark);
-    else
-      // already marked
-      return 0;
+    if (mark == SEEN)
+      if (already_seen_instruction(pc))
+        return mark;
+
+    if (mark == LIVE)
+      if (is_statically_live_instruction(pc))
+        return mark;
+
+    mark_instruction(pc, mark);
 
     fetch();
     decode();
@@ -1923,33 +1989,45 @@ uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_
             // assert: next instruction is ecall
             reg_a7 = imm;
     } else if (is == BEQ)
-      // assert: only branching forward
+      // assert: only branching forward but not beyond jalr
 
-      // mark true branch first
-      mark_statically_live_code(pc + imm, exit_pc, mark);
+      // mark true branch first, fast forwarding to jalr
+      mark_statically_live_code(pc + imm, callee_address, entry_pc, mark);
     else if (is == JAL) {
       if (rd == REG_RA) {
         // assert: procedure call
-        if (pc + imm == exit_procedure_entry)
-          // "returning" from exit
-          return 1;
-        else if (mark_statically_live_code(pc + imm, exit_pc, mark))
-          // "returning" from exit
-          return 1;
+        if (pc + imm == exit_wrapper_address)
+          // exit wrapper does not return
+          mark = DEAD;
+        else
+          mark = mark_statically_live_code(pc + imm, pc + imm, entry_pc, mark);
+
+        if (mark == DEAD) {
+          // procedure does not return
+          if (callee_address == 0)
+            // not in procedure or no path yet to jalr
+            return DEAD;
+          else
+            return get_return_mark(callee_address);
+        }
       } else
-        // assert: forward jump
         next_pc = pc + imm;
-    } else if (is == JALR)
-      // assert: return from procedure call
-      return 0;
-    else if (is == ECALL) {
+    } else if (is == JALR) {
+      // assert: jalr returning from procedure call
+      mark_return(callee_address, mark);
+
+      return mark;
+    } else if (is == ECALL) {
       if (reg_a7 == SYSCALL_EXIT) {
         reg_a7 = 0;
 
-        // exit wrapper does not return to jal
-        exit_procedure_entry = callee_pc;
+        // assert: there is only one exit wrapper
 
-        return 1;
+        if (callee_address != 0)
+          // actual exit wrapper call
+          exit_wrapper_address = callee_address;
+
+        return DEAD;
       }
     }
 
@@ -1957,17 +2035,15 @@ uint64_t mark_statically_live_code(uint64_t callee_pc, uint64_t exit_pc, uint64_
   }
 }
 
-void static_dead_code_elimination(uint64_t entry_pc, uint64_t exit_pc) {
+void static_dead_code_elimination(uint64_t start_address, uint64_t entry_pc) {
   uint64_t saved_pc;
 
-  exit_procedure_entry = 0;
+  statically_live_code   = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  statically_live_return = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   saved_pc = pc;
 
-  if (exit_pc == 0)
-    mark_statically_live_code(entry_pc, 0, 1);
-  else
-    mark_statically_live_code(entry_pc, exit_pc, 0);
+  mark_statically_live_code(start_address, 0, entry_pc, SEEN);
 
   pc = saved_pc;
 }
@@ -2623,7 +2699,7 @@ void beator(uint64_t entry_pc) {
     // avoiding 2^32 for 32-bit version
     + dprintf(output_fd, "; highest address in 32-bit virtual address space (4GB)\n\n")
     + dprintf(output_fd, "50 constd 2 %lu ; 0x%lX\n\n",
-      VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE, VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE)
+      HIGHESTVIRTUALADDRESS, HIGHESTVIRTUALADDRESS)
 
     + dprintf(output_fd, "; kernel-mode flag\n\n")
 
@@ -2724,9 +2800,9 @@ void beator(uint64_t entry_pc) {
           data_start);          // start of data segment in hexadecimal
       else if (i == UP_FLOW)
         w = w + dprintf(output_fd, "\n%lu constd 2 %lu ; 0x%lX highest address in 32-bit virtual address space (4GB)\n",
-          *(reg_flow_nids + i),                     // nid of this line
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE,  // highest address in 32-bit virtual address space (4GB)
-          VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE); // highest address in 32-bit virtual address space (4GB) in hexadecimal
+          *(reg_flow_nids + i),   // nid of this line
+          HIGHESTVIRTUALADDRESS,  // highest address in 32-bit virtual address space (4GB)
+          HIGHESTVIRTUALADDRESS); // highest address in 32-bit virtual address space (4GB) in hexadecimal
       else {
         w = w + dprintf(output_fd, "%lu state 2 ", *(reg_flow_nids + i));
 
@@ -2786,10 +2862,7 @@ void beator(uint64_t entry_pc) {
 
   w = w + dprintf(output_fd, "\n; %lu-bit program counter encoded in Boolean flags\n\n", WORDSIZEINBITS);
 
-  // 3 more digits to accommodate code, data, heap, and stack with
-  // 100*4 lines per 32-bit instruction (pc increments by 4) and
-  // 100*8(4) lines per 64-bit (32-bit) machine word in memory segments
-  pcs_nid = ten_to_the_power_of(log_ten(heap_start + heap_size + stack_size) + 3);
+  pcs_nid = ten_to_the_power_of(log_ten(heap_start + heap_size + stack_size) + PC_NID_DIGITS);
 
   pc = code_start;
 
@@ -2840,7 +2913,7 @@ void beator(uint64_t entry_pc) {
 
   // assert: data segment is not empty
 
-  while (pc <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
+  while (pc <= HIGHESTVIRTUALADDRESS) {
     if (pc == data_start + data_size) {
       pc = heap_start;
 
@@ -2849,7 +2922,7 @@ void beator(uint64_t entry_pc) {
     }
 
     if (pc == heap_start + heap_size) {
-      // assert: stack pointer <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+      // assert: stack pointer <= HIGHESTVIRTUALADDRESS
       pc = stack_start;
 
       w = w + dprintf(output_fd, "\n; stack segment\n\n");
@@ -3119,13 +3192,14 @@ void beator(uint64_t entry_pc) {
         + dprintf(output_fd, "\n");
     }
 
-    if (current_nid >= pc_nid(control_nid, pc) + 400) {
+    if (current_nid >= pc_nid(control_nid, pc) + PC_NID_FACTOR * 4) {
       // the instruction at pc is reachable by too many other instructions
 
       // report the error on the console
       output_fd = 1;
 
-      printf("%s: too many in-edges at instruction address %lu[0x%lX] detected\n", selfie_name, pc, pc);
+      printf("%s: cannot handle %lu in-edges at instruction address %lu[0x%lX]\n", selfie_name,
+        current_nid - pc_nid(control_nid, pc), pc, pc);
 
       exit(EXITCODE_MODELINGERROR);
     }
@@ -3450,34 +3524,38 @@ uint64_t selfie_model() {
 
       boot_loader(current_context);
 
-      do_switch(current_context, current_context, TIMEROFF);
-
       entry_pc = get_pc(current_context);
-
-      statically_live_code = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
-
-      static_dead_code_elimination(entry_pc, 0);
 
       if (constant_propagation) {
         printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
         printf("%s: constant propagation with ", selfie_name);
 
-        exit_on_read = 1;
+        exited_on_timeout = 0;
+        exited_on_read    = 0;
 
         run = 1;
 
-        mipster(current_context);
+        propr(current_context);
 
         run = 0;
 
-        exit_on_read = 0;
+        if (exited_on_timeout)
+          printf("%s: constant propagation could not find read call\n", selfie_name);
+        else if (exited_on_read == 0) {
+          printf("%s: constant propagation yields empty model\n", selfie_name);
 
-        static_dead_code_elimination(entry_pc, get_pc(current_context));
-      } else
-        run = 0;
+          exit(EXITCODE_MODELINGERROR);
+        }
+      }
+
+      do_switch(current_context, current_context, TIMEROFF);
+
+      static_dead_code_elimination(entry_pc, get_pc(current_context));
 
       output_name = model_name;
       output_fd   = model_fd;
+
+      run = 0;
 
       model = 1;
 
@@ -3495,6 +3573,118 @@ uint64_t selfie_model() {
       return EXITCODE_BADARGUMENTS;
   } else
     return EXITCODE_BADARGUMENTS;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ---------------------------- KERNEL -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t handle_propr_system_call(uint64_t* context) {
+  uint64_t a7;
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  a7 = *(get_regs(context) + REG_A7);
+
+  if (a7 == SYSCALL_BRK) {
+    if (get_gc_enabled_gc(context))
+      implement_gc_brk(context);
+    else
+      implement_brk(context);
+  } else if (a7 == SYSCALL_READ) {
+    exited_on_read = 1;
+
+    set_exit_code(context, sign_shrink(EXITCODE_NOERROR, SYSCALL_BITWIDTH));
+
+    return EXIT;
+  } else if (a7 == SYSCALL_WRITE)
+    implement_write(context);
+  else if (a7 == SYSCALL_OPENAT)
+    implement_openat(context);
+  else if (a7 == SYSCALL_EXIT) {
+    implement_exit(context);
+
+    // TODO: exit only if all contexts have exited
+    return EXIT;
+  } else {
+    printf("%s: unknown system call %lu\n", selfie_name, a7);
+
+    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+
+uint64_t handle_propr_timer(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  exited_on_timeout = 1;
+
+  return EXIT;
+}
+
+uint64_t handle_propr_exception(uint64_t* context) {
+  uint64_t exception;
+
+  exception = get_exception(context);
+
+  if (exception == EXCEPTION_SYSCALL)
+    return handle_propr_system_call(context);
+  else if (exception == EXCEPTION_PAGEFAULT)
+    return handle_page_fault(context);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    return handle_division_by_zero(context);
+  else if (exception == EXCEPTION_TIMER)
+    return handle_propr_timer(context);
+  else {
+    printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
+    print_exception(exception, get_fault(context));
+    println();
+
+    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+}
+
+// -----------------------------------------------------------------
+// --------------------- CONSTANT PROPAGATION ----------------------
+// -----------------------------------------------------------------
+
+uint64_t propr(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  printf("propr\n");
+  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    } else if (handle_propr_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+    else {
+      // TODO: scheduler should go here
+      to_context = from_context;
+
+      timeout = TIMESLICE;
+    }
+  }
 }
 
 // -----------------------------------------------------------------

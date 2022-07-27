@@ -1,0 +1,2 @@
+,file_name,wordsize,logic_vars,emb_max_time,emb_min_time,emb_median_time,emb_avg_time,emb_max_chain,emb_min_chain,emb_median_chain,emb_avg_chain,emb_max_vars,emb_min_vars,emb_median_vars,emb_avg_vars,topology
+0,d.btor2,32,1414,411.4,411.4,411.4,411.4,62,1,2.0,3.18,4498,4498,4498,4498.0,pegasus

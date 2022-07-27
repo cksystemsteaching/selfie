@@ -50,10 +50,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt beat btor2 all
+.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat mon smt beat btor2
+all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
 
 # Self-compile selfie
 self: selfie
@@ -158,19 +158,46 @@ sat: babysat selfie selfie.h
 	./babysat examples/sat/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/sat/rivest.cnf
 
+# Compile buzzr.c with selfie.h as library into buzzr executable
+buzzr: tools/buzzr.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Run buzzr, the symbolic execution engine, natively and as RISC-U executable on itself
+brr: buzzr selfie.h selfie
+	./buzzr -c selfie.h tools/buzzr.c - 1
+	./selfie -c selfie.h tools/buzzr.c -m 2 -c selfie.h tools/buzzr.c - 1
+
+# Prevent make from deleting intermediate target buzzr
+.SECONDARY: buzzr
+
+# Buzz *-35.c and *-10.c files
+%-35.bzz: %-35.c buzzr
+	./buzzr -c $< - 10
+%-10.bzz: %-10.c buzzr
+	./buzzr -c $< - 10
+
+# Gather symbolic execution example files as .bzz files
+bzz-1 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-1-*.c))
+bzz-2 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-2-*.c))
+bzz-3 := $(patsubst %.c,%.bzz,$(wildcard examples/symbolic/*-3-*.c))
+
+# Run buzzr on *.c files in symbolic folder
+bzz: $(bzz-1) $(bzz-2) $(bzz-3)
+
 # Compile monster.c with selfie.h as library into monster executable
 monster: tools/monster.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Run monster, the symbolic execution engine, natively and as RISC-U executable
+# Run monster, the symbolic execution engine, natively and as RISC-U executable on itself
 mon: monster selfie.h selfie
-	./monster
-	./selfie -c selfie.h tools/monster.c -m 1
+	./monster -c selfie.h tools/monster.c - 0 10
+	./selfie -c selfie.h tools/monster.c -m 3 -c selfie.h tools/monster.c - 0 10
+# output differs slightly because of different filenames
 
 # Prevent make from deleting intermediate target monster
 .SECONDARY: monster
 
-# Translate *.c including selfie.c into SMT-LIB model
+# Translate *-35.c and *-10.c files into SMT-LIB model
 %-35.smt: %-35.c monster
 	./monster -c $< - 0 35 --merge-enabled
 %-10.smt: %-10.c monster
@@ -181,7 +208,7 @@ smts-1 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-1-*.c))
 smts-2 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-2-*.c))
 smts-3 := $(patsubst %.c,%.smt,$(wildcard examples/symbolic/*-3-*.c))
 
-# Run monster on *.c files in symbolic
+# Run monster on *.c files in symbolic folder
 smt: $(smts-1) $(smts-2) $(smts-3)
 
 # Compile beator.c with selfie.h as library into beator executable
@@ -192,6 +219,8 @@ beator: tools/beator.c selfie.h
 beat: beator selfie.h selfie
 	./beator -c selfie.h tools/beator.c - 0 --check-block-access
 	./selfie -c selfie.h tools/beator.c -m 1
+# RISC-U executable also works on itself but output differs slightly
+# because of different filenames and values of a6 register
 
 # Prevent make from deleting intermediate target beator
 .SECONDARY: beator
@@ -203,7 +232,7 @@ beat: beator selfie.h selfie
 # Gather symbolic execution example files as .btor2 files
 btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 
-# Run beator on *.c files in symbolic and even on selfie
+# Run beator on *.c files in symbolic folder and even on selfie
 btor2: $(btor2s) selfie.btor2
 
 # Consider these targets as targets, not files
@@ -298,6 +327,7 @@ clean:
 	rm -f examples/*.s
 	rm -f examples/symbolic/*.smt
 	rm -f examples/symbolic/*.btor2
+	rm -f tools/*.smt
 	rm -f tools/*.btor2
 	rm -f selfie selfie-32 selfie.h selfie-gc.h selfie-gc-nomain.h selfie.exe
-	rm -f babysat monster beator beator-32
+	rm -f babysat buzzr monster beator beator-32

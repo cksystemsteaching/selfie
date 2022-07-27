@@ -463,7 +463,7 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
 
               printf("%s: detected symbolic value ", selfie_name);
               print_symbolic_memory(sword);
-              print(" in filename of open call\n");
+              printf(" in filename of open call\n");
 
               exit(EXITCODE_SYMBOLICEXECUTIONERROR);
             } else
@@ -1900,7 +1900,7 @@ uint64_t selfie_run_symbolically() {
 
       printf("%s: monster symbolically executing %s with %luMB physical memory\n", selfie_name,
         binary_name,
-        total_page_frame_memory / MEGABYTE);
+        PHYSICALMEMORYSIZE / MEGABYTE);
 
       use_file();
 

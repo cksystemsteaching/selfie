@@ -227,7 +227,7 @@ void dimacs_word(char* word) {
     } else
       syntax_error_unexpected_identifier(word);
   } else
-    syntax_error_symbol(SYM_IDENTIFIER);
+    syntax_error_expected_symbol(SYM_IDENTIFIER);
 
   exit(EXITCODE_PARSERERROR);
 }
@@ -242,7 +242,7 @@ uint64_t dimacs_number() {
 
     return number;
   } else
-    syntax_error_symbol(SYM_INTEGER);
+    syntax_error_expected_symbol(SYM_INTEGER);
 
   exit(EXITCODE_PARSERERROR);
 }
@@ -280,7 +280,7 @@ void dimacs_get_clause(uint64_t clause) {
     } else if (symbol == SYM_EOF)
       return;
     else
-      syntax_error_symbol(SYM_INTEGER);
+      syntax_error_expected_symbol(SYM_INTEGER);
 
     dimacs_get_symbol();
   }

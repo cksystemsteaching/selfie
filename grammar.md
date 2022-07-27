@@ -6,22 +6,22 @@ http://selfie.cs.uni-salzburg.at
 
 This is the grammar of the C Star (C\*) programming language.
 
-C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
+C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `...`
+C\* Symbols: `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `...`
 
 with:
 
 ```
-integer_literal   = digit { digit } .
+integer    = digit { digit } .
 
-character_literal = "'" printable_character "'" .
+character  = "'" printable_character "'" .
 
-string_literal    = """ { printable_character } """ .
+string     = """ { printable_character } """ .
 
-identifier        = letter { letter | digit | "_" } .
+identifier = letter { letter | digit | "_" } .
 ```
 
 and:
@@ -35,42 +35,44 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar             = { type identifier
-                      [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
-                    ( "void" | type ) identifier procedure } .
+cstar      = { variable [ initialize ] ";" | procedure } .
 
-type              = "uint64_t" [ "*" ] .
+variable   = type identifier .
 
-cast              = "(" type ")" .
+type       = "uint64_t" [ "*" ] .
 
-procedure         = "(" [ variable { "," variable } [ "," "..." ] ] ")" ( ";" |
-                    "{" { variable ";" } { statement } "}" ) .
+initialize = "=" [ cast ] [ "-" ] value .
 
-variable          = type identifier .
+cast       = "(" type ")" .
 
-statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
-                    call ";" | while | if | return ";" .
+value      = integer | character .
 
-call              = identifier "(" [ expression { "," expression } ] ")" .
+statement  = assignment ";" | if | while | call ";" | return ";" .
 
-expression        = simple_expression
-                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
+assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
 
-simple_expression = term { ( "+" | "-" ) term } .
+expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
 
-term              = factor { ( "*" | "/" | "%" ) factor } .
+arithmetic = term { ( "+" | "-" ) term } .
 
-factor            = [ cast ] [ "-" ] [ "*" ]
-                    ( integer_literal | character_literal | string_literal |
-                      identifier | call | "(" expression ")" ) .
+term       = factor { ( "*" | "/" | "%" ) factor } .
 
-while             = "while" "(" expression ")"
-                      ( statement | "{" { statement } "}" ) .
+factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 
-if                = "if" "(" expression ")"
-                      ( statement | "{" { statement } "}" )
-                    [ "else"
-                      ( statement | "{" { statement } "}" ) ] .
+literal    = value | string .
 
-return            = "return" [ expression ] .
+if         = "if" "(" expression ")"
+               ( statement | "{" { statement } "}" )
+             [ "else"
+               ( statement | "{" { statement } "}" ) ] .
+
+while      = "while" "(" expression ")"
+               ( statement | "{" { statement } "}" ) .
+
+procedure  = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
+             ( ";" | "{" { variable ";" } { statement } "}" ) .
+
+call       = identifier "(" [ expression { "," expression } ] ")" .
+
+return     = "return" [ expression ] .
 ```

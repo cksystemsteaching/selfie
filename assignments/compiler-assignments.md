@@ -74,6 +74,16 @@ Implement code generation for bitwise logical operators `&`, `|`, and `~` in C\*
 
 
 
+## Assignment `logical-and-or-not`:
+
+Implement code generation for boolean operators `&&`, `||`, and `!` in C\*.
+
+- Before coding, extend the grammar in **grammar.md** accordingly.
+- Do not modify any files other than **grammar.md** and **selfie.c**.
+- Use the `logical-and-or-not` target in the grader to determine your grade.
+
+
+
 ## Assignment `array`:
 
 Implement support of and code generation for one-dimensional arrays in C\* with the symbols `[` and `]`.
@@ -121,16 +131,6 @@ Implement support of and code generation for `for` loops in C\*.
 - Before coding, extend the grammar in **grammar.md** accordingly.
 - Do not modify any files other than **grammar.md** and **selfie.c**.
 - Use the `for-loop` target in the grader to determine your grade.
-
-
-
-## Assignment `logical-and-or-not`:
-
-Implement code generation for boolean operators `&&`, `||`, and `!` in C\*.
-
-- Before coding, extend the grammar in **grammar.md** accordingly.
-- Do not modify any files other than **grammar.md** and **selfie.c**.
-- Use the `logical-and-or-not` target in the grader to determine your grade.
 
 
 
