@@ -98,12 +98,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ ((github.event_name != 'workflow_dispatch') || (github.event.inputs.rundocker == 'true')) && (((!github.event.repository.private) || ((github.ref == 'refs/heads/main') && (github.event_name != 'schedule'))) || (github.event_name == 'workflow_dispatch')) }}
 
-    # usage: optional argument --platform=linux/amd64 or --platform=linux/arm64
+    # usage: optional run argument --platform=linux/amd64 or --platform=linux/arm64
     #
-    # - pull docker image: docker pull cksystemsteaching/selfie
-    # - run command:       docker run -v cksystemsteaching/selfie command
-    # - run interactive:   docker run -it cksystemsteaching/selfie
-    # - run on my selfie:  docker run -it -v /myselfie:/opt/myselfie cksystemsteaching/selfie
+    # - pull docker images: docker pull -a cksystemsteaching/selfie
+    # - run command:        docker run -v cksystemsteaching/selfie command
+    # - run interactive:    docker run -it cksystemsteaching/selfie
+    # - run on my selfie:   docker run -it -v /myselfie:/opt/myselfie cksystemsteaching/selfie
 
     steps:
     - name: Checkout selfie
@@ -117,8 +117,8 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build docker image
       run: |
-        docker build --platform=linux/arm64 --target=selfieall -t cksystemsteaching/selfie:arm64 .
-        docker build --platform=linux/amd64 --target=selfieeverything -t cksystemsteaching/selfie:amd64 .
+        docker buildx build --platform=linux/arm64 --target=selfieall -t cksystemsteaching/selfie:arm64 .
+        docker buildx build --platform=linux/amd64 --target=selfieeverything -t cksystemsteaching/selfie:amd64 .
     - name: Make everything
       run: |
         docker run cksystemsteaching/selfie:arm64 make -j -O all
