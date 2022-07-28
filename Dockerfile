@@ -162,10 +162,10 @@ RUN mkdir -p $RISCV \
   && make \
   && make install
 
-##################################
-# Selfie interactive final image #
-##################################
-FROM ubuntu:latest AS selfiebuilder
+############################
+# Selfie interactive image #
+############################
+FROM ubuntu:latest AS selfieall
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -179,7 +179,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
        make git \
-       gcc gdb libc6-dev-i386-amd64-cross lib32gcc-11-dev \
+       gcc gdb libc6-dev-i386-amd64-cross \
        python3.10 \
        device-tree-compiler gcc-riscv64-linux-gnu \
   && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
@@ -205,7 +205,25 @@ WORKDIR /opt/selfie
 # build selfie
 RUN make selfie
 
-# build machine files
+# default command
+CMD /bin/bash
+
+#################################
+# Selfie interactive full image #
+#################################
+FROM selfieall AS selfieeverything
+
+# only works on amd64 for now
+
+# install tools for 32-bit selfie
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends lib32gcc-11-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# specify user work directory
+WORKDIR /opt/selfie
+
+# build baremetal machine files
 RUN make --directory machine/
 
 # default command

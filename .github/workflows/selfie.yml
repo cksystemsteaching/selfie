@@ -109,10 +109,13 @@ jobs:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Build docker image
-      run: docker build -t cksystemsteaching/selfie .
+      run: |
+        docker build --platform=linux/arm64 --target=selfieall -t cksystemsteaching/selfie:arm64 .
+        docker build --platform=linux/amd64 --target=selfieeverything -t cksystemsteaching/selfie:amd64 .
     - name: Make everything
       run: |
-        docker run cksystemsteaching/selfie make -j -O everything
+        docker run cksystemsteaching/selfie:arm64 make -j -O all
+        docker run cksystemsteaching/selfie:amd64 make -j -O everything
         docker run cksystemsteaching/selfie make pythons
     - name: Deploy docker image
       run: |
