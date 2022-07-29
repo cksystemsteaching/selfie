@@ -202,8 +202,9 @@ COPY . /opt/selfie/
 # specify user work directory
 WORKDIR /opt/selfie
 
-# build selfie
-RUN make selfie
+# test build, then clean selfie
+RUN make selfie \
+  && make clean
 
 # default command
 CMD /bin/bash

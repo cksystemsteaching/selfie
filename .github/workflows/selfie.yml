@@ -115,18 +115,18 @@ jobs:
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v2
-    - name: Build docker image
+    - name: Build docker images
       run: |
+        # TODO: build single multi-platform image even though arm64 does not support 32-bit tools
         docker buildx build --platform=linux/arm64 --target=selfieall --load -t cksystemsteaching/selfie:arm64 .
         docker buildx build --platform=linux/amd64 --target=selfieeverything --load -t cksystemsteaching/selfie:amd64 -t cksystemsteaching/selfie:latest .
     - name: Make everything
       run: |
+        # TODO: emulated arm64 "make -j -O all", too slow for now, skipping
         docker run cksystemsteaching/selfie:amd64 make -j -O everything
         docker run cksystemsteaching/selfie:latest make pythons
     - name: Deploy docker image
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'cksystemsteaching/selfie' }}
       run: |
-        docker run cksystemsteaching/selfie:arm64 make clean
-        docker run cksystemsteaching/selfie:amd64 make clean
         echo '${{ secrets.DOCKERHUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         docker push -a cksystemsteaching/selfie
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'cksystemsteaching/selfie' }}
