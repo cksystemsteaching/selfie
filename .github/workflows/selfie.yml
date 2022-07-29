@@ -121,7 +121,6 @@ jobs:
         docker buildx build --platform=linux/amd64 --target=selfieeverything --load -t cksystemsteaching/selfie:amd64 -t cksystemsteaching/selfie:latest .
     - name: Make everything
       run: |
-        docker run cksystemsteaching/selfie:arm64 make -j -O all
         docker run cksystemsteaching/selfie:amd64 make -j -O everything
         docker run cksystemsteaching/selfie:latest make pythons
     - name: Deploy docker image
