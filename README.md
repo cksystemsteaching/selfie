@@ -3704,6 +3704,8 @@ There is one important question that we should consider before moving on. Why do
 
 ### Literals
 
+Literals in programming languages are arguably the most primitive programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
+
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
 ![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
