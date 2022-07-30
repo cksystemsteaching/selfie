@@ -3706,11 +3706,11 @@ There is one important question that we should consider before moving on. Why do
 
 Literals in programming languages are arguably the most primitive programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
 
-In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute their value:
+In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute their numerical value:
 
 1. How do we define the sequences of characters that denote integer literals in decimal notation? This is a *specification* problem.
 2. How do we model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is a *modeling* problem.
-3. How do we design and implement an algorithm that efficiently checks whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is an *implementation* problem.
+3. How do we design and implement an algorithm that efficiently checks whether an arbitrary sequence of characters denotes an integer literal in decimal notation and, if it does, computes the numerical value represented by that sequence? This is an *implementation* problem.
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
