@@ -3704,15 +3704,41 @@ There is one important question that we should consider before moving on. Why do
 
 ### Literals
 
-Literals in programming languages are arguably the most primitive programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
+Literals in programming languages are arguably the most basic programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
 
-In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute their numerical value:
+In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute the numerical value they represent:
 
 1. How do we define the sequences of characters that denote integer literals in decimal notation? This is a *specification* problem.
 2. How do we model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is a *modeling* problem.
 3. How do we design and implement an algorithm that efficiently checks whether an arbitrary sequence of characters denotes an integer literal in decimal notation and, if it does, computes the numerical value represented by that sequence? This is an *implementation* problem.
 
+We already saw before how to define all sequences of characters that denote integer literals in decimal notation using EBNF, that is, a *regular expression* in EBNF:
+
+```ebnf
+integer = digit { digit } .
+
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
+```
+
+Recall that a regular expression is a grammar that can be denoted by a single EBNF production. Sure, there are two productions here, but you can easily substitute the two occurrences of the non-terminal `digit` in the first rule with the RHS of the second rule. Done!
+
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
+
+The new bit of information here is that we also show you how to model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation, and of course how to implement that in C*.
+
+> Finite State Machines!
+
+Such modeling is traditionally done using a *finite state machine* (FSM). Here, the FSM that does the job has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states that are neither start nor accepting state, not here though in this example, simply because we do not need those here. The important restriction is that any FSM only has a finite number of states in total hence the name.
+
+...
+
+```ebnf
+integer = "0" | non_zero_digit { digit } .
+
+non_zero_digit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
+
+digit = "0" | non_zero_digit .
+```
 
 ![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
 
