@@ -3720,7 +3720,7 @@ integer = digit { digit } .
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" .
 ```
 
-Recall that a regular expression is a grammar that can be denoted by a single EBNF production. Sure, there are two productions here, but you can easily substitute the two occurrences of the non-terminal `digit` in the first rule with the RHS of the second rule. Done!
+Recall that a regular expression is a grammar that can be denoted by a single EBNF production. Sure, there are two productions in our example, but you can easily substitute the two occurrences of the non-terminal `digit` in the first rule with the RHS of the second rule. Done!
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
@@ -3728,9 +3728,13 @@ The new bit of information here is that we also show you how to model the proces
 
 > Finite State Machines!
 
-Such modeling is traditionally done using a *finite state machine* (FSM). Here, the FSM that does the job has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states that are neither start nor accepting state, not here though in this example, simply because we do not need those here. The important restriction is that any FSM only has a finite number of states in total hence the name.
+Modeling the process of checking whether a sequence of characters is in the language of a regular expression is traditionally done using a *finite state machine* (FSM) as shown in the above figure. We could also use mathematical notation to describe the FSM but prefer the quite common visual representation since it really shows nicely what is going on.
 
-...
+Here, the FSM has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states that are neither start nor accepting state, not here though in this example, simply because we do not need those here. The important restriction is that any FSM only has a finite number of states in total hence the name.
+
+The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C* symbols as labels, for example.
+
+How do we read that FSM?
 
 ```ebnf
 integer = "0" | non_zero_digit { digit } .
