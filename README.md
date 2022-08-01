@@ -2226,7 +2226,7 @@ The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory
 
 Let us count how many bits a RISC-U machine can store. There are the 2112 bits of the registers and program counter plus 4\*2^30^\*8=34,359,738,368 bits of main memory which are 34,359,740,480 bits in total. This means that there are 2^34359740480^ different states in which a RISC-U machine can be which is an absolutely mind-blowing number, especially considering that your smartphone is likely to be quite similar to a RISC-U machine.
 
-> A computer is a deterministic machine, just freeze it and write down all bits
+> A computer is a deterministic machine, just freeze it and write down all stored bits
 
 We nevertheless do not intend to just impress you with large numbers but rather would like to emphasize that a computer such as a RISC-U machine is fully *deterministic*. Whenever we take such a machine, freeze its current state, write down all its bits, and then copy all of the bits to another machine of the same kind that machine will be indistinguishable from the original machine. Freezing and writing down the state of a machine is called *snapshotting* and copying the state to another machine is called *migration* which are both very powerful concepts explained in the computing chapter.
 
@@ -2274,7 +2274,7 @@ Either way, each I/O device is assigned to a range of addresses in main memory o
 
 How does the audio device get the attention of the CPU which is generally distracted by executing code that has nothing to do with audio? After all, the bits stored by the audio device will soon be overwritten by the device and thus lost forever, unless the CPU retrieves them before they are overwritten and then stores and processes them somewhere else. There are essentially two ways to do this.
 
-> Polling: Are we there yet, are we there yet? Interrupts: We are here!
+> Polling: Are we there yet, are we there yet? Interrupts: We are there!
 
 First, there is *polling*, that is, the CPU asking the audio device, rather than the other way around, if there is new information by executing instructions at regular time intervals that inspect the memory addresses or ports shared with the audio device. For this purpose, there is usually a specific memory address or port among the shared memory addresses or ports at which the audio device sets a bit called a *control line* when there is new data available at the remaining shared memory addresses or ports which are called *data lines*. Thus the CPU regularly *polls* the control line and, if there is new data, retrieves it from the data lines. When the CPU is done it may set the bit of another control line to acknowledge receipt of the data with the audio device which in turn may then send more data. With polling, the length of the time interval determines the *worst-case* latency since it may take at most one time interval for the CPU to find out that there is new data. The disadvantage of polling is that the CPU may poll many times before there is any new data rather than doing other more useful work. Polling is like the White Rabbit asking again and again: Did anyone say anything? Did anyone say anything? Did anyone say anything? Sounds impractical but polling, because of its simplicity, is not so bad, at least for high-latency I/O.
 
@@ -3730,11 +3730,31 @@ The new bit of information here is that we also show you how to model the proces
 
 Modeling the process of checking whether a sequence of characters is in the language of a regular expression is traditionally done using a *finite state machine* (FSM) as shown in the above figure. We could also use mathematical notation to describe the FSM but prefer the quite common visual representation since it really shows nicely what is going on.
 
-Here, the FSM has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states that are neither start nor accepting state, not here though in this example, simply because we do not need those here. The important restriction is that any FSM only has a finite number of states in total hence the name.
+Here, the FSM has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states depicted in blue that are neither start nor accepting state, not here though in this example, simply because we do not need those here, but we do need them later below. The important restriction is that any FSM only has a finite number of states in total hence the name.
 
-The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C* symbols as labels, for example.
+The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows from one state to another. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C* symbols as labels, for example.
 
-How do we read that FSM?
+How do we read that FSM? Initially, the FSM is in the red start state. Moreover, assume that we are given an arbitrary sequence of characters that the FSM reads or in fact scans from left to right, one character at a time, that is, upon taking a state transition. For example, assume that we are given the following sequence of characters:
+
+```
+85
+```
+
+In this case, the FSM reads the character `8` first and transitions to the green accepting state across the state transition labelled `"8"`. Then, the FSM reads the character `5` and transitions from the green accepting state back to that state across the state transition labelled `"5"`. But now what? Well, there is a third invisible *control* character at the end of every sequence called `end of file` or `EOF` that indicates the actual end of the sequence. The FSM does indeed read that character after the character `5` but then what? Now, this is important. In this case, the FSM is in the green accepting state but there is no state transition labelled `"EOF"`. Whenever this happens, that is, the FSM reads a character but is in a state that does not have a state transition with that character as label, the FSM is done and terminates. What remains to be done by us is to check whether the FSM is in an accepting state or not at this point. If yes, the sequence of characters read so far is said to be *accepted* or, more precisely, the sequence is said to be in the language accepted by the FSM. If the FSM is not in an accepting state, then the sequence of characters read so far is not accepted. For example, suppose we are given the following sequence of characters:
+
+```
+;85
+```
+
+In this case, the FSM reads the character `;` first but is unable to transition from the red start state because there is no state transition labelled `";"`. Thus the FSM terminates and remains in the *non-accepting* red start state. The sequence of characters `;85` is therefore not accepted by the FSM which is of course what we intended the FSM to do. We could now use some other FSM to see if it accepts `;85` or not. In other words, the character `;` and all other characters to the right of `;` may still be read by another FSM because `;` has not yet enabled a state transition. How about the following sequence?
+
+```
+85;
+```
+
+In this case, the prefix `85` of `85;` is indeed accepted by our FSM while the character `;` only made the FSM terminate. Thus `;` and the control character `EOF` still remain available for reading by some other FSM.
+
+Equivalence, determinism...
 
 ```ebnf
 integer = "0" | non_zero_digit { digit } .
@@ -3747,6 +3767,8 @@ digit = "0" | non_zero_digit .
 ![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
+
+regularly forgetful...
 
 
 
