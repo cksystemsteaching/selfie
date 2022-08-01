@@ -3770,7 +3770,7 @@ A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contai
 
 Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. If you are interested in following up consider the recommended readings below. It will definitely sharpen your mind even further, never mind any motivation other than that.
 
-Before proceeding to the third problem of how to implement our FSM, we still need to fix a bug in our EBNF that we saw earlier in the language chapter...
+Before proceeding to the third problem of how to implement our FSM, we still need to fix a bug in the regular expression for integer literals that we saw earlier in the language chapter. Recall that the language of the regular expression above includes not just the sequence of a single digit `0` but also any sequence of characters that begins with any number of digits `0` such as `000` or `007`, for example. But it is easy to fix that:
 
 ```ebnf
 integer = "0" | non_zero_digit { digit } .
@@ -3781,6 +3781,8 @@ digit = "0" | non_zero_digit .
 ```
 
 ![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
+
+The finite state machine that matches the correct regular expression is shown above. Here, we only need to divert the state transition labelled `"0"` to a new accepting state that does not have any further state transitions. The rest stays the same. We have nevertheless not included the fix in the C* grammar to keep it as an introductory exercise for students.
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
