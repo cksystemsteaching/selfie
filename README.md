@@ -3734,7 +3734,9 @@ Here, the FSM has just two states: the red state is the *start state* and the gr
 
 The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows from one state to another. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C* symbols as labels, for example.
 
-How do we read that FSM? Initially, the FSM is in the red start state. Moreover, assume that we are given an arbitrary sequence of characters that the FSM reads or in fact scans from left to right, one character at a time, that is, upon taking a state transition. For example, assume that we are given the following sequence of characters:
+> Running a finite state machine
+
+How do we run that FSM? Initially, the FSM is in the red start state. Moreover, assume that we are given an arbitrary sequence of characters that the FSM reads or in fact scans from left to right, one character at a time, that is, upon taking a state transition. For example, assume that we are given the following sequence of characters:
 
 ```
 85
@@ -3754,7 +3756,21 @@ In this case, the FSM reads the character `;` first but is unable to transition 
 
 In this case, the prefix `85` of `85;` is indeed accepted by our FSM while the character `;` only made the FSM terminate. Thus `;` and the control character `EOF` still remain available for reading by some other FSM.
 
-Equivalence, determinism...
+> Regular expressions equal finite state machines, except in size...
+
+Time to reflect on what we have seen so far. First of all, regular expressions and finite state machines are excellent concepts for specifying and modeling regular languages such as the language of decimal numbers but also the language of identifiers as we see further below. There is one property that stands out: regular expressions and finite state machines are equivalent in their expressive power! This means that we can turn any regular expression into a finite state machine that accepts the same language as the regular expression specifies, and vice versa. We can turn any finite state machine into a regular expression that specifies the same language as the machine accepts. Both ways, the conversion can be done systematically in the sense that there are algorithms, even implemented in some widely used software development tools, to do that for us.
+
+> ... possibly even exponentially different in size
+
+However, there are regular expressions that can only be described by finite state machines that are exponentially larger than the regular expressions, and again vice versa. But, when converting a regular expression into a finite state machine, the exponential blowup in size can be avoided if the finite state machine may be *non-deterministic*. Interestingly, not the other way around though. There are even *deterministic* FSM that can only be converted into regular expressions that are exponentially larger than the machines.
+
+> Non-deterministic finite automata!
+
+A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contain one or more states where each of these states has more than one state transition with the same label but transitioning to different states, giving the machine a non-deterministic choice of which state transition to follow. A *deterministic finite automaton* (DFA), on the other hand, is a deterministic FSM where all state transitions of each state of the FSM have different labels. Well, good news for us, the regular expressions we need here all translate into deterministic FSMs that are asymptotically of the same size as the regular expressions.
+
+Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. If you are interested in following up consider the recommended readings below. It will definitely sharpen your mind even further, never mind any motivation other than that.
+
+Before proceeding to the third problem of how to implement our FSM, we still need to fix a bug in our EBNF that we saw earlier in the language chapter...
 
 ```ebnf
 integer = "0" | non_zero_digit { digit } .
@@ -3770,8 +3786,6 @@ digit = "0" | non_zero_digit .
 
 regularly forgetful...
 
-
-
 ![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
 
 ![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
@@ -3781,6 +3795,8 @@ regularly forgetful...
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
 ![Scanner](figures/scanner.png "Scanner")
+
+register allocation, link to grammar, keywords vs identifiers, whitespace
 
 ### Variables
 
@@ -3831,6 +3847,8 @@ POP: { ("+" | "-") term }:
 ### Life
 
 ### Recommended Readings
+
+Aho et al.: Compilers: Principles, Techniques, and Tools
 
 ## Tools
 
