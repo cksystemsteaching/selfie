@@ -3704,7 +3704,7 @@ There is one important question that we should consider before moving on. Why do
 
 ### Literals
 
-Literals in programming languages are arguably the most basic programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
+Literals in programming languages are arguably the most basic programming element. They represent a value that remains the same or *constant* throughout the execution of the program. C\* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `'Hello World!'`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
 
 In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute the numerical value they represent:
 
@@ -3724,7 +3724,7 @@ Recall that a regular expression is a grammar that can be denoted by a single EB
 
 ![Integer Literal FSM](figures/integer-literal-FSM.png "Integer Literal FSM")
 
-The new bit of information here is that we also show you how to model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation, and of course how to implement that in C*.
+The new bit of information here is that we also show you how to model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation, and of course how to implement that in C\*.
 
 > Finite State Machines!
 
@@ -3732,7 +3732,7 @@ Modeling the process of checking whether a sequence of characters is in the lang
 
 Here, the FSM has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states depicted in blue that are neither start nor accepting state, not here though in this example, simply because we do not need those here, but we do need them later below. The important restriction is that any FSM only has a finite number of states in total hence the name.
 
-The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows from one state to another. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C* symbols as labels, for example.
+The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows from one state to another. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C\* symbols as labels, for example.
 
 > Running a finite state machine
 
@@ -3766,7 +3766,7 @@ However, there are regular expressions that can only be described by finite stat
 
 > Non-deterministic finite automata!
 
-A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contain one or more states where each of these states has more than one state transition with the same label but transitioning to different states, giving the machine a non-deterministic choice of which state transition to follow. A *deterministic finite automaton* (DFA), on the other hand, is a deterministic FSM where all state transitions of each state of the FSM have different labels. Well, good news for us, the regular expressions we need here all translate into deterministic FSMs that are asymptotically of the same size as the regular expressions. This is not by accident but actually intended: we want our FSMs to be small and deterministic so that for every accepted sequence of characters there is exactly one deterministic sequence of state transitions to accept it, not two or maybe even more. The reason is that the sequence of state transitions an FSM takes when reading a sequence of characters may have an impact on the semantics of the sequence of characters. This is not a problem here but it is a problem in other parts of the C* grammar as we show below.
+A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contain one or more states where each of these states has more than one state transition with the same label but transitioning to different states, giving the machine a non-deterministic choice of which state transition to follow. A *deterministic finite automaton* (DFA), on the other hand, is a deterministic FSM where all state transitions of each state of the FSM have different labels. Well, good news for us, the regular expressions we need here all translate into deterministic FSMs that are asymptotically of the same size as the regular expressions. This is not by accident but actually intended: we want our FSMs to be small and deterministic so that for every accepted sequence of characters there is exactly one deterministic sequence of state transitions to accept it, not two or maybe even more. The reason is that the sequence of state transitions an FSM takes when reading a sequence of characters may have an impact on the semantics of the sequence of characters. This is not a problem here but it is a problem in other parts of the C\* grammar as we show below.
 
 Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. You already saw plenty of motivation right here and will see how powerful things get below. If you are interested in following up consider the recommended readings. It will definitely sharpen your mind even further.
 
@@ -3782,17 +3782,21 @@ digit = "0" | non_zero_digit .
 
 ![Correct Integer Literal FSM](figures/correct-integer-literal-FSM.png "Correct Integer Literal FSM")
 
-The finite state machine that matches the correct regular expression is shown above. Here, we only need to divert the state transition labelled `"0"` to a new accepting state that does not have any further state transitions. The rest stays the same. We have nevertheless not included the fix in the C* grammar to keep it as an introductory exercise for students.
+The finite state machine that matches the correct regular expression is shown above. Here, we only need to divert the state transition labelled `"0"` to a new accepting state that does not have any further state transitions. The rest stays the same. We have nevertheless not included the fix in the C\* grammar to keep it as an introductory exercise for students.
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
-Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation. The solution is implemented in selfie in a procedure called `get_symbol()`. The above figure shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85`. The code is shown in the middle, the input to the code, that is, the sequence of characters to the left, and, most importantly, the state of main memory after the code finished accepting `85`. The (buggy) regular expression and (correct) finite state machine are also there showing the full picture from all angles.
+Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation. The solution is implemented in selfie in a procedure called `get_symbol()`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85`. The code is shown in the middle. The input to the code, that is, the sequence of characters is shown to the left. Most importantly, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
 
+First up, there are four global variables involved in the code called `character`, `symbol`, `integer`, and `literal`. The global variable `character` contains the ASCII encoding of the character that has most recently been read. This variable is the input to the algorithm while the other three variables are the output. The global variable `symbol` indicates which symbol has most recently been scanned. As we see below, `symbol` is read by the parser to see which symbol the scanner has most recently accepted. In other words, `symbol` is to the parser what `character` is to the scanner. If the algorithm accepts the scanned sequence of characters as an integer literal, the algorithm sets `symbol` in its last statement to the value of another global variable called `SYM_INTEGER` which is defined elsewhere. For lack of constants in C\*, we use a *code convention* here where all-capitalized variables are treated as constants by never changing their value after initialization. As always you can search the selfie source code for code not shown here. Finally, the global variable `integer` is a pointer to the sequence of characters that has most recently been accepted as integer literal while the global variable `literal` contains the actual numerical value represented by the sequence of characters `integer` points to. There is also a local variable called `i` that we use to remember where in memory to store the most recently read `character`.
 
+Reflection on variables vs code...
 
 regularly forgetful...
 
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
+
+hex assignment!
 
 ![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
 
