@@ -3709,7 +3709,7 @@ Literals in programming languages are arguably the most basic programming elemen
 In the following, we focus on three different problems whose solutions enable us to have a machine distinguish integer literals in decimal notation from anything that is not and even compute the numerical value they represent:
 
 1. How do we define the sequences of characters that denote integer literals in decimal notation? This is a *specification* problem.
-2. How do we model the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is a *modeling* problem.
+2. How do we model scanning, that is, the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is a *modeling* problem.
 3. How do we design and implement an algorithm that efficiently checks whether an arbitrary sequence of characters denotes an integer literal in decimal notation and, if it does, computes the numerical value represented by that sequence? This is an *implementation* problem.
 
 We already saw before how to define all sequences of characters that denote integer literals in decimal notation using EBNF, that is, a *regular expression* in EBNF:
@@ -3768,7 +3768,7 @@ However, there are regular expressions that can only be described by finite stat
 
 A non-deterministic FSM or *non-deterministic finite automaton* (NFA) may contain one or more states where each of these states has more than one state transition with the same label but transitioning to different states, giving the machine a non-deterministic choice of which state transition to follow. A *deterministic finite automaton* (DFA), on the other hand, is a deterministic FSM where all state transitions of each state of the FSM have different labels. Well, good news for us, the regular expressions we need here all translate into deterministic FSMs that are asymptotically of the same size as the regular expressions. This is not by accident but actually intended: we want our FSMs to be small and deterministic so that for every accepted sequence of characters there is exactly one deterministic sequence of state transitions to accept it, not two or maybe even more. The reason is that the sequence of state transitions an FSM takes when reading a sequence of characters may have an impact on the semantics of the sequence of characters. This is not a problem here but it is a problem in other parts of the C* grammar as we show below.
 
-Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. If you are interested in following up consider the recommended readings below. It will definitely sharpen your mind even further, never mind any motivation other than that.
+Computer science professors including me nevertheless love to keep talking about this kind of theoretical material. As students we were asked to prove the equivalence in expressive power of regular expressions and finite state machines, and study the conversion algorithms and their algorithmic complexity. For some this was horror, especially since quite often little to no motivation was given in the "good" old days. Well, those days are over. You already saw plenty of motivation right here and will see how powerful things get below. If you are interested in following up consider the recommended readings. It will definitely sharpen your mind even further.
 
 Before proceeding to the third problem of how to implement our FSM, we still need to fix a bug in the regular expression for integer literals that we saw earlier in the language chapter. Recall that the language of the regular expression above includes not just the sequence of a single digit `0` but also any sequence of characters that begins with any number of digits `0` such as `000` or `007`, for example. But it is easy to fix that:
 
@@ -3786,7 +3786,13 @@ The finite state machine that matches the correct regular expression is shown ab
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
+Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation. The solution is implemented in selfie in a procedure called `get_symbol()`. The above figure shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85`. The code is shown in the middle, the input to the code, that is, the sequence of characters to the left, and, most importantly, the state of main memory after the code finished accepting `85`. The (buggy) regular expression and (correct) finite state machine are also there showing the full picture from all angles.
+
+
+
 regularly forgetful...
+
+![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
 
 ![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
 
