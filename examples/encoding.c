@@ -3,9 +3,8 @@
 // libcstar procedures for printing
 void init_library();
 void print(uint64_t* s);
-void print_character(uint64_t c);
-void print_string(uint64_t* s);
 void print_integer(uint64_t n);
+void print_character(uint64_t c);
 void print_hexadecimal(uint64_t n, uint64_t a);
 void print_octal(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);

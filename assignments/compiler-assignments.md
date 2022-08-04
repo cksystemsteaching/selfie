@@ -30,7 +30,7 @@ Part of the assignment is to figure out how to do that.
 Your message has to be prefixed like every other "status message" of selfie.
 So instead of printing:
 
-`This is <firstname> <lastname>'s Selfie!`, you have to print `<selfie-path>: This is <firstname> <lastname>'s Selfie!`
+`This is <firstname> <lastname>'s Selfie!`, you have to print `<selfiename>: This is <firstname> <lastname>'s Selfie!`
 
 
 
