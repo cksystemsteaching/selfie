@@ -3846,6 +3846,20 @@ Let us go back to the `if` statement that checks if `character` is equal to `'0'
 
 > `malloc`: dynamic memory allocation on the heap
 
+```c
+// pseudo code, does not compile!
+uint64_t bump = START_OF_HEAP;
+
+uint64_t* malloc(uint64_t bytes) {
+  // bump pointer allocator
+  bump = bump + bytes;
+
+  return bump - bytes;
+}
+```
+
+explain `uint64_t`...
+
 regularly forgetful...
 
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
