@@ -219,6 +219,36 @@ Why is all this more than just a strange game played by computer science wizards
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
+> Take a Selfie!
+
+Let us personalize your copy of selfie! Load the source code `selfie.c` into your editor and scroll all the way down to the end of the file. Then, right before the line `exit_code = selfie(0);` insert the following code but with my name replaced by yours:
+
+```c
+printf("%s: This is Christoph Kirsch's Selfie!\n", selfie_name);
+```
+
+From now on, selfie prints your name before doing anything else. Try it:
+
+```bash
+make self
+```
+
+You may also want to run the *autograder* that comes with selfie (requires Python 3 installed on your machine):
+
+```bash
+./grader/self.py
+```
+
+Students of my classes use it for self-grading to determine their grades on programming assignments with selfie before submitting any solutions. Code and documentation of the autograder is in the `grader` directory of the selfie repository and on the selfie homepage.
+
+Try running the autograder on your code to see which grade you would get in class:
+
+```bash
+./grader/self.py print-your-name
+```
+
+If you see grade 2, you are good. Throughout the book, we point out exercises based on the assignments that the autograder supports.
+
 ### Recommended Readings
 
 At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first two recommendations.
@@ -239,11 +269,15 @@ Gödel, Escher, Bach told me a lesson that I still remember after reading the bo
 
 That power is rooted in a key property: formal languages have *formal* semantics. Their meaning is mathematically precise which enables us to communicate, not just with mindless machines to make them do smart things without understanding anything, but also with each other, understanding everything with mathematical rigor. In fact, once you learn how to express your ideas in formal languages, which includes programming languages but not only, you will change the way you think.
 
-> Show me your code and I tell you who you are!
+> C\*
 
 We introduce three different formal languages in this book. All three are simple versions of languages used in practice in all kinds of software projects and millions of lines of code. The first language is called C\*, pronounced "C Star". C\* is a tiny subset of the programming language C which is still among the most widely used programming languages in the world. C\* has been developed by us for educational purposes and is the programming language in which selfie is written. Even if you have never written code, C\* is easy to understand. You will learn it here.
 
+> RISC-U
+
 The second language is called RISC-U, pronounced "Risk You". RISC-U is a tiny subset of the machine language RISC-V, pronounced "Risk Five". RISC-V like all machine languages comes in two flavors, *assembly* and *binary*. Assembly code is a textual and thus human-readable form of binary code which can actually be executed by a real processor. Again, RISC-U is so simple that you can easily understand it, even without any prior knowledge in computer science.
+
+> EBNF
 
 The third language is called EBNF which stands for *Extended Backus-Naur Form*. EBNF is a formal language or *grammar* for describing the *syntax* of formal languages. EBNF can even describe its own syntax which is the simplest form of self-referentiality we see in this book. We use EBNF to define (parts of) the syntax of C\*, RISC-U assembly, and, well, even (all of) EBNF. That gives you the first glimpse of self-referentiality in a formal language.
 
@@ -584,9 +618,7 @@ Essentially, there are only two different techniques: *translation* and *interpr
 
 > Translation is optional, interpretation is not
 
-Interpretation refers to the process of executing source and even machine code in small steps according to rules precisely defined at the level of individual statements or even parts of a statement, down to individual *machine instructions* in case of machine code. While translation is optional and only needed for improving performance, interpretation is always needed for running any code, even if we were just writing machine code. Fundamentally, a computer or in fact the *processor* of a computer is an *interpreter* of machine code in hardware. In other words, running code always involves at least one interpreter which is the processor, independently of whether the original code is source or machine code. For many programming languages, however, there do exist interpreters written in software. A prominent example is Python!
-
-If you are interested in Python, check out the automatic *grader* of the selfie system which is written in Python. Students of my classes on selfie use it for self-grading to determine their grades on programming assignments with selfie before submitting any solutions. Code and documentation of the *autograder* is available on the homepage of selfie.
+Interpretation refers to the process of executing source and even machine code in small steps according to rules precisely defined at the level of individual statements or even parts of a statement, down to individual *machine instructions* in case of machine code. While translation is optional and only needed for improving performance, interpretation is always needed for running any code, even if we were just writing machine code. Fundamentally, a computer or in fact the *processor* of a computer is an *interpreter* of machine code in hardware. In other words, running code always involves at least one interpreter which is the processor, independently of whether the original code is source or machine code. For many programming languages, however, there do exist interpreters written in software. A prominent example is Python! If you are interested in Python, you may want to check out the autograder of the selfie system which is written in Python.
 
 So, how do we run a program written in C\*? Let us have a closer look at the above example of running the `double` procedure stored in a file called `double.c`:
 
