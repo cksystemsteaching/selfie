@@ -327,9 +327,8 @@ def check_threadsafe_malloc() -> List[Check]:
         check_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c') + \
         check_execution('./selfie -c <assignment>lr-sc-interleaved.c -m 128',
                         'lr and sc instructions are implemented with the right semantics', success_criteria=42) + \
-        check_mipster_execution('no-switch-malloc.c',
-                                "Hello World!    ",
-                                'malloc() does not force a context switch') + \
+        check_execution('./selfie -c <assignment>no-switch-malloc.c -m 128',
+                        'malloc() does not force a context switch', success_criteria="Hello World!    ") + \
         check_execution('./selfie -c <assignment>threadsafe-malloc.c -m 128',
                         'malloc() is thread-safe', success_criteria=42, timeout=120)
 
