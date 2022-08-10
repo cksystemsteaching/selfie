@@ -33,6 +33,7 @@ on:
         - fork-wait-exit
         - lock
         - threads
+        - threadsafe-malloc
         - treiber-stack
       oslinux:
         description: 'Run on Linux'
