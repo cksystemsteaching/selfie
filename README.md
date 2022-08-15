@@ -2214,7 +2214,7 @@ We begin this chapter with a model of the machine we use throughout the book. Af
 
 ### Model
 
-The *machine model* we use in selfie is a minimalist 64-bit *RISC-V* machine which is fundamentally a von Neumann machine. 64-bit means that CPU and memory bus operate in chunks of 64 bits called *machine words* or just *words*. Well, a 64-bit machine word is actually a *double word* to distinguish it from a *word* which is usually only 32 bits. We nevertheless just use the term *word* and quantify its size if it is unclear from the context.
+The *machine model* we use in selfie is a minimalist 64-bit *RISC-V* machine which is fundamentally a von Neumann machine. 64-bit means that CPU and memory bus operate in chunks of 64 bits called *machine words* or just *words*. Well, a 64-bit machine word is actually a *double word* to distinguish it from a *word* which is usually only 32 bits. We nevertheless just use the term *word* and quantify its *size* in bits or bytes if it is unclear from the context.
 
 RISC-V stands for the fifth generation of an *instruction set architecture* or *ISA* of a *reduced instruction set computer* or *RISC*. An ISA provides just the right information needed to program a machine at the level of machine code but not how to build one. It is essentially a list of machine instructions and a description of what they do including how the processor interacts with memory and the outside world at the level of bits. In contrast to RISC, there is also the notion of a *complex instruction set computer* or *CISC* of which the most commonly used ISA is the family of *x86* processors introduced by Intel in 1978.
 
@@ -3762,7 +3762,7 @@ The new bit of information here is that we also show you how to model the proces
 
 Modeling the process of checking whether a sequence of characters is in the language of a regular expression is traditionally done using a *finite state machine* (FSM) as shown in the above figure. We could also use mathematical notation to describe the FSM but prefer the quite common visual representation since it really shows nicely what is going on.
 
-Here, the FSM has just two states: the red state is the *start state* and the green state is the *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states depicted in blue that are neither start nor accepting state, not here though in this example, simply because we do not need those here, but we do need them later below. The important restriction is that any FSM only has a finite number of states in total hence the name.
+Here, the FSM has just two states: the red state is the *start state* and the green state is an *accepting state* of the FSM. Every FSM has exactly one start state and at least one or more accepting states. The start state could also be accepting but does not have to be. Then, there may also be any finite (!) number of states depicted in blue that are neither start nor accepting state, not here though in this example, simply because we do not need those here, but we do need them later. The important restriction is that any FSM only has a finite number of states in total hence the name.
 
 The other important ingredient of an FSM are *state transitions* depicted by *labelled* arrows from one state to another. Here, the labels are the terminal symbols in our regular expression which all represent just a single character each. Depending on the application we could also use other types of labels. When it comes to parsing, we use terminal symbols that represent C\* symbols as labels, for example.
 
@@ -3850,7 +3850,7 @@ Every time you would like to write down a statement in, say, C\* think of which 
 
 > Finite state machines: regularly forgetful!
 
-Before going back to the full version of the code, let us have another look at finite state machines. Why are they so cool? The first time I saw an FSM, probably in my first semester as computer science student, I really asked myself why the professor was paying so much attention to that topic. I could not figure it out. To me finite state machines looked like a rather limited model of computation that could not do much. Years later, being a professor myself, I discovered their value. Sure, finite state machines are efficient in terms of algorithmic complexity. An FSM checks whether a given sequence of characters is in the language specified by a regular expression in linear time in the length of the sequence. Each state transition makes immediate progress by consuming exactly one item from the given sequence. But that is not all.
+Before going back to the full version of the code, let us have another look at finite state machines. Why are they so cool? The first time I saw an FSM, probably in my first semester as computer science student, I really asked myself why the professor was paying so much attention to that topic. I could not figure it out. To me finite state machines looked like a rather limited model of computation that could not do much. Years later, being a professor myself, I discovered their value for me. Sure, finite state machines are efficient in terms of algorithmic complexity. An FSM checks whether a given sequence of characters is in the language specified by a regular expression in linear time in the length of the sequence. Each state transition makes immediate progress by consuming exactly one item from the given sequence. But that is not all.
 
 The property that convinced me is how code that implements an FSM deals with memory. The short answer is: it really does not! Imagine, an FSM can handle any sequence of characters no matter how long it is, and still never run out of memory. Why is that? Well, an FSM can only be in finitely many states, say, it has *n* states and can therefore only be in *n* states. According to what is known as the *pigeonhole principle*, the FSM is bound to end up in a state that it was in before after taking no more than *n* state transitions. Whenever the FSM transitions to a state it was in before, the FSM forgets what happened in between. It simply does not know how it got there. I say that finite state machines are *regularly forgetful*. Some may see that as weakness but engineers like me see that as strength.
 
@@ -3862,11 +3862,15 @@ So, what about the weakness of finite state machines? Well, an FSM can only deal
 
 A fundamental question in computer science is whether a formal language can be characterized by a regular expression, that is, whether it is regular and can thus be recognized by an FSM. But how do we prove that some languages are *not* regular? This does not seem to be that easy. Computer scientists use what is known as a *pumping lemma*, for regular languages, and even context-free languages. Intuitively, a pumping lemma shows how to apply the pigeonhole principle to a formal language by saying that, if a given sequence of characters of some minimal length is in the language, then there are also an infinite number of longer versions of that sequence in the language in which some parts have been duplicated or *pumped* any number of times, which corresponds to an FSM revisiting, after taking finitely many state transitions, the same state again and again. As students, professors tortured us with those pumping lemmas until we finally understood them. Consider doing the same by following up with the recommended readings. It is worth it!
 
-> Dynamic memory allocation
+> How not to be forgetful
 
-Let us go back to the `if` statement in the full version of the code that checks if the value of `character` is equal to `'0'`. In our example, the value of `character` is equal to `'8'`, so no. This takes us to the `else` body. The first statement allocates 20+1 bytes of memory on the heap to accommodate a string of up to 20 characters plus its null termination that can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, that limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
+Let us go back to the `if (character == '0')` statement in the full version of the code. In our example, the value of `character` is equal to `'8'` which takes us to the `else` body. We now discuss the code that deals with computing the numerical value of an integer literal. To do so the scanner, unlike the FSM it implements, does actually not forget the characters that form an integer literal but instead stores them on the heap to prepare computing the numerical value they represent.
 
-Well, we could implement support of integer literals whose length in decimal notation would only be bounded by the available memory of the machine. In fact, there are programming languages and in particular libraries that do that but you guessed right, it is unnecessarily complex to do that here. So, the reality is that an implementation, ours included, is often just an approximation of an idealistic specification and model.
+The first statement calls the procedure `string_alloc()` to allocate 20+1 bytes of memory on the heap to accommodate a string of up to 20 characters plus its null termination. That string can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, this limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
+
+Well, we could implement support of integer literals whose length in decimal notation would only be bounded by the available memory of the machine. In fact, there are programming languages and in particular libraries that do that but it is unnecessarily complex to do that here. So, the reality is that an implementation, ours included, is often just an approximation of an idealistic specification and model.
+
+The procedure `string_alloc()` returns a pointer into the heap where there is guaranteed storage for at least 20+1 bytes. In fact, the amount of storage is always rounded up to word size (8 bytes on 64-bit machines, 4 bytes on 32-bit machines), so to 24 bytes here. The pointer is stored in the global variable `integer`. The above figure shows the resulting memory layout on the right.
 
 
 
@@ -3878,7 +3882,7 @@ Why infamous? Well, dynamic memory allocation comes with two challenges: first, 
 
 Stack allocation simplifies the problem of deciding when to free up memory because it happens implicitly when returning from a procedure. However, dynamic memory allocation on the stack through procedures is essentially functional programming which requires a background that many inexperienced programmers lack. So, `malloc()` it often is, even if there exist more elegant implementations not using `malloc()`. But then there is the second challenge.
 
-> `free()`: nobody needs free
+> `free()`: nobody needs free, unless...
 
 
 
@@ -3901,6 +3905,8 @@ explain `uint64_t`...
 semantics through elementary arithmetic...
 
 recurrence relation...
+
+dynamic memory allocation not necessary here but convenient!
 
 hex assignment!
 
