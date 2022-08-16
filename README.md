@@ -3866,11 +3866,11 @@ So, what about the weakness of finite state machines? Well, an FSM can only deal
 
 A fundamental question in computer science is whether a formal language can be characterized by a regular expression, that is, whether it is regular and can thus be recognized by an FSM. But how do we prove that some languages are *not* regular? This does not seem to be that easy. Computer scientists use what is known as a *pumping lemma*, for regular languages, and even context-free languages. Intuitively, a pumping lemma shows how to apply the pigeonhole principle to a formal language by saying that, if a given sequence of characters of some minimal length is in the language, then there are also an infinite number of longer versions of that sequence in the language in which some parts have been duplicated or *pumped* any number of times, which corresponds to an FSM revisiting, after taking finitely many state transitions, the same state again and again. As students, professors tortured us with those pumping lemmas until we finally understood them. Consider doing the same by following up with the recommended readings. It is worth it!
 
-> How not to be forgetful
+> How not to be forgetful but still be regular
 
 Let us go back to the `if (character == '0')` statement in the full version of the code. In our example, the value of `character` is equal to `'8'` which takes us to the `else` body. We now discuss the code that deals with computing the numerical value of an integer literal. To do so the scanner, unlike the FSM it implements, does actually not forget the characters that form an integer literal but instead stores them on the heap to prepare computing the numerical value they represent.
 
-The first statement calls the procedure `string_alloc()` to allocate 20+1 bytes of memory on the heap to accommodate a string of up to 20 characters plus its null termination (`MAX_INTEGER_LENGTH` is initialized to `20`). That string can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, this limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
+The first statement calls the procedure `string_alloc()` to allocate 20+1 bytes of zeroed memory on the heap, that is, memory that is initialized to zero, to accommodate a string of up to 20 characters plus its null termination (`MAX_INTEGER_LENGTH` is initialized to `20`). That string can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, this limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
 
 Well, we could implement support of integer literals whose length in decimal notation would only be bounded by the available memory of the machine. In fact, there are programming languages and in particular libraries that do that but it is unnecessarily complex to do that here. So, the reality is that an implementation, ours included, is often just an approximation of an idealistic specification and model.
 
@@ -3878,31 +3878,29 @@ The procedure `string_alloc()` returns a pointer into the heap where there is gu
 
 Next, the local variable `i` is initialized to `0`. As mentioned before, we use `i` to keep track of where in memory to store the next character. Then there is the `while` loop that scans characters as long as they are digits. In our example, the value of `character` is `'8'` upon entering the loop body for the first time. The following nested `if` statements check if we have reached the limit of 20 digits. If not, we are good and store the value of `character` in memory where the value of `integer` plus the value of `i` points to, using the `store_character()` procedure. Doing that properly is not so easy here because we can only store a whole machine word at a time, not individual characters, that is, bytes. Check out the code of `store_character()` to see how it is done. This is advanced code which you may have to revisit as you gain more experience.
 
-The two last statement in the loop body increment the value of `i` by `1` and get the next character to prepare for scanning it in the next iteration of the loop. As soon as the loop condition evaluates to false, however, meaning the value of `character` is not a digit, the loop terminates. In our example, this happens when both `'8'` and `'5'` have been scanned. The situation in memory is now that `'8'` is stored in memory where the value of `integer` points to, followed by `'5'` at `i + 1`.
+The two last statement in the loop body increment the value of `i` by `1` and get the next character to prepare for scanning it in the next iteration of the loop. As soon as the loop condition evaluates to false, however, meaning the value of `character` is not a digit, the loop terminates. In our example, this happens when both `'8'` and `'5'` have been scanned. The situation in memory is now that `'8'` is stored in memory where the value of `integer` points to, followed by `'5'` at where the value of `integer` plus `1` points to. The only thing left to do so that `integer` refers to a proper string is to terminate it by storing the value `0`, not `'0'`, in memory at the value of `integer` plus `2` right after where `'5'` is stored. This is done by the call to the `store_character()` procedure right after the loop body. At this point the value of `i` is indeed `2`. Please confirm that for yourself. But wait, you may still argue that the memory has been zeroed, that is, initialized to zero, so terminating the string is not necessary. True! We do it anyway just to be nice.
 
-Termination...
-
-Here is a nice little exercise that we can do together: determine the actual value of the 64-bit machine word in memory that contains both characters in that order. Remember, the machine has no concept of `'8'` and `'5'`, only of bits:
+The only remaining job is to compute the numerical value represented by the string `integer` refers to. Before we look at the code, consider a nice little exercise that we can do together: determine the actual value of the 64-bit machine word in memory that contains both characters in that order. Remember, the machine has no concept of `'8'` and `'5'`, only of bits. So, the word in memory is:
 
 `0 0 0 0 0 0 '5' '8'`
 
-Let us determine the hexadecimal value first. For this purpose, we need to find out the ASCII code of both characters. According to the ASCII table `'8'` is `56` in decimal and thus `0x38` in hexadecimal, and `'5'` is `53` in decimal and thus `0x35` in hexadecimal. By the way, the ASCII encoding is done in such a way that you can determine the ASCII code of decimal digits just by remembering the ASCII code of `'0'` which is `48`. The ASCII code of any decimal digit `'d'` with `0 <= d <= 9` is then `'d' - '0'` which is `'d' - 48`. We use that trick below to compute numerical values of integer literals. Here, the machine word in hexadecimal is thus:
+Let us determine its hexadecimal value first. For this purpose, we need to find out the ASCII code of both characters. According to the ASCII table `'8'` is `56` in decimal and thus `0x38` in hexadecimal, and `'5'` is `53` in decimal and thus `0x35` in hexadecimal. By the way, the ASCII encoding is done in such a way that you can determine the ASCII code of decimal digits just by remembering the ASCII code of `'0'` which is `48`. The ASCII code of any decimal digit `'d'` with `0 <= d <= 9` is then `'d' - '0'` which is `'d' - 48`. We use that trick below to compute numerical values of integer literals. Here, the machine word in hexadecimal with spacing for better readability is thus:
 
 `0x00 00 00 00 00 00 35 38`
 
-which in binary is:
+or `0x3538` for short which, written down in binary in 64 bits, is:
 
 `0b00000000 00000000 00000000 00000000 00000000 00000000 00110101 00111000`
 
-These bits are what is actually stored in the machine! Let us take a look at them when written down in decimal:
+These bits are what is actually stored in the machine! Let us take a look at what these bits mean when interpreted as decimal number. Just calculate the decimal value of `0x3538` which is:
 
 `13624`
 
-
+So, the decimal number `13624` encodes the string `"85"`. Who would have thought? Why not just use `13624` then? Good question! We could interpret `13624` as representing the decimal value `85`. In this case, syntax and semantics of integer literals would be the same. Well, there are two drawbacks doing that related to time and space. Remember the information chapter? First of all, we would need more space, that is, more bits to encode integer literals, only by a constant factor, but this could still be a problem in practice. The arguably even more important drawback would be that we could not apply standard integer arithmetic in calculations but would need to do something more complicated and likely lose time in doing so. Therefore, computing numerical values of integer literals is worth it, especially since we only need to do it once when compiling code. Before we get to that though we still need to do one more round over the code we have seen so far.
 
 > Corner cases are hard
 
- which happens when the value of `i` is `20`, not `21`, since we started counting from `0`, not `1`, hence the comparison operator `>=`, not `>`. We could also just use `==` since the value of `i` is only increased in increments of `1` by the `i = i + 1` assignment. Using `>=` is just more robust in case we later change the code to increments other than `1`.
+Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits which happens when the value of `i` is `20`, not `21`, since we started counting from `0`, not `1`, hence the comparison operator `>=`, not `>`. We could also just use `==` since the value of `i` is only increased in increments of `1` by the `i = i + 1` assignment. Using `>=` is just more robust in case we later change the code to increments other than `1`.
 
 Picking the wrong comparison operator is a common mistake. Picking the right one is often not easy because it involves considering not just all good cases (the value of `i` is between `0` and `19`) but also the bad *corner cases* such as here the condition when exactly the limit is reached (the value of `i` is `20`, not `21`). The check is important because otherwise the scanner could store characters in memory that is not guaranteed to be *safe* since we only allocated memory for 20 digits, not 21 digits. Memory beyond what we allocated could be used for other purposes. Sure, here we actually allocated 24 bytes but we cannot rely on that. Systems other than selfie may only allocate exactly what we asked for.
 
@@ -3910,11 +3908,11 @@ Picking the wrong comparison operator is a common mistake. Picking the right one
 
 *Unsafe* memory access often results in bugs that are extremely hard to find.
 
-
+garbage collection...
 
 > `malloc()`: dynamic memory allocation on the heap
 
-The procedure `string_alloc()` allocates memory using the infamous procedure `malloc()` which stands for *memory allocate* on the heap at runtime. That procedure is available in virtually all dialects of C including C\* and so important that it is even built into the language. C compilers including the selfie compiler attach code that implements the procedure to any compiled code that uses it. Programming languages other than C likely feature builtin procedures similar to `malloc()` such as Java, for example, where its counterpart is called `new()`.
+The procedure `string_alloc()` allocates zeroed memory using the infamous procedure `malloc()` which stands for *memory allocate* on the heap at runtime. That procedure is available in virtually all dialects of C including C\* and so important that it is even built into the language. C compilers including the selfie compiler attach code that implements the procedure to any compiled code that uses it. Programming languages other than C likely feature builtin procedures similar to `malloc()` such as Java, for example, where its counterpart is called `new()`.
 
 Why infamous? Well, dynamic memory allocation comes with two challenges: first, you need to decide which type of memory allocation to use, stack allocation through procedures with parameters and local variables, or heap allocation through `malloc()`, and second, if you decide using `malloc()`, you need to figure out when to free up memory using another builtin procedure called `free()` to avoid running out of memory eventually, that is, memory addresses, just to be precise.
 
@@ -3944,7 +3942,7 @@ semantics through elementary arithmetic...
 
 recurrence relation...
 
-dynamic memory allocation not necessary here but convenient!
+dynamic memory allocation not necessary here but convenient! except for big integers, symbol table...
 
 hex assignment!
 
@@ -3958,11 +3956,15 @@ hex assignment!
 
 ![Scanner](figures/scanner.png "Scanner")
 
-register allocation, link to grammar, keywords vs identifiers, whitespace
+register allocation, symbol table, link to grammar, whitespace
+
+everything introduced but fixup chains
 
 ### Variables
 
 ![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
+
+keywords vs identifiers
 
 ### Expressions
 
