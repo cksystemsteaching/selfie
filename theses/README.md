@@ -1,6 +1,11 @@
 # Bachelor Theses on Selfie
 
 
+## Visualizing BTOR2 Models by Markus Diller, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_diller.pdf), [Repository](https://github.com/cksystemsgroup/beator-visualizer))
+
+The process of bounded model checking is very helpful in finding edge cases for invalid program inputs. To be able to do this, a format representing the model is necessary. Unfortunately, the model file itself does not provide any information about metrics or quality of a model. Its only purpose is to serve as an input to a model checker. In this thesis a tool called `beatle` for a subset of the BTOR2 modeling language is described. It helps to alleviate the aforementioned limitations of a standalone model file by visually displaying relevant information in the browser.
+
+
 ## RISC-U Binary Optimization for Selfie by David Pape, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_pape/bachelor_thesis_pape.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_pape))
   
 Optimizers are part of any modern compiler, and their practical importance in writing performant code cannot be understated. Still, they introduce major complexity, and its complement: bugs. In this work, we present a binary optimizer for RISC-U, a small subset of RISC-V and the target architecture of selfies[@selfie] educational compiler. To address the complexity issue, our optimizer is structured as a standalone binary, keeping the compiler simple. Since this comes at the cost of compile-time information, a binary analyzer is a prerequisite. With it, our optimizer is able to remove redundant instructions and apply several peephole optimizations, leading to a roughly five percent speedup.
