@@ -3902,13 +3902,11 @@ So, the decimal number `13624` encodes the string `"85"`. Who would have thought
 
 Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits which happens when the value of `i` is `20`, not `21`, since we started counting from `0`, not `1`, hence the comparison operator `>=`, not `>`. We could also just use `==` since the value of `i` is only increased in increments of `1` by the `i = i + 1` assignment. Using `>=` is just more robust in case we later change the code to increments other than `1`.
 
-Picking the wrong comparison operator is a common mistake. Picking the right one is often not easy because it involves considering not just all good cases (the value of `i` is between `0` and `19`) but also the bad *corner cases* such as here the condition when exactly the limit is reached (the value of `i` is `20`, not `21`). The check is important because otherwise the scanner could store characters in memory that is not guaranteed to be *safe* since we only allocated memory for 20 digits, not 21 digits. Memory beyond what we allocated could be used for other purposes. Sure, here we actually allocated 24 bytes but we cannot rely on that. Systems other than selfie may only allocate exactly what we asked for.
+Picking the wrong comparison operator is a common mistake. Picking the right one is often not easy because it involves considering not just all good cases (the value of `i` is between `0` and `19`) but also the bad *corner cases* such as here the condition when exactly the limit is reached (the value of `i` is `20`, not `21`). The check is important because otherwise the scanner could store characters in memory that is not guaranteed to be *safe* since we only allocated memory for 20 digits, not 21 digits. Memory beyond what we allocated could be used for other purposes. Sure, here the system actually allocated 24 bytes but we cannot rely on that. Systems other than selfie may only allocate exactly what we asked for.
 
 > Unsafe memory access
 
-*Unsafe* memory access often results in bugs that are extremely hard to find.
-
-garbage collection...
+*Unsafe* memory access often results in bugs that are extremely hard to find. It happens when you allocated either too little memory, accessed memory outside of the area of allocation, or even inside of the area if you deallocated it prematurely, as we see below. The programming language C and its dialects including C\* are infamous for this problem. Millions of lines of code have been and are still being developed in these languages where unsafe memory access has contributed to bugs that resulted in high cost and even critical failures. So, why not making that impossible in your programming language? Well, computer scientists did that. A prominent example is the programming language *Java* which is referred to as a *safe* programming language in which unsafe memory access is indeed impossible. What is the catch? Performance and access to hardware. Guaranteeing memory safety is very complex and usually comes at a cost in temporal and spatial performance, and makes it more difficult or even impossible to have access to advanced hardware features. C and its dialects are *systems languages* that provide programmers with great freedom to do almost anything at the expense of memory safety. There are also more recent developments in programming languages such as the programming language *Rust* where computer scientists try to maintain the performance of C and its dialects while giving programmers the choice of safe and unsafe memory access.
 
 > `malloc()`: dynamic memory allocation on the heap
 
@@ -3920,6 +3918,7 @@ Stack allocation simplifies the problem of deciding when to free up memory becau
 
 > `free()`: nobody needs free, unless...
 
+garbage collection...
 
 
 ```c
@@ -3935,6 +3934,12 @@ uint64_t* malloc(uint64_t bytes) {
 ```
 
 explain `uint64_t`...
+
+> Think twice about allocating memory at all and then exactly when to do it and how much
+
+There is an interesting, more general question in this context. When exactly and how much memory should we actually allocate for a given purpose?
+
+static vs dynamic layout of memory
 
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
 
