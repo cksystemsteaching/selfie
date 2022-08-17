@@ -3914,8 +3914,9 @@ So, when exactly is the limit of scanning 20 digits reached? It is reached when 
 
 work in progress
 
-
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
+
+The final step of scanning integer literals is to compute their numerical values. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi()` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa()` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi()` encodes `s` into `n`, and `itoa()` decodes `n` back to `s`.
 
 semantics through elementary arithmetic...
 
