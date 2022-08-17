@@ -3898,15 +3898,29 @@ These bits are what is actually stored in the machine! Let us take a look at wha
 
 So, the decimal number `13624` encodes the string `"85"`. Who would have thought? Why not just use `13624` then? Good question! We could interpret `13624` as representing the decimal value `85`. In this case, syntax and semantics of integer literals would be the same. Well, there are two drawbacks doing that related to time and space. Remember the information chapter? First of all, we would need more space, that is, more bits to encode integer literals, only by a constant factor, but this could still be a problem in practice. The arguably even more important drawback would be that we could not apply standard integer arithmetic in calculations but would need to do something more complicated and likely lose time in doing so. Therefore, computing numerical values of integer literals is worth it, especially since we only need to do it once when compiling code. Before we get to that though we still need to do one more round over the code we have seen so far.
 
+> Error handling: printing errors, sure, but then to exit or not to exit?
+
+Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits. If yes, we need to deal with the situation. First up, we should report the error. This is done using the procedure `syntax_error_message()` which in turn uses a procedure that is *builtin* into C and its dialects called `printf()` which stands for *print formatted*. We explain that procedure as needed but leave it at that for now. There is another global variable here called `integer_is_signed` that we have ignored so far. It indicates whether a dash `-` has been scanned right before the integer literal. After reporting the error we do something rather lazy. We simply give up and exit, terminating compilation altogether, so not just the scanner but also the parser, and in fact the whole compiler around it. The `exit()` procedure is another builtin procedure that you can call anywhere you like to exit *explicitly* with its sole parameter being returned as the *exit code* that we mentioned before, instead of tediously returning to the `main()` procedure and exiting there *implicitly* without calling `exit()`. In fact, `exit()` is actually a convenient way to prototype code and use it whenever you do not want to deal with a problem but rather focus on something else first and only later come back and code a solution. In scanning and parsing, this is possible with virtually no limit to your imagination on what can be done. However, in the interest of simplicity we decided not to do that here. We do, however, continue parsing in other circumstances performing proper *error handling*, as shown later.
+
 > Corner cases are hard
 
-Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits which happens when the value of `i` is `20`, not `21`, since we started counting from `0`, not `1`, hence the comparison operator `>=`, not `>`. We could also just use `==` since the value of `i` is only increased in increments of `1` by the `i = i + 1` assignment. Using `>=` is just more robust in case we later change the code to increments other than `1`.
-
-Picking the wrong comparison operator is a common mistake. Picking the right one is often not easy because it involves considering not just all good cases (the value of `i` is between `0` and `19`) but also the bad *corner cases* such as here the condition when exactly the limit is reached (the value of `i` is `20`, not `21`). The check is important because otherwise the scanner could store characters in memory that is not guaranteed to be *safe* since we only allocated memory for 20 digits, not 21 digits. Memory beyond what we allocated could be used for other purposes. Sure, here the system actually allocated 24 bytes but we cannot rely on that. Systems other than selfie may only allocate exactly what we asked for.
+So, when exactly is the limit of scanning 20 digits reached? It is reached when the value of `i` is `20`, not `21`, since we started counting from `0`, not `1`, hence the comparison operator `>=`, not `>`. We could also just use `==` since the value of `i` is only increased in increments of `1` by the `i = i + 1` assignment. Using `>=` is just more robust in case we later change the code to increments other than `1`. Picking the wrong comparison operator is a common mistake. Picking the right one is often not easy because it involves considering not just all good cases (the value of `i` is between `0` and `19`) but also the bad *corner cases* such as here the condition when exactly the limit is reached (the value of `i` is `20`, not `21`). The check is important because otherwise the scanner could store characters in memory that is not guaranteed to be *safe* since we only allocated memory for 20 digits, not 21 digits. Memory beyond what we allocated could be used for other purposes. Sure, here the system actually allocated 24 bytes but we cannot rely on that. Systems other than selfie may only allocate exactly what we asked for.
 
 > Unsafe memory access
 
 *Unsafe* memory access often results in bugs that are extremely hard to find. It happens when you allocated either too little memory, accessed memory outside of the area of allocation, or even inside of the area if you deallocated it prematurely, as we see below. The programming language C and its dialects including C\* are infamous for this problem. Millions of lines of code have been and are still being developed in these languages where unsafe memory access has contributed to bugs that resulted in high cost and even critical failures. So, why not making that impossible in your programming language? Well, computer scientists did that. A prominent example is the programming language *Java* which is referred to as a *safe* programming language in which unsafe memory access is indeed impossible. What is the catch? Performance and access to hardware. Guaranteeing memory safety is very complex and usually comes at a cost in temporal and spatial performance, and makes it more difficult or even impossible to have access to advanced hardware features. C and its dialects are *systems languages* that provide programmers with great freedom to do almost anything at the expense of memory safety. There are also more recent developments in programming languages such as the programming language *Rust* where computer scientists try to maintain the performance of C and its dialects while giving programmers the choice of safe and unsafe memory access.
+
+![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
+
+semantics through elementary arithmetic...
+
+recurrence relation...
+
+overflow, unsigned in atoi, signed in get_symbol...
+
+hex assignment!
+
+dynamic memory allocation not necessary here but convenient! except for big integers, symbol table...
 
 > `malloc()`: dynamic memory allocation on the heap
 
@@ -3940,16 +3954,6 @@ explain `uint64_t`...
 There is an interesting, more general question in this context. When exactly and how much memory should we actually allocate for a given purpose?
 
 static vs dynamic layout of memory
-
-![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
-
-semantics through elementary arithmetic...
-
-recurrence relation...
-
-dynamic memory allocation not necessary here but convenient! except for big integers, symbol table...
-
-hex assignment!
 
 ![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
 
