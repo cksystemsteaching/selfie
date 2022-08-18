@@ -243,7 +243,7 @@ You may also want to run the *autograder* that comes with selfie (requires Pytho
 ./grader/self.py
 ```
 
-Students of my classes use it for self-grading to determine their grades on programming assignments with selfie before submitting any solutions. Code and documentation of the autograder is in the `grader` directory of the selfie repository and on the selfie homepage.
+Students of my classes use it for self-grading to determine their grades on programming assignments with selfie before submitting any solutions. The assignments are described in the `assignments` directory of the selfie repository. Code and documentation of the autograder is in the `grader` directory. See also the selfie homepage for more information.
 
 Try running the autograder on your code to see which grade you would get in class:
 
@@ -3922,17 +3922,23 @@ The scanner calls `atoi()` on `integer` to compute the numerical value that the 
 
 The `while` loop iterates over `s` until its termination. In each iteration, the value of `c` is *normalized* by `c = c - '0'` from ASCII code to the numerical value it actually represents. This is the semantics of individual digits! Ignoring all checks for validity and overflows, the most important statement of `atoi()` is the assignment `n = n * 10 + c` which implements the semantics of hindu-arabic notation of decimal numbers, hence the factor `10`. If we were computing numerical values of binary numbers, for example, that factor would be `2`. The mathematical principle that `atoi()` implements is called a *recurrence relation*. With our example of scanning `85` it works by computing the numerical value of `85` in sequence from the leftmost to the rightmost digit:
 
-```
+```c
 n = 0
 n = 0 * 10 + 8 = 8
 n = 8 * 10 + 5 = 85
 ```
 
-Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` in memory, and eventually for `literal`, after `atoi()` returned to the scanner.
+Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` in memory, and eventually for `literal`, after `atoi()` returned to the scanner. There is also code, not shown here, for handling unsigned integer overflows to make sure that `0 <= n <= UINT64_MAX` holds. Additionally, the scanner also checks signed integer overflows to make sure that `INT64_MIN <= -n <= 0` holds if a dash `-` has been scanned right before the integer literal.
 
-overflow, unsigned in atoi, signed in get_symbol...
+> Scanning hexadecimal numbers!
 
-hex assignment!
+It is time for your first assignment. Design and implement support of integer literals in hexadecimal notation in selfie. First, think about how to extend the C\* grammar and then modify the `grammar.md` file in the selfie repository accordingly. Do not forget to include the prefix `0x` for hexadecimal numbers. Then, think about how to extend the above FSM for decimal numbers to hexadecimal numbers. After that, make a plan on how to extend the code in `get_symbol()` and `atoi()`, and then implement your solution in `selfie.c`. To see if it works, run:
+
+```bash
+./grader/self.py hex-literal
+```
+
+When you are done with the assignment, we are almost ready to look into scanning character and string literals. Let us just do one more round over how to manage memory.
 
 dynamic memory allocation not necessary here but convenient! except for big integers, symbol table...
 
