@@ -3918,9 +3918,17 @@ work in progress
 
 The final step of scanning integer literals is to compute their numerical values. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi()` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa()` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi()` encodes `s` into `n`, and `itoa()` decodes `n` back to `s`.
 
-semantics through elementary arithmetic...
+The scanner calls `atoi()` on `integer` to compute the numerical value that the string to which the value of `integer` points to represents. The numerical value is then stored in the global variable `literal`. Communicating the string to `atoi()` works by storing the value of `integer` on the stack. This is interesting because it avoids copying the string. The memory layout shown on the right of the above figure shows that. From then on, `atoi()` refers to the string using the formal parameter `s`, not `integer`. Also, `atoi()` allocates memory on the stack for storing its local variables `i`, `n`, and `c`. The variable `i` is again used as index, here into the string where the value of `s` points to. The variable `n`, as mentioned before, is used for storing the numerical value. The variable `c` stores the character from `s` at index `i` that is to be processed next. That character is loaded from memory using the `load_character()` procedure which is the counterpart to the procedure `store_character()` used in the scanner.
 
-recurrence relation...
+The `while` loop iterates over `s` until its termination. In each iteration, the value of `c` is *normalized* by `c = c - '0'` from ASCII code to the numerical value it actually represents. This is the semantics of individual digits! Ignoring all checks for validity and overflows, the most important statement of `atoi()` is the assignment `n = n * 10 + c` which implements the semantics of hindu-arabic notation of decimal numbers, hence the factor `10`. If we were computing numerical values of binary numbers, for example, that factor would be `2`. The mathematical principle that `atoi()` implements is called a *recurrence relation*. With our example of scanning `85` it works by computing the numerical value of `85` in sequence from the leftmost to the rightmost digit:
+
+```
+n = 0
+n = 0 * 10 + 8 = 8
+n = 8 * 10 + 5 = 85
+```
+
+Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` in memory, and eventually for `literal`, after `atoi()` returned to the scanner.
 
 overflow, unsigned in atoi, signed in get_symbol...
 
