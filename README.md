@@ -3946,7 +3946,18 @@ Looking back at how we implemented scanning of integer literals and computing th
 
 > Memory management is a real challenge
 
-Why should we be concerned about allocating memory?
+Why should we be concerned about allocating memory? Not remembering something that you do not need to remember to solve a problem makes everything simpler! The issue though is not so much about remembering something but actually how and in particular when to forget about it. Doing that requires knowing when you do not need the information anymore which in turn requires knowing the future. So, if you do not need to remember something you better do not. Conversely, if you believe you need to remember something you better have good reasons to do so.
+
+Here is an example. Suppose you keep buying things that you store in your place. At some point, you need to make that decision of whether to throw something out or not, the latest when you run out of space. The additional issue is that the more you have the longer it takes to find the things you do not need anymore. As you accummulate more stuff you even have to revisit things you looked at before because your needs might have changed in the meantime. The same applies to computer memory.
+
+Here are ways to deal with that.
+
+global variables
+local variables, stack
+heap, static size
+heap, dynamic size
+no deallocation because of termination
+deallocation otherwise
 
 > `malloc()`: dynamic memory allocation on the heap
 
