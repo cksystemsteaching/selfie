@@ -3822,7 +3822,7 @@ The finite state machine that matches the correct regular expression is shown ab
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
-Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation and computing the numerical values they represent. The solution is implemented in selfie in a procedure called `get_symbol()`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85` as input to the code shown on the left. The code itself is shown in the middle. Moreover, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
+Let us move on to the third problem of designing and implementing an algorithm for efficiently scanning integer literals in decimal notation and computing the numerical value they represent. The solution is implemented in selfie in a procedure called `get_symbol()`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85` as input to the code shown on the left. The code itself is shown in the middle. Moreover, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
 
 One more thing: there is also a shorter version of the code shown on the left that only implements the FSM without the code for computing numerical values. In short, this version just handles syntax but not semantics. We get to that further below.
 
@@ -3916,7 +3916,7 @@ work in progress
 
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
 
-The final step of scanning integer literals is to compute their numerical values. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi()` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa()` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi()` encodes `s` into `n`, and `itoa()` decodes `n` back to `s`.
+The final step of scanning integer literals is to compute their numerical value. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi()` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa()` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi()` encodes `s` into `n`, and `itoa()` decodes `n` back to `s`.
 
 The scanner calls `atoi()` on `integer` to compute the numerical value that the string to which the value of `integer` points to represents. The numerical value is then stored in the global variable `literal`. Communicating the string to `atoi()` works by storing the value of `integer` on the stack. This is interesting because it avoids copying the string. The memory layout shown on the right of the above figure shows that. From then on, `atoi()` refers to the string using the formal parameter `s`, not `integer`. Also, `atoi()` allocates memory on the stack for storing its local variables `i`, `n`, and `c`. The variable `i` is again used as index, here into the string where the value of `s` points to. The variable `n`, as mentioned before, is used for storing the numerical value. The variable `c` stores the character from `s` at index `i` that is to be processed next. That character is loaded from memory using the `load_character()` procedure which is the counterpart to the procedure `store_character()` used in the scanner.
 
@@ -3940,7 +3940,13 @@ It is time for your first assignment. Design and implement support of integer li
 
 When you are done with the assignment, we are almost ready to look into scanning character and string literals. Let us just do one more round over how to manage memory.
 
-dynamic memory allocation not necessary here but convenient! except for big integers, symbol table...
+> Separation of concerns
+
+Looking back at how we implemented scanning of integer literals and computing their numerical value, there is one important thing that we could have done differently. We could have combined scanning characters and computing values into one procedure, thereby removing the need for allocating memory to store the scanned sequence of characters. That would be a pure implementation of a finite state machine. Why did we not do that? There are two reasons. Firstly, it enables *separation of concerns* by allowing us to keep scanning characters and computing values separate in the code. Secondly, it provides a clean way for dealing with *big integers* that require more than 32 bits. Those cannot easily be loaded into CPU registers and are therefore better stored as is in the data segment of memory. Still having access to the scanned sequence of characters after scanning provides a convenient way to do that. We show how this is done when dealing with string literals.
+
+> Memory management is a real challenge
+
+Why should we be concerned about allocating memory?
 
 > `malloc()`: dynamic memory allocation on the heap
 
