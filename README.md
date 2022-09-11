@@ -3938,7 +3938,7 @@ It is time for your first assignment. Design and implement support of integer li
 ./grader/self.py hex-literal
 ```
 
-When you are done with the assignment, we are almost ready to look into scanning character and string literals. Let us just do one more round over how to manage memory.
+When you are done with the assignment, we are almost ready to look into scanning character and string literals. Let us just do one more round over how to manage memory. This is important.
 
 > Separation of concerns
 
@@ -3954,9 +3954,12 @@ Here is an example. Suppose you keep buying things that you store in your place.
 
 > Static memory allocation
 
-Here are ways to deal with that. The on first sight seemingly simplest way to allocate memory is to allocate a fixed amount of memory once and then just use that. This is called *static memory allocation*, as mentioned in the machine chapter, where *static* means at *compile time*. The advantage is of course that you do not need to worry about deallocating memory which happens automatically when the program terminates. The disadvantage is that the amount of statically allocated memory is fixed. This may be fine for some applications but certainly not for all. As soon as the amount of memory needed depends on the size of program input, we have a problem. For example, in a compiler you do not know how many integer literals actually are in the compiled code. However, there may still be parts of the processed information whose amount does not depend on the input. For those parts static memory allocation may be a good choice. Nevertheless, when prototyping code it is sometimes easier to allocate memory statically for everything just to see how to make things work, and only later change to more advanced *dynamic memory allocation* at *runtime*.
+Here are ways to deal with that. On first sight the seemingly simplest way to allocate memory is to allocate a fixed amount of memory once and then just use that. This is called *static memory allocation*, as mentioned in the machine chapter, where *static* means at *compile time*. The advantage is that you do not need to worry about deallocating memory which happens automatically when the program terminates. The disadvantage is that the amount of statically allocated memory is fixed. This may be fine for some applications but certainly not for all. As soon as the amount of memory needed depends on the size of program input, we have a problem. For example, in a compiler you do not know how many integer literals are actually in the compiled code. However, there may still be parts of the processed information whose amount does not depend on the input. For those parts static memory allocation may be a good choice. Nevertheless, when prototyping code it is sometimes easier to allocate memory statically for everything just to see how to make things work, and only later change to more advanced *dynamic memory allocation* at *runtime*. Whenever the protoype has insufficient memory for an input, the code may simply report an error and quit.
 
 global variables
+
+> Dynamic memory allocation
+
 local variables, stack
 heap
 no deallocation because of termination
