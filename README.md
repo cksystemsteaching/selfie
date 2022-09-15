@@ -36,6 +36,7 @@ Selfie is designed as 64-bit system and requires as such a 64-bit system to run 
 4. Bounded model checking: There is a self-translating modeling engine called [BEATOR](https://github.com/cksystemsteaching/selfie/blob/main/tools/beator.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
 5. SAT solving: There is a bruteforce SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/main/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
 6. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/riscv-2-x86-unsupported/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
+7. BTOR2 visualization: There is a visualization tool called [beatle](https://github.com/cksystemsgroup/beator-visualizer) that displays BTOR2 formulae generated from RISC-U binaries as directed acyclic graphs.
 
 ## Installing Selfie
 
