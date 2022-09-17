@@ -3944,7 +3944,7 @@ When you are done with the assignment, we are almost ready to look into scanning
 
 Looking back at how we implemented scanning of integer literals and computing their numerical value, there is one important thing that we could have done differently. We could have combined scanning characters and computing values into one procedure, thereby removing the need for allocating memory to store the scanned sequence of characters. That would be a pure implementation of a finite state machine.
 
-Why did we not do that? There are two reasons. Firstly, it enables *separation of concerns* by allowing us to keep scanning characters and computing values separate in the code. Secondly, it provides a clean way for dealing with *big integers* that require more than 32 bits. Those cannot easily be loaded into CPU registers and are therefore better stored as is in the data segment of memory. Still having access to the scanned sequence of characters after scanning provides a convenient way to do that. We show how when dealing with string literals.
+Why did we not do that? There are two reasons. Firstly, it enables *separation of concerns* by allowing us to keep scanning characters and computing values separate in the code. Secondly, it provides an efficient way for dealing with *big integers* that require more than 32 bits. Those cannot easily be loaded into CPU registers and are therefore better stored as is in the data segment of memory. Still having access to the scanned sequence of characters after scanning provides a convenient way to do that. We show how when it comes to parsing and emitting code for literals.
 
 > Memory management is a real challenge
 
@@ -3958,11 +3958,26 @@ Here are ways to deal with that. On first sight the seemingly simplest way to al
 
 ![Scanning Character Literals](figures/scanning-character-literals.png "Scanning Character Literals")
 
-Our means to perform static memory allocation is global variables. We have already seen that in the code for scanning integer literals. We use the same method for scanning character literals as shown in the above figure. Here we only need the three global variables `character`, `literal`, and `symbol`. As before the value of `character` is not shown in the state of main memory but it is there of course. Static memory allocation for scanning character literals is clearly sufficient because the length of the sequence of characters that form a character literal is fixed and the numerical value represented by a character literal is just a single byte with UTF-8 encoding. According to its EBNF rule, a character literal begins with a single quote `'` followed by a single printable character followed by another single quote. In other words, whenever the scanner detects a single quote, then it must be followed by a single printable character followed by a single quote. Otherwise, there is a syntax error in the scanned sequence of characters. Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character()` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
+Our means to perform static memory allocation is global variables. We have already seen that in the code for scanning integer literals. We use the same method for scanning character literals as shown in the above figure. Here we only need the three global variables `character`, `literal`, and `symbol`. As before the value of `character` is not shown in the state of main memory but it is there of course. Static memory allocation for scanning character literals is clearly sufficient because the length of the sequence of characters that form a character literal is fixed and the numerical value represented by a character literal is just a single byte with UTF-8 encoding.
+
+According to its EBNF rule, a character literal begins with a single quote `'` followed by a single printable character followed by another single quote. In other words, whenever the scanner detects a single quote, then it must be followed by a single printable character followed by a single quote. Otherwise, there is a syntax error in the scanned sequence of characters. Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character()` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
 
 > Dynamic memory allocation
 
-local variables, stack
+We have also seen already how to perform dynamic memory allocation, and deallocation in fact, by using parameters and local variables of procedures such as the procedure `atoi()` above. Every time `atoi()` is called, memory is allocated on the stack dynamically, that is, at runtime during code execution, for storing the values of its formal parameter and local variables. In contrast to static memory allocation, there is, however, an important challenge with dynamic memory allocation which is when exactly to deallocate memory again. With parameters and local variables this is done automatically for us, simply upon returning from a procedure call. This is great and the reason why stack allocation is the most widely used dynamic memory allocation technique.
+
+But stack allocation comes with an important limitation. Deallocation of memory for parameters and local variables is done exactly in reverse order of allocating memory for them. That is why a stack is the correct implementation of that behavior. But what if we need to store information that we need elsewhere in the code outside of the procedure body where the memory is allocated? Well, we can take the information and pass it around as actual parameters and return values of the involved procedures. That style of programming is called *functional programming* as we mentioned before.
+
+> Explicit versus implicit program state
+
+> Short-term versus long-term information
+
+> A question of life and death
+
+![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
+
+Scanning string literals is an example of how to address the problem of maintaining long-term information, as shown in the above figure. Here we only need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory. According to its EBNF rule, a string literal begins with a double quote `"` followed by any number of printable characters, including zero printable characters, followed by another double quote. In other words, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote. Otherwise, there is a syntax error in the scanned sequence of characters. The (non-numerical) value of a string literal is the scanned sequence of printable characters itself as is, without any further calculations. However, the scanned sequence needs to be stored in memory and later added to the generated code. We show how this is done below. For now, the only thing left to do, after storing the scanned sequence and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
+
 heap
 no deallocation because of termination
 deallocation otherwise
@@ -3979,8 +3994,9 @@ Stack allocation simplifies the problem of deciding when to free up memory becau
 
 > `free()`: nobody needs free, unless...
 
-garbage collection...
+difference between address and storage...
 
+garbage collection...
 
 ```c
 // pseudo code, does not compile!
@@ -3996,17 +4012,19 @@ uint64_t* malloc(uint64_t bytes) {
 
 explain `uint64_t`...
 
-![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
-
-implicit static memory allocation
-
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
+
+link to grammar
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
+string literals: implicit static memory allocation
+
+register allocation, symbol table
+
 ![Scanner](figures/scanner.png "Scanner")
 
-register allocation, symbol table, link to grammar, whitespace
+whitespace
 
 everything introduced but fixup chains
 
