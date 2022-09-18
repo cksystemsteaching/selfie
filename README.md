@@ -3974,15 +3974,19 @@ Scanning string literals is an example of how to address the problem of maintain
 
 As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc()`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters. In contrast to scanning integer literals, string literals really need to be kept around until code generation and we show how this is done below. We do the same with integer literals but that is a choice we made for handling big integers. Again, for now, the only thing left to do, after storing the scanned string and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
 
-> Explicit versus implicit program state
-
-Memory allocation is actually just a means to manage a more fundamental problem.
-
 > A question of life and death
 
-> Short-term versus long-term information
+Memory allocation is actually just a means to manage a more fundamental problem that we hinted on before, and that problem must be solved by the programmer and cannot be solved by the machine, no matter how advanced your programming environment is. The issue is to know the lifetime of information, when it is live and when it is dead. In particular, we need to know when a value, and thus the memory address where, or the register or variable in which the value is stored, is *live*, that is, when the value is still needed in some computation, and when the value is *dead*, that is, when the value is not needed anymore in any computation, no matter what happens next. Morbide terminology but that is what computer scientists call it.
 
-> Local versus global information
+Assuming that a value is live even though it is dead is safe, just the other way around is not. Liveness is safe to be overapproximated, death is not. Storage for a live value that is assumed to be dead may be reused for other values which may eventually lead to unsafe memory accesses. Yet assuming a dead value to be live is safe but consumes storage of which we may run out of eventually. Thus memory is good for safety. The more memory we have the safer we can be, but since memory is always finite we eventually need to sit down and figure out what information is still live and what is dead. This depends of course on the application and thus the overall problem we are trying to solve.
+
+> Data management: short-term versus long-term information
+
+> Memory management: used versus free memory
+
+> Program management: local versus global information
+
+> Programming paradigm: explicit versus implicit program state
 
 The scanned string is an example of long-term global information. We know that we need the string possibly until all code has been emitted because we need to include the string as part of the code. This we need the string until the whole program has been scanned and parsed which is a moment in time we do not know when scanning the string. Moreover, code is emitted, at least in our implementation, in a different part of the implementation than the scanner, making the string global information.
 
