@@ -3964,19 +3964,29 @@ According to its EBNF rule, a character literal begins with a single quote `'` f
 
 > Dynamic memory allocation
 
-We have also seen already how to perform dynamic memory allocation, and deallocation in fact, by using parameters and local variables of procedures such as the procedure `atoi()` above. Every time `atoi()` is called, memory is allocated on the stack dynamically, that is, at runtime during code execution, for storing the values of its formal parameter and local variables. In contrast to static memory allocation, there is, however, an important challenge with dynamic memory allocation which is when exactly to deallocate memory again. With parameters and local variables this is done automatically for us, simply upon returning from a procedure call. This is great and the reason why stack allocation is the most widely used dynamic memory allocation technique.
+We have also seen already how to perform dynamic memory allocation, and deallocation in fact, by using parameters and local variables of procedures such as the procedure `atoi()` above. Every time `atoi()` is called, memory is allocated on the stack dynamically, that is, at runtime during code execution, for storing the values of its formal parameter and local variables. In contrast to static memory allocation, there is, however, an important challenge with dynamic memory allocation which is when exactly to deallocate memory again, not to run out of memory eventually. With parameters and local variables this is done automatically for us, simply upon returning from a procedure call. This is great and the reason why stack allocation is the most widely used dynamic memory allocation technique.
 
-But stack allocation comes with an important limitation. Deallocation of memory for parameters and local variables is done exactly in reverse order of allocating memory for them. That is why a stack is the correct implementation of that behavior. But what if we need to store information that we need elsewhere in the code outside of the procedure body where the memory is allocated? Well, we can take the information and pass it around as actual parameters and return values of the involved procedures. That style of programming is called *functional programming* as we mentioned before.
-
-> Explicit versus implicit program state
-
-> Short-term versus long-term information
-
-> A question of life and death
+But stack allocation comes with an important limitation. Deallocation of memory for parameters and local variables is done exactly in reverse order of allocating memory for them. That is why a stack is the correct implementation of that behavior. But what if we need to store information that we need elsewhere in the code outside of the procedure body where the memory is allocated? Well, we can take the information and pass it around as actual parameters and return values of the involved procedures. That style of programming is called *functional programming* as we mentioned before. There is, however, an alternative which have already seen with scanning integer literals and revisit here in more detail.
 
 ![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
 
-Scanning string literals is an example of how to address the problem of maintaining long-term information, as shown in the above figure. Here we only need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory. According to its EBNF rule, a string literal begins with a double quote `"` followed by any number of printable characters, including zero printable characters, followed by another double quote. In other words, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote. Otherwise, there is a syntax error in the scanned sequence of characters. The (non-numerical) value of a string literal is the scanned sequence of printable characters itself as is, without any further calculations. However, the scanned sequence needs to be stored in memory and later added to the generated code. We show how this is done below. For now, the only thing left to do, after storing the scanned sequence and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
+Scanning string literals is an example of how to address the problem of maintaining information that is needed elsewhere in the code, as shown in the above figure. Here we only need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory. According to its EBNF rule, a string literal begins with a double quote `"` followed by any number of printable characters, including zero printable characters, followed by another double quote. In other words, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote. Otherwise, there is a syntax error in the scanned sequence of characters. The (non-numerical) value of a string literal is the scanned string itself as is, without any further calculations. However, the scanned string needs to be stored in memory and later added to the generated code.
+
+As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc()`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters. In contrast to scanning integer literals, string literals really need to be kept around until code generation and we show how this is done below. We do the same with integer literals but that is a choice we made for handling big integers. Again, for now, the only thing left to do, after storing the scanned string and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
+
+> Explicit versus implicit program state
+
+Memory allocation is actually just a means to manage a more fundamental problem.
+
+> A question of life and death
+
+> Short-term versus long-term information
+
+> Local versus global information
+
+The scanned string is an example of long-term global information. We know that we need the string possibly until all code has been emitted because we need to include the string as part of the code. This we need the string until the whole program has been scanned and parsed which is a moment in time we do not know when scanning the string. Moreover, code is emitted, at least in our implementation, in a different part of the implementation than the scanner, making the string global information.
+
+How do we deal with that?
 
 heap
 no deallocation because of termination
