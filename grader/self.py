@@ -411,10 +411,10 @@ assignment_threads = Assignment('threads', 'Systems', 'threads',
            check_threads, parent = assignment_fork_wait_exit)
 assignment_threadsafe_malloc = Assignment('threadsafe-malloc', 'Systems', 'threadsafe-malloc',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-threadsafe-malloc',
-           check_threadsafe_malloc)
+           check_threadsafe_malloc, parent = assignment_threads)
 assignment_treiber_stack = Assignment('treiber-stack', 'Systems', 'treiber-stack',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-treiber-stack',
-           check_treiber_stack)
+           check_treiber_stack, parent = assignment_threadsafe_malloc)
 
 assignments: List[Assignment] = [
     assignment_print_your_name,
