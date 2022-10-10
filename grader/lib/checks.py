@@ -18,6 +18,9 @@ if sys.version_info < (3, 3):
                   'mipster execution timeout is disabled with this python version\n')
 else:
     from subprocess import Popen, TimeoutExpired, PIPE, STDOUT
+    if sys.platform == "linux":
+        import errno
+        import select
 
 assignment_name = ''
 
@@ -81,23 +84,62 @@ def set_up():
 
 
 def execute(command, timeout=60):
-    # combine stdout and stderr in one output
-    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+    if sys.version_info >= (3, 3) and sys.platform == "linux":
+        # open ptys
+        out_m, out_s = os.openpty()
+        err_m, err_s = os.openpty()
+        in_m, in_s = os.openpty()
+
+        # open process, attaching ptys to stdout/stderr
+        process = Popen(shlex.split(command), stdout=out_s, stderr=err_s, stdin=in_s)
+
+        # close slave fds
+        for fd in [out_s, err_s, in_s]: os.close(fd)
+    else:
+        # combine stdout and stderr in one output
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
 
     timedout = False
 
-    if sys.version_info < (3, 3):
-        stdoutdata, _ = process.communicate()
-    else:
-        try:
-            stdoutdata, _ = process.communicate(timeout=timeout)
-        except TimeoutExpired:
-            process.kill()
-            stdoutdata, _ = process.communicate()
+    # read output
+    try:
+        if sys.version_info < (3, 3):
+            outdata, _ = process.communicate()
+        elif sys.platform != "linux":
+            outdata, _ = process.communicate(timeout=timeout)
+        else:
+            try:
+                outdata = bytes()
+                fds = [out_m, err_m]
+                while len(fds) > 0:
+                    # wait for a pty to become ready
+                    ready, _, _ = select.select(fds, [], [], timeout)
+                    for fd in ready:
+                        try:
+                            # read its data
+                            data = os.read(fd, 4096)
+                        except OSError as e:
+                            if e.errno == errno.EIO:
+                                fds.remove(fd)
+                            else:
+                                raise
+                        else:
+                            if data:
+                                outdata += data
+                            else:
+                                fds.remove(fd)
+                process.wait()
+            finally:
+                # cleanup
+                for fd in [out_m, err_m, in_m]: os.close(fd)
+    except TimeoutExpired:
+        process.kill()
+        outdata, _ = process.communicate()
 
-            timedout = True
+        timedout = True
 
-    output = stdoutdata.decode(sys.stdout.encoding)
+    # decode output data
+    output = outdata.decode(sys.stdout.encoding)
 
     if timedout:
         raise TimeoutException(command, timeout, output)
