@@ -5047,12 +5047,13 @@ uint64_t compile_factor() {
   }
   // optional: cast
   if (symbol == SYM_LPARENTHESIS) {
+    // possibly a cast
+    has_cast = 1;
+
     get_symbol();
 
     if (is_type()) {
       // cast: "(" "uint64_t" [ "*" ] ")"
-      has_cast = 1;
-
       cast = compile_type();
 
       get_expected_symbol(SYM_RPARENTHESIS);
