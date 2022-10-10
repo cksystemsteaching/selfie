@@ -5028,7 +5028,6 @@ uint64_t compile_term() {
 }
 
 uint64_t compile_factor() {
-  uint64_t has_cast;
   uint64_t cast;
   uint64_t type;
   uint64_t negative;
@@ -5051,8 +5050,6 @@ uint64_t compile_factor() {
 
     if (is_type()) {
       // cast: "(" "uint64_t" [ "*" ] ")"
-      has_cast = 1;
-
       cast = compile_type();
 
       get_expected_symbol(SYM_RPARENTHESIS);
@@ -5067,7 +5064,7 @@ uint64_t compile_factor() {
       return type;
     }
   } else
-    has_cast = 0;
+    cast = 0;
   // optional: "-"
   if (symbol == SYM_MINUS) {
     negative = 1;
@@ -5147,7 +5144,7 @@ uint64_t compile_factor() {
 
   // assert: allocated_temporaries == n + 1
 
-  if (has_cast)
+  if (cast != 0)
     // cast is grammar attribute
     return cast;
   else
