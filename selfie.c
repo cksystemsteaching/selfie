@@ -3062,8 +3062,8 @@ uint64_t write_synced(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
         bytes_written = printf("%c", load_character((char*) buffer, total_bytes_written));
 
         if (bytes_written != 1)
-            // output failed
-            return total_bytes_written;
+          // output failed
+          return total_bytes_written;
 
         total_bytes_written = total_bytes_written + 1;
       }
