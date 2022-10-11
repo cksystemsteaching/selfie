@@ -3052,7 +3052,7 @@ uint64_t write_synced(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
   uint64_t bytes_written;
   uint64_t total_bytes_written;
 
-  if (output_fd == 1) {
+  if (fd == 1) {
     if (OS != SELFIE) {
       // on bootlevel zero use printf to print on console
       // to keep output synchronized with other printf output
