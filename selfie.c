@@ -166,7 +166,7 @@ uint64_t ratio_format_fractional_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_integral_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b);
 
-uint64_t write_synced(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write); // a version of write which takes glibc buffering into account
+uint64_t write_to_printf_console(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 
 void put_character(char c);
 
@@ -3048,38 +3048,32 @@ uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b) {
     return 0;
 }
 
-uint64_t write_synced(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
+uint64_t write_to_printf_console(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
   uint64_t bytes_written;
-  uint64_t total_bytes_written;
 
   if (fd == 1) {
+    // writing to console
     if (OS != SELFIE) {
-      // on bootlevel zero use printf to print on console
-      // to keep output synchronized with other printf output
-      total_bytes_written = 0;
+      // on bootlevel zero use printf to write to console
+      // keeping output synchronized with other printf output
+      bytes_written = 0;
 
-      while (total_bytes_written < bytes_to_write) {
-        bytes_written = printf("%c", load_character((char*) buffer, total_bytes_written));
-
-        if (bytes_written != 1)
+      while (bytes_written < bytes_to_write) {
+        if (printf("%c", load_character((char*) buffer, bytes_written)) != 1)
           // output failed
-          return total_bytes_written;
+          return bytes_written;
 
-        total_bytes_written = total_bytes_written + 1;
+        bytes_written = bytes_written + 1;
       }
-    } else
-      // use regular write function
-      total_bytes_written = write(fd, buffer, bytes_to_write);
-  } else
-    // use regular write function
-    total_bytes_written = write(fd, buffer, bytes_to_write);
 
-  return total_bytes_written;
+      return bytes_written;
+    }
+  }
+
+  return write(fd, buffer, bytes_to_write);
 }
 
 void put_character(char c) {
-  uint64_t written_bytes;
-
   if (output_buffer) {
     // buffering character instead of outputting
     store_character(output_buffer, output_cursor, c);
@@ -3090,13 +3084,11 @@ void put_character(char c) {
 
     // assert: character_buffer is mapped
 
-    written_bytes = write_synced(output_fd, (uint64_t*) character_buffer, 1);
-
-    if (written_bytes != 1) {
+    if (write_to_printf_console(output_fd, (uint64_t*) character_buffer, 1) != 1) {
       // output failed
       if (output_fd != 1) {
         // failed output was not to console which has file descriptor 1
-        // to report the error we may thus still write to the console
+        // to report the error we may thus still print to the console
         output_fd = 1;
 
         printf("%s: could not write character into output file %s\n", selfie_name, output_name);
@@ -7620,7 +7612,7 @@ void implement_write(uint64_t* context) {
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
 
-          actually_written = sign_extend(write_synced(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+          actually_written = sign_extend(write_to_printf_console(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
           if (actually_written == bytes_to_write) {
             written_total = written_total + actually_written;
