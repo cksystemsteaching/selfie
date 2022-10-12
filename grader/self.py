@@ -39,7 +39,7 @@ def check_self_compilation(mandatory=False) -> List[Check]:
 
 
 def check_print_your_name() -> List[Check]:
-    return check_execution('./selfie -c selfie.c',
+    return check_execution('./selfie -c selfie.c -m 1',
                            'selfie prints first and second name',
                            success_criteria=lambda code, out: contains_name(out))
 
