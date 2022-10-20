@@ -1401,7 +1401,9 @@ in one step versus using tens complement via nines complement. For the latter we
 
 Again, the two subtractions, 9999 - 432, that is, 9999 - 0432 as well as 2345 + (...) - 10000 are both easy to do digit by digit:
 
+```c
 2345 + (9999 - 0432 + 1) - 10000 = 2345 + (9567 + 1) - 10000 = 2345 + 9568 - 10000 = 11913 - 10000 = 1913
+```
 
 Let us go back to the previous example. Now, we are ready to do the exact same thing with binary numbers and their *twos* and *ones complement*. In binary, `85 - 7` is:
 
