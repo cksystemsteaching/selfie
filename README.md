@@ -1345,7 +1345,13 @@ The negative complement or *radix complement* of a number depends on the *radix*
 100 - 7 = 93
 ```
 
-So, 93 represents -7 here. If we were to support 3 digits the tens complement of 7 would be:
+So, 93 represents -7 here.
+
+![Tens Complement](figures/tens-complement.png "Tens Complement")
+
+In fact, instead of encoding 0 and the first 99 positive numbers from 1 to 99 in the decimal numbers 0 to 99, we only encode 0 and the first 49 positive numbers from 1 to 49 in 0 to 49, and the first 50 negative numbers from -1 to -50 in 99 to 50. Oddly, this encoding supports 49 positive numbers and 50 negative numbers, that is, exactly one more negative number which is -50, encoded by, well, 50.
+
+If we were to support 3 digits the tens complement of 7 would be:
 
 ```c
 1000 - 7 = 993
