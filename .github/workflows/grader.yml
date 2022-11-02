@@ -57,9 +57,9 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Use Python 3.7.x
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: "3.7.x"
     # extract assignment from "commit message [assignment]"
@@ -79,9 +79,9 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Use Python 3.7.x
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: "3.7.x"
     # extract assignment from "commit message [assignment]"
