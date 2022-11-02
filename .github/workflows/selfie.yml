@@ -49,11 +49,11 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Make all
       run: make -j -O all
     - name: Use Python 3.7.x
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: "3.7.x"
     - name: Run autograder baseline
@@ -66,11 +66,11 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Make all
       run: make -j all
     - name: Use Python 3.7.x
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: "3.7.x"
     - name: Run autograder baseline
@@ -83,7 +83,7 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Use gcc from cygwin for LP64 data model (not LLP64 with mingw)
       run: |
         choco upgrade cygwin -y --no-progress
@@ -107,7 +107,7 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
       with:
