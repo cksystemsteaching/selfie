@@ -87,7 +87,7 @@ jobs:
     - name: Use gcc from cygwin for LP64 data model (not LLP64 with mingw)
       run: |
         choco upgrade cygwin -y --no-progress
-        choco install gcc-core make -y --no-progress --source=cygwin
+        C:\tools\cygwin\cygwinsetup.exe -q -d -N -R C:\tools\cygwin -l C:\tools\cygwin\packages -P gcc-core,make | Out-Default
         echo 'C:\tools\cygwin\bin' >> $env:GITHUB_PATH
     - name: Make all
       run: make -j -O all
