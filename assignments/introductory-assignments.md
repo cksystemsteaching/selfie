@@ -10,9 +10,8 @@ Welcome to the Introduction to Computer Science supplementary material. This doc
 
 ## Resources
 
-- Lectures
 - [Slides](https://www.icloud.com/keynote/0J_SKB-ofwiuxg-lCag-s-gOA#selfie)
-- [Selfie: Computer Science for Everyone](https://leanpub.com/selfie)
+- [Book](https://github.com/ckirsch/book)
 
 ---
 
