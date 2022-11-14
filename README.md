@@ -63,16 +63,17 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 6. Programming
 
    1. Literal
-   2. Expression
-   3. Variable
-   4. Assignment
-   5. Conditional
-   6. Loop
-   7. Procedure
-   8. Libraries
-   9. Apps
-   10. Life
-   11. Recommended Readings
+   2. Variable
+   3. Type
+   4. Expression
+   5. Assignment
+   6. Conditional
+   7. Loop
+   8. Procedure
+   9. Libraries
+   10. Apps
+   11. Life
+   12. Recommended Readings
 
 7. Tools
 
