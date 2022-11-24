@@ -4034,6 +4034,14 @@ Memory management generally involves performing four different tasks:
 
 The challenge is to allocate, deallocate, access, and defragment memory as fast as possible, ideally in time independent of the amount of used and free memory, and minimal memory fragmentation. Moreover, allocating some free memory may be better than other free memory because memory access may be faster or slower depending on memory address due to complex hierarchical memory hardware. Memory managment is subject to fundamental time-space tradeoffs implying that there is no best solution which has motivated computer scientists including us to work on memory management algorithms for decades.
 
+The good news is that you do not need to know those algorithms to be a good programmer or to understand selfie. However, it does help to know what exactly makes memory management hard, how to avoid that part, and then just work with the simplest possible solution. We nevertheless get back to memory management in the tools chapter to see some of the more involved solutions.
+
+One way to make memory management simple and even optimally efficient in terms of time and space, that is, as fast as possible with no memory fragmentation, is by only allocating and using memory blocks of the same size. That's it! It is like turning memory into a checkerboard where any free spot will do. Hard to believe but all modern operating systems, most likely including the one running on your smart phone, tablet, and laptop, exploit that property very effectively, as also explained in the tools chapter.
+
+However, what if we need to allocate memory blocks of different size? In general, this is the case whenever the size needed changes during program execution while the maximum size ever needed is unknown. Now, the good news is that memory management, even of memory blocks of different size, is still simple, and again even optimally efficient, if memory is always deallocated in exactly the reverse order in which it was allocated. Awesome! That reminds us of stack allocation, of course.
+
+Alright, but what if we...
+
 data
 stack
 heap
