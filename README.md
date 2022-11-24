@@ -4036,11 +4036,13 @@ The challenge is to allocate, deallocate, access, and defragment memory as fast 
 
 The good news is that you do not need to know those algorithms to be a good programmer or to understand selfie. However, it does help to know what exactly makes memory management hard, how to avoid that part, and then just work with the simplest possible solution. We nevertheless get back to memory management in the tools chapter to see some of the more involved solutions.
 
+> What makes memory management hard?
+
 One way to make memory management simple and even optimally efficient in terms of time and space, that is, as fast as possible with no memory fragmentation, is by only allocating and using memory blocks of the same size. That's it! It is like turning memory into a checkerboard where any free spot will do. Hard to believe but all modern operating systems, most likely including the one running on your smart phone, tablet, and laptop, exploit that property very effectively, as also explained in the tools chapter.
 
-However, what if we need to allocate memory blocks of different size? In general, this is the case whenever the size needed changes during program execution while the maximum size ever needed is unknown. Now, the good news is that memory management, even of memory blocks of different size, is still simple, and again even optimally efficient, if memory is always deallocated in exactly the reverse order in which it was allocated. Awesome! That reminds us of stack allocation, of course.
+However, what if we would like to allocate memory blocks of different size? In general, we may even have to do that, if the size needed changes during program execution while the maximum size ever needed is unknown. Now, the good news is that memory management, even of memory blocks of different size, is still simple, and again even optimally efficient, if memory is always deallocated in exactly the reverse order in which it was allocated. Awesome! That reminds us of stack allocation, of course, which is indeed as fast as possible with no memory fragmentation.
 
-Alright, but what if we...
+Alright, but what if we would like to deallocate memory in some other order? There are many applications where memory dies out of reverse order in which it was allocated. We may of course delay deallocation until it can be done in reverse order but that would result in a situation resembling memory fragmentation, or in fact something even worse where dead memory is unavailable even for allocations that fit. The bad news is that efficient support of deallocation out of reverse order of allocation is hard. Yet the good news is that we can avoid part of the problem, simply by not deallocating memory at all, trading space for time...
 
 data
 stack
