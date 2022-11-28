@@ -4040,9 +4040,21 @@ The good news is that you do not need to know those algorithms to be a good prog
 
 One way to make memory management simple and even optimally efficient in terms of time and space, that is, as fast as possible with no memory fragmentation, is by only allocating and using memory blocks of the same size. That's it! It is like turning memory into a checkerboard where any free spot will do. Hard to believe but all modern operating systems, most likely including the one running on your smart phone, tablet, and laptop, exploit that property very effectively, as also explained in the tools chapter.
 
-However, what if we would like to allocate memory blocks of different size? In general, we may even have to do that, if the size needed changes during program execution while the maximum size ever needed is unknown. Now, the good news is that memory management, even of memory blocks of different size, is still simple, and again even optimally efficient, if memory is always deallocated in exactly the reverse order in which it was allocated. Awesome! That reminds us of stack allocation, of course, which is indeed as fast as possible with no memory fragmentation.
+> Memory blocks of different size
 
-Alright, but what if we would like to deallocate memory in some other order? There are many applications where memory dies out of reverse order in which it was allocated. We may of course delay deallocation until it can be done in reverse order but that would result in a situation resembling memory fragmentation, or in fact something even worse where dead memory is unavailable even for allocations that fit. The bad news is that efficient support of deallocation out of reverse order of allocation is hard. Yet the good news is that we can avoid part of the problem, simply by not deallocating memory at all, trading space for time...
+However, what if we would like to allocate memory blocks of different size? In general, we may even have to do that, if the size needed changes during program execution while the maximum size ever needed is unknown. But, the good news is that memory management, even of memory blocks of different size, is still simple, and again even optimally efficient, if memory is always deallocated in exactly the reverse order in which it was allocated. Awesome! That reminds us of stack allocation, of course, which is indeed as fast as it gets with no memory fragmentation.
+
+> Deallocation in arbitrary order
+
+Alright, but what if we would like to deallocate memory in some other order? There are many applications where memory dies in an order different from the reverse order in which it was allocated. We could of course delay deallocation until it can be done in reverse order but that would result in a situation that resembles memory fragmentation, or in fact something even worse memory known as dead but still marked as used is unavailable even for allocations that fit. The bad news is that efficient support of deallocation in arbitrary order, including out of reverse order of allocation, is hard. Yet the good news is that we can avoid part of the problem, simply by not deallocating memory at all, trading space for time, and code complexity!
+
+> Nobody needs to free memory!
+
+You heard that right. Nobody needs to free memory, if you have enough memory, that is, if you have enough memory addresses and storage, and on modern systems you typically do! Even selfie gives you around 4 billion addresses. Memory storage is a different story, of course, but actually storing a lot of data in memory and later loading it again to do something meaningful is not so easy. A rule of thumb is that, if your code always terminates and only allocates memory in reasonable proportion to the size of reasonably sized input, there is no need to worry about deallocating memory. The selfie compiler is a good example. Even compiling itself takes selfie less than 4 million (not billion) memory addresses, and out of those 4 million addresses less than 3 million refer to potentially live memory storage.
+
+Nevertheless a common mistake among many programmers is to free memory unnecessarily at the risk of introducing bugs that are often hard to find. Memory must eventually be freed only if memory usage exceeds memory storage, which will happen, even when only little memory is live at any given time, with code that keeps allocating and using new memory and is intended not to terminate but to keep running indefinitely. As mentioned before, worry about freeing memory when you run out of memory, which may never happen, keeping your time well spent.
+
+> Data, stack, and heap management
 
 data
 stack
