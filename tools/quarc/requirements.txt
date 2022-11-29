@@ -1,7 +1,7 @@
 certifi==2022.6.15
 cffi==1.15.0
 charset-normalizer==2.0.12
-cryptography==37.0.2
+cryptography==38.0.3
 dill==0.3.5.1
 idna==3.3
 mpmath==1.2.1
