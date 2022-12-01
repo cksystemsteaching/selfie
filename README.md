@@ -4066,6 +4066,8 @@ Let us revisit the four segments in memory for storing code and data, now with a
 
 4. heap segment: located right above the data segment and, initially with a large gap, below the stack segment; segment size and content may change at runtime and are determined by the code executing in the code segment, including memory allocation and deallocation; content is anything that does not fit the other segments; at runtime, segment size may grow towards higher addresses upon memory allocation but never shrink (dynamic heap allocator); all content may change; in selfie, there is no memory deallocation but, in general, there is, see below.
 
+In sum, allocating memory requires in the code segment, well, code, and in the data segment, global variables and literals. Allocating and deallocating memory in the stack segment is done by calling procedures and eventually returning, respectively. Lastly, allocating and deallocating memory in the heap segment is done by calling special procedures which we explain next.
+
 > `malloc()`: dynamic memory allocation on the heap
 
 The procedure `string_alloc()` allocates zeroed memory using the infamous procedure `malloc()` which stands for *memory allocate* on the heap at runtime. That procedure is available in virtually all dialects of C including C\* and so important that it is even built into the language. C compilers including the selfie compiler attach code that implements the procedure to any compiled code that uses it. Programming languages other than C likely feature builtin procedures similar to `malloc()` such as Java, for example, where its counterpart is called `new()`.
