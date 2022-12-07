@@ -4021,7 +4021,7 @@ Whether information is *local* or *global* information, that is, only needed loc
 
 > Memory management: used versus free memory
 
-The problem addressed by memory management is to keep track of *used* and *free* memory. More precisely, memory management needs to partition the set of all memory addresses into two sets, the set of used addresses and the set of free addresses, and to maintain the invariant that all values stored at free memory addresses are dead. Moreover, the more values stored at used memory addresses are live the more efficient memory storage is being utilized. Nevertheless, dead values stored at used memory addresses do not necessarily constitute a problem as long as free memory addresses are still available. They may, however, become a problem if free memory addresses are required to occur *contiguously* in blocks of *different* size. For example, if all even memory addresses are used and all odd memory addresses are free, then half of memory is free but there are anyway no contiguous memory blocks greater than size one available. This phenomenon is called *memory fragmentation*.
+The problem addressed by memory management is to keep track of *used* and *free* memory. More precisely, memory management needs to partition the set of all memory addresses into two sets, the set of used addresses and the set of free addresses, and to maintain the invariant that all values stored at free memory addresses are dead. Moreover, the more values stored at used memory addresses are live the more efficient memory storage is being utilized. Nevertheless, dead values stored at used memory addresses do not necessarily constitute a problem as long as free memory addresses are still available. They may, however, become a problem if free memory addresses are required to occur *contiguously* in blocks of *different* size such as memory for integer and string literals. For example, if all even memory addresses are used and all odd memory addresses are free, then half of memory is free but there are anyway no contiguous memory blocks greater than size one available. This phenomenon is called *memory fragmentation*.
 
 > Memory allocation, deallocation, access, and defragmentation
 
@@ -4078,15 +4078,17 @@ Stack allocation simplifies the problem of deciding when to free memory because 
 
 > `free()`: dynamic memory deallocation on the heap
 
-Freeing memory is hard on two different levels which we mentioned before but mention here again. It is the when and the how. Firstly, it is difficult to know when memory can be freed, that is, when values in memory die. Knowing that involves knowing the future. Also, freeing too early may result in unsafe memory access while freeing too late may result in out-of-memory errors. Secondly, freeing memory of different size and in arbitrary order may result in fragmented memory that resembles a swiss cheese. Finding free space in there that fits is difficult and thus may get slow and even futile.
+Freeing memory is hard on two different levels which we mentioned before but summarize here again. It is the when and the how. Firstly, it is difficult to know when memory can be freed, that is, when values in memory die. Knowing that involves knowing the future. Also, freeing too early may result in unsafe memory access while freeing too late may result in out-of-memory errors. Secondly, freeing memory of different size and in arbitrary order may result in fragmented memory that resembles a swiss cheese. Finding free space in there that fits is difficult and thus may get slow and even futile.
 
 The procedure `free()` is the counterpart to `malloc()` and also built into virtually all dialects of C, just not C\*, because sometimes lack of something has significant educational value too. Firstly, it frees students from `free()`. Secondly, it provides an opportunity for students to design and implement their own `free()`. But, most importantly, it creates awareness among students what memory management actually is. Nevertheless, there is an implementation of `free()` in selfie that is not explicitly accessible but it is there.
 
 > Garbage collection!
 
-The implementation of `free()` is part of a *conservative garbage collector* in selfie which we explain in the tools chapter. For now, we only mention that garbage collectors free memory that is guaranteed to contain dead values, so there is no need to use `free()` explicitly. But, even then, programmers are still required to help the garbage collectors with that, by showing which values are dead. Without any help, garbage collectors may not be able to free memory either, simply trading space for safety. The fundamental problem of knowing the future is here to stay, despite the common but incorrect belief that garbage collectors solve the problem of memory management. Garbage-collected systems may run of memory, just like systems that are not garbage-collected and, even worse, may spend a lot more time doing so.
+The implementation of `free()` is part of a *conservative garbage collector* in selfie which we explain in the tools chapter. For now, we only mention that garbage collectors free memory that is guaranteed to contain dead values, so there is no need to use `free()` explicitly. But, even then, programmers are still required to help the garbage collectors with that, by showing in the code which values are dead. Without any help, garbage collectors may not be able to free memory either, simply trading space for safety. The fundamental problem of knowing the future is here to stay, despite the common but incorrect belief that garbage collectors solve the problem of memory management. Garbage-collected systems help to avoid unsafe memory access but may still run out of memory, just like systems that are not garbage-collected and, even worse, may spend a lot more time doing so.
 
 > Bump pointer allocator
+
+Before concluding our introduction to basic memory management, we would like to explain how the arguably simplest form of memory allocator on the heap actually works. It is called a *bump pointer allocator* which can hardly be any simpler. A bump pointer allocator maintains, well, a `bump` pointer that refers to a memory address where the next free block of memory is located. Upon allocating a contiguous block of `bytes` in memory, the allocator increments or *bumps up* its `bump` pointer by `bytes` many bytes, to prepare for the next allocation, and then returns the original `bump` pointer. Here is *pseudo code* that implements the idea:
 
 ```c
 // pseudo code, does not compile!
@@ -4100,7 +4102,9 @@ uint64_t* malloc(uint64_t bytes) {
 }
 ```
 
-explain `uint64_t`...
+Selfie implements the procedure `malloc()` with a bump pointer allocator. However, the code in selfie is a bit more involved than the above pseudo code but based on the same principle. There are two important observations we can make here. Firstly, a bump pointer allocator is fast, it even allocates memory in constant time, just like a stack allocator. Secondly, a bump pointer allocator makes the heap grow towards higher memory addresses while a stack allocator makes the stack grow towards lower memory addresses. In other words, heap and stack grow towards each other. What happens when they meet? Bad luck. It means that we are out of memory addresses. In this case, selfie and other systems report an error and terminate code execution.
+
+While a stack allocator deallocates memory in reverse order of allocation, a bump pointer allocator does not do that. It can only bump up, not down. In order to prevent it from eventually bumping into the stack, allocated memory below the bump pointer needs to be marked as free and then reused. The tools chapter has more on that. As mentioned before, selfie does not support freeing memory explicitly.
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
