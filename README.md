@@ -4150,32 +4150,6 @@ keywords vs identifiers
 
 ![Expressions](figures/expressions.png "Expressions")
 
-```
-PSH: :                                                   n * n + 1 - n / 2 + 42
-PSH: expression:                                         n * n + 1 - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          n * n + 1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n * n + 1 - n / 2 + 42
-PSH: { ("*" | "/") factor } { ("+" | "-") term }:        * n + 1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n + 1 - n / 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 1 - n / 2 + 42
-PSH: { ("+" | "-") term }:                               + 1 - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          1 - n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 1 - n / 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        - n / 2 + 42
-PSH: { ("+" | "-") term }:                               - n / 2 + 42
-PSH: term { ("+" | "-") term }:                          n / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: n / 2 + 42
-PSH: { ("*" | "/") factor } { ("+" | "-") term }:        / 2 + 42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 2 + 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:        + 42
-PSH: { ("+" | "-") term }:                               + 42
-PSH: term { ("+" | "-") term }:                          42
-POP: factor { ("*" | "/") factor } { ("+" | "-") term }: 42
-POP: { ("*" | "/") factor } { ("+" | "-") term }:
-POP: { ("+" | "-") term }:
-     :
-```
-
 ### Assignments
 
 ### Conditionals
