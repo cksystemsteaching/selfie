@@ -3961,10 +3961,6 @@ It is time for your first assignment. Design and implement support of integer li
 
 When you are done with the assignment, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
 
--------------------------------------------------------------------------------
-
-work in progress
-
 #### Memory Management
 
 Looking back at how we implemented scanning of integer literals and computing their numerical value, there is one important thing that we could have done differently. We could have combined scanning characters and computing values into one procedure, thereby removing the need for allocating memory to store the scanned sequence of characters. That would be a pure implementation of a finite state machine.
@@ -3989,7 +3985,15 @@ Here are ways to deal with that. On first sight the seemingly simplest way to al
 
 Our means to perform static memory allocation is global variables. We have already seen that in the code for scanning integer literals. We use the same method for scanning character literals as shown in the above figure. Here we only need the three global variables `character`, `literal`, and `symbol`. As before the value of `character` is not shown in the state of main memory but it is there of course. Static memory allocation for scanning character literals is clearly sufficient because the length of the sequence of characters that form a character literal is fixed and the numerical value represented by a character literal is just a single byte with UTF-8 encoding.
 
-According to its EBNF rule, a character literal begins with a single quote `'` followed by a single printable character followed by another single quote. In other words, whenever the scanner detects a single quote, then it must be followed by a single printable character followed by a single quote. Otherwise, there is a syntax error in the scanned sequence of characters. Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character()` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
+According to its EBNF rule, a character literal begins with a single quote `'` followed by a single printable character followed by another single quote:
+
+```ebnf
+character = "'" printable_character "'" .
+```
+
+Thus, whenever the scanner detects a single quote, then it must be followed by a single printable character followed by a single quote, see the finite state machine in the above figure. Otherwise, there is a syntax error in the scanned sequence of characters.
+
+Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character()` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
 
 > Dynamic memory allocation
 
@@ -4001,9 +4005,19 @@ But stack allocation comes with an important limitation. Deallocation of memory 
 
 ![Scanning String Literals](figures/scanning-string-literals.png "Scanning String Literals")
 
-Scanning string literals is an example of how to address the problem of maintaining information that is needed elsewhere in the code, as shown in the above figure. Here we need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory. According to its EBNF rule, a string literal begins with a double quote `"` followed by any number of printable characters, including zero printable characters, followed by another double quote. In other words, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote. Otherwise, there is a syntax error in the scanned sequence of characters. The (non-numerical) value of a string literal is the scanned string itself as is, without any further calculations. However, the scanned string needs to be stored in memory and later added to the generated code.
+Scanning string literals is an example of how to address the problem of maintaining information that is needed elsewhere in the code, as shown in the above figure. Here we need the three global variables `character`, `string`, and `symbol`. As before the value of `character` is not shown in the state of main memory.
 
-As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc()`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters. In contrast to scanning integer literals, string literals really need to be kept around until code generation and we show how this is done below. We do the same with integer literals but that is a choice we made for handling big integers which could also be handled differently. Again, for now, the only thing left to do, after storing the scanned string and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
+According to its EBNF rule, a string literal begins with a double quote `"` followed by any number of printable characters, including zero printable characters, followed by another double quote:
+
+```ebnf
+string = """ { printable_character } """ .
+```
+
+Thus, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote, see the finite state machine in the above figure. Otherwise, there is a syntax error in the scanned sequence of characters.
+
+The (non-numerical) value of a string literal is the scanned string itself as is, without any further calculations. However, the scanned string needs to be stored in memory and later added to the generated code. As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc()`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters.
+
+In contrast to scanning integer literals, string literals really need to be kept around until code generation and we show how this is done below. We do the same with integer literals but that is a choice we made for handling big integers which could also be handled differently. Again, for now, the only thing left to do, after storing the scanned string and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
 
 > A question of life and death
 
@@ -4105,6 +4119,10 @@ uint64_t* malloc(uint64_t bytes) {
 Selfie implements the procedure `malloc()` with a bump pointer allocator. However, the code in selfie is a bit more involved than the above pseudo code but based on the same principle. There are two important observations we can make here. Firstly, a bump pointer allocator is fast, it even allocates memory in constant time, just like a stack allocator. Secondly, a bump pointer allocator makes the heap grow towards higher memory addresses while a stack allocator makes the stack grow towards lower memory addresses. In other words, heap and stack grow towards each other. What happens when they meet? Bad luck. It means that we are out of memory addresses. In this case, selfie and other systems report an error and terminate code execution.
 
 While a stack allocator deallocates memory in reverse order of allocation, a bump pointer allocator does not do that. It can only bump up, not down. In order to prevent it from eventually bumping into the stack, allocated memory below the bump pointer needs to be marked as free and then reused. The tools chapter has more on that. As mentioned before, selfie does not support freeing memory explicitly.
+
+-------------------------------------------------------------------------------
+
+work in progress
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
