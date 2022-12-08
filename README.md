@@ -4124,23 +4124,39 @@ Selfie implements the procedure `malloc()` with a bump pointer allocator. Howeve
 
 While a stack allocator deallocates memory in reverse order of allocation, a bump pointer allocator does not do that. It can only bump up, not down. In order to prevent it from eventually bumping into the stack, allocated memory below the bump pointer needs to be marked as free and then reused. The tools chapter has more on that. As mentioned before, selfie does not support freeing memory explicitly.
 
+Enough of memory management for now. Our primary goal here is to understand how integer, character, and string literals are handled. So far, we have seen how their syntactic structure is specified, how detecting them in a sequence of characters is modeled, and finally how that, together with the computation of the values they represent, is implemented in C\*. Before showing how literals are parsed as C\* symbols in a sequence of arbitrary C\* symbols, it is time to mention how the remaining C\* symbols are handled.
+
 -------------------------------------------------------------------------------
 
 work in progress
 
+-------------------------------------------------------------------------------
+
+#### Scanner
+
+In addition to integer, character, and string literals, C\* features in total 22 symbols:
+
+`integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `...`
+
+The `identifier` symbol...
+
+![Scanner](figures/scanner.png "Scanner")
+
+Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
+
+#### Parser
+
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
 link to grammar
+
+#### Code Generation
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
 string literals: implicit static memory allocation
 
 register allocation, symbol table
-
-![Scanner](figures/scanner.png "Scanner")
-
-whitespace
 
 everything introduced but fixup chains
 
@@ -4149,6 +4165,10 @@ everything introduced but fixup chains
 ![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
 
 keywords vs identifiers
+
+The C\* grammar is LL(1) with 6 keywords and 22 symbols.
+
+C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
 ### Expressions
 
