@@ -292,7 +292,7 @@ Most importantly, take your time! We go through almost every detail and motivate
 
 ### Programming Language C\*
 
-C\* is a tiny subset of the programming language C. In a nutshell for readers familiar with basic programming language constructs, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
+C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
 
 [https://github.com/cksystemsteaching/selfie/blob/main/grammar.md](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)
 
@@ -4126,23 +4126,79 @@ While a stack allocator deallocates memory in reverse order of allocation, a bum
 
 Enough of memory management for now. Our primary goal here is to understand how integer, character, and string literals are handled. So far, we have seen how their syntactic structure is specified, how detecting them in a sequence of characters is modeled, and finally how that, together with the computation of the values they represent, is implemented in C\*. Before showing how literals are parsed as C\* symbols in a sequence of arbitrary C\* symbols, it is time to mention how the remaining C\* symbols are handled.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 #### Scanner
 
 In addition to integer, character, and string literals, C\* features in total 22 symbols:
 
 `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `...`
 
-The `identifier` symbol...
+The `identifier` symbol represent names of variables and procedures. We see how they are handled in detail below. The remaining symbols are either 1-character or 2-character symbols. The important observation to make here is that even the entire language of C\* symbols is regular, that is, there is a single EBNF rule that specifies it. As previously mentioned, checking if the language is indeed reguler only requires gathering all symbols in an EBNF rule:
+
+```ebnf
+cstar_symbols = integer | character | string | identifier | "," | ";" | "(" | ")" | "{" | "}" |
+                "+" | "-" | "*" | "/" | "%" | "=" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "..." .
+```
+
+and then substitute all non-terminal symbols in its right-hand side with their definition until only terminal symbols remain. If that process terminates, then the language is indeed regular. Try it! The resulting rule gets quite big but it is finite.
 
 ![Scanner](figures/scanner.png "Scanner")
 
-Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
+The scanner for all of C\* is depicted in the above figure, in particular the full finite state machine and a sketch of its implementation in the `get_symbol()` procedure. The finite state machines for integer, character, and string literals along with the finite state machine for identifiers are part of that.
+
+There is another important observation to make here. Most C\* symbols begin with  unique characters. For example, an integer literal begins with a digit, and no other symbol does. A character literal begins with a single quote, and again no other symbol does. This goes on. Only string literals begin with a double quote while only identifiers begin with a letter. The only exceptions are the assignment symbol `=` and the equality symbol `==`, and the inequality symbols `<` and `<=` as well as `>` and `>=`. But even those can all be distinguished upon a so-called *look ahead* of 1 character. Just by looking at the next character, the decision which symbol has been scanned can be made. We say that C\* symbols can be scanned with a look ahead of at most 1.
+
+This is not a coincidence. C\* symbols and the symbols of many other programming languages have been specificially designed so that most of them can be scanned with no look ahead at all and the rest with a look ahead of 1. For example, identifiers may not begin with a digit to distinguish them from integer literals already upon seeing the first character. This makes scanning simple and fast, not just for the machine but, interestingly, also for humans reading the code. We see below that even the entire syntactic structure of C\* programs can be parsed with a look ahead of at most 1.
+
+One more thing before moving on to parsing literals. C\* is a programming language in which *whitespace* such as, well, the *space* character but also *carriage return*, *line feed*, and *tabulator*, has no impact on semantics, unlike Python, for example, where indentation does matter. C\* also supports single-line comments using `//` and multi-line comments using `/*` and `*/`. In other words, the C\* scanner ignores all characters to the right of `//`, in a single line, and in between `/*` and `*/`, even across multiple lines. The implementation is not trivial, see the procedure `find_next_character()` in the selfie code for all the details.
+
+To demonstrate that whitespace and comments are fully ignored by the C\* scanner, we have prepared a *Hello World!* program in C\* that prints `Hello World!` onto the console:
+
+```c
+// global variable for pointing to the "Hello World!    " string
+uint64_t* foo;
+
+// main procedure for printing "Hello World!    " on the console
+uint64_t* main() {
+  // point to the "Hello World!    " string
+  foo = "Hello World!    ";
+
+  /* strings are actually stored in chunks of 8 characters in memory,
+     that is, here as "Hello Wo", and "rld!    " which allows us to
+     print them conveniently in chunks of 8 characters at a time */
+
+  // as long as there are characters print them
+  while (*foo != 0) {
+    // 1 means that we print to the console
+    // foo points to a chunk of 8 characters
+    // 8 means that we print 8 characters
+    write(1, foo, 8);
+
+    // go to the next chunk of 8 characters
+    foo = foo + 1;
+  }
+}
+```
+
+Hello World! programs are often used as introductory examples in programming education. We have also prepared a *minified* version which is much shorter and looks very different but is semantically equivalent to the original. The only difference is that all whitespace and all comments have been removed:
+
+```c
+uint64_t*foo;uint64_t*main(){foo="Hello World!    ";while(*foo!=0){write(1,foo,8);foo=foo+1;}}
+```
+
+Minification is typically used to decrease the size of source code that is sent across the Internet for the purpose of code execution rather than for reading by humans. For example, Javascript programs are often sent to browsers as minified code. To see that both versions are indeed semantically equivalent, try:
+
+
+```bash
+make whitespace
+```
+
+In fact, even the machine code and the assembly code generated for both versions are identical. The output of selfie shows that the only difference between the two versions are the number of characters in the code: 737 characters in 23 lines and 9 comments for the original and 94 characters in 1 line and 0 comments for the minified version. Only 94 characters, that is, 12.75% of the 737 characters are used in 39 actual symbols whereas 100% of the 94 characters in the minified version are used in the same symbols. One could decrease the size of the minified version even further by renaming the variable `foo` to a 1-letter identifier such as `f`. Try that! It will not change the semantics either.
+
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
 
 #### Parser
 
