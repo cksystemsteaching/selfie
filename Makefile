@@ -50,10 +50,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
+.PHONY: self self-self whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
+all: self self-self whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
 
 # Self-compile selfie
 self: selfie
@@ -64,6 +64,14 @@ self-self: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
+
+# Compile Hello World! program and identical but minified version
+whitespace: selfie
+	./selfie -c examples/hello-world.c -o examples/hello-world.m -s examples/hello-world.s \
+	         -c examples/hello-world-minified.c -o examples/hello-world-minified.m -s examples/hello-world-minified.s
+	diff -q examples/hello-world.m examples/hello-world-minified.m
+	diff -q examples/hello-world.s examples/hello-world-minified.s
+	./selfie -l examples/hello-world.m -m 1
 
 # Compile and run quine and compare its output to itself
 quine: selfie selfie.h

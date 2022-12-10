@@ -6,9 +6,9 @@ uint64_t* main() {
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
 
-  // strings are actually stored in chunks of 8 characters in memory,
-  // that is, here as "Hello Wo", and "rld!    " which allows us to
-  // print them conveniently in chunks of 8 characters at a time
+  /* strings are actually stored in chunks of 8 characters in memory,
+     that is, here as "Hello Wo", and "rld!    " which allows us to
+     print them conveniently in chunks of 8 characters at a time */
 
   // as long as there are characters print them
   while (*foo != 0) {
