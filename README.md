@@ -4128,11 +4128,11 @@ Enough of memory management for now. Our primary goal here is to understand how 
 
 #### Scanner
 
-In addition to integer, character, and string literals, C\* features in total 22 symbols:
+In addition to integer, character, and string literals, C\* features 22 symbols in total:
 
 `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `...`
 
-The `identifier` symbol represent names of variables and procedures. We see how they are handled in detail below. The remaining symbols are either 1-character or 2-character symbols. The important observation to make here is that even the entire language of C\* symbols is regular, that is, there is a single EBNF rule that specifies it. As previously mentioned, checking if the language is indeed reguler only requires gathering all symbols in an EBNF rule:
+The `identifier` symbol represents names of variables and procedures. We see how they are handled in detail below. The remaining symbols are either 1-character or 2-character symbols. The important observation to make here is that even the entire language of C\* symbols is regular, that is, there is a single EBNF rule that specifies it. As previously mentioned, checking if the language is indeed regular only requires gathering all symbols in an EBNF rule:
 
 ```ebnf
 cstar_symbols = integer | character | string | identifier | "," | ";" | "(" | ")" | "{" | "}" |
@@ -4145,9 +4145,13 @@ and then substitute all non-terminal symbols in its right-hand side with their d
 
 The scanner for all of C\* is depicted in the above figure, in particular the full finite state machine and a sketch of its implementation in the `get_symbol()` procedure. The finite state machines for integer, character, and string literals along with the finite state machine for identifiers are part of that.
 
-There is another important observation to make here. Most C\* symbols begin with  unique characters. For example, an integer literal begins with a digit, and no other symbol does. A character literal begins with a single quote, and again no other symbol does. This goes on. Only string literals begin with a double quote while only identifiers begin with a letter. The only exceptions are the assignment symbol `=` and the equality symbol `==`, and the inequality symbols `<` and `<=` as well as `>` and `>=`. But even those can all be distinguished upon a so-called *look ahead* of 1 character. Just by looking at the next character, the decision which symbol has been scanned can be made. We say that C\* symbols can be scanned with a look ahead of at most 1.
+> Look ahead!
 
-This is not a coincidence. C\* symbols and the symbols of many other programming languages have been specificially designed so that most of them can be scanned with no look ahead at all and the rest with a look ahead of 1. For example, identifiers may not begin with a digit to distinguish them from integer literals already upon seeing the first character. This makes scanning simple and fast, not just for the machine but, interestingly, also for humans reading the code. We see below that even the entire syntactic structure of C\* programs can be parsed with a look ahead of at most 1.
+There is another important observation to make here. Most C\* symbols begin with  unique characters. For example, an integer literal begins with a digit, and no other symbol does. A character literal begins with a single quote, and again no other symbol does. This goes on. Only string literals begin with a double quote while only identifiers begin with a letter. The only exceptions are the assignment symbol `=` and the equality symbol `==`, and the inequality symbols `<` and `<=` as well as `>` and `>=`. But even those can all be distinguished upon a so-called *lookahead* of 1 character. Just by looking at the next character, the decision which symbol has been scanned can be made. We say that C\* symbols can be scanned with a lookahead of at most 1.
+
+This is not a coincidence. C\* symbols and the symbols of many other programming languages have been specificially designed so that most of them can be scanned with no lookahead at all and the rest with a lookahead of 1. For example, identifiers may not begin with a digit to distinguish them from integer literals already upon seeing the first character. This makes scanning simple and fast, not just for the machine but, interestingly, also for humans reading the code. We see below that even the entire syntactic structure of C\* programs can be parsed with a lookahead of at most 1.
+
+> Whitespace
 
 One more thing before moving on to parsing literals. C\* is a programming language in which *whitespace* such as, well, the *space* character but also *carriage return*, *line feed*, and *tabulator*, has no impact on semantics, unlike Python, for example, where indentation does matter. C\* also supports single-line comments using `//` and multi-line comments using `/*` and `*/`. In other words, the C\* scanner ignores all characters to the right of `//`, in a single line, and in between `/*` and `*/`, even across multiple lines. The implementation is not trivial, see the procedure `find_next_character()` in the selfie code for all the details.
 
@@ -4201,6 +4205,17 @@ work in progress
 -------------------------------------------------------------------------------
 
 #### Parser
+
+Computer scientists often speak of *parsing* code when they actually mean reading it. Calling it parsing rather than reading does make sense because code is written in a formal language, not a natural language, whose syntax is precisely defined and can therefore be "read" by a machine.
+
+A *parser*, just like a scanner, is software that instructs a machine to check if a sequence of characters, or in fact a sequence of symbols obtained by a scanner, is in the language defined by a formal grammar. The difference between parser and scanner is that a parser typically handles grammars that are not regular. Remember pumping lemmas? Those are used to prove that a formal grammar is, for example, not regular. The situation is actually even more involved than that. There is a whole hierarchy of formal grammars in which regular grammars are arguably the simplest.
+
+Context-free grammars such as the C\* grammar are already quite a few steps higher up in that hierarchy. There is more structure to context-free grammars though. The C\* grammar, just like grammars of many other programming languages, is LL(1) which is arguably the simplest kind of context-free grammar, right above regular grammars.
+
+The first L in LL(1) stands for left...
+
+
+
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
