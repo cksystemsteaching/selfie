@@ -11,7 +11,7 @@
 # This is the Makefile of the selfie system.
 
 # Compiler flags
-CFLAGS := -Wall -Wextra -O3 -Wno-sign-compare -include "stdint.h" -include "unistd.h" -include "fcntl.h"
+CFLAGS := -Wall -Wextra -O3 -Wno-sign-compare -Wno-unused-result -include "stdint.h" -include "unistd.h" -include "fcntl.h"
 
 # Bootstrap selfie.c into selfie executable
 selfie: selfie.c
