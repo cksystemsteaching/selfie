@@ -221,11 +221,6 @@ uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 
 uint64_t* power_of_two_table;
 
-uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
-
-uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
-uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
-
 uint64_t SINGLEWORDSIZE       = 4;  // single-word size in bytes
 uint64_t SINGLEWORDSIZEINBITS = 32; // single-word size in bits
 
@@ -319,13 +314,6 @@ void init_library() {
 
     i = i + 1;
   }
-
-  // compute 64-bit unsigned integer range using signed integer arithmetic
-  UINT64_MAX = -1;
-
-  // compute 64-bit signed integer range using unsigned integer arithmetic
-  INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
-  INT64_MAX = INT64_MIN - 1;
 
   // target-dependent, see init_target()
   SIZEOFUINT     = SIZEOFUINT64;
