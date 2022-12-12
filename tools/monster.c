@@ -1837,14 +1837,14 @@ void monster(uint64_t* to_context) {
 uint64_t selfie_run_symbolically() {
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      max_execution_depth = atoi(peek_argument(0));
+      max_execution_depth = ascii_to_int(peek_argument(0));
 
       // checking for the (optional) branching limit argument
       if (number_of_remaining_arguments() > 1)
         if (string_compare(peek_argument(1), "--merge-enabled") == 0)
           if (string_compare(peek_argument(1), "--debug-merge") == 0) {
             // assert: argument is an integer representing the branching limit
-            beq_limit = atoi(peek_argument(1));
+            beq_limit = ascii_to_int(peek_argument(1));
 
             get_argument();
           }

@@ -356,7 +356,7 @@ uint64_t selfie_buzz() {
       reset_profiler();
       reset_microkernel();
 
-      init_memory(atoi(peek_argument(0)));
+      init_memory(ascii_to_int(peek_argument(0)));
 
       run = 1;
 

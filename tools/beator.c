@@ -3389,7 +3389,7 @@ uint64_t selfie_model() {
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      bad_exit_code = atoi(peek_argument(0));
+      bad_exit_code = ascii_to_int(peek_argument(0));
 
       model_arguments = 0;
 
@@ -3433,7 +3433,7 @@ uint64_t selfie_model() {
             get_argument();
 
             if (number_of_remaining_arguments() > 1) {
-              heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+              heap_allowance = round_up(ascii_to_int(peek_argument(1)), WORDSIZE);
 
               get_argument();
             } else
@@ -3444,7 +3444,7 @@ uint64_t selfie_model() {
             get_argument();
 
             if (number_of_remaining_arguments() > 1) {
-              stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+              stack_allowance = round_up(ascii_to_int(peek_argument(1)), WORDSIZE);
 
               get_argument();
             } else

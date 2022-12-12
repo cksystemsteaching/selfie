@@ -97,12 +97,6 @@ https://github.com/cksystemsteaching/selfie
 // selfie bootstraps int to uint64_t!
 void exit(int code);
 
-uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
-uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
-
-// selfie bootstraps char to uint64_t and ignores ellipsis!
-uint64_t open(char* filename, uint64_t flags, ...);
-
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
 
@@ -151,8 +145,8 @@ char*    string_shrink(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
-uint64_t atoi(char* s);
-char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
+uint64_t ascii_to_int(char* s);
+char*    int_to_ascii(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
@@ -252,12 +246,12 @@ char* filename_buffer; // buffer for opening files
 uint64_t* binary_buffer; // buffer for binary I/O
 
 // flags for opening read-only files
-// LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
-// MAC:         0 = 0x0000 = O_RDONLY (0x0000)
-// WINDOWS: 32768 = 0x8000 = _O_BINARY (0x8000) | _O_RDONLY (0x0000)
+// LINUX:       0 = 0x0000 = F_O_RDONLY (0x0000)
+// MAC:         0 = 0x0000 = F_O_RDONLY (0x0000)
+// WINDOWS: 32768 = 0x8000 = _O_BINARY (0x8000) | _F_O_RDONLY (0x0000)
 // since LINUX/MAC do not seem to mind about _O_BINARY set
 // we use the WINDOWS flags as default
-uint64_t O_RDONLY = 32768;
+uint64_t F_O_RDONLY = 32768;
 
 // flags for opening write-only files
 // LINUX: 577 = 0x0241 = O_CREAT (0x0040) | O_TRUNC (0x0200) | O_WRONLY (0x0001)
@@ -2871,7 +2865,7 @@ uint64_t string_compare(char* s, char* t) {
       return 0;
 }
 
-uint64_t atoi(char* s) {
+uint64_t ascii_to_int(char* s) {
   uint64_t i;
   uint64_t n;
   uint64_t c;
@@ -2931,7 +2925,7 @@ uint64_t atoi(char* s) {
   return n;
 }
 
-char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
+char* int_to_ascii(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
@@ -3145,12 +3139,12 @@ void print_string(char* s) {
 
 void print_unsigned_integer(uint64_t n) {
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 10, 0, 0));
+  print(int_to_ascii(n, integer_buffer, 10, 0, 0));
 }
 
 void print_integer(uint64_t n) {
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 10, 1, 0));
+  print(int_to_ascii(n, integer_buffer, 10, 1, 0));
 }
 
 void print_fractional(uint64_t n, uint64_t p) {
@@ -3166,11 +3160,11 @@ void print_fractional(uint64_t n, uint64_t p) {
   }
 
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 10, 0, 0));
+  print(int_to_ascii(n, integer_buffer, 10, 0, 0));
 }
 
 void unprint_integer(uint64_t n) {
-  n = string_length(itoa(n, integer_buffer, 10, 1, 0));
+  n = string_length(int_to_ascii(n, integer_buffer, 10, 1, 0));
 
   while (n > 0) {
     put_character(CHAR_BACKSPACE);
@@ -3181,7 +3175,7 @@ void unprint_integer(uint64_t n) {
 
 void print_hexadecimal_no_prefix(uint64_t n, uint64_t a) {
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 16, 0, a));
+  print(int_to_ascii(n, integer_buffer, 16, 0, a));
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
@@ -3190,7 +3184,7 @@ void print_hexadecimal(uint64_t n, uint64_t a) {
 
 void print_octal_no_prefix(uint64_t n, uint64_t a) {
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 8, 0, a));
+  print(int_to_ascii(n, integer_buffer, 8, 0, a));
 }
 
 void print_octal(uint64_t n, uint64_t a) {
@@ -3199,7 +3193,7 @@ void print_octal(uint64_t n, uint64_t a) {
 
 void print_binary_no_prefix(uint64_t n, uint64_t a) {
   // use print, not printf to avoid recursion
-  print(itoa(n, integer_buffer, 2, 0, a));
+  print(int_to_ascii(n, integer_buffer, 2, 0, a));
 }
 
 void print_binary(uint64_t n, uint64_t a) {
@@ -3779,7 +3773,7 @@ void get_symbol() {
 
           store_character(integer, i, 0); // null-terminated string
 
-          literal = atoi(integer);
+          literal = ascii_to_int(integer);
 
           if (integer_is_signed)
             if (literal > INT64_MIN) {
@@ -6150,7 +6144,7 @@ void emit_bootstrapping() {
 // -----------------------------------------------------------------
 
 uint64_t open_read_only(char* name) {
-  return sign_extend(open(name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  return sign_extend(open(name, F_O_RDONLY, 0), SYSCALL_BITWIDTH);
 }
 
 void selfie_compile() {
@@ -11691,7 +11685,7 @@ uint64_t selfie_run(uint64_t machine) {
   reset_profiler();
   reset_microkernel();
 
-  init_memory(atoi(peek_argument(0)));
+  init_memory(ascii_to_int(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
 
