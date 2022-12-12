@@ -16,22 +16,22 @@ uint64_t main() {
 
   // print UINT64_MAX+1 in decimal
   print("UINT64_MAX+1 in decimal:     ");
-  print_unsigned_integer(UINT64_MAX+1);
+  print_unsigned_integer(S_UINT64_MAX+1);
   println();
 
   // print UINT64_MAX+1 in hexadecimal
   print("UINT64_MAX+1 in hexadecimal: ");
-  print_hexadecimal(UINT64_MAX+1, 0);
+  print_hexadecimal(S_UINT64_MAX+1, 0);
   println();
 
   // print UINT64_MAX+1 in octal
   print("UINT64_MAX+1 in octal:       ");
-  print_octal(UINT64_MAX+1, 0);
+  print_octal(S_UINT64_MAX+1, 0);
   println();
 
   // print UINT64_MAX+1 in binary
   print("UINT64_MAX+1 in binary:      ");
-  print_binary(UINT64_MAX+1, 64);
+  print_binary(S_UINT64_MAX+1, 64);
   println();
 
   // print 0-1 in decimal
@@ -61,51 +61,51 @@ uint64_t main() {
 
   // print INT64_MAX+1 in decimal
   print("INT64_MAX+1 in decimal:      ");
-  print_integer(INT64_MAX+1);
+  print_integer(S_INT64_MAX+1);
   print(" (as signed 64-bit integer)\n");
 
   // print INT64_MAX+1 in decimal
   print("INT64_MAX+1 in decimal:      ");
-  print_unsigned_integer(INT64_MAX+1);
+  print_unsigned_integer(S_INT64_MAX+1);
   print(" (as unsigned integer)\n");
 
   // print INT64_MAX+1 in hexadecimal
   print("INT64_MAX+1 in hexadecimal:  ");
-  print_hexadecimal(INT64_MAX+1, 0);
+  print_hexadecimal(S_INT64_MAX+1, 0);
   println();
 
   // print INT64_MAX+1 in octal
   print("INT64_MAX+1 in octal:        ");
-  print_octal(INT64_MAX+1, 0);
+  print_octal(S_INT64_MAX+1, 0);
   println();
 
   // print INT64_MAX+1 in binary
   print("INT64_MAX+1 in binary:       ");
-  print_binary(INT64_MAX+1, 64);
+  print_binary(S_INT64_MAX+1, 64);
   println();
 
   // print INT64_MIN-1 in decimal
   print("INT64_MIN-1 in decimal:      ");
-  print_integer(INT64_MIN-1);
+  print_integer(S_INT64_MIN-1);
   print(" (as signed 64-bit integer)\n");
 
   // print INT64_MIN-1 in decimal
   print("INT64_MIN-1 in decimal:      ");
-  print_unsigned_integer(INT64_MIN-1);
+  print_unsigned_integer(S_INT64_MIN-1);
   print(" (as unsigned integer)\n");
 
   // print INT64_MIN-1 in hexadecimal
   print("INT64_MIN-1 in hexadecimal:  ");
-  print_hexadecimal(INT64_MIN-1, 0);
+  print_hexadecimal(S_INT64_MIN-1, 0);
   println();
 
   // print INT64_MIN-1 in octal
   print("INT64_MIN-1 in octal:        ");
-  print_octal(INT64_MIN-1, 0);
+  print_octal(S_INT64_MIN-1, 0);
   println();
 
   // print INT64_MIN-1 in binary
   print("INT64_MIN-1 in binary:       ");
-  print_binary(INT64_MIN-1, 64);
+  print_binary(S_INT64_MIN-1, 64);
   println();
 }

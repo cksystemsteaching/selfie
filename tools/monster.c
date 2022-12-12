@@ -1626,7 +1626,7 @@ uint64_t* schedule_next_symbolic_context() {
   context = symbolic_contexts;
   max_call_stack_size = 0;
   max_call_stack = (uint64_t*) 0;
-  min_pc = UINT64_MAX;
+  min_pc = S_UINT64_MAX;
   next_context = (uint64_t*) 0;
 
   // find the currently highest call stack
