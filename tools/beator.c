@@ -3027,7 +3027,7 @@ void beator(uint64_t entry_pc) {
 
     if (pc + WORDSIZE == 0)
       // check overflow to terminate loop
-      pc = UINT64_MAX;
+      pc = S_UINT64_MAX;
     else
       pc = pc + WORDSIZE;
   }
