@@ -706,6 +706,7 @@ uint64_t* compile_variable(char* variable, uint64_t type, uint64_t offset); // r
 uint64_t compile_type(); // returns type
 
 uint64_t compile_initialize(uint64_t type); // returns initial value
+uint64_t compile_cast(uint64_t type); // returns cast type
 uint64_t compile_value(); // returns value
 
 void compile_statement();
@@ -4460,6 +4461,8 @@ uint64_t* compile_variable(char* variable, uint64_t type, uint64_t offset) {
   uint64_t* entry;
 
   if (variable != (char*) 0) {
+    // lookahead of 1: identifier already parsed into variable (type may be left-factored)
+
     // global variable
     entry = search_global_symbol_table(variable, VARIABLE);
 
@@ -4519,7 +4522,6 @@ uint64_t compile_type() {
 }
 
 uint64_t compile_initialize(uint64_t type) {
-  uint64_t cast;
   uint64_t initial_value;
 
   if (symbol == SYM_ASSIGN) {
@@ -4531,12 +4533,7 @@ uint64_t compile_initialize(uint64_t type) {
     if (symbol == SYM_LPARENTHESIS) {
       get_symbol();
 
-      cast = compile_type();
-
-      if (type != cast)
-        type_warning(type, cast);
-
-      get_expected_symbol(SYM_RPARENTHESIS);
+      compile_cast(type);
     } else if (type != UINT64_T)
       type_warning(type, UINT64_T);
 
@@ -4561,6 +4558,22 @@ uint64_t compile_initialize(uint64_t type) {
     return 0;
 
   // initial value is grammar attribute
+}
+
+uint64_t compile_cast(uint64_t type) {
+  uint64_t cast;
+
+  // lookahead of 1: "(" already parsed
+
+  cast = compile_type();
+
+  if (type != UNDECLARED_T)
+    if (type != cast)
+      type_warning(type, cast);
+
+  get_expected_symbol(SYM_RPARENTHESIS);
+
+  return cast;
 }
 
 uint64_t compile_value() {
@@ -4604,8 +4617,6 @@ void compile_statement() {
       compile_assignment(variable_or_procedure);
     else {
       // procedure call: identifier "(" ... ")"
-      get_symbol();
-
       compile_call(variable_or_procedure);
 
       // reset return register to initial return value
@@ -5055,12 +5066,10 @@ uint64_t compile_factor() {
   if (symbol == SYM_LPARENTHESIS) {
     get_symbol();
 
-    if (is_type()) {
+    if (is_type())
       // cast: "(" "uint64_t" [ "*" ] ")"
-      cast = compile_type();
-
-      get_expected_symbol(SYM_RPARENTHESIS);
-    } else {
+      cast = compile_cast(UNDECLARED_T);
+    else {
       // not a cast but: "(" expression ")"
       type = compile_expression();
 
@@ -5103,8 +5112,6 @@ uint64_t compile_factor() {
       type = load_variable(variable_or_procedure);
     else {
       // procedure call: identifier "(" ... ")"
-      get_symbol();
-
       type = compile_call(variable_or_procedure);
 
       talloc();
@@ -5474,7 +5481,7 @@ void compile_procedure(char* procedure, uint64_t type) {
   uint64_t* entry;
   uint64_t number_of_local_variable_bytes;
 
-  // assert: identifier has already been parsed
+  // lookahead of 1: identifier already parsed into procedure (type may be left-factored)
 
   local_symbol_table = (uint64_t*) 0;
 
@@ -5737,7 +5744,9 @@ uint64_t compile_call(char* procedure) {
   uint64_t number_of_formal_parameters;
   uint64_t type;
 
-  // assert: identifier "(" has already been parsed
+  // lookahead of 1: identifier already parsed into procedure
+
+  get_symbol();
 
   entry = search_symbol_table(library_symbol_table, procedure, MACRO);
 
