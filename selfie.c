@@ -221,7 +221,7 @@ uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
 
 uint64_t* power_of_two_table;
 
-uint64_t S_US_INT64_MAX; // maximum numerical value of an unsigned 64-bit integer
+uint64_t S_UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
 uint64_t S_INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t S_INT64_MIN; // minimum numerical value of a signed 64-bit integer
@@ -321,7 +321,7 @@ void init_library() {
   }
 
   // compute 64-bit unsigned integer range using signed integer arithmetic
-  S_US_INT64_MAX = -1;
+  S_UINT64_MAX = -1;
 
   // compute 64-bit signed integer range using unsigned integer arithmetic
   S_INT64_MIN = two_to_the_power_of(SIZEOFUINT64INBITS - 1);
@@ -329,7 +329,7 @@ void init_library() {
 
   // target-dependent, see init_target()
   SIZEOFUINT     = SIZEOFUINT64;
-  UINT_MAX       = S_US_INT64_MAX;
+  UINT_MAX       = S_UINT64_MAX;
   WORDSIZE       = SIZEOFUINT64;
   WORDSIZEINBITS = WORDSIZE * 8;
 
@@ -2530,7 +2530,7 @@ void init_target() {
   if (IS64BITTARGET) {
     if (IS64BITSYSTEM) {
       SIZEOFUINT = SIZEOFUINT64;
-      UINT_MAX   = S_US_INT64_MAX;
+      UINT_MAX   = S_UINT64_MAX;
 
       WORDSIZE       = SIZEOFUINT64;
       WORDSIZEINBITS = WORDSIZE * 8;
@@ -2556,7 +2556,7 @@ void init_target() {
       WORDSIZE = SINGLEWORDSIZE;
     } else {
       SIZEOFUINT = SIZEOFUINT64;
-      UINT_MAX   = S_US_INT64_MAX;
+      UINT_MAX   = S_UINT64_MAX;
 
       WORDSIZE = SIZEOFUINT64;
     }
@@ -2668,7 +2668,7 @@ uint64_t signed_less_than(uint64_t a, uint64_t b) {
   // S_INT64_MIN <= n <= S_INT64_MAX iff
   // S_INT64_MIN + S_INT64_MIN <= n + S_INT64_MIN <= S_INT64_MAX + S_INT64_MIN iff
   // -2^64 <= n + S_INT64_MIN <= 2^64 - 1 (sign-extended to 65 bits) iff
-  // 0 <= n + S_INT64_MIN <= S_US_INT64_MAX
+  // 0 <= n + S_INT64_MIN <= S_UINT64_MAX
   return a + S_INT64_MIN < b + S_INT64_MIN;
 }
 
@@ -6352,7 +6352,7 @@ uint64_t is_temporary_register(uint64_t reg) {
 void read_register_wrap(uint64_t reg, uint64_t wrap) {
   if (*(writes_per_register + reg) > 0) {
     // register has been written to before
-    if (*(reads_per_register + reg) < S_US_INT64_MAX)
+    if (*(reads_per_register + reg) < S_UINT64_MAX)
       *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
 
     // tolerate unwrapped values in register-to-register transfers
@@ -6387,7 +6387,7 @@ void write_register_wrap(uint64_t reg, uint64_t wrap) {
     if (*(registers + REG_SP) < stack_peak)
       stack_peak = *(registers + REG_SP);
 
-  if (*(writes_per_register + reg) < S_US_INT64_MAX)
+  if (*(writes_per_register + reg) < S_UINT64_MAX)
     *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
@@ -10486,7 +10486,7 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
   uint64_t i;
   uint64_t c;
 
-  a = S_US_INT64_MAX;
+  a = S_UINT64_MAX;
 
   n = 0;
   i = 0;
@@ -10505,10 +10505,10 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
     i = i + 1;
   }
 
-  if (a != S_US_INT64_MAX)
+  if (a != S_UINT64_MAX)
     return a * INSTRUCTIONSIZE;
   else
-    return S_US_INT64_MAX;
+    return S_UINT64_MAX;
 }
 
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max) {
@@ -10517,7 +10517,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
   a = instruction_with_max_counter(counters, max);
 
-  if (a != S_US_INT64_MAX) {
+  if (a != S_UINT64_MAX) {
     c = *(counters + a / INSTRUCTIONSIZE);
 
     // CAUTION: we reset counter to avoid reporting it again
@@ -10539,7 +10539,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
   printf("%s: %s%lu", selfie_name, message, total);
-  print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, S_US_INT64_MAX)));
+  print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, S_UINT64_MAX)));
   println();
 }
 
@@ -11476,9 +11476,9 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
 
   mslice = TIMESLICE;
 
-  if (mslice <= S_US_INT64_MAX / 100)
+  if (mslice <= S_UINT64_MAX / 100)
     mslice = mslice * mix / 100;
-  else if (mslice <= S_US_INT64_MAX / 10)
+  else if (mslice <= S_UINT64_MAX / 10)
     mslice = mslice / 10 * (mix / 10);
   else
     mslice = mslice / 100 * mix;
