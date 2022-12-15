@@ -4234,7 +4234,7 @@ Parser generators are fine for parsing formal languages with complex grammars. B
 
 In the implementation of the C\* scanner we have already seen that the EBNF operator `|` for choice and `{ }` for repetition are implemented by an `if` statement and a `while` loop, respectively. The grammar of C\* symbols does not use the EBNF operator `[ ]` for optionality but the C\* grammar does. Its implementation is done by an `if` statement as we see below. In fact, here is the full C\* grammar:
 
-```
+```ebnf
 cstar      = { variable [ initialize ] ";" | procedure } .
 
 variable   = type identifier .
@@ -4283,9 +4283,33 @@ The non-terminal symbol `cstar` in the left-hand side of the first rule is calle
 
 Recursive-descent parsers use recursion to descent *top down* into the grammar beginning with the EBNF rule containing the start symbol. Recursion terminates whenever a terminal symbol is encountered. Parsers for languages other than LL(1) often work *bottom up* which is a technique that allows parsing syntactically more complex languages such as LR(1) and others.
 
+Enough of parsing in principle. Let us dive into parsing actual C\* literals. To do that we need to find the definition and use of literals in the C\* grammar. A `literal` is a `value` or a `string`:
+
+```ebnf
+literal = value | string .
+```
+
+We have seen the definition of `string` before. So a `value` is:
+
+```ebnf
+value = integer | character .
+```
+
+Here you have it. A `literal` is indeed either an `integer`, a `character`, or a `string` literal. The respective parsing procedures are `compile_literal()` and `compile_value()`.
+
+A careful check reveals that literals are only used in one place in the C\* grammar:
+
+```ebnf
+factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+```
+
+The procedure for parsing a `factor` is `compile_factor()`. See how simple this is?
+
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
-link to grammar
+The above figure shows the specification of literals in EBNF and the implementation of parsing literals in C\* as well as the machine state after parsing our running example of the integer literal `85`, the character literal `'H'`, and the string literals `"Hello World!"`.
+
+Consider the procedure `compile_factor()` first...
 
 #### Code Generation
 
