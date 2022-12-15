@@ -4316,7 +4316,7 @@ There is an important new element in the figure compared to the figures on scann
 1. *Compile time* refers to the time of compiling source code.
 2. *Runtime* refers to the time of executing compiled machine code.
 
-Compile time includes the time when source code is not just compiled but developed. Runtime is really just the time when compiled machine code is executed. Anything to the left of the vertical black bar happens at compile time. Anything to the right happens at runtime. In the figures below the right part shows the machine state when executing the compiled machine code.
+Compile time includes the time when source code is not just compiled but developed. Runtime is really just the time when compiled machine code is executed. Anything to the left of the vertical black bar happens at compile time, that is, compilation of C\* code to RISC-U machine code by the starc compiler of selfie. Anything to the right happens at runtime. In the figures below the right part is populated with the initial machine state for executing the compiled RISC-U machine code.
 
 Keeping the two timelines strictly separate from each other in your mind is important but not always easy. Some students struggle with this. One reason might be that compile time is also runtime but for the compiled machine code of the compiler, not the machine code compiled by the compiler. Read that again! We therefore try to distinguish both timelines as much as possible.
 
@@ -4328,9 +4328,17 @@ Consider the procedure `compile_factor()`. The first `while` loop does something
 
 The problem is that upon the occurrence of a syntax error, we need to make assumptions on the chances of finding a spot in the sequence of symbols that is syntactically correct. A simple solution is to partition the set of symbols into *weak* and *strong* symbols. A weak symbol is a symbol that programmers tend to forget such as a right parenthesis or a semicolon. A strong symbol is the opposite of a weak symbol such as a left parenthesis or a `while` keyword. Whenever a weak symbol is missing, the compiler reports that but then simply assumes it was there and continues parsing. But what if a symbol is missing that is needed to decide how to proceed? In that case, the compiler keeps scanning symbols, reporting each as syntax error, until it finds a strong symbol and then resumes parsing. The first `while` loop in `compile_factor()` does exactly that. It looks for a symbol that a `factor` may start with, considering those as strong. There are other procedures in the parser that do something similar using `while` loops, we point them out below. Yet note that if the parsed sequence of symbols is syntactically correct those `while` loops are never entered.
 
-> Optional symbols
+> Optionality in EBNF
 
+The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` part for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor()`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics is handled after parsing the rest of a `factor`. We discuss what is done for dashes and asterisks when it comes to parsing expressions.
 
+> Typing
+
+Casting we can handle here but it does require a little excursion to typing.
+
+> Casting
+
+> Grammar attributes
 
 #### Code Generation
 
@@ -4353,6 +4361,10 @@ The C\* grammar is LL(1) with 6 keywords and 22 symbols.
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
 ### Expressions
+
+unary operators in factor: cast, -, *
+
+cast versus expression: lookahead of 1
 
 ![Expressions](figures/expressions.png "Expressions")
 
