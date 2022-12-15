@@ -4405,6 +4405,7 @@ void compile_cstar() {
   uint64_t* entry;
 
   while (symbol != SYM_EOF) {
+    // synchronizing on strong symbols in case of syntax errors
     while (is_neither_type_nor_void()) {
       syntax_error_unexpected_symbol();
 
@@ -4599,6 +4600,7 @@ void compile_statement() {
 
   // assert: allocated_temporaries == 0
 
+  // synchronizing on strong symbols in case of syntax errors
   while (is_not_statement()) {
     syntax_error_unexpected_symbol();
 
@@ -5058,6 +5060,7 @@ uint64_t compile_factor() {
 
   // assert: n = allocated_temporaries
 
+  // synchronizing on strong symbols in case of syntax errors
   while (is_not_factor()) {
     syntax_error_unexpected_symbol();
 
