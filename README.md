@@ -4307,7 +4307,7 @@ The procedure for parsing a `factor` is `compile_factor()`. See how beautiful th
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
-The above figure shows the specification of literals in EBNF and the implementation of parsing literals in C\* as well as the machine state after parsing our running example of the integer literal `85`, the character literal `'H'`, and the string literals `"Hello World!"`.
+The above figure shows the specification of literals in EBNF and the implementation of parsing literals in C\* as well as the machine state after parsing our running example of the integer literal `85`, the character literal `'H'`, and the string literal `"Hello World!"`.
 
 > Again, compile time versus runtime
 
