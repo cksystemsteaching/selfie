@@ -4303,11 +4303,22 @@ A careful check reveals that literals are only used in one place in the C\* gram
 factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-The procedure for parsing a `factor` is `compile_factor()`. See how simple this is?
+The procedure for parsing a `factor` is `compile_factor()`. See how beautiful this is?
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
 The above figure shows the specification of literals in EBNF and the implementation of parsing literals in C\* as well as the machine state after parsing our running example of the integer literal `85`, the character literal `'H'`, and the string literals `"Hello World!"`.
+
+> Again, compile time versus runtime
+
+There is an important new element in the figure compared to the figures on scanning literals. We explicitly distinguish the two *timelines* that we discussed before:
+
+1. *Compile time* refers to the time of compiling source code.
+2. *Runtime* refers to the time of executing compiled machine code.
+
+Compile time includes the time when source code is not just compiled but developed. Runtime is really just the time when compiled machine code is executed. Anything to the left of the vertical black bar happens at compile time. Anything to the right happens at runtime. In the figures below the right part shows the machine state when executing the compiled machine code.
+
+Keeping the two timelines strictly separate from each other in your mind is important but not always easy. Some students struggle with this. One reason might be that compile time is also runtime but for the compiled machine code of the compiler, not the machine code compiled by the compiler. Read that again! We therefore try to distinguish both timelines as much as possible.
 
 Consider the procedure `compile_factor()` first...
 
