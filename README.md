@@ -4332,13 +4332,39 @@ The problem is that upon the occurrence of a syntax error, we need to make assum
 
 The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` part for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor()`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics is handled after parsing the rest of a `factor`. We discuss what is done for dashes and asterisks when it comes to parsing expressions.
 
-> Typing
+> Typing and casting
 
-Casting we can handle here but it does require a little excursion to typing.
+Casting we can handle here but it does require a little excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
 
-> Casting
+In C\* variables and procedure arguments as well as literals and expressions are all *typed*, that is, have a type which can only be one of the two C\* data types. Casting allows changing types without changing values, here from one type to the other type. That's all. For example, integer literals such as `85` are of type `uint64_t` in C\* which we can nevertheless change to `uint64_t*` through casting:
+
+```
+(uint64_t*) 85
+```
+
+Another example are string literals such as `"Hello World!" which are of type `uint64_t*` in C\* which we could change to `uint64_t` through casting:
+
+```
+(uint64_t) "Hello World!"
+```
+
+Interestingly, integer literals such as `85` are of type `int` in standard C, not `uint64_t` as in C\*, which means that strictly speaking C\* is not quite a subset of C. Moreover, character literals such as `'H'` also are of type `uint64_t` in C\*, unlike in standard C, where they are of type `char`, similar to string literals which are of type *array* of `char` in standard C. Supporting `int` and `char` in C\*, and even array of `char`, is possible but not without adding significant complexity to selfie. The difference between C\* and C in terms of literal typing does have an effect on semantics which we explain when dealing with arithmetic expressions.
+
+> Data types
+
+Alright, but what is a data type anyway? A *data type* essentially specifies, often just by name, two properties of data: the *size* of data in number of bits and the *layout* and *interpretation* of those bits in memory. Sometimes size and layout may be variable, but not in C\*. Values of type `uint64_t` and `uint64_t*` even have the same fixed size of 64 bits in C\*, they just differ in interpretation. This means that casting one type to the other in C\* can be done without loss of information, it only changes what those 64 bits are supposed to mean. Just casting would already become a lot more complex if C\* featured data types of different size such as `int` and `char` which both involve fewer than 64 bits.
+
+> Abstract semantics
+
+Data types are arguably the most successful innovation in programming languages for reducing the number of bugs in software. Conceptually, data types are situated somewhere between syntax and semantics of programming languages, and compile time and runtime. Data types provide the meaning of data or, more precisely, an abstract meaning of data, often just by name, without actually implementing the concrete meaning. Code is still needed to do that.
+
+> Type error
+
+Data types induce a notion of *type error*, similar to a syntax error, but indicating a possible lack of meaning rather than a purely syntactic problem. The advantage is that code can be efficiently checked for type errors even at compile time, that is, for certain kinds of errors in meaning even before executing the code. For example, the selfie compiler reports an error when trying to perform addition of two operands that are both of type `uint64_t*`, assuming that adding a pointer to another pointer is meaningless.
 
 > Grammar attributes
+
+
 
 #### Code Generation
 
