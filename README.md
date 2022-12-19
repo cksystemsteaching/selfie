@@ -4368,11 +4368,15 @@ What about using data types not just *analytically* for finding semantical error
 
 > Grammar attributes
 
-Let us go back to the code of the `compile_factor()` procedure. Also, consider the code of the procedure `compile_literal()` as well, which is called by `compile_factor()` upon parsing C\* literals. The interaction between the two procedures shows how we handle type information. The challenge is to communicate the type of a symbol such as a `literal` to other procedures involved in parsing. We do that by turning the type into a *grammar attribute* which is then passed around as return value of the procedures of the recursive-descent parser.
+Let us go back to the code of the `compile_factor()` procedure. Also, consider the code of the procedure `compile_literal()` as well, which is called by `compile_factor()` upon parsing C\* literals. The interaction between the two procedures shows how we handle type information. The challenge is to communicate the type of a symbol such as the type of a `literal` to other procedures involved in parsing. We do that by turning the type into a *grammar attribute* which is then passed around as return value of the procedures of the recursive-descent parser.
 
-For example, `compute_literal()` determines the type of integer and character literals to be `UINT64_T` which is a global variable initialized to a value that uniquely identifies the type `uint64_t`. Similarly, `compute_literal()` determines the type of string literals to be `UINT64STAR_T` which is another global variable initialized to a different value than `UINT64_T` that uniquely identifies the type `uint64_t*`. The type is then returned to `compile_factor()` which in turn may cast it to another type or just keep it as is and return it to its caller and so on. Note that the procedures `compile_value()` and `compile_cast()` are simple. Look them up in selfie's source code to find out more.
+For example, `compute_literal()` determines the type of integer and character literals to be `UINT64_T` which is a global variable initialized to a value that uniquely identifies the type `uint64_t`. Similarly, `compute_literal()` determines the type of string literals to be `UINT64STAR_T` which is another global variable initialized to a different value than `UINT64_T` that uniquely identifies the type `uint64_t*`. The type is then returned to `compile_factor()` as grammar attribute which in turn may cast it to another type or just keep it as is and return it to its caller as grammar attribute and so on. We ignore the code for handling syntax errors in `compile_literal()` and do not show the code of the procedure `compile_cast()` either. It is simple code that obviously parses `cast` and then returns the type to which the `cast` casts as grammar attribute. For more details see selfie's source code.
+
+We do, however, show the code of the procedure `compile_value()` which parses integer and character literals and is thus also quite simple but demonstrates a different use case for grammar attributes. This procedure does not return a type but instead returns the value represented by the parsed literal as stored in the global variable `literal`. Values as grammar attributes can be used to perform simple code optimizations such as *constant folding*. We explain how that works in principle below.
 
 #### Code Generation
+
+load_X procedures
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
