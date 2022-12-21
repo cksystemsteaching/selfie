@@ -4376,9 +4376,11 @@ work in progress
 
 #### Code Generation
 
-load_X procedures
+We made it all the way to the last step of implementing literals. Code generation produces an implementation of high-level programming language constructs in machine code, including constructs as simple as literals. But what is really their meaning? The challenge, besides implementing semantics through code generation, is to figure out what semantics we actually want. We need to be absolutely certain about that. This is easy with literals but not so much with other constructs.
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
+
+load_X procedures
 
 string literals: implicit static memory allocation
 
