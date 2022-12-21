@@ -732,9 +732,9 @@ uint64_t compile_arithmetic(); // returns type
 uint64_t compile_term();       // returns type
 uint64_t compile_factor();     // returns type
 
-void     load_small_and_medium_integer(uint64_t reg, uint64_t value);
+void     load_small_and_medium_integer(uint64_t reg, uint64_t offset, uint64_t value);
 uint64_t load_big_integer(char* big_integer);
-void     load_integer(uint64_t value);
+void     load_integer(uint64_t offset, uint64_t value);
 void     load_string(char* string);
 
 uint64_t compile_literal(); // returns type
@@ -5174,13 +5174,13 @@ uint64_t compile_factor() {
     return type;
 }
 
-void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
+void load_small_and_medium_integer(uint64_t reg, uint64_t offset, uint64_t value) {
   // assert: -2^31 <= value < 2^31
 
   if (is_signed_integer(value, 12))
     // integers with -2^11 <= value < 2^11
     // are loaded with one addi into a register
-    emit_addi(reg, REG_ZR, value);
+    emit_addi(reg, offset, value);
   else {
     // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
     // are loaded with one lui and one addi into a register plus
@@ -5188,6 +5188,9 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
     value = load_upper_value(reg, value);
 
     emit_addi(reg, reg, value);
+
+    if (offset != REG_ZR)
+      emit_add(reg, offset, reg);
   }
 }
 
@@ -5204,7 +5207,7 @@ uint64_t load_big_integer(char* big_integer) {
     // assert: allocated_temporaries == n + 1
 }
 
-void load_integer(uint64_t value) {
+void load_integer(uint64_t offset, uint64_t value) {
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
@@ -5213,7 +5216,7 @@ void load_integer(uint64_t value) {
     // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
-    load_small_and_medium_integer(current_temporary(), value);
+    load_small_and_medium_integer(current_temporary(), offset, value);
   } else {
     // integers with value < -2^31 or value >= 2^31 are stored in data segment
     entry = search_global_symbol_table(integer, BIGINT);
@@ -5227,6 +5230,8 @@ void load_integer(uint64_t value) {
     }
 
     load_big_integer(integer);
+
+    // assert: offset == REG_ZR
   }
 
   // assert: allocated_temporaries == n + 1
@@ -5245,9 +5250,8 @@ void load_string(char* string) {
   create_symbol_table_entry(GLOBAL_TABLE, string,
     line_number, STRING, UINT64STAR_T, 0, -data_size);
 
-  load_integer(-data_size);
-
-  emit_add(current_temporary(), REG_GP, current_temporary());
+  // load string address
+  load_integer(REG_GP, -data_size);
 
   // assert: allocated_temporaries == n + 1
 }
@@ -5256,7 +5260,7 @@ uint64_t compile_literal() {
   // assert: allocated_temporaries == 0
 
   if (is_value()) {
-    load_integer(compile_value());
+    load_integer(REG_ZR, compile_value());
 
     // assert: allocated_temporaries == 1
 
@@ -5273,7 +5277,7 @@ uint64_t compile_literal() {
     syntax_error_unexpected_symbol();
 
     // we must allocate an additional temporary
-    load_integer(0);
+    load_integer(REG_ZR, 0);
 
     // assert: allocated_temporaries == 1
 
@@ -5888,13 +5892,12 @@ void compile_return() {
 
 void macro_var_start() {
   uint64_t* var_list_variable;
-  uint64_t s0_offset;
 
   var_list_variable = (uint64_t*) 0;
-  s0_offset         = 0;
 
+  // #non-variadic parameters == - get_value(current_procedure)
   if (signed_less_than(get_value(current_procedure), 0) == 0)
-    syntax_error_message("'var_start' used in procedure with non-variadic parameters");
+    syntax_error_message("'var_start' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
     var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
@@ -5905,14 +5908,10 @@ void macro_var_start() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
-        // skip the return address, frame pointer and non-variadic parameters
-        s0_offset = 2 * WORDSIZE - get_value(current_procedure) * WORDSIZE;
-
-        load_integer(s0_offset);
-
         // address of first variadic parameter is:
         // S0 + 2 * WORDSIZE + #non-variadic parameters * WORDSIZE
-        emit_add(current_temporary(), current_temporary(), REG_S0);
+        // skip the return address and frame pointer as well as non-variadic parameters
+        load_integer(REG_S0, 2 * WORDSIZE - get_value(current_procedure) * WORDSIZE);
 
         // store address in variable passed as macro argument
         emit_store(REG_S0, get_address(var_list_variable), current_temporary());
@@ -5977,7 +5976,7 @@ void macro_var_arg() {
 // RISC-V va_end does nothing and is only implemented for parity with standard C
 void macro_var_end() {
   if (signed_less_than(get_value(current_procedure), 0) == 0)
-    syntax_error_message("'var_end' used in procedure with non-variadic parameters");
+    syntax_error_message("'var_end' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
@@ -6069,7 +6068,7 @@ void emit_bootstrapping() {
     if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
       // assert: generates no more than two instructions and
       // no data segment allocations in load_integer for gp_value
-      load_integer(gp_value);
+      load_integer(REG_ZR, gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
 
@@ -8634,7 +8633,7 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
   // assert: emitting no more than 3 instructions
 
   // load data segment size into A0 (size is independent of entry point)
-  load_small_and_medium_integer(REG_A0, data_size);
+  load_small_and_medium_integer(REG_A0, REG_ZR, data_size);
 
   // discount NOPs in profile that were generated for fetch_data_segment_size
   ic_addi = ic_addi - (code_size - fetch_dss_code_location) / INSTRUCTIONSIZE;
