@@ -4198,12 +4198,6 @@ make whitespace
 
 In fact, even the machine code and the assembly code generated for both versions are identical. The output of selfie shows that the only difference between the two versions are the number of characters in the code: 737 characters in 23 lines and 9 comments for the original and 94 characters in 1 line and 0 comments for the minified version. Only 94 characters, that is, 12.75% of the 737 characters are used in 39 actual symbols whereas 100% of the 94 characters in the minified version are used in the same symbols. One could decrease the size of the minified version even further by renaming the variable `foo` to a 1-letter identifier such as `f`. Try that! It will not change the semantics either.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 #### Parser
 
 Computer scientists often speak of *parsing* code when they actually mean reading it. Calling it parsing rather than reading does make sense because code is written in a formal language, not a natural language, whose syntax is precisely defined and can therefore be "read" by a machine.
@@ -4374,6 +4368,12 @@ For example, `compute_literal()` determines the type of integer and character li
 
 We do, however, show the code of the procedure `compile_value()` which parses integer and character literals and is thus also quite simple but demonstrates a different use case for grammar attributes. This procedure does not return a type but instead returns the value represented by the parsed literal as stored in the global variable `literal`. Values as grammar attributes can be used to perform simple code optimizations such as *constant folding*. We explain how that works in principle below.
 
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
+
 #### Code Generation
 
 load_X procedures
@@ -4396,13 +4396,29 @@ The C\* grammar is LL(1) with 6 keywords and 22 symbols.
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
+variable versus call: lookahead of 1
+
+variable declarations and definitions
+
+find next strong symbol: type or void
+
+variable vs procedure: lookahead of 1
+
 ### Expressions
+
+type polymorphism
 
 unary operators in factor: cast, -, *
 
 cast versus expression: lookahead of 1
 
 ![Expressions](figures/expressions.png "Expressions")
+
+constant folding
+
+### Statements
+
+find next strong symbol: keyword etc.
 
 ### Assignments
 
