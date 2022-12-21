@@ -732,9 +732,9 @@ uint64_t compile_arithmetic(); // returns type
 uint64_t compile_term();       // returns type
 uint64_t compile_factor();     // returns type
 
-void     load_small_and_medium_integer(uint64_t reg, uint64_t offset, uint64_t value);
+void     load_small_and_medium_integer(uint64_t reg, uint64_t value);
 uint64_t load_big_integer(char* big_integer);
-void     load_integer(uint64_t offset, uint64_t value);
+void     load_integer(uint64_t value);
 void     load_string(char* string);
 
 uint64_t compile_literal(); // returns type
@@ -5174,13 +5174,13 @@ uint64_t compile_factor() {
     return type;
 }
 
-void load_small_and_medium_integer(uint64_t reg, uint64_t offset, uint64_t value) {
+void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   // assert: -2^31 <= value < 2^31
 
   if (is_signed_integer(value, 12))
     // integers with -2^11 <= value < 2^11
     // are loaded with one addi into a register
-    emit_addi(reg, offset, value);
+    emit_addi(reg, REG_ZR, value);
   else {
     // integers with -2^31 <= value < -2^11 and 2^11 <= value < 2^31
     // are loaded with one lui and one addi into a register plus
@@ -5188,9 +5188,6 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t offset, uint64_t value
     value = load_upper_value(reg, value);
 
     emit_addi(reg, reg, value);
-
-    if (offset != REG_ZR)
-      emit_add(reg, offset, reg);
   }
 }
 
@@ -5207,7 +5204,7 @@ uint64_t load_big_integer(char* big_integer) {
     // assert: allocated_temporaries == n + 1
 }
 
-void load_integer(uint64_t offset, uint64_t value) {
+void load_integer(uint64_t value) {
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
@@ -5216,7 +5213,7 @@ void load_integer(uint64_t offset, uint64_t value) {
     // integers with -2^31 <= value < 2^31 are loaded as immediate values
     talloc();
 
-    load_small_and_medium_integer(current_temporary(), offset, value);
+    load_small_and_medium_integer(current_temporary(), value);
   } else {
     // integers with value < -2^31 or value >= 2^31 are stored in data segment
     entry = search_global_symbol_table(integer, BIGINT);
@@ -5230,8 +5227,6 @@ void load_integer(uint64_t offset, uint64_t value) {
     }
 
     load_big_integer(integer);
-
-    // assert: offset == REG_ZR
   }
 
   // assert: allocated_temporaries == n + 1
@@ -5250,8 +5245,9 @@ void load_string(char* string) {
   create_symbol_table_entry(GLOBAL_TABLE, string,
     line_number, STRING, UINT64STAR_T, 0, -data_size);
 
-  // load string address
-  load_integer(REG_GP, -data_size);
+  load_integer(-data_size);
+
+  emit_add(current_temporary(), REG_GP, current_temporary());
 
   // assert: allocated_temporaries == n + 1
 }
@@ -5260,7 +5256,7 @@ uint64_t compile_literal() {
   // assert: allocated_temporaries == 0
 
   if (is_value()) {
-    load_integer(REG_ZR, compile_value());
+    load_integer(compile_value());
 
     // assert: allocated_temporaries == 1
 
@@ -5277,7 +5273,7 @@ uint64_t compile_literal() {
     syntax_error_unexpected_symbol();
 
     // we must allocate an additional temporary
-    load_integer(REG_ZR, 0);
+    load_integer(0);
 
     // assert: allocated_temporaries == 1
 
@@ -5908,10 +5904,12 @@ void macro_var_start() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
+        // skip the return address and frame pointer as well as non-variadic parameters
+        load_integer(2 * WORDSIZE - get_value(current_procedure) * WORDSIZE);
+
         // address of first variadic parameter is:
         // S0 + 2 * WORDSIZE + #non-variadic parameters * WORDSIZE
-        // skip the return address and frame pointer as well as non-variadic parameters
-        load_integer(REG_S0, 2 * WORDSIZE - get_value(current_procedure) * WORDSIZE);
+        emit_add(current_temporary(), REG_S0, current_temporary());
 
         // store address in variable passed as macro argument
         emit_store(REG_S0, get_address(var_list_variable), current_temporary());
@@ -6068,7 +6066,7 @@ void emit_bootstrapping() {
     if (gp_value < two_to_the_power_of(31) - two_to_the_power_of(11))
       // assert: generates no more than two instructions and
       // no data segment allocations in load_integer for gp_value
-      load_integer(REG_ZR, gp_value);
+      load_integer(gp_value);
     else {
       syntax_error_message("maximum program break exceeded");
 
@@ -8633,7 +8631,7 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
   // assert: emitting no more than 3 instructions
 
   // load data segment size into A0 (size is independent of entry point)
-  load_small_and_medium_integer(REG_A0, REG_ZR, data_size);
+  load_small_and_medium_integer(REG_A0, data_size);
 
   // discount NOPs in profile that were generated for fetch_data_segment_size
   ic_addi = ic_addi - (code_size - fetch_dss_code_location) / INSTRUCTIONSIZE;
