@@ -4376,7 +4376,13 @@ work in progress
 
 #### Code Generation
 
-We made it all the way to the last step of implementing literals. Code generation produces an implementation of high-level programming language constructs in machine code, including constructs as simple as literals. But what is really their meaning? The challenge, besides implementing semantics through code generation, is to figure out what semantics we actually want. We need to be absolutely certain about that. This is easy with literals but not so much with other constructs.
+We made it all the way to the last step of implementing literals. Code generation produces an implementation of high-level programming language constructs in machine code, including constructs as simple as literals. But what is really the meaning of literals? The challenge, besides implementing semantics through code generation, is to figure out what semantics we actually want. We need to be absolutely certain about that. This is relatively easy with literals but not so much with other constructs. It took computer scientists many years to figure out and agree on which semantics basic programming language constructs should have.
+
+Integer and character literals are easy to figure out. An integer literal as well as a character literal, through its ASCII code, both represent a numerical value. But a string literal is already more complex. It represents, as its value, a pointer to the memory address where the string actually starts in main memory plus the actual string itself as stored in main memory.
+
+Sounds like we also need to know how the target machine works and what machine code can do for us. Recall that all computation happens on the CPU in registers. Code and data is all stored in main memory. Data is loaded into CPU registers from memory, then manipulated in CPU registers, and finally stored from CPU registers back into memory. Since all data manipulation happens in registers, we need to generate code for literals that loads their values into registers.
+
+> Register allocation
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
@@ -4384,7 +4390,7 @@ load_X procedures
 
 string literals: implicit static memory allocation
 
-register allocation, symbol table
+symbol table
 
 everything introduced but fixup chains
 
