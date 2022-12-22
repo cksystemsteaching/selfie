@@ -732,10 +732,11 @@ uint64_t compile_arithmetic(); // returns type
 uint64_t compile_term();       // returns type
 uint64_t compile_factor();     // returns type
 
-void     load_small_and_medium_integer(uint64_t reg, uint64_t value);
-uint64_t load_big_integer(char* big_integer);
-void     load_integer(uint64_t value);
-void     load_string(char* string);
+void load_small_and_medium_integer(uint64_t reg, uint64_t value);
+void load_big_integer(uint64_t value);
+void load_integer(uint64_t value);
+void load_address(uint64_t* entry);
+void load_string();
 
 uint64_t compile_literal(); // returns type
 
@@ -3717,7 +3718,11 @@ void get_symbol() {
   uint64_t i;
 
   // reset previously scanned symbol
-  symbol = SYM_EOF;
+  symbol     = SYM_EOF;
+  identifier = (char*) 0;
+  integer    = (char*) 0;
+  literal    = 0;
+  string     = (char*) 0;
 
   if (find_next_character() != CHAR_EOF) {
     if (symbol != SYM_DIVISION) {
@@ -3793,8 +3798,6 @@ void get_symbol() {
         symbol = SYM_INTEGER;
       } else if (character == CHAR_SINGLEQUOTE) {
         get_character();
-
-        literal = 0;
 
         if (character == CHAR_EOF) {
           syntax_error_message("reached end of file looking for a character literal");
@@ -4584,15 +4587,19 @@ uint64_t compile_cast(uint64_t type) {
 }
 
 uint64_t compile_value() {
-  if (is_value())
+  uint64_t value;
+
+  if (is_value()) {
+    value = literal;
+
     get_symbol();
-  else {
+
+    return value;
+  } else {
     syntax_error_unexpected_symbol();
 
     return 0;
   }
-
-  return literal;
 }
 
 void compile_statement() {
@@ -5191,22 +5198,27 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   }
 }
 
-uint64_t load_big_integer(char* big_integer) {
+void load_big_integer(uint64_t value) {
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  entry = search_global_symbol_table(big_integer, BIGINT);
+  entry = search_global_symbol_table(integer, BIGINT);
 
-  return
-    // type of big integer is grammar attribute
-    load_value(entry);
-    // assert: allocated_temporaries == n + 1
+  if (entry == (uint64_t*) 0) {
+    // allocate memory for big integer in data segment
+    data_size = data_size + WORDSIZE;
+
+    entry = create_symbol_table_entry(GLOBAL_TABLE, integer,
+      line_number, BIGINT, UINT64_T, value, -data_size);
+  }
+
+  load_value(entry);
+
+  // assert: allocated_temporaries == n + 1
 }
 
 void load_integer(uint64_t value) {
-  uint64_t* entry;
-
   // assert: n = allocated_temporaries
 
   if (is_signed_integer(value, 32)) {
@@ -5214,57 +5226,58 @@ void load_integer(uint64_t value) {
     talloc();
 
     load_small_and_medium_integer(current_temporary(), value);
-  } else {
+  } else
     // integers with value < -2^31 or value >= 2^31 are stored in data segment
-    entry = search_global_symbol_table(integer, BIGINT);
-
-    if (entry == (uint64_t*) 0) {
-      // allocate memory for big integer in data segment
-      data_size = data_size + WORDSIZE;
-
-      create_symbol_table_entry(GLOBAL_TABLE, integer,
-        line_number, BIGINT, UINT64_T, value, -data_size);
-    }
-
-    load_big_integer(integer);
-  }
+    load_big_integer(value);
 
   // assert: allocated_temporaries == n + 1
 }
 
-void load_string(char* string) {
-  uint64_t length;
+void load_address(uint64_t* entry) {
+  // assert: n = allocated_temporaries
+
+  load_integer(get_address(entry));
+
+  emit_add(current_temporary(), get_scope(entry), current_temporary());
+
+  // assert: allocated_temporaries == n + 1
+}
+
+void load_string() {
+  uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  length = string_length(string) + 1;
+  entry = search_global_symbol_table(string, STRING);
 
-  // allocate memory for string in data segment
-  data_size = data_size + round_up(length, WORDSIZE);
+  if (entry == (uint64_t*) 0) {
+    // allocate memory for string in data segment
+    data_size = data_size + round_up(string_length(string) + 1, WORDSIZE);
 
-  create_symbol_table_entry(GLOBAL_TABLE, string,
-    line_number, STRING, UINT64STAR_T, 0, -data_size);
+    entry = create_symbol_table_entry(GLOBAL_TABLE, string,
+      line_number, STRING, UINT64STAR_T, 0, -data_size);
+  }
 
-  load_integer(-data_size);
-
-  emit_add(current_temporary(), REG_GP, current_temporary());
+  load_address(entry);
 
   // assert: allocated_temporaries == n + 1
 }
 
 uint64_t compile_literal() {
-  // assert: allocated_temporaries == 0
+  // assert: n = allocated_temporaries
 
   if (is_value()) {
-    load_integer(compile_value());
+    load_integer(literal);
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
+
+    compile_value();
 
     return UINT64_T;
   } else if (symbol == SYM_STRING) {
-    load_string(string);
+    load_string();
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
 
     get_symbol();
 
@@ -5275,7 +5288,7 @@ uint64_t compile_literal() {
     // we must allocate an additional temporary
     load_integer(0);
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
 
     return UINT64_T;
   }
