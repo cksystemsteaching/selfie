@@ -14,56 +14,56 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 ## Table of Content
 
-1. Introduction
+1. [Introduction](#introduction)
 
-2. Selfie
+2. [Selfie](#selfie)
 
-   1. Recommended Readings
+   1. [Recommended Readings](#recommended-readings)
 
-3. Language
+3. [Language](#language)
 
-   1. Programming Language C\*
-   2. RISC-U Machine Code
-   3. EBNF Grammar
-   4. Recommended Readings
+   1. [Programming Language C\*](#programming-language-c)
+   2. [RISC-U Machine Code](#risc-u-machine-code)
+   3. [EBNF Grammar](#ebnf-grammar)
+   4. [Recommended Readings](#recommended-readings-1)
 
-4. Information
+4. [Information](#information)
 
-   1. Bits
-   2. Numbers
-   3. Boolean Algebra
-   4. Negative Numbers
-   5. Integers
-   6. Overflows
-   7. Characters
-   8. Bytes
-   9. Memory
-   10. Text
-   11. Files
-   12. Images
-   13. Video
-   14. Audio
-   15. Code
-   16. Apps
-   17. Life
-   18. Recommended Readings
+   1. [Bits](#bits)
+   2. [Numbers](#numbers)
+   3. [Boolean Algebra](#boolean-algebra)
+   4. [Negative Numbers](#negative-numbers)
+   5. [Integers](#integers)
+   6. [Overflows](#overflows)
+   7. [Characters](#characters)
+   8. [Bytes](#bytes)
+   9. [Memory](#memory)
+   10. [Text](#text)
+   11. [Files](#files)
+   12. [Images](#images)
+   13. [Video](#video)
+   14. [Audio](#audio)
+   15. [Code](#code)
+   16. [Apps](#apps)
+   17. [Life](#life)
+   18. [Recommended Readings](#recommended-readings-2)
 
-5. Machine
+5. [Machine](#machine)
 
-   1. Model
-   2. Processor
-   3. Memory
-   4. Input/Output
-   5. Instructions
-   6. Emulation
-   7. Performance
-   8. Life
-   9. Recommended Readings
+   1. [Model](#model)
+   2. [Processor](#processor)
+   3. [Memory](#memory-1)
+   4. [Input/Output](#inputoutput)
+   5. [Instructions](#instructions)
+   6. [Emulation](#emulation)
+   7. [Performance](#performance)
+   8. [Life](#life-1)
+   9. [Recommended Readings](#recommended-readings-3)
 
-6. Programming
+6. [Programming](#programming)
 
-   1. Literal
-   2. Variable
+   1. [Literal](#literals)
+   2. [Variable](#variables)
    3. Type
    4. Expression
    5. Assignment
@@ -75,20 +75,20 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    11. Life
    12. Recommended Readings
 
-7. Tools
+7. [Tools](#tools)
 
-   1. Compiler
-   2. Interpreter
-   3. Virtual Machine
-   4. Virtual Memory
-   5. Virtual Time
-   6. Virtual Machine Monitor
-   7. Computing as Utility
-   8. Cloud Computing
-   9. Life
-   10. Recommended Readings
+   1. [Compiler](#compiler)
+   2. [Interpreter](#interpreter)
+   3. [Virtual Machine](#virtual-machine)
+   4. [Virtual Memory](#virtual-memory)
+   5. [Virtual Time](#virtual-time)
+   6. [Virtual Machine Monitor](#virtual-machine-monitor)
+   7. [Computing as Utility](#computing-as-utility)
+   8. [Cloud Computing](#cloud-computing)
+   9. [Life](#life-3)
+   10. [Recommended Readings](#recommended-readings-5)
 
-8. Glossary
+8. [Glossary](#glossary)
 
 ## Introduction
 
