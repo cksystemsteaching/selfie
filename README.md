@@ -4396,7 +4396,7 @@ Unlike code, however, recall that data in the data segment in main memory is ref
 
 > Symbol table
 
-Thirdly, since the data in memory referred to by `data_binary` becomes available in reverse order from high to low addresses, we have two choices for storing it in `data_binary`. Either we store the data in reverse order, or else we gather the data somewhere else and only store it in `data_binary` when parsing is done. We chose the latter option using a concept for gathering information called a `symbol table` that we anyway need later when dealing with identifiers for variables and procedures.
+Thirdly, since the data in memory referred to by `data_binary` becomes available in reverse order from high to low addresses, we have two choices for storing it in `data_binary`. Either we store the data in reverse order, or else we gather the data somewhere else and only store it in `data_binary` when parsing is done. We chose the latter option using a concept for gathering information called a *symbol table* that we anyway need later when dealing with identifiers for variables and procedures.
 
 ![Symbol Table](figures/symbol-table.png "Symbol Table")
 
@@ -4404,13 +4404,31 @@ The idea of a symbol table is to keep track of symbols that have grammar attribu
 
 > Data structures and algorithms
 
-The important insight here goes far beyond symbol tables which are our first example of a *data structure* for encoding information other than numbers and strings.
+The important insight here goes far beyond symbol tables which are our first example of a *data structure* for encoding information other than numbers and strings. The key to understanding data structures is to distinguish explicitly their functional *logic* or *specification* from their algorithmic *implementation*, or the what from the how. Every data structure has a functional purpose but may be implemented in different ways which dictate its temporal and spatial performance. The above figure shows the logic of a symbol table and two different ways of achieving the same logic using two different implementations with different algorithmic complexity. Lots of other choices are possible too, we only show the two choices that are actually implemented in selfie.
 
-`emit_data`
+> Application programming interface
+
+When it comes to designing data structures, and in fact many other things, logic is first and implementation is second. We first need to be clear on what functional logic we actually want from a data structure and then write it down as a list of procedures that form the *application programming interface* or *API* of the data structure. A symbol table, for example, comes with only two functions: a procedure for inserting data into the symbol table and a procedure for retrieving data from the symbol table. In selfie, they are called `create_symbol_table_entry()` and `search_symbol_table()`, respectively. The former obviously creates a new entry in the symbol table, given a symbol and its attributes. The latter searches the symbol table, given a symbol, and returns its attributes, if there is an entry for the symbol in the symbol table.
+
+Unfortunately, there are also some subtle issues here that make things a bit more complicated. For example, what happens if we create an entry for a symbol that already has an entry in the symbol table? Logically, we do not want multiple entries for the same symbol and we could easily avoid those in an implementation by always searching the symbol table for a given symbol before creating an entry for that symbol. However, always searching the symbol table may be slow and often not even necessary, in case we know that a given symbol cannot have an entry yet. Also, there may be situations where we need to know if there was an entry or not before creating one. The lesson to be learned here is that all those subtleties can and should already be considered before even worrying about any implementation. In our experience, however, many people, including us, often rush to an implementation without getting the logic right first. The result is an unpleasant back and forth between logic and implementation until things work out properly.
+
+> Lists versus arrays
+
+Time space tradeoff
+
+`emit_data_segment()`
 
 > Register allocation
 
 Fourthly,
+
+`talloc()`
+
+`tfree()`
+
+`current_temporary()`
+
+`previous_temporary()`
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
