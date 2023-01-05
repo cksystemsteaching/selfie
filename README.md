@@ -4414,9 +4414,17 @@ Unfortunately, there are also some subtle issues here that make things a bit mor
 
 > Lists versus arrays: to point or not to point?
 
-Hard to believe, but there are only two fundamentally different choices to be made when it comes to implementing data structures. It all comes down to their layout in memory and how to navigate that layout. This is a prime example of how the properties of digital memory technology dictate programming. We may either use pointers to create heterogeneous *list* structures in memory *explicitly* or contiguous blocks of memory that contain homogeneous *array* structures *implicitly*, or in fact even combinations of both.
+Hard to believe, but there are only two fundamentally different choices to be made when it comes to implementing data structures. It all comes down to their layout in memory and how to navigate that layout. This is a prime example of how the properties of digital memory technology dictate programming. We may either use pointers to create *list*-like structures in memory *explicitly* or contiguous blocks of memory that contain *array*-like structures *implicitly*, or in fact any combinations of both. This even applies to modern high-level programming languages that do not feature pointers explicitly. Under the hood, they all use pointers anyway making you a better programmer if you know what they are, and possibly a not-so-good programmer if you do not.
+
+The above figure shows our list and array implementations of a symbol table in selfie. More precisely, the list implementation is a list of 32B arrays of 4 64-bit machine words, and the array implementation is an 8KB array of 1024 64-bit machine words where each machine word is interpreted as a pointer to, surprise surprise, a list-based symbol table. Each 32B array in the list implementation is called a *list element* and represents exactly one symbol table entry. Similarly, each machine word of the 8KB array is called an *array element*. The 8KB array implements what is known as a *hashtable*, here over list-based symbol tables, to speed up search. We get to that in a moment.
+
+> Fields of data
+
+While the 1024 machine words of the 8KB array are all interpreted the same, the 4 machine words of the 32B arrays are not. We therefore do not call the 4 machine words array elements but *fields*. The first field is interpreted as a pointer to the *next* list element in the list. The end of the list is marked by a null pointer. The second field is interpreted as a pointer to the "key" of the symbol table entry represented by the list element. The third field is interpreted as a signed integer that represents part of the "value" of the symbol table entry, here its offset relative to the global pointer in the data segment, so exactly the information we wanted to remember. The fourth field is unused, just demonstrating that we could have larger list elements with more fields.
 
 Time space tradeoff
+
+> Structs by convention
 
 `emit_data_segment()`
 
