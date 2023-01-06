@@ -4428,7 +4428,7 @@ The key advantage of fields, and array elements in general, is that given an int
 
 > Structs by convention
 
-Readers familiar with the programming language C might be puzzled by our choice of terminology here. So let us try to clear things up. First of all, C\* does not feature arrays but C does. In fact, C also features what is known as *structs*. The problem is that we need to use both, as a concept, but do so by convention using pointers without supporting them explicitly in C\* to keep things simple, and, very importantly, to give students the opportunity to implement explicit support of arrays and structs in homework assignments. We point those out below. Essentially, structs are like arrays but with fields that all have the same size, one machine word each, and which may be interpreted differently, as integer or as pointer. In order to keep the code organized and readable, we use *getters* and *setters* by convention to access individual fields. For example, given a list element, the procedure `get_next_entry()` returns the pointer to its next list element in the list-based implementation of our symbol table. Similarly, the procedure `set_next_entry()` sets its next pointer to the next list element. There are also getters and setters for all other fields. See the selfie source code for the details.
+Readers familiar with the programming language C might be puzzled by our choice of terminology here. So let us try to clear things up. First of all, C\* does not feature arrays but C does. In fact, C also features what is known as *structs*. The problem is that we use both, as concept, but do so by convention using pointers without supporting them explicitly in C\* to keep things simple, and, very importantly, to give students the opportunity to implement explicit support of arrays and structs in homework assignments. We point those out below. Essentially, structs are like arrays but with fields that all have the same size, one machine word each, but which may be interpreted differently, as integer or as pointer. In order to keep the code organized and readable, we use *getters* and *setters* by convention to access individual fields. For example, given a list element, the procedure `get_next_entry()` returns the pointer to its next list element in the list-based implementation of our symbol table. Similarly, the procedure `set_next_entry()` sets its next pointer to the next list element. There are also getters and setters for all other fields. See the selfie source code for the details.
 
 > The algorithm of a data structure
 
@@ -4483,6 +4483,8 @@ variable vs procedure: lookahead of 1
 type polymorphism
 
 unary operators in factor: cast, -, *
+
+pointer arithmetic: use symbol table getters and setters as example
 
 cast versus expression: lookahead of 1
 
