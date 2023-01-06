@@ -4416,11 +4416,19 @@ Unfortunately, there are also some subtle issues here that make things a bit mor
 
 Hard to believe, but there are only two fundamentally different choices to be made when it comes to implementing data structures. It all comes down to their layout in memory and how to navigate that layout. This is a prime example of how the properties of digital memory technology dictate programming. We may either use pointers to create *list*-like structures in memory *explicitly* or contiguous blocks of memory that contain *array*-like structures *implicitly*, or in fact any combinations of both. This even applies to modern high-level programming languages that do not feature pointers explicitly. Under the hood, they all use pointers anyway making you a better programmer if you know what they are, and possibly a not-so-good programmer if you do not.
 
-The above figure shows our list and array implementations of a symbol table in selfie. More precisely, the list implementation is a list of 32B arrays of 4 64-bit machine words, and the array implementation is an 8KB array of 1024 64-bit machine words where each machine word is interpreted as a pointer to, indeed, a list-based symbol table. Each 32B array in the list implementation is called a *list element* and represents exactly one symbol table entry. Similarly, each machine word of the 8KB array is called an *array element* and represents exactly one list-based symbol table. The 8KB array implements what is known as a *hashtable*, here over list-based symbol tables, to speed up search. Logically, however, the hashtable is seen as a single symbol table albeit made from 1024 smaller symbol tables. It is a truly fascinating example of data structure magic that we explain in a moment.
+The above figure shows our list and array implementations of a symbol table in selfie. More precisely, the list implementation is a list of 32B arrays of 4 64-bit machine words, and the array implementation is an 8KB array of 1024 64-bit machine words where each machine word is interpreted as a pointer to, indeed, a list-based symbol table. Each 32B array in the list implementation is called a *list element* and represents exactly one symbol table entry. Similarly, each machine word of the 8KB array is called an *array element* and represents exactly one list-based symbol table. The 8KB array implements what is known as a *hashtable*, here over list-based symbol tables, to speed up search. Logically, however, the hashtable is seen as a single symbol table albeit made from 1024 smaller symbol tables. It is a truly fascinating example of data structure magic that we explain in a moment. Just realize that you are about to learn where the term *hashtag* comes from, what it actually is, and how it works.
 
 > Fields of data
 
 While the 1024 machine words of the 8KB array are all interpreted the same, the 4 machine words of the 32B arrays are not. We therefore do not call the 4 machine words array elements but *fields*. The first field is interpreted as a pointer to the *next* list element in the list. The end of the list is marked by a null pointer. The second field is interpreted as a pointer to the "key" of the symbol table entry, here the string identifying the symbol. The third field is interpreted as a signed integer that represents part of the "value" of the symbol table entry, here its offset relative to the global pointer in the data segment, so exactly the information we wanted to remember. The fourth field is unused, just demonstrating that we could have larger list elements with more fields.
+
+> Indexing
+
+The key advantage of fields, and array elements in general, is that given an integer `i` into the array called an *index*, it only takes constant time to compute the address of the `i`-th element in memory involving simple arithmetic, which is possible if arrays are represented by contiguous blocks of memory, and they mostly are, including in selfie. We see below how that works using *pointer arithmetic*. Instead, finding the `i`-th element in a list takes linear time in the value of `i` since we need to traverse the list to find the element. If this is done often, even for small values, using an array will be much faster. However, there is, as always, a price to pay for using arrays which is memory fragmentation. If we use lots of arrays of different size and keep allocating and deallocating them, memory fragmentation may become an issue and eventually result in performance degradation when trying to decrease fragmentation.
+
+> Structs by convention
+
+
 
 > The algorithm of a data structure
 
@@ -4430,9 +4438,7 @@ Is this a problem? It could be, if the list gets really long. In selfie, we actu
 
 > Hashing
 
-How can we make searching a list faster? Well, we can break up the list into smaller lists in such a way that we only need to search a few or ideally just one of the smaller lists. There are different ways to do that and we could go on about them until the end of time. Instead, we only present the arguably simplest way using a hashtable.
-
-> Structs by convention
+How can we make searching a list faster? Well, we can break up the list into smaller lists in such a way that we only need to search a few or ideally just one of the smaller lists. There are different ways to do that and we could go on about them until the end of time. Instead, we only present the arguably simplest way using a hashtable. The concept of a hashtable exploits the fundamental advantage of arrays over lists: the constant access time through indexes!
 
 `emit_data_segment()`
 
