@@ -1097,7 +1097,7 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address);
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
 void emit_string_data(uint64_t* entry);
 
-void emit_data_segment();
+void finalize_data_segment();
 
 uint64_t* allocate_elf_header();
 
@@ -4433,6 +4433,8 @@ void compile_cstar() {
 
           set_value(entry, compile_initialize(type));
 
+          emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
+
           get_expected_symbol(SYM_SEMICOLON);
         } else
           // type identifier "(" ...
@@ -5203,6 +5205,7 @@ void load_big_integer(uint64_t value) {
 
   // assert: n = allocated_temporaries
 
+  // reuse big integers
   entry = search_global_symbol_table(integer, BIGINT);
 
   if (entry == (uint64_t*) 0) {
@@ -5211,6 +5214,8 @@ void load_big_integer(uint64_t value) {
 
     entry = create_symbol_table_entry(GLOBAL_TABLE, integer,
       line_number, BIGINT, UINT64_T, value, -data_size);
+
+    emit_data_word(value, -data_size, line_number);
   }
 
   load_value(entry);
@@ -5248,6 +5253,7 @@ void load_string() {
 
   // assert: n = allocated_temporaries
 
+  // reuse string literals
   entry = search_global_symbol_table(string, STRING);
 
   if (entry == (uint64_t*) 0) {
@@ -5256,6 +5262,8 @@ void load_string() {
 
     entry = create_symbol_table_entry(GLOBAL_TABLE, string,
       line_number, STRING, UINT64STAR_T, 0, -data_size);
+
+    emit_string_data(entry);
   }
 
   load_address(entry);
@@ -6305,7 +6313,7 @@ void selfie_compile() {
   if (GC_ON)
     emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
 
-  emit_data_segment();
+  finalize_data_segment();
 
   ELF_header = encode_elf_header();
 
@@ -7031,10 +7039,11 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
   // assert: offset < 0
 
-  store_data(data_size + offset, data);
+  // the data segment is populated in reverse order from end to start
+  store_data(MAX_DATA_SIZE + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (data_size + offset) / WORDSIZE) = source_line_number;
+    *(data_line_number + (MAX_DATA_SIZE + offset) / WORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -7055,29 +7064,15 @@ void emit_string_data(uint64_t* entry) {
   }
 }
 
-void emit_data_segment() {
-  uint64_t i;
-  uint64_t* entry;
+void finalize_data_segment() {
+  // assert: data_size > 0
 
-  i = 0;
+  // the data segment is populated in reverse order from end to start
+  // set the actual start, given the final size of the data segment
+  data_binary = data_binary + (MAX_DATA_SIZE - data_size) / WORDSIZE;
 
-  while (i < HASH_TABLE_SIZE) {
-    entry = (uint64_t*) *(global_symbol_table + i);
-
-    // copy initial values of global variables, big integers and strings
-    while ((uint64_t) entry != 0) {
-      if (get_class(entry) == VARIABLE)
-        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
-      else if (get_class(entry) == BIGINT)
-        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
-      else if (get_class(entry) == STRING)
-        emit_string_data(entry);
-
-      entry = get_next_entry(entry);
-    }
-
-    i = i + 1;
-  }
+  if (data_line_number != (uint64_t*) 0)
+    data_line_number = data_line_number + (MAX_DATA_SIZE - data_size) / WORDSIZE;
 }
 
 uint64_t* allocate_elf_header() {
