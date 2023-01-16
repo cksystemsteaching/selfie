@@ -4380,7 +4380,7 @@ We made it all the way to the last step of implementing literals. Code generatio
 
 Integer and character literals are easy to figure out. An integer literal as well as a character literal, through its ASCII code, both represent a numerical value. But a string literal is already more complex. It represents, as its value, a pointer to the memory address where the string actually starts in main memory plus the actual string itself as stored in main memory.
 
-Sounds like we also need to know how the target machine works and what machine code can do for us. Recall that all computation happens on the CPU in registers. Code and data is all stored in main memory. Data is loaded into CPU registers from memory, then manipulated in CPU registers, and finally stored from CPU registers back into memory. Since all data manipulation happens in registers, we need to generate code for literals that loads their values into registers. In sum, there are four distinct problems we need to solve to make all of this work.
+Sounds like we also need to know how the target machine works and what machine code can do for us. Recall that all computation happens on the CPU in registers. Code and data is all stored in main memory. Data is loaded into CPU registers from memory, then manipulated in CPU registers, and finally stored from CPU registers back into memory. Since all data manipulation happens in registers, we need to generate code for literals that loads their values into registers. In sum, there are three distinct problems we need to solve to make all of this work.
 
 > Code allocation and storage
 
@@ -4390,17 +4390,53 @@ Another global variable called `code_size` keeps track of the number of bytes ge
 
 > Data allocation and storage
 
-Secondly, we need to store string literals and big integers as well as the values of global variables. Similar to `code_binary`, the selfie compiler allocates a large block of memory referred to by a global variable called `data_binary`. Again, the content of `data_binary` may be copied to an executable or loaded into the data segment for execution, and the size of `data_binary` is fixed as well. Thus, again, if there is not enough space, the compiler reports an error and quits. There is also a global variable called `data_size` which keeps track of the number of bytes generated for data. Initially, the value of `data_size` is `0` and then incremented by `8` bytes for each generated machine word, again similar to a bump pointer allocator, but at compile time!
+Secondly, we need to store the values of string literals and big integers as well as the values of global variables in memory. Similar to `code_binary`, the selfie compiler allocates a large block of memory referred to by a global variable called `data_binary`. Again, the content of `data_binary` may be copied to an executable or loaded into the data segment for execution, and the size of `data_binary` is fixed as well. Thus, again, if there is not enough space, the compiler reports an error and quits. There is also a global variable called `data_size` which keeps track of the number of bytes generated for data. Initially, the value of `data_size` is `0` and then incremented by `8` bytes for each generated machine word, again similar to a bump pointer allocator, but at compile time!
 
 Unlike code, however, recall that data in the data segment in main memory is referenced relative to the global-pointer register `gp` which points to the end of the data segment, not the start. This means that during parsing, data must be stored in reverse order in `data_binary` using the negative (!) current value of `data_size` as offset relative to the value of `gp`. For example, the first machine word that makes it into `data_binary` has, in the data segment in main memory, offset `-8` relative to the value of `gp`, the second `-16`, and so on. Thus string literals, big integers, and global variables are actually a means for implicit static memory allocation in the data segment using an effectively reverse bump pointer allocator that allocates memory from high to low addresses at compile time, similar to a stack allocator at runtime.
 
+> Register allocation
+
+Thirdly,
+
+`talloc()`
+
+`tfree()`
+
+`current_temporary()`
+
+`previous_temporary()`
+
+![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
+
+load_X procedures
+
+everything introduced but symbolic references handled by symbol tables and fixup chains
+
+### Variables
+
+![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
+
+keywords vs identifiers
+
+The C\* grammar is LL(1) with 6 keywords and 22 symbols.
+
+C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
+
+variable versus call: lookahead of 1
+
+variable declarations and definitions
+
+find next strong symbol: type or void
+
+variable vs procedure: lookahead of 1
+
 > Symbol table
 
-Thirdly, since the data in memory referred to by `data_binary` becomes available in reverse order from high to low addresses, we have two choices for storing it in `data_binary`. Either we store the data in reverse order starting at the end of `data_binary`, or else we gather the data somewhere else and only store it in `data_binary` when parsing is done and the final size of the data segment is known. We chose the latter option using a concept for gathering information called a *symbol table* that we anyway need later when dealing with identifiers for variables and procedures.
+Since the data in memory referred to by `data_binary` becomes available in reverse order from high to low addresses, we have two choices for storing it in `data_binary`. Either we store the data in reverse order in `data_binary`, or else we gather the data somewhere else and only store it in `data_binary` when parsing is done and the final size of the data segment is known. We chose the latter option using a concept for gathering information called a *symbol table* that we anyway need later when dealing with identifiers for variables and procedures.
 
 ![Symbol Table](figures/symbol-table.png "Symbol Table")
 
-The idea of a symbol table is to keep track of symbols that have grammar attributes such as values and types, and possibly even more attributes such as addresses in memory. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for a string literal `"Hello World!"` and a big integer `4294967296` which takes 33 bits to encode in binary. Their "keys" are the string literals `"Hello World!"` and `"4294967296"`, respectively. Their "values" are the offsets relative to the global pointer of where their actual values are stored in the data segment at runtime. We also store other attributes not relevant here but mention some of them below when dealing with identifiers for variables and procedures.
+The idea of a symbol table is to keep track of symbols that have grammar attributes such as values and types, and possibly even more attributes such as addresses in memory, for example. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for a string literal `"Hello World!"` and a big integer `4294967296` which takes 33 bits to encode in binary. Their "keys" are the string literals `"Hello World!"` and `"4294967296"`, respectively. Their "values" are the offsets relative to the global pointer of where their actual values are stored in the data segment at runtime. We also store other attributes not relevant here but mention some of them below when dealing with identifiers for variables and procedures.
 
 > Data structures and algorithms
 
@@ -4430,9 +4466,9 @@ The key advantage of fields, and array elements in general, is that given an int
 
 > Structs by convention
 
-Readers familiar with the programming language C might be puzzled by our choice of terminology here. So let us try to clear things up. First of all, C features arrays but C\* does not. In fact, unlike C\*, C also features what is known as *structs*. The problem is that we use both, implicitly as concept, but do so by convention using pointers without supporting arrays and structs explicitly in C\*. This keeps things simple, and, very importantly, gives students the opportunity to implement explicit support of arrays and structs in homework assignments. We point those out below.
+Readers familiar with the programming language C might be puzzled by our choice of terminology here. So let us try to clear things up. First of all, C features arrays but C\* does not. In fact, unlike C\*, C also features what is known as *structs*. The problem is that we use both, implicitly as concept, but do so by convention using pointers without supporting arrays and structs explicitly in C\*. This keeps selfie simple, and, very importantly, gives students the opportunity to implement explicit support of arrays and structs in homework assignments. We point those out below.
 
-Essentially, structs are here similar to arrays but with fields that all have the same size, one machine word each, and which may be interpreted differently, as integer or as pointer. In order to keep the code organized and readable, we use *getters* and *setters* by convention to access individual fields. For example, given a list element, the procedure `get_next_entry()` returns the next pointer to the next list element in the list-based implementation of our symbol table. Similarly, the procedure `set_next_entry()` sets its next pointer to the next list element. There are also getters and setters for all other fields. See the selfie source code for the details.
+Essentially, structs are here similar to arrays but with fields that all have the same size, one machine word each, and which may be interpreted differently, as integer or as pointer. In order to keep the code organized and readable, we use *getters* and *setters* by convention to access individual fields. For example, given a list element, the procedure `get_next_entry()` returns the next pointer to the next list element in the list-based implementation of our symbol table. Similarly, the procedure `set_next_entry()` sets its next pointer to the next list element. There are also getters and setters for all other fields, and for other data structures altogether. See the selfie source code for the details.
 
 > The algorithm of a data structure
 
@@ -4461,44 +4497,6 @@ the procedure `hash()`
 Hashtables can be used to speed up search for all kinds of applications, not just symbol tables.
 
 hashtags
-
-`emit_data_segment()`
-
-> Register allocation
-
-Fourthly,
-
-`talloc()`
-
-`tfree()`
-
-`current_temporary()`
-
-`previous_temporary()`
-
-![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
-
-load_X procedures
-
-everything introduced but fixup chains
-
-### Variables
-
-![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
-
-keywords vs identifiers
-
-The C\* grammar is LL(1) with 6 keywords and 22 symbols.
-
-C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
-
-variable versus call: lookahead of 1
-
-variable declarations and definitions
-
-find next strong symbol: type or void
-
-variable vs procedure: lookahead of 1
 
 ### Expressions
 
