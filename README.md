@@ -4404,7 +4404,11 @@ Then there are are two more procedures: `current_temporary()` returns the regist
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
-load_X procedures
+We are finally ready to get to the last step in dealing with literals. The above figure shows the source code involved in generating machine code for literals. The relevant procedures are `load_integer()` which emits code that loads the value of an integer or character literal into a register, and `load_string()` which emits a string literal into the data segment and then emits code that loads the pointer to that string literal in the data segment.
+
+Let us first focus on integer and character literals. Since integer values in C\* can be up to 64 bits, there are actually three different cases to consider: small 12-bit values, medium 32-bit values, and big 64-bit values. We only look at the simplest case of loading 12-bit values here. For the other cases, refer to the source code of selfie. It is an interesting excercise in reading non-trivial code. The case of 12-bit values is simple because those values can be loaded into a register with a single `addi` instruction. For this purpose, `load_integer()` allocates a register and then invokes the procedure `load_small_and_medium_integer()` which in turn emits the actual `addi` instruction using the procedure `current_temporary()` to obtain the just allocated register. That's all.
+
+Loading string literals is more involved.
 
 everything introduced but symbolic references handled by symbol tables and fixup chains
 
