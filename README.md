@@ -4396,15 +4396,11 @@ Unlike code, however, recall that data in the data segment in main memory is ref
 
 > Register allocation
 
-Thirdly,
+Thirdly, we need to choose CPU registers for performing any kind of calculation, also known as the register allocation problem, and then keep track of which register is currently being used for which value. Out of the 32 available CPU registers of our RISC-U machine, we only use 7 so-called temporary registers for calculations named `t0` to `t6`. Recall that the `t` stands for *temporary*. There are numerous algorithms for solving the register allocation problem. In fact, compiler books typically feature a whole chapter on this topic. It is an important problem because CPU registers are arguably the most important resource of a computer. At any given time during code execution, we want those registers to hold live data, meaning that the values stored in those registers are all still needed.
 
-`talloc()`
+As you might guess, we ignore that in selfie and instead opt for simplicity, arguably the simplest way of allocating and deallocating registers. We use a stack allocator, but at compile time! There are two procedures: `talloc()` allocates a new register, starting with `t0` and then going up to `t6`, and `tfree()` deallocates the register most recently allocated by `talloc()`. Does this always work? Do registers really become free in exactly the reverse order in which they were allocated? With code compiled with the selfie compiler from C\* programs they do! But this is not true in general but not our concern here.
 
-`tfree()`
-
-`current_temporary()`
-
-`previous_temporary()`
+Then there are are two more procedures: `current_temporary()` returns the register most recently allocated by `talloc()` and `previous_temporary()` returns the register second most recently allocated by `talloc()`. Knowing the two most recently allocated registers is sufficient to generate code in all situations encountered by the selfie compiler. Beautiful!
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
@@ -4511,6 +4507,8 @@ cast versus expression: lookahead of 1
 ![Expressions](figures/expressions.png "Expressions")
 
 constant folding
+
+register allocation inefficiency in profile
 
 ### Statements
 
