@@ -4414,9 +4414,9 @@ There is one more thing though. Notice the comments at the beginning and end of 
 
 Loading string literals is more involved than loading integer and character literals. The relevant code here are the procedure calls `emit_string_data(entry)` and `load_address(entry)` in the procedure `load_string()`, ignoring the other code for now. The variable `entry` refers to information about the string literal. Details are discussed below in the context of handling variables. The procedure `emit_string_data()` emits the actual string literal into the data segment and, most importantly, saves the address of the literal in the data segment in the information referred to by the variable `entry`. The procedure `load_address()` emits code that loads that address into a temporary register. It does so in two steps, by first emitting code that loads the offset relative to the global pointer `gp` into a temporary register, using the procedure `load_integer()`, and then emitting a single `add` instruction that adds to the value of the temporary register the value of `gp`, as shown in the above figure. That's it.
 
-> Symbol tables and fixup chains
+> Still to do: symbol tables and fixup chains
 
-everything introduced but symbolic references handled by symbol tables and fixup chains
+Hard to believe but we are done handling literals and now have time to reflect. Literals are the arguably simplest concept in programming languages and yet it took introducing a lot of material to understand how their syntax and semantics is actually specified and implemented. In particular, it took regular expressions, finite state machines, scanning, context-free grammars, recursive-descent parsing, memory management, compile time versus runtime as well as code, data, and register allocation. The good news is that there is only one problem left and two implementation techniques for solving it to handle all other concepts in C\*. We are talking about *symbolic references* and how to resolve them to *direct references*. The issue is that handling literals can be done on the spot when parsing them but not so with other programming elements such as variables and procedures. The name of a variable or procedure refers *symbolically* to data or code, respectively. At the level of the machine, however, not names but memory addresses refer *directly* to data or code. We therefore need to resolve symbolic references to direct references and do so using *symbol tables* and *fixup chains*. The former are introduced next, the latter when we get to handling conditional and loop statements.
 
 ### Variables
 
@@ -4435,6 +4435,8 @@ variable declarations and definitions
 find next strong symbol: type or void
 
 variable vs procedure: lookahead of 1
+
+symbolic and direct references
 
 > Symbol table
 
