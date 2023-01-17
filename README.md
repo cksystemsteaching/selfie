@@ -4408,6 +4408,10 @@ We are finally ready to get to the last step in dealing with literals. The above
 
 Let us first focus on integer and character literals. Since integer values in C\* can be up to 64 bits, there are actually three different cases to consider: small 12-bit values, medium 32-bit values, and big 64-bit values. We only look at the simplest case of loading 12-bit values here. For the other cases, refer to the source code of selfie. It is an interesting excercise in reading non-trivial code. The case of 12-bit values is simple because those values can be loaded into a register with a single `addi` instruction. For this purpose, `load_integer()` allocates a register and then invokes the procedure `load_small_and_medium_integer()` which in turn emits the actual `addi` instruction using the procedure `current_temporary()` to obtain the just allocated register. That's all.
 
+> Assertions against register leaks
+
+There is one more thing though. Notice the comments at the beginning and end of `load_integer()`. They express an *assertion* on the number of currently allocated temporary registers. When invoking `load_integer()` we assume that `n` temporary registers have already been allocated. Before returning from `load_integer()` that number obviously goes to `n+1`. The reason why we use such assertions is to keep track of currently allocated temporary registers, and in particular when to deallocate them, avoiding a register leak which would make the compiler run out of registers eventually. Some programming languages support such assertions explicitly, not just in comments, enabling compilers to enforce them. If you come across assertions, feel encouraged to use them!
+
 Loading string literals is more involved.
 
 everything introduced but symbolic references handled by symbol tables and fixup chains
@@ -4513,6 +4517,8 @@ cast versus expression: lookahead of 1
 constant folding
 
 register allocation inefficiency in profile
+
+running out of registers
 
 ### Statements
 
