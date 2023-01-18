@@ -1,6 +1,15 @@
 # Bachelor Theses on Selfie
 
 
+## Automated Testing of Atomic Instructions (`LR`/`SC`) Implementations in Selfie by Luis Thiele, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_thiele.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_thiele))
+
+The selfie system is an educational self-compiling C\* to RISC-U compiler and self-executing RISC-U emulator (C\* is a subset of C and RISC-U is a subset of RISC-V). It contains an autograder that is written in python and considers source code submitted by students and runs tests against it. One of the assignments requires students to extend the selfie system such that the compiler supports the Treiber stack - a concurrent thread-safe and lock-free stack. This Treiber stack must be implemented using the atomic `LR` (load-reserved) and `SC` (store-conditional) instructions. They must also be implemented to be supported by both the compiler and the emulator.
+
+This thesis is about extending the autograder to grade an assignment called `treiber-stack` where students must implement the Treiber stack using the atomic instructions `LR` and `SC`. The primary challenge of the new tests added to the autograder was about forcing specific interleavings of `LR` and `SC` run by the emulator the students extended. Some interleavings could be forced directly by the source code of the run test but some could only be forced by having the thread scheduler timeout and force a switch of the thread that is run. A timeout happens when the thread has run the set maximum amount of instructions sequentially without there ever being a switch to another thread in between.
+
+Additionally, this thesis also describes the correct implementations of the `LR` and `SC` instructions in the emulator and a correct implementation of the Treiber stack in order to pass the entirety of the autograded `treiber-stack` assignment. All prerequesite requirements are also explained, namely a correct implementation of support for threads (`threads` assignment), as well as any concepts and details about the emulator one must understand such as paging or system calls.
+
+
 ## Visualizing BTOR2 Models by Markus Diller, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_diller.pdf), [Repository](https://github.com/cksystemsgroup/beator-visualizer))
 
 The process of bounded model checking is very helpful in finding edge cases for invalid program inputs. To be able to do this, a format representing the model is necessary. Unfortunately, the model file itself does not provide any information about metrics or quality of a model. Its only purpose is to serve as an input to a model checker. In this thesis a tool called `beatle` for a subset of the BTOR2 modeling language is described. It helps to alleviate the aforementioned limitations of a standalone model file by visually displaying relevant information in the browser.
