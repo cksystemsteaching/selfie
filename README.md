@@ -4424,19 +4424,37 @@ Handling the syntax and semantics of literals as the arguably simplest concept o
 
 A *variable* in a programming language such as C\* and many others essentially represents exactly one value at any given time during program execution, out of a choice of finitely many values. In C\*, that value is a 64-bit number, meaning there is a choice of 2^64^ different numbers, either interpreted as unsigned integer or pointer. The value of a variable can be defined by a literal or an *expression*, as we see below. The value represented by a variable is stored somewhere in memory, here in exactly one 64-bit machine word, which in turn is identified by a memory address. Thus a variable can also be seen as an abstraction of a memory address, essentially by giving that memory address a name. That name is called an *identifier*.
 
+> Variables are memory
+
 Most importantly, variables in programming language are similar to variables in mathematical formulae and in fact inspired by those but they are not the same, often causing confusion! A variable in a mathematical formula serves as placeholder for essentially anything we want it to be that can even be infinitely large. A variable in a programming language can never be more than an abstraction of finite memory, or in other words, an approximation of a variable in a mathematical formula. There are formalisms in computer science with variables as in mathematical formulae but those are typically meant for modeling, not programming.
 
 Back to variables in programming languages, how do we handle their syntax and semantics? We first focus on their syntactical representation with identifiers, and only then figure out their semantics through memory allocation and code generation.
 
 #### Identifiers
 
+As with literals, we go through specification, modeling, and implementation of the syntax of identifiers first. The EBNF of identifiers is:
+
+```ebnf
+identifier = letter { letter | digit | "_" } .
+```
+
+where a *letter* is, as we saw before with the syntax of EBNF itself:
+
+```ebnf
+letter = "a" | ... | "z" | "A" | ... | "Z" .
+```
+
+We already saw what a digit is before when handling integer literals. An identifier obviously must begin with a letter followed by any number of letters, digits, and underscores `"_"`. The reason as to why identifiers must begin with a letter is simple. It allows the scanner to distinguish identifiers from integer literals upon seeing the first character! Very nice.
+
 ![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
 
-keywords vs identifiers
+The finite state machine for recognizing identifiers and the implementation of the FSM in selfie is shown in the above figure. The code is part of the procedure `get_symbol()` which we have seen before. As example, we use the sequence of characters `actual_id42` which is obviously a syntactically valid identifier. Similar to integer and string literals, there is a limitation in the length of identifiers given by the global variable `MAX_IDENTIFIER_LENGTH` which is set to 64 in selfie. That is plenty given that identifiers are names of variables in C\*. The same applies to procedure names which are the only other use of identifiers in C\*. Have a quick look at the C\* grammar to confirm that. Handling the syntax of identifiers is straightforward after seeing how the syntax of literals is handled.
 
-The C\* grammar is LL(1) with 6 keywords and 22 symbols.
+There is one problem with identifiers, however. C\* features the following six *keywords*:
 
-C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
+`uint64_t`, `void`, `if`, `else`, `while`, and `return`
+
+These keywords are syntactically identifiers but obviously serve a very different purpose. Therefore, the scanner needs to distinguish identifiers from keywords. Instead of modeling that in a finite state machine, we just implemented a procedure `identifier_or_keyword()` that compares a potential identifier with the strings for all six keywords. If it finds a match, the potential identifier is actually a keyword and returned as such, see the code of `identifier_or_keyword()` for the details.
 
 variable versus call: lookahead of 1
 
