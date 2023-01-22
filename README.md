@@ -4466,6 +4466,8 @@ Identifiers appear in a number of places in the C\* grammar. Some occurrences id
 
 3. a *use* which either obtains the value of a variable or invokes a procedure. In particular, the occurrence of `identifier` in the rule for `factor` obtains the current value of a global variable or a local variable or formal parameter of a procedure. The occurrence of `identifier` in the rule for `call` invokes the code of a procedure.
 
+The following C\* program features all of the above:
+
 ```c
 uint64_t x = 42;
 
@@ -4483,13 +4485,23 @@ uint64_t f(uint64_t y) {
 }
 ```
 
-variable versus call: lookahead of 1
+Try to spot each case for yourself! For example, the assignment `z = x;` defines the value of `z` using the value of `x`. The procedure call `f(y + 1)` uses the value of the expression `y + 1` to define the value of the formal parameter `y`. It also uses the code of the procedure `f` by invoking `f`, and so on.
 
-variable declarations and definitions: globals here, locals with procedures
+> Implicit declaration and definition
 
-find next strong symbol: type or void
+Declarations and definitions may be implicit without any syntactical elements. In particular, initialization of global variables is optional. If there is none for a given variable, the value of that variable is set to `0`. Local variables cannot be initialized in C\*. Their initial value is *undefined*. Make sure to set their initial value in assignments before using them. This is a source of errors that production compilers point out but not the selfie compiler. Think about how to extend language and compiler accordingly!
 
-variable vs procedure: lookahead of 1
+> Forward declaration
+
+Procedures may be declared but do not have to. The definition of a procedure is also an implicit declaration. An explicit procedure declaration is only necessary if the declared procedure is used in procedure calls before it is defined. In that case, the declaration is called a *forward declaration*. Some of the procedures implementing the recursive-descent parser in the selfie compiler are an example of that since they use each other. Production compilers enforce forward declarations to check that procedures are used with properly typed actual arguments. The selfie compiler does not do that either, so watch out. This is another opportunity for students to enhance the compiler accordingly.
+
+> Lookahead for variables versus procedures
+
+Let us point out the challenges in parsing identifiers before going into the details of how to do that. There are two scenarios that require attention: are we dealing with a variable or a procedure in declarations and definitions, and similarly, in uses. For example, when parsing `uint64_t x = 42;` in the above code, the fact that `x` denotes a variable and not a procedure only becomes apparent through a lookahead of 1 to the next symbol. Since the next symbol is `=` and not `(`, the `x` is recognized as an identifier that denotes a variable. Similarly, upon parsing the procedure call `f(y + 1)`, the fact that `f` denotes a procedure and not a variable only becomes apparent, again, through a lookahead of 1 to the next symbol. Since the next symbol is `(` and not something else, the `f` is recognized as an identifier that is supposed to denote a procedure. In principle, we could avoid the lookahead here by simply remembering that `f` has previously been at least declared to be a procedure. However, the selfie compiler only checks that after applying the lookahead.
+
+Next, we look into parsing global variable declarations, followed by parsing uses of global and local variables as well as formal parameters. Local variable and formal parameter declarations are handled when we discuss procedures. One more thing: the keywords `uint64_t` and `void` serve as strong symbols in syntax error handling when parsing global variable and procedure declarations because both symbols are rarely forgotten by programmers. See the use of the procedure `is_neither_type_nor_void()` in the selfie source code for the details.
+
+TODO: introduce the key challenge in handling global variable declarations
 
 big integers and string literals are also in symbol table to avoid duplicates
 
