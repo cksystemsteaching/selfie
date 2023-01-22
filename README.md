@@ -4466,6 +4466,23 @@ Identifiers appear in a number of places in the C\* grammar. Some occurrences id
 
 3. a *use* which either obtains the value of a variable or invokes a procedure. In particular, the occurrence of `identifier` in the rule for `factor` obtains the current value of a global variable or a local variable or formal parameter of a procedure. The occurrence of `identifier` in the rule for `call` invokes the code of a procedure.
 
+```c
+uint64_t x = 42;
+
+uint64_t f(uint64_t y);
+
+uint64_t f(uint64_t y) {
+  uint64_t z;
+
+  z = x;
+
+  if (y < z)
+    return f(y + 1);
+  else
+    return y;
+}
+```
+
 variable versus call: lookahead of 1
 
 variable declarations and definitions: globals here, locals with procedures
