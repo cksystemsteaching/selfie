@@ -4501,11 +4501,25 @@ Let us point out the challenges in parsing identifiers before going into the det
 
 Next, we look into parsing global variable declarations, followed by parsing uses of global and local variables as well as formal parameters. Variable and formal parameter definition in assignments is discussed in the section on assignments. Local variable and formal parameter declarations in procedure declarations as well as formal parameter definitions in procedure calls are handled when we discuss procedures. One more thing: the keywords `uint64_t` and `void` serve as strong symbols in syntax error handling when parsing global variable and procedure declarations because both symbols are rarely forgotten by programmers. See the use of the procedure `is_neither_type_nor_void()` in the selfie source code for the details.
 
-TODO: introduce the key challenge in handling global variable declarations
+#### Global Variable Declaration
+
+A global variable declaration introduces a global variable by name through an identifier and defines the type of the variable, that is, how the value represented by the variable is interpreted, here as unsigned integer or pointer. The relevant part of the C\* grammar is:
+
+```ebnf
+cstar      = { variable [ initialize ] ";" | procedure } .
+
+variable   = type identifier .
+
+initialize = "=" [ cast ] [ "-" ] value .
+```
+
+We have already seen the definition of `type`, `cast`, and `value`. The definition of `procedure` is not relevant here. The optional initial value of a global variable can only be a possibly negative integer or character literal, possibly casted to a pointer. Similar to big integers and string literals, we need to allocate memory in the data segment for storing the value of a global variable. However, there is no code generation involved in global variable declarations and thus also no register allocation. Code is only generated when using variables in expressions and defining them in assignments.
+
+There is, however, a remaining challenge that takes some effort to solve. A global variable declaration is de facto static memory allocation in the data segment, preparing for the eventual and possibly repeated definition and use of the declared variable in possibly many places throughout the parsed program. Whenever parsing definition and use of a variable, the memory address of where its value is stored and how it is interpreted must be known. In other words, as mentioned before, whenever encountering a symbolic reference to a variable in source code, we need to be able to resolve it into a direct reference in machine code.
+
+TODO: parsing figure goes here
 
 big integers and string literals are also in symbol table to avoid duplicates
-
-symbolic and direct references
 
 > Symbol table
 
@@ -4574,6 +4588,8 @@ the procedure `hash()`
 Hashtables can be used to speed up search for all kinds of applications, not just symbol tables.
 
 hashtags
+
+#### Variable and Formal Argument Use
 
 ### Expressions
 
