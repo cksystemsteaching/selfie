@@ -4517,9 +4517,19 @@ We have already seen the definition of `type`, `cast`, and `value`. The definiti
 
 There is, however, a remaining challenge that takes some effort to solve. A global variable declaration is de facto static memory allocation in the data segment, preparing for the eventual and possibly repeated definition and use of the declared variable in possibly many places throughout the parsed program. Whenever parsing definition and use of a variable, the memory address of where its value is stored and how it is interpreted must be known. In other words, as mentioned before, whenever encountering a symbolic reference to a variable in source code, we need to be able to resolve it into a direct reference in machine code.
 
-TODO: parsing figure goes here
+![Global Variable Declaration](figures/global-variable-declaration.png "Global Variable Declaration")
 
-big integers and string literals are also in symbol table to avoid duplicates
+The above figure shows what is involved in parsing global variable declarations with optional definition of initial values. As example, we use `uint64_t x = 42;` to declare and define a global variable `x` with its value interpreted as unsigned 64-bit integer and set to the initial value `42`. The syntax of global variable declarations and definitions is specified in the rule for the start symbol `cstar` of the C\* grammar. Hence the procedure `compile_cstar()` is in charge of parsing global variable declarations and definitions. It also parses procedure declarations and definitions which we ignore here. The procedure `compile_type()` parses the type keyword `uint64_t` followed by an optional `*`. Upon parsing the identifier that is being declared here, the distinction between variable and procedure declaration is not yet known. A lookahead of 1 is still necessary, as mentioned before.
+
+If the next symbol is not a left parenthesis `(`, we know that a variable is supposed to be declared, not a procedure. The procedure `compile_variable()` takes the parsed identifier, here `x`, and then checks if the parser has seen a global variable, or even a procedure declaration for `x` before. In that case, a syntax error is reported and the currently parsed declaration is ignored. The names of global variables and procedures must be unique. The parser remembers the names of all global variables, and in fact procedures and other information, in a *symbol table*, which we mentioned before. We explain how that works as soon as we are done here.
+
+If `x` has not been declared yet, a 64-bit machine word is allocated in the data segment for storing the value represented by `x` at runtime, similar to the memory allocated for big integers and string literals. Then, a new entry in the symbol table is created, remembering `x` along with additional information such as the source code line number of the declaration, the fact that `x` denotes a variable called its *class*, its type, its initial value which is for now assumed to be `0`, and its offset relative to the global pointer in the data segment.
+
+Finally, the procedure `compile_initialize()` parses the optional definition of an initial value, here `42`. The value itself is parsed by the procedure `compile_value()`. When done, the value `42` is returned to `compile_cstar()` which in turn sets the initial value of `x` to `42` in the symbol table entry for `x`. At this point, the parser is ready to emit the value `42` into the data segment, that is, into `data_binary` using the procedure `emit_data_word()`, similar to what is done for big integers and string literals. Recall the procedure `emit_string_data()`. That procedure uses `emit_data_word()` as well.
+
+In fact, have a quick look at the procedure `load_string()` again. Turns out that string literals, and even big integers, are remembered in the same symbol table as variables and procedures. However, the same string literal, or big integer, is perfectly fine to appear in different places in the parsed source code, so there is no syntax error message if they do. Why do we then remember them? Well, read the code carefully. If a string literal is already in the symbol table, we simply do not allocate memory for it anymore, but just reuse the address of the same string literal we parsed before. The same applies to big integers. Reusing the memory for string literals saves more than 2KB in the data segment when self-compiling selfie. Not much but the implementation is so simple, we just could not resist doing that little optimization.
+
+Before introducing symbol tables in detail, let us point out that global variable declarations and definitions do not result in any code generation, only in memory allocation in the data segment and data generation into the data segment. Code is only generated when variables are actually used, and defined in assignments.
 
 > Symbol table
 
@@ -4588,6 +4598,8 @@ the procedure `hash()`
 Hashtables can be used to speed up search for all kinds of applications, not just symbol tables.
 
 hashtags
+
+![Variable Use](figures/variable-use.png "Variable Use")
 
 #### Variable and Formal Argument Use
 
