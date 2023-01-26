@@ -4510,6 +4510,8 @@ cstar      = { variable [ initialize ] ";" | procedure } .
 
 variable   = type identifier .
 
+...
+
 initialize = "=" [ cast ] [ "-" ] value .
 ```
 
@@ -4521,7 +4523,7 @@ There is, however, a remaining challenge that takes some effort to solve. A glob
 
 The above figure shows what is involved in parsing global variable declarations with optional definition of initial values. As example, we use `uint64_t x = 42;` to declare and define a global variable `x` with its value interpreted as unsigned 64-bit integer and set to the initial value `42`. The syntax of global variable declarations and definitions is specified in the rule for the start symbol `cstar` of the C\* grammar. Hence the procedure `compile_cstar()` is in charge of parsing global variable declarations and definitions. It also parses procedure declarations and definitions which we ignore here. The procedure `compile_type()` parses the type keyword `uint64_t` followed by an optional `*`. Upon parsing the identifier that is being declared here, the distinction between variable and procedure declaration is not yet known. A lookahead of 1 is still necessary, as mentioned before.
 
-If the next symbol is not a left parenthesis `(`, we know that a variable is supposed to be declared, not a procedure. The procedure `compile_variable()` takes the parsed identifier, here `x`, and then checks if the parser has seen a global variable, or even a procedure declaration for `x` before. In that case, a syntax error is reported and the currently parsed declaration is ignored. The names of global variables and procedures must be unique. The parser remembers the names of all global variables, and in fact procedures and other information, in a *symbol table*, which we mentioned before. We explain how that works as soon as we are done here.
+If the next symbol is not a left parenthesis `(`, we know that a variable is supposed to be declared, not a procedure. The procedure `compile_variable()` takes the parsed identifier, here `x`, and then checks if the parser has seen a global variable, or even a procedure declaration for `x` before. In that case, a syntax error is reported and the currently parsed declaration is ignored. The names of global variables and procedures must be unique. The parser remembers the names of all global variables, and in fact procedures and other information, in a *symbol table*, which can be thought of as a *database* for symbols. We explain how that works below.
 
 If `x` has not been declared yet, a 64-bit machine word is allocated in the data segment for storing the value represented by `x` at runtime, similar to the memory allocated for big integers and string literals. Then, a new entry in the symbol table is created, remembering `x` along with additional information such as the source code line number of the declaration, the fact that `x` denotes a variable called its *class*, its type, its initial value which is for now assumed to be `0`, and its offset relative to the global pointer in the data segment.
 
@@ -4529,15 +4531,51 @@ Finally, the procedure `compile_initialize()` parses the optional definition of 
 
 In fact, have a quick look at the procedure `load_string()` again. Turns out that string literals, and even big integers, are remembered in the same symbol table as variables and procedures. However, the same string literal, or big integer, is perfectly fine to appear in different places in the parsed source code, so there is no syntax error message if they do. Why do we then remember them? Well, read the code carefully. If a string literal is already in the symbol table, we simply do not allocate memory for it anymore, but just reuse the address of the same string literal we parsed before. The same applies to big integers. Reusing the memory for string literals saves more than 2KB in the data segment when self-compiling selfie. Not much but the implementation is so simple, we just could not resist doing that little optimization.
 
-Before introducing symbol tables in detail, let us point out that global variable declarations and definitions do not result in any code generation, only in memory allocation in the data segment and data generation into the data segment. Code is only generated when variables are actually used, and defined in assignments.
+Let us point out that global variable declarations and definitions do not result in any code generation, only in memory allocation in the data segment and data generation into the data segment. Code is only generated when variables are actually used, and defined in assignments.
 
-> Symbol table
+#### Variable Use
 
-Since the data in memory referred to by `data_binary` becomes available in reverse order from high to low addresses, we have two choices for storing it in `data_binary`. Either we store the data in reverse order in `data_binary`, or else we gather the data somewhere else and only store it in `data_binary` when parsing is done and the final size of the data segment is known. We chose the latter option using a concept for gathering information called a *symbol table* that we anyway need later when dealing with identifiers for variables and procedures.
+Using a variable, or a formal parameter for that matter, that is, using its current value in a calculation, to be more precise, is only possible in exactly one spot in the C\* grammar, namely where the symbol `identifier` occurs in the rule for `factor`:
+
+```ebnf
+factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+
+...
+
+call   = identifier "(" [ expression { "," expression } ] ")" .
+```
+
+In other words, we need to take another look at the procedure `compile_factor()` for parsing a `factor`. The relevant part of the grammar also shows that there is a lookahead of 1 necessary to be sure that we are dealing with a global or local variable or a formal parameter, and not a procedure call.
+
+![Variable Use](figures/variable-use.png "Variable Use")
+
+The above figure shows how variable use is parsed and how code is generated for that. As example, we use an assignment `x = x + 7` where only the second occurrence of `x` is relevant since it denotes the use of `x`. The first occurrence of `x` defines the value of `x` which is relevant later when we get to assignments.
+
+Once the parser has figured out through a lookhead of 1 that the parsed identifier does in fact denote the use of a variable or formal parameter, not a procedure call, the procedure `load_variable()` is invoked. That procedure first invokes the procedure `get_variable_entry()` to see if the parsed identifier denotes a variable or formal parameter that has actually been declared before. To do so, something almost magical happens. Well, we probably exaggerate but still there is something very powerful about what is done next.
+
+> Scope: global versus local
+
+Remember our discussion of global versus local variables and formal parameters? The key difference is their *scope* and *memory*, that is, where in source code they can be used and where in memory their values are stored. In our example, we have actually not specified whether `x` denotes a global or local variable or even a formal parameter. In fact, `x` could denote both a global variable and a local variable or formal parameter in which case its role as local variable or formal parameter takes priority over its role as global variable. So, how do we figure out what is going on?
+
+> Symbol table: global versus local
+
+There are different choices but one choice in particular is arguably the simplest. We use two symbol tables rather than one: a *global symbol table* and a *local symbol table*. The global symbol table is where we gather information about global variables, big integers, string literals, and procedures. The local symbol table is where we gather information about local variables and formal parameters of a procedure. Whenever we are trying to find information about an identifier that is supposed to denote a variable or formal parameter, we first check the local symbol table, and only refer to the global symbol table if the local symbol table did not return anything. This is exactly what the procedure `get_scoped_symbol_table_entry()` does.
+
+If there is no entry in neither the local nor the global symbol table, meaning the identifier has not been declared yet, the compiler reports a syntax error and terminates. That behavior is a bit lazy and could be improved since the use of a variable can be seen as an implicit declaration. In other words, the compiler could do what it does for an explicit declaration anyway. Only determining the type of a variable may be more involved, requiring an analysis of the context in which it is used. Production compilers do all that and programming languages other than C and its derivates allow and even encourage the use of undeclared variables. Mostly for simplicity, we do not do any of that in the selfie compiler.
+
+While the global symbol table persists during parsing, a local symbol table does not, simply because it is only needed when parsing a given procedure declaration or definition. Upon moving on to parsing the next procedure, a new, empty local symbol table is created. This means that the global symbol table may get rather large, in fact asymptotically as large as the source code, while a local symbol table may only get as large as the largest procedure in the code. Keep that in mind as we look into the details of symbol tables. We get back to local symbol tables when we explain how procedures are handled by the compiler.
+
+> Using a variable is loading a variable
+
+...
+
+#### Symbol table
+
+A symbol table is our first example of a non-trivial data structure where there is a lot to learn. An interesting observation is that compiling most aspects of programming languages does not even require symbol tables. Only when it comes to handling a context larger than, say, a line of code, up to even the whole program, finite state machines, even with stacks, reach their limits. We need something that remembers what we have seen, so that we can use it properly later.
 
 ![Symbol Table](figures/symbol-table.png "Symbol Table")
 
-The idea of a symbol table is to keep track of symbols that have grammar attributes such as values and types, and possibly even more attributes such as addresses in memory, for example. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for a string literal `"Hello World!"` and a big integer `4294967296` which takes 33 bits to encode in binary. Their "keys" are the string literals `"Hello World!"` and `"4294967296"`, respectively. Their "values" are the offsets relative to the global pointer of where their actual values are stored in the data segment at runtime. We also store other attributes not relevant here but mention some of them below when dealing with identifiers for variables and procedures.
+The idea of a symbol table is to keep track of symbols that have grammar attributes that are relevant elsewhere in the code such as their class and type as well their address in memory, and even the line number where they occurred in source code. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for a string literal `"Hello World!"` and a big integer `4294967296` which takes 33 bits to encode in binary. Their "keys" are the string literals `"Hello World!"` and `"4294967296"`, respectively. Their "values" are the offsets relative to the global pointer of where their actual values are stored in the data segment at runtime. We also store other attributes not relevant here but mention some of them below when dealing with identifiers for variables and procedures.
 
 > Data structures and algorithms
 
@@ -4598,8 +4636,6 @@ the procedure `hash()`
 Hashtables can be used to speed up search for all kinds of applications, not just symbol tables.
 
 hashtags
-
-![Variable Use](figures/variable-use.png "Variable Use")
 
 #### Variable and Formal Argument Use
 
