@@ -4637,7 +4637,7 @@ The length of those strings is bounded in selfie by whatever bounds we imposed o
 
 > When to hash
 
-Hashtables can be used to speed up search for all kinds of applications, not just symbol tables.
+Hashtables can be used to speed up search for all kinds of applications, not just symbol tables. Developing a sense for when to use hashtables is not easy though. A common mistake is that developers use them and other more advanced data structures even though using a simple data structure despite its inferior performance is often just fine. A singly-linked list for local symbol tables is an example of that. A good strategy is to implement any desired logic first with the simplest possible data structure, just to get it right in terms of functional correctness. Only later, if performance becomes an issue, it may be worth taking the risk and look into more complex data structures. Complexity should always be justified.
 
 ### Expressions
 
