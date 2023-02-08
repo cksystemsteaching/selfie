@@ -4412,12 +4412,6 @@ Loading string literals is more involved than loading integer and character lite
 
 Hard to believe but we are done handling literals and now have time to reflect. Literals are the arguably simplest concept in programming languages and yet it took introducing a lot of material to understand how their syntax and semantics is actually specified and implemented. In particular, it took regular expressions, finite state machines, scanning, context-free grammars, recursive-descent parsing, memory management, the notion of compile time and runtime as well as code, data, and register allocation, and code generation. The good news is that there is only one problem left and two implementation techniques for solving it to handle all other concepts in C\*. We are talking about *symbolic references* and how to resolve them into *direct references*. The issue is that handling literals can be done on the spot when parsing them but not so with other programming elements such as variables and procedures. The name of a variable or procedure refers *symbolically* to data or code, respectively. At the level of the machine, however, not names but memory addresses refer *directly* to data or code. We therefore need to resolve symbolic references to direct references and do so using *symbol tables* and *fixup chains*. The former are introduced next for handling variables, the latter when we get to handling conditional and loop statements.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 ### Variables
 
 Handling the syntax and semantics of literals as the arguably simplest concept of programming languages took an amount of work that was even surprising to us. On the flip side, by now we have seen almost everything necessary to handle the remaining concepts, except for symbol tables and fixup chains. Yet the lesson even we learned when writing this up is that a simple concept such as literals is already quite powerful and therefore requires a lot of machinery. Being able to write down numbers, characters, and even strings as is in a high-level programming language, not worrying about how they are encoded and handled by a computer, is an early achievement of computer science. Still, knowing how they are encoded and handled makes a big difference when programming. Sure, you can drive a car with manual transmission without knowing how a clutch works but you cannot become a good driver and certainly not a race driver until you do know!
@@ -4639,7 +4633,37 @@ The length of those strings is bounded in selfie by whatever bounds we imposed o
 
 Hashtables can be used to speed up search for all kinds of applications, not just symbol tables. Developing a sense for when to use hashtables is not easy though. A common mistake is that developers use them and other more advanced data structures even though using a simple data structure despite its inferior performance is often just fine. A singly-linked list for local symbol tables is an example of that. A good strategy is to implement any desired logic first with the simplest possible data structure, just to get it right in terms of functional correctness. Only later, if performance becomes an issue, it may be worth taking the risk and look into more complex data structures. Complexity should always be justified.
 
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
+
 ### Expressions
+
+Literals and variables are the most basic form of arithmetic and logical expressions which in turn allow us to formulate arithmetic calculations and logical conditions over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a simplified version of the C\* grammar that only involves arithmetic operators, literals, and variables:
+
+```ebnf
+expression = term { ( "+" | "-" ) term } .
+
+term       = factor { ( "*" | "/" | "%" ) factor } .
+
+factor     = literal | identifier | "(" expression ")" .
+```
+
+precedence
+
+![Expressions](figures/expressions.png "Expressions")
+
+```ebnf
+expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
+
+arithmetic = term { ( "+" | "-" ) term } .
+
+term       = factor { ( "*" | "/" | "%" ) factor } .
+
+factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+```
 
 type polymorphism
 
@@ -4648,8 +4672,6 @@ unary operators in factor: cast, -, *
 pointer arithmetic: use symbol table getters and setters as example
 
 cast versus expression: lookahead of 1
-
-![Expressions](figures/expressions.png "Expressions")
 
 constant folding
 
@@ -4662,6 +4684,8 @@ running out of registers
 find next strong symbol: keyword etc.
 
 ### Assignments
+
+data flow
 
 ### Conditionals
 
