@@ -53,109 +53,7 @@ class Student:
         self.a_formality   = a_formality
         self.a_similarity  = float(0)
 
-import csv
-
-def read_old_qas(responses_files):
-    emails     = []
-    firstnames = []
-    lastnames  = []
-    questions  = []
-    answers    = []
-
-    for responses_file in responses_files:
-        with open(responses_file, mode='r') as csv_file:
-            print(f'Considering as old responses file: {responses_file}')
-
-            csv_reader = csv.DictReader(csv_file)
-
-            for row in csv_reader:
-                emails.append(row['Username'])
-                questions.append(row['Ask Question'])
-                answers.append(row['Answer Question'])
-
-                if 'Firstname' in csv_reader.fieldnames and 'Lastname' in csv_reader.fieldnames:
-                    firstnames.append(row['Firstname'])
-                    lastnames.append(row['Lastname'])
-                else:
-                    firstnames.append("")
-                    lastnames.append("")
-
-    return emails, firstnames, lastnames, questions, answers
-
-def read_qas(csv_file):
-    csv_reader = csv.DictReader(csv_file)
-
-    students = dict()
-
-    emails = []
-
-    questions = []
-    answers   = []
-
-    q_length    = 0
-    q_formality = 0
-
-    a_length    = 0
-    a_formality = 0
-
-    for row in csv_reader:
-        emails.append(row['Username'])
-
-        questions.append(row['Ask Question'])
-        q_length    += len(row['Ask Question'])
-        q_formality += formality(row['Ask Question'])
-
-        answers.append(row['Answer Question'])
-        a_length    += len(row['Answer Question'])
-        a_formality += formality(row['Answer Question'])
-
-        if row['Username'] not in students:
-            students[row['Username']] = Student(
-                row['Firstname'],
-                row['Lastname'],
-                float(row['Grade Question']),
-                len(row['Ask Question']),
-                formality(row['Ask Question']),
-                float(row['Grade Answer']),
-                len(row['Answer Question']),
-                formality(row['Answer Question']))
-        else:
-            students[row['Username']].number_of_qas += 1
-            students[row['Username']].q_total       += float(row['Grade Question'])
-            students[row['Username']].q_length      += len(row['Ask Question'])
-            students[row['Username']].q_formality   += formality(row['Ask Question'])
-            students[row['Username']].a_total       += float(row['Grade Answer'])
-            students[row['Username']].a_length      += len(row['Answer Question'])
-            students[row['Username']].a_formality   += formality(row['Answer Question'])
-
-    return students, emails, questions, answers, q_length, q_formality, a_length, a_formality
-
-def write_results(students, csv_file):
-    fieldnames = 'Google Apps Email', 'Firstname', 'Lastname', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
-
-    csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-
-    csv_writer.writeheader()
-
-    for student in students.items():
-        csv_writer.writerow({
-            'Google Apps Email': student[0],
-            'Firstname': student[1].firstname,
-            'Lastname': student[1].lastname,
-            'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
-            'Number of Q&As': student[1].number_of_qas,
-            'Length of Answers': student[1].a_length,
-            'Formality of Answers': student[1].a_formality,
-            'Similarity of Answers': student[1].a_similarity,
-            'Length of Questions': student[1].q_length,
-            'Formality of Questions': student[1].q_formality,
-            'Similarity of Questions': student[1].q_similarity,
-            'Totel Length of Q&As': student[1].q_length + student[1].a_length,
-            'Question Average': student[1].q_total / student[1].number_of_qas,
-            'Answer Average': student[1].a_total / student[1].number_of_qas
-        })
-
-def compute_similarity(students, emails, message, strings, old_strings, old_emails, old_firstnames, old_lastnames):
+def compute_similarity(students, emails, row_num, message, strings, old_strings, old_emails, old_row_num, old_firstnames, old_lastnames):
     all_strings = strings + old_strings
 
     vectors = get_vectors(all_strings)
@@ -169,12 +67,12 @@ def compute_similarity(students, emails, message, strings, old_strings, old_emai
                 similarity[x][y] = get_lasered_cosine_similarity(vectors[x], vectors[y])
 
                 if similarity[x][y] > 0.95:
-                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:')
-                    print(f'{emails[x]} ({students[emails[x]].firstname} {students[emails[x]].lastname})')
+                    print(f'{message} similarity {similarity[x][y]} at:')
+                    print(f'[{row_num[x]}]: {emails[x]} ({students[emails[x]].firstname} {students[emails[x]].lastname})')
                     if y <= len(strings):
-                        print(f'{emails[y]} ({students[emails[y]].firstname} {students[emails[y]].lastname})')
+                        print(f'[{row_num[y]}]: {emails[y]} ({students[emails[y]].firstname} {students[emails[y]].lastname})')
                     else:
-                        print(f'{old_emails[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
+                        print(f'[{old_row_num[y - len(strings)]}]: {old_emails[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
                     print(f'<<<\n{strings[x]}\n---\n{all_strings[y]}\n>>>\n')
             elif x > y:
                 similarity[x][y] = similarity[y][x]
@@ -199,17 +97,96 @@ def assign_similarity(students, emails, old_emails, q_similarity, a_similarity):
             student.q_similarity /= len(all_emails) - 1
             student.a_similarity /= len(all_emails) - 1
 
-def process_files(old_responses_files, responses_file, analysis_file):
-    old_emails, old_firstnames, old_lastnames, old_questions, old_answers = read_old_qas(old_responses_files)
+import csv
 
-    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(responses_file)
+def process_files(response_file, analysis_file, class_id, year, attempt):
+    old_emails     = []
+    old_row_num    = []
+    old_firstnames = []
+    old_lastnames  = []
+    old_questions  = []
+    old_answers    = []
 
-    q_similarity = compute_similarity(students, emails, "Question", questions, old_questions, old_emails, old_firstnames, old_lastnames)
-    a_similarity = compute_similarity(students, emails, "Answer", answers, old_answers, old_emails, old_firstnames, old_lastnames)
+    students = dict()
+
+    emails      = []
+    row_num     = []
+    questions   = []
+    answers     = []
+    q_length    = 0
+    q_formality = 0
+    a_length    = 0
+    a_formality = 0
+
+    csv_reader = csv.DictReader(response_file)
+
+    for i, row in enumerate(csv_reader, start=2):
+        if (row['Class'] == class_id and row['Year'] == year and row['Attempt'] == attempt):
+            emails.append(row['Username'])
+            row_num.append(i)
+
+            questions.append(row['Ask Question'])
+            q_length    += len(row['Ask Question'])
+            q_formality += formality(row['Ask Question'])
+
+            answers.append(row['Answer Question'])
+            a_length    += len(row['Answer Question'])
+            a_formality += formality(row['Answer Question'])
+
+            if row['Username'] not in students:
+                students[row['Username']] = Student(
+                    row['Firstname'],
+                    row['Lastname'],
+                    float(row['Grade Question']),
+                    len(row['Ask Question']),
+                    formality(row['Ask Question']),
+                    float(row['Grade Answer']),
+                    len(row['Answer Question']),
+                    formality(row['Answer Question']))
+            else:
+                students[row['Username']].number_of_qas += 1
+                students[row['Username']].q_total       += float(row['Grade Question'])
+                students[row['Username']].q_length      += len(row['Ask Question'])
+                students[row['Username']].q_formality   += formality(row['Ask Question'])
+                students[row['Username']].a_total       += float(row['Grade Answer'])
+                students[row['Username']].a_length      += len(row['Answer Question'])
+                students[row['Username']].a_formality   += formality(row['Answer Question'])
+        else:
+            old_emails.append(row['Username'])
+            old_row_num.append(i)
+            old_firstnames.append(row['Firstname'])
+            old_lastnames.append(row['Lastname'])
+            old_questions.append(row['Ask Question'])
+            old_answers.append(row['Answer Question'])
+
+    q_similarity = compute_similarity(students, emails, row_num, "Question", questions, old_questions, old_emails, old_row_num, old_firstnames, old_lastnames)
+    a_similarity = compute_similarity(students, emails, row_num, "Answer", answers, old_answers, old_emails, old_row_num, old_firstnames, old_lastnames)
 
     assign_similarity(students, emails, old_emails, q_similarity, a_similarity)
 
-    write_results(students, analysis_file)
+    fieldnames = 'Google Apps Email', 'Firstname', 'Lastname', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+
+    csv_writer = csv.DictWriter(analysis_file, fieldnames=fieldnames)
+
+    csv_writer.writeheader()
+
+    for student in students.items():
+        csv_writer.writerow({
+            'Google Apps Email': student[0],
+            'Firstname': student[1].firstname,
+            'Lastname': student[1].lastname,
+            'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
+            'Number of Q&As': student[1].number_of_qas,
+            'Length of Answers': student[1].a_length,
+            'Formality of Answers': student[1].a_formality,
+            'Similarity of Answers': student[1].a_similarity,
+            'Length of Questions': student[1].q_length,
+            'Formality of Questions': student[1].q_formality,
+            'Similarity of Questions': student[1].q_similarity,
+            'Totel Length of Q&As': student[1].q_length + student[1].a_length,
+            'Question Average': student[1].q_total / student[1].number_of_qas,
+            'Answer Average': student[1].a_total / student[1].number_of_qas
+        })
 
     print(f'Number of students: {len(students)}')
     print(f'Total number of Q&As {len(questions)}')
@@ -223,33 +200,39 @@ def process_files(old_responses_files, responses_file, analysis_file):
 import sys, getopt
 
 def main(argv):
-    old_responses_files = []
-
     response_file = ''
     analysis_file = ''
 
+    class_id = 'IOS'
+    year     = '2019'
+    attempt  = '2nd'
+
     try:
-        opts, args = getopt.getopt(argv,"ho:r:a:",["ofile=","rfile=","afile="])
+        opts, args = getopt.getopt(argv,'hr:a:c:y:t:',[])
     except getopt.GetoptError:
-        print ('examr.py { -o <oldresponsesfile> } -r <responsefile> -a <analysisfile>')
+        print ('examr.py -r <responsefile> -a <analysisfile> -c class -y year -t attempt')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print ('examr.py { -o <oldresponsesfile> } -r <responsefile> -a <analysisfile>')
+            print ('examr.py -r <responsefile> -a <analysisfile> -c class -y year -t attempt')
             sys.exit()
-        elif opt in ("-o", "--ofile"):
-            old_responses_files.append(arg)
-        elif opt in ("-r", "--rfile"):
+        elif opt == '-r':
             response_file = arg
-        elif opt in ("-a", "--afile"):
+        elif opt == '-a':
             analysis_file = arg
+        elif opt == '-c':
+            class_id = arg
+        elif opt == '-y':
+            year = arg
+        elif opt == '-t':
+            attempt = arg
 
     if response_file != '':
-        with open(response_file, mode='r') as csv_responses_file:
+        with open(response_file, mode='r') as csv_response_file:
             if analysis_file != '':
                 with open(analysis_file, mode='w') as csv_analysis_file:
-                    process_files(old_responses_files, csv_responses_file, csv_analysis_file)
+                    process_files(csv_response_file, csv_analysis_file, class_id, year, attempt)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

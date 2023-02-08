@@ -8,7 +8,7 @@ This document provides an overview of the differences in semantics between the p
 
 ## Integer Literals
 
-Integer literals in C\* are interpreted as 64-bit unsigned integers. In C, however, integer literals are interpreted as 32-bit signed integers. As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, and `>=`.
+Integer literals in C\* are interpreted as unsigned 64-bit integers (`uint64_t`). In C, however, integer literals are interpreted as signed 32-bit integers (`int`). As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, and `>=`.
 
 #### Arithmetic:
 
@@ -66,9 +66,9 @@ c == 1
 d == 1
 ```
 
-## Strings
+## String Literals
 
-Strings in C\* are arrays of type `uint64_t` whereas strings in C are arrays of type `char`. Thus each element of a string in C\* contains 8 characters rather than just 1 character as in C. Dereferencing a string therefore results in different values in C\* and C.
+String literals in C\* are interpreted as `uint64_t*`, that is, pointers to `uint64_t` whereas string literals in C are interpreted as arrays of type `char`. Thus dereferencing a string literal in C\* results in an `uint64_t` value containing up to eight characters rather than just a `char` value containing only one character as in C.
 
 #### Dereferencing:
 
@@ -96,7 +96,7 @@ Note that `0x48` is ASCII for `H`. Moreover, `0x65`, `0x6C`, `0x6F`, `0x20`, and
 
 ### malloc
 
-Per C standard, consecutive calls of `malloc` always have to return unique addresses independent of the actual size parameter. However, allocating memory in C\* with 0 as size parameter results in no memory allocation at all. Therefore, consecutive calls of `malloc` do always return the same address.
+Per C standard, consecutive calls to the procedure `malloc()` always have to return unique addresses independent of the actual size parameter. However, allocating memory in C\* with `0` as size parameter results in no memory allocation at all. Therefore, consecutive calls to `malloc()` do always return the same address.
 
 C\*:
 

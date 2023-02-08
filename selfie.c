@@ -732,10 +732,11 @@ uint64_t compile_arithmetic(); // returns type
 uint64_t compile_term();       // returns type
 uint64_t compile_factor();     // returns type
 
-void     load_small_and_medium_integer(uint64_t reg, uint64_t value);
-uint64_t load_big_integer(char* big_integer);
-void     load_integer(uint64_t value);
-void     load_string(char* string);
+void load_small_and_medium_integer(uint64_t reg, uint64_t value);
+void load_big_integer(uint64_t value);
+void load_integer(uint64_t value);
+void load_address(uint64_t* entry);
+void load_string();
 
 uint64_t compile_literal(); // returns type
 
@@ -1096,7 +1097,7 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address);
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
 void emit_string_data(uint64_t* entry);
 
-void emit_data_segment();
+void finalize_data_segment();
 
 uint64_t* allocate_elf_header();
 
@@ -3717,7 +3718,11 @@ void get_symbol() {
   uint64_t i;
 
   // reset previously scanned symbol
-  symbol = SYM_EOF;
+  symbol     = SYM_EOF;
+  identifier = (char*) 0;
+  integer    = (char*) 0;
+  literal    = 0;
+  string     = (char*) 0;
 
   if (find_next_character() != CHAR_EOF) {
     if (symbol != SYM_DIVISION) {
@@ -3793,8 +3798,6 @@ void get_symbol() {
         symbol = SYM_INTEGER;
       } else if (character == CHAR_SINGLEQUOTE) {
         get_character();
-
-        literal = 0;
 
         if (character == CHAR_EOF) {
           syntax_error_message("reached end of file looking for a character literal");
@@ -4405,6 +4408,7 @@ void compile_cstar() {
   uint64_t* entry;
 
   while (symbol != SYM_EOF) {
+    // synchronizing on strong symbols in case of syntax errors
     while (is_neither_type_nor_void()) {
       syntax_error_unexpected_symbol();
 
@@ -4428,6 +4432,8 @@ void compile_cstar() {
           entry = compile_variable(variable_or_procedure, type, 0);
 
           set_value(entry, compile_initialize(type));
+
+          emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
 
           get_expected_symbol(SYM_SEMICOLON);
         } else
@@ -4583,15 +4589,19 @@ uint64_t compile_cast(uint64_t type) {
 }
 
 uint64_t compile_value() {
-  if (is_value())
+  uint64_t value;
+
+  if (is_value()) {
+    value = literal;
+
     get_symbol();
-  else {
+
+    return value;
+  } else {
     syntax_error_unexpected_symbol();
 
     return 0;
   }
-
-  return literal;
 }
 
 void compile_statement() {
@@ -4599,6 +4609,7 @@ void compile_statement() {
 
   // assert: allocated_temporaries == 0
 
+  // synchronizing on strong symbols in case of syntax errors
   while (is_not_statement()) {
     syntax_error_unexpected_symbol();
 
@@ -5058,6 +5069,7 @@ uint64_t compile_factor() {
 
   // assert: n = allocated_temporaries
 
+  // synchronizing on strong symbols in case of syntax errors
   while (is_not_factor()) {
     syntax_error_unexpected_symbol();
 
@@ -5188,22 +5200,30 @@ void load_small_and_medium_integer(uint64_t reg, uint64_t value) {
   }
 }
 
-uint64_t load_big_integer(char* big_integer) {
+void load_big_integer(uint64_t value) {
   uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  entry = search_global_symbol_table(big_integer, BIGINT);
+  // reuse big integers
+  entry = search_global_symbol_table(integer, BIGINT);
 
-  return
-    // type of big integer is grammar attribute
-    load_value(entry);
-    // assert: allocated_temporaries == n + 1
+  if (entry == (uint64_t*) 0) {
+    // allocate memory for big integer in data segment
+    data_size = data_size + WORDSIZE;
+
+    entry = create_symbol_table_entry(GLOBAL_TABLE, integer,
+      line_number, BIGINT, UINT64_T, value, -data_size);
+
+    emit_data_word(value, -data_size, line_number);
+  }
+
+  load_value(entry);
+
+  // assert: allocated_temporaries == n + 1
 }
 
 void load_integer(uint64_t value) {
-  uint64_t* entry;
-
   // assert: n = allocated_temporaries
 
   if (is_signed_integer(value, 32)) {
@@ -5211,57 +5231,61 @@ void load_integer(uint64_t value) {
     talloc();
 
     load_small_and_medium_integer(current_temporary(), value);
-  } else {
+  } else
     // integers with value < -2^31 or value >= 2^31 are stored in data segment
-    entry = search_global_symbol_table(integer, BIGINT);
-
-    if (entry == (uint64_t*) 0) {
-      // allocate memory for big integer in data segment
-      data_size = data_size + WORDSIZE;
-
-      create_symbol_table_entry(GLOBAL_TABLE, integer,
-        line_number, BIGINT, UINT64_T, value, -data_size);
-    }
-
-    load_big_integer(integer);
-  }
+    load_big_integer(value);
 
   // assert: allocated_temporaries == n + 1
 }
 
-void load_string(char* string) {
-  uint64_t length;
+void load_address(uint64_t* entry) {
+  // assert: n = allocated_temporaries
+
+  load_integer(get_address(entry));
+
+  emit_add(current_temporary(), get_scope(entry), current_temporary());
+
+  // assert: allocated_temporaries == n + 1
+}
+
+void load_string() {
+  uint64_t* entry;
 
   // assert: n = allocated_temporaries
 
-  length = string_length(string) + 1;
+  // reuse string literals
+  entry = search_global_symbol_table(string, STRING);
 
-  // allocate memory for string in data segment
-  data_size = data_size + round_up(length, WORDSIZE);
+  if (entry == (uint64_t*) 0) {
+    // allocate memory for string in data segment
+    data_size = data_size + round_up(string_length(string) + 1, WORDSIZE);
 
-  create_symbol_table_entry(GLOBAL_TABLE, string,
-    line_number, STRING, UINT64STAR_T, 0, -data_size);
+    entry = create_symbol_table_entry(GLOBAL_TABLE, string,
+      line_number, STRING, UINT64STAR_T, 0, -data_size);
 
-  load_integer(-data_size);
+    emit_string_data(entry);
+  }
 
-  emit_add(current_temporary(), REG_GP, current_temporary());
+  load_address(entry);
 
   // assert: allocated_temporaries == n + 1
 }
 
 uint64_t compile_literal() {
-  // assert: allocated_temporaries == 0
+  // assert: n = allocated_temporaries
 
   if (is_value()) {
-    load_integer(compile_value());
+    load_integer(literal);
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
+
+    compile_value();
 
     return UINT64_T;
   } else if (symbol == SYM_STRING) {
-    load_string(string);
+    load_string();
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
 
     get_symbol();
 
@@ -5272,7 +5296,7 @@ uint64_t compile_literal() {
     // we must allocate an additional temporary
     load_integer(0);
 
-    // assert: allocated_temporaries == 1
+    // assert: allocated_temporaries == n + 1
 
     return UINT64_T;
   }
@@ -5885,13 +5909,12 @@ void compile_return() {
 
 void macro_var_start() {
   uint64_t* var_list_variable;
-  uint64_t s0_offset;
 
   var_list_variable = (uint64_t*) 0;
-  s0_offset         = 0;
 
+  // #non-variadic parameters == - get_value(current_procedure)
   if (signed_less_than(get_value(current_procedure), 0) == 0)
-    syntax_error_message("'var_start' used in procedure with non-variadic parameters");
+    syntax_error_message("'var_start' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
     var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
@@ -5902,14 +5925,12 @@ void macro_var_start() {
       if (symbol == SYM_RPARENTHESIS) {
         get_symbol();
 
-        // skip the return address, frame pointer and non-variadic parameters
-        s0_offset = 2 * WORDSIZE - get_value(current_procedure) * WORDSIZE;
-
-        load_integer(s0_offset);
+        // skip the return address and frame pointer as well as non-variadic parameters
+        load_integer(2 * WORDSIZE - get_value(current_procedure) * WORDSIZE);
 
         // address of first variadic parameter is:
         // S0 + 2 * WORDSIZE + #non-variadic parameters * WORDSIZE
-        emit_add(current_temporary(), current_temporary(), REG_S0);
+        emit_add(current_temporary(), REG_S0, current_temporary());
 
         // store address in variable passed as macro argument
         emit_store(REG_S0, get_address(var_list_variable), current_temporary());
@@ -5974,7 +5995,7 @@ void macro_var_arg() {
 // RISC-V va_end does nothing and is only implemented for parity with standard C
 void macro_var_end() {
   if (signed_less_than(get_value(current_procedure), 0) == 0)
-    syntax_error_message("'var_end' used in procedure with non-variadic parameters");
+    syntax_error_message("'var_end' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
     get_symbol();
@@ -6292,7 +6313,7 @@ void selfie_compile() {
   if (GC_ON)
     emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
 
-  emit_data_segment();
+  finalize_data_segment();
 
   ELF_header = encode_elf_header();
 
@@ -7018,10 +7039,11 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
   // assert: offset < 0
 
-  store_data(data_size + offset, data);
+  // the data segment is populated in reverse order from end to start
+  store_data(MAX_DATA_SIZE + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
-    *(data_line_number + (data_size + offset) / WORDSIZE) = source_line_number;
+    *(data_line_number + (MAX_DATA_SIZE + offset) / WORDSIZE) = source_line_number;
 }
 
 void emit_string_data(uint64_t* entry) {
@@ -7042,29 +7064,15 @@ void emit_string_data(uint64_t* entry) {
   }
 }
 
-void emit_data_segment() {
-  uint64_t i;
-  uint64_t* entry;
+void finalize_data_segment() {
+  // assert: data_size > 0
 
-  i = 0;
+  // the data segment is populated in reverse order from end to start
+  // set the actual start, given the final size of the data segment
+  data_binary = data_binary + (MAX_DATA_SIZE - data_size) / WORDSIZE;
 
-  while (i < HASH_TABLE_SIZE) {
-    entry = (uint64_t*) *(global_symbol_table + i);
-
-    // copy initial values of global variables, big integers and strings
-    while ((uint64_t) entry != 0) {
-      if (get_class(entry) == VARIABLE)
-        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
-      else if (get_class(entry) == BIGINT)
-        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
-      else if (get_class(entry) == STRING)
-        emit_string_data(entry);
-
-      entry = get_next_entry(entry);
-    }
-
-    i = i + 1;
-  }
+  if (data_line_number != (uint64_t*) 0)
+    data_line_number = data_line_number + (MAX_DATA_SIZE - data_size) / WORDSIZE;
 }
 
 uint64_t* allocate_elf_header() {
