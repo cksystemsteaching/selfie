@@ -4271,9 +4271,9 @@ call       = identifier "(" [ expression { "," expression } ] ")" .
 return     = "return" [ expression ] .
 ```
 
-The rest of the chapter is essentially about that grammar, how the language it defines is parsed, and how code is generated during parsing. The key difference between the grammar of C\* symbols and the C\* grammar, that is, the grammar of C\* programs, is that the latter consists of multiple EBNF rules that cannot be substituted into a single EBNF rule. The C\* grammar is indeed not regular.
+The rest of the chapter is essentially about that grammar, how the language it defines is parsed, and how code is generated during parsing. The key difference between the grammar of C\* symbols and the C\* grammar, that is, the grammar of C\* programs, is that the latter consists of multiple EBNF rules that cannot be substituted into a single EBNF rule. The C\* grammar is indeed not regular and thus requires a pushdown automaton, that is, a finite state machine with a stack, to recognize sentences that are syntactically valid.
 
-The non-terminal symbol `cstar` in the left-hand side of the first rule is called the *start symbol*. This is where the derivation of syntactically correct C\* programs begins. But how do we deal with multiple EBNF rules in the implementation of a parser? Simple! We just introduce, not just one scanner procedure such as `get_symbol()`, but multiple parser procedures named `compile_X()`, one for each rule where `X` is the non-terminal in the left-hand side of the rule. For example, for the first rule, we introduce the procedure `compile_cstar()` and then implement the right-hand side of the rule in the procedure. For each occurrence of a non-terminal symbol `X` we simply call the procedure `compile_X()`. The result is a recursive-descent parser that is invoked by calling `compile_cstar()`. See for yourself by looking up those procedures in the selfie source code.
+The non-terminal symbol `cstar` in the left-hand side of the first rule is called the *start symbol*. This is where the derivation of syntactically correct C\* programs begins. But how do we deal with multiple EBNF rules in the implementation of a parser? Simple! We just introduce, not just one scanner procedure such as `get_symbol()`, but multiple parser procedures named `compile_X()`, one for each rule where `X` is the non-terminal in the left-hand side of the rule. For example, for the first rule, we introduce the procedure `compile_cstar()` and then implement the right-hand side of the rule in the procedure. For each occurrence of a non-terminal symbol `X` we simply call the procedure `compile_X()`. The result is a recursive-descent parser that implements a pushdown automaton and is invoked by calling `compile_cstar()`. See for yourself by looking up those procedures in the selfie source code.
 
 Recursive-descent parsers use recursion to descent *top down* into the grammar beginning with the EBNF rule containing the start symbol. Recursion terminates whenever a terminal symbol is encountered. Parsers for languages other than LL(1) often work *bottom up* which is a technique that allows parsing syntactically more complex languages such as LR(1) and others.
 
@@ -4328,7 +4328,7 @@ The first three elements of a `factor` are optional. There may or may not be a `
 
 > Typing and casting
 
-Casting we can handle here but it does require a little excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
+Casting we can handle here since it does not involve code generation but it does require a little excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
 
 In C\* variables and procedure arguments as well as literals and expressions are all *typed*, that is, have a type which can only be one of the two C\* data types. Casting allows changing types, here from one type to the other type, without applying any operations on any involved values. That's all. For example, integer literals such as `85` are of type `uint64_t` in C\* which we can nevertheless change to `uint64_t*` through casting:
 
@@ -4563,7 +4563,7 @@ While the global symbol table persists during parsing, a local symbol table does
 
 Alright, once the parser has found an entry, here for `x`, in one of the two symbol tables, it is time to generate code for loading the current value of `x` into a register by invoking the procedure `load_value()`. Besides allocating a temporary register, the challenge is to determine the address of where the value is stored in memory. Ultimately, the address is composed of a register, that is, either the `gp` register for global variables or the `s0` register for local variables and formal parameters, as provided by the procedure `get_scope()`, and the offset relative to that register, as provided by the procedure `get_address()`. This is only a slight misnomer since `get_address()` does indeed return an actual address for entries that represent procedures. Either way, offsets may or may not fit into 12 bits. If they do not, code generation is a bit more involved, see the source code for the details. If the offset does fit, only a single load instruction is generated, as shown in the above figure for the case of `x` being a global variable. When we get to assignments, we see that the only difference between using the current value of a variable versus defining it, as in `x = x +7;`, is that a store instruction is generated, instead of a load instruction but with the exact same parameters as the load instruction. We finally made it to our last big topic before looking into expressions.
 
-#### Symbol table
+#### Symbol Table
 
 A symbol table is our first example of a non-trivial data structure where there is a lot to learn. An interesting observation is that compiling most aspects of programming languages does not even require symbol tables. Only when it comes to handling a context larger than, say, a line of code, up to even the whole program, finite state machines, even with stacks, reach their limits. We need something that remembers what we have seen, possibly in any order, so that we can use it properly later.
 
@@ -4651,9 +4651,13 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = literal | identifier | "(" expression ")" .
 ```
 
-precedence
+A simple example of an expression is `x + 7` which we saw before when parsing literals. Another example is `x + 7 * y` which demonstrates the notion of *precedence* of operators. The expression `x + 7 * y` is semantically equivalent to the expression `x + (7 * y)`, in particular in contrast to the expression `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Interestingly, their precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in the grammar before the operators with higher precedence. That structure is maintained in the part of the recursive-descent parser that handles expressions.
 
 ![Expressions](figures/expressions.png "Expressions")
+
+The above figure shows the pushdown automaton that handles the grammar. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures, that is, here the parser procedures named `compile_X()` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor()`, the non-terminals `expression` and `term` are implemented by the procedures `compile_expression()` and `compile_term()`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor()` does indeed call the procedure `compile_expression()` recursively to handle that part of the rule.
+
+The full C\* grammar for expressions extends the above, simplified version with a rule for logical comparison operators, which have lower precedence than all other operators, and the full rule for the non-terminal `factor` which we saw before:
 
 ```ebnf
 expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
@@ -4665,19 +4669,27 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-type polymorphism
+The arithmetic and logical operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, negation, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for logical operators, which is a bit more involved, and finally for the negation and dereference operators. Casting does not involve code generation as mentioned before.
 
-unary operators in factor: cast, -, *
-
-pointer arithmetic: use symbol table getters and setters as example
-
-cast versus expression: lookahead of 1
+#### Arithmetic Operators
 
 constant folding
 
 register allocation inefficiency in profile
 
 running out of registers
+
+#### Logical Operators
+
+#### Negation Operator
+
+cast versus expression: lookahead of 1
+
+#### Dereference Operator
+
+type polymorphism
+
+pointer arithmetic: use symbol table getters and setters as example
 
 ### Statements
 
