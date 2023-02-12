@@ -4714,6 +4714,10 @@ For example, register `t0` is accessed around 460 million times, roughly half by
 
 > Constant folding
 
+Before moving on there is yet another opportunity here to talk about optimization. What if we compile an expression with constant operands such as `42 * 7`, for example? The selfie compiler would still generate code for that even though it could easily figure out to which value the expression evaluates, and then just use that value, instead of generating code. Doing so is called *constant folding* which is arguably the most basic form of compiler optimization, and implemented in virtually all production compilers. In other words, if spelling out `42 * 7` in your code, instead of just saying `294`, makes the code more readable, keep it and do not worry about performance. Your compiler takes care of that, and many other apparent inefficiencies.
+
+The other reason we mention constant folding is because it beautifully shows the tradeoff between compile time and runtime. The more time we spend at compile time trying to compute as much as possible just once before generating code, the more time we may save at runtime recomputing values again and again that could have been computed just once before. While constant folding is relatively easy to do and an interesting exercise for students, other code optimization techniques can be a lot more involved but nevertheless explore the same tradeoff.
+
 ![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
 
 type polymorphism
