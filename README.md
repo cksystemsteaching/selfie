@@ -4673,9 +4673,17 @@ The arithmetic and logical operators used in the first three rules are all *bina
 
 #### Arithmetic Operators
 
+Compiling arithmetic operators is surprisingly simple as long as there are machine instructions that match the semantics of those operators. In case of C\* and RISC-U they do. To some extent this is also true for logical operators but only when considering all of RISC-V, not just RISC-U. We therefore look into compiling logical operators after we are done with arithmetic operators. Among the arithmetic operators of C\*, the operators for multiplication, division, and remainder are even a bit easier to handle than the operators for addition and subtraction since the latter have different semantics depending on the type of their operands. So, for now, let us take the expression `x * 7` as example, instead of `x + 7`.
+
 ![Terms](figures/emitting-terms.png "Terms")
 
-![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+The above figure shows how the procedure `compile_term()` implements the grammar rule that defines the non-terminal `term`, including emitting code. As before, the first occurrence of the non-terminal `factor` is handled by a call to the procedure `compile_factor()`, followed by a while loop that iterates of any number of occurrences of the `*`, `/`, or `%` symbols, and another occurrence of `factor`, which again is handled by a call to `compile_factor()`. Besides remembering the type of each factor in local variables `ltype` and `rtype` on the call stack, the code also remembers the currently parsed operator symbol in a local variable called `operator_symbol`, also on the call stack. This is important. If we just continued parsing without remembering the operator symbol, we would not know what the operator is anymore after parsing the following factor.
+
+> From infix to postfix notation
+
+What effectively happens here is that the code turns *infix* notation into *postfix* notation which requires remembering the operator symbol. The C\* notation `x * 7` is infix because the binary operator `*` occurs in between its two operands `x` and `7`. However, the generated machine code that implements `x * 7` is postfix because it first loads both the value of `x` into register `t0` using the machine instruction `ld t0,-ds(gp)` and the value `7` into register `t1` using `addi t1,zero,7`. Only then, with both operands in registers, the machine instruction `mul t0,t0,t1` generated here implements the operator `*`. For the operators `/` and `%`, code generation works the same way but using the `divu` and `remu` instructions, respectively. That's it!
+
+Well, not quite. Notice the call to the procedure `tfree()`. This is important too.
 
 constant folding
 
@@ -4683,9 +4691,13 @@ register allocation inefficiency in profile
 
 running out of registers
 
+![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+
 #### Logical Operators
 
 #### Negation Operator
+
+prefix
 
 cast versus expression: lookahead of 1
 
