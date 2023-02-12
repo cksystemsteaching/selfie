@@ -4683,15 +4683,42 @@ The above figure shows how the procedure `compile_term()` implements the grammar
 
 What effectively happens here is that the code turns *infix* notation into *postfix* notation which requires remembering the operator symbol. The C\* notation `x * 7` is infix because the binary operator `*` occurs in between its two operands `x` and `7`. However, the generated machine code that implements `x * 7` is postfix because it first loads both the value of `x` into register `t0` using the machine instruction `ld t0,-ds(gp)` and the value `7` into register `t1` using `addi t1,zero,7`. Only then, with both operands in registers, the machine instruction `mul t0,t0,t1` generated here implements the operator `*`. For the operators `/` and `%`, code generation works the same way but using the `divu` and `remu` instructions, respectively. That's it!
 
-Well, not quite. Notice the call to the procedure `tfree()`. This is important too.
+> Running out of registers
 
-constant folding
+Well, not quite. Notice the call to the procedure `tfree()`. This is important too. The most recently allocated register, here register `t1`, is actually not needed anymore as soon as the calculation is done, at runtime! This means we actually have to deallocate it and thus make it reusable for other purposes, at compile time! Otherwise, we would sooner or later run out of registers. Speaking of which, can we actually run out of registers at compile time? Yes, of course. Try to design an expression for which the selfie compiler does indeed run out of registers. Hint: grouping nested subexpressions does the trick. For example, the expression `x * (x * (x * 7))` requires a total of four temporary registers and thus still compiles. Extend the expression until the selfie compiler fails.
 
-register allocation inefficiency in profile
+Could we enhance the compiler to handle any syntactically valid expression? Yes, of course. One way to do that is to use memory as temporary space for saving register values. However, doing so results in machine code that stores and later loads those values again which may be slow. Moreover, there is significant complexity involved in doing this correctly in the compiler. As usual, we have avoided that complexity and instead report an error and terminate. Yet modern production compilers do address the problem more thoroughly.
 
-running out of registers
+> Efficient use of registers
+
+There is another related problem which is the efficiency of using registers. The register allocator in the selfie compiler is a stack allocator which means that temporary registers are used unevenly. In fact, register `t0` is used the most, followed by register `t1`, and so on. You can actually see that by looking at the output of self-compilation of selfie. Try:
+
+```bash
+make self-self
+```
+
+The relevant output is at the very end:
+
+```
+./selfie: t0 register:   460293569,230243247,230050322[1.00]
+./selfie: t1 register:   184970699,92509323,92461376[1.00]
+./selfie: t2 register:   39760688,19880344,19880344[1.00]
+./selfie: t3 register:   932838,466419,466419[1.00]
+./selfie: t4 register:   102700,51350,51350[1.00]
+./selfie: t5 register:   82160,41080,41080[1.00]
+./selfie: t6 register:   20540,10270,10270[1.00]
+./selfie: temps total:   686163194,343202033,342961161[1.00]
+```
+
+For example, register `t0` is accessed around 460 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
+
+> Constant folding
 
 ![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+
+type polymorphism
+
+pointer arithmetic: use symbol table getters and setters as example
 
 #### Logical Operators
 
@@ -4703,9 +4730,7 @@ cast versus expression: lookahead of 1
 
 #### Dereference Operator
 
-type polymorphism
-
-pointer arithmetic: use symbol table getters and setters as example
+prefix
 
 ### Statements
 
