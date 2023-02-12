@@ -4673,6 +4673,10 @@ The arithmetic and logical operators used in the first three rules are all *bina
 
 #### Arithmetic Operators
 
+![Terms](figures/emitting-terms.png "Terms")
+
+![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+
 constant folding
 
 register allocation inefficiency in profile
