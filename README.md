@@ -4720,7 +4720,17 @@ The other reason we mention constant folding is because it beautifully shows the
 
 ![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
 
-Compiling arithmetic expressions with operators for addition and subtraction works the same way as compiling terms with operators for multiplication, division, and remainder. Code generation just uses the `add` and `sub` instructions for the operators `+` and `-`, respectively. An interesting twist, however, is that both `+` and `-` are *overloaded* operators in C\*, and many other programming languages, with *type polymorphism*, as mentioned before. Their semantics depends on the type of their operands.
+Compiling arithmetic expressions with operators for addition and subtraction works the same way as compiling terms with operators for multiplication, division, and remainder. Code generation just uses the `add` and `sub` instructions for the operators `+` and `-`, respectively. The above figure shows how the procedure `compile_arithmetic()` implements the grammar rule that defines the non-terminal `arithmetic`, including emitting code.
+
+> Overloading and type polymorphism
+
+An interesting twist, however, is that both `+` and `-` are *overloaded* operators in C\*, and many other programming languages, with *type polymorphism*, as mentioned before. Their semantics depends on the type of their operands. Fortunately, there are only two types in C\* for unsigned integers and pointers to unsigned integers denoted `uint64_t` and `uint64_t*`, respectively, leaving us with four combinations for each operator. In the following, we focus on addition. Subtraction is handled similarly but not exactly the same as addition. Refer to the source code of selfie for the details.
+
+The simplest combination of types is if both operands are of type unsigned integer. In that case, generating a single `add` instruction, or `sub` instruction, is sufficient. Another simple case is if both operands are of type pointer to unsigned integer. That case is actually an error with addition, but not with subtraction, and reported as such yet without terminating compilation.
+
+> Pointer arithmetic
+
+The two remaining cases are symmetric with addition, so we only focus on the case where the left operand is of type pointer to unsigned integer and the right operand is of type unsigned integer.
 
 pointer arithmetic: use symbol table getters and setters as example
 
