@@ -4669,7 +4669,7 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-The arithmetic and logical operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, negation, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for logical operators, which is a bit more involved, and finally for the negation and dereference operators. Casting does not involve code generation as mentioned before.
+The arithmetic and logical operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for logical operators, which is a bit more involved, and finally for the minus and dereference operators. Casting does not involve code generation as mentioned before.
 
 #### Arithmetic Operators
 
@@ -4766,11 +4766,19 @@ Do exactly the same for this assignment, and it will work! There is no need to u
 
 #### Logical Operators
 
+C\* features logical operators for comparing unsigned integer values, see the grammar rule that defines the non-terminal `expression`. The syntax of comparisons is defined in that rule because the comparison operators have lower precedence than any of the arithmetic operators in C\*. For example, the expression `x - 1 < 7` is semantically equivalent to the expression `(x - 1) < 7`, not the expression `x - (1 < 7)`.
+
+Bitwise logical operators are not supported in C\* and instead the subject of an assignment we discuss below in the context of the unary minus operator. There is also an assignment on the support of logical operators for constructing logical conditions but that assignment is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
+
 ![Expressions](figures/emitting-expressions.png "Expressions")
 
-lazy evaluation assignment after conditionals
+The above figure shows how the procedure `compile_expression()` works for the operators `==` and `<`, not showing the code for the other comparison operators. Refer to the source code for those. The first thing we should note is that all comparison operators must evaluate to either `0` or `1`, nothing else, indicating that the comparison evaluated to false or true, respectively.
 
-#### Negation Operator
+Before we get to the example in the figure, the expression `x == 7`, consider as example the expression `x < 7` instead. Code generation for the `<` operator is straightforward because the `sltu` instruction in RISC-U matches the semantics of the `<` operator exactly. Recall that `sltu` stores `1` in its destination register, here `t0`, if the value in the first source register, again here `t0`, is strictly less than the value in the second source register, here `t1`, using the unsigned interpretation of those values. Otherwise, `sltu` stores `0` in its destination register. So, for the `<` operator we just generate a single `sltu` instruction, deallocate the second source register, and are done.
+
+Support of the `>` operator is symmetric. Only the other four comparison operators are more involved. We use the `==` operator in the expression `x == 7` as example. How do we make sure that the destination register, here `t0`, only contains `1` if the value of `x` is equal to `7`, and otherwise `0`? Well, `x == 7` is true if and only if `7 - x < 1` is true, assuming, and that is important, unsigned interpretation of the values. In that case, no value other than `0` can be less than `1`, and `7 - x` can obviously only evaluate to `0` if `x` is equal to `7`. So, we first generate code that implements `7 - x` using a `sub` instruction, followed by an `addi` instruction for loading `1`, and finally followed by an `sltu` instruction for the comparison, just like before. That's it! Check the implementation of the other comparison operators. We use similar reasoning there. It's fun.
+
+#### Minus Operator
 
 prefix
 
