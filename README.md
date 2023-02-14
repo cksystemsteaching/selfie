@@ -4718,6 +4718,24 @@ Before moving on there is yet another opportunity here to talk about code optimi
 
 The other reason we mention constant folding is because it beautifully shows the tradeoff between compile time and runtime. The more time we spend at compile time trying to compute as much as possible just once before generating code, the more time we may save at runtime recomputing values again and again that could have been computed just once before. While constant folding is relatively easy to do and an interesting exercise for students, other code optimization techniques can be a lot more involved but nevertheless explore the same tradeoff.
 
+> Bitwise shift operators
+
+C\* only features arithmetic and some logical operators. However, most programming languages also provide *bitwise* operators for manipulating individual bits of data. Support of bitwise operators takes us to our first assignment that comes in two parts and involves code generation. The first part called `bitwise-shift-compilation` focuses on handling their syntax. Only the second part called `bitwise-shift-execution` involves actual code generation. Try:
+
+```bash
+./grader/self.py bitwise-shift-compilation
+```
+
+Passing this assignment requires implementing scanner and parser support of the bitwise *shift* operators `<<` and `>>` which perform logical bitwise left and right shifting, respectively. Interestingly, you do not even need to understand what bitwise shifting is. You just need to find out what the precedence of these operators in standard C is relative to the already supported operators in C\*. The next step is to enhance the C\* grammar accordingly, followed by the actual implementation in the scanner and parser of selfie.
+
+The second part of the assignment requires not only implementing code generation for these operators in the selfie compiler but also implementing support of the RISC-V machine instructions `sll` and `srl` for logical bitwise left and right shifting, respectively, in the selfie emulator. Try:
+
+```bash
+./grader/self.py bitwise-shift-execution
+```
+
+The interesting twist of this assignment is that you can and should use the `<<` and `>>` operators in your implementation of the `sll` and `srl` instructions, respectively. In other words, use what you implement to implement it! Recall that the RISC-U instructions are implemented by procedures with the prefix `do_`, look for `do_add()`, for example. That procedure ultimately uses the `+` operator to implement the `add` instruction in the selfie emulator while the `+` operator is compiled to an `add` instruction by the selfie compiler. Do exactly the same for this assignment, and it will work! Understanding why is the ultimate goal of this chapter, so keep going.
+
 ![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
 
 Compiling arithmetic expressions with operators for addition and subtraction works the same way as compiling terms with operators for multiplication, division, and remainder. Code generation just uses the `add` and `sub` instructions for the operators `+` and `-`, respectively. The above figure shows how the procedure `compile_arithmetic()` implements the grammar rule that defines the non-terminal `arithmetic`, including emitting code.
@@ -4736,6 +4754,12 @@ The expression `x + 7` evaluates to `98` in that case because `42 + 7 * 8` evalu
 
 Generating code that implements pointer arithmetic is not hard. The procedure `emit_multiply_by()` emits an `addi` instruction to load the factor, here `8`, into an unused register, here `t2`, followed by a `mul` instruction that multiplies the value of the right operand, here `7`, with the value of register `t2`. After that, the following `add` instruction is the same as the `add` instruction that implements integer arithmetic.
 
+The take away message here is that semantics can go beyond the bare syntax of an operator such as `+` and depend on other aspects such as the types of its operands. Many people are not familiar with that. It is of course possible to introduce a different symbol for, say, pointer arithmetic to make the distinction syntactically explicit. In fact, this has been done, even in programming languages such as C. For example, `x` could be declared as array of, say, 10 unsigned integers using `uint64_t x[10];`. In that case, the expression `x[7]` would be semantically equivalent to `*(x + 7)` where the leading `*` operator dereferences the memory address calculated by `x + 7`. The details of that are explained below.
+
+> Syntactic sugar
+
+The `[]` operator is considered *syntactic sugar* which is not strictly necessary but makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. C\* does not support arrays explicitly in syntax but there is an assignment for implementing array support in C\*. However, solving the assignment requires additional knowledge in how procedures work, so we wait with the assignment until we get to procedures.
+
 #### Logical Operators
 
 ![Expressions](figures/emitting-expressions.png "Expressions")
@@ -4745,6 +4769,16 @@ Generating code that implements pointer arithmetic is not hard. The procedure `e
 prefix
 
 cast versus expression: lookahead of 1
+
+> Bitwise logical operators
+
+There are also bitwise *logical* operators in C and an assignment for implementing support of them in selfie. Try:
+
+```bash
+./grader/self.py bitwise-and-or-not
+```
+
+Solving the assignment is similar to the assignment for bitwise shifting with an additional challenge involving support of the unary negation operator `~`.
 
 #### Dereference Operator
 
@@ -4760,11 +4794,19 @@ data flow
 
 ### Conditionals
 
+lazy evaluation assignment
+
 ### Loops
+
+for loop assignment
 
 ### Procedures
 
+array and struct assignments
+
 ### Library
+
+bootstrapping, self-compilation
 
 ### Apps
 
