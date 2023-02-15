@@ -358,7 +358,7 @@ int square(int n) {
 }
 ```
 
-In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
+In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`, as well as the *associativity* of `-`, `/`, and `%`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`, because of precedence, and `1 - 2 + 3` is equal to `(1 - 2) + 3`, not `1 - (2 + 3)`, because of associativity. So, we may say something like this:
 
 ```c
 int fancy(int n) {
@@ -944,8 +944,7 @@ Let us go through the EBNF of an `expression` step by step. An `expression` is a
 
 > Recursion in EBNF enables arbitrarily nested structures
 
-The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors.
-Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
+The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors. Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
 
 ```c
 int fancy(int n) {
@@ -971,7 +970,7 @@ The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. B
 
 What if for some reason we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange `"+"` and `"*"` as well as `"-"` and `"/"` in the EBNF of expressions. In other words, grammars may have an effect on semantics, not just syntax!
 
-Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
+Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence and associativity of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
 
 ```
              ___________
@@ -990,6 +989,8 @@ factor:  n       1
 ```
 
 To calculate the value of the expression, again with `4` as value for `n`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. This time the result is `60`.
+
+There is, however, a subtle issue here. EBNF can express precedence but not associativity which controls the order of evaluation among operators that have the same precedence such as `+` and `-`. So far, we silently assumed that expressions are evaluated from left to right, not from right to left, which does make sense, however, because `-` in particular is left-associative, not right-associative. For example, `n * n + 1 - n / 2 + 42` is equal to `(n * n + 1 - n / 2) + 42`, not `n * n + 1 - (n / 2 + 42)`.
 
 > Specification by context-free grammar, implementation by pushdown automaton
 
@@ -4651,7 +4652,15 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = literal | identifier | "(" expression ")" .
 ```
 
-A simple example of an expression is `x + 7` which we saw before when parsing literals. Another example is `x + 7 * y` which demonstrates the notion of *precedence* of operators. The expression `x + 7 * y` is semantically equivalent to the expression `x + (7 * y)`, in particular in contrast to the expression `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Interestingly, their precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in the grammar before the operators with higher precedence. That structure is maintained in the part of the recursive-descent parser that handles expressions.
+A simple example of an expression is `x + 7` which we saw before when parsing literals.
+
+> Precedence
+
+Another example is `x + 7 * y` which demonstrates the notion of *precedence* of operators which we discussed before in the context of arithmetic and even grammar expressions. The expression `x + 7 * y` is semantically equivalent to the expression `x + (7 * y)`, in particular in contrast to the expression `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Recall that their precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in the grammar before the operators with higher precedence. That structure is maintained in the part of the recursive-descent parser that handles expressions.
+
+> Associativity
+
+But what if operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`?
 
 ![Expressions](figures/expressions.png "Expressions")
 
