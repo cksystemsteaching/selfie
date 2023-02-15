@@ -379,7 +379,7 @@ int max(int n, int m) {
 }
 ```
 
-Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional statement*, which in C\* is called an `if` *statement*. The *comparison* or *logical expression* `n < m` is called an `if` *condition* which can evaluate either to *true* or to *false*. The statement `return m` is part of the `if` *body* of the `if` statement while the statement `return n` is part of the `else` *body* of the `if` statement.
+Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional statement*, which in C\* is called an `if` *statement*. The *comparison* or *relational expression* `n < m` is called an `if` *condition* which can evaluate either to *true* or to *false*. The statement `return m` is part of the `if` *body* of the `if` statement while the statement `return n` is part of the `else` *body* of the `if` statement.
 
 > Conditional: if this is true do that else do that
 
@@ -4324,11 +4324,11 @@ The problem is that upon the occurrence of a syntax error, we need to make assum
 
 > Optionality in EBNF
 
-The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` part for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor()`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics of these optional elements is handled after parsing the rest of a `factor`. We discuss what is done for dashes and asterisks when it comes to parsing expressions.
+The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` part for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor()`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics of these optional elements is handled after parsing the rest of a `factor`. We discuss how that is done when it comes to parsing expressions.
 
 > Typing and casting
 
-Casting we can handle here since it does not involve code generation but it does require a little excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
+The semantics of casting, however, we can handle here since it does not involve code generation but it does require a little yet relevant excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
 
 In C\* variables and procedure arguments as well as literals and expressions are all *typed*, that is, have a type which can only be one of the two C\* data types. Casting allows changing types, here from one type to the other type, without applying any operations on any involved values. That's all. For example, integer literals such as `85` are of type `uint64_t` in C\* which we can nevertheless change to `uint64_t*` through casting:
 
@@ -4641,7 +4641,7 @@ work in progress
 
 ### Expressions
 
-Literals and variables are the most basic form of arithmetic and logical expressions which in turn allow us to formulate arithmetic calculations and logical conditions over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a simplified version of the C\* grammar that only involves arithmetic operators, literals, and variables:
+Literals and variables are the most basic form of arithmetic and relational expressions which in turn allow us to formulate arithmetic and relational calculations over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a simplified version of the C\* grammar that only involves arithmetic operators, literals, and variables:
 
 ```ebnf
 expression = term { ( "+" | "-" ) term } .
@@ -4657,7 +4657,7 @@ A simple example of an expression is `x + 7` which we saw before when parsing li
 
 The above figure shows the pushdown automaton that handles the grammar. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures, that is, here the parser procedures named `compile_X()` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor()`, the non-terminals `expression` and `term` are implemented by the procedures `compile_expression()` and `compile_term()`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor()` does indeed call the procedure `compile_expression()` recursively to handle that part of the rule.
 
-The full C\* grammar for expressions extends the above, simplified version with a rule for logical comparison operators, which have lower precedence than all other operators, and the full rule for the non-terminal `factor` which we saw before:
+The full C\* grammar for expressions extends the above, simplified version with a rule for comparison operators, which have lower precedence than all other operators, and the full rule for the non-terminal `factor` which we saw before:
 
 ```ebnf
 expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
@@ -4669,11 +4669,11 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-The arithmetic and logical operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for logical operators, which is a bit more involved, and finally for the minus and dereference operators. Casting does not involve code generation as mentioned before.
+The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for comparison operators, which is a bit more involved, and finally for the unary minus and dereference operators. Casting does not involve code generation as mentioned before.
 
 #### Arithmetic Operators
 
-Compiling arithmetic operators is surprisingly simple as long as there are machine instructions that match the semantics of those operators. In case of C\* and RISC-U they do. To some extent this is also true for logical comparison operators but only when considering all of RISC-V, not just RISC-U. We therefore look into compiling logical comparison operators after we are done with arithmetic operators. Among the arithmetic operators of C\*, the operators for multiplication, division, and remainder are even a bit easier to handle than the operators for addition and subtraction since the latter have different semantics depending on the type of their operands. So, for now, let us take the expression `x * 7` as example, instead of `x + 7`.
+Compiling arithmetic operators is surprisingly simple as long as there are machine instructions that match the semantics of those operators. In case of C\* and RISC-U they do. To some extent this is also true for comparison operators but only when considering all of RISC-V, not just RISC-U. We therefore look into compiling comparison operators after we are done with arithmetic operators. Among the arithmetic operators of C\*, the operators for multiplication, division, and remainder are even a bit easier to handle than the operators for addition and subtraction since the latter have different semantics depending on the type of their operands. So, for now, let us take the expression `x * 7` as example, instead of `x + 7`.
 
 ![Terms](figures/emitting-terms.png "Terms")
 
@@ -4744,7 +4744,7 @@ The `[]` operator is considered *syntactic sugar* which makes the code look "swe
 
 > Bitwise shift operators
 
-C\* only features arithmetic and some logical operators. However, most programming languages also provide *bitwise* operators for manipulating individual bits of data. We discuss bitwise *shift* operators here and bitwise *logical* operators further below. The need for bitwise operators arises because modern computers, for the sake of increased throughput, only allow transferring data at the level of whole bytes or even just words, as in our machine model, but not bits. Also, while bitwise operations can be mimicked using integer arithmetic, native hardware support is obviously much faster and source code using bitwise operators explicitly is certainly more readable. The lack of support in selfie requires us to implement bitwise operators some other way. We choose to do that in library procedures such as `left_shift()` and `right_shift()` which demonstrate how to mimic bitwise shifting using integer multiplication and division, respectively, see the source code for the details.
+C\* only features arithmetic and comparison operators. However, most programming languages also provide *bitwise* operators for manipulating individual bits of data. We discuss bitwise *shift* operators here and bitwise *logical* operators further below. The need for bitwise operators arises because modern computers, for the sake of increased throughput, only allow transferring data at the level of whole bytes or even just words, as in our machine model, but not bits. Also, while bitwise operations can be mimicked using integer arithmetic, native hardware support is obviously much faster and source code using bitwise operators explicitly is certainly more readable. The lack of support in selfie requires us to implement bitwise operators some other way. We choose to do that in library procedures such as `left_shift()` and `right_shift()` which demonstrate how to mimic bitwise shifting using integer multiplication and division, respectively, see the source code for the details.
 
 Explicit support of bitwise operators in C\* takes us to our first, more advanced assignment that involves code generation and therefore comes in two increasingly challenging parts. The first part called `bitwise-shift-compilation` focuses on handling their syntax. Only the second part called `bitwise-shift-execution` involves actual code generation. Try:
 
@@ -4764,25 +4764,27 @@ The interesting twist of this assignment is that you can and should use the `<<`
 
 Do exactly the same for this assignment, and it will work! There is no need to use the procedures `left_shift()` and `right_shift()` to do that. The reason why this works is because the semantics of the `<<` and `>>` operators in C is exactly the same as the semantics of the `sll` and `srl` instructions in RISC-V. The same is true for the `+` operator and the `add` instruction, and similarly for the other arithmetic operators. Fully understanding how this results in a functioning system is the ultimate goal of this chapter, so keep going.
 
-#### Logical Operators
+#### Comparison Operators
 
-C\* features logical operators for comparing unsigned integer values, see the grammar rule that defines the non-terminal `expression`. The syntax of comparisons is defined in that rule because the comparison operators have lower precedence than any of the arithmetic operators in C\*. For example, the expression `x - 1 < 7` is semantically equivalent to the expression `(x - 1) < 7`, not the expression `x - (1 < 7)`.
-
-Bitwise logical operators are not supported in C\* and instead the subject of an assignment we discuss below in the context of the unary minus operator. There is also an assignment on the support of logical operators for constructing logical conditions but that assignment is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
+C\* features operators for comparing unsigned integer values, see the grammar rule that defines the non-terminal `expression`. The syntax of relational expressions is defined in that rule because all involved comparison operators have lower precedence than any of the arithmetic operators in C\*. For example, the expression `x - 1 < 7` is semantically equivalent to the expression `(x - 1) < 7`, not the expression `x - (1 < 7)`.
 
 ![Expressions](figures/emitting-expressions.png "Expressions")
 
-The above figure shows how the procedure `compile_expression()` works for the operators `==` and `<`, not showing the code for the other comparison operators. Refer to the source code for those. The first thing we should note is that all comparison operators must evaluate to either `0` or `1`, nothing else, indicating that the comparison evaluated to false or true, respectively.
+The above figure shows how the procedure `compile_expression()` works for the operators `==` and `<`, not showing the code for the other comparison operators. Refer to the source code for those. The occurrence of a comparison operator in an expression is optional and thus implemented by a conditional statement that checks if a comparison operator is present or not. In terms of semantics, the first thing we should note is that all comparison operators must evaluate to either `0` or `1`, nothing else, indicating that the comparison evaluated to false or true, respectively.
 
 Before we get to the example in the figure, the expression `x == 7`, consider as example the expression `x < 7` instead. Code generation for the `<` operator is straightforward because the `sltu` instruction in RISC-U matches the semantics of the `<` operator exactly. Recall that `sltu` stores `1` in its destination register, here `t0`, if the value in the first source register, again here `t0`, is strictly less than the value in the second source register, here `t1`, using the unsigned interpretation of those values. Otherwise, `sltu` stores `0` in its destination register. So, for the `<` operator we just generate a single `sltu` instruction, deallocate the second source register, and are done.
 
 Support of the `>` operator is symmetric. Only the other four comparison operators are more involved. We use the `==` operator in the expression `x == 7` as example. How do we make sure that the destination register, here `t0`, only contains `1` if the value of `x` is equal to `7`, and otherwise `0`? Well, `x == 7` is true if and only if `7 - x < 1` is true, assuming, and that is important, unsigned interpretation of the values. In that case, no value other than `0` can be less than `1`, and `7 - x` can obviously only evaluate to `0` if `x` is equal to `7`. So, we first generate code that implements `7 - x` using a `sub` instruction, followed by an `addi` instruction for loading `1`, and finally followed by an `sltu` instruction for the comparison, just like before. That's it! Check the implementation of the other comparison operators. We use similar reasoning there. It's fun.
 
-#### Minus Operator
+#### Unary Operators
 
 prefix
 
+> Cast
+
 cast versus expression: lookahead of 1
+
+> Unary minus operator
 
 > Bitwise logical operators
 
@@ -4794,9 +4796,9 @@ There are also bitwise *logical* operators in C and an assignment for implementi
 
 Solving the assignment is similar to the assignment for bitwise shifting with an additional challenge involving support of the unary negation operator `~`.
 
-#### Dereference Operator
+Bitwise logical operators are not supported in C\* and instead the subject of an assignment we discuss below in the context of the unary minus operator. There is also an assignment on the support of logical operators for constructing logical conditions but that assignment is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
 
-prefix
+> Dereference operator
 
 ### Statements
 
