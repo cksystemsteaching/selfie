@@ -4787,17 +4787,19 @@ Support of the `>` operator is symmetric. Only the other four comparison operato
 
 #### Unary Operators
 
-Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, and dereferencing of pointers using the unary `*` operator.
+Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, and dereferencing of pointers using the unary `*` operator. The three operators appear as options in the C\* grammar rule that defines the non-terminal `factor`, which we saw before, and is implemented in the procedure `compile_factor()`, which we also discussed before.
 
 > From prefix to postfix
 
-All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the infix notation of the binary operators in C\*, compilation of prefix operators requires remembering them until their operands are compiled. Only then, they can take effect through casting or code generation.
+All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions.
 
 > Cast
 
-cast versus expression: lookahead of 1
+We mentioned the semantics of casting before. Handling the syntax of a `cast` is not difficult but it does involve a lookahead of 1 to distinguish it from grouping an `expression` using left and right parenthesis. See the code of the procedure `compile_factor()` shown before to spot the lookahead, or the source code of selfie for the full details. While `cast` appears first in the grammar rule and is thus parsed first in `compile_factor()`, its effect only takes place right before `compile_factor()` returns the resulting and possibly casted type as grammar attribute.
 
 > Unary minus operator
+
+Next is the optional unary minus operator, denoted `-` just like its binary twin, which is parsed right after the optional `cast`. Again, its effect only takes place after the rest of the entire grammar rule for `factor` is parsed.
 
 > Bitwise logical operators
 
@@ -4812,6 +4814,8 @@ Solving the assignment is similar to the assignment for bitwise shifting with an
 Bitwise logical operators are not supported in C\* and instead the subject of an assignment we discuss below in the context of the unary minus operator. There is also an assignment on the support of logical operators for constructing logical conditions but that assignment is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
 
 > Dereference operator
+
+right-to-left associativity
 
 ### Statements
 
