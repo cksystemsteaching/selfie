@@ -4679,9 +4679,9 @@ Compiling arithmetic operators is surprisingly simple as long as there are machi
 
 The above figure shows how the procedure `compile_term()` implements the grammar rule that defines the non-terminal `term`, including emitting code. As before, the first occurrence of the non-terminal `factor` is handled by a call to the procedure `compile_factor()`, followed by a while loop that iterates of any number of occurrences of the `*`, `/`, or `%` symbols, and another occurrence of `factor`, which again is handled by a call to `compile_factor()`. Besides remembering the type of each factor in local variables `ltype` and `rtype` on the call stack, the code also remembers the currently parsed operator symbol in a local variable called `operator_symbol`, also on the call stack. This is important. If we just continued parsing without remembering the operator symbol, we would not know what the operator is anymore after parsing the following factor.
 
-> From infix to postfix notation
+> From infix to postfix
 
-What effectively happens here is that the code turns *infix* notation into *postfix* notation which requires remembering the operator symbol. The C\* notation `x * 7` is infix because the binary operator `*` occurs in between its two operands `x` and `7`. However, the generated machine code that implements `x * 7` is postfix because it first loads both the value of `x` into register `t0` using the machine instruction `ld t0,-ds(gp)` and the value `7` into register `t1` using `addi t1,zero,7`. Only then, with both operands in registers, the machine instruction `mul t0,t0,t1` generated here implements the operator `*`. For the operators `/` and `%`, code generation works the same way but using the `divu` and `remu` instructions, respectively. That's it!
+What effectively happens here is that the code turns *infix* operators into *postfix* operators which requires remembering the infix operator symbol. The binary operator `*`, as well as all other binary operators in C\*, is infix because it occurs in between its two operands, here `x` and `7`. However, the generated machine instruction that implements `x * 7` is postfix because it first loads both the value of `x` into register `t0` using the machine instruction `ld t0,-ds(gp)` and the value `7` into register `t1` using `addi t1,zero,7`. Only then, with both operands in registers, the machine instruction `mul t0,t0,t1` generated here implements the operator `*`. For the operators `/` and `%`, code generation works the same way but using the `divu` and `remu` instructions, respectively. That's it!
 
 > Running out of registers
 
@@ -4778,7 +4778,11 @@ Support of the `>` operator is symmetric. Only the other four comparison operato
 
 #### Unary Operators
 
-prefix
+Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, and dereferencing of pointers using the unary `*` operator.
+
+> From prefix to postfix
+
+All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the infix notation of the binary operators in C\*, compilation of prefix operators requires remembering them until their operands are compiled. Only then, they can take effect through casting or code generation.
 
 > Cast
 
