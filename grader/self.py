@@ -139,6 +139,40 @@ def check_for_loop() -> List[Check]:
                                 'nested for loops are implemented with the right semantics')
 
 
+def check_logical_and_or_not() -> List[Check]:
+    return check_compilable('logical-not.c',
+                         'logical not operator compiled') + \
+        check_mipster_execution('logical-not.c', 42,
+                                'logical not operator works when executed with MIPSTER') + \
+        check_compilable('logical-and.c',
+                         'logical and operator compiled') + \
+        check_mipster_execution('logical-and.c', 42,
+                                'logical and operator works when executed with MIPSTER') + \
+        check_compilable('logical-or.c',
+                         'logical or operator compiled') + \
+        check_mipster_execution('logical-or.c', 42,
+                                'logical or operator works when executed with MIPSTER') + \
+        check_mipster_execution('advanced-logical-expressions.c', 42,
+                                'advanced boolean expressions work when executed with MIPSTER') + \
+        check_mipster_execution('precedence.c', 42,
+                                'operator precedence works correctly when executed with MIPSTER')
+
+
+def check_lazy_evaluation() -> List[Check]:
+    return check_mipster_execution('logical-and.c', 42,
+                                'logical and operator still works when executed with MIPSTER') + \
+        check_mipster_execution('logical-or.c', 42,
+                                'logical or operator still works when executed with MIPSTER') + \
+        check_mipster_execution('advanced-logical-expressions.c', 42,
+                                'advanced boolean expressions still work when executed with MIPSTER') + \
+        check_mipster_execution('precedence.c', 42,
+                                'operator precedence still works correctly when executed with MIPSTER') + \
+        check_mipster_execution('lazy-eval-and.c', 42,
+                                'lazy evaluation with logical and works when executed with MIPSTER') + \
+        check_mipster_execution('lazy-eval-or.c', 42,
+                                'lazy evaluation with logical or works when executed with MIPSTER')
+
+
 def check_array() -> List[Check]:
     return check_compilable('global-declaration.c',
                             'array declaration do compile') + \
@@ -152,17 +186,6 @@ def check_array() -> List[Check]:
                                 'arrays assignments are implemented with the right semantics') + \
         check_mipster_execution('call-by-reference.c', 42,
                                 'array assignments in functions are implemented with the right semantics')
-
-
-def check_multidimensional_array() -> List[Check]:
-    return check_compilable('multidimensional.c',
-                            'multidimensional array declarations do compile') + \
-        check_mipster_execution('multidimensional.c', 42,
-                                'multidimensional arrays assignments are implemented with the right semantics') + \
-        check_compilable('access-order.c',
-                         'access to start-address of multidimensional is possible') + \
-        check_mipster_execution('access-order.c', 0,
-                                'access to multidimensional arrays is implemented in row-major order')
 
 
 def check_struct_declaration() -> List[Check]:
@@ -193,38 +216,15 @@ def check_struct_execution() -> List[Check]:
                                 'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
-def check_logical_and_or_not() -> List[Check]:
-    return check_compilable('logical-not.c',
-                         'logical not operator compiled') + \
-        check_mipster_execution('logical-not.c', 42,
-                                'logical not operator works when executed with MIPSTER') + \
-        check_compilable('logical-and.c',
-                         'logical and operator compiled') + \
-        check_mipster_execution('logical-and.c', 42,
-                                'logical and operator works when executed with MIPSTER') + \
-        check_compilable('logical-or.c',
-                         'logical or operator compiled') + \
-        check_mipster_execution('logical-or.c', 42,
-                                'logical or operator works when executed with MIPSTER') + \
-        check_mipster_execution('advanced-logical-expressions.c', 42,
-                                'advanced boolean expressions work when executed with MIPSTER') + \
-        check_mipster_execution('precedence.c', 42,
-                                'operator precedence works correctly when executed with MIPSTER')
-
-
-def check_lazy_eval() -> List[Check]:
-    return check_mipster_execution('logical-and.c', 42,
-                                'logical and operator still works when executed with MIPSTER') + \
-        check_mipster_execution('logical-or.c', 42,
-                                'logical or operator still works when executed with MIPSTER') + \
-        check_mipster_execution('advanced-logical-expressions.c', 42,
-                                'advanced boolean expressions still work when executed with MIPSTER') + \
-        check_mipster_execution('precedence.c', 42,
-                                'operator precedence still works correctly when executed with MIPSTER') + \
-        check_mipster_execution('lazy-eval-and.c', 42,
-                                'lazy evaluation with logical and works when executed with MIPSTER') + \
-        check_mipster_execution('lazy-eval-or.c', 42,
-                                'lazy evaluation with logical or works when executed with MIPSTER')
+def check_multidimensional_array() -> List[Check]:
+    return check_compilable('multidimensional.c',
+                            'multidimensional array declarations do compile') + \
+        check_mipster_execution('multidimensional.c', 42,
+                                'multidimensional arrays assignments are implemented with the right semantics') + \
+        check_compilable('access-order.c',
+                         'access to start-address of multidimensional is possible') + \
+        check_mipster_execution('access-order.c', 0,
+                                'access to multidimensional arrays is implemented in row-major order')
 
 
 def check_assembler_parser() -> List[Check]:
@@ -364,30 +364,30 @@ assignment_bitwise_shift_compilation = Assignment('bitwise-shift-compilation', '
 assignment_bitwise_shift_execution = Assignment('bitwise-shift-execution', 'Compiler', 'bitwise-shift',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-shift-execution',
            check_bitwise_shift_execution, parent = assignment_bitwise_shift_compilation)
-assignment_bitwise_and_or_not = Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logic',
+assignment_bitwise_and_or_not = Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-and-or-not',
            check_bitwise_and_or_not)
-assignment_array = Assignment('array', 'Compiler', 'array',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
-           check_array)
-assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
-           check_multidimensional_array, parent = assignment_array)
-assignment_struct_declaration = Assignment('struct-declaration', 'Compiler', 'struct',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-declaration',
-           check_struct_declaration)
-assignment_struct_execution = Assignment('struct-execution', 'Compiler', 'struct',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
-           check_struct_execution, parent = assignment_struct_declaration)
 assignment_for_loop = Assignment('for-loop', 'Compiler', 'for-loop',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
            check_for_loop)
 assignment_logical_and_or_not = Assignment('logical-and-or-not', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-logical-and-or-not',
            check_logical_and_or_not)
-assignment_lazy_eval = Assignment('lazy-evaluation', 'Compiler', 'lazy-eval',
+assignment_lazy_evaluation = Assignment('lazy-evaluation', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-lazy-evaluation',
-           check_lazy_eval, parent = assignment_logical_and_or_not)
+           check_lazy_evaluation, parent = assignment_logical_and_or_not)
+assignment_array = Assignment('array', 'Compiler', 'array',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
+           check_array)
+assignment_struct_declaration = Assignment('struct-declaration', 'Compiler', 'struct',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-declaration',
+           check_struct_declaration)
+assignment_struct_execution = Assignment('struct-execution', 'Compiler', 'struct',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
+           check_struct_execution, parent = assignment_struct_declaration)
+assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
+           check_multidimensional_array, parent = assignment_array)
 assignment_assembler_parser = Assignment('assembler-parser', 'Systems', 'assembler',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
            check_assembler_parser)
@@ -397,10 +397,10 @@ assignment_self_assemblation = Assignment('self-assembler', 'Systems', 'assemble
 assignment_processes = Assignment('processes', 'Systems', 'processes',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-processes',
            check_processes)
-assignment_fork_and_wait = Assignment('fork-wait', 'Systems', 'fork-wait',
+assignment_fork_and_wait = Assignment('fork-wait', 'Systems', 'system-calls',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait',
            check_fork_and_wait, parent = assignment_processes)
-assignment_fork_wait_exit = Assignment('fork-wait-exit', 'Systems', 'fork-wait',
+assignment_fork_wait_exit = Assignment('fork-wait-exit', 'Systems', 'system-calls',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-fork-wait-exit',
            check_fork_wait_exit, parent = assignment_fork_and_wait)
 assignment_lock = Assignment('lock', 'Systems', 'lock',
@@ -422,13 +422,13 @@ assignments: List[Assignment] = [
     assignment_bitwise_shift_compilation,
     assignment_bitwise_shift_execution,
     assignment_bitwise_and_or_not,
-    assignment_array,
-    assignment_multidimensional_array,
-    assignment_struct_declaration,
-    assignment_struct_execution,
     assignment_for_loop,
     assignment_logical_and_or_not,
-    assignment_lazy_eval,
+    assignment_lazy_evaluation,
+    assignment_array,
+    assignment_struct_declaration,
+    assignment_struct_execution,
+    assignment_multidimensional_array,
     assignment_assembler_parser,
     assignment_self_assemblation,
     assignment_processes,

@@ -60,7 +60,7 @@ def insert_assignment_path(command):
         assignment_path = assignment_path.relative_to(working_dir_path)
     except ValueError:
         # assignment_path is not a sub directory of working_dir_path
-        pass  # assignment path has to be a absolute path
+        pass  # assignment path has to be an absolute path
 
     for match in matches:
         file = match.group(1)
