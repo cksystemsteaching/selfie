@@ -4672,7 +4672,9 @@ Still, are there programming languages with non-deterministic semantics? Yes, C,
 
 > Side effects
 
-Only precedence and associativity together...
+Making the semantics of expressions in C\* deterministic and as close as possible to elementary arithmetic requires defining both precedence and associativity, even for addition and multiplication. While associativity in an expression such as `x + y` is not relevant, that is, the value of `x` could be determined after the value of `y`, there are still cases in which associativity and thus the order of evaluation matters, namely, in the presence of procedure calls in expressions. For example, evaluating the expression `x + f()` from right to left rather than from left to right could make a difference. How is that possible you might ask? Well, the procedure `f()` can have *side effects* on the program state beyond just computing a return value. For example, `f()` could change the value of `x` if `x` is a global variable. In that case, the order of evaluation of `x + f()` would obviously matter. By defining both the `+` and the `*` operator to be left-associative the choice of order of evaluation is gone.
+
+An important lesson to learn here is that the semantics of code can be a lot more involved than one might think. Formalisms such as programming languages, even simple ones like C\*, are very powerful tools. There is no such things as casual programming, only casual expectations. If correctness of code does not matter too much, fine, but if it does, proper education is the only way, and a lot more fun than not knowing what is actually going on. So, keep going.
 
 ![Expressions](figures/expressions.png "Expressions")
 
