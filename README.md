@@ -3704,7 +3704,7 @@ This is the default choice when it comes to algorithms and data structures. If a
 
 ## Programming
 
-Almost all code today is written in high-level programming languages. There are many languages to choose from and, for better or worse, there are new languages being developed all the time. Also, modern languages usually come with a whole ecosystem of libraries and tools that play an important role in addition to the language itself. Libraries are collections of code, often written by experts, for others to use. Tools are compilers, interpreters, debuggers, and so on. Selfie includes simple but realistic versions of a library and tools that you can actually understand in full detail.
+Almost all code today is written in high-level programming languages. There are many languages to choose from and, for better or worse, there are new languages being developed all the time. Also, modern languages usually come with a whole ecosystem of libraries and tools that play an important role in addition to the language itself. Libraries are collections of code, often written by experts, for others to use. Tools are compilers, interpreters, debuggers, and so on. Selfie includes simple but realistic versions of a code library and tools that you can actually understand in full detail.
 
 While programming languages might differ in their ecosystems, they typically share some basic language concepts that we introduce and focus on here. We do that in a subset of the programming language C called C\* which we specifically designed for this purpose. C\* ignores many of the more recently introduced innovations in programming languages. However, there are plenty of books available on the latest in programming languages, see the recommended readings at the end of this chapter.
 
@@ -4660,17 +4660,25 @@ The expression `x + 7 * y` demonstrates the notion of *precedence* of operators 
 
 > Associativity
 
-But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators solves the problem. For example, the expression `x - 7 + y` is semantically equivalent to the expression `(x - 7) + y`, again in particular in contrast to the expression `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Are there also *right-associative* operators in C\*? Yes, we discuss them just below. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, addition and multiplication can be done in any order without an effect on the outcome. Why do we make even them left-associative in C\*, and in fact many other programming languages, and therefore restrict our freedom in evaluating them?
+But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators solves the problem. For example, the expression `x - 7 + y` is semantically equivalent to the expression `(x - 7) + y`, again in particular in contrast to the expression `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Associativity, however, cannot be expressed in EBNF. It only shows up in the parser that handles those operators, as we see below.
+
+Are there also *right-associative* operators in C\*? Yes, we discuss them as soon as we are done here. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, addition and multiplication can be evaluated in any order without an effect on the outcome. Why do we make even them left-associative in C\*, and in fact many other programming languages, and therefore restrict our freedom in evaluating them in any order we like?
 
 > Determinism
 
-The important insight is that expressions, and in fact whole programs, should have exactly one *deterministic* semantics. Only precedence and associativity together...
+Well, there is a very good reason for that. An important feature of expressions, and in fact of entire programs, is that they have exactly one *deterministic* semantics. We really want them to mean exactly one thing and one thing only, not two, or even more. Just imagine for a moment that the semantics of source code would be *non-deterministic*, that is, the code could have more than one meaning. In that case, its actual meaning during execution would depend on the compiler, the libraries, and the machine you use for compilation and execution. If you later decide to deploy the same source code in a different setting you could see different behavior. In short, establishing correctness would be even harder because you would have to develop the code with all its possible meanings in mind.
+
+Still, are there programming languages with non-deterministic semantics? Yes, C, for example, and the reason is performance. Non-determinism, also called *undefined behavior* in the context of programming languages, gives compilers more freedom in optimizing code. Also, removing non-determinism from a programming language is not easy. Everything, even the smallest detail, has to be defined. We tried our best to remove the non-determinism of C from the semantics of C\* but at least the procedures for input and output and memory allocation in selfie may still be non-deterministic.
+
+> Side effects
+
+Only precedence and associativity together...
 
 ![Expressions](figures/expressions.png "Expressions")
 
-The above figure shows the pushdown automaton that handles the grammar. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures, that is, here the parser procedures named `compile_X()` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor()`, the non-terminals `expression` and `term` are implemented by the procedures `compile_expression()` and `compile_term()`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor()` does indeed call the procedure `compile_expression()` recursively to handle that part of the rule.
+The above figure shows the pushdown automaton that handles the simplified version of the C\* grammar for expressions. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures. In selfie, those procedures are the parser procedures named `compile_X()` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor()`, the non-terminals `expression` and `term` are implemented by the procedures `compile_expression()` and `compile_term()`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor()` does indeed call the procedure `compile_expression()` recursively to handle that part of the rule.
 
-The full C\* grammar for expressions extends the above, simplified version with a grammar rule for comparison operators, which have lower precedence than all other operators, and the full grammar rule for the non-terminal `factor` which we saw before:
+The full C\* grammar for expressions extends the simplified version with a grammar rule for comparison operators, which have lower precedence than all other operators, and the full grammar rule for the non-terminal `factor`, which we saw before:
 
 ```ebnf
 expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
@@ -4682,7 +4690,9 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for comparison operators, which is a bit more involved, and finally for the unary minus and dereference operators. Casting does not involve code generation as mentioned before.
+The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In C\*, the unary operators have highest precedence among all operators in expressions and, importantly, are all *right-associative*. For example, the expression `*x + 7` is semantically equivalent to the expression `(*x) + 7`, not `*(x + 7)`.
+
+In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for comparison operators, which is a bit more involved, and finally for the unary minus and dereference operators. Casting does not involve code generation as mentioned before.
 
 #### Arithmetic Operators
 
@@ -4819,7 +4829,7 @@ Bitwise logical operators are not supported in C\* and instead the subject of an
 
 > Dereference operator
 
-right-to-left associativity
+right associativity
 
 ### Statements
 
