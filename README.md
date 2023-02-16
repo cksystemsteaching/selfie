@@ -4642,7 +4642,7 @@ work in progress
 
 ### Expressions
 
-Literals and variables are the most basic form of arithmetic and relational expressions which in turn allow us to formulate arithmetic and relational calculations over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a simplified version of the C\* grammar that only involves arithmetic operators, literals, and variables:
+Literals and variables are the most basic form of arithmetic and relational expressions which in turn allow us to formulate arithmetic and relational calculations over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a simplified version of the C\* grammar that only involves arithmetic operators, literals, and variables but exposes many relevant details already in this form:
 
 ```ebnf
 expression = term { ( "+" | "-" ) term } .
@@ -4652,21 +4652,25 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = literal | identifier | "(" expression ")" .
 ```
 
-A simple example of an expression is `x + 7` which we saw before when parsing literals.
+A simple example of an expression in this grammar is `x + 7` which we saw before when parsing literals. Two more examples that help in the discussion are the expressions `x + 7 * y` and `x - 7 + y`.
 
 > Precedence
 
-Another example is `x + 7 * y` which demonstrates the notion of *precedence* of operators which we discussed before in the context of arithmetic and even grammar expressions. The expression `x + 7 * y` is semantically equivalent to the expression `x + (7 * y)`, in particular in contrast to the expression `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Recall that their precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in the grammar before the operators with higher precedence. That structure is maintained in the part of the recursive-descent parser that handles expressions.
+The expression `x + 7 * y` demonstrates the notion of *precedence* of operators which we discussed before in the context of arithmetic expressions as well as grammar expressions. For example, the expression `x + 7 * y` is semantically equivalent to the expression `x + (7 * y)`, in particular in contrast to the expression `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Recall that operator precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in grammar rules that use the grammar rules involving the operators with higher precedence, and not the other way around. That structure is maintained in the part of the recursive-descent parser that handles expressions.
 
 > Associativity
 
-But what if operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`?
+But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators solves the problem. For example, the expression `x - 7 + y` is semantically equivalent to the expression `(x - 7) + y`, again in particular in contrast to the expression `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Are there also *right-associative* operators in C\*? Yes, we discuss them just below. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, addition and multiplication can be done in any order without an effect on the outcome. Why do we make even them left-associative in C\*, and in fact many other programming languages, and therefore restrict our freedom in evaluating them?
+
+> Determinism
+
+The important insight is that expressions, and in fact whole programs, should have exactly one *deterministic* semantics. Only precedence and associativity together...
 
 ![Expressions](figures/expressions.png "Expressions")
 
 The above figure shows the pushdown automaton that handles the grammar. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures, that is, here the parser procedures named `compile_X()` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor()`, the non-terminals `expression` and `term` are implemented by the procedures `compile_expression()` and `compile_term()`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor()` does indeed call the procedure `compile_expression()` recursively to handle that part of the rule.
 
-The full C\* grammar for expressions extends the above, simplified version with a rule for comparison operators, which have lower precedence than all other operators, and the full rule for the non-terminal `factor` which we saw before:
+The full C\* grammar for expressions extends the above, simplified version with a grammar rule for comparison operators, which have lower precedence than all other operators, and the full grammar rule for the non-terminal `factor` which we saw before:
 
 ```ebnf
 expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
