@@ -4825,13 +4825,15 @@ In addition to bitwise shift operators, there are also bitwise *logical* operato
 ./grader/self.py bitwise-and-or-not
 ```
 
-As before, determine the precedence of the other two operators in C, enhance the C\* grammar, and only then implement support of them in selfie. You also need to implement support of three more RISC-V machine instructions called `and`, `or`, and `xori`. The latter performs bitwise *exclusive-or* on the value of a register with an immediate value. Use that instruction to implement the `~` operator. The challenge is to figure out which immediate value to use. Hint: the immediate value is always the same.
+As before, determine the precedence of the other two operators in C, enhance the C\* grammar, and only then implement support of them in selfie. You also need to implement support of three more RISC-V machine instructions called `and`, `or`, and `xori`. The `xori` instruction performs bitwise *exclusive-or* or *XOR* on the value of a register with an immediate value. Generate that instruction to implement support of the `~` operator. There are two challenges involved in the exercise beyond what you saw before in related exercises. Firstly, when generating the `xori` instruction you need to figure out which immediate value to use. Hint: the immediate value is always the same. Secondly, while the implementation of the `and` and `or` instructions is straightforward using the `&` and `|` operators, respectively, the implementation of the `xori` instruction is more involved since there is no operator for *XOR* in C\*. However, XOR can be represented using a combination of the `&`, `|`, and `~` operators. You just need to figure out which and that does involve understanding what XOR is.
 
 Besides support of bitwise logical operators, there is also an exercise on the support of logical operators for constructing logical conditions but that exercise is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
 
 > Dereference operator
 
 right associativity
+
+occurs in assignments too
 
 ### Statements
 
