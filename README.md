@@ -3958,13 +3958,13 @@ Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` i
 
 > Scanning hexadecimal numbers!
 
-It is time for your first assignment. Design and implement support of integer literals in hexadecimal notation in selfie. First, think about how to extend the C\* grammar and then modify the `grammar.md` file in the selfie repository accordingly. Do not forget to include the prefix `0x` for hexadecimal numbers. Then, think about how to extend the above FSM for decimal numbers to hexadecimal numbers. After that, make a plan on how to extend the code in `get_symbol()` and `atoi()`, and then implement your solution in `selfie.c`. To see if it works, run:
+It is time for your first exercise. Design and implement support of integer literals in hexadecimal notation in selfie. First, think about how to extend the C\* grammar and then modify the `grammar.md` file in the selfie repository accordingly. Do not forget to include the prefix `0x` for hexadecimal numbers. Then, think about how to extend the above FSM for decimal numbers to hexadecimal numbers. After that, make a plan on how to extend the code in `get_symbol()` and `atoi()`, and then implement your solution in `selfie.c`. To see if it works, run:
 
 ```bash
 ./grader/self.py hex-literal
 ```
 
-When you are done with the assignment, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
+When you are done with the exercise, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
 
 #### Memory Management
 
@@ -4692,7 +4692,7 @@ term       = factor { ( "*" | "/" | "%" ) factor } .
 factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
 ```
 
-The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In C\*, the unary operators have highest precedence among all operators in expressions and, importantly, are all *right-associative*. For example, the expression `*x + 7` is semantically equivalent to the expression `(*x) + 7`, not `*(x + 7)`.
+The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In C\*, the unary operators have highest precedence among all operators in expressions and, notably, are all *right-associative*. For example, the expression `*x + 7` is semantically equivalent to the expression `(*x) + 7`, not `*(x + 7)`.
 
 In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for comparison operators, which is a bit more involved, and finally for the unary minus and dereference operators. Casting does not involve code generation as mentioned before.
 
@@ -4771,23 +4771,23 @@ The `[]` operator is considered *syntactic sugar* which makes the code look "swe
 
 C\* only features arithmetic and comparison operators. However, most programming languages also provide *bitwise* operators for manipulating individual bits of data. We discuss bitwise *shift* operators here and bitwise *logical* operators further below. The need for bitwise operators arises because modern computers, for the sake of increased throughput, only allow transferring data at the level of whole bytes or even just words, as in our machine model, but not bits. Also, while bitwise operations can be mimicked using integer arithmetic, native hardware support is obviously much faster and source code using bitwise operators explicitly is certainly more readable. The lack of support in selfie requires us to implement bitwise operators some other way. We choose to do that in library procedures such as `left_shift()` and `right_shift()` which demonstrate how to mimic bitwise shifting using integer multiplication and division, respectively, see the source code for the details.
 
-Explicit support of bitwise operators in C\* takes us to our first, more advanced assignment that involves code generation and therefore comes in two increasingly challenging parts. The first part called `bitwise-shift-compilation` focuses on handling their syntax. Only the second part called `bitwise-shift-execution` involves actual code generation. Try:
+Explicit support of bitwise operators in C\* takes us to our first, more advanced exercise that involves code generation and therefore comes in two increasingly challenging parts. The first part called `bitwise-shift-compilation` focuses on handling their syntax. Only the second part called `bitwise-shift-execution` involves actual code generation. Try:
 
 ```bash
 ./grader/self.py bitwise-shift-compilation
 ```
 
-Passing this assignment requires implementing scanner and parser support of the bitwise *shift* operators `<<` and `>>` which perform logical bitwise left and right shifting, respectively. Interestingly, you do not even need to know what bitwise shifting is to solve the entire assignment. For the first part, you just need to find out what the precedence of these operators in standard C is relative to the already supported operators in C\*. The next step is to enhance the C\* grammar accordingly, followed by the actual implementation in the scanner and parser of selfie.
+This exercise involves implementing scanner and parser support of the bitwise *shift* operators `<<` and `>>` which perform logical bitwise left and right shifting, respectively. Interestingly, you do not even need to know what bitwise shifting is to complete the entire exercise. For the first part, you just need to find out what the precedence of these operators in standard C is relative to the already supported operators in C\*. The next step is to enhance the C\* grammar accordingly, followed by the actual implementation in the scanner and parser of selfie.
 
-The second part of the assignment requires not only implementing code generation for these operators in the selfie compiler but also implementing support of the RISC-V machine instructions `sll` and `srl` for logical bitwise left and right shifting, respectively, in the selfie emulator. Try:
+The second part of the exercise involves not only implementing code generation for these operators in the selfie compiler but also implementing support of the RISC-V machine instructions `sll` and `srl` for logical bitwise left and right shifting, respectively, in the selfie emulator. Try:
 
 ```bash
 ./grader/self.py bitwise-shift-execution
 ```
 
-The interesting twist of this assignment is that you can and should use the `<<` and `>>` operators in your implementation of the `sll` and `srl` instructions, respectively. In other words, use what you implement to implement it! This is selfie at its best. Recall that the RISC-U instructions are implemented by procedures with the prefix `do_`, look for `do_add()`, for example. That procedure ultimately uses the `+` operator to implement the `add` instruction in the selfie emulator while the `+` operator is compiled to an `add` instruction by the selfie compiler.
+The interesting twist of this exercise is that you can and should use the `<<` and `>>` operators in your implementation of the `sll` and `srl` instructions, respectively. In other words, use what you implement to implement it! This is selfie at its best. Recall that the RISC-U instructions are implemented by procedures with the prefix `do_`, look for `do_add()`, for example. That procedure ultimately uses the `+` operator to implement the `add` instruction in the selfie emulator while the `+` operator is compiled to an `add` instruction by the selfie compiler.
 
-Do exactly the same for this assignment, and it will work! There is no need to use the procedures `left_shift()` and `right_shift()` to do that. The reason why this works is because the semantics of the `<<` and `>>` operators in C is exactly the same as the semantics of the `sll` and `srl` instructions in RISC-V. The same is true for the `+` operator and the `add` instruction, and similarly for the other arithmetic operators. Fully understanding how this results in a functioning system is the ultimate goal of this chapter, so keep going.
+Do exactly the same in this exercise, and it will work! There is no need to use the procedures `left_shift()` and `right_shift()` to do that. The reason why this works is because the semantics of the `<<` and `>>` operators in C is exactly the same as the semantics of the `sll` and `srl` instructions in RISC-V. The same is true for the `+` operator and the `add` instruction, and similarly for the other arithmetic operators. Fully understanding how this results in a functioning system is the ultimate goal of this chapter, so keep going.
 
 #### Comparison Operators
 
@@ -4807,27 +4807,27 @@ Besides binary operators, expressions in C\* also feature unary operators for ca
 
 > From prefix to postfix
 
-All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions.
+All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions, in reverse order of their relative occurrence since they are right-associative. So, dereferencing is done before changing signs which is done before casting.
 
 > Cast
 
-We mentioned the semantics of casting before. Handling the syntax of a `cast` is not difficult but it does involve a lookahead of 1 to distinguish it from grouping an `expression` using left and right parenthesis. See the code of the procedure `compile_factor()` shown before to spot the lookahead, or the source code of selfie for the full details. While `cast` appears first in the grammar rule and is thus parsed first in `compile_factor()`, its effect only takes place right before `compile_factor()` returns the resulting and possibly casted type as grammar attribute.
+We mentioned the semantics of casting before. Handling the syntax of a `cast` is not difficult but it does involve a lookahead of 1 to distinguish it from grouping an `expression` using left and right parenthesis. See the code of the procedure `compile_factor()` shown before to spot the lookahead, or the source code of selfie for the full details. While `cast` appears first in the grammar rule and is thus parsed first in `compile_factor()`, its effect only takes place after the rest of the rule is parsed right before `compile_factor()` returns the resulting and possibly casted type as grammar attribute.
 
 > Unary minus operator
 
-Next is the optional unary minus operator, denoted `-` just like its binary twin, which is parsed right after the optional `cast`. Again, its effect only takes place after the rest of the entire grammar rule for `factor` is parsed.
+Next is the optional unary minus operator, denoted `-` just like its binary twin, which is parsed right after the optional `cast`. Again, its effect only takes place after the rest of the entire grammar rule for `factor` is parsed. How do we implement it? Well, the unary `-` operator in expressions such as `-x` is just syntactic sugar for `0 - x`. So, we generate a single `sub` instruction for subtracting the value of `x` from `0` using the `zero` register. Knowing how this is done enables us to go for another exercise.
 
 > Bitwise logical operators
 
-There are also bitwise *logical* operators in C and an assignment for implementing support of them in selfie. Try:
+In addition to bitwise shift operators, there are also bitwise *logical* operators in C which give rise to an exercise that involves implementing support of bitwise *AND* denoted `&`, bitwise *OR* denoted `|`, and bitwise negation denoted `~`. The `~` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
 
 ```bash
 ./grader/self.py bitwise-and-or-not
 ```
 
-Solving the assignment is similar to the assignment for bitwise shifting with an additional challenge involving support of the unary negation operator `~`.
+As before, determine the precedence of the other two operators in C, enhance the C\* grammar, and only then implement support of them in selfie. You also need to implement support of three more RISC-V machine instructions called `and`, `or`, and `xori`. The latter performs bitwise *exclusive-or* on the value of a register with an immediate value. Use that instruction to implement the `~` operator. The challenge is to figure out which immediate value to use. Hint: the immediate value is always the same.
 
-Bitwise logical operators are not supported in C\* and instead the subject of an assignment we discuss below in the context of the unary minus operator. There is also an assignment on the support of logical operators for constructing logical conditions but that assignment is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
+Besides support of bitwise logical operators, there is also an exercise on the support of logical operators for constructing logical conditions but that exercise is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
 
 > Dereference operator
 
