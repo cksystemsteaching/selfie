@@ -990,7 +990,7 @@ factor:  n       1
 
 To calculate the value of the expression, again with `4` as value for `n`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. This time the result is `60`.
 
-There is, however, a subtle issue here. EBNF can express precedence but not associativity which controls the order of evaluation among operators that have the same precedence such as `+` and `-`. So far, we silently assumed that expressions are evaluated from left to right, not from right to left, which does make sense, however, because `-` in particular is left-associative, not right-associative. For example, `n * n + 1 - n / 2 + 42` is equal to `(n * n + 1 - n / 2) + 42`, not `n * n + 1 - (n / 2 + 42)`.
+There is, however, a subtle issue here. EBNF can express precedence but not associativity which controls the grouping of operators that have the same precedence such as `+` and `-`. So far, we silently assumed that expressions are grouped from left to right, not from right to left, which does make sense, however, because `-` in particular is left-associative, not right-associative. For example, `n * n + 1 - n / 2 + 42` is equal to `(n * n + 1 - n / 2) + 42`, not `n * n + 1 - (n / 2 + 42)`.
 
 > Specification by context-free grammar, implementation by pushdown automaton
 
@@ -4654,15 +4654,17 @@ The expression `x + 7 * y` demonstrates the notion of *precedence* of operators 
 
 > Associativity
 
-But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators solves the problem. For example, the expression `x - 7 + y` is semantically equivalent to the expression `(x - 7) + y`, again in particular in contrast to the expression `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Associativity, however, cannot be expressed in EBNF. It only shows up in the parser that handles those operators, as we see below.
+But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators determines grouping. For example, the expression `x - 7 + y` is semantically equivalent to the expression `(x - 7) + y`, again in particular in contrast to the expression `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Associativity, however, cannot be expressed in EBNF. It only shows up in the parser that handles those operators, as we see below.
 
-Are there also *right-associative* operators in C\*? Yes, we discuss them as soon as we are done here. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, addition and multiplication can be evaluated in any order without an effect on the outcome. Why do we make even them left-associative in C\*, and in fact many other programming languages, and therefore restrict our freedom in evaluating them in any order we like?
+Are there also *right-associative* operators in C\*? Yes, we discuss them as soon as we are done here. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, expressions with addition and multiplication can be grouped in any order without an effect on the outcome, at least in elementary arithmetic. Why do we make even them left-associative in C\*, and in fact many other programming languages? Well, mixing associativity of operators with the same precedence may result in grouping conflicts. For example, how would you group the expression `x + 7 - y` if `+` was right-associative? Is it `(x + 7) - y` or `x + (7 - y)`? The former respects left-associativity of `-` but not the right-associativity of `+`, and the latter vice versa. So, left-associativity for `+` and `*` it is.
+
+TODO: make order of evaluation explicit
 
 > Determinism
 
 Well, there is a very good reason for that. An important feature of expressions, and in fact of entire programs, is that they have exactly one *deterministic* semantics. We really want them to mean exactly one thing and one thing only, not two, or even more. Just imagine for a moment that the semantics of source code would be *non-deterministic*, that is, the code could have more than one meaning. In that case, its actual meaning during execution would depend on the compiler, the libraries, and the machine you use for compilation and execution. If you later decide to deploy the same source code in a different setting you could see different behavior. In short, establishing correctness would be even harder because you would have to develop the code with all its possible meanings in mind.
 
-Still, are there programming languages with non-deterministic semantics? Yes, C, for example, and the reason is performance. Non-determinism, also called *undefined behavior* in the context of programming languages, gives compilers more freedom in optimizing code. Also, removing non-determinism from a programming language is not easy. Everything, even the smallest detail, has to be defined. We tried our best to remove the non-determinism of C from the semantics of C\* but at least the procedures for input and output and memory allocation in selfie may still be non-deterministic.
+Still, are there programming languages with non-deterministic semantics? Yes, C, for example, and the reason is performance. Non-determinism, also called *undefined behavior* in the context of programming languages, gives compilers more freedom in optimizing code by reordering machine instructions. Also, removing non-determinism from a programming language is not easy. Everything, even the smallest detail, has to be defined. We tried our best to remove the non-determinism of C from the semantics of C\* but at least the procedures for input and output and memory allocation in selfie may still be non-deterministic.
 
 > Side effects
 
@@ -4860,6 +4862,14 @@ statement = assignment ";" | if | while | call ";" | return ";" .
 The procedure `compile_statement()` parses `statement` after looking for strong symbols that statements begin with such as the keywords `if`, `while`, and `return`, and others, see the procedure `is_not_statement()` for the full list. We do not show the code of `compile_statement()` here since it is straightforward, again see the source code for the details. The first kind of statement we look into is assignments which is the natural choice to talk about after expressions.
 
 ### Assignments
+
+```ebnf
+assignment = identifier "=" expression .
+```
+
+```ebnf
+assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
+```
 
 data flow
 
