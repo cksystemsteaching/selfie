@@ -4877,7 +4877,13 @@ assignment = identifier "=" expression .
 
 An example of a variable assignment is `x = x + 1`. In terms of syntax, the assignment operator `=` is obviously a binary operator with lower precedence than any other operator in expressions yet the only binary operator in C\* that is right-associative. In other words, `x = x + 1` is grouped as in `x = (x + 1)`, and certainly not as in `(x = x) + 1`. As mentioned before, the left and right operands of `=` are called the left- and right-hand sides of an assignment, respectively.
 
-In terms of semantics, ...
+In terms of semantics, variable assignment first calculates the value to which the `expression` in the right-hand side evaluates, before assigning the value to the variable named by `identifier` in the left-hand side, and only then, after obtaining the value, actually assigns it to the variable, overwriting whatever value was assigned to the variable before the assignment.
+
+> lvalues and rvalues
+
+An assignment turns the value to which an expression evaluates, called *rvalue*, into a value with a name or memory address, depending on program or machine perspective, called *lvalue*. An rvalue is temporary because next time the same expression may evaluate to a different value, as the expression `x + 1` in our example actually does. An lvalue, however, may persist as part of the program or machine state. Also, an lvalue has an address in memory whereas an rvalue does not. In fact, when generating code for an assignment, the challenge is to calculate the address of that lvalue. In other words, evaluating the left-hand side of an assignment is not about obtaining a value but an address, which in our example is the address of where the value of `x` is stored in memory. How that works we have seen before in the context of compiling variables and formal parameter occurring in expressions. Now, we need to do exactly the same thing but generating an `sd` instruction, instead of an `ld` instruction, for the final step of an assignment.
+
+order...
 
 ```ebnf
 assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
