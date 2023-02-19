@@ -4847,7 +4847,7 @@ We discuss compiling the dereference operator as it occurs in expressions here a
 
 > What you see is not what you get
 
-Before moving on, it is time to reflect on what we have seen so far. Expressions in programming languages such as C\* and many others have been inspired by mathematical arithmetic and logic, and indeed look very much like expressions people use in mathematics. Yet while their syntax is similar and in many cases identical, their semantics is only related but still far from identical. Code generation has told us that once and for all. The issue of overflows through wrap-around semantics is probably the most important difference here. Using essentially the same notation in programming language as in mathematics is a big mistake that was made a long time ago and is now very hard to undo. The reasons are rooted in the origins of computer science in mathematics and therefore certainly understandable but still unfortunate. If programming languages would use their own unique symbols in expressions different from the symbols used in mathematical formulae, the semantical difference would be easier to recognize and acknowledge by everyone. Computer science students would have a much easier time understanding that all those discrete math and linear algebra classes they have to endure are only there to teach them the foundation of programming language and machine semantics, assuming, of course, that all classes use the notation properly. Even people in general would question the meaning of what they see if they could not relate it immediately yet falsely to something they know. The key lesson for us here is to question the meaning of what you see and educate yourself until you truly know what the actual meaning is.
+Before moving on, it is time to reflect on what we have seen so far. Expressions in programming languages such as C\* and many others have been inspired by elementary arithmetic and mathematical logic, and indeed look very much like expressions people use in mathematics. Yet while their syntax is similar and in many cases identical, their semantics is only related but still far from identical. Code generation has told us that once and for all. The issue of overflows through wrap-around semantics is probably the most important difference here. Using essentially the same notation in programming language as in mathematics is an unfortunate choice that was made a long time ago and is now very hard to undo. The reasons are rooted in the origins of computer science in mathematics and therefore certainly understandable but still unfortunate. If programming languages would use their own unique symbols in expressions different from the symbols used in mathematical formulae, the semantical difference would be easier to recognize and acknowledge by everyone. Computer science students would probably have an easier time understanding that all those discrete math and linear algebra classes they have to endure are only there to teach them the foundation of programming language and machine semantics, assuming, of course, that all classes use the notation properly. Even people in general would question the meaning of what they see if they could not relate it immediately yet falsely to something they know. The key lesson for us here is to question the meaning of what you see and educate yourself until you truly know what the actual meaning is.
 
 -------------------------------------------------------------------------------
 
@@ -4869,9 +4869,15 @@ The procedure `compile_statement()` parses `statement` after looking for strong 
 
 ### Assignments
 
+The notion of assignment of a value to a variable, or more generally to a memory location, is the key distinguishing feature of imperative programming. The semantics of assignment ultimately requires introducing the notion of program or machine state *before* and *after* executing an assignment. Similar to expressions, we first focus on a strict subset of the C\* grammar that defines *variable assignments* which only enable assignment of values to variables:
+
 ```ebnf
 assignment = identifier "=" expression .
 ```
+
+An example of a variable assignment is `x = x + 1`. In terms of syntax, the assignment operator `=` is obviously a binary operator with lower precedence than any other operator in expressions yet the only binary operator in C\* that is right-associative. In other words, `x = x + 1` is grouped as in `x = (x + 1)`, and certainly not as in `(x = x) + 1`. As mentioned before, the left and right operands of `=` are called the left- and right-hand sides of an assignment, respectively.
+
+In terms of semantics, ...
 
 ```ebnf
 assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
