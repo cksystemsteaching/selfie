@@ -4688,7 +4688,7 @@ Still, are there programming languages with non-deterministic semantics? Yes, C,
 
 Are precedence and associativity enough to make the semantics of expressions deterministic? For elementary expressions, the answer is yes! However, for C\* expressions, the answer is no! While precedence and associativity determine syntactical structure, they do not determine *order of evaluation* of individual parts of expressions. For example, the order of evaluation in an expression such as `x + y` is obviously not relevant, that is, the value of `x` could be determined before or after the value of `y` without an effect on the outcome. In fact, any order of evaluation in elementary expressions is fine. However, in C\* expressions, there are cases in which the order of evaluation could matter, namely, in the presence of procedure calls.
 
-For example, evaluating the expression `x + f()` from right to left rather than from left to right could make a difference. How is that possible you might ask? Well, the procedure `f()` can have *side effects* on the program state beyond just computing a return value. For example, `f()` could have a side effect,  if `x` is a global variable, by changing the value of `x`. In that case, the order of evaluation of `x + f()` would obviously matter. How do we solve that problem? Well, the selfie compiler generates code that always evaluates left operands before right operands, and each operand exactly once. Still, if procedure calls were not allowed in expressions, we could in principle generate code that evaluates operands in any order without effecting the outcome.
+For example, evaluating `x` before or after calling the procedure `f()` in an expression `x + f()` could make a difference. How is that possible you might ask? Well, `f()` can have *side effects* on the program state beyond just computing a return value. For example, `f()` could have a side effect,  if `x` is a global variable, by changing the value of `x`. In that case, the order of evaluation in `x + f()` would obviously matter. How do we solve that problem? Well, the selfie compiler generates code that always evaluates left operands before right operands, and each operand exactly once. Still, if procedure calls were not allowed in expressions, we could in principle generate code that evaluates operands in any order without effecting the outcome.
 
 > Undefined behavior
 
@@ -4859,7 +4859,7 @@ The syntax of a `statement` in C\* is simple but does involve a lookahead of 1 d
 statement = assignment ";" | if | while | call ";" | return ";" .
 ```
 
-The procedure `compile_statement()` parses `statement` after looking for strong symbols that statements begin with such as the keywords `if`, `while`, and `return`, and others, see the procedure `is_not_statement()` for the full list. We do not show the code of `compile_statement()` here since it is straightforward, again see the source code for the details. The first kind of statement we look into is assignments which is the natural choice to talk about after expressions.
+The procedure `compile_statement()` compiles `statement` after looking for strong symbols that statements begin with such as the keywords `if`, `while`, and `return`, and others, see the procedure `is_not_statement()` for the full list. There is an important invariant that `compile_statement()` maintains: no temporary registers are allocated before and after compiling any statement! In other words, when compiling a statement all temporary registers are available. However, maintaining the invariant requires of course to deallocate all allocated registers eventually before returning from compiling any statement. We do not show the code of `compile_statement()` here since it is straightforward, again see the source code for the details. The first kind of statement we look into is assignments which is the natural choice to talk about after expressions.
 
 -------------------------------------------------------------------------------
 
@@ -4887,29 +4887,39 @@ This takes us to the issue of order of evaluation which is rather sensitive, sim
 
 ![Assignments](figures/emitting-assignments.png "Assignments")
 
-The above figure shows how variable assignments are compiled in the procedure `compile_assignment()` using our example `x = x + 7`. The code that handles the full C\* grammar of assignments is not shown.
+The above figure shows how variable assignments are compiled in the procedure `compile_assignment()` using our example `x = x + 7`. The code that handles the full C\* grammar of assignments is not shown. Because of the lookahead for distinguishing variable assignments from procedure calls, `compile_assignment()` is invoked with the variable in the left-hand side of the assignment, here `x`, already parsed. In this case, the address of the value of the variable in memory at runtime is determined by searching the global and local symbol tables for the variable, similar to occurrences of variables in expressions. In particular, we determine if the address is calculated relative to the `gp` or `s0` register using `get_scope()` and remember that in a local variable called `base`, and we determine the involved offset using `get_address()` and remember that in a local variable called `offset`.
 
-...
+Interestingly, there is no code generation necessary if `offset` is a 12-bit signed integer since it fits as immediate value of an `sd` instruction in that case. Otherwise, the procedure `load_upper_address()` generates code that adds the uppper, as in more significant, portion of `offset` that does not fit in 12 bits to the `base` register and saves the result in a temporary register which then becomes the `base` register, instead of `gp` or `s0`. The upper portion is then removed from `offset`. The rest is straightforward. After parsing the assignment operator `=`, the expression in the right-hand side of the assignment, here `x + 7`, is compiled by the procedure `compile_expression()` returning the type of the value to which the expression evaluates to allowing us to check it against the type of the variable, here `x`, the value is assigned to. After that, a single `sd` instruction is generated that stores the value in memory where the `base` register plus `offset` refers to. Before `compile_assignment()` returns, the temporary register holding the value of the expression and the `base` register, if temporary, are deallocated, establishing the invariant that no temporary registers are allocated before and after any assignment, assuming that `compile_expression()` returns with exactly one more temporary register allocated than before invoking it.
 
-The order of evaluation does have an effect in assignments as defined in the full C\* grammar which introduces the dereference operator applied to variables and even full expressions, in particular involving pointer arithmetic, into the left-hand side of assignments:
+The full C\* grammar of assignments introduces the dereference operator applied to variables and even full expressions, in particular involving pointer arithmetic, into the left-hand side of assignments:
 
 ```ebnf
 assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
 ```
 
-An example of an assignment we saw before that uses the dereference operator in the left-hand side is `*x = *x + 7`. The full semantics of the dereference operator depends on where it is used. If used at the very beginning of the left-hand side of an assignment, the dereference operator returns an lvalue, that is, the value that its operand evaluates to interpreted as an address in memory, not the value that is stored in memory at that address! Otherwise, if used anywhere else, including the grouped expression in the left-hand side of an assignment, the dereference operator has the semantics as in any expression. In other words, it returns an rvalue, that is, the actual value stored in memory where its operand points to, or more precisely, where the value that its operand evaluates to, interpreted as an address, refers to. In our example, `*x` in the left-hand side of the assignment returns the value that `x` evaluates to, interpreted as an address, whereas `*x` in the right-hand side returns, as we explained before, the value stored in memory where `x` points to.
+An example of a *dereferencing* assignment we saw before that uses the dereference operator in the left-hand side is `*x = *x + 7`. The full semantics of the dereference operator depends on where it is used. If used at the very beginning of the left-hand side of an assignment, the dereference operator returns an lvalue, that is, the value that its operand evaluates to interpreted as an address in memory, not the value that is stored in memory at that address! Otherwise, if used anywhere else, including the grouped expression in the left-hand side of an assignment, the dereference operator has the semantics as in any expression. In other words, it returns an rvalue, that is, the actual value stored in memory where its operand points to, or more precisely, where the value that its operand evaluates to, interpreted as an address, refers to. In our example, `*x` in the left-hand side of the assignment returns the value that `x` evaluates to, interpreted as an address, whereas `*x` in the right-hand side returns, as we explained before, the value stored in memory where `x` points to.
 
-data flow
+> Order of evaluation
+
+Interestingly, compiling dereferencing assignments is easier than compiling variable assignments. We only need to generate code that loads the value of a variable, simply by reusing the procedure `load_variable()` or, more generally, evaluates an expression, by reusing the procedure `compile_expression()`, see the source code for the details. However, doing so before generating code that evaluates the expression in the right-hand side of an assignment may result in different semantics than generating the code in the opposite order. For example, just like the expression `x + f()` we mentioned before where `x` is a global variable of type unsigned integer whose value the procedure `f()` modifies, an assignment `*x = f()` where `x` is of type pointer to unsigned integer has different semantics depending on whether `x` is evaluated before or after calling `f()`. Either way, the selfie compiler always generates the code for evaluating the left-hand side of an assignment before the code for evaluating the right-hand side.
+
+> Data flow
 
 ### Conditionals
 
 lazy evaluation assignment
 
+temporary register invariant
+
 ### Loops
 
 for loop assignment
 
+temporary register invariant
+
 ### Procedures
+
+temporary register invariant
 
 array and struct assignments
 
