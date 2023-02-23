@@ -4861,12 +4861,6 @@ statement = assignment ";" | if | while | call ";" | return ";" .
 
 The procedure `compile_statement()` compiles `statement` after looking for strong symbols that statements begin with such as the keywords `if`, `while`, and `return`, and others, see the procedure `is_not_statement()` for the full list. There is an important invariant that `compile_statement()` maintains: no temporary registers are allocated before and after compiling any statement! In other words, when compiling a statement all temporary registers are available. However, maintaining the invariant requires of course to deallocate all allocated registers eventually before returning from compiling any statement. We do not show the code of `compile_statement()` here since it is straightforward, again see the source code for the details. The first kind of statement we look into is assignments which is the natural choice to talk about after expressions.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 ### Assignments
 
 The notion of assignment of a value to a variable, or more generally to a memory location, is the key distinguishing feature of imperative programming. The semantics of assignment ultimately requires introducing the notion of program or machine state *before* and *after* executing an assignment. Similar to expressions, we first focus on a strict subset of the C\* grammar that defines *variable assignments* which only enable assignment of values to variables:
@@ -4906,6 +4900,12 @@ Interestingly, compiling dereferencing assignments is easier than compiling vari
 > Data flow and control flow
 
 Assignments essentially facilitate *data flow*, as opposed to *control flow*, which is something we have already seen in the context of machine code. With assignments, data flows from variables and in fact memory locations in general to the same and other variables and memory locations during program execution. In contrast, conditional and loop statements determine how control over which statement executes next flows through the statements of  programs during execution. Conditional statements are our next topic, followed by loop statements and finally procedures, in particular procedure calls and return statements. The latter two facilitate both, data and control flow, by passing values from one procedure to another and invoking each others' code, respectively. Strictly speaking, procedure calls in expressions therefore also facilitate control flow in assignments, not just data flow. Yet most operators used in expressions are data-flow operators, except for logical operators which are the subject of an interesting upcoming exercise in the context of conditional statements.
+
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
 
 ### Conditionals
 
