@@ -4900,7 +4900,7 @@ Interestingly, compiling dereferencing assignments is easier than compiling vari
 
 > Data flow and control flow
 
-Assignments essentially facilitate *data flow*, as opposed to *control flow*, which is something we have already seen in the context of machine code. With assignments, data flows from variables and in fact memory locations in general to the same and other variables and memory locations during program execution. In contrast, conditional and loop statements determine how control over which statement executes next flows through the statements of  programs during execution. Conditional statements are our next topic, followed by loop statements and finally procedures, in particular procedure calls and return statements. The latter two facilitate both, data and control flow, by passing values from one procedure to another and invoking each others' code, respectively. Strictly speaking, procedure calls in expressions therefore also facilitate control flow in assignments, not just data flow. Yet most operators used in expressions are data-flow operators, except for logical operators which are the subject of an interesting upcoming exercise in the context of conditional statements.
+Assignments essentially facilitate *data flow* as opposed to *control flow*. Both, control and data flow is something we have already seen in the context of machine code. In source code, specifically in assignments, data flows from variables and even memory locations to the same and other variables and memory locations during program execution. In contrast, conditional and loop statements determine how control over which statement executes next flows through the statements of programs during program execution. Loop statements are our next topic. They are syntactically simpler and yet semantically more general than conditional statements. In the context of loop statements, there is an opportunity for an exercise that involves implementing support of *for* loops in selfie. After that, we focus on conditional statements and finally on procedures, in particular procedure calls and return statements. The latter two facilitate both, data and control flow, by passing values from one procedure to another and invoking each others' code, respectively. Strictly speaking, procedure calls in expressions therefore also facilitate control flow in assignments, not just data flow. Yet most operators used in expressions are data-flow operators, except for logical operators which are the subject of another, quite challenging exercise in the context of conditional statements.
 
 -------------------------------------------------------------------------------
 
@@ -4908,15 +4908,31 @@ work in progress
 
 -------------------------------------------------------------------------------
 
-### Conditionals
+### Loops
 
-lazy evaluation assignment
+Assignments and loops are enough to make programming languages *universal* or *Turing-complete*. No other statements are necessary. Any code written in any programming language can be rewritten to use assignments and loops only, and nothing else. It may not be very convenient to do that but it is always possible. Conditional statements in particular can always be replaced by loop statements but not the other way around. However, the use case for conditional statements is so common that virtually all programming languages feature conditional statements. Similarly, procedures are not strictly necessary, recursion in particular can always be replaced by iteration in loops, but also the other way around, iteration can always be replaced by recursion in procedures. Either way, the use cases for loops and procedures are so common as well that most languages feature both in one form or another. Nevertheless, when done with loops we are already Turing-complete!
+
+The C\* grammar of `while` loops is simple and so is compiling them:
+
+```ebnf
+while = "while" "(" expression ")"
+          ( statement | "{" { statement } "}" ) .
+```
+
+for loop assignment
 
 temporary register invariant
 
-### Loops
+### Conditionals
 
-for loop assignment
+```ebnf
+if = "if" "(" expression ")"
+       ( statement | "{" { statement } "}" )
+     [ "else"
+       ( statement | "{" { statement } "}" ) ] .
+```
+
+lazy evaluation assignment
 
 temporary register invariant
 
