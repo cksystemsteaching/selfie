@@ -67,8 +67,8 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    3. Type
    4. Expression
    5. Assignment
-   6. Conditional
-   7. Loop
+   6. Loop
+   7. Conditional
    8. Procedure
    9. Libraries
    10. Apps
@@ -4919,16 +4919,28 @@ while = "while" "(" expression ")"
           ( statement | "{" { statement } "}" ) .
 ```
 
-The condition of a `while` loop can be any C\* expression and the body can either be a single C\* statement or a possibly empty sequence of C\* statements surrounded by curly braces. The procedure `compile_while` implements compiling of `while` loops, invoking the procedures `compile_expression` and `compile_statement` to compile loop condition and loop body, respectively. The intuitive semantics of a `while` loop is that, if the loop condition evaluates to `0`, which represents the condition being false, the loop is terminated, and the next statement that follows the loop is executed. Otherwise, if the condition evaluates to any value but `0`, which represents the condition being true, the loop body is executed once. After that, the loop condition is evaluated again, and so on. Note that a loop `while (0) ...` never executes and a loop `while (1) ...` never terminates, unless there is a `return` statement in the loop body. During debugging C programmers sometimes use `0` as loop condition to turn loops off. As a more meaningful example, consider the following `while` loop with a single assignment as loop body:
+The condition of a `while` loop can be any C\* expression and the body can either be a single C\* statement or a possibly empty sequence of C\* statements surrounded by curly braces. The procedure `compile_while` implements compiling of `while` loops, invoking the procedures `compile_expression` and `compile_statement` to compile loop condition and loop body, respectively. The intuitive semantics of a `while` loop is that, if the loop condition evaluates to `0`, which represents the condition being false, the loop is terminated, and the next statement that follows the loop is executed. Otherwise, if the condition evaluates to any value but `0`, which represents the condition being true, the loop body is executed once. After that, the loop condition is evaluated again, and so on. Note that a loop `while (0) ...` never executes and a loop `while (1) ...` never terminates, unless there is a `return` statement in the loop body. During debugging, C programmers sometimes use `0` as loop condition to turn loops off. As a more meaningful example, consider the following `while` loop with a single assignment as loop body:
 
 ```c
 while (x < 7)
   x = x + 7;
 ```
 
-for loop assignment
+In short, the `while` loop increases the value of `x` in increments of `7` until the value of `x` is not less than `7` anymore. If the value of `x` is already not less than `7` when reaching the `while` loop, the loop body is not even executed once. The example reuses the expression `x < 7` and the assignment `x = x + 7` that appeared as examples before in order to raise an important point.
+
+> From composability to compositionality
+
+According to the C\* grammar, any expression may appear as loop condition and any statement and even any sequence of statements may appear as loop body in a `while` loop. In short, the grammar defines what we can use to *compose* a `while` loop, and what not. More generally, a grammar determines *composability* of individual syntactic elements of a formal language. However, the fact that we can compose something does not mean that all compositions are meaningful. What we actually often want is *compositionality* of which composability is only a prerequisite. We need to be able to compose a complex system from individual components that are all simpler than the system but what we also need is that the components do not change their meaning depending on how they are composed into a system. Only then, the complexity of a system can be reduced and thus be managed. We say that a composition of individual components is *compositional* if the meaning of the individual components in isolation is the same as their meaning within the composition.
+
+Not all composable elements of C\* are also compositional. For example, a procedure that accesses a global variable, with or without side effect on that variable, may have a different meaning depending on the value of that variable, that is, the context in which it is invoked. But even procedures not accessing any global variables can still be non-compositional. For example, a procedure can still access a memory location, again with or without side effect on that location, by dereferencing a pointer provided as an actual parameter to the procedure. Functional programming is an attempt to increase compositionality by avoiding access to global state information.
+
+> Compositional parsing and code generation
 
 temporary register invariant
+
+also true for expressions and assignments...
+
+for-loop assignment
 
 ### Conditionals
 
