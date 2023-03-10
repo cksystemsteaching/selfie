@@ -5011,7 +5011,7 @@ temporary register invariant
 
 temporary register invariant
 
-array and struct assignments
+array and struct exercises
 
 ### Library
 
