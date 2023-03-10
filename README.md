@@ -4996,11 +4996,18 @@ work in progress
 
 ### Conditionals
 
+Conditional statements represent important use cases in programming, even though they are technically redundant if loop statements are available. For example, there are around ten times more `if` statements than `while` loops in the selfie code. Just self-compile selfie and check the compiler profile to see that. The C\* grammar of `if` statements is a bit more involved than of `while` loops because of the optional `else` case but parsing them is still easy:
+
 ```ebnf
 if = "if" "(" expression ")"
        ( statement | "{" { statement } "}" )
      [ "else"
        ( statement | "{" { statement } "}" ) ] .
+```
+
+```c
+if (x < 7)
+  x = x + 7;
 ```
 
 temporary register invariant
