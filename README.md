@@ -2708,7 +2708,7 @@ In computer science *bitwise shifting* is a standard operation. Left-shifting ad
 
 > Multiplication and division by powers of 2 mimics logical bitwise left and right shifting, respectively
 
-Interestingly, multiplying and dividing binary numbers with powers of 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of 10 rather than 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist and are more efficient than their arithmetic counterparts. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
+Interestingly, multiplying and dividing binary numbers with powers of 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of 10 rather than 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist and are more efficient than their arithmetic counterparts. RISC-V, for example, features `sll` and `srl` instructions for logical bitwise left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
 Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x11008` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x11008` into the 8 MSBs `0x11` and the 12 LSBs `0x008` (which is obviously 8 in decimal) and then do what the first three instructions in the running example do:
 
@@ -4820,7 +4820,7 @@ Next is the optional unary minus operator, denoted `-` just like its binary twin
 
 > Bitwise logical operators
 
-In addition to bitwise shift operators, there are also bitwise *logical* operators in C which give rise to an exercise that involves implementing support of bitwise *AND* denoted `&`, bitwise *OR* denoted `|`, and bitwise negation denoted `~`. The `~` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
+In addition to bitwise shift operators, there are also bitwise *logical* operators in C which give rise to an exercise that involves implementing support of bitwise *AND* denoted `&`, bitwise *OR* denoted `|`, and bitwise *NOT* denoted `~`. The `~` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
 
 ```bash
 ./grader/self.py bitwise-and-or-not
@@ -4828,7 +4828,18 @@ In addition to bitwise shift operators, there are also bitwise *logical* operato
 
 As before, determine the precedence of the other two operators in C, enhance the C\* grammar, and only then implement support of them in selfie. You also need to implement support of three more RISC-V machine instructions called `and`, `or`, and `xori`. The `xori` instruction performs bitwise *exclusive-or* or *XOR* on the value of a register with an immediate value. Generate that instruction to implement support of the `~` operator. There are two challenges involved in the exercise beyond what you saw before in related exercises. Firstly, when generating the `xori` instruction you need to figure out which immediate value to use. Hint: the immediate value is always the same. Secondly, while the implementation of the `and` and `or` instructions is straightforward using the `&` and `|` operators, respectively, the implementation of the `xori` instruction is more involved since there is no operator for *XOR* in C\*. However, XOR can be implemented using a combination of the `&`, `|`, and `~` operators. You just need to figure out which combination is correct which does involve understanding what XOR is. You could also implement support of the `^` operator in C for XOR and the `xor` machine instruction in RISC-V and then use the `^` operator in the implementation of the `xori` instruction but that is more work.
 
-Besides support of bitwise logical operators, there is also an exercise on the support of logical operators for constructing logical conditions but that exercise is more involved since it requires generating code with non-trivial control flow. We get to that in the context of conditionals.
+Besides support of bitwise logical operators, there is also an exercise on the support of *Boolean* logical operators available in C for constructing logical conditions. The exercise involves implementing support of logical *conjunction* denoted `&&`, logical *disjunction* denoted `||`, and logical *negation* denoted `!`. Similar to the bitwise `~` operator, the `!` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
+
+```bash
+./grader/self.py logical-and-or-not
+```
+
+Again, determine the precedence of the other two operators in C, enhance the C\* grammar, and only then implement support of them in selfie. There is, however, no need to implement support of additional instructions. Instead, the challenge is to figure out how to implement operator semantics using the existing machine instructions. Hint: use combinations of `sltu`, `and`, `or`, and `xori` instructions.
+Combinations of `sltu`, `add`, `sub`, and `mul` instructions also work if you would like your solution to be independent of the previous exercise. All three logical operators must evaluate to either `0` or `1`. In particular, the `&&` operator evaluates to `1` only if both operands evaluate to values that are not `0`. The `||` operator evaluates to `1` only if either one or both operands evaluate to values that are not `0`. The `!` operator evaluates to `1` if the operand evaluates to `0`. In all other cases, all operators evaluate to `0`.
+
+> Lazy evaluation
+
+There is, however, one more thing. The semantics of logical operators in C is actually more involved than the above. The right operands of the `&&` and `||` operators are evaluated *lazily* which means that they are only evaluated if the value to which the left operand evaluates is not sufficient to determine the overall result. For example, the expression `x && y` evaluates to `0` if `x` evaluates to `0`, regardless of the value to which `y` evaluates. In that case, `y` is not supposed to be evaluated at all, which is called *lazy evaluation*. Similarly, the expression `x || y` evaluates to `1` if `x` evaluates to `1`, again regardless of the value to which `y` evaluates. The situation gets quite tricky if logical operators are used in nested expressions. The solution is to use control flow, rather than data flow, to implement the semantics of logical operators. We get to an exercise about that in the context of conditionals.
 
 > Dereference operator
 
@@ -4990,9 +5001,11 @@ if = "if" "(" expression ")"
        ( statement | "{" { statement } "}" ) ] .
 ```
 
-lazy evaluation assignment
-
 temporary register invariant
+
+```bash
+./grader/self.py lazy-evaluation
+```
 
 ### Procedures
 
