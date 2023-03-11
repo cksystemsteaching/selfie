@@ -5072,7 +5072,9 @@ bootstrapping, self-compilation
 
 ### Life
 
-My fascination with the universality of the binary system and digital computers
+Programming is the most precise known form of expressing your thoughts about a problem and how you would like to solve it. Even if you do not intend to develop code for a living or just fun, there is something to it that has a profound effect on the way you think once you know what it is and how to do it. Programming a mindless machine that has no concept of the real world forces you to gain a level of understanding of a problem and its possible solutions that can even exceed what is involved in other complex activities in modern science and engineering. Modern cars, planes, smartphones, computers, vaccines, and so on are all incredibly complex artifacts but they are still no match to the complexity of software. Only life itself is at that level of complexity.
+
+Programming even in the most modern programming languages may nevertheless often feel like a straight jacket on your creativity. However, new languages and tools are being developed every day that can significantly improve your experience. We are still only at the beginning of that process. Tools in particular have a long way to go...
 
 ### Recommended Readings
 
