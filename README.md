@@ -5068,13 +5068,17 @@ array and struct exercises
 
 symbolic vs direct references
 
-loading and linking
+object vs executable files
+
+separate, independent, incremental, cross compilation
+
+loading and linking and garbage collection
 
 bootstrapping, self-compilation
 
 ### Apps
 
-
+Are we finally able to develop apps for smartphones, tablets, and laptops, after going through all that material? Well, you should definitely be able to figure out how to develop code for apps in whatever programming languages are available for that. However, besides knowing the involved languages, the remaining and still considerable challenge is to figure out how to use their ecosystems, that is, their libraries and development environments. Those can be quite complex and therefore take time to utilize effectively. In any case, if I was young again I would develop apps all the time for no reason other than having fun. Making dumb machines do smart stuff can be extremely rewarding. Try it!
 
 ### Life
 
