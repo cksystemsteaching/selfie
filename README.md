@@ -5066,6 +5066,8 @@ array and struct exercises
 
 ### Libraries
 
+A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *library* is code, typically developed by experts, which provides functionality that developers need but do not want or cannot develop themselves.
+
 symbolic vs direct references
 
 object vs executable files
