@@ -62,14 +62,14 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 6. Programming
 
-   1. Literal
-   2. Variable
-   3. Type
-   4. Expression
-   5. Assignment
-   6. Loop
-   7. Conditional
-   8. Procedure
+   1. Literals
+   2. Variables
+   3. Expressions
+   4. Statements
+   5. Assignments
+   6. Loops
+   7. Conditionals
+   8. Procedures
    9. Libraries
    10. Apps
    11. Life
@@ -5064,11 +5064,17 @@ temporary register invariant
 
 array and struct exercises
 
-### Library
+### Libraries
+
+symbolic vs direct references
+
+loading and linking
 
 bootstrapping, self-compilation
 
 ### Apps
+
+
 
 ### Life
 
