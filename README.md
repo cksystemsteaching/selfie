@@ -5082,7 +5082,13 @@ Programming even in the most modern programming languages may nevertheless often
 
 ### Recommended Readings
 
-Aho et al.: Compilers: Principles, Techniques, and Tools
+> Compilers: Principles, Techniques, and Tools by Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman
+
+This book is seminal work on compilers known as the dragon book. As computer science students, we identified with the knight shown on the book cover fighting a dragon that represents the complexity involved in compilers. We have left countless questions about compilers unanswered here but you are likely to find the answers in the dragon book.
+
+> Structure and Interpretation of Computer Programs by Harold Abelson and Gerald J. Sussman with Julie Sussman
+
+This is also seminal work on computer programming that belongs in any computer science library. The book goes far beyond what we introduced here. However, you should be able to get right into it and enjoy it a lot.
 
 ## Tools
 
