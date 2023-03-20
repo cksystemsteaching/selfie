@@ -52,9 +52,9 @@ Complete the implementation of a RISC-U assembler (option `-a` in selfie) with s
 
 ## Assignment `processes`:
 
-Implement support of concurrent machines (processes) in mipster and hypster.
+Implement support of processes in mipster and hypster.
 
-- Use the (concurrent-machines) `processes` target in the grader to determine your grade.
+- Use the `processes` target in the grader to determine your grade.
 
 
 
