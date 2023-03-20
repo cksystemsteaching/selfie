@@ -5066,7 +5066,19 @@ array and struct exercises
 
 ### Libraries
 
-A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *library* is code, typically developed by experts, which provides functionality that developers need but do not want or cannot develop themselves.
+A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *runtime library* or just *library* is code, typically developed by experts, which provides functionality that developers often need but are unable or do not want to develop themselves. In fact, the choice of programming language or even programming languages used in a project is often driven by the libraries and tools available for those languages rather than just the features of each individual language.
+
+> To library or not to library
+
+Libraries are great, as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as for performing input and output even seems to be available only in libraries as there are no language constructs for that in C. Modern code development is often even more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. We explain some of that code below.
+
+> Builtin versus library procedures
+
+Not using any library code is so unusual that, at the time, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program.
+
+includes
+
+bootstrapping, self-compilation
 
 symbolic vs direct references
 
@@ -5075,8 +5087,6 @@ object vs executable files
 separate, independent, incremental, cross compilation
 
 loading and linking and garbage collection
-
-bootstrapping, self-compilation
 
 ### Apps
 
