@@ -5066,15 +5066,27 @@ array and struct exercises
 
 ### Libraries
 
-A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *runtime library* or just *library* is code, typically developed by experts, which provides functionality that developers often need but are unable or do not want to develop themselves. In fact, the choice of programming language or even programming languages used in a project is often driven by the libraries and tools available for those languages rather than just the features of each individual language.
+A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *runtime library* or just a *library* is code, typically developed by experts, which provides functionality that developers often need but are unable or do not want to develop themselves. In fact, the choice of programming language or even programming languages used in a project is often driven by the libraries and tools available for those languages rather than just the features of each individual language.
 
 > To library or not to library
 
-Libraries are great, as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as for performing input and output even seems to be available only in libraries as there are no language constructs for that in C. Modern code development is often even more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. We explain some of that code below.
+Libraries are great as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as  performing input and output is often only available in libraries as there are typically no language constructs for that. Thus modern code development is typically more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. We explain some of that code below.
 
 > Builtin versus library procedures
 
-Not using any library code is so unusual that, at the time, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program.
+Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures that C\* features. Out of the eight procedures the following five procedures are strictly needed for bootstrapping selfie:
+
+1. `exit`: the currently executing program and return an exit code
+2. `read`: a given number of bytes from a file into a buffer in memory
+3. `write`: a given number of bytes from a buffer in memory to a file
+4. `open`: a file for `read` and `write` access
+5. `malloc`: allocate a given number of bytes contiguously on the heap
+
+The following three procedures are used for convenience when printing data:
+
+1. `printf`: a formatted string to the console
+2. `sprintf`: a formatted string to a buffer in memory
+3. `dprintf`: a formatted string to a file
 
 includes
 
