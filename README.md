@@ -4856,7 +4856,7 @@ We discuss compiling the dereference operator as it occurs in expressions here a
 
 > What you see is not what you get
 
-Before moving on, it is time to reflect on what we have seen so far. Expressions in programming languages such as C\* and many others have been inspired by elementary arithmetic and mathematical logic, and indeed look very much like expressions people use in mathematics. Yet while their syntax is similar and in many cases identical, their semantics is only related but still far from identical. Code generation has told us that once and for all. The issue of overflows through wrap-around semantics is probably the most important difference here. Using essentially the same notation in programming language as in mathematics is an unfortunate choice that was made a long time ago and is now very hard to undo. The reasons are rooted in the origins of computer science in mathematics and therefore certainly understandable but still unfortunate. If programming languages would use their own unique symbols in expressions different from the symbols used in mathematical formulae, the semantical difference would be easier to recognize and acknowledge by everyone. Computer science students would probably have an easier time understanding that all those discrete math and linear algebra classes they have to endure are only there to teach them the foundation of programming language and machine semantics, assuming, of course, that all classes use the notation properly. Even people in general would question the meaning of what they see if they could not relate it immediately yet falsely to something they know. The key lesson for us here is to question the meaning of what you see and educate yourself until you truly know what the actual meaning is.
+Before moving on, it is time to reflect on what we have seen so far. Expressions in programming languages such as C\* and many other languages have been inspired by elementary arithmetic and mathematical logic, and indeed look very much like expressions used in mathematics. Yet while their syntax is similar and in many cases identical, their semantics is only related but still far from identical. Code generation has told us that once and for all. Integer overflows and wrap-around semantics are probably the most important differences here. Using essentially the same notation in programming languages as in mathematics is an unfortunate choice that was made a long time ago and is now very hard to undo. The reasons are rooted in the origins of computer science in mathematics and therefore certainly understandable but still unfortunate. If programming languages would use their own unique symbols in expressions different from the symbols used in mathematical formulae, the semantical difference would be easier to recognize and acknowledge by everyone. Computer science students would probably have an easier time understanding that all those discrete math and linear algebra classes they have to endure are only there to teach them the foundation of programming language and machine semantics, assuming, of course, that all classes use the notation properly. Even people in general would question the meaning of what they see if they could not relate it immediately yet falsely to something they know. The key lesson for us here is to question the meaning of what you see and educate yourself until you truly know what the actual meaning is.
 
 ### Statements
 
@@ -5076,7 +5076,7 @@ Libraries are great as long as they are designed and implemented properly, and y
 
 > Builtin procedures versus library procedures
 
-Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures the following three procedures are used for convenience when printing data:
+Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures, the following three procedures are used for convenience when printing data:
 
 1. `printf`: a formatted string to the console
 2. `sprintf`: a formatted string to a buffer in memory
@@ -5088,11 +5088,13 @@ All three procedures are variadic, as mentioned before, which helps making the s
 
 The selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, `va_arg`, and `va_end` macros to stay close to the original implementation. In the source code of selfie, look for the `var_start`, `var_arg`, and `var_end` procedures which are slightly renamed versions of the original macros to avoid conflicts during bootstrapping. Before going into more detail, consider the following five remaining builtin procedures featured in C\* which are strictly needed for bootstrapping selfie:
 
-1. `exit`: the currently executing program and return an exit code
+1. `exit`: program execution and return an exit code
 2. `read`: a given number of bytes from a file into a buffer in memory
 3. `write`: a given number of bytes from a buffer in memory to a file
 4. `open`: a file for `read` and `write` access
-5. `malloc`: allocate a given number of bytes contiguously on the heap
+5. `malloc`: a given number of bytes contiguously on the heap
+
+We need a way to terminate program execution
 
 includes
 
