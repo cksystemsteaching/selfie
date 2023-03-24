@@ -5062,6 +5062,8 @@ work in progress
 
 temporary register invariant
 
+variadic functions
+
 array and struct exercises
 
 ### Libraries
@@ -5072,21 +5074,25 @@ A programming language is usually not standalone but part of an ecosystem of lib
 
 Libraries are great as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as  performing input and output is often only available in libraries as there are typically no language constructs for that. Thus modern code development is typically more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. We explain some of that code below.
 
-> Builtin versus library procedures
+> Builtin procedures versus library procedures
 
-Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures that C\* features. Out of the eight procedures the following five procedures are strictly needed for bootstrapping selfie:
+Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures the following three procedures are used for convenience when printing data:
+
+1. `printf`: a formatted string to the console
+2. `sprintf`: a formatted string to a buffer in memory
+3. `dprintf`: a formatted string to a file
+
+All three procedures are variadic, as mentioned before, which helps making the source code of selfie significantly more readable. Earlier versions of the code only supported printing data through non-variadic procedures which was quite a bit more cumbersome. However, support of variadic procedures and `printf` derivatives in particular is non-trivial.
+
+> Macros
+
+The selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, `va_arg`, and `va_end` macros to stay close to the original implementation. In the source code of selfie, look for the `var_start`, `var_arg`, and `var_end` procedures which are slightly renamed versions of the original macros to avoid conflicts during bootstrapping. Before going into more detail, consider the following five remaining builtin procedures featured in C\* which are strictly needed for bootstrapping selfie:
 
 1. `exit`: the currently executing program and return an exit code
 2. `read`: a given number of bytes from a file into a buffer in memory
 3. `write`: a given number of bytes from a buffer in memory to a file
 4. `open`: a file for `read` and `write` access
 5. `malloc`: allocate a given number of bytes contiguously on the heap
-
-The following three procedures are used for convenience when printing data:
-
-1. `printf`: a formatted string to the console
-2. `sprintf`: a formatted string to a buffer in memory
-3. `dprintf`: a formatted string to a file
 
 includes
 
