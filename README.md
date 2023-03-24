@@ -5094,7 +5094,7 @@ The selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, 
 4. `open`: a file for `read` and `write` access
 5. `malloc`: a given number of bytes contiguously on the heap
 
-We need a way to terminate program execution
+The `exit` procedure may be called from anywhere in the code of a program to terminate program execution immediately when needed. However, strictly speaking, explicit support of `exit` is not necessary since returning from the `main` procedure terminates program execution implicitly. Yet always returning to `main` for program termination may be quite inconvenient. Moreover, lifting implicit support of program termination, which is needed, to explicit support in `exit` is easy.
 
 includes
 
