@@ -122,23 +122,6 @@ def check_bitwise_and_or_not() -> List[Check]:
                                 'bitwise and, or & not ' + ' operators respect the precedence of the C operators: +,-')
 
 
-def check_for_loop() -> List[Check]:
-    return check_compilable('missing-assignment.c',
-                            'for loop with missing assignment do not compile', should_succeed=False) + \
-        check_compilable('single-statement.c',
-                         'for loop with one statement do compile') + \
-        check_compilable('multiple-statements.c',
-                         'for loop with multiple statements do compile') + \
-        check_compilable('nested.c',
-                         'nested for loops do compile') + \
-        check_mipster_execution('single-statement.c', 42,
-                                'for loop with one statement are implement with the right semantics') + \
-        check_mipster_execution('multiple-statements.c', 42,
-                                'for loop with multiple statements are implemented with the right semantics') + \
-        check_mipster_execution('nested.c', 42,
-                                'nested for loops are implemented with the right semantics')
-
-
 def check_logical_and_or_not() -> List[Check]:
     return check_compilable('logical-not.c',
                          'logical not operator compiled') + \
@@ -156,6 +139,23 @@ def check_logical_and_or_not() -> List[Check]:
                                 'advanced boolean expressions work when executed with MIPSTER') + \
         check_mipster_execution('precedence.c', 42,
                                 'operator precedence works correctly when executed with MIPSTER')
+
+
+def check_for_loop() -> List[Check]:
+    return check_compilable('missing-assignment.c',
+                            'for loop with missing assignment do not compile', should_succeed=False) + \
+        check_compilable('single-statement.c',
+                         'for loop with one statement do compile') + \
+        check_compilable('multiple-statements.c',
+                         'for loop with multiple statements do compile') + \
+        check_compilable('nested.c',
+                         'nested for loops do compile') + \
+        check_mipster_execution('single-statement.c', 42,
+                                'for loop with one statement are implement with the right semantics') + \
+        check_mipster_execution('multiple-statements.c', 42,
+                                'for loop with multiple statements are implemented with the right semantics') + \
+        check_mipster_execution('nested.c', 42,
+                                'nested for loops are implemented with the right semantics')
 
 
 def check_lazy_evaluation() -> List[Check]:
@@ -367,12 +367,12 @@ assignment_bitwise_shift_execution = Assignment('bitwise-shift-execution', 'Comp
 assignment_bitwise_and_or_not = Assignment('bitwise-and-or-not', 'Compiler', 'bitwise-logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-bitwise-and-or-not',
            check_bitwise_and_or_not)
-assignment_for_loop = Assignment('for-loop', 'Compiler', 'for-loop',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
-           check_for_loop)
 assignment_logical_and_or_not = Assignment('logical-and-or-not', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-logical-and-or-not',
            check_logical_and_or_not)
+assignment_for_loop = Assignment('for-loop', 'Compiler', 'for-loop',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-for-loop',
+           check_for_loop)
 assignment_lazy_evaluation = Assignment('lazy-evaluation', 'Compiler', 'logical',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-lazy-evaluation',
            check_lazy_evaluation, parent = assignment_logical_and_or_not)
