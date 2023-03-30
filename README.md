@@ -5072,7 +5072,7 @@ A programming language is usually not standalone but part of an ecosystem of lib
 
 > To library or not to library
 
-Libraries are great as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as  performing input and output is often only available in libraries as there are typically no language constructs for that. Thus modern code development is typically more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. We explain some of that code below.
+Libraries are great as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as  performing input and output is often only available in libraries as there are typically no language constructs for that. Thus modern code development is typically more about knowing how to use the libraries of a programming language than knowing all features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie for educational purposes. For people familiar with C, this means that there are no `#include` statements in the code and in turn that C\* does not support `#include` statements either. However, the selfie compiler can compile and *link* code in multiple files into a single executable. We explain how that works as well as some of the library code we wrote ourselves below.
 
 > Builtin procedures versus library procedures
 
@@ -5104,13 +5104,55 @@ The `malloc` procedure allocates contiguous blocks of memory on the heap at runt
 
 We mentioned that before but repeat it here again: nobody needs to `free` any memory and, similarly, `close` any files unless you run out of resources. You can open a lot of files and allocate a lot of memory on modern computers before your code stops working. In our experience, it is only worth paying attention to returning resources if your code is supposed to run for indefinite amounts of time and continuously claims new resources to do so. Otherwise, modern operating systems take care of the problem by reclaiming resources whenever programs terminate.
 
-see sources for signatures
+Moving on to how builtin procedures in selfie work, take a look at the very beginning of the source code right after the long introductory comment section. The first thing you see there are procedure declarations of all eight builtin procedures featuring their *signatures* in detail. These eight declarations are the only ones in all of selfie that do not have any matching procedure definitions. In other words, the builtin procedures are declared but not defined yet used all over the place.
 
-includes
+> Bootstrapping selfie
+
+In order to understand how that works we need to distinguish the compilers involved in bootstrapping selfie. First of all, there is the *bootstrapping compiler*, typically either `gcc` or `clang`, which is the compiler that compiles the source code of selfie into an executable that runs on your machine. That compiler is invoked the first time you run `make` in a terminal:
+
+```bash
+make
+```
+
+The output on my machine is:
+
+```bash
+cc -Wall -Wextra -O3 -D'uint64_t=unsigned long' selfie.c -o selfie
+```
+
+The leading `cc` stands for `c compiler` and is typically an alias for either `gcc` or `clang`. After a number of compiler options, there is the name of the file that contains the source code of selfie, `selfie.c`, followed by `-o selfie`, which together instruct the compiler to compile `selfie.c` into an executable called `selfie` that runs on your machine as follows:
+
+```bash
+./selfie
+```
+
+That executable contains the *bootstrapped compiler* which is of course an executable version of the selfie compiler.
+
+> Self-compilation
+
+At this point, you can use `selfie` to compile any C\* code you like, including the source code of selfie simply because selfie is written in C\*. To see that, ask `selfie` to *self-compile* by running:
+
+```bash
+./selfie -c selfie.c
+```
+
+The key difference between the bootstrapping compiler, say, `gcc` and the bootstrapped compiler, here the selfie compiler, also called `starc`, is that by default `gcc` generates code for the machine on which `gcc` runs whereas `starc` generates RISC-U machine code. On my machine, for example, `gcc` generates ARM machine code which means that, in this case, the executable `selfie`, which includes `starc`, is machine code that runs on an ARM processor.
+
+> Cross-compilation
+
+This also means that, in this case, `starc` is a *cross-compiler*, that is, a compiler that generates code for a machine architecture that is different from the architecture on which the compiler runs. In particular, a cross-compiler generates code that does not run on the processor on which the cross-compiler runs. Cross-compilers typically target machines that are not meant for code development such as smartphones and *embedded systems* in general such as computers running in cars and planes. The fact that `starc` is a cross-compiler on my machine and probably yours as well is, however, a mere consequence of `starc` generating RISC-U machine code for simplicity and educational purposes. Generating ARM machine code, for example, would be significantly more involved. But how do we run code generated by a cross-compiler like `starc`? After all, we are unlikely to have access to an actual RISC-V machine that can execute RISC-U machine code. Remember that RISC-U is a strict subset of RISC-V.
+
+> Emulation
+
+> Fixed-point of self-compilation
+
+> Bootstrapping builtin procedures
 
 bootstrapping, self-compilation
 
 symbolic vs direct references
+
+\#include
 
 object vs executable files
 
