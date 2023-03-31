@@ -1099,9 +1099,12 @@ void emit_string_data(uint64_t* entry);
 
 void finalize_data_segment();
 
+uint64_t* touch(uint64_t* memory, uint64_t bytes);
+
 uint64_t* allocate_elf_header();
 
 uint64_t* encode_elf_header();
+void      decode_elf_header(uint64_t* header);
 
 uint64_t get_elf_program_header_offset(uint64_t ph_index);
 void     encode_elf_program_header(uint64_t* header, uint64_t ph_index);
@@ -1112,9 +1115,6 @@ uint64_t validate_elf_header(uint64_t* header);
 uint64_t open_write_only(char* name, uint64_t mode);
 
 void selfie_output(char* filename);
-
-uint64_t* touch(uint64_t* memory, uint64_t bytes);
-
 void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1202,8 +1202,6 @@ uint64_t ic_ecall = 0;
 
 char* binary_name = (char*) 0; // file name of binary
 
-uint64_t* ELF_header = (uint64_t*) 0;
-
 uint64_t* code_binary = (uint64_t*) 0; // code binary
 uint64_t  code_start  = 0;             // start of code segment in virtual memory
 uint64_t  code_size   = 0;             // size of code binary in bytes
@@ -1218,8 +1216,6 @@ uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_binary() {
-  ELF_header = (uint64_t*) 0;
-
   code_binary = (uint64_t*) 0;
   code_start  = 0;
   code_size   = 0;
@@ -6315,8 +6311,6 @@ void selfie_compile() {
 
   finalize_data_segment();
 
-  ELF_header = encode_elf_header();
-
   printf("%s: symbol table search time was %lu iterations on average and %lu in total\n", selfie_name,
     total_search_time / number_of_searches,
     total_search_time);
@@ -7075,6 +7069,38 @@ void finalize_data_segment() {
     data_line_number = data_line_number + (MAX_DATA_SIZE - data_size) / WORDSIZE;
 }
 
+uint64_t* touch(uint64_t* memory, uint64_t bytes) {
+  uint64_t* m;
+  uint64_t n;
+
+  m = memory;
+
+  if (bytes > 0)
+    // touch memory at beginning
+    n = *m;
+
+  while (bytes > PAGESIZE) {
+    bytes = bytes - PAGESIZE;
+
+    m = m + PAGESIZE / SIZEOFUINT64;
+
+    // touch every following page
+    n = *m;
+  }
+
+  if (bytes > 0) {
+    m = m + (bytes - 1) / SIZEOFUINT64;
+
+    // touch at end
+    n = *m;
+  }
+
+  // avoids unused warning for n
+  n = 0; n = n + 1;
+
+  return memory;
+}
+
 uint64_t* allocate_elf_header() {
   // allocate and map (on all boot levels) zeroed memory for ELF header preparing
   // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
@@ -7240,6 +7266,7 @@ uint64_t open_write_only(char* name, uint64_t mode) {
 
 void selfie_output(char* filename) {
   uint64_t fd;
+  uint64_t* ELF_header;
   uint64_t code_size_with_padding;
 
   binary_name = filename;
@@ -7259,6 +7286,8 @@ void selfie_output(char* filename) {
 
     exit(EXITCODE_IOERROR);
   }
+
+  ELF_header = encode_elf_header();
 
   // assert: ELF_header is mapped
 
@@ -7299,40 +7328,9 @@ void selfie_output(char* filename) {
     binary_name);
 }
 
-uint64_t* touch(uint64_t* memory, uint64_t bytes) {
-  uint64_t* m;
-  uint64_t n;
-
-  m = memory;
-
-  if (bytes > 0)
-    // touch memory at beginning
-    n = *m;
-
-  while (bytes > PAGESIZE) {
-    bytes = bytes - PAGESIZE;
-
-    m = m + PAGESIZE / SIZEOFUINT64;
-
-    // touch every following page
-    n = *m;
-  }
-
-  if (bytes > 0) {
-    m = m + (bytes - 1) / SIZEOFUINT64;
-
-    // touch at end
-    n = *m;
-  }
-
-  // avoids unused warning for n
-  n = 0; n = n + 1;
-
-  return memory;
-}
-
 void selfie_load() {
   uint64_t fd;
+  uint64_t* ELF_header;
   uint64_t number_of_read_bytes;
   uint64_t code_size_with_padding;
 
