@@ -5076,17 +5076,7 @@ Libraries are great as long as they are designed and implemented properly, and y
 
 > Builtin procedures versus library procedures
 
-Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures, the following three procedures are used for convenience when printing data:
-
-1. `printf`: a formatted string to the console
-2. `sprintf`: a formatted string to a buffer in memory
-3. `dprintf`: a formatted string to a file
-
-All three procedures are variadic, as mentioned before, which helps making the source code of selfie significantly more readable. Earlier versions of the code only supported printing data through non-variadic procedures which was quite a bit more cumbersome. However, support of variadic procedures and `printf` derivatives in particular is non-trivial.
-
-> Macros
-
-The selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, `va_arg`, and `va_end` macros to stay close to the original implementation. In the source code of selfie, look for the `var_start`, `var_arg`, and `var_end` procedures which are slightly renamed versions of the original macros to avoid conflicts during bootstrapping. Before going into more detail, consider the following five remaining builtin procedures featured in C\* which are strictly needed for bootstrapping selfie:
+Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures, the following five builtin procedures are strictly needed for bootstrapping selfie:
 
 1. `exit`: program execution and return an exit code
 2. `read`: a given number of bytes from a file into a buffer in memory
@@ -5104,11 +5094,21 @@ The `malloc` procedure allocates contiguous blocks of memory on the heap at runt
 
 We mentioned that before but repeat it here again: nobody needs to `free` any memory and, similarly, `close` any files unless you run out of resources. You can open a lot of files and allocate a lot of memory on modern computers before your code stops working. In our experience, it is only worth paying attention to returning resources if your code is supposed to run for indefinite amounts of time and continuously claims new resources to do so. Otherwise, modern operating systems take care of the problem by reclaiming resources whenever programs terminate.
 
-Moving on to how builtin procedures in selfie work, take a look at the very beginning of the source code right after the long introductory comment section. The first thing you see there are procedure declarations of all eight builtin procedures featuring their *signatures* in detail. These eight declarations are the only ones in all of selfie that do not have any matching procedure definitions. In other words, the builtin procedures are declared but not defined yet used all over the place.
+> Printing
+
+Out of the eight builtin procedures featured in C\*, the remaining three builtin procedures are not strictly necessary for bootstrapping selfie but still quite useful for printing data:
+
+1. `printf`: a formatted string to the console
+2. `sprintf`: a formatted string to a buffer in memory
+3. `dprintf`: a formatted string to a file
+
+All three procedures are variadic, as mentioned before, which helps making the source code of selfie significantly more readable. Earlier versions of the code only supported printing data through non-variadic procedures which was quite a bit more cumbersome. However, support of variadic procedures and `printf` derivatives in particular is non-trivial.
+
+Before going into the details, take a look at the very beginning of the source code right after the long introductory comment section. The first thing you see there are procedure declarations of all eight builtin procedures featuring their *signatures* in detail. These eight declarations are the only ones in all of selfie that do not have any matching procedure definitions, at least not by name. In other words, the builtin procedures are declared but not explicitly defined, yet used all over the place.
 
 > Bootstrapping selfie
 
-In order to understand how that works we need to distinguish the compilers involved in bootstrapping selfie. First of all, there is the *bootstrapping compiler*, typically either `gcc` or `clang`, which is the compiler that compiles the source code of selfie into an executable that runs on your machine. That compiler is invoked the first time you run `make` in a terminal:
+In order to understand how that works, we need to distinguish the compilers involved in bootstrapping selfie. First of all, there is the *bootstrapping compiler*, typically either `gcc` or `clang`, which is the compiler that compiles the source code of selfie into an executable that runs on your machine. That compiler is invoked the first time you run `make` in a terminal:
 
 ```bash
 make
@@ -5234,9 +5234,19 @@ The procedure `selfie_disassemble` corresponds to `selfie_output` except that it
 
 > Bootstrapping builtin procedures
 
-Lastly, the procedure `selfie_compile` implements `starc`. We go through the code step by step, finally explaining how bootstrapping selfie and builtin procedures in particular works. Before doing so, consider what the bootstrapping compiler, say, `gcc` does for builtin procedures. When compiling `selfie.c` with `gcc`, the eight builtin procedures declared at the beginning of `selfie.c` but not defined anywhere make `gcc` generate machine code for them. This works because we use the names of procedures in the declarations that `gcc` considers builtin if no definition is available. Fortunately, `gcc` even tolerates slightly different signatures for builtin procedures, probably as long as they cast into the expected signatures. Note that the declarations are only needed for `gcc`, not `starc`, to compile `selfie.c` properly without reporting errors. Try for yourself: remove them and run `make`, then put them back and run `make` again, then remove them but then only run `./selfie -c selfie.c`.
+Lastly, the procedure `selfie_compile` implements `starc`. We go through the code step by step, finally explaining how bootstrapping selfie and builtin procedures in particular works. Before doing so, consider what the bootstrapping compiler, say, `gcc` does for builtin procedures. When compiling `selfie.c` with `gcc`, the eight builtin procedures declared at the beginning of `selfie.c` but not explicitly defined anywhere make `gcc` generate machine code for them. This works because we use the names of procedures in the declarations that `gcc` considers builtin if no definition is available. Fortunately, `gcc` even tolerates slightly different signatures for builtin procedures, probably as long as they cast into the expected signatures. Note that the declarations are only needed for `gcc`, not `starc`, to compile `selfie.c` properly without reporting errors. Try for yourself: remove them and run `make`, then put them back and run `make` again, then remove them but then only run `./selfie -c selfie.c`.
 
-So, what does `starc` do?
+So, what does `starc` do? Well, `starc` mimics what `gcc` does as follows. Even before compiling any source code, the procedure `selfie_compile` generates machine code for the five strictly needed builtin procedures `exit`, `read`, `write`, `open`, and `malloc` by invoking the procedures `emit_exit`, `emit_read`, `emit_write`, `emit_open`, and `emit_malloc`, respectively. There is also a call to the procedure `emit_switch` which is explained in the computing chapter. The three builtin procedures for printing data are handled differently as explained below.
+
+
+
+> Macros
+
+The selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, `va_arg`, and `va_end` macros to stay close to the original implementation. In the source code of selfie, look for the `var_start`, `var_arg`, and `var_end` procedures which are slightly renamed versions of the original macros to avoid conflicts during bootstrapping.
+
+`emit_program_entry`
+`emit_bootstrapping`
+`finalize_data_segment`
 
 symbolic vs direct references
 
