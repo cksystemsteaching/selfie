@@ -634,8 +634,8 @@ uint64_t HASH_TABLE_SIZE = 1024;
 uint64_t* global_symbol_table = (uint64_t*) 0;
 uint64_t* local_symbol_table  = (uint64_t*) 0;
 
-uint64_t number_of_searches = 0;
-uint64_t total_search_time  = 0;
+uint64_t number_of_symbol_lookups  = 0;
+uint64_t number_of_list_iterations = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -643,8 +643,8 @@ void reset_symbol_tables() {
   global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table  = (uint64_t*) 0;
 
-  number_of_searches = 0;
-  total_search_time  = 0;
+  number_of_symbol_lookups  = 0;
+  number_of_list_iterations = 0;
 }
 
 // -----------------------------------------------------------------
@@ -3991,10 +3991,10 @@ uint64_t* create_symbol_table_entry(uint64_t table, char* string,
 }
 
 uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class) {
-  number_of_searches = number_of_searches + 1;
+  number_of_symbol_lookups = number_of_symbol_lookups + 1;
 
   while (entry != (uint64_t*) 0) {
-    total_search_time = total_search_time + 1;
+    number_of_list_iterations = number_of_list_iterations + 1;
 
     if (class == get_class(entry))
       if (string_compare(string, get_string(entry)))
@@ -6288,9 +6288,10 @@ void selfie_compile() {
 
   finalize_data_segment();
 
-  printf("%s: symbol table search time was %lu iterations on average and %lu in total\n", selfie_name,
-    total_search_time / number_of_searches,
-    total_search_time);
+  if (number_of_symbol_lookups > 0)
+    printf("%s: %lu symbol table lookups in %lu iterations on average\n", selfie_name,
+      number_of_symbol_lookups,
+      number_of_list_iterations / number_of_symbol_lookups);
 
   printf("%s: %lu bytes generated with %lu instructions and %lu bytes of data\n", selfie_name,
     code_size + data_size,
