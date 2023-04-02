@@ -571,7 +571,7 @@ uint64_t* search_global_symbol_table(char* string, uint64_t class);
 uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class);
 
 uint64_t is_undefined_procedure(uint64_t* entry);
-uint64_t is_library_procedure(char* name);
+uint64_t is_system_procedure(char* name);
 uint64_t report_undefined_procedures();
 
 // symbol table entry
@@ -579,9 +579,9 @@ uint64_t report_undefined_procedures();
 // | 0 | next    | pointer to next entry
 // | 1 | string  | identifier string, big integer as string, string literal
 // | 2 | line#   | source line number
-// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
-// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// | 5 | value   | VARIABLE: initial value
+// | 3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE, MACRO
+// | 4 | type    | UINT64_T, UINT64STAR_T, VOID_T, UNDECLARED_T
+// | 5 | value   | VARIABLE: initial value, PROCEDURE: number of formal parameters
 // | 6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
 // | 7 | scope   | REG_GP (global), REG_S0 (local)
 // +---+---------+
@@ -624,9 +624,9 @@ uint64_t VOID_T       = 3;
 uint64_t UNDECLARED_T = 4;
 
 // symbol tables
-uint64_t GLOBAL_TABLE  = 1;
-uint64_t LOCAL_TABLE   = 2;
-uint64_t LIBRARY_TABLE = 3;
+uint64_t GLOBAL_TABLE = 1;
+uint64_t LOCAL_TABLE  = 2;
+uint64_t SYSTEM_TABLE = 3;
 
 // hash table size for global symbol table
 uint64_t HASH_TABLE_SIZE = 1024;
@@ -635,9 +635,9 @@ uint64_t HASH_TABLE_SIZE = 1024;
 
 // table pointers
 
-uint64_t* global_symbol_table  = (uint64_t*) 0;
-uint64_t* local_symbol_table   = (uint64_t*) 0;
-uint64_t* library_symbol_table = (uint64_t*) 0;
+uint64_t* global_symbol_table = (uint64_t*) 0;
+uint64_t* local_symbol_table  = (uint64_t*) 0;
+uint64_t* system_symbol_table = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
 uint64_t number_of_procedures       = 0;
@@ -649,9 +649,9 @@ uint64_t total_search_time  = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_symbol_tables() {
-  global_symbol_table  = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
-  local_symbol_table   = (uint64_t*) 0;
-  library_symbol_table = (uint64_t*) 0;
+  global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
+  local_symbol_table  = (uint64_t*) 0;
+  system_symbol_table = (uint64_t*) 0;
 
   number_of_global_variables = 0;
   number_of_procedures       = 0;
@@ -4029,8 +4029,8 @@ uint64_t* create_symbol_table_entry(uint64_t table, char* string,
     local_symbol_table = new_entry;
   } else {
     set_scope(new_entry, REG_GP);
-    set_next_entry(new_entry, library_symbol_table);
-    library_symbol_table = new_entry;
+    set_next_entry(new_entry, system_symbol_table);
+    system_symbol_table = new_entry;
   }
 
   return new_entry;
@@ -4064,8 +4064,8 @@ uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
     // local variables override global variables
     entry = search_symbol_table(local_symbol_table, string, VARIABLE);
   else if (class == PROCEDURE)
-    // library procedures override declared or defined procedures
-    entry = search_symbol_table(library_symbol_table, string, PROCEDURE);
+    // system procedures override declared or defined procedures
+    entry = search_symbol_table(system_symbol_table, string, PROCEDURE);
   else
     entry = (uint64_t*) 0;
 
@@ -4089,8 +4089,8 @@ uint64_t is_undefined_procedure(uint64_t* entry) {
     return 0;
 }
 
-uint64_t is_library_procedure(char* name) {
-  return search_symbol_table(library_symbol_table, name, PROCEDURE) != (uint64_t*) 0;
+uint64_t is_system_procedure(char* name) {
+  return search_symbol_table(system_symbol_table, name, PROCEDURE) != (uint64_t*) 0;
 }
 
 uint64_t report_undefined_procedures() {
@@ -4106,7 +4106,7 @@ uint64_t report_undefined_procedures() {
     entry = (uint64_t*) *(global_symbol_table + i);
 
     while (entry != (uint64_t*) 0) {
-      if (is_library_procedure(get_string(entry)) == 0)
+      if (is_system_procedure(get_string(entry)) == 0)
         if (is_undefined_procedure(entry)) {
           undefined = 1;
 
@@ -5774,7 +5774,7 @@ uint64_t compile_call(char* procedure) {
 
   get_symbol();
 
-  entry = search_symbol_table(library_symbol_table, procedure, MACRO);
+  entry = search_symbol_table(system_symbol_table, procedure, MACRO);
 
   if (entry != (uint64_t*) 0)
     // actually expanding a macro, not calling a procedure
@@ -6231,10 +6231,10 @@ void selfie_compile() {
     emit_fetch_data_segment_size_interface();
   }
 
-  // declare macros in library symbol table to override entries in global symbol table
-  create_symbol_table_entry(LIBRARY_TABLE, "var_start", 0, MACRO, VOID_T, 1, 0);
-  create_symbol_table_entry(LIBRARY_TABLE, "var_arg", 0, MACRO, UINT64_T, 1, 0);
-  create_symbol_table_entry(LIBRARY_TABLE, "var_end", 0, MACRO, VOID_T, 1, 0);
+  // declare macros in system symbol table to override entries in global symbol table
+  create_symbol_table_entry(SYSTEM_TABLE, "var_start", 0, MACRO, VOID_T, 1, 0);
+  create_symbol_table_entry(SYSTEM_TABLE, "var_arg", 0, MACRO, UINT64_T, 1, 0);
+  create_symbol_table_entry(SYSTEM_TABLE, "var_end", 0, MACRO, VOID_T, 1, 0);
 
   // declare main procedure in global symbol table
   // use main_name string to obtain unique hash
@@ -7399,7 +7399,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 1, code_size);
+  create_symbol_table_entry(SYSTEM_TABLE, "exit", 0, PROCEDURE, VOID_T, 1, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -7436,7 +7436,7 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(SYSTEM_TABLE, "read", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7560,7 +7560,7 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(SYSTEM_TABLE, "write", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7683,7 +7683,7 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(SYSTEM_TABLE, "open", 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7816,12 +7816,12 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, "malloc",
+  create_symbol_table_entry(SYSTEM_TABLE, "malloc",
     0, PROCEDURE, UINT64STAR_T, 1, code_size);
 
   // on boot levels higher than 0, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, "zalloc",
+  create_symbol_table_entry(SYSTEM_TABLE, "zalloc",
     0, PROCEDURE, UINT64STAR_T, 1, code_size);
 
   // allocate memory in data segment for recording state of
@@ -7975,7 +7975,7 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0,
+  create_symbol_table_entry(SYSTEM_TABLE, "hypster_switch", 0,
     PROCEDURE, UINT64STAR_T, 2, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
@@ -8597,7 +8597,7 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer",
+  create_symbol_table_entry(SYSTEM_TABLE, "fetch_stack_pointer",
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
@@ -8606,7 +8606,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_global_pointer",
+  create_symbol_table_entry(SYSTEM_TABLE, "fetch_global_pointer",
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
@@ -8615,7 +8615,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size",
+  create_symbol_table_entry(SYSTEM_TABLE, "fetch_data_segment_size",
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   // up to three instructions needed to load data segment size but is not yet known
