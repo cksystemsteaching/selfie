@@ -729,7 +729,8 @@ uint64_t compile_literal(); // returns type
 void compile_if();
 void compile_while();
 
-char* bootstrap_boot_level_dependent_procedures(char* procedure);
+char*    bootstrap_non_0_boot_level_procedures(char* procedure);
+uint64_t is_boot_level_0_only_procedure(char* procedure);
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes);
 void procedure_epilogue(uint64_t number_of_parameter_bytes);
@@ -5399,30 +5400,35 @@ void compile_while() {
   number_of_while = number_of_while + 1;
 }
 
-char* bootstrap_boot_level_dependent_procedures(char* procedure) {
-  // turn defined boot-level-dependent procedures on or off
-  // by adding or removing prefix in their procedure names;
+char* bootstrap_non_0_boot_level_procedures(char* procedure) {
+  // define non-0-boot-level procedures without prefix in name
   // copy names to obtain unique hash for global symbol table
-  if (string_compare(procedure, "zalloc"))
-    return string_copy("boot_level_0_zalloc");
-  else if (string_compare(procedure, "hypster_switch"))
-    return string_copy("boot_level_0_hypster_switch");
-  else if (string_compare(procedure, "non_0_boot_level_printf"))
+  if (string_compare(procedure, "non_0_boot_level_printf"))
     return string_copy("printf");
   else if (string_compare(procedure, "non_0_boot_level_sprintf"))
     return string_copy("sprintf");
   else if (string_compare(procedure, "non_0_boot_level_dprintf"))
     return string_copy("dprintf");
+  else
+    return procedure;
+}
+
+uint64_t is_boot_level_0_only_procedure(char* procedure) {
+  // the following procedures are only explicitly defined on boot level 0
+  if (string_compare(procedure, "zalloc"))
+    return 1;
+  else if (string_compare(procedure, "hypster_switch"))
+    return 1;
   else if (GC_ON) {
     if (string_compare(procedure, "fetch_stack_pointer"))
-      return string_copy("boot_level_0_fetch_stack_pointer");
+      return 1;
     else if (string_compare(procedure, "fetch_global_pointer"))
-      return string_copy("boot_level_0_fetch_global_pointer");
+      return 1;
     else if (string_compare(procedure, "fetch_data_segment_size"))
-      return string_copy("boot_level_0_fetch_data_segment_size");
+      return 1;
   }
 
-  return procedure;
+  return 0;
 }
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
@@ -5543,7 +5549,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   // try parsing rest of procedure declaration or definition
 
-  procedure = bootstrap_boot_level_dependent_procedures(procedure);
+  procedure = bootstrap_non_0_boot_level_procedures(procedure);
 
   // look up procedure to see if it has been called, declared, or even defined
   entry = search_global_symbol_table(procedure, PROCEDURE);
@@ -5591,8 +5597,8 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       // only accounting for procedures defined in source code
       number_of_procedures = number_of_procedures + 1;
-    } else {
-      // procedure already defined
+    } else if (is_boot_level_0_only_procedure(procedure) == 0) {
+      // the following procedures are only defined on boot level 0
       print_line_number("warning", line_number);
       printf("redefinition of procedure %s ignored\n", procedure);
     }
