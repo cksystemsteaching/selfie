@@ -193,12 +193,9 @@ uint64_t print_format(char* s, uint64_t i, char* a);
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 
 // selfie implementation of *printf procedures
-uint64_t selfie_printf(char* format, ...);
-uint64_t selfie_sprintf(char* str, char* format, ...);
-uint64_t selfie_dprintf(uint64_t fd, char* format, ...);
-
-// during bootstrapping the "selfie_" prefix of *printf procedures is removed
-char* remove_prefix_from_printf_procedures(char* procedure);
+uint64_t non_0_boot_level_printf(char* format, ...);
+uint64_t non_0_boot_level_sprintf(char* str, char* format, ...);
+uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...);
 
 // selfie's malloc interface
 
@@ -568,10 +565,10 @@ uint64_t* create_symbol_table_entry(uint64_t table, char* string,
 
 uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
 uint64_t* search_global_symbol_table(char* string, uint64_t class);
-uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class);
+uint64_t* search_local_symbol_table(char* string);
+uint64_t* get_scoped_symbol_table_entry(char* string);
 
 uint64_t is_undefined_procedure(uint64_t* entry);
-uint64_t is_system_procedure(char* name);
 uint64_t report_undefined_procedures();
 
 // symbol table entry
@@ -626,7 +623,6 @@ uint64_t UNDECLARED_T = 4;
 // symbol tables
 uint64_t GLOBAL_TABLE = 1;
 uint64_t LOCAL_TABLE  = 2;
-uint64_t SYSTEM_TABLE = 3;
 
 // hash table size for global symbol table
 uint64_t HASH_TABLE_SIZE = 1024;
@@ -637,7 +633,6 @@ uint64_t HASH_TABLE_SIZE = 1024;
 
 uint64_t* global_symbol_table = (uint64_t*) 0;
 uint64_t* local_symbol_table  = (uint64_t*) 0;
-uint64_t* system_symbol_table = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
 uint64_t number_of_procedures       = 0;
@@ -651,7 +646,6 @@ uint64_t total_search_time  = 0;
 void reset_symbol_tables() {
   global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table  = (uint64_t*) 0;
-  system_symbol_table = (uint64_t*) 0;
 
   number_of_global_variables = 0;
   number_of_procedures       = 0;
@@ -742,6 +736,8 @@ uint64_t compile_literal(); // returns type
 
 void compile_if();
 void compile_while();
+
+char* bootstrap_boot_level_dependent_procedures(char* procedure);
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes);
 void procedure_epilogue(uint64_t number_of_parameter_bytes);
@@ -3038,7 +3034,7 @@ uint64_t write_to_printf_console(uint64_t fd, uint64_t* buffer, uint64_t bytes_t
   if (fd == 1) {
     // writing to console
     if (OS != SELFIE) {
-      // on bootlevel zero use printf to write to console
+      // on boot level 0 use printf to write to console
       // keeping output synchronized with other printf output
       bytes_written = 0;
 
@@ -3310,7 +3306,7 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
   return number_of_put_characters;
 }
 
-uint64_t selfie_printf(char* format, ...) {
+uint64_t non_0_boot_level_printf(char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -3323,7 +3319,7 @@ uint64_t selfie_printf(char* format, ...) {
   return written_bytes;
 }
 
-uint64_t selfie_sprintf(char* buffer, char* format, ...) {
+uint64_t non_0_boot_level_sprintf(char* buffer, char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -3336,7 +3332,7 @@ uint64_t selfie_sprintf(char* buffer, char* format, ...) {
   return written_bytes;
 }
 
-uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
+uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...) {
   uint64_t* args;
   uint64_t written_bytes;
 
@@ -3347,21 +3343,6 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
   var_end(args);
 
   return written_bytes;
-}
-
-char* remove_prefix_from_printf_procedures(char* procedure) {
-  // for bootstrapping remove prefix from selfie *printf procedures
-  if (string_compare(procedure, "selfie_printf"))
-    // obtain unique hash for global symbol table
-    return string_copy("printf");
-  else if (string_compare(procedure, "selfie_sprintf"))
-    // "sprintf" has unique hash: 7 characters plus null termination
-    return "sprintf";
-  else if (string_compare(procedure, "selfie_dprintf"))
-    // "dprintf" has unique hash: 7 characters plus null termination
-    return "dprintf";
-  else
-    return procedure;
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
@@ -4007,14 +3988,10 @@ uint64_t* create_symbol_table_entry(uint64_t table, char* string,
       number_of_procedures = number_of_procedures + 1;
     else if (class == STRING)
       number_of_strings = number_of_strings + 1;
-  } else if (table == LOCAL_TABLE) {
+  } else {
     set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
     local_symbol_table = new_entry;
-  } else {
-    set_scope(new_entry, REG_GP);
-    set_next_entry(new_entry, system_symbol_table);
-    system_symbol_table = new_entry;
   }
 
   return new_entry;
@@ -4041,22 +4018,20 @@ uint64_t* search_global_symbol_table(char* string, uint64_t class) {
   return search_symbol_table((uint64_t*) *(global_symbol_table + hash((uint64_t*) string)), string, class);
 }
 
-uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
+uint64_t* search_local_symbol_table(char* string) {
+  return search_symbol_table(local_symbol_table, string, VARIABLE);
+}
+
+uint64_t* get_scoped_symbol_table_entry(char* string) {
   uint64_t* entry;
 
-  if (class == VARIABLE)
-    // local variables override global variables
-    entry = search_symbol_table(local_symbol_table, string, VARIABLE);
-  else if (class == PROCEDURE)
-    // system procedures override declared or defined procedures
-    entry = search_symbol_table(system_symbol_table, string, PROCEDURE);
-  else
-    entry = (uint64_t*) 0;
+  // local variables override global variables
+  entry = search_local_symbol_table(string);
 
   if (entry == (uint64_t*) 0)
-    return search_global_symbol_table(string, class);
-  else
-    return entry;
+    entry = search_global_symbol_table(string, VARIABLE);
+
+  return entry;
 }
 
 uint64_t is_undefined_procedure(uint64_t* entry) {
@@ -4073,10 +4048,6 @@ uint64_t is_undefined_procedure(uint64_t* entry) {
     return 0;
 }
 
-uint64_t is_system_procedure(char* name) {
-  return search_symbol_table(system_symbol_table, name, PROCEDURE) != (uint64_t*) 0;
-}
-
 uint64_t report_undefined_procedures() {
   uint64_t undefined;
   uint64_t i;
@@ -4090,14 +4061,13 @@ uint64_t report_undefined_procedures() {
     entry = (uint64_t*) *(global_symbol_table + i);
 
     while (entry != (uint64_t*) 0) {
-      if (is_system_procedure(get_string(entry)) == 0)
-        if (is_undefined_procedure(entry)) {
-          undefined = 1;
+      if (is_undefined_procedure(entry)) {
+        undefined = 1;
 
-          print_line_number("syntax error", get_line_number(entry));
-          printf("procedure %s undefined\n", get_string(entry));
+        print_line_number("syntax error", get_line_number(entry));
+        printf("procedure %s undefined\n", get_string(entry));
 
-          number_of_syntax_errors = number_of_syntax_errors + 1;
+        number_of_syntax_errors = number_of_syntax_errors + 1;
       }
 
       // keep looking
@@ -4730,7 +4700,7 @@ uint64_t load_value(uint64_t* entry) {
 uint64_t* get_variable_entry(char* variable) {
   uint64_t* entry;
 
-  entry = get_scoped_symbol_table_entry(variable, VARIABLE);
+  entry = get_scoped_symbol_table_entry(variable);
 
   if (entry == (uint64_t*) 0) {
     syntax_error_undeclared_identifier(variable);
@@ -5431,6 +5401,24 @@ void compile_while() {
   number_of_while = number_of_while + 1;
 }
 
+char* bootstrap_boot_level_dependent_procedures(char* procedure) {
+  // turn defined boot-level-dependent procedures on or off
+  // by adding or removing prefix in their procedure names;
+  // copy names to obtain unique hash for global symbol table
+  if (string_compare(procedure, "zalloc"))
+    return string_copy("boot_level_0_zalloc");
+  else if (string_compare(procedure, "hypster_switch"))
+    return string_copy("boot_level_0_hypster_switch");
+  else if (string_compare(procedure, "non_0_boot_level_printf"))
+    return string_copy("printf");
+  else if (string_compare(procedure, "non_0_boot_level_sprintf"))
+    return string_copy("sprintf");
+  else if (string_compare(procedure, "non_0_boot_level_dprintf"))
+    return string_copy("dprintf");
+  else
+    return procedure;
+}
+
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   // allocate memory for return address
   emit_addi(REG_SP, REG_SP, -WORDSIZE);
@@ -5549,8 +5537,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
   // try parsing rest of procedure declaration or definition
 
-  // bootstrap selfie implementation of *printf procedures
-  procedure = remove_prefix_from_printf_procedures(procedure);
+  procedure = bootstrap_boot_level_dependent_procedures(procedure);
 
   // look up procedure to see if it has been called, declared, or even defined
   entry = search_global_symbol_table(procedure, PROCEDURE);
@@ -5758,7 +5745,7 @@ uint64_t compile_call(char* procedure) {
 
   get_symbol();
 
-  entry = search_symbol_table(system_symbol_table, procedure, MACRO);
+  entry = search_global_symbol_table(procedure, MACRO);
 
   if (entry != (uint64_t*) 0)
     // actually expanding a macro, not calling a procedure
@@ -5812,7 +5799,7 @@ uint64_t compile_call(char* procedure) {
     // ready to call procedure
     get_symbol();
 
-    entry = get_scoped_symbol_table_entry(procedure, PROCEDURE);
+    entry = search_global_symbol_table(procedure, PROCEDURE);
 
     type = procedure_call(entry, procedure, number_of_actual_parameters);
 
@@ -5897,7 +5884,7 @@ void macro_var_start() {
     syntax_error_message("'var_start' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
-    var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
+    var_list_variable = search_local_symbol_table(identifier);
 
     if (var_list_variable != (uint64_t*) 0) {
       get_symbol();
@@ -5934,7 +5921,7 @@ void macro_var_arg() {
   var_list_address  = 0;
 
   if (symbol == SYM_IDENTIFIER) {
-    var_list_variable = search_symbol_table(local_symbol_table, identifier, VARIABLE);
+    var_list_variable = search_local_symbol_table(identifier);
 
     if (var_list_variable != (uint64_t*) 0) {
       get_symbol();
@@ -6216,9 +6203,9 @@ void selfie_compile() {
   }
 
   // declare macros in system symbol table to override entries in global symbol table
-  create_symbol_table_entry(SYSTEM_TABLE, "var_start", 0, MACRO, VOID_T, 1, 0);
-  create_symbol_table_entry(SYSTEM_TABLE, "var_arg", 0, MACRO, UINT64_T, 1, 0);
-  create_symbol_table_entry(SYSTEM_TABLE, "var_end", 0, MACRO, VOID_T, 1, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_start"), 0, MACRO, VOID_T, 1, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_arg"), 0, MACRO, UINT64_T, 1, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_end"), 0, MACRO, VOID_T, 1, 0);
 
   // declare main procedure in global symbol table
   // use main_name string to obtain unique hash
@@ -7383,7 +7370,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(SYSTEM_TABLE, "exit", 0, PROCEDURE, VOID_T, 1, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("exit"), 0, PROCEDURE, VOID_T, 1, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -7420,7 +7407,7 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(SYSTEM_TABLE, "read", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("read"), 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7544,7 +7531,7 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(SYSTEM_TABLE, "write", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("write"), 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7667,7 +7654,7 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(SYSTEM_TABLE, "open", 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("open"), 0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7800,12 +7787,12 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(SYSTEM_TABLE, "malloc",
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("malloc"),
     0, PROCEDURE, UINT64STAR_T, 1, code_size);
 
   // on boot levels higher than 0, zalloc falls back to malloc
-  // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(SYSTEM_TABLE, "zalloc",
+  // assuming that page frames are zeroed on boot level 0
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("zalloc"),
     0, PROCEDURE, UINT64STAR_T, 1, code_size);
 
   // allocate memory in data segment for recording state of
@@ -7950,7 +7937,7 @@ uint64_t is_boot_level_zero() {
   if (first_malloc != second_malloc)
     return 1;
 
-  // selfie's malloc, cannot be boot level zero!
+  // selfie's malloc, cannot be boot level 0!
   return 0;
 }
 
@@ -7959,7 +7946,7 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(SYSTEM_TABLE, "hypster_switch", 0,
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("hypster_switch"), 0,
     PROCEDURE, UINT64STAR_T, 2, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
@@ -8049,7 +8036,7 @@ uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
 }
 
 uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
-  // this procedure is only executed at boot level zero
+  // this procedure is only executed at boot level 0
   return mipster_switch(to_context, timeout);
 }
 
@@ -8581,7 +8568,7 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
 // -----------------------------------------------------------------
 
 void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(SYSTEM_TABLE, "fetch_stack_pointer",
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_stack_pointer"),
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
@@ -8590,7 +8577,7 @@ void emit_fetch_stack_pointer() {
 }
 
 void emit_fetch_global_pointer() {
-  create_symbol_table_entry(SYSTEM_TABLE, "fetch_global_pointer",
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_global_pointer"),
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   emit_add(REG_A0, REG_ZR, REG_GP);
@@ -8599,7 +8586,7 @@ void emit_fetch_global_pointer() {
 }
 
 void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(SYSTEM_TABLE, "fetch_data_segment_size",
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_data_segment_size"),
     0, PROCEDURE, UINT64_T, 0, code_size);
 
   // up to three instructions needed to load data segment size but is not yet known
@@ -11149,7 +11136,7 @@ uint64_t* palloc() {
     if (pavailable()) {
       free_page_frame_memory = MEGABYTE * double_for_single_word;
 
-      // on boot level zero allocate zeroed memory
+      // on boot level 0 allocate zeroed memory
       block = (uint64_t) zmalloc(free_page_frame_memory);
 
       allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
