@@ -5415,8 +5415,16 @@ char* bootstrap_boot_level_dependent_procedures(char* procedure) {
     return string_copy("sprintf");
   else if (string_compare(procedure, "non_0_boot_level_dprintf"))
     return string_copy("dprintf");
-  else
-    return procedure;
+  else if (GC_ON) {
+    if (string_compare(procedure, "fetch_stack_pointer"))
+      return string_copy("boot_level_0_fetch_stack_pointer");
+    else if (string_compare(procedure, "fetch_global_pointer"))
+      return string_copy("boot_level_0_fetch_global_pointer");
+    else if (string_compare(procedure, "fetch_data_segment_size"))
+      return string_copy("boot_level_0_fetch_data_segment_size");
+  }
+
+  return procedure;
 }
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes) {
