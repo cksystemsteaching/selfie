@@ -147,7 +147,7 @@ uint64_t is_digit(char c);
 
 char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
-char*    string_shrink(char* s);
+char*    string_copy(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
@@ -828,12 +828,9 @@ char* bump_name = (char*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_bootstrapping() {
-  // caution: length of string literals used as identifiers must be
-  // multiple of SIZEOFUINT64 to avoid out-of-bound array access warnings
-  // during bootstrapping; trailing spaces are removed by string_shrink
-  // resulting in unique hash for global symbol table
-  main_name = string_shrink("main   ");
-  bump_name = string_shrink("_bump  ");
+  // obtain unique hash for global symbol table
+  main_name = string_copy("main");
+  bump_name = string_copy("_bump");
 }
 
 // -----------------------------------------------------------------
@@ -2802,24 +2799,13 @@ uint64_t string_length(char* s) {
   return i;
 }
 
-char* string_shrink(char* s) {
+char* string_copy(char* s) {
   uint64_t l;
-  uint64_t i;
   char* t;
+  uint64_t i;
 
   l = string_length(s);
-
-  i = 0;
-
-  while (i < l)
-    if (load_character(s, i) == ' ')
-      // discard any characters to the right of a space
-      l = i;
-    else
-      i = i + 1;
-
   t = string_alloc(l);
-
   i = 0;
 
   while (i < l) {
@@ -3366,15 +3352,13 @@ uint64_t selfie_dprintf(uint64_t fd, char* format, ...) {
 char* remove_prefix_from_printf_procedures(char* procedure) {
   // for bootstrapping remove prefix from selfie *printf procedures
   if (string_compare(procedure, "selfie_printf"))
-    // length of string literal must be multiple of SIZEOFUINT64;
-    // trailing spaces are removed by string_shrink resulting
-    // in unique hash for global symbol table
-    return string_shrink("printf ");
+    // obtain unique hash for global symbol table
+    return string_copy("printf");
   else if (string_compare(procedure, "selfie_sprintf"))
-    // "sprintf" is 7 characters plus null termination
+    // "sprintf" has unique hash: 7 characters plus null termination
     return "sprintf";
   else if (string_compare(procedure, "selfie_dprintf"))
-    // "dprintf" is 7 characters plus null termination
+    // "dprintf" has unique hash: 7 characters plus null termination
     return "dprintf";
   else
     return procedure;
