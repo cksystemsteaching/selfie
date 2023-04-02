@@ -6167,7 +6167,7 @@ void selfie_compile() {
 
   number_of_source_files = 0;
 
-  source_name = "library";
+  source_name = "builtins";
 
   binary_name = source_name;
 
@@ -6207,7 +6207,8 @@ void selfie_compile() {
     emit_fetch_data_segment_size_interface();
   }
 
-  // declare macros in system symbol table to override entries in global symbol table
+  // declare macros in global symbol table
+  // copy names to obtain unique hash
   create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_start"), 0, MACRO, VOID_T, 1, 0);
   create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_arg"), 0, MACRO, UINT64_T, 1, 0);
   create_symbol_table_entry(GLOBAL_TABLE, string_copy("var_end"), 0, MACRO, VOID_T, 1, 0);
@@ -6278,7 +6279,7 @@ void selfie_compile() {
   }
 
   if (number_of_source_files == 0)
-    printf("%s: nothing to compile, only library generated\n", selfie_name);
+    printf("%s: nothing to compile, only %s generated\n", selfie_name, source_name);
 
   emit_bootstrapping();
 
@@ -7375,7 +7376,8 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("exit"), 0, PROCEDURE, VOID_T, 1, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("exit"),
+    0, PROCEDURE, VOID_T, 1, code_size);
 
   // load signed 32-bit integer exit code
   emit_load(REG_A0, REG_SP, 0);
@@ -7412,7 +7414,8 @@ void implement_exit(uint64_t* context) {
 }
 
 void emit_read() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("read"), 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("read"),
+    0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7536,7 +7539,8 @@ void implement_read(uint64_t* context) {
 }
 
 void emit_write() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("write"), 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("write"),
+    0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // fd
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7659,7 +7663,8 @@ void implement_write(uint64_t* context) {
 }
 
 void emit_open() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("open"), 0, PROCEDURE, UINT64_T, 3, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("open"),
+    0, PROCEDURE, UINT64_T, 3, code_size);
 
   emit_load(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, WORDSIZE);
@@ -7948,8 +7953,8 @@ uint64_t is_boot_level_zero() {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("hypster_switch"), 0,
-    PROCEDURE, UINT64STAR_T, 2, code_size);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("hypster_switch"),
+    0, PROCEDURE, UINT64STAR_T, 2, code_size);
 
   emit_load(REG_A0, REG_SP, 0); // context to which we switch
   emit_addi(REG_SP, REG_SP, WORDSIZE);
