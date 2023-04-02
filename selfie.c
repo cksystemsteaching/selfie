@@ -634,10 +634,6 @@ uint64_t HASH_TABLE_SIZE = 1024;
 uint64_t* global_symbol_table = (uint64_t*) 0;
 uint64_t* local_symbol_table  = (uint64_t*) 0;
 
-uint64_t number_of_global_variables = 0;
-uint64_t number_of_procedures       = 0;
-uint64_t number_of_strings          = 0;
-
 uint64_t number_of_searches = 0;
 uint64_t total_search_time  = 0;
 
@@ -646,10 +642,6 @@ uint64_t total_search_time  = 0;
 void reset_symbol_tables() {
   global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table  = (uint64_t*) 0;
-
-  number_of_global_variables = 0;
-  number_of_procedures       = 0;
-  number_of_strings          = 0;
 
   number_of_searches = 0;
   total_search_time  = 0;
@@ -763,19 +755,27 @@ uint64_t return_jumps = 0; // fixup chain for return statements
 
 uint64_t return_type = 0; // return type of currently parsed procedure
 
-uint64_t number_of_calls       = 0;
+uint64_t number_of_global_variables = 0;
+uint64_t number_of_procedures       = 0;
+uint64_t number_of_string_literals  = 0;
+
 uint64_t number_of_assignments = 0;
 uint64_t number_of_while       = 0;
 uint64_t number_of_if          = 0;
+uint64_t number_of_calls       = 0;
 uint64_t number_of_return      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_parser() {
-  number_of_calls       = 0;
+  number_of_global_variables = 0;
+  number_of_procedures       = 0;
+  number_of_string_literals  = 0;
+
   number_of_assignments = 0;
   number_of_while       = 0;
   number_of_if          = 0;
+  number_of_calls       = 0;
   number_of_return      = 0;
 
   number_of_syntax_errors = 0;
@@ -3981,13 +3981,6 @@ uint64_t* create_symbol_table_entry(uint64_t table, char* string,
 
     set_next_entry(new_entry, (uint64_t*) *hashed_entry_address);
     *hashed_entry_address = (uint64_t) new_entry;
-
-    if (class == VARIABLE)
-      number_of_global_variables = number_of_global_variables + 1;
-    else if (class == PROCEDURE)
-      number_of_procedures = number_of_procedures + 1;
-    else if (class == STRING)
-      number_of_strings = number_of_strings + 1;
   } else {
     set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
@@ -4434,6 +4427,8 @@ uint64_t* compile_variable(char* variable, uint64_t type, uint64_t offset) {
 
       entry = create_symbol_table_entry(GLOBAL_TABLE, variable,
         line_number, VARIABLE, type, 0, -data_size);
+
+      number_of_global_variables = number_of_global_variables + 1;
     } else {
       // global variable already declared or defined
       print_line_number("warning", line_number);
@@ -5214,6 +5209,9 @@ void load_string() {
       line_number, STRING, UINT64STAR_T, 0, -data_size);
 
     emit_string_data(entry);
+
+    // only accounting for unique string literals
+    number_of_string_literals = number_of_string_literals + 1;
   }
 
   load_address(entry);
@@ -5587,13 +5585,12 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       set_address(entry, code_size);
 
-      if (string_compare(procedure, main_name)) {
+      if (string_compare(procedure, main_name))
         // first source containing main procedure provides binary name
         binary_name = source_name;
 
-        // account for initial call to main procedure
-        number_of_calls = number_of_calls + 1;
-      }
+      // only accounting for procedures defined in source code
+      number_of_procedures = number_of_procedures + 1;
     } else {
       // procedure already defined
       print_line_number("warning", line_number);
@@ -6261,13 +6258,13 @@ void selfie_compile() {
       printf("%s: %lu global variables, %lu procedures, %lu string literals\n", selfie_name,
         number_of_global_variables,
         number_of_procedures,
-        number_of_strings);
+        number_of_string_literals);
 
-      printf("%s: %lu calls, %lu assignments, %lu while, %lu if, %lu return\n", selfie_name,
-        number_of_calls,
+      printf("%s: %lu assignments, %lu while, %lu if, %lu calls, %lu return\n", selfie_name,
         number_of_assignments,
         number_of_while,
         number_of_if,
+        number_of_calls,
         number_of_return);
 
       if (number_of_syntax_errors != 0) {
@@ -7811,9 +7808,6 @@ void emit_malloc() {
   // use bump_name string to obtain unique hash
   entry = create_symbol_table_entry(GLOBAL_TABLE, bump_name,
     1, VARIABLE, UINT64_T, 0, -data_size);
-
-  // do not account for _bump as global variable
-  number_of_global_variables = number_of_global_variables - 1;
 
   // allocate register for size parameter
   talloc();
