@@ -5066,11 +5066,83 @@ work in progress
 
 ### Procedures
 
+procedure declarations and definitions vs calls and returns
+
+control flow: recursion, iteration
+data flow: stack allocator
+
 temporary register invariant
 
 variadic functions
 
-array and struct exercises
+> Arrays
+
+We are finally prepared for advanced exercises on the design and implementation of arrays as well as, further below, structs. For the first array exercise, use the autograder as follows:
+
+```bash
+./grader/self.py array
+```
+
+In C, an *array* is essentially a pointer to a contiguous block of memory that is accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following code:
+
+```c
+uint64_t a[2];
+
+void initialize_a() {
+  a[0] = 42;
+  a[1] = a[0];
+}
+```
+
+The line `uint64_t a[2]` declares a global variable `a` of type `array` with `2` array elements of type `uint64_t`. The lines `a[0] = 42;` and `a[1] = a[0];` access the `2` array elements `a[0]` and `a[1]` with index `0` and `1` to initialize them both with the value `42`. Here is another example, this time declaring a local variable `b` of type `array`, again with `2` array elements of type `uint64_t`:
+
+```c
+void initialize_b() {
+  uint64_t b[2];
+
+  b[0] = 42;
+  b[1] = b[0];
+}
+```
+
+The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack.
+
+Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. Moreover, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing the address of an array element in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, there is one more thing, which is often confusing to my students. Consider the following code:
+
+```c
+void initialize_x(uint64_t x[2]) {
+  x[0] = 42;
+  x[1] = x[0];
+}
+
+void initialize_b() {
+  uint64_t b[2];
+
+  initialize_x(b);
+}
+```
+
+The code does essentially the same as the code in the previous example with local variable `b`.
+
+> Call-by-value versus call-by-reference
+
+Hint: `b` evaluates to the address of `b[0]` in memory.
+
+```bash
+./grader/self.py array-multidimensional
+```
+
+row-major vs column-major
+
+> Structs
+
+```bash
+./grader/self.py struct-declaration
+```
+
+```bash
+./grader/self.py struct-execution
+```
 
 ### Libraries
 
