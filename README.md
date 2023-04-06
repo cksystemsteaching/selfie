@@ -5077,7 +5077,7 @@ variadic functions
 
 > Arrays
 
-We are finally prepared for advanced exercises on the design and implementation of arrays as well as, further below, structs. For the first array exercise, use the autograder as follows:
+We are finally prepared for advanced exercises in the design and implementation of arrays in selfie, and, further below, structs as well. C\* is a structured programming language yet structured only as in structured control flow through statements such as possibly nested `while` loops. However, C\* is not structured as in data flow. There are no structured data types in C\*, on purpose. The following exercises show what it takes to change that with support of arrays and structs. For the first array exercise, use the autograder as follows:
 
 ```bash
 ./grader/self.py array
@@ -5107,7 +5107,7 @@ void initialize_b() {
 
 The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack.
 
-Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. Moreover, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing the address of an array element in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, there is one more thing, which is often confusing to my students. Consider the following code:
+Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. Moreover, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing addresses of array elements in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite interesting issue. Consider the following code:
 
 ```c
 void initialize_x(uint64_t x[2]) {
@@ -5122,11 +5122,11 @@ void initialize_b() {
 }
 ```
 
-The code does essentially the same as the code in the previous example with local variable `b`.
+The code does essentially the same as the code in the previous example with local variable `b` but using different means. The key challenge is to understand what `b` in the procedure call `initialize_x(b)` actually means. The answer is that `b` evaluates to the address of `b[0]` in memory, that is, `b` evaluates to a pointer that refers to the beginning of the array `b` in memory. In particular, `b` does not evaluate, as some might think, to something that represents the entire array `b` as is. This means that the call `initialize_x(b)` only passes a pointer to the array `b` as actual parameter to the procedure `initialize_x`, and not a copy of the entire array. As a consequence, code generation for accessing elements of arrays provided by formal parameters is similar to code generation for dereferencing pointers, and thus different from code generation for accessing elements of arrays provided by global and local variables. Hint: `a` in `a[1]` and `b` in `b[1]` are the addresses of the beginning of the arrays `a` and `b` in memory, respectively, whereas `x` in `x[1]` is the value of `x`.
 
 > Call-by-value versus call-by-reference
 
-Hint: `b` evaluates to the address of `b[0]` in memory.
+Ultimately, the larger issue is that procedure calls in C, contrary to common belief, are *call-by-value* only. In particular, there is no implicit support of *call-by-reference* in C, as opposed to Java, for example. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference means that the addresses of those values in memory are passed, not the values, enabling side effects beyond the scope of the callee. However, this also means that call-by-reference can in fact be done in C but only explicitly by passing pointers. So, after all, C can do both, even with structs, as we see below, but still not with arrays. Call-by-value of arrays in C is effectively always call-by-reference simply because there is no way in C to refer to an entire array as is! However, this might be a good thing because arrays can be quite large.
 
 ```bash
 ./grader/self.py array-multidimensional
