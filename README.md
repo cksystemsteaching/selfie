@@ -5083,7 +5083,7 @@ We are finally prepared for advanced exercises in the design and implementation 
 ./grader/self.py array
 ```
 
-In C, an *array* is essentially a pointer to a contiguous block of memory that is accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following code:
+In C, an *array* is essentially a pointer to a contiguous block of memory that is accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
 
 ```c
 uint64_t a[2];
@@ -5107,7 +5107,7 @@ void initialize_b() {
 
 The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack.
 
-Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. Moreover, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing addresses of array elements in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite interesting issue. Consider the following code:
+Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. In this context, a word of caution is in order: do not forget to increase the amount of memory allocated for a symbol table entry when extending it, see the procedure `allocate_symbol_table_entry`. Next, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing addresses of array elements in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite important issue. Consider the following example:
 
 ```c
 void initialize_x(uint64_t x[2]) {
@@ -5126,13 +5126,36 @@ The code does essentially the same as the code in the previous example with loca
 
 > Call-by-value versus call-by-reference
 
-Ultimately, the larger issue is that procedure calls in C, contrary to common belief, are *call-by-value* only. In particular, there is no implicit support of *call-by-reference* in C, as opposed to Java, for example. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference means that the addresses of those values in memory are passed, not the values, enabling side effects beyond the scope of the callee. However, this also means that call-by-reference can in fact be done in C but only explicitly by passing pointers. So, after all, C can do both, even with structs, as we see below, but still not with arrays. Call-by-value of arrays in C is effectively always call-by-reference simply because there is no way in C to refer to an entire array as is! However, this might be a good thing because arrays can be quite large.
+Ultimately, the larger issue is that procedure calls in C, contrary to common belief, are *call-by-value* only. In particular, there is no implicit support of *call-by-reference* in C, as opposed to Java, for example. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference means that the addresses of those values in memory are passed, not the values, enabling side effects beyond the scope of the callee. However, this also means that call-by-reference can in fact be done in C but only explicitly by passing pointers. So, after all, C can do both, even with structs, as we see below, but still not with arrays. Call-by-value of arrays in C is effectively always call-by-reference simply because there is no way in C to refer to an entire array as is! However, this might be a good thing because arrays can be quite large. It is nevertheless a common mistake by inexperienced developers using languages other than C to pass large data structures unnecessarily call-by-value often causing massive temporal and spatial overhead. Speaking of which, C also supports multidimensional arrays. The next exercise is about those:
 
 ```bash
 ./grader/self.py array-multidimensional
 ```
 
-row-major vs column-major
+Once you figured out support of onedimensional arrays, extending that to multidimensional arrays is actually not so difficult. The calculation of the size of multidimensional arrays is straightforward which leaves us with code generation for multidimensional array access. Consider the following example:
+
+```c
+uint64_t d[2][2];
+
+void initialize_d() {
+  uint64_t* p;
+
+  d[0][0] = 42;
+  d[0][1] = d[0][0];
+  d[1][0] = d[0][1];
+  d[1][1] = d[1][0];
+
+  p = (uint64_t*) d;
+
+  *d[1] = 7;
+}
+```
+
+The code declares a global variable `d` as twodimensional array and provides a procedure that first initializes the array elements of `d`. The procedure also declares a local variable `p` as pointer to unsigned integers, the element type of the array `d`, and initializes `p` to point to the beginning of `d` in memory. The last line `*d[1] = 7;` is the interesting part. Where in the twodimensional array will the value `7` end up? The answer is in `d[1][0]`, of course, because `*d[7]` is equivalent to `*(d[1] + 0)` which in turn is equivalent to `d[1][0]`. However, where exactly is the value of `d[1][0]` and thus `7` in memory? The answer is at address `p + 2`, not `p + 1`, which could be an option too, if it was not for an important design decision in C.
+
+> Row-major versus column-major order
+
+Multidimensional arrays in C are stored in memory in *row-major* order, in contrast to *column-major* order as in Fortran, for example. With row-major order, the consecutive array elements of a row are stored next to each other in memory. For example, the elements of the array `d` are stored in memory in the order `d[0][0]`, `d[0][1]`, `d[1][0]`, and `d[1][1]`, hence the value `7` at `p + 2`. With column-major order, the consecutive array elements of a column are stored next to each other in memory, that is, the elements of `d` would be stored in memory in the order `d[0][0]`, `d[1][0]`, `d[0][1]`, and `d[1][1]`, hence the value `7` potentially at `p + 1`. So, with row-major order in C, it is row-major in C\* as well.
 
 > Structs
 
