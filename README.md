@@ -4,7 +4,7 @@ Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzb
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 12KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/main/semantics.md) called C Star ([C\*](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/main/riscu.md),
 2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,

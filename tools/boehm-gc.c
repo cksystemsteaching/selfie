@@ -38,7 +38,7 @@ void sweep_boehm(uint64_t* context);
 // +----+-------------------------+
 
 uint64_t* allocate_context() {
-  return smalloc(CONTEXTENTRIES * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR);
+  return smalloc(CONTEXTENTRIES * sizeof(uint64_t) + 5 * sizeof(uint64_t*));
 }
 
 uint64_t* get_chunk_heap_start(uint64_t* context)           { return (uint64_t*) *(context + CONTEXTENTRIES); }
@@ -133,7 +133,7 @@ uint64_t* get_chunk_list_entry_memory(uint64_t* context, uint64_t* entry);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t GC_COSO_LIST_ENTRY_SIZE = 16; // SIZEOFUINT64 * 2;
+uint64_t GC_COSO_LIST_ENTRY_SIZE = 16; // 2 * sizeof(uint64_t);
 uint64_t GC_STATIC_HEADER_SIZE_IN_WORDS = 2;
 
 uint64_t GC_CHUNK_HEAP_SIZE = 104857600; // fixed chunk heap of 1MB*100 (can hold 256*100 chunks)
@@ -150,7 +150,6 @@ uint64_t* gc_chunk_heap_bump  = (uint64_t*) 0;
 uint64_t* gc_chunk_used_list         = (uint64_t*) 0;
 uint64_t* gc_chunk_free_list         = (uint64_t*) 0;
 uint64_t* gc_small_object_free_lists = (uint64_t*) 0;
-
 
 // Definition
 
@@ -238,7 +237,7 @@ uint64_t* allocate_chunk(uint64_t* context, uint64_t object_size) {
     chunk_list_entry = allocate_coso_list_entry(context);
 
     set_coso_list_entry_memory(chunk_list_entry, get_chunk_heap_bump_gc(context));
-    set_chunk_heap_bump_gc(context, get_chunk_heap_bump_gc(context) + GC_CHUNK_SIZE / SIZEOFUINT64);
+    set_chunk_heap_bump_gc(context, get_chunk_heap_bump_gc(context) + GC_CHUNK_SIZE / sizeof(uint64_t));
 
     if ((uint64_t) get_chunk_heap_bump_gc(context) >= ((uint64_t) get_chunk_heap_start_gc(context) + GC_CHUNK_HEAP_SIZE)) {
       printf("%s: chunk heap size exceeded\n", selfie_name);
@@ -275,7 +274,7 @@ void free_chunk(uint64_t* context, uint64_t* entry) {
   uint64_t* next_it;
 
   coso_entry = get_chunk_list_pointer(entry);
-  object_size = get_chunk_object_size(entry) / SIZEOFUINT64; // in memory words
+  object_size = get_chunk_object_size(entry) / sizeof(uint64_t); // in memory words
 
   zero_chunk_allocbits(entry);
 
@@ -437,7 +436,7 @@ void zero_chunk_markbits(uint64_t* entry) {
   // -------------------------------------------------------------
   word_containing_bit = entry + GC_STATIC_HEADER_SIZE_IN_WORDS;
 
-  zero_memory(word_containing_bit, num_words_object_bits * SIZEOFUINT64);
+  zero_memory(word_containing_bit, num_words_object_bits * sizeof(uint64_t));
 }
 
 void zero_chunk_allocbits(uint64_t* entry) {
@@ -455,7 +454,7 @@ void zero_chunk_allocbits(uint64_t* entry) {
   // -------------------------------------------------------------
   word_containing_bit = entry + GC_STATIC_HEADER_SIZE_IN_WORDS + num_words_object_bits;
 
-  zero_memory(word_containing_bit, num_words_object_bits * SIZEOFUINT64);
+  zero_memory(word_containing_bit, num_words_object_bits * sizeof(uint64_t));
 }
 
 void refurbish_chunk(uint64_t* entry) {
@@ -476,18 +475,18 @@ uint64_t calculate_number_of_words_for_object_bits(uint64_t object_size) {
 uint64_t calculate_chunk_payload_offset_bytes(uint64_t object_size) {
   uint64_t ret;
 
-  ret = (GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE);             // -> max possible payload size
-  ret = ret / object_size;                                      // max payload size -> #objects in payload (= #markbits)
-  ret = round_up(ret, SIZEOFUINT64INBITS) / SIZEOFUINT64INBITS; // #objects -> #words containing markbits
-  ret = ret * SIZEOFUINT64;                                     // #words -> #bytes
-  ret = ret * 2;                                                // alloc and mark bits (dynamic part of header)
-  ret = ret + (SIZEOFUINT64 * GC_STATIC_HEADER_SIZE_IN_WORDS);  // add static part of header
+  ret = (GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE);              // -> max possible payload size
+  ret = ret / object_size;                                       // max payload size -> #objects in payload (= #markbits)
+  ret = round_up(ret, SIZEOFUINT64INBITS) / SIZEOFUINT64INBITS;  // #objects -> #words containing markbits
+  ret = ret * sizeof(uint64_t);                                  // #words -> #bytes
+  ret = ret * 2;                                                 // alloc and mark bits (dynamic part of header)
+  ret = ret + sizeof(uint64_t) * GC_STATIC_HEADER_SIZE_IN_WORDS; // add static part of header
 
   return ret;
 }
 
 uint64_t calculate_chunk_payload_offset_words(uint64_t object_size) {
-  return calculate_chunk_payload_offset_bytes(object_size) / SIZEOFUINT64;
+  return calculate_chunk_payload_offset_bytes(object_size) / sizeof(uint64_t);
 }
 
 uint64_t is_address_valid_chunk_object_of_specific_chunk(uint64_t* context, uint64_t address, uint64_t* chunk_list_entry) {
@@ -547,13 +546,13 @@ void fill_small_object_free_list(uint64_t* context, uint64_t* chunk_list_entry) 
 
   object_size = get_chunk_object_size(get_chunk_list_entry_memory(context, chunk_list_entry)); // object size in bytes
   payload_offset = calculate_chunk_payload_offset_bytes(object_size);
-  small_object_list_ptr = get_small_object_free_lists_gc(context) + (object_size / SIZEOFUINT64 - 1);
+  small_object_list_ptr = get_small_object_free_lists_gc(context) + (object_size / sizeof(uint64_t) - 1);
   object_count = (GC_CHUNK_SIZE - payload_offset);
   object_count = object_count / object_size;
 
   // convert payload offset and object size to words so they can be used in pointer operations
-  payload_offset = payload_offset / SIZEOFUINT64;
-  object_size = object_size / SIZEOFUINT64;
+  payload_offset = payload_offset / sizeof(uint64_t);
+  object_size = object_size / sizeof(uint64_t);
 
   i = 0;
   while (i < object_count) {
@@ -574,7 +573,7 @@ uint64_t* allocate_object(uint64_t* context, uint64_t size) {
   uint64_t* small_object_free_list;
   uint64_t object_index;
 
-  small_object_free_list = get_small_object_free_lists_gc(context) + (size / SIZEOFUINT64 - 1);
+  small_object_free_list = get_small_object_free_lists_gc(context) + (size / sizeof(uint64_t) - 1);
 
   // assert: size is a multiple of GC_WORDSIZE and given in bytes
 
@@ -616,10 +615,10 @@ void free_chunk_object(uint64_t* context, uint64_t* object) {
   set_chunk_object_allocbit(chunk, object_index, 0);
 
   small_object_list_entry = allocate_coso_list_entry(context);
-  set_coso_list_entry_next(small_object_list_entry, (uint64_t*)(*(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1))));
+  set_coso_list_entry_next(small_object_list_entry, (uint64_t*)(*(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / sizeof(uint64_t) - 1))));
   set_coso_list_entry_memory(small_object_list_entry, object);
 
-  *(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / SIZEOFUINT64 - 1)) = (uint64_t) small_object_list_entry;
+  *(get_small_object_free_lists_gc(context) + (get_chunk_object_size(chunk) / sizeof(uint64_t) - 1)) = (uint64_t) small_object_list_entry;
 }
 
 uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object) {
@@ -663,9 +662,9 @@ void gc_init(uint64_t* context) {
 }
 
 void gc_init_boehm(uint64_t* context) {
-  GC_COSO_LIST_ENTRY_SIZE = SIZEOFUINT64STAR * 2;
+  GC_COSO_LIST_ENTRY_SIZE = sizeof(uint64_t*) * 2;
 
-  GC_CHUNK_MIN_HEADER_SIZE = SIZEOFUINT64STAR * 1 + SIZEOFUINT64 * 3; // static header (chunk list ptr + size) + 1 alloc bit word (min) + 1 mark bit word (min)
+  GC_CHUNK_MIN_HEADER_SIZE = sizeof(uint64_t*) * 1 + sizeof(uint64_t) * 3; // static header (chunk list ptr + size) + 1 alloc bit word (min) + 1 mark bit word (min)
 
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_SIZE - GC_CHUNK_MIN_HEADER_SIZE; // object size in order to fit 2 objects into one chunk
   GC_CHUNK_MAX_SMALL_OBJECT_SIZE = GC_CHUNK_MAX_SMALL_OBJECT_SIZE / 2;
@@ -776,7 +775,7 @@ void sweep_boehm(uint64_t* context) {
     while (i < num_objects) {
       if (get_chunk_object_allocbit(chunk, i) == 1)
         if (get_chunk_object_markbit(chunk, i) == GC_MARKBIT_UNREACHABLE)
-          free_chunk_object(context, get_coso_list_entry_memory(node) + calculate_chunk_payload_offset_words(get_chunk_object_size(chunk)) + i * (get_chunk_object_size(chunk) / SIZEOFUINT64));
+          free_chunk_object(context, get_coso_list_entry_memory(node) + calculate_chunk_payload_offset_words(get_chunk_object_size(chunk)) + i * (get_chunk_object_size(chunk) / sizeof(uint64_t)));
 
       i = i + 1;
     }

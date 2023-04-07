@@ -336,11 +336,11 @@ void selfie_load_dimacs() {
 
   number_of_sat_variables = dimacs_number();
 
-  sat_assignment = (uint64_t*) zmalloc(number_of_sat_variables * SIZEOFUINT64);
+  sat_assignment = (uint64_t*) zmalloc(number_of_sat_variables * sizeof(uint64_t));
 
   number_of_sat_clauses = dimacs_number();
 
-  sat_instance = (uint64_t*) zmalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
+  sat_instance = (uint64_t*) zmalloc(number_of_sat_clauses * 2 * number_of_sat_variables * sizeof(uint64_t));
 
   dimacs_get_instance();
 

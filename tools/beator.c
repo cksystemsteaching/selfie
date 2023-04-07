@@ -964,7 +964,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   if (to_address % INSTRUCTIONSIZE == 0) {
     if (to_address < code_start + code_size) {
       if (validate_procedure_body(from_instruction, from_link, to_address)) {
-        in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+        in_edge = smalloc(sizeof(uint64_t*) + 3 * sizeof(uint64_t));
 
         *in_edge       = *(control_in + (to_address - code_start) / INSTRUCTIONSIZE);
         *(in_edge + 1) = from_instruction; // from which instruction
@@ -2038,8 +2038,8 @@ uint64_t mark_statically_live_code(uint64_t start_address, uint64_t callee_addre
 void static_dead_code_elimination(uint64_t start_address, uint64_t entry_pc) {
   uint64_t saved_pc;
 
-  statically_live_code   = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
-  statically_live_return = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  statically_live_code   = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
+  statically_live_return = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
 
   saved_pc = pc;
 
@@ -2769,7 +2769,7 @@ void beator(uint64_t entry_pc) {
 
   w = w + dprintf(output_fd, "\n; registers\n");
 
-  reg_flow_nids = smalloc(3 * NUMBEROFREGISTERS * SIZEOFUINT64STAR);
+  reg_flow_nids = smalloc(3 * NUMBEROFREGISTERS * sizeof(uint64_t*));
 
   i = 0;
 
@@ -2906,7 +2906,7 @@ void beator(uint64_t entry_pc) {
 
     data_flow_nid = 0;
 
-    RAM_write_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * SIZEOFUINT64);
+    RAM_write_flow_nid = smalloc((data_size + heap_size + stack_size) / WORDSIZE * sizeof(uint64_t));
   }
 
   w = w + dprintf(output_fd, "; data segment\n\n");
@@ -3090,8 +3090,8 @@ void beator(uint64_t entry_pc) {
 
   code_nid = pcs_nid * 3;
 
-  control_in  = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
+  call_return = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
 
   current_callee   = code_start;
   estimated_return = code_start;

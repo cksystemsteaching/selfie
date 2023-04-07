@@ -17,7 +17,7 @@ virtual machine monitors. The common theme is to identify and
 resolve self-reference in systems code which is seen as the key
 challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 12KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -216,11 +216,8 @@ char* SELFIE_URL = (char*) 0;
 uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
 uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 
-uint64_t SIZEOFUINT64       = 8;  // in bytes
-uint64_t SIZEOFUINT64INBITS = 64; // SIZEOFUINT64 * 8
-
-uint64_t SIZEOFUINT64STAR       = 8;  // in bytes, must be the same as SIZEOFUINT64
-uint64_t SIZEOFUINT64STARINBITS = 64; // SIZEOFUINT64STAR * 8
+uint64_t SIZEOFUINT64INBITS     = 64; // sizeof(uint64_t) * 8
+uint64_t SIZEOFUINT64STARINBITS = 64; // sizeof(uint64_t*) * 8
 
 uint64_t* power_of_two_table;
 
@@ -301,16 +298,11 @@ void init_library() {
 
   SELFIE_URL = "selfie.cs.uni-salzburg.at";
 
-  // determine actual size of uint64_t
-  SIZEOFUINT64       = (uint64_t) ((uint64_t*) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
-  SIZEOFUINT64INBITS = SIZEOFUINT64 * 8;
-
-  // determine actual size of uint64_t*
-  SIZEOFUINT64STAR       = (uint64_t) ((uint64_t**) SELFIE_URL + 1) - (uint64_t) SELFIE_URL;
-  SIZEOFUINT64STARINBITS = SIZEOFUINT64STAR * 8;
+  SIZEOFUINT64INBITS     = sizeof(uint64_t) * 8;
+  SIZEOFUINT64STARINBITS = sizeof(uint64_t*) * 8;
 
   // powers of two table with SIZEOFUINT64INBITS entries for 2^0 to 2^(SIZEOFUINT64INBITS - 1)
-  power_of_two_table = smalloc(SIZEOFUINT64INBITS * SIZEOFUINT64);
+  power_of_two_table = smalloc(SIZEOFUINT64INBITS * sizeof(uint64_t));
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -331,23 +323,23 @@ void init_library() {
   INT64_MAX = INT64_MIN - 1;
 
   // target-dependent, see init_target()
-  SIZEOFUINT     = SIZEOFUINT64;
+  SIZEOFUINT     = sizeof(uint64_t);
   UINT_MAX       = UINT64_MAX;
-  WORDSIZE       = SIZEOFUINT64;
+  WORDSIZE       = sizeof(uint64_t);
   WORDSIZEINBITS = WORDSIZE * 8;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = (char*) smalloc(1);
   *character_buffer = (char) 0;
 
-  // accommodate at least SIZEOFUINT64INBITS numbers for itoa, no mapping needed
+  // accommodate at least SIZEOFUINT64INBITS-numbers for itoa, no mapping needed
   integer_buffer = string_alloc(SIZEOFUINT64INBITS);
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc(SIZEOFUINT64);
+  binary_buffer  = smalloc(sizeof(uint64_t));
   *binary_buffer = 0;
 }
 
@@ -434,32 +426,33 @@ uint64_t SYM_ELSE         = 6;  // else
 uint64_t SYM_VOID         = 7;  // void
 uint64_t SYM_RETURN       = 8;  // return
 uint64_t SYM_WHILE        = 9;  // while
-uint64_t SYM_COMMA        = 10; // ,
-uint64_t SYM_SEMICOLON    = 11; // ;
-uint64_t SYM_LPARENTHESIS = 12; // (
-uint64_t SYM_RPARENTHESIS = 13; // )
-uint64_t SYM_LBRACE       = 14; // {
-uint64_t SYM_RBRACE       = 15; // }
-uint64_t SYM_PLUS         = 16; // +
-uint64_t SYM_MINUS        = 17; // -
-uint64_t SYM_ASTERISK     = 18; // *
-uint64_t SYM_DIVISION     = 19; // /
-uint64_t SYM_REMAINDER    = 20; // %
-uint64_t SYM_ASSIGN       = 21; // =
-uint64_t SYM_EQUALITY     = 22; // ==
-uint64_t SYM_NOTEQ        = 23; // !=
-uint64_t SYM_LT           = 24; // <
-uint64_t SYM_LEQ          = 25; // <=
-uint64_t SYM_GT           = 26; // >
-uint64_t SYM_GEQ          = 27; // >=
-uint64_t SYM_ELLIPSIS     = 28; // ...
+uint64_t SYM_SIZEOF       = 10; // sizeof
+uint64_t SYM_COMMA        = 11; // ,
+uint64_t SYM_SEMICOLON    = 12; // ;
+uint64_t SYM_LPARENTHESIS = 13; // (
+uint64_t SYM_RPARENTHESIS = 14; // )
+uint64_t SYM_LBRACE       = 15; // {
+uint64_t SYM_RBRACE       = 16; // }
+uint64_t SYM_PLUS         = 17; // +
+uint64_t SYM_MINUS        = 18; // -
+uint64_t SYM_ASTERISK     = 19; // *
+uint64_t SYM_DIVISION     = 20; // /
+uint64_t SYM_REMAINDER    = 21; // %
+uint64_t SYM_ASSIGN       = 22; // =
+uint64_t SYM_EQUALITY     = 23; // ==
+uint64_t SYM_NOTEQ        = 24; // !=
+uint64_t SYM_LT           = 25; // <
+uint64_t SYM_LEQ          = 26; // <=
+uint64_t SYM_GT           = 27; // >
+uint64_t SYM_GEQ          = 28; // >=
+uint64_t SYM_ELLIPSIS     = 29; // ...
 
 // symbols for bootstrapping
 
-uint64_t SYM_INT      = 29; // int
-uint64_t SYM_CHAR     = 30; // char
-uint64_t SYM_UNSIGNED = 31; // unsigned
-uint64_t SYM_CONST    = 32; // const
+uint64_t SYM_INT      = 30; // int
+uint64_t SYM_CHAR     = 31; // char
+uint64_t SYM_UNSIGNED = 32; // unsigned
+uint64_t SYM_CONST    = 33; // const
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -497,7 +490,7 @@ uint64_t source_fd   = 0; // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_CONST + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_CONST + 1) * sizeof(uint64_t*));
 
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
@@ -509,6 +502,7 @@ void init_scanner () {
   *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
   *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
   *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
+  *(SYMBOLS + SYM_SIZEOF)       = (uint64_t) "sizeof";
   *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
   *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_LPARENTHESIS) = (uint64_t) "(";
@@ -584,7 +578,7 @@ uint64_t report_undefined_procedures();
 // +---+---------+
 
 uint64_t* allocate_symbol_table_entry() {
-  return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  return smalloc(2 * sizeof(uint64_t*) + 6 * sizeof(uint64_t));
 }
 
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -640,7 +634,7 @@ uint64_t number_of_list_iterations = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_symbol_tables() {
-  global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
+  global_symbol_table = (uint64_t*) zmalloc(HASH_TABLE_SIZE * sizeof(uint64_t*));
   local_symbol_table  = (uint64_t*) 0;
 
   number_of_symbol_lookups  = 0;
@@ -907,7 +901,7 @@ uint64_t* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void init_register() {
-  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
+  REGISTERS = smalloc(NUMBEROFREGISTERS * sizeof(uint64_t*));
 
   *(REGISTERS + REG_ZR)  = (uint64_t) "zero";
   *(REGISTERS + REG_RA)  = (uint64_t) "ra";
@@ -1324,7 +1318,7 @@ uint64_t debug_switch = 0;
 // +---+------------------+
 
 uint64_t* allocate_cache() {
-  return smalloc(1 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  return smalloc(1 * sizeof(uint64_t*) + 6 * sizeof(uint64_t));
 }
 
 uint64_t* get_cache_memory(uint64_t* cache)     { return (uint64_t*) *cache; }
@@ -1352,7 +1346,7 @@ void set_cache_timer(uint64_t* cache, uint64_t cache_timer)           { *(cache 
 // +---+------------+
 
 uint64_t* allocate_cache_block() {
-  return zmalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return zmalloc(1 * sizeof(uint64_t*) + 3 * sizeof(uint64_t));
 }
 
 uint64_t  get_valid_flag(uint64_t* cache_block)   { return             *cache_block; }
@@ -1510,7 +1504,7 @@ uint64_t PHYSICALMEMORYEXCESS = 2; // tolerate more allocation than physically a
 uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
 
 // host-dependent, see init_memory()
-uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / SIZEOFUINT64STAR
+uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / sizeof(uint64_t*)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1528,8 +1522,8 @@ void init_memory(uint64_t megabytes) {
 
   PHYSICALMEMORYSIZE = megabytes * MEGABYTE;
 
-  // host-dependent: reinitialize in case SIZEOFUINT64STAR is not 8
-  NUMBEROFLEAFPTES = PAGESIZE / SIZEOFUINT64STAR;
+  // host-dependent: reinitialize in case sizeof(uint64_t*) is not 8
+  NUMBEROFLEAFPTES = PAGESIZE / sizeof(uint64_t*);
 }
 
 void reset_memory_counters() {
@@ -1666,9 +1660,9 @@ uint64_t GC_PERIOD = 1000; // gc every so often
 
 uint64_t GC_REUSE = 1; // reuse memory with freelist by default
 
-uint64_t GC_METADATA_SIZE = 32; // SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2
+uint64_t GC_METADATA_SIZE = 32; // 2 * sizeof(uint64_t) + 2 * sizeof(uint64_t*)
 
-uint64_t GC_WORDSIZE = 8; // SIZEOFUINT64 for library variant, otherwise WORDSIZE
+uint64_t GC_WORDSIZE = 8; // sizeof(uint64_t) for library variant, otherwise WORDSIZE
 
 uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
 uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
@@ -1820,7 +1814,7 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_disassembler() {
-  MNEMONICS = smalloc((ECALL + 1) * SIZEOFUINT64STAR);
+  MNEMONICS = smalloc((ECALL + 1) * sizeof(uint64_t*));
 
   *(MNEMONICS + LUI)   = (uint64_t) "lui";
   *(MNEMONICS + ADDI)  = (uint64_t) "addi";
@@ -1873,8 +1867,8 @@ uint64_t* values = (uint64_t*) 0; // trace of values
 // ------------------------- INITIALIZATION ------------------------
 
 void init_replay_engine() {
-  pcs    = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
-  values = zmalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  pcs    = zmalloc(MAX_REPLAY_LENGTH * sizeof(uint64_t));
+  values = zmalloc(MAX_REPLAY_LENGTH * sizeof(uint64_t));
 }
 
 // -----------------------------------------------------------------
@@ -2042,7 +2036,7 @@ uint64_t heap_writes = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_INTEGEROVERFLOW + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_INTEGEROVERFLOW + 1) * sizeof(uint64_t*));
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
@@ -2088,18 +2082,18 @@ void reset_nop_counters() {
 
 void reset_source_profile() {
   calls               = 0;
-  calls_per_procedure = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  calls_per_procedure = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
 
   iterations          = 0;
-  iterations_per_loop = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  iterations_per_loop = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
 
-  loads_per_instruction  = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
-  stores_per_instruction = zmalloc(code_size / INSTRUCTIONSIZE * SIZEOFUINT64);
+  loads_per_instruction  = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
+  stores_per_instruction = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t));
 }
 
 void reset_registers_profile() {
-  reads_per_register  = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
-  writes_per_register = zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+  reads_per_register  = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
+  writes_per_register = zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t));
 
   // zero register is initialized by definition
   *(writes_per_register + REG_ZR) = 1;
@@ -2196,8 +2190,8 @@ uint64_t CONTEXTENTRIES = 25;
 uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
 
 uint64_t* allocate_context() {
-  // SIZEOFUINT64 == SIZEOFUINT64STAR (always, so no need to differentiate although it would be nicer)
-  return smalloc(CONTEXTENTRIES * SIZEOFUINT64);
+  // assert: sizeof(uint64_t) == sizeof(uint64_t*)
+  return smalloc(CONTEXTENTRIES * sizeof(uint64_t));
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -2480,7 +2474,7 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
 void init_system() {
   uint64_t selfie_fd;
 
-  if (SIZEOFUINT64 != SIZEOFUINT64STAR)
+  if (sizeof(uint64_t) != sizeof(uint64_t*))
     // selfie requires an LP64 or ILP32 data model
     // uint64_t and uint64_t* must be the same size
     exit(EXITCODE_SYSTEMERROR);
@@ -2527,10 +2521,10 @@ void init_system() {
 void init_target() {
   if (IS64BITTARGET) {
     if (IS64BITSYSTEM) {
-      SIZEOFUINT = SIZEOFUINT64;
+      SIZEOFUINT = sizeof(uint64_t);
       UINT_MAX   = UINT64_MAX;
 
-      WORDSIZE       = SIZEOFUINT64;
+      WORDSIZE       = sizeof(uint64_t);
       WORDSIZEINBITS = WORDSIZE * 8;
 
       MAX_INTEGER_LENGTH = 20; // 2^64-1 requires 20 decimal digits
@@ -2553,10 +2547,10 @@ void init_target() {
 
       WORDSIZE = SINGLEWORDSIZE;
     } else {
-      SIZEOFUINT = SIZEOFUINT64;
+      SIZEOFUINT = sizeof(uint64_t);
       UINT_MAX   = UINT64_MAX;
 
-      WORDSIZE = SIZEOFUINT64;
+      WORDSIZE = sizeof(uint64_t);
     }
 
     WORDSIZEINBITS = WORDSIZE * 8;
@@ -2725,13 +2719,13 @@ char load_character(char* s, uint64_t i) {
 
   // a is the index of the word where the
   // to-be-loaded i-th character in s is
-  a = i / SIZEOFUINT64;
+  a = i / sizeof(uint64_t);
 
   // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at word granularity, not individual characters
 
   // return i-th 8-bit character in s
-  return get_bits(*((uint64_t*) s + a), (i % SIZEOFUINT64) * 8, 8);
+  return get_bits(*((uint64_t*) s + a), (i % sizeof(uint64_t)) * 8, 8);
 }
 
 char* store_character(char* s, uint64_t i, char c) {
@@ -2740,14 +2734,14 @@ char* store_character(char* s, uint64_t i, char c) {
 
   // a is the index of the word where the with c
   // to-be-overwritten i-th character in s is
-  a = i / SIZEOFUINT64;
+  a = i / sizeof(uint64_t);
 
   // CAUTION: at boot levels higher than 0, s is only accessible
   // in C* at word granularity, not individual characters
 
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
-  *((uint64_t*) s + a) = (*((uint64_t*) s + a) - left_shift(load_character(s, i), (i % SIZEOFUINT64) * 8)) + left_shift(c, (i % SIZEOFUINT64) * 8);
+  *((uint64_t*) s + a) = (*((uint64_t*) s + a) - left_shift(load_character(s, i), (i % sizeof(uint64_t)) * 8)) + left_shift(c, (i % sizeof(uint64_t)) * 8);
 
   return s;
 }
@@ -3397,7 +3391,7 @@ uint64_t* smalloc_system(uint64_t size) {
 void zero_memory(uint64_t* memory, uint64_t size) {
   uint64_t i;
 
-  size = round_up(size, SIZEOFUINT64) / SIZEOFUINT64;
+  size = round_up(size, sizeof(uint64_t)) / sizeof(uint64_t);
 
   i = 0;
 
@@ -3418,7 +3412,7 @@ uint64_t* zalloc(uint64_t size) {
   // called zalloc to avoid redeclaring calloc
   uint64_t* memory;
 
-  size = round_up(size, SIZEOFUINT64);
+  size = round_up(size, sizeof(uint64_t));
 
   memory = smalloc(size);
 
@@ -3660,6 +3654,8 @@ uint64_t identifier_or_keyword() {
     return SYM_RETURN;
   else if (identifier_string_match(SYM_WHILE))
     return SYM_WHILE;
+  else if (identifier_string_match(SYM_SIZEOF))
+    return SYM_SIZEOF;
   else if (identifier_string_match(SYM_INT))
     // selfie bootstraps int to uint64_t!
     return SYM_UINT64;
@@ -4202,6 +4198,8 @@ uint64_t is_factor() {
   else if (symbol == SYM_MINUS)
     return 1;
   else if (symbol == SYM_ASTERISK)
+    return 1;
+  else if (symbol == SYM_SIZEOF)
     return 1;
   else if (is_literal())
     return 1;
@@ -5063,7 +5061,23 @@ uint64_t compile_factor() {
   } else
     dereference = 0;
 
-  if (is_literal())
+  if (symbol == SYM_SIZEOF) {
+    // "sizeof" cast
+    get_symbol();
+
+    get_expected_symbol(SYM_LPARENTHESIS);
+
+    type = compile_cast(UNDECLARED_T);
+
+    talloc();
+
+    if (type == UINT64_T)
+      emit_addi(current_temporary(), REG_ZR, sizeof(uint64_t));
+    else
+      emit_addi(current_temporary(), REG_ZR, sizeof(uint64_t*));
+
+    type = UINT64_T;
+  } else if (is_literal())
     // integer, character, or string literal
     type = compile_literal();
   else if (symbol == SYM_IDENTIFIER) {
@@ -5598,7 +5612,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       // only accounting for procedures defined in source code
       number_of_procedures = number_of_procedures + 1;
     } else if (is_boot_level_0_only_procedure(procedure) == 0) {
-      // the following procedures are only defined on boot level 0
+      // procedure already defined on all boot levels
       print_line_number("warning", line_number);
       printf("redefinition of procedure %s ignored\n", procedure);
     }
@@ -6184,8 +6198,8 @@ void selfie_compile() {
   data_binary = zmalloc(MAX_DATA_SIZE);
 
   // allocate zeroed memory for storing source code line numbers
-  code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zmalloc(MAX_DATA_SIZE / WORDSIZE * SIZEOFUINT64);
+  code_line_number = zmalloc(MAX_CODE_SIZE / INSTRUCTIONSIZE * sizeof(uint64_t));
+  data_line_number = zmalloc(MAX_DATA_SIZE / WORDSIZE * sizeof(uint64_t));
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -6792,35 +6806,35 @@ uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
       if (is_double_word)
-        return *(memory + waddr / SIZEOFUINT64);
+        return *(memory + waddr / sizeof(uint64_t));
 
-    if (waddr % SIZEOFUINT64 == 0)
-      return get_low_word(*(memory + waddr / SIZEOFUINT64));
+    if (waddr % sizeof(uint64_t) == 0)
+      return get_low_word(*(memory + waddr / sizeof(uint64_t)));
     else
-      return get_high_word(*(memory + waddr / SIZEOFUINT64));
+      return get_high_word(*(memory + waddr / sizeof(uint64_t)));
   } else
-    return *(memory + waddr / SIZEOFUINT64);
+    return *(memory + waddr / sizeof(uint64_t));
 }
 
 void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint64_t word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
       if (is_double_word) {
-        *(memory + waddr / SIZEOFUINT64) = word;
+        *(memory + waddr / sizeof(uint64_t)) = word;
 
         return;
       }
 
-    if (waddr % SIZEOFUINT64 == 0)
+    if (waddr % sizeof(uint64_t) == 0)
       // replace low word
-      *(memory + waddr / SIZEOFUINT64) =
+      *(memory + waddr / sizeof(uint64_t)) =
         left_shift(load_word(memory, waddr + SINGLEWORDSIZE, is_double_word), SINGLEWORDSIZEINBITS) + word;
     else
       // replace high word
-      *(memory + waddr / SIZEOFUINT64) =
+      *(memory + waddr / sizeof(uint64_t)) =
         left_shift(word, SINGLEWORDSIZEINBITS) + load_word(memory, waddr - SINGLEWORDSIZE, is_double_word);
   } else
-    *(memory + waddr / SIZEOFUINT64) = word;
+    *(memory + waddr / sizeof(uint64_t)) = word;
 }
 
 uint64_t load_instruction(uint64_t caddr) {
@@ -7066,14 +7080,14 @@ uint64_t* touch(uint64_t* memory, uint64_t bytes) {
   while (bytes > PAGESIZE) {
     bytes = bytes - PAGESIZE;
 
-    m = m + PAGESIZE / SIZEOFUINT64;
+    m = m + PAGESIZE / sizeof(uint64_t);
 
     // touch every following page
     n = *m;
   }
 
   if (bytes > 0) {
-    m = m + (bytes - 1) / SIZEOFUINT64;
+    m = m + (bytes - 1) / sizeof(uint64_t);
 
     // touch at end
     n = *m;
@@ -7234,7 +7248,7 @@ uint64_t validate_elf_header(uint64_t* header) {
 
   i = 0;
 
-  while (i < ELF_HEADER_SIZE / SIZEOFUINT64) {
+  while (i < ELF_HEADER_SIZE / sizeof(uint64_t)) {
     if (*(header + i) != *(valid_header + i))
       return 0;
 
@@ -7357,7 +7371,7 @@ void selfie_load() {
 
         if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
-          if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
+          if (read(fd, binary_buffer, sizeof(uint64_t)) == 0) {
             printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_SIZE + code_size + data_size,
@@ -7709,12 +7723,12 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
-        // WORDSIZE may be less than SIZEOFUINT64
-        j = i % SIZEOFUINT64;
+        // WORDSIZE may be less than sizeof(uint64_t)
+        j = i % sizeof(uint64_t);
 
         // check if string ends in the current word
-        while (j - i % SIZEOFUINT64 < WORDSIZE) {
-          if (load_character((char*) ((uint64_t*) s + i / SIZEOFUINT64), j) == 0)
+        while (j - i % sizeof(uint64_t) < WORDSIZE) {
+          if (load_character((char*) ((uint64_t*) s + i / sizeof(uint64_t)), j) == 0)
             return 1;
 
           j = j + 1;
@@ -8084,7 +8098,7 @@ void init_cache_memory(uint64_t* cache) {
 
   number_of_cache_blocks = get_cache_size(cache) / get_cache_block_size(cache);
 
-  cache_memory = smalloc(number_of_cache_blocks * SIZEOFUINT64STAR);
+  cache_memory = smalloc(number_of_cache_blocks * sizeof(uint64_t*));
 
   set_cache_memory(cache, cache_memory);
 
@@ -8253,8 +8267,8 @@ void fill_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  // cache block size / SIZEOFUINT64 (not WORDSIZE)
-  number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
+  // cache block size / sizeof(uint64_t) (not WORDSIZE)
+  number_of_words_in_cache_block = get_cache_block_size(cache) / sizeof(uint64_t);
 
   block_memory = get_block_memory(cache_block);
 
@@ -8305,8 +8319,8 @@ void flush_cache_block(uint64_t* cache, uint64_t* cache_block, uint64_t paddr) {
   uint64_t* block_memory;
   uint64_t i;
 
-  // cache block size / SIZEOFUINT64 (not WORDSIZE)
-  number_of_words_in_cache_block = get_cache_block_size(cache) / SIZEOFUINT64;
+  // cache block size / sizeof(uint64_t) (not WORDSIZE)
+  number_of_words_in_cache_block = get_cache_block_size(cache) / sizeof(uint64_t);
 
   block_memory = get_block_memory(cache_block);
 
@@ -8330,7 +8344,7 @@ uint64_t load_from_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr) {
 
   block_memory = get_block_memory(cache_block);
 
-  return *(block_memory + cache_byte_offset(cache, vaddr) / SIZEOFUINT64);
+  return *(block_memory + cache_byte_offset(cache, vaddr) / sizeof(uint64_t));
 }
 
 void store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t data) {
@@ -8341,7 +8355,7 @@ void store_in_cache(uint64_t* cache, uint64_t vaddr, uint64_t paddr, uint64_t da
 
   block_memory = get_block_memory(cache_block);
 
-  *(block_memory + cache_byte_offset(cache, vaddr) / SIZEOFUINT64) = data;
+  *(block_memory + cache_byte_offset(cache, vaddr) / sizeof(uint64_t)) = data;
 
   flush_cache_block(cache, cache_block, paddr);
 }
@@ -8524,7 +8538,7 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 
   // map virtual address to physical address
   // (single word on 32-bit target occupies double word on 64-bit system)
-  paddr = (vaddr - page * PAGESIZE) * (SIZEOFUINT64 / WORDSIZE) + frame;
+  paddr = (vaddr - page * PAGESIZE) * (sizeof(uint64_t) / WORDSIZE) + frame;
 
   if (debug_tlb)
     printf("%s: tlb access:\n vaddr: 0x%08lX\n page: 0x%04lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
@@ -8807,11 +8821,11 @@ void gc_init_selfie(uint64_t* context) {
   reset_memory_counters();
   reset_gc_counters();
 
-  // calculate metadata size using actual width of integers/pointers
-  GC_METADATA_SIZE = SIZEOFUINT64 * 2 + SIZEOFUINT64STAR * 2;
+  // calculate metadata size using actual size of pointers and integers
+  GC_METADATA_SIZE = 2 * sizeof(uint64_t*) + 2 * sizeof(uint64_t);
 
   if (is_gc_library(context))
-    GC_WORDSIZE = SIZEOFUINT64;
+    GC_WORDSIZE = sizeof(uint64_t);
   else
     GC_WORDSIZE = WORDSIZE;
 
@@ -10739,7 +10753,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for general-purpose registers
   // TODO: reuse memory
-  set_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
+  set_regs(context, zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t)));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
@@ -10748,14 +10762,14 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     // 4KB pages and 64-bit pointers, allocate
     // 8MB = 2^23 ((2^32 / 2^12) * 2^3) bytes to
     // accommodate 2^20 (2^32 / 2^12) PTEs
-    set_pt(context, zmalloc(NUMBEROFPAGES * SIZEOFUINT64STAR));
+    set_pt(context, zmalloc(NUMBEROFPAGES * sizeof(uint64_t*)));
   else
     // for the root node (page directory), allocate
     // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
     // accommodate 2^11 ((2^32 / 2^12) / 2^9) root PDEs
     // pointing to 4KB leaf nodes (page tables) that
     // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
-    set_pt(context, zmalloc(NUMBEROFPAGES / NUMBEROFLEAFPTES * SIZEOFUINT64STAR));
+    set_pt(context, zmalloc(NUMBEROFPAGES / NUMBEROFLEAFPTES * sizeof(uint64_t*)));
 
   // reset page table cache
   set_lowest_lo_page(context, 0);
@@ -11124,7 +11138,7 @@ uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
   else if (allocated_page_frame_memory + MEGABYTE <=
-            PHYSICALMEMORYEXCESS * PHYSICALMEMORYSIZE * SIZEOFUINT64 / WORDSIZE)
+            PHYSICALMEMORYEXCESS * PHYSICALMEMORYSIZE * sizeof(uint64_t) / WORDSIZE)
     // single word on 32-bit target occupies double word on 64-bit system
     return 1;
   else
@@ -11141,7 +11155,7 @@ uint64_t* palloc() {
   uint64_t frame;
 
   // single word on 32-bit target occupies double word on 64-bit system
-  double_for_single_word = SIZEOFUINT64 / WORDSIZE;
+  double_for_single_word = sizeof(uint64_t) / WORDSIZE;
 
   // assert: PHYSICALMEMORYSIZE is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
@@ -11268,7 +11282,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // the call stack grows top down
   SP = VIRTUALMEMORYSIZE * GIGABYTE;
 
-  vargv = smalloc(argc * SIZEOFUINT64STAR);
+  vargv = smalloc(argc * sizeof(uint64_t*));
 
   i = 0;
 

@@ -94,7 +94,7 @@ void print_symbolic_memory(uint64_t* sword);
 // +---+-----------+
 
 uint64_t* allocate_symbolic_memory_word() {
-  return smalloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(2 * sizeof(uint64_t*) + 3 * sizeof(uint64_t));
 }
 
 uint64_t* get_next_word(uint64_t* word)      { return (uint64_t*) *word; }
@@ -160,7 +160,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 // +----+-----------------+
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(CONTEXTENTRIES * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return smalloc(CONTEXTENTRIES * sizeof(uint64_t) + 5 * sizeof(uint64_t*) + 2 * sizeof(uint64_t));
 }
 
 uint64_t  get_execution_depth(uint64_t* context) { return             *(context + CONTEXTENTRIES); }
@@ -481,12 +481,12 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
-        // WORDSIZE may be less than SIZEOFUINT64
-        j = i % SIZEOFUINT64;
+        // WORDSIZE may be less than sizeof(uint64_t)
+        j = i % sizeof(uint64_t);
 
         // check if string ends in the current word
-        while (j - i % SIZEOFUINT64 < WORDSIZE) {
-          if (load_character((char*) ((uint64_t*) s + i / SIZEOFUINT64), j) == 0)
+        while (j - i % sizeof(uint64_t) < WORDSIZE) {
+          if (load_character((char*) ((uint64_t*) s + i / sizeof(uint64_t)), j) == 0)
             return 1;
 
           j = j + 1;
@@ -1012,7 +1012,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   set_pc(context, location);
 
-  set_regs(context, smalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
+  set_regs(context, smalloc(NUMBEROFREGISTERS * sizeof(uint64_t)));
 
   r = 0;
 
@@ -1065,7 +1065,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
   symbolic_memory = get_symbolic_memory(original);
 
-  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR));
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * sizeof(uint64_t*)));
 
   set_merge_partner(context, original);
 
@@ -1106,7 +1106,7 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_execution_depth(context, 0);
   set_path_condition(context, "true");
   set_symbolic_memory(context, (uint64_t*) 0);
-  set_symbolic_regs(context, zmalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR));
+  set_symbolic_regs(context, zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t*)));
   set_beq_counter(context, 0);
   set_merge_partner(context, (uint64_t*) 0);
   set_call_stack(context, call_stack_tree);
@@ -1354,7 +1354,7 @@ char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
 // +---+----------+
 
 uint64_t* allocate_node() {
-  return zmalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  return zmalloc(3 * sizeof(uint64_t*) + 2 * sizeof(uint64_t));
 }
 
 uint64_t* get_parent_node(uint64_t* node)  { return (uint64_t*) *(node + 0); }
