@@ -6845,11 +6845,13 @@ void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint6
     if (waddr % sizeof(uint64_t) == 0)
       // replace low word
       *(memory + waddr / sizeof(uint64_t)) =
-        left_shift(load_word(memory, waddr + SINGLEWORDSIZE, is_double_word), SINGLEWORDSIZEINBITS) + word;
+        left_shift(load_word(memory, waddr + SINGLEWORDSIZE, is_double_word), SINGLEWORDSIZEINBITS)
+          + sign_shrink(word, SINGLEWORDSIZEINBITS);
     else
       // replace high word
       *(memory + waddr / sizeof(uint64_t)) =
-        left_shift(word, SINGLEWORDSIZEINBITS) + load_word(memory, waddr - SINGLEWORDSIZE, is_double_word);
+        left_shift(word, SINGLEWORDSIZEINBITS)
+          + load_word(memory, waddr - SINGLEWORDSIZE, is_double_word);
   } else
     *(memory + waddr / sizeof(uint64_t)) = word;
 }
@@ -7077,8 +7079,13 @@ void finalize_data_segment() {
   // assert: data_size > 0
 
   // the data segment is populated in reverse order from end to start
+  if (data_size % sizeof(uint64_t) != 0)
+    // WORDSIZE may be less than sizeof(uint64_t)
+    // pad to align start of data segment
+    data_size = data_size + data_size % sizeof(uint64_t);
+
   // set the actual start, given the final size of the data segment
-  data_binary = data_binary + (MAX_DATA_SIZE - data_size) / WORDSIZE;
+  data_binary = data_binary + (MAX_DATA_SIZE - data_size) / sizeof(uint64_t);
 
   if (data_line_number != (uint64_t*) 0)
     data_line_number = data_line_number + (MAX_DATA_SIZE - data_size) / WORDSIZE;
@@ -7851,6 +7858,8 @@ void emit_malloc() {
   // use bump_name string to obtain unique hash
   entry = create_symbol_table_entry(GLOBAL_TABLE, bump_name,
     1, VARIABLE, UINT64_T, 0, -data_size);
+
+  emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
 
   // allocate register for size parameter
   talloc();
