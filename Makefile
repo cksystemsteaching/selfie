@@ -67,9 +67,9 @@ self-self: selfie
 
 # Self-self-compile selfie from 64-bit system to 32-bit target and check fixed point of self-compilation
 64-to-32-bit: selfie
-	./selfie -m32 -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
-	diff -q selfie1.m selfie2.m
-	diff -q selfie1.s selfie2.s
+	./selfie -m32 -c selfie.c -o selfie-64-2-32.m -s selfie-64-2-32.s -m 2 -c selfie.c -o selfie-64-2-32-2-32.m -s selfie-64-2-32-2-32.s
+	diff -q selfie-64-2-32.m selfie-64-2-32-2-32.m
+	diff -q selfie-64-2-32.s selfie-64-2-32-2-32.s
 
 # Compile Hello World! program and identical but minified version
 whitespace: selfie
