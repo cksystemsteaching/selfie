@@ -292,7 +292,7 @@ Most importantly, take your time! We go through almost every detail and motivate
 
 ### Programming Language C\*
 
-C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
+C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 7 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
 
 [https://github.com/cksystemsteaching/selfie/blob/main/grammar.md](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)
 
@@ -4253,7 +4253,8 @@ arithmetic = term { ( "+" | "-" ) term } .
 
 term       = factor { ( "*" | "/" | "%" ) factor } .
 
-factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor     = [ cast ] [ "-" ] [ "*" ]
+             ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 
 literal    = value | string .
 
@@ -4296,7 +4297,8 @@ Here you have it. A `literal` is indeed either an `integer`, a `character`, or a
 A careful check reveals that literals are only used in one place in the C\* grammar:
 
 ```ebnf
-factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor = [ cast ] [ "-" ] [ "*" ]
+         ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 ```
 
 The procedure for parsing a `factor` is `compile_factor`. See how beautiful this is?
@@ -4450,11 +4452,11 @@ We already saw what a digit is before when handling integer literals. An identif
 
 The finite state machine for recognizing identifiers and the implementation of the FSM in selfie is shown in the above figure. The code is part of the procedure `get_symbol` which we have seen before. As example, we use the sequence of characters `actual_id42` which is obviously a syntactically valid identifier. Similar to integer and string literals, there is a limitation in the length of identifiers given by the global variable `MAX_IDENTIFIER_LENGTH` which is set to 64 in selfie. That is plenty given that identifiers are names of variables in C\*. The same applies to procedure names which are the only other use of identifiers in C\*. Have a quick look at the C\* grammar to confirm that. Handling the syntax of identifiers is straightforward after seeing how the syntax of literals is handled.
 
-There is one problem with identifiers, however. C\* features the following six *keywords*:
+There is one problem with identifiers, however. C\* features the following seven *keywords*:
 
-`uint64_t`, `void`, `if`, `else`, `while`, and `return`
+`uint64_t`, `void`, `sizeof`, `if`, `else`, `while`, and `return`
 
-These keywords are syntactically identifiers but obviously serve a very different purpose. Therefore, the scanner needs to distinguish identifiers from keywords. Instead of modeling that in a finite state machine, we just implemented a procedure `identifier_or_keyword` that compares a potential identifier with the strings for all six keywords. If it finds a match, the potential identifier is actually a keyword and returned as such, see the code of `identifier_or_keyword` for the details.
+These keywords are syntactically identifiers but obviously serve a very different purpose. Therefore, the scanner needs to distinguish identifiers from keywords. Instead of modeling that in a finite state machine, we just implemented a procedure `identifier_or_keyword` that compares a potential identifier with the strings for all seven keywords. If it finds a match, the potential identifier is actually a keyword and returned as such, see the code of `identifier_or_keyword` for the details.
 
 > Declaration, definition, use
 
@@ -4538,7 +4540,8 @@ Let us point out that global variable declarations and definitions do not result
 Using a variable, or a formal parameter for that matter, that is, using its current value in a calculation, to be more precise, is only possible in exactly one spot in the C\* grammar, namely where the symbol `identifier` occurs in the rule for `factor`:
 
 ```ebnf
-factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor = [ cast ] [ "-" ] [ "*" ]
+         ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 
 ...
 
@@ -4676,10 +4679,11 @@ arithmetic = term { ( "+" | "-" ) term } .
 
 term       = factor { ( "*" | "/" | "%" ) factor } .
 
-factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor     = [ cast ] [ "-" ] [ "*" ]
+             ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 ```
 
-The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. In C\*, the unary operators have highest precedence among all operators in expressions and, notably, are all *right-associative*. For example, the expression `*x + 7` is grouped as in `(*x) + 7`, not `*(x + 7)`.
+The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. Notably, the keyword `sizeof` also denotes a unary operator, not a procedure, which, in C\*, can only be applied to a `type`! In C\*, the unary operators have highest precedence among all operators in expressions and, notably, are all *right-associative*. For example, the expression `*x + 7` is grouped as in `(*x) + 7`, not `*(x + 7)`.
 
 > Ambiguity and determinism
 
@@ -4810,11 +4814,15 @@ Support of the `>` operator is symmetric. Only the other four comparison operato
 
 #### Unary Operators
 
-Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, and dereferencing of pointers using the unary `*` operator. The three operators appear as options in the C\* grammar rule that defines the non-terminal `factor`, which we saw before, and is implemented in the procedure `compile_factor`, which we also discussed before.
+Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, dereferencing of pointers using the unary `*` operator, and obtaining the size of a type in bytes using the unary `sizeof` operator. All four operators appear, with the first three operators as options, in the C\* grammar rule that defines the non-terminal `factor`, which we saw before, and is implemented in the procedure `compile_factor`, which we also discussed before.
 
 > From prefix to postfix
 
-All three unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions, in reverse order of their relative occurrence since they are right-associative. So, dereferencing is done before changing signs which is done before casting.
+All four unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions. With the unary operators appearing as options, this is done in reverse order of their relative occurrence since they are right-associative. So, dereferencing is done before changing signs which is done before casting.
+
+> Unary `sizeof` operator
+
+Compiling the `sizeof` operator is simpler than the others. In C\*, `sizeof` can only be applied to types of which there is only `uint64_t` and `uint64_t*`. In both cases, `sizeof` is supposed to evaluate to the value `8` because storing values of either type requires exactly `8` bytes in memory. Generating a single `addi` instruction that loads `8` into a temporary register does the job.
 
 > Cast
 
@@ -5172,9 +5180,11 @@ struct list_node {
 struct list_node* my_list;
 
 struct list_node* allocate_list_node() {
-  return malloc(8 + 8);
+  return malloc(sizeof(struct list_node));
 }
 ```
+
+mention sizeof
 
 ```bash
 ./grader/self.py struct-execution
@@ -5320,9 +5330,9 @@ So, can we actually have selfie not only compile itself using the bootstrapped v
 
 The right occurrence of the `-c` option instructs the RISC-U machine code generated by `starc` for `selfie.c`, as instructed by the left occurrence of the `-c` option, to compile `selfie.c` again!
 
-> Fixed-point of self-compilation
+> Fixed point of self-compilation
 
-Self-compilation raises an important question: is the code generated by `starc` for `selfie.c` the same regardless of whether we run `starc` using our bootstrapped ARM executable or using the RISC-U executable generated by the ARM executable? The answer is yes and we call that the *fixed-point of self-compilation*. Simply try:
+Self-compilation raises an important question: is the code generated by `starc` for `selfie.c` the same regardless of whether we run `starc` using our bootstrapped ARM executable or using the RISC-U executable generated by the ARM executable? The answer is yes and we call that the *fixed point of self-compilation*. Simply try:
 
 ```bash
 make self-self
@@ -5331,21 +5341,21 @@ make self-self
 which effectively runs:
 
 ```bash
-./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+./selfie -c selfie.c -o selfie0.m -s selfie0.s -m 2 -c selfie.c -o selfie1.m -s selfie1.s
 ```
 
-We can then check if the code generated by the ARM executable, as machine code in `selfie1.m` and even as assembly in `selfie1.s`, is equivalent to the code generated by the RISC-U executable, as in `selfie2.m` and `selfie2.s`:
+We can then check if the code generated by the ARM executable, as machine code in `selfie0.m` and even as assembly in `selfie0.s`, is equivalent to the code generated by the RISC-U executable, as in `selfie1.m` and `selfie1.s`:
 
 ```bash
-diff -q selfie1.m selfie2.m
-diff -q selfie1.s selfie2.s
+diff -q selfie0.m selfie1.m
+diff -q selfie0.s selfie1.s
 ```
 
-validating that we have indeed reached the fixed-point of self-compilation! How awesome is that?
+validating that we have indeed reached the fixed point of self-compilation! How awesome is that?
 
 > Boot level
 
-We could actually continue doing this but because of the fixed-point nothing changes anymore except that things get very slow. Be prepared to wait for hours to see this finish:
+We could actually continue doing this but because of the fixed point nothing changes anymore except that things get very slow. Be prepared to wait for hours to see this finish:
 
 ```bash
 ./selfie -c selfie.c -m 4 -c selfie.c -m 2 -c selfie.c
