@@ -229,8 +229,10 @@ uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 uint64_t SINGLEWORDSIZE       = 4;  // single-word size in bytes
 uint64_t SINGLEWORDSIZEINBITS = 32; // single-word size in bits
 
-uint64_t SIZEOFUINT = 8; // size of target-dependent unsigned integer in bytes
-uint64_t UINT_MAX;       // maximum numerical value of target-dependent unsigned integer
+uint64_t SIZEOFUINT     = 8; // size of target-dependent unsigned integer in bytes
+uint64_t SIZEOFUINTSTAR = 8; // size of target-dependent pointer to unsigned integer in bytes
+
+uint64_t UINT_MAX; // maximum numerical value of target-dependent unsigned integer
 
 uint64_t WORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
@@ -324,6 +326,7 @@ void init_library() {
 
   // target-dependent, see init_target()
   SIZEOFUINT     = sizeof(uint64_t);
+  SIZEOFUINTSTAR = sizeof(uint64_t*);
   UINT_MAX       = UINT64_MAX;
   WORDSIZE       = sizeof(uint64_t);
   WORDSIZEINBITS = WORDSIZE * 8;
@@ -2521,8 +2524,10 @@ void init_system() {
 void init_target() {
   if (IS64BITTARGET) {
     if (IS64BITSYSTEM) {
-      SIZEOFUINT = sizeof(uint64_t);
-      UINT_MAX   = UINT64_MAX;
+      SIZEOFUINT     = sizeof(uint64_t);
+      SIZEOFUINTSTAR = sizeof(uint64_t*);
+
+      UINT_MAX = UINT64_MAX;
 
       WORDSIZE       = sizeof(uint64_t);
       WORDSIZEINBITS = WORDSIZE * 8;
@@ -2542,13 +2547,17 @@ void init_target() {
       exit(EXITCODE_SYSTEMERROR);
   } else {
     if (IS64BITSYSTEM) {
-      SIZEOFUINT = SINGLEWORDSIZE;
-      UINT_MAX   = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
+      SIZEOFUINT     = SINGLEWORDSIZE;
+      SIZEOFUINTSTAR = SINGLEWORDSIZE;
+
+      UINT_MAX = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
 
       WORDSIZE = SINGLEWORDSIZE;
     } else {
-      SIZEOFUINT = sizeof(uint64_t);
-      UINT_MAX   = UINT64_MAX;
+      SIZEOFUINT     = sizeof(uint64_t);
+      SIZEOFUINTSTAR = sizeof(uint64_t*);
+
+      UINT_MAX = UINT64_MAX;
 
       WORDSIZE = sizeof(uint64_t);
     }
@@ -2741,7 +2750,9 @@ char* store_character(char* s, uint64_t i, char c) {
 
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
-  *((uint64_t*) s + a) = (*((uint64_t*) s + a) - left_shift(load_character(s, i), (i % sizeof(uint64_t)) * 8)) + left_shift(c, (i % sizeof(uint64_t)) * 8);
+  *((uint64_t*) s + a) = (*((uint64_t*) s + a)
+    - left_shift(load_character(s, i), (i % sizeof(uint64_t)) * 8))
+      + left_shift(c, (i % sizeof(uint64_t)) * 8);
 
   return s;
 }
@@ -5062,19 +5073,22 @@ uint64_t compile_factor() {
     dereference = 0;
 
   if (symbol == SYM_SIZEOF) {
-    // "sizeof" cast
+    // "sizeof" "(" type ")"
     get_symbol();
 
     get_expected_symbol(SYM_LPARENTHESIS);
 
-    type = compile_cast(UNDECLARED_T);
+    type = compile_type();
+
+    get_expected_symbol(SYM_RPARENTHESIS);
 
     talloc();
 
+    // bootstrap with target-dependent size, not sizeof
     if (type == UINT64_T)
-      emit_addi(current_temporary(), REG_ZR, sizeof(uint64_t));
+      emit_addi(current_temporary(), REG_ZR, SIZEOFUINT);
     else
-      emit_addi(current_temporary(), REG_ZR, sizeof(uint64_t*));
+      emit_addi(current_temporary(), REG_ZR, SIZEOFUINTSTAR);
 
     type = UINT64_T;
   } else if (is_literal())
@@ -5110,6 +5124,9 @@ uint64_t compile_factor() {
     get_expected_symbol(SYM_RPARENTHESIS);
   } else {
     syntax_error_unexpected_symbol();
+
+    // we must allocate an additional temporary
+    load_integer(0);
 
     type = UINT64_T;
   }
@@ -7723,12 +7740,12 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
           return 0;
         }
 
-        // WORDSIZE may be less than sizeof(uint64_t)
-        j = i % sizeof(uint64_t);
+        j = i;
 
         // check if string ends in the current word
-        while (j - i % sizeof(uint64_t) < WORDSIZE) {
-          if (load_character((char*) ((uint64_t*) s + i / sizeof(uint64_t)), j) == 0)
+        // WORDSIZE may be less than sizeof(uint64_t)
+        while (j < i + WORDSIZE) {
+          if (load_character(s, j) == 0)
             return 1;
 
           j = j + 1;
