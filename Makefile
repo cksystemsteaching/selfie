@@ -50,10 +50,10 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
+.PHONY: self self-self 64-to-32-bit whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools
-all: self self-self whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
+all: self self-self 64-to-32-bit whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
 
 # Self-compile selfie
 self: selfie
@@ -62,6 +62,12 @@ self: selfie
 # Self-self-compile selfie and check fixed point of self-compilation
 self-self: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	diff -q selfie1.m selfie2.m
+	diff -q selfie1.s selfie2.s
+
+# Self-self-compile selfie from 64-bit system to 32-bit target and check fixed point of self-compilation
+64-to-32-bit: selfie
+	./selfie -m32 -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
