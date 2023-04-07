@@ -5163,8 +5163,28 @@ Multidimensional arrays in C are stored in memory in *row-major* order, in contr
 ./grader/self.py struct-declaration
 ```
 
+```c
+struct list_node {
+  struct list_node* next_node;
+  uint64_t payload;
+};
+
+struct list_node* my_list;
+
+struct list_node* allocate_list_node() {
+  return malloc(8 + 8);
+}
+```
+
 ```bash
 ./grader/self.py struct-execution
+```
+
+```c
+void initialize_list_node(struct list_node* node) {
+  node->next_node = (struct list_node*) 0;
+  node->payload = 42;
+}
 ```
 
 ### Libraries
