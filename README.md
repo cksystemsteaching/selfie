@@ -5134,7 +5134,7 @@ The code does essentially the same as the code in the previous example with loca
 
 > Call-by-value versus call-by-reference
 
-Ultimately, the larger issue is that procedure calls in C, contrary to common belief, are *call-by-value* only. In particular, there is no implicit support of *call-by-reference* in C, as opposed to Java, for example. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference means that the addresses of those values in memory are passed, not the values, enabling side effects beyond the scope of the callee. However, this also means that call-by-reference can in fact be done in C but only explicitly by passing pointers. So, after all, C can do both, even with structs, as we see below, but still not with arrays. Call-by-value of arrays in C is effectively always call-by-reference simply because there is no way in C to refer to an entire array as is! However, this might be a good thing because arrays can be quite large. It is nevertheless a common mistake by inexperienced developers using languages other than C to pass large data structures unnecessarily call-by-value often causing massive temporal and spatial overhead. Speaking of which, C also supports multidimensional arrays. The next exercise is about those:
+Ultimately, the larger issue is that procedure calls in C, contrary to common belief, are *call-by-value* only. In particular, there is no implicit support of *call-by-reference* in C, as opposed to Java, for example. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference means that the addresses of those values in memory are passed, not the values, enabling side effects beyond the scope of the callee. However, this also means that call-by-reference can in fact be done in C but only explicitly by passing pointers. So, after all, C can do both, even with structs, as we see below, but still not with arrays. Call-by-value of arrays in C is effectively always call-by-reference simply because there is no way in C to refer to an entire array as is, that is, as value or better *by-value*! In other words, arrays in C can only be referred to *by-reference*. However, this might be a good thing because arrays can be quite large. It is nevertheless a common mistake by inexperienced developers using languages other than C to pass large data structures unnecessarily by-value often causing massive temporal and spatial overhead. Speaking of which, C also supports multidimensional arrays. The next exercise is about those:
 
 ```bash
 ./grader/self.py array-multidimensional
@@ -5186,7 +5186,7 @@ The code declares a new type called `list_node` which is a struct with two field
 
 Conversely, parsing a struct declaration only results in a new symbol table entry that represents the struct as type. For this purpose, you need to extend symbol table entries accordingly. In particular, the actual field structure only needs to be represented to facilitate code generation for field access. Hint: you may reuse symbol table entries as representation of fields.
 
-Most importantly, type declarations and hence struct declarations do not result in any code generation, and also not in any memory allocation! This only happens when declaring a variable of type `struct`. However, to keep things simple, the exercise only involves support of variables, formal parameters, and return values of procedures as pointers to structs, not structs! The downside is that memory for structs can then only be allocated on the heap, not in the data segment and not on the call stack. Consider the following example:
+Most importantly, type declarations and hence struct declarations do not result in any code generation, and also not in any memory allocation! This only happens when declaring a variable of type `struct`. However, to keep things simple, the exercise only involves support of fields, variables, formal parameters, and return values of procedures as pointers to structs, not as structs as is! This means that you only need to support referring to structs by-reference, not by-value, similar to arrays. The downside is that memory for structs can then only be allocated on the heap, not in the data segment and not on the call stack. Another simplification is that support of fields as arrays is also not necessary. Consider the following example:
 
 ```c
 struct list_node* my_list;
@@ -5198,13 +5198,15 @@ struct list_node* allocate_list_node() {
 }
 ```
 
-The code declares a global variable `my_list` of type pointer to `list_node`, and a procedure `allocate_list_node` whose return value is of type pointer to `list_node` as well. Using the properly enhanced `sizeof` operator, the procedure allocates memory on the heap using `malloc` that fits a single instance of a `list_node`, and then returns a pointer to that instance in memory.
+The code declares a global variable `my_list` of type pointer to `list_node`, and defines a procedure `allocate_list_node` whose return value is of type pointer to `list_node` as well. Using the properly enhanced `sizeof` operator, the procedure allocates memory on the heap using `malloc` that fits a single `list_node`, or better a single *instance* of a `list_node`, and then returns a pointer to that instance in memory.
 
-The final exercise in this chapter is on generating code for accessing struct fields.
+The final exercise in this chapter is on generating code for accessing struct fields. Invoke the autograder as follows:
 
 ```bash
 ./grader/self.py struct-execution
 ```
+
+In C, struct fields are accessed by two different operators: the arrow operator `->`, applied to a pointer to a struct, and the dot operator `.`, applied to a struct as is. Since we skipped support of structs as is, you only need to worry about support of the arrow operator. Consider the following example:
 
 ```c
 void initialize_list_node(struct list_node* node) {
@@ -5212,6 +5214,20 @@ void initialize_list_node(struct list_node* node) {
   node->payload = 42;
 }
 ```
+
+The code defines a procedure `initialize_list_node` which, given a pointer to an instance of a `list_node`, or simply given a `list_node` by-reference, initializes the `next_node` field with a null pointer and the `payload` field with the value `42`. Code generation for field access through the `->` operator is simpler than for array access through the `[]` operators. The reason is that the offset of a field in memory relative to the beginning of a struct is determined at compile time, in fact while parsing the declaration of the struct. By convention in C, the offset of a given field is the sum of the sizes of the fields in memory that appear before the given field in the struct. Just keep track of those offsets in the symbol table entries reused for fields.
+
+> Field access versus array access
+
+At runtime, field access is generally faster than array access, unless the index identifying an array element is a constant. In that case, the offset of the array element in memory relative to the beginning of an array is also determined at compile time, similar to the offsets of fields. Modern production compilers utilize constant folding to increase the chances of identifying array indexes as constant.
+
+> Structs versus classes
+
+Students often ask me what the counterparts of structs and struct fields are in programming languages other than C. With Java and Python, for example, a *class* without any *methods* and *static variables* corresponds to a struct in C, and an *instance variable* of such a class corresponds to a struct field in C. Interestingly, Java and Python only support referring to an *instance* of a class by-reference, not the instance as is by-value, similar to the restrictions in our exercises on structs. Ignoring scoping of methods and variables, there is also an analogy in C for methods and static variables in Java and Python. A method corresponds to a procedure in C, and a static variable corresponds to a global variable in C. Here is the surprise: once I mention those analogies, students which typically have a background in Java or Python but not C often understand, for the first time, what Java and Python classes actually are, confirming my suspicion that programming education, after all these years, still cannot ignore programming language implementation.
+
+> Object-oriented programming
+
+The discussion usually continues with questions about what *object-oriented programming* is.
 
 ### Libraries
 
