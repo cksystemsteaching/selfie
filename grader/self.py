@@ -379,15 +379,15 @@ assignment_lazy_evaluation = Assignment('lazy-evaluation', 'Compiler', 'logical'
 assignment_array = Assignment('array', 'Compiler', 'array',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array',
            check_array)
+assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
+           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
+           check_multidimensional_array, parent = assignment_array)
 assignment_struct_declaration = Assignment('struct-declaration', 'Compiler', 'struct',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-declaration',
            check_struct_declaration)
 assignment_struct_execution = Assignment('struct-execution', 'Compiler', 'struct',
            REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-struct-execution',
            check_struct_execution, parent = assignment_struct_declaration)
-assignment_multidimensional_array = Assignment('array-multidimensional', 'Compiler', 'array',
-           REPO_BLOB_BASE_URI + 'grader/compiler-assignments.md#assignment-array-multidimensional',
-           check_multidimensional_array, parent = assignment_array)
 assignment_assembler_parser = Assignment('assembler-parser', 'Systems', 'assembler',
            REPO_BLOB_BASE_URI + 'grader/systems-assignments.md#assignment-assembler-parser',
            check_assembler_parser)
@@ -426,9 +426,9 @@ assignments: List[Assignment] = [
     assignment_for_loop,
     assignment_lazy_evaluation,
     assignment_array,
+    assignment_multidimensional_array,
     assignment_struct_declaration,
     assignment_struct_execution,
-    assignment_multidimensional_array,
     assignment_assembler_parser,
     assignment_self_assemblation,
     assignment_processes,
