@@ -11921,6 +11921,8 @@ uint64_t selfie(uint64_t extras) {
 
 void experimental_features() {
   if (string_compare(argument, "-m32")) {
+    // TODO: hypster support
+    // involves caching 32-bit pages tables
     IS64BITTARGET = 0;
 
     init_target();
