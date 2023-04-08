@@ -5091,7 +5091,7 @@ We are finally prepared for advanced exercises in the design and implementation 
 ./grader/self.py array
 ```
 
-In C, an *array* is essentially a pointer to a contiguous block of memory that is accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
+In C, an *array* is essentially a pointer to a contiguous block of memory that is evenly partitioned into *array elements* all of the same type that are accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
 
 ```c
 uint64_t a[2];
@@ -5167,24 +5167,40 @@ Multidimensional arrays in C are stored in memory in *row-major* order, in contr
 
 > Structs
 
+The two final exercises in this chapter are on some limited support of structs as they appear in C. The first exercise focuses on parsing struct declarations and constructing proper representations in the symbol table. Invoke the autograder as follows:
+
 ```bash
 ./grader/self.py struct-declaration
 ```
+
+In C, a *struct* essentially represents a contiguous block of memory that is partitioned into *struct fields*, each of a possibly different type and size, that are accessed via a unique *field name*. A struct declaration begins with the keyword `struct` followed by an identifier that provides a unique name for the struct. A new feature that we have not seen before is that struct declarations are *type declarations*, unlike variable or procedure declarations. The name of a struct therefore identifies a type, not a variable or a procedure. Consider the following example:
 
 ```c
 struct list_node {
   struct list_node* next_node;
   uint64_t payload;
 };
+```
 
+The code declares a new type called `list_node` which is a struct with two fields. The field `next_node` is of type pointer to a `list_node`. The field `payload` is of type `uint64_t`. Yes, this is a type that describes the nodes of a singly-linked list. A proper implementation of symbol table entries in C would use such a struct.
+
+Conversely, parsing a struct declaration only results in a new symbol table entry that represents the struct as type. For this purpose, you need to extend symbol table entries accordingly. In particular, the actual field structure only needs to be represented to facilitate code generation for field access. Hint: you may reuse symbol table entries as representation of fields.
+
+Most importantly, type declarations and hence struct declarations do not result in any code generation, and also not in any memory allocation! This only happens when declaring a variable of type `struct`. However, to keep things simple, the exercise only involves support of variables, formal parameters, and return values of procedures as pointers to structs, not structs! The downside is that memory for structs can then only be allocated on the heap, not in the data segment and not on the call stack. Consider the following example:
+
+```c
 struct list_node* my_list;
+```
 
+```c
 struct list_node* allocate_list_node() {
   return malloc(sizeof(struct list_node));
 }
 ```
 
-mention sizeof
+The code declares a global variable `my_list` of type pointer to `list_node`, and a procedure `allocate_list_node` whose return value is of type pointer to `list_node` as well. Using the properly enhanced `sizeof` operator, the procedure allocates memory on the heap using `malloc` that fits a single instance of a `list_node`, and then returns a pointer to that instance in memory.
+
+The final exercise in this chapter is on generating code for accessing struct fields.
 
 ```bash
 ./grader/self.py struct-execution
