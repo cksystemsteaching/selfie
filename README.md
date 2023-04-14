@@ -5086,54 +5086,55 @@ return    = "return" [ expression ] .
 ```
 
 ```c
-uint64_t x = 42;
+int f = 1;
+int n = 7;
 
-void count() {
-  while (x > 0)
-    x = x - 1;
+void factorial() {
+  while (n > 1) {
+    f = f * n;
+
+    n = n - 1;
+  }
 }
 
 uint64_t main() {
-  count();
+  factorial();
 
-  return x;
+  return f;
 }
 ```
 
 ```c
-void count() {
-  if (x > 0) {
-    x = x - 1;
+void factorial() {
+  if (n > 1) {
+    f = f * n;
 
-    count();
+    n = n - 1;
+
+    factorial();
   }
 }
 ```
 
 ```c
-uint64_t x = 42;
-
-uint64_t count(uint64_t x) {
-  if (x > 0)
-    return count(x - 1);
+uint64_t factorial(uint64_t n) {
+  if (n > 1)
+    return n * factorial(n - 1);
   else
-    return x;
+    return 1;
 }
 
 uint64_t main() {
-  x = count(x);
-
-  return x;
-}
+  return factorial(7);
 ```
 
 ```c
 uint64_t main() {
-  uint64_t x;
+  uint64_t f;
 
-  x = count(42);
+  f = factorial(7);
 
-  return x;
+  return f;
 }
 ```
 
