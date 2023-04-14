@@ -5086,8 +5086,8 @@ return    = "return" [ expression ] .
 ```
 
 ```c
-int f = 1;
-int n = 7;
+uint64_t f = 1;
+uint64_t n = 4;
 
 void factorial() {
   while (n > 1) {
@@ -5117,6 +5117,24 @@ void factorial() {
 ```
 
 ```c
+uint64_t f = 1;
+
+void factorial(uint64_t n) {
+  if (n > 1) {
+    f = f * n;
+
+    factorial(n - 1);
+  }
+}
+
+uint64_t main() {
+  factorial(4);
+
+  return f;
+}
+```
+
+```c
 uint64_t factorial(uint64_t n) {
   if (n > 1)
     return n * factorial(n - 1);
@@ -5125,14 +5143,14 @@ uint64_t factorial(uint64_t n) {
 }
 
 uint64_t main() {
-  return factorial(7);
+  return factorial(4);
 ```
 
 ```c
 uint64_t main() {
   uint64_t f;
 
-  f = factorial(7);
+  f = factorial(4);
 
   return f;
 }
