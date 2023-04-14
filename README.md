@@ -5076,6 +5076,67 @@ work in progress
 
 procedure declarations and definitions vs calls and returns
 
+```ebnf
+procedure = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
+            ( ";" | "{" { variable ";" } { statement } "}" ) .
+
+call      = identifier "(" [ expression { "," expression } ] ")" .
+
+return    = "return" [ expression ] .
+```
+
+```c
+uint64_t x = 42;
+
+void count() {
+  while (x > 0)
+    x = x - 1;
+}
+
+uint64_t main() {
+  count();
+
+  return x;
+}
+```
+
+```c
+void count() {
+  if (x > 0) {
+    x = x - 1;
+
+    count();
+  }
+}
+```
+
+```c
+uint64_t x = 42;
+
+uint64_t count(uint64_t x) {
+  if (x > 0)
+    return count(x - 1);
+  else
+    return x;
+}
+
+uint64_t main() {
+  x = count(x);
+
+  return x;
+}
+```
+
+```c
+uint64_t main() {
+  uint64_t x;
+
+  x = count(42);
+
+  return x;
+}
+```
+
 control flow: recursion, iteration
 data flow: stack allocator
 
