@@ -340,9 +340,9 @@ Selfie responds with quite a bit of text but just look for `double.c exiting wit
 
 There are a number of important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. The code of the procedure is in between curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`.
 
-> Procedures are defined once but may be called many times
+> Procedures are defined exactly once but may be used in procedure calls many times
 
-Importantly, there can only be one procedure definition per procedure (name) but as many procedure calls of the same procedure as you like. Makes sense? Okay, then let us try to change the definition or in fact implementation of `double`:
+Procedure definitions must be uniquely identified, say, by name, as in C\*, but can then be used in procedure calls as many times as you like from anywhere in the code. Makes sense? Okay, then let us try to change the definition or in fact implementation of `double`:
 
 ```c
 int double(int n) {
@@ -416,7 +416,7 @@ In fact, *after* the assignment is done, evaluating `c + 1` again would result i
 
 > Imperative programming: do that and then do that
 
-The presence of assignments in a programming language indicates that the language supports a *programming paradigm* called *imperative programming* in which a computer is told what to do in a sequence of statements, especially assignments, that are in a *before-and-after* relationship. The `count` procedure is our first example of such a program.
+The presence of assignments in a programming language indicates that the language supports a *programming paradigm* called *imperative programming* in which a computer is told what to do in a sequence of statements, especially assignments, that are in a *before-and-after* relationship. Doing so in procedures is a form of imperative programming called *procedural programming*. The `count` procedure is our first example of an imperative and even procedural program.
 
 > Iteration: do that again and again
 
@@ -483,7 +483,7 @@ This time the code is even in English a lot shorter: define a procedure `factori
 
 > Functional programming: just tell me what to do but not how
 
-In contrast to imperative programming, just using procedures without assignments follows a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials and actually appears not to say how to compute factorials.
+Procedural programming without imperative programming, that is, programming procedures without assignments, follows a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the above code almost looks like the mathematical definition of factorials and actually appears not to say how to compute factorials.
 
 > Recursion: solve a problem by assuming there is a partial solution
 
