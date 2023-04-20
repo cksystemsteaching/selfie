@@ -5248,6 +5248,71 @@ uint64_t main() {
 }
 ```
 
+```asm
+0x140(~4): addi sp,sp,-8
+0x144(~4): sd ra,0(sp)
+0x148(~4): addi sp,sp,-8
+0x14C(~4): sd s0,0(sp)
+0x150(~4): addi s0,sp,0
+
+0x154(~4): ld t0,16(s0)
+0x158(~4): addi t1,zero,1
+0x15C(~4): sltu t0,t1,t0
+0x160(~4): beq t0,zero,12[0x190]
+0x164(~5): ld t0,-16(gp)
+0x168(~5): ld t1,16(s0)
+0x16C(~5): mul t0,t0,t1
+0x170(~5): sd t0,-16(gp)
+0x174(~7): ld t0,16(s0)
+0x178(~7): addi t1,zero,1
+0x17C(~7): sub t0,t0,t1
+
+0x180(~7): addi sp,sp,-8
+0x184(~7): sd t0,0(sp)
+
+0x188(~7): jal ra,-18[0x140]
+
+0x18C(~7): addi a0,zero,0
+
+0x190(~9): addi sp,s0,0
+0x194(~9): ld s0,0(sp)
+0x198(~9): addi sp,sp,8
+0x19C(~9): ld ra,0(sp)
+0x1A0(~9): addi sp,sp,16
+
+0x1A4(~9): jalr zero,0(ra)
+```
+
+```asm
+0x1A8(~12): addi sp,sp,-8
+0x1AC(~12): sd ra,0(sp)
+0x1B0(~12): addi sp,sp,-8
+0x1B4(~12): sd s0,0(sp)
+0x1B8(~12): addi s0,sp,0
+
+0x1BC(~12): addi t0,zero,4
+
+0x1C0(~12): addi sp,sp,-8
+0x1C4(~12): sd t0,0(sp)
+
+0x1C8(~12): jal ra,-34[0x140]
+
+0x1CC(~12): addi a0,zero,0
+
+0x1D0(~14): ld t0,-16(gp)
+0x1D4(~14): addi a0,t0,0
+
+0x1D8(~14): jal zero,1[0x1DC]
+
+0x1DC(~15): addi sp,s0,0
+0x1E0(~15): ld s0,0(sp)
+0x1E4(~15): addi sp,sp,8
+0x1E8(~15): ld ra,0(sp)
+0x1EC(~15): addi sp,sp,8
+
+0x1F0(~15): jalr zero,0(ra)
+```
+
 ```c
 uint64_t factorial(uint64_t n) {
   if (n > 1)
@@ -5259,6 +5324,83 @@ uint64_t factorial(uint64_t n) {
 uint64_t main() {
   return factorial(4);
 }
+```
+
+```asm
+0x140(~2): addi sp,sp,-8
+0x144(~2): sd ra,0(sp)
+0x148(~2): addi sp,sp,-8
+0x14C(~2): sd s0,0(sp)
+0x150(~2): addi s0,sp,0
+
+0x154(~2): ld t0,16(s0)
+0x158(~2): addi t1,zero,1
+0x15C(~2): sltu t0,t1,t0
+0x160(~2): beq t0,zero,18[0x1A8]
+0x164(~3): ld t0,16(s0)
+
+0x168(~3): addi sp,sp,-8
+0x16C(~3): sd t0,0(sp)
+
+0x170(~3): ld t0,16(s0)
+0x174(~3): addi t1,zero,1
+0x178(~3): sub t0,t0,t1
+
+0x17C(~3): addi sp,sp,-8
+0x180(~3): sd t0,0(sp)
+
+0x184(~3): jal ra,-17[0x140]
+
+0x188(~3): ld t0,0(sp)
+0x18C(~3): addi sp,sp,8
+
+0x190(~3): addi t1,a0,0
+
+0x194(~3): addi a0,zero,0
+
+0x198(~3): mul t0,t0,t1
+
+0x19C(~3): addi a0,t0,0
+0x1A0(~3): jal zero,5[0x1B4]
+
+0x1A4(~5): jal zero,4[0x1B4]
+
+0x1A8(~5): addi t0,zero,1
+0x1AC(~5): addi a0,t0,0
+0x1B0(~5): jal zero,1[0x1B4]
+
+0x1B4(~6): addi sp,s0,0
+0x1B8(~6): ld s0,0(sp)
+0x1BC(~6): addi sp,sp,8
+0x1C0(~6): ld ra,0(sp)
+0x1C4(~6): addi sp,sp,16
+
+0x1C8(~6): jalr zero,0(ra)
+
+0x1CC(~9): addi sp,sp,-8
+0x1D0(~9): sd ra,0(sp)
+0x1D4(~9): addi sp,sp,-8
+0x1D8(~9): sd s0,0(sp)
+0x1DC(~9): addi s0,sp,0
+
+0x1E0(~9): addi t0,zero,4
+0x1E4(~9): addi sp,sp,-8
+0x1E8(~9): sd t0,0(sp)
+
+0x1EC(~9): jal ra,-43[0x140]
+
+0x1F0(~9): addi t0,a0,0
+0x1F4(~9): addi a0,zero,0
+0x1F8(~9): addi a0,t0,0
+0x1FC(~9): jal zero,1[0x200]
+
+0x200(~10): addi sp,s0,0
+0x204(~10): ld s0,0(sp)
+0x208(~10): addi sp,sp,8
+0x20C(~10): ld ra,0(sp)
+0x210(~10): addi sp,sp,8
+
+0x214(~10): jalr zero,0(ra)
 ```
 
 control flow: recursion, iteration
