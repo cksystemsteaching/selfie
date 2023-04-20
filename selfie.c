@@ -5103,8 +5103,13 @@ uint64_t compile_factor() {
 
       talloc();
 
-      // retrieve return value
-      emit_addi(current_temporary(), REG_A0, 0);
+      if (type != VOID_T)
+        // retrieve return value
+        emit_addi(current_temporary(), REG_A0, 0);
+      else
+        // TODO: check if used as actual parameter
+        // for now just load deterministic value
+        emit_addi(current_temporary(), REG_ZR, 0);
     }
   } else if (symbol == SYM_LPARENTHESIS) {
     // "(" expression ")"
@@ -5660,30 +5665,24 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     return_type = 0;
 
-    if (symbol == SYM_RBRACE) {
-      // TODO: warn if reachable with non-void return type (missing return)
-
+    if (type != VOID_T)
+      // TODO: warn if reachable (missing return)
       // reset return register
       emit_addi(REG_A0, REG_ZR, 0);
 
-      // all return statements jump here
-      fixlink_relative(return_jumps, code_size);
+    // all return statements jump here
+    fixlink_relative(return_jumps, code_size);
 
-      return_jumps = 0;
+    return_jumps = 0;
 
-      if (is_variadic)
-        procedure_epilogue(number_of_local_variable_bytes,
-          -number_of_formal_parameters * WORDSIZE);
-      else
-        procedure_epilogue(number_of_local_variable_bytes,
-          number_of_formal_parameters * WORDSIZE);
+    if (is_variadic)
+      procedure_epilogue(number_of_local_variable_bytes,
+        -number_of_formal_parameters * WORDSIZE);
+    else
+      procedure_epilogue(number_of_local_variable_bytes,
+        number_of_formal_parameters * WORDSIZE);
 
-      get_symbol();
-    } else {
-      syntax_error_expected_symbol(SYM_RBRACE);
-
-      exit(EXITCODE_PARSERERROR);
-    }
+    get_expected_symbol(SYM_RBRACE);
   } else
     syntax_error_unexpected_symbol();
 
@@ -5893,8 +5892,9 @@ void compile_return() {
     if (type != return_type)
       type_warning(return_type, type);
 
-    // save value of expression in return register
-    emit_addi(REG_A0, current_temporary(), 0);
+    if (return_type != VOID_T)
+      // save value of expression in return register
+      emit_addi(REG_A0, current_temporary(), 0);
 
     tfree(1);
   } else if (return_type != VOID_T) {
@@ -6048,8 +6048,8 @@ void emit_program_entry() {
 
   // allocate memory for machine initialization code
 
-  // emit exactly 22 NOPs with source code line 1
-  while (i < 22) {
+  // emit exactly 21 NOPs with source code line 1
+  while (i < 21) {
     emit_nop();
 
     i = i + 1;
@@ -6088,7 +6088,7 @@ void emit_bootstrapping() {
   saved_code_size = code_size;
   code_size       = 0;
 
-  // assert: emitting no more than 22 instructions, see emit_program_entry
+  // assert: emitting no more than 21 instructions, see emit_program_entry
 
   if (report_undefined_procedures()) {
     // if there are undefined procedures just exit
@@ -6129,9 +6129,6 @@ void emit_bootstrapping() {
 
     // store word-aligned program break in _bump
     emit_store(get_scope(entry), get_address(entry), REG_A0);
-
-    // reset return register to initial return value
-    emit_addi(REG_A0, REG_ZR, 0);
 
     // assert: stack is set up with argv pointer still missing
 
