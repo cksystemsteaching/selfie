@@ -730,7 +730,7 @@ char*    bootstrap_non_0_boot_level_procedures(char* procedure);
 uint64_t is_boot_level_0_only_procedure(char* procedure);
 
 void procedure_prologue(uint64_t number_of_local_variable_bytes);
-void procedure_epilogue(uint64_t number_of_parameter_bytes);
+void procedure_epilogue(uint64_t number_of_local_variable_bytes, uint64_t number_of_parameter_bytes);
 
 void compile_procedure(char* procedure, uint64_t type);
 
@@ -5490,9 +5490,10 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   }
 }
 
-void procedure_epilogue(uint64_t number_of_parameter_bytes) {
-  // deallocate memory for callee's frame pointer and local variables
-  emit_addi(REG_SP, REG_S0, 0);
+void procedure_epilogue(uint64_t number_of_local_variable_bytes, uint64_t number_of_parameter_bytes) {
+  if (number_of_local_variable_bytes > 0)
+    // deallocate memory for local variables
+    emit_addi(REG_SP, REG_S0, 0);
 
   // restore caller's frame pointer
   emit_load(REG_S0, REG_SP, 0);
@@ -5675,9 +5676,9 @@ void compile_procedure(char* procedure, uint64_t type) {
       return_jumps = 0;
 
       if (is_variadic)
-        procedure_epilogue(-number_of_formal_parameters * WORDSIZE);
+        procedure_epilogue(number_of_local_variable_bytes, -number_of_formal_parameters * WORDSIZE);
       else
-        procedure_epilogue(number_of_formal_parameters * WORDSIZE);
+        procedure_epilogue(number_of_local_variable_bytes, number_of_formal_parameters * WORDSIZE);
 
       get_symbol();
     } else {
