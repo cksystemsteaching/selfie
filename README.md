@@ -5089,6 +5089,14 @@ call      = identifier "(" [ expression { "," expression } ] ")" .
 return    = "return" [ expression ] .
 ```
 
+The grammar rule for the non-terminal `procedure` defines the syntax of procedure declarations with a semicolon `;` right after the procedure signature, and procedure definitions with a procedure body enclosed in a left brace `{` and a right brace `}`, instead of a semicolon. The `type` non-terminal and the `void` keyword define the return type of a procedure, the `identifier` non-terminal defines the name of a procedure. The following optional sequence of `variable` non-terminals defines the formal parameters of a procedure. The optional ellipsis symbol `...` defines a procedure as *variadic* meaning that the procedure may be invoked with more actual parameters than formal parameters and in particular with a different number of actual parameters in different procedure calls. The procedure `printf`, which is widely used in C and its derivates, is an example of a variadic procedure. We explain variadic procedures further below. The optional sequence of `variable` non-terminals in the procedure body defines the local variables of a procedure. The sequence of `statement` non-terminals defines the implementation of a procedure.
+
+The grammar rule for the non-terminal `call` defines the syntax of a call to a procedure with the name given by the `identifier` non-terminal. The optional sequence of `expression` non-terminals defines the actual parameters of a procedure call. The type of each expression, or more precisely the type of the value to which each expression evaluates, should be compatible with the type of the formal parameter of the called procedure that appears at the same position in the sequence of formal parameters as the position of the expression in the sequence of expressions, that is, actual parameters.
+
+The grammar rule for the non-terminal `return` defines the syntax of `return` statements. The optional `expression` non-terminal defines an expression that evaluates to the return value of a procedure. The type of the expression, or again more precisely the type of the value to which the expression evaluates, should be compatible with the return type of the procedure from which the `return` statement returns. This means that `return` statements returning from procedures with `void` return type should not use the optional `expression`.
+
+Semantics...
+
 ```c
 uint64_t f = 1;
 uint64_t n = 4;
