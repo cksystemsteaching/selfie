@@ -5108,6 +5108,54 @@ uint64_t main() {
 }
 ```
 
+```asm
+0x140(~5) - 0x150(~5): // prologue removed
+
+0x154(~5): ld t0,-24(gp)
+0x158(~5): addi t1,zero,1
+0x15C(~5): sltu t0,t1,t0
+0x160(~5): beq t0,zero,10[0x188]
+0x164(~6): ld t0,-16(gp)
+0x168(~6): ld t1,-24(gp)
+0x16C(~6): mul t0,t0,t1
+0x170(~6): sd t0,-16(gp)
+0x174(~8): ld t0,-24(gp)
+0x178(~8): addi t1,zero,1
+0x17C(~8): sub t0,t0,t1
+0x180(~8): sd t0,-24(gp)
+0x184(~10): jal zero,-12[0x154]
+
+0x188(~10) - 0x198(~10): // epilogue removed
+
+0x19C(~10): jalr zero,0(ra)
+```
+
+```asm
+0x1A0(~13): addi sp,sp,-8
+0x1A4(~13): sd ra,0(sp)
+
+0x1A8(~13): addi sp,sp,-8
+0x1AC(~13): sd s0,0(sp)
+0x1B0(~13): addi s0,sp,0
+
+0x1B4(~13): jal ra,-29[0x140]
+
+0x1B8(~13): addi a0,zero,0
+0x1BC(~15): ld t0,-16(gp)
+
+0x1C0(~15): addi a0,t0,0
+0x1C4(~15): jal zero,1[0x1C8]
+
+0x1C8(~16): addi sp,s0,0
+0x1CC(~16): ld s0,0(sp)
+0x1D0(~16): addi sp,sp,8
+
+0x1D4(~16): ld ra,0(sp)
+0x1D8(~16): addi sp,sp,8
+
+0x1DC(~16): jalr zero,0(ra)
+```
+
 ```c
 void factorial() {
   if (n > 1) {
@@ -5118,6 +5166,68 @@ void factorial() {
     factorial();
   }
 }
+```
+
+```asm
+0x140(~5): addi sp,sp,-8
+0x144(~5): sd ra,0(sp)
+
+0x148(~5): addi sp,sp,-8
+0x14C(~5): sd s0,0(sp)
+0x150(~5): addi s0,sp,0
+
+0x154(~5): ld t0,-24(gp)
+0x158(~5): addi t1,zero,1
+0x15C(~5): sltu t0,t1,t0
+0x160(~5): beq t0,zero,11[0x18C]
+0x164(~6): ld t0,-16(gp)
+0x168(~6): ld t1,-24(gp)
+0x16C(~6): mul t0,t0,t1
+0x170(~6): sd t0,-16(gp)
+0x174(~8): ld t0,-24(gp)
+0x178(~8): addi t1,zero,1
+0x17C(~8): sub t0,t0,t1
+0x180(~8): sd t0,-24(gp)
+0x184(~10): jal ra,-17[0x140]
+
+0x188(~10): addi a0,zero,0
+
+0x18C(~12): addi sp,s0,0
+0x190(~12): ld s0,0(sp)
+0x194(~12): addi sp,sp,8
+
+0x198(~12): ld ra,0(sp)
+0x19C(~12): addi sp,sp,8
+
+0x1A0(~12): jalr zero,0(ra)
+```
+
+```asm
+0x1A4(~15): addi sp,sp,-8
+0x1A8(~15): sd ra,0(sp)
+
+0x1AC(~15): addi sp,sp,-8
+0x1B0(~15): sd s0,0(sp)
+0x1B4(~15): addi s0,sp,0
+
+
+0x1B8(~15): jal ra,-30[0x140]
+
+
+0x1BC(~15): addi a0,zero,0
+0x1C0(~17): ld t0,-16(gp)
+
+0x1C4(~17): addi a0,t0,0
+0x1C8(~17): jal zero,1[0x1CC]
+
+0x1CC(~18): addi sp,s0,0
+0x1D0(~18): ld s0,0(sp)
+0x1D4(~18): addi sp,sp,8
+
+0x1D8(~18): ld ra,0(sp)
+0x1DC(~18): addi sp,sp,8
+
+0x1E0(~18): jalr zero,0(ra)
 ```
 
 ```c
@@ -5148,16 +5258,6 @@ uint64_t factorial(uint64_t n) {
 
 uint64_t main() {
   return factorial(4);
-}
-```
-
-```c
-uint64_t main() {
-  uint64_t f;
-
-  f = factorial(4);
-
-  return f;
 }
 ```
 
