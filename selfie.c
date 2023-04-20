@@ -4587,14 +4587,9 @@ void compile_statement() {
     if (symbol != SYM_LPARENTHESIS)
       // assignment: identifier ...
       compile_assignment(variable_or_procedure);
-    else {
+    else
       // procedure call: identifier "(" ... ")"
       compile_call(variable_or_procedure);
-
-      // reset return register to initial return value
-      // for missing return expressions
-      emit_addi(REG_A0, REG_ZR, 0);
-    }
 
     get_expected_symbol(SYM_SEMICOLON);
   } else if (symbol == SYM_IF)
@@ -5110,10 +5105,6 @@ uint64_t compile_factor() {
 
       // retrieve return value
       emit_addi(current_temporary(), REG_A0, 0);
-
-      // reset return register to initial return value
-      // for missing return expressions
-      emit_addi(REG_A0, REG_ZR, 0);
     }
   } else if (symbol == SYM_LPARENTHESIS) {
     // "(" expression ")"
@@ -5670,15 +5661,22 @@ void compile_procedure(char* procedure, uint64_t type) {
     return_type = 0;
 
     if (symbol == SYM_RBRACE) {
+      // TODO: warn if reachable with non-void return type (missing return)
+
+      // reset return register
+      emit_addi(REG_A0, REG_ZR, 0);
+
       // all return statements jump here
       fixlink_relative(return_jumps, code_size);
 
       return_jumps = 0;
 
       if (is_variadic)
-        procedure_epilogue(number_of_local_variable_bytes, -number_of_formal_parameters * WORDSIZE);
+        procedure_epilogue(number_of_local_variable_bytes,
+          -number_of_formal_parameters * WORDSIZE);
       else
-        procedure_epilogue(number_of_local_variable_bytes, number_of_formal_parameters * WORDSIZE);
+        procedure_epilogue(number_of_local_variable_bytes,
+          number_of_formal_parameters * WORDSIZE);
 
       get_symbol();
     } else {
@@ -5899,8 +5897,12 @@ void compile_return() {
     emit_addi(REG_A0, current_temporary(), 0);
 
     tfree(1);
-  } else if (return_type != VOID_T)
+  } else if (return_type != VOID_T) {
     type_warning(return_type, VOID_T);
+
+    // reset return register
+    emit_addi(REG_A0, REG_ZR, 0);
+  }
 
   // jump to procedure epilogue through fixup chain using absolute address
   emit_jal(REG_ZR, return_jumps);
