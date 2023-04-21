@@ -5342,8 +5342,6 @@ uint64_t main() {
 0x1C0(~6): jalr zero,0(ra) // return from factorial
 ```
 
-
-
 ```asm
 0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
 0x1C8(~9): sd ra,0(sp)
@@ -5366,6 +5364,46 @@ uint64_t main() {
 0x204(~10): addi sp,sp,8
 
 0x208(~10): jalr zero,0(ra) // return from main
+```
+
+```c
+uint64_t main() {
+  uint64_t n;
+
+  n = 4;
+
+  return factorial(n);
+}
+```
+
+```asm
+0x1C4(~11): addi sp,sp,-8 // main prologue
+0x1C8(~11): sd ra,0(sp)
+0x1CC(~11): addi sp,sp,-8
+0x1D0(~11): sd s0,0(sp)
+0x1D4(~11): addi s0,sp,0
+0x1D8(~11): addi sp,sp,-8 // allocate one machine word for n on stack
+
+0x1DC(~11): addi t0,zero,4    // n = 4;
+0x1E0(~11): sd t0,-8(s0)
+
+0x1E4(~13): ld t0,-8(s0)      // return factorial(n);
+0x1E8(~13): addi sp,sp,-8
+0x1EC(~13): sd t0,0(sp)
+0x1F0(~13): jal ra,-45[0x13C]
+0x1F4(~13): addi t0,a0,0
+0x1F8(~13): addi a0,t0,0
+0x1FC(~13): jal zero,2[0x204]
+
+0x200(~14): addi a0,zero,0 // reset return value register a0, redundant
+
+0x204(~14): addi sp,s0,0 // main epilogue
+0x208(~14): ld s0,0(sp)
+0x20C(~14): addi sp,sp,8
+0x210(~14): ld ra,0(sp)
+0x214(~14): addi sp,sp,8
+
+0x218(~14): jalr zero,0(ra) // return from main
 ```
 
 control flow: recursion, iteration
