@@ -5246,9 +5246,9 @@ uint64_t main() {
 
 0x170(~7): ld t0,16(s0)          //   factorial(n - 1);
 0x174(~7): addi t1,zero,1
-0x178(~7): sub t0,t0,t1
+0x178(~7): sub t0,t0,t1          //   evaluate n - 1
 0x17C(~7): addi sp,sp,-8         //   allocate memory on stack
-0x180(~7): sd t0,0(sp)           //   store value of n - 1 on stack
+0x180(~7): sd t0,0(sp)           //   save n - 1 in register t0 on stack
 0x184(~7): jal ra,-18[0x13C]     // }
 
 // factorial epilogue:
@@ -5311,28 +5311,28 @@ uint64_t main() {
 0x15C(~2): beq t0,zero,17[0x1A0]
 
 0x160(~3): ld t0,16(s0)          //   return n * factorial(n - 1);
-0x164(~3): addi sp,sp,-8
-0x168(~3): sd t0,0(sp)           //   save register t0 on stack
+0x164(~3): addi sp,sp,-8         //   allocate one machine word on stack
+0x168(~3): sd t0,0(sp)           //   save n in register t0 on stack
 0x16C(~3): ld t0,16(s0)
 0x170(~3): addi t1,zero,1
 0x174(~3): sub t0,t0,t1
-0x178(~3): addi sp,sp,-8
-0x17C(~3): sd t0,0(sp)
-0x180(~3): jal ra,-17[0x13C]
-0x184(~3): ld t0,0(sp)
-0x188(~3): addi sp,sp,8
-0x18C(~3): addi t1,a0,0
-0x190(~3): mul t0,t0,t1
-0x194(~3): addi a0,t0,0
-0x198(~3): jal zero,6[0x1B0]
+0x178(~3): addi sp,sp,-8         //   allocate one machine word on stack
+0x17C(~3): sd t0,0(sp)           //   save n - 1 in register t0 on stack
+0x180(~3): jal ra,-17[0x13C]     //   call factorial(n - 1)
+0x184(~3): ld t0,0(sp)           //   restore n from stack into register t0
+0x188(~3): addi sp,sp,8          //   deallocate one machine word on stack
+0x18C(~3): addi t1,a0,0          //   retrieve return value of factorial(n - 1)
+0x190(~3): mul t0,t0,t1          //   evaluate n * factorial(n - 1)
+0x194(~3): addi a0,t0,0          //   store result in return value register a0
+0x198(~3): jal zero,6[0x1B0]     //   jump to epilogue
 
 0x19C(~5): jal zero,4[0x1AC]     // else
 
 0x1A0(~5): addi t0,zero,1        //   return 1;
-0x1A4(~5): addi a0,t0,0
-0x1A8(~5): jal zero,2[0x1B0]
+0x1A4(~5): addi a0,t0,0          //   store 1 in return value register a0
+0x1A8(~5): jal zero,2[0x1B0]     //   jump to epilogue
 
-0x1AC(~6): addi a0,zero,0
+0x1AC(~6): addi a0,zero,0 // reset return value register a0, redundant
 
 0x1B0(~6): ld s0,0(sp)   // factorial epilogue
 0x1B4(~6): addi sp,sp,8
@@ -5342,6 +5342,8 @@ uint64_t main() {
 0x1C0(~6): jalr zero,0(ra) // return from factorial
 ```
 
+
+
 ```asm
 0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
 0x1C8(~9): sd ra,0(sp)
@@ -5349,14 +5351,14 @@ uint64_t main() {
 0x1CC(~9) - 0x1D4(~9):   // redundant part of prologue hidden
 
 0x1D8(~9): addi t0,zero,4    // return factorial(4);
-0x1DC(~9): addi sp,sp,-8
-0x1E0(~9): sd t0,0(sp)
-0x1E4(~9): jal ra,-42[0x13C]
-0x1E8(~9): addi t0,a0,0
-0x1EC(~9): addi a0,t0,0
-0x1F0(~9): jal zero,2[0x1F8]
+0x1DC(~9): addi sp,sp,-8     // allocate one machine word on stack
+0x1E0(~9): sd t0,0(sp)       // save 4 on stack
+0x1E4(~9): jal ra,-42[0x13C] // call factorial(4)
+0x1E8(~9): addi t0,a0,0      // retrieve return value of factorial(4)
+0x1EC(~9): addi a0,t0,0      // store result in return value register a0
+0x1F0(~9): jal zero,2[0x1F8] // jump to epilogue
 
-0x1F4(~10): addi a0,zero,0
+0x1F4(~10): addi a0,zero,0 // reset return value register a0, redundant
 
 0x1F8(~10) - 0x1FC(~10): // redundant part of epilogue hidden
 
