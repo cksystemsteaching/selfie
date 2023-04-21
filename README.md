@@ -5117,51 +5117,52 @@ uint64_t main() {
 ```
 
 ```asm
-0x140(~5) - 0x150(~5): // prologue removed
+0x13C(~5) - 0x14C(~5): // factorial prologue hidden
 
-0x154(~5): ld t0,-24(gp)
-0x158(~5): addi t1,zero,1
-0x15C(~5): sltu t0,t1,t0
-0x160(~5): beq t0,zero,10[0x188]
-0x164(~6): ld t0,-16(gp)
-0x168(~6): ld t1,-24(gp)
-0x16C(~6): mul t0,t0,t1
-0x170(~6): sd t0,-16(gp)
-0x174(~8): ld t0,-24(gp)
-0x178(~8): addi t1,zero,1
-0x17C(~8): sub t0,t0,t1
-0x180(~8): sd t0,-24(gp)
-0x184(~10): jal zero,-12[0x154]
+0x150(~5): ld t0,-24(gp)         // while (n > 1) {
+0x154(~5): addi t1,zero,1
+0x158(~5): sltu t0,t1,t0
+0x15C(~5): beq t0,zero,10[0x184]
 
-0x188(~10) - 0x198(~10): // epilogue removed
+0x160(~6): ld t0,-16(gp)         //   f = f * n;
+0x164(~6): ld t1,-24(gp)
+0x168(~6): mul t0,t0,t1
+0x16C(~6): sd t0,-16(gp)
 
-0x19C(~10): jalr zero,0(ra)
+0x170(~8): ld t0,-24(gp)         //   n = n - 1;
+0x174(~8): addi t1,zero,1
+0x178(~8): sub t0,t0,t1
+0x17C(~8): sd t0,-24(gp)
+
+0x180(~10): jal zero,-12[0x150]  // }
+
+0x184(~10) - 0x190(~10): // factorial epilogue hidden
+
+0x194(~10): jalr zero,0(ra) // return from factorial
 ```
 
 ```asm
-0x1A0(~13): addi sp,sp,-8
-0x1A4(~13): sd ra,0(sp)
+// necessary part of main prologue:
+0x198(~13): addi sp,sp,-8 // allocate one machine word on stack
+0x19C(~13): sd ra,0(sp)   // save return address register ra on stack
 
-0x1A8(~13): addi sp,sp,-8
-0x1AC(~13): sd s0,0(sp)
-0x1B0(~13): addi s0,sp,0
+0x1A0(~13) - 0x1A8(~13):  // redundant part of prologue hidden
 
-0x1B4(~13): jal ra,-29[0x140]
+0x1AC(~13): jal ra,-28[0x13C] // factorial();
 
-0x1B8(~13): addi a0,zero,0
-0x1BC(~15): ld t0,-16(gp)
+0x1B0(~15): ld t0,-16(gp)     // return f;
+0x1B4(~15): addi a0,t0,0      // load f into return value register a0
+0x1B8(~15): jal zero,2[0x1C0] // skip resetting a0
 
-0x1C0(~15): addi a0,t0,0
-0x1C4(~15): jal zero,1[0x1C8]
+0x1BC(~16): addi a0,zero,0 // reset return value register a0, redundant
 
-0x1C8(~16): addi sp,s0,0
-0x1CC(~16): ld s0,0(sp)
-0x1D0(~16): addi sp,sp,8
+0x1C0(~16) - 0x1C4(~16): // redundant part of epilogue hidden
 
-0x1D4(~16): ld ra,0(sp)
-0x1D8(~16): addi sp,sp,8
+// necessary part of main epilogue:
+0x1C8(~16): ld ra,0(sp)  // restore return address register ra
+0x1CC(~16): addi sp,sp,8 // deallocate one machine word on stack
 
-0x1DC(~16): jalr zero,0(ra)
+0x1D0(~16): jalr zero,0(ra) // return from main
 ```
 
 ```c
@@ -5177,65 +5178,34 @@ void factorial() {
 ```
 
 ```asm
-0x140(~5): addi sp,sp,-8
-0x144(~5): sd ra,0(sp)
+0x13C(~5): addi sp,sp,-8 // necessary part of factorial prologue
+0x140(~5): sd ra,0(sp)
 
-0x148(~5): addi sp,sp,-8
-0x14C(~5): sd s0,0(sp)
-0x150(~5): addi s0,sp,0
+0x144(~5) - 0x14C(~5):   // redundant part of prologue hidden
 
-0x154(~5): ld t0,-24(gp)
-0x158(~5): addi t1,zero,1
-0x15C(~5): sltu t0,t1,t0
-0x160(~5): beq t0,zero,11[0x18C]
-0x164(~6): ld t0,-16(gp)
-0x168(~6): ld t1,-24(gp)
-0x16C(~6): mul t0,t0,t1
-0x170(~6): sd t0,-16(gp)
-0x174(~8): ld t0,-24(gp)
-0x178(~8): addi t1,zero,1
-0x17C(~8): sub t0,t0,t1
-0x180(~8): sd t0,-24(gp)
-0x184(~10): jal ra,-17[0x140]
+0x150(~5): ld t0,-24(gp)         // if (n > 1) {
+0x154(~5): addi t1,zero,1
+0x158(~5): sltu t0,t1,t0
+0x15C(~5): beq t0,zero,10[0x184]
 
-0x188(~10): addi a0,zero,0
+0x160(~6): ld t0,-16(gp)         //   f = f * n;
+0x164(~6): ld t1,-24(gp)
+0x168(~6): mul t0,t0,t1
+0x16C(~6): sd t0,-16(gp)
 
-0x18C(~12): addi sp,s0,0
-0x190(~12): ld s0,0(sp)
-0x194(~12): addi sp,sp,8
+0x170(~8): ld t0,-24(gp)         //   n = n - 1;
+0x174(~8): addi t1,zero,1
+0x178(~8): sub t0,t0,t1
+0x17C(~8): sd t0,-24(gp)
 
-0x198(~12): ld ra,0(sp)
-0x19C(~12): addi sp,sp,8
+0x180(~10): jal ra,-17[0x13C]    //   factorial(); }
 
-0x1A0(~12): jalr zero,0(ra)
-```
+0x184(~12) - 0x188(~12): // redundant part of epilogue hidden
 
-```asm
-0x1A4(~15): addi sp,sp,-8
-0x1A8(~15): sd ra,0(sp)
+0x18C(~12): ld ra,0(sp)  // necessary part of factorial epilogue
+0x190(~12): addi sp,sp,8
 
-0x1AC(~15): addi sp,sp,-8
-0x1B0(~15): sd s0,0(sp)
-0x1B4(~15): addi s0,sp,0
-
-
-0x1B8(~15): jal ra,-30[0x140]
-
-
-0x1BC(~15): addi a0,zero,0
-0x1C0(~17): ld t0,-16(gp)
-
-0x1C4(~17): addi a0,t0,0
-0x1C8(~17): jal zero,1[0x1CC]
-
-0x1CC(~18): addi sp,s0,0
-0x1D0(~18): ld s0,0(sp)
-0x1D4(~18): addi sp,sp,8
-
-0x1D8(~18): ld ra,0(sp)
-0x1DC(~18): addi sp,sp,8
-
-0x1E0(~18): jalr zero,0(ra)
+0x194(~12): jalr zero,0(ra) // return from factorial
 ```
 
 ```c
@@ -5257,68 +5227,62 @@ uint64_t main() {
 ```
 
 ```asm
-0x140(~4): addi sp,sp,-8
-0x144(~4): sd ra,0(sp)
-0x148(~4): addi sp,sp,-8
-0x14C(~4): sd s0,0(sp)
-0x150(~4): addi s0,sp,0
+// factorial prologue:
+0x13C(~4): addi sp,sp,-8 // allocate one machine word on stack
+0x140(~4): sd ra,0(sp)   // save return address register ra on stack
+0x144(~4): addi sp,sp,-8 // allocate one machine word on stack
+0x148(~4): sd s0,0(sp)   // save frame pointer s0 on stack
+0x14C(~4): addi s0,sp,0  // set frame pointer s0 to stack pointer sp
 
-0x154(~4): ld t0,16(s0)
-0x158(~4): addi t1,zero,1
-0x15C(~4): sltu t0,t1,t0
-0x160(~4): beq t0,zero,12[0x190]
-0x164(~5): ld t0,-16(gp)
-0x168(~5): ld t1,16(s0)
-0x16C(~5): mul t0,t0,t1
-0x170(~5): sd t0,-16(gp)
-0x174(~7): ld t0,16(s0)
-0x178(~7): addi t1,zero,1
-0x17C(~7): sub t0,t0,t1
+0x150(~4): ld t0,16(s0)          // if (n > 1) {
+0x154(~4): addi t1,zero,1
+0x158(~4): sltu t0,t1,t0
+0x15C(~4): beq t0,zero,11[0x188]
 
-0x180(~7): addi sp,sp,-8
-0x184(~7): sd t0,0(sp)
+0x160(~5): ld t0,-16(gp)         //   f = f * n;
+0x164(~5): ld t1,16(s0)
+0x168(~5): mul t0,t0,t1
+0x16C(~5): sd t0,-16(gp)
 
-0x188(~7): jal ra,-18[0x140]
+0x170(~7): ld t0,16(s0)          //   factorial(n - 1);
+0x174(~7): addi t1,zero,1
+0x178(~7): sub t0,t0,t1
+0x17C(~7): addi sp,sp,-8         //   allocate memory on stack
+0x180(~7): sd t0,0(sp)           //   store value of n - 1 on stack
+0x184(~7): jal ra,-18[0x13C]     // }
 
-0x18C(~7): addi a0,zero,0
+// factorial epilogue:
+0x188(~9): ld s0,0(sp)   // restore frame pointer s0 from stack
+0x18C(~9): addi sp,sp,8  // deallocate one machine word on stack
+0x190(~9): ld ra,0(sp)   // restore return address register ra from stack
+0x194(~9): addi sp,sp,16 // deallocate machine word for ra and for n on stack
 
-0x190(~9): addi sp,s0,0
-0x194(~9): ld s0,0(sp)
-0x198(~9): addi sp,sp,8
-0x19C(~9): ld ra,0(sp)
-0x1A0(~9): addi sp,sp,16
-
-0x1A4(~9): jalr zero,0(ra)
+0x198(~9): jalr zero,0(ra) // return from factorial
 ```
 
 ```asm
-0x1A8(~12): addi sp,sp,-8
-0x1AC(~12): sd ra,0(sp)
-0x1B0(~12): addi sp,sp,-8
-0x1B4(~12): sd s0,0(sp)
-0x1B8(~12): addi s0,sp,0
+0x19C(~12): addi sp,sp,-8 // necessary part of main prologue
+0x1A0(~12): sd ra,0(sp)
 
-0x1BC(~12): addi t0,zero,4
+0x1A4(~12) - 0x1AC(~12):  // redundant part of prologue hidden
 
-0x1C0(~12): addi sp,sp,-8
-0x1C4(~12): sd t0,0(sp)
+0x1B0(~12): addi t0,zero,4    // factorial(4);
+0x1B4(~12): addi sp,sp,-8     // allocate one machine word on stack
+0x1B8(~12): sd t0,0(sp)       // store value 4 on stack
+0x1BC(~12): jal ra,-32[0x13C]
 
-0x1C8(~12): jal ra,-34[0x140]
+0x1C0(~14): ld t0,-16(gp)     // return f;
+0x1C4(~14): addi a0,t0,0
+0x1C8(~14): jal zero,2[0x1D0]
 
-0x1CC(~12): addi a0,zero,0
+0x1CC(~15): addi a0,zero,0 // reset return value register a0, redundant
 
-0x1D0(~14): ld t0,-16(gp)
-0x1D4(~14): addi a0,t0,0
+0x1D0(~15) - 0x1D4(~15): // redundant part of epilogue hidden
 
-0x1D8(~14): jal zero,1[0x1DC]
+0x1D8(~15): ld ra,0(sp)  // necessary part of main epilogue
+0x1DC(~15): addi sp,sp,8
 
-0x1DC(~15): addi sp,s0,0
-0x1E0(~15): ld s0,0(sp)
-0x1E4(~15): addi sp,sp,8
-0x1E8(~15): ld ra,0(sp)
-0x1EC(~15): addi sp,sp,8
-
-0x1F0(~15): jalr zero,0(ra)
+0x1E0(~15): jalr zero,0(ra) // return from main
 ```
 
 ```c
@@ -5335,80 +5299,71 @@ uint64_t main() {
 ```
 
 ```asm
-0x140(~2): addi sp,sp,-8
-0x144(~2): sd ra,0(sp)
-0x148(~2): addi sp,sp,-8
-0x14C(~2): sd s0,0(sp)
-0x150(~2): addi s0,sp,0
+0x13C(~2): addi sp,sp,-8 // factorial prologue
+0x140(~2): sd ra,0(sp)
+0x144(~2): addi sp,sp,-8
+0x148(~2): sd s0,0(sp)
+0x14C(~2): addi s0,sp,0
 
-0x154(~2): ld t0,16(s0)
-0x158(~2): addi t1,zero,1
-0x15C(~2): sltu t0,t1,t0
-0x160(~2): beq t0,zero,18[0x1A8]
-0x164(~3): ld t0,16(s0)
+0x150(~2): ld t0,16(s0)          // if (n > 1)
+0x154(~2): addi t1,zero,1
+0x158(~2): sltu t0,t1,t0
+0x15C(~2): beq t0,zero,17[0x1A0]
 
-0x168(~3): addi sp,sp,-8
-0x16C(~3): sd t0,0(sp)
+0x160(~3): ld t0,16(s0)          //   return n * factorial(n - 1);
+0x164(~3): addi sp,sp,-8
+0x168(~3): sd t0,0(sp)           //   save register t0 on stack
+0x16C(~3): ld t0,16(s0)
+0x170(~3): addi t1,zero,1
+0x174(~3): sub t0,t0,t1
+0x178(~3): addi sp,sp,-8
+0x17C(~3): sd t0,0(sp)
+0x180(~3): jal ra,-17[0x13C]
+0x184(~3): ld t0,0(sp)
+0x188(~3): addi sp,sp,8
+0x18C(~3): addi t1,a0,0
+0x190(~3): mul t0,t0,t1
+0x194(~3): addi a0,t0,0
+0x198(~3): jal zero,6[0x1B0]
 
-0x170(~3): ld t0,16(s0)
-0x174(~3): addi t1,zero,1
-0x178(~3): sub t0,t0,t1
+0x19C(~5): jal zero,4[0x1AC]     // else
 
-0x17C(~3): addi sp,sp,-8
-0x180(~3): sd t0,0(sp)
+0x1A0(~5): addi t0,zero,1        //   return 1;
+0x1A4(~5): addi a0,t0,0
+0x1A8(~5): jal zero,2[0x1B0]
 
-0x184(~3): jal ra,-17[0x140]
+0x1AC(~6): addi a0,zero,0
 
-0x188(~3): ld t0,0(sp)
-0x18C(~3): addi sp,sp,8
+0x1B0(~6): ld s0,0(sp)   // factorial epilogue
+0x1B4(~6): addi sp,sp,8
+0x1B8(~6): ld ra,0(sp)
+0x1BC(~6): addi sp,sp,16
 
-0x190(~3): addi t1,a0,0
+0x1C0(~6): jalr zero,0(ra) // return from factorial
+```
 
-0x194(~3): addi a0,zero,0
+```asm
+0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
+0x1C8(~9): sd ra,0(sp)
 
-0x198(~3): mul t0,t0,t1
+0x1CC(~9) - 0x1D4(~9):   // redundant part of prologue hidden
 
-0x19C(~3): addi a0,t0,0
-0x1A0(~3): jal zero,5[0x1B4]
+0x1D8(~9): addi t0,zero,4    // return factorial(4);
+0x1DC(~9): addi sp,sp,-8
+0x1E0(~9): sd t0,0(sp)
+0x1E4(~9): jal ra,-42[0x13C]
+0x1E8(~9): addi t0,a0,0
+0x1EC(~9): addi a0,t0,0
+0x1F0(~9): jal zero,2[0x1F8]
 
-0x1A4(~5): jal zero,4[0x1B4]
+0x1F4(~10): addi a0,zero,0
 
-0x1A8(~5): addi t0,zero,1
-0x1AC(~5): addi a0,t0,0
-0x1B0(~5): jal zero,1[0x1B4]
+0x1F8(~10) - 0x1FC(~10): // redundant part of epilogue hidden
 
-0x1B4(~6): addi sp,s0,0
-0x1B8(~6): ld s0,0(sp)
-0x1BC(~6): addi sp,sp,8
-0x1C0(~6): ld ra,0(sp)
-0x1C4(~6): addi sp,sp,16
+0x200(~10): ld ra,0(sp)  // necessary part of main epilogue
+0x204(~10): addi sp,sp,8
 
-0x1C8(~6): jalr zero,0(ra)
-
-0x1CC(~9): addi sp,sp,-8
-0x1D0(~9): sd ra,0(sp)
-0x1D4(~9): addi sp,sp,-8
-0x1D8(~9): sd s0,0(sp)
-0x1DC(~9): addi s0,sp,0
-
-0x1E0(~9): addi t0,zero,4
-0x1E4(~9): addi sp,sp,-8
-0x1E8(~9): sd t0,0(sp)
-
-0x1EC(~9): jal ra,-43[0x140]
-
-0x1F0(~9): addi t0,a0,0
-0x1F4(~9): addi a0,zero,0
-0x1F8(~9): addi a0,t0,0
-0x1FC(~9): jal zero,1[0x200]
-
-0x200(~10): addi sp,s0,0
-0x204(~10): ld s0,0(sp)
-0x208(~10): addi sp,sp,8
-0x20C(~10): ld ra,0(sp)
-0x210(~10): addi sp,sp,8
-
-0x214(~10): jalr zero,0(ra)
+0x208(~10): jalr zero,0(ra) // return from main
 ```
 
 control flow: recursion, iteration
