@@ -5095,7 +5095,15 @@ The grammar rule for the non-terminal `call` defines the syntax of a call to a p
 
 The grammar rule for the non-terminal `return` defines the syntax of `return` statements. The optional `expression` non-terminal defines an expression that evaluates to the return value of a procedure. The type of the expression, or again more precisely the type of the value to which the expression evaluates, should be compatible with the return type of the procedure from which the `return` statement returns. This means that `return` statements returning from procedures with `void` return type should not use the optional `expression`.
 
-Semantics...
+As usual, the procedures `compile_procedure`, `compile_call`, and `compile_return` implement compilation of `procedure`, `call`, and `return`, respectively. The semantics of procedure calls and return statements as well as procedure bodies in general is non-trivial. We therefore do not explain the source code of `compile_procedure`, `compile_call`, and `compile_return` directly but instead discuss compilation of code examples that increase in complexity. Before doing so, let us summarize the semantics of procedures in C\* and what needs to be done to get there.
+
+> Procedure call
+
+First of all, we distinguish the control flow involved in a procedure call from the data flow. In terms of control flow, a procedure call invokes the code of the *callee*, the procedure being called, with the expectation that the callee eventually returns to the *caller*, the procedure calling the callee. Upon returning, the caller continues execution with the statement that follows the procedure call. If the callee has no formal parameters and no return value, there is no data flow involved in the procedure call. If the callee has formal parameters, the procedure call involves expressions that evaluate to actual parameters which in turn become the values of the formal parameters at runtime, through pass-by-value as mentioned before, one for each formal parameter of the callee in the order of occurrence in the call and the procedure signature of the callee, respectively. If the callee has a return value, the caller receives the value returned by the callee with the procedure call and can then use that value in an expression but may also ignore it when using the procedure call as statement. For this purpose, the procedure `compile_call` takes the following steps:
+
+2. Procedure body:
+
+3. Return statement:
 
 ```c
 uint64_t f = 1;
