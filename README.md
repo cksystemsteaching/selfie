@@ -5111,6 +5111,21 @@ Procedure bodies consist of a possibly empty sequence of local variable declarat
 
 Similar to procedure calls, we distinguish the control flow involved in a return statement from the data flow. In terms of control flow, a return statement terminates the execution of the procedure body in which it occurs, immediately returning control from callee to caller. In particular, a return statement skips the execution of all statements that follow the return statement in a procedure body. Moreover, if a return statement occurs in a loop, that loop, and all loops containing that loop are terminated. If a return statement does not involve an expression, there is no data flow involved in the return statement. If a return statement involves an expression, the value to which the expression evaluates at runtime is returned as return value of the callee to the caller.
 
+> Implementation of procedure calls
+
+Similar to statements, procedure bodies come with an invariant on temporary registers: before and after executing the code generated for a procedure body, no temporary registers are in use. That invariant simplifies code generation for procedure bodies. However, the invariant may not hold when procedures are invoked by procedure calls that occur in expressions which means that code generation for procedure calls needs to establish the invariant. Another invariant which applies to procedure calls is that the amount of memory allocated on the call stack, that is, the value of the stack pointer `sp`, must be exactly the same before and after executing a procedure call at runtime, as if the call never happened from the perspective of the length of the call stack. The procedure `compile_call` takes the following steps to implement procedure calls:
+
+1. If the compiled procedure call occurs in an expression, temporary registers may be in use at runtime prior to invoking the procedure call, possibly violating the invariant on temporary registers. Thus the values of all currently used temporary registers must be saved before invoking the callee, and restored after the callee returned. For this purpose, `compile_call` invokes the procedure `save_temporaries` which generates code that saves the values of all currently used temporary registers on the call stack. After generating the code for the actual procedure call, `compile_call` invokes the procedure `restore_temporaries` which generates code that restores those values from the call stack. Below we show an example for which one temporary register is saved and restored. If a procedure call is used as statement, no temporary registers are in use at runtime prior to invoking the procedure call, because of the invariant on temporary registers before and after executing a statement. In that case, `save_temporaries` and `restore_temporaries` do not generate any code.
+
+2. If the compiled procedure call involves expressions...
+
+3. Jump and link
+
+4. Deallocation of memory for variadic actual parameters, reestablishing variant on length of call stack.
+
+> Implementation of procedure bodies
+
+> Implementation of return statements
 
 ```c
 uint64_t f = 1;
