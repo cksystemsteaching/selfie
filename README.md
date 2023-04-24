@@ -5097,11 +5097,11 @@ The grammar rule for the non-terminal `return` defines the syntax of `return` st
 
 > Semantics of procedures
 
-As usual, the procedures `compile_procedure`, `compile_call`, and `compile_return` implement compilation of `procedure`, `call`, and `return`, respectively. The semantics of procedure calls and return statements as well as procedure bodies in general is non-trivial. We therefore do not explain the source code of `compile_procedure`, `compile_call`, and `compile_return` directly but instead discuss compilation of code examples with increasing complexity. Before doing so, let us summarize the semantics of procedures in C\* and what needs to be done to get there.
+As usual, the procedures `compile_procedure`, `compile_call`, and `compile_return` implement compilation of `procedure`, `call`, and `return`, respectively. The semantics of procedure calls and return statements as well as procedure bodies in general is non-trivial. We therefore do not explain the source code of `compile_procedure`, `compile_call`, and `compile_return` directly but instead discuss compilation of code examples with increasing complexity. Before doing so, let us summarize the semantics of procedures in C\*.
 
 > Semantics of procedure calls
 
-We distinguish the control flow involved in a procedure call from the data flow. In terms of control flow, a procedure call invokes the code of the *callee*, the procedure being called, with the expectation that the callee eventually returns control to the *caller*, the procedure calling the callee. Upon returning control, the caller continues execution with the statement that follows the procedure call. If the callee has no formal parameters and no return value, there is no data flow involved in a procedure call to that callee. If the callee has formal parameters, any procedure call to that callee involves expressions that evaluate to actual parameters which in turn become the values of the formal parameters at runtime, through pass-by-value as mentioned before, one for each formal parameter of the callee in the order of occurrence in the call and the procedure signature of the callee, respectively. If the callee has a return value, the caller receives the value returned by the callee with a procedure call and can then use that value in an expression but may also ignore it when using a procedure call as statement.
+We distinguish the control flow involved in a procedure call from the data flow. In terms of control flow, a procedure call invokes the code of the *callee*, the procedure being called, with the expectation that the callee eventually returns control to the *caller*, the procedure calling the callee. Upon returning control, the caller continues execution with the statement that follows the procedure call. If the callee has no formal parameters and no return value, there is no data flow involved in a procedure call to that callee. If the callee has formal parameters, any procedure call to that callee involves expressions that evaluate to actual parameters which in turn become the values of the formal parameters at runtime. The actual parameters of the caller are passed-by-value, as mentioned before, to the formal parameters of the callee, in the order of their appearence in the procedure call of the caller and the procedure signature of the callee, respectively. If the callee has a return value, the caller receives the value returned by the callee with a procedure call and can then use that value in an expression but may also ignore it when using a procedure call as statement.
 
 > Semantics of procedure bodies
 
@@ -5111,21 +5111,9 @@ Procedure bodies consist of a possibly empty sequence of local variable declarat
 
 Similar to procedure calls, we distinguish the control flow involved in a return statement from the data flow. In terms of control flow, a return statement terminates the execution of the procedure body in which it occurs, immediately returning control from callee to caller. In particular, a return statement skips the execution of all statements that follow the return statement in a procedure body. Moreover, if a return statement occurs in a loop, that loop, and all loops containing that loop are terminated. If a return statement does not involve an expression, there is no data flow involved in the return statement. If a return statement involves an expression, the value to which the expression evaluates at runtime is returned as return value of the callee to the caller.
 
-> Implementation of procedure calls
+> Implementation by example
 
-Similar to statements, procedure bodies come with an invariant on temporary registers: before and after executing the code generated for a procedure body, no temporary registers are in use. That invariant simplifies code generation for procedure bodies. However, the invariant may not hold when procedures are invoked by procedure calls that occur in expressions which means that code generation for procedure calls needs to establish the invariant. Another invariant which applies to procedure calls is that the amount of memory allocated on the call stack, that is, the value of the stack pointer `sp`, must be exactly the same before and after executing a procedure call at runtime, as if the call never happened from the perspective of the length of the call stack. The procedure `compile_call` takes the following steps to implement procedure calls:
-
-1. If the compiled procedure call occurs in an expression, temporary registers may be in use at runtime prior to invoking the procedure call, possibly violating the invariant on temporary registers. Thus the values of all currently used temporary registers must be saved before invoking the callee, and restored after the callee returned. For this purpose, `compile_call` invokes the procedure `save_temporaries` which generates code that saves the values of all currently used temporary registers on the call stack. After generating the code for the actual procedure call, `compile_call` invokes the procedure `restore_temporaries` which generates code that restores those values from the call stack. Below we show an example for which one temporary register is saved and restored. If a procedure call is used as statement, no temporary registers are in use at runtime prior to invoking the procedure call, because of the invariant on temporary registers before and after executing a statement. In that case, `save_temporaries` and `restore_temporaries` do not generate any code.
-
-2. If the compiled procedure call involves expressions...
-
-3. Jump and link
-
-4. Deallocation of memory for variadic actual parameters, reestablishing variant on length of call stack.
-
-> Implementation of procedure bodies
-
-> Implementation of return statements
+Our first example shows the arguably simplest use of procedures, which does not involve any local variables and parameters, and in fact only one explicit procedure call. The example is inspired by the `factorial` procedures introduced in the language chapter:
 
 ```c
 uint64_t f = 1;
@@ -5146,8 +5134,24 @@ uint64_t main() {
 }
 ```
 
+The `main` procedure invokes the procedure `factorial` which in turn computes the factorial of `n`, a global variable initialized to the value `4`, and stores the result in `f`, another global variable initialized to the value `1`. When `factorial` returns control to `main`, the value of `f`, which is here the value `24`, is returned as exit code of `main`. To see that save the above code in a file called `factorial.c` and then invoke selfie as follows:
+
+```bash
+./selfie -c factorial.c -S factorial.s -m 1
+```
+
+The relevant line in the output is:
+
+```
+./selfie: factorial.c exiting with exit code 24
+```
+
+The example features all three elements of procedures: a procedure call, a return statement, and a procedure body, for `factorial` and in fact another one for `main`. However, the example makes very limited use of procedures. There are neither any local variables nor parameters, and the procedure `factorial` does not invoke any procedure with a procedure call and only returns implicitly without any explicit return statement. In fact, we could replace the procedure call `factorial();` with a copy of the procedure body of `factorial` and remove the procedure `factorial` entirely from the code, and still obtain the exact same behavior. Therefore, most of the code specifically generated for procedure bodies is here not necessary, that is, *redundant*, which allows us to focus on the generated code that is necessary.
+
+As instructed by the `-S` option, the above invocation of selfie generated assembly code for the example into a file called `factorial.s`. The following assembly code is taken from that file and shows the instructions generated for the procedure `factorial` except for the instructions that are here redundant:
+
 ```asm
-0x13C(~5) - 0x14C(~5): // factorial prologue hidden
+0x13C(~5) - 0x14C(~5): // redundant factorial prologue hidden
 
 0x150(~5): ld t0,-24(gp)         // while (n > 1) {
 0x154(~5): addi t1,zero,1
@@ -5166,7 +5170,7 @@ uint64_t main() {
 
 0x180(~10): jal zero,-12[0x150]  // }
 
-0x184(~10) - 0x190(~10): // factorial epilogue hidden
+0x184(~10) - 0x190(~10): // redundant factorial epilogue hidden
 
 0x194(~10): jalr zero,0(ra) // return from factorial
 ```
@@ -5176,7 +5180,7 @@ uint64_t main() {
 0x198(~13): addi sp,sp,-8 // allocate one machine word on stack
 0x19C(~13): sd ra,0(sp)   // save return address register ra on stack
 
-0x1A0(~13) - 0x1A8(~13):  // redundant part of prologue hidden
+0x1A0(~13) - 0x1A8(~13):  // redundant part of main prologue hidden
 
 0x1AC(~13): jal ra,-28[0x13C] // factorial();
 
@@ -5186,7 +5190,7 @@ uint64_t main() {
 
 0x1BC(~16): addi a0,zero,0 // reset return value register a0, redundant
 
-0x1C0(~16) - 0x1C4(~16): // redundant part of epilogue hidden
+0x1C0(~16) - 0x1C4(~16): // redundant part of main epilogue hidden
 
 // necessary part of main epilogue:
 0x1C8(~16): ld ra,0(sp)  // restore return address register ra
@@ -5211,7 +5215,7 @@ void factorial() {
 0x13C(~5): addi sp,sp,-8 // necessary part of factorial prologue
 0x140(~5): sd ra,0(sp)
 
-0x144(~5) - 0x14C(~5):   // redundant part of prologue hidden
+0x144(~5) - 0x14C(~5):   // redundant part of factorial prologue hidden
 
 0x150(~5): ld t0,-24(gp)         // if (n > 1) {
 0x154(~5): addi t1,zero,1
@@ -5230,7 +5234,7 @@ void factorial() {
 
 0x180(~10): jal ra,-17[0x13C]    //   factorial(); }
 
-0x184(~12) - 0x188(~12): // redundant part of epilogue hidden
+0x184(~12) - 0x188(~12): // redundant part of factorial epilogue hidden
 
 0x18C(~12): ld ra,0(sp)  // necessary part of factorial epilogue
 0x190(~12): addi sp,sp,8
@@ -5294,7 +5298,7 @@ uint64_t main() {
 0x19C(~12): addi sp,sp,-8 // necessary part of main prologue
 0x1A0(~12): sd ra,0(sp)
 
-0x1A4(~12) - 0x1AC(~12):  // redundant part of prologue hidden
+0x1A4(~12) - 0x1AC(~12):  // redundant part of main prologue hidden
 
 0x1B0(~12): addi t0,zero,4    // factorial(4);
 0x1B4(~12): addi sp,sp,-8     // allocate one machine word on stack
@@ -5307,7 +5311,7 @@ uint64_t main() {
 
 0x1CC(~15): addi a0,zero,0 // reset return value register a0, redundant
 
-0x1D0(~15) - 0x1D4(~15): // redundant part of epilogue hidden
+0x1D0(~15) - 0x1D4(~15): // redundant part of main epilogue hidden
 
 0x1D8(~15): ld ra,0(sp)  // necessary part of main epilogue
 0x1DC(~15): addi sp,sp,8
@@ -5376,7 +5380,7 @@ uint64_t main() {
 0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
 0x1C8(~9): sd ra,0(sp)
 
-0x1CC(~9) - 0x1D4(~9):   // redundant part of prologue hidden
+0x1CC(~9) - 0x1D4(~9):   // redundant part of main prologue hidden
 
 0x1D8(~9): addi t0,zero,4    // return factorial(4);
 0x1DC(~9): addi sp,sp,-8     // allocate one machine word on stack
@@ -5388,7 +5392,7 @@ uint64_t main() {
 
 0x1F4(~10): addi a0,zero,0 // reset return value register a0, redundant
 
-0x1F8(~10) - 0x1FC(~10): // redundant part of epilogue hidden
+0x1F8(~10) - 0x1FC(~10): // redundant part of main epilogue hidden
 
 0x200(~10): ld ra,0(sp)  // necessary part of main epilogue
 0x204(~10): addi sp,sp,8
@@ -5435,6 +5439,24 @@ uint64_t main() {
 
 0x218(~14): jalr zero,0(ra) // return from main
 ```
+
+> Implementation of procedure calls
+
+Similar to statements, procedure bodies come with an invariant on temporary registers: before and after executing the code generated for a procedure body, no temporary registers are in use. That invariant simplifies code generation for procedure bodies. However, the invariant may not hold when procedures are invoked by procedure calls that occur in expressions which means that code generation for procedure calls needs to establish the invariant. Another invariant which applies to procedure calls is that the amount of memory allocated on the call stack, that is, the value of the stack pointer `sp`, must be exactly the same before and after executing a procedure call at runtime, as if the call never happened from the perspective of the length of the call stack. The procedure `compile_call` takes the following steps to implement procedure calls:
+
+1. If the compiled procedure call occurs in an expression, temporary registers may be in use at runtime prior to invoking the procedure call, possibly violating the invariant on temporary registers. Thus the values of all currently used temporary registers must be saved before invoking the callee, and restored after the callee returned. For this purpose, `compile_call` invokes the procedure `save_temporaries` which generates code that saves the values of all currently used temporary registers on the call stack. After generating the code for the actual procedure call, `compile_call` invokes the procedure `restore_temporaries` which generates code that restores those values from the call stack. Below we show an example for which one temporary register is saved and restored. If a procedure call is used as statement, no temporary registers are in use at runtime prior to invoking the procedure call, because of the invariant on temporary registers before and after executing a statement. In that case, `save_temporaries` and `restore_temporaries` do not generate any code.
+
+2. If the compiled procedure call involves expressions that evaluate to actual parameters, `compile_call` invokes, for each expression in the order of its appearance, that is, from left to right, the procedure `compile_expression`, which generates code that evaluates the expression at runtime. After each invocation of `compile_expression`, `compile_call` generates a single `sd` instruction that saves the value to which the expression evaluates on the call stack, for the callee to retrieve it from there later. This is easy but there is an interesting twist. In C and C\*, actual parameters are pushed onto the stack in reverse order of the appearence of the expressions in a procedure call that evaluate to the actual parameters. Why is that?
+
+It is because of variadic procedures such as `printf`. With variadic procedures, the number of actual parameters can be different from one procedure call to another, and is thus only known after a procedure call has been parsed completely.
+
+3. Jump and link
+
+4. Deallocation of memory for variadic actual parameters, reestablishing variant on length of call stack.
+
+> Implementation of procedure bodies
+
+> Implementation of return statements
 
 control flow: recursion, iteration
 data flow: stack allocator
