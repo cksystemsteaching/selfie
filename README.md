@@ -5151,6 +5151,8 @@ The example features all three elements of procedures: a procedure call, a retur
 As instructed by the `-S` option, the above invocation of selfie generated assembly code for the example into a file called `factorial.s`. The following assembly code is taken from that file and shows the instructions generated for the procedure `factorial` except for the instructions that are here redundant:
 
 ```asm
+// assert: sp = inv, ret = ra
+
 0x13C(~5) - 0x14C(~5): // redundant factorial prologue hidden
 
 0x150(~5): ld t0,-24(gp)         // while (n > 1) {
@@ -5172,17 +5174,27 @@ As instructed by the `-S` option, the above invocation of selfie generated assem
 
 0x184(~10) - 0x190(~10): // redundant factorial epilogue hidden
 
+// assert: sp == inv, ra == ret
+
 0x194(~10): jalr zero,0(ra) // return from factorial
 ```
 
 ```asm
+// assert: inv = sp, ret = ra
+
 // necessary part of main prologue:
 0x198(~13): addi sp,sp,-8 // allocate one machine word on stack
 0x19C(~13): sd ra,0(sp)   // save return address register ra on stack
 
+// assert: sp == inv - 8, ra == ret
+
 0x1A0(~13) - 0x1A8(~13):  // redundant part of main prologue hidden
 
+// assert: sp == inv - 16, ra == ret
+
 0x1AC(~13): jal ra,-28[0x13C] // factorial();
+
+// assert: sp == inv - 16, ra != ret
 
 0x1B0(~15): ld t0,-16(gp)     // return f;
 0x1B4(~15): addi a0,t0,0      // load f into return value register a0
@@ -5192,9 +5204,13 @@ As instructed by the `-S` option, the above invocation of selfie generated assem
 
 0x1C0(~16) - 0x1C4(~16): // redundant part of main epilogue hidden
 
+// assert: sp == inv - 8, ra != ret
+
 // necessary part of main epilogue:
 0x1C8(~16): ld ra,0(sp)  // restore return address register ra
 0x1CC(~16): addi sp,sp,8 // deallocate one machine word on stack
+
+// assert: sp == inv, ra == ret
 
 0x1D0(~16): jalr zero,0(ra) // return from main
 ```
@@ -5212,10 +5228,16 @@ void factorial() {
 ```
 
 ```asm
+// assert: sp = inv, ret = ra
+
 0x13C(~5): addi sp,sp,-8 // necessary part of factorial prologue
 0x140(~5): sd ra,0(sp)
 
+// assert: sp == inv - 8, ra == ret
+
 0x144(~5) - 0x14C(~5):   // redundant part of factorial prologue hidden
+
+// assert: sp == inv - 16, ra == ret
 
 0x150(~5): ld t0,-24(gp)         // if (n > 1) {
 0x154(~5): addi t1,zero,1
@@ -5234,10 +5256,16 @@ void factorial() {
 
 0x180(~10): jal ra,-17[0x13C]    //   factorial(); }
 
+// assert: sp == inv - 16, ra != ret
+
 0x184(~12) - 0x188(~12): // redundant part of factorial epilogue hidden
+
+// assert: sp == inv - 8, ra != ret
 
 0x18C(~12): ld ra,0(sp)  // necessary part of factorial epilogue
 0x190(~12): addi sp,sp,8
+
+// assert: sp == inv, ra == ret
 
 0x194(~12): jalr zero,0(ra) // return from factorial
 ```
@@ -5261,12 +5289,16 @@ uint64_t main() {
 ```
 
 ```asm
+// assert: inv = sp, ret = ra
+
 // factorial prologue:
 0x13C(~4): addi sp,sp,-8 // allocate one machine word on stack
 0x140(~4): sd ra,0(sp)   // save return address register ra on stack
 0x144(~4): addi sp,sp,-8 // allocate one machine word on stack
 0x148(~4): sd s0,0(sp)   // save frame pointer s0 on stack
 0x14C(~4): addi s0,sp,0  // set frame pointer s0 to stack pointer sp
+
+// assert: sp == inv - 16, ra == ret
 
 0x150(~4): ld t0,16(s0)          // if (n > 1) {
 0x154(~4): addi t1,zero,1
@@ -5280,16 +5312,23 @@ uint64_t main() {
 
 0x170(~7): ld t0,16(s0)          //   factorial(n - 1);
 0x174(~7): addi t1,zero,1
-0x178(~7): sub t0,t0,t1          //   evaluate n - 1
+0x178(~7): sub t0,t0,t1
 0x17C(~7): addi sp,sp,-8         //   allocate memory on stack
 0x180(~7): sd t0,0(sp)           //   save n - 1 in register t0 on stack
+
+// assert: sp == inv - 24, ra == ret
+
 0x184(~7): jal ra,-18[0x13C]     // }
+
+// assert: sp == inv - 16, ra != ret
 
 // factorial epilogue:
 0x188(~9): ld s0,0(sp)   // restore frame pointer s0 from stack
 0x18C(~9): addi sp,sp,8  // deallocate one machine word on stack
 0x190(~9): ld ra,0(sp)   // restore return address register ra from stack
 0x194(~9): addi sp,sp,16 // deallocate machine word for ra and for n on stack
+
+// assert: sp == inv + 8, ra == ret
 
 0x198(~9): jalr zero,0(ra) // return from factorial
 ```
@@ -5411,7 +5450,8 @@ uint64_t main() {
 ```
 
 ```asm
-0x1C4(~11): addi sp,sp,-8 // main prologue
+// main prologue:
+0x1C4(~11): addi sp,sp,-8
 0x1C8(~11): sd ra,0(sp)
 0x1CC(~11): addi sp,sp,-8
 0x1D0(~11): sd s0,0(sp)
@@ -5431,7 +5471,8 @@ uint64_t main() {
 
 0x200(~14): addi a0,zero,0 // reset return value register a0, redundant
 
-0x204(~14): addi sp,s0,0 // main epilogue
+// main epilogue:
+0x204(~14): addi sp,s0,0 // deallocate one machine word for n on stack
 0x208(~14): ld s0,0(sp)
 0x20C(~14): addi sp,sp,8
 0x210(~14): ld ra,0(sp)
