@@ -5508,9 +5508,6 @@ void procedure_epilogue(uint64_t number_of_local_variable_bytes, uint64_t number
 
     exit(EXITCODE_COMPILERERROR);
   }
-
-  // return
-  emit_jalr(REG_ZR, REG_RA, 0);
 }
 
 void compile_procedure(char* procedure, uint64_t type) {
@@ -5681,6 +5678,9 @@ void compile_procedure(char* procedure, uint64_t type) {
     else
       procedure_epilogue(number_of_local_variable_bytes,
         number_of_formal_parameters * WORDSIZE);
+
+    // return
+    emit_jalr(REG_ZR, REG_RA, 0);
 
     get_expected_symbol(SYM_RBRACE);
   } else
