@@ -1080,10 +1080,11 @@ void emit_jalr(uint64_t rd, uint64_t rs1, uint64_t immediate);
 
 void emit_ecall();
 
-void fixup_relative_BFormat(uint64_t from_address);
-void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
+void fixup_BFormat(uint64_t from_address);
+void fixup_JFormat(uint64_t from_address, uint64_t to_address);
+void fixlink_JFormat(uint64_t from_address, uint64_t to_address);
+
 void fixup_IFormat(uint64_t from_address, uint64_t immediate);
-void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
 void emit_string_data(uint64_t* entry);
@@ -5330,7 +5331,7 @@ void compile_if() {
           emit_jal(REG_ZR, 0);
 
           // if the "if" condition was false we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
+          fixup_BFormat(branch_forward_to_else_or_end);
 
           if (symbol == SYM_LBRACE) {
             // zero or more statements: "{" { statement } "}"
@@ -5346,10 +5347,10 @@ void compile_if() {
             compile_statement();
 
           // if the "if" condition was true we unconditionally jump here
-          fixup_relative_JFormat(jump_forward_to_end, code_size);
+          fixup_JFormat(jump_forward_to_end, code_size);
         } else
           // if the "if" condition was false we branch here
-          fixup_relative_BFormat(branch_forward_to_else_or_end);
+          fixup_BFormat(branch_forward_to_else_or_end);
       } else
         syntax_error_expected_symbol(SYM_RPARENTHESIS);
     } else
@@ -5420,7 +5421,7 @@ void compile_while() {
   if (branch_forward_to_end != 0)
     // first instruction after loop body will be generated here
     // now we have the address for the conditional branch from above
-    fixup_relative_BFormat(branch_forward_to_end);
+    fixup_BFormat(branch_forward_to_end);
 
   // assert: allocated_temporaries == 0
 
@@ -5612,7 +5613,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       if (get_address(entry) != 0)
         // procedure already called but not defined
-        fixlink_relative(get_address(entry), code_size);
+        fixlink_JFormat(get_address(entry), code_size);
 
       set_address(entry, code_size);
 
@@ -5668,7 +5669,7 @@ void compile_procedure(char* procedure, uint64_t type) {
       emit_addi(REG_A0, REG_ZR, 0);
 
     // all return statements jump here
-    fixlink_relative(return_jumps, code_size);
+    fixlink_JFormat(return_jumps, code_size);
 
     return_jumps = 0;
 
@@ -6998,7 +6999,7 @@ void emit_ecall() {
   ic_ecall = ic_ecall + 1;
 }
 
-void fixup_relative_BFormat(uint64_t from_address) {
+void fixup_BFormat(uint64_t from_address) {
   uint64_t instruction;
 
   instruction = load_instruction(from_address);
@@ -7011,7 +7012,7 @@ void fixup_relative_BFormat(uint64_t from_address) {
       get_opcode(instruction)));
 }
 
-void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address) {
+void fixup_JFormat(uint64_t from_address, uint64_t to_address) {
   uint64_t instruction;
 
   instruction = load_instruction(from_address);
@@ -7022,6 +7023,18 @@ void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address) {
       get_opcode(instruction)));
 }
 
+void fixlink_JFormat(uint64_t from_address, uint64_t to_address) {
+  uint64_t previous_address;
+
+  while (from_address != 0) {
+    previous_address = get_immediate_j_format(load_instruction(from_address));
+
+    fixup_JFormat(from_address, to_address);
+
+    from_address = previous_address;
+  }
+}
+
 void fixup_IFormat(uint64_t from_address, uint64_t immediate) {
   uint64_t instruction;
 
@@ -7030,21 +7043,9 @@ void fixup_IFormat(uint64_t from_address, uint64_t immediate) {
   store_instruction(from_address,
     encode_i_format(immediate,
       get_rs1(instruction),
-    get_funct3(instruction),
-    get_rd(instruction),
+      get_funct3(instruction),
+      get_rd(instruction),
       get_opcode(instruction)));
-}
-
-void fixlink_relative(uint64_t from_address, uint64_t to_address) {
-  uint64_t previous_address;
-
-  while (from_address != 0) {
-    previous_address = get_immediate_j_format(load_instruction(from_address));
-
-    fixup_relative_JFormat(from_address, to_address);
-
-    from_address = previous_address;
-  }
 }
 
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
