@@ -5306,7 +5306,7 @@ The difference to the previous version of `factorial` is that we now us an `if` 
 0x194(~12): jalr zero,0(ra) // return from factorial
 ```
 
-The assembly code is almost identical to the assembly code for the iterative version of `factorial`. The only difference is the `jal` instruction. In the iterative version, the `jal` instruction is an unconditional backwards jump that closes the `while` loop. In the recursive version, the `jal` instruction is also an unconditional backwards jump but this time implementing the procedure call to `factorial` using the return address register `ra` as link. This means, in particular, that the value of `ra` only changes if the current caller of `factorial` is the `main` procedure. If the current caller is `factorial` itself, then the value of `ra` obviously does not change. Either way, the code for saving and restoring `ra` is now necessary to make sure that `factorial` eventually returns to `main`.
+The assembly code is almost identical to the assembly code for the iterative version of `factorial`. The only difference is the `jal` instruction. In the iterative version, the `jal` instruction is an unconditional backwards jump that closes the `while` loop. In the recursive version, the `jal` instruction is also an unconditional backwards jump but this time implementing the procedure call to `factorial` using the return address register `ra` as link. Here, the value of `ra` only changes if the current caller of `factorial` is the `main` procedure. If the current caller is `factorial` itself, then the value of `ra` obviously does not change. Either way, the code for saving and restoring `ra` is now necessary to make sure that `factorial` eventually returns to `main`.
 
 At this point, we are done with the control-flow semantics of procedures, and even the data-flow semantics of `return` statements. Next, our focus is on the data-flow semantics of procedure calls. Consider the following example which implements the same behavior as the previous example only using `n`, not as global variable, but as formal parameter of the `factorial` procedure:
 
@@ -5327,6 +5327,8 @@ uint64_t main() {
   return f;
 }
 ```
+
+Instead of keeping track of the value of `n` in a global variable, the above version of `factorial` calls itself with the value of `n` decremented by `1` as actual parameter of the caller to the formal parameter `n` of the callee. The assembly code is as follows:
 
 ```asm
 // assert: top = sp, frame = s0, link = ra
@@ -5374,6 +5376,8 @@ uint64_t main() {
 
 0x198(~9): jalr zero,0(ra) // return from factorial
 ```
+
+Both the full prologue and epilogue code generated for `factorial` is now necessary. In particular, the prologue saves the value of the frame pointer `s0` on the call stack and then sets the value of `s0` to the value of the stack pointer `sp`. The epilogue matches that behavior by restoring the saved value of `s0` accordingly.
 
 > Stronger procedure body and call invariants
 
