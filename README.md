@@ -5391,18 +5391,37 @@ The memory on the call stack for formal parameters, local variables, and the pro
 
 > Variadic procedures
 
-However, not all memory allocated by the caller can be deallocated by the callee.
+However, not all memory allocated by the caller can be deallocated by the callee. The issue arises with variadic procedures such as the procedure `printf` where each procedure call can have a different number of actual parameters, only known by the caller, not the callee. This means that when generating code for procedure bodies the number of actual parameters on the call stack upon entering a procedure body is unknown. More precisely, the number of non-variadic actual parameters is known, just not the number of variadic parameters. Fortunately, the latter always appear after the former in a procedure call. The procedure `compile_call` therefore generates code that evaluates the non-variadic parameters first from left to right, followed by the variadic parameters, again from left to right.
+
+> Actual parameters in reverse
+
+However, the parameters are actually stored on the call stack in reverse, that is, the last variadic parameter appears first on the stack, followed by the second last, and so on. Thus the very first parameter appears last on the stack, that is, at the top of the stack! Why is that? Well, the offset of the non-variadic parameters relative to the frame pointer `s0` is only then independent of the number of variadic parameters. Code generation for procedure bodies can thus figure out the offsets of the non-variadic parameters and store them in the local symbol table in order to find them later when those parameters are accessed. That is why! But how do we find the variadic parameters? Well, this is where those mysterious macros `var_start`, `var_arg`, and `var_end` come in. The macro `var_start` generates code that returns a pointer to the first variadic parameter. The macro `var_arg` generates code that returns the value of the variadic parameter to which that pointer refers to but not without advancing the pointer to the next variadic parameter right before returning. Repeated uses of `var_arg` therefore return the values of variadic parameters in the order of appearence in a procedure call. The macro `var_end` is not needed here but still there for compliance with the standard in C.
+
+> Fixup, again
+
+There is one more thing. How do we know the total number of actual parameters in a procedure call at the beginning of parsing a procedure call? We need to know that number to store the parameters in reverse on the call stack. Well, we do not know it then, similar to target addresses of forward branches and jumps, only when we are done parsing a procedure call. The solution is to generate an `addi` instruction at the beginning whose purpose is to allocate the entire memory needed to store all actual parameters by decrementing the stack pointer `sp` accordingly. Once the amount is known, we go back and perform a fixup of that instruction using the procedure `fixup_IFormat`. Now we are done. For completeness, consider the assembly code generated for the `main` procedure that invokes `factorial` with the actual parameter `4`:
 
 ```asm
+// assert: top = sp, link = ra
+
 0x19C(~12): addi sp,sp,-8 // necessary part of main prologue
 0x1A0(~12): sd ra,0(sp)
 
+// assert: sp == top - 8, ra == link
+
 0x1A4(~12) - 0x1AC(~12):  // redundant part of main prologue hidden
+
+// assert: sp == inv - 16, ra == link
 
 0x1B0(~12): addi t0,zero,4    // factorial(4);
 0x1B4(~12): addi sp,sp,-8     // allocate one machine word on stack
 0x1B8(~12): sd t0,0(sp)       // store value 4 on stack
+
+// assert: sp == top - 24, ra != link
+
 0x1BC(~12): jal ra,-32[0x13C]
+
+// assert: sp == top - 16, ra != link
 
 0x1C0(~14): ld t0,-16(gp)     // return f;
 0x1C4(~14): addi a0,t0,0
@@ -5412,11 +5431,17 @@ However, not all memory allocated by the caller can be deallocated by the callee
 
 0x1D0(~15) - 0x1D4(~15): // redundant part of main epilogue hidden
 
+// assert: sp == top - 8, ra != link
+
 0x1D8(~15): ld ra,0(sp)  // necessary part of main epilogue
 0x1DC(~15): addi sp,sp,8
 
+// assert: sp == inv, ra == link
+
 0x1E0(~15): jalr zero,0(ra) // return from main
 ```
+
+The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables.
 
 source-level data flow done
 
