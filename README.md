@@ -5574,6 +5574,8 @@ uint64_t main() {
 }
 ```
 
+Since local variables, and formal parameters, only have local scope, the name `n` here refers to a local variable only accessible in `main` whereas the name `n` in the procedure `factorial` refers to a formal parameter only accessible in `factorial`. Local scope is implemented through local symbol tables, one for each procedure body, created during compilation. The assembly code generated for this version of `main` is as follows:
+
 ```asm
 // assert: top = sp, frame = s0, link = ra
 
@@ -5628,34 +5630,7 @@ uint64_t main() {
 0x218(~14): jalr zero,0(ra) // return from main
 ```
 
-call frame
-
-stack allocation done
-
-> Implementation of procedure calls
-
-Similar to statements, procedure bodies come with an invariant on temporary registers: before and after executing the code generated for a procedure body, no temporary registers are in use. That invariant simplifies code generation for procedure bodies. However, the invariant may not hold when procedures are invoked by procedure calls that occur in expressions which means that code generation for procedure calls needs to establish the invariant. Another invariant which applies to procedure calls is that the amount of memory allocated on the call stack, that is, the value of the stack pointer `sp`, must be exactly the same before and after executing a procedure call at runtime, as if the call never happened from the perspective of the length of the call stack. The procedure `compile_call` takes the following steps to implement procedure calls:
-
-1. If the compiled procedure call occurs in an expression, temporary registers may be in use at runtime prior to invoking the procedure call, possibly violating the invariant on temporary registers. Thus the values of all currently used temporary registers must be saved before invoking the callee, and restored after the callee returned. For this purpose, `compile_call` invokes the procedure `save_temporaries` which generates code that saves the values of all currently used temporary registers on the call stack. After generating the code for the actual procedure call, `compile_call` invokes the procedure `restore_temporaries` which generates code that restores those values from the call stack. Below we show an example for which one temporary register is saved and restored. If a procedure call is used as statement, no temporary registers are in use at runtime prior to invoking the procedure call, because of the invariant on temporary registers before and after executing a statement. In that case, `save_temporaries` and `restore_temporaries` do not generate any code.
-
-2. If the compiled procedure call involves expressions that evaluate to actual parameters, `compile_call` invokes, for each expression in the order of its appearance, that is, from left to right, the procedure `compile_expression`, which generates code that evaluates the expression at runtime. After each invocation of `compile_expression`, `compile_call` generates a single `sd` instruction that saves the value to which the expression evaluates on the call stack, for the callee to retrieve it from there later. This is easy but there is an interesting twist. In C and C\*, actual parameters are pushed onto the stack in reverse order of the appearence of the expressions in a procedure call that evaluate to the actual parameters. Why is that?
-
-It is because of variadic procedures such as `printf`. With variadic procedures, the number of actual parameters can be different from one procedure call to another, and is thus only known after a procedure call has been parsed completely.
-
-3. Jump and link
-
-4. Deallocation of memory for variadic actual parameters, reestablishing variant on length of call stack.
-
-> Implementation of procedure bodies
-
-> Implementation of return statements
-
-control flow: recursion, iteration
-data flow: stack allocator
-
-temporary register invariant
-
-variadic functions
+Since `main` accesses a local variable, the full prologue and epilogue are necessary. Moreover, the prologue now features an additional `addi` instruction that allocates memory for `n` on the call stack whose address is one machine word below the procedure mark, hence the offset `-8` relative to the frame pointer `s0` when accessing the value of `n`. The epilogue deallocates the memory for all local variables with a single `addi` instruction that sets the stack pointer `sp` back to `s0`. This is interesting. Both allocation and deallocation of memory for local variables only takes one instruction each. It cannot be faster than that and demonstrates the efficiency of stack allocation. However, strictly speaking, the allocated memory should also be initialized which is something we do not do here but only to keep things simple.
 
 > Arrays
 
