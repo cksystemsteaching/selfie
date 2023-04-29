@@ -5520,6 +5520,8 @@ The challenge with code generation for this example is the expression `n * facto
 0x1C0(~6): jalr zero,0(ra) // return from factorial
 ```
 
+The code generated for evaluating the expression `n * factorial(n - 1)` using the procedure `compile_expression` shows that the value of `n` to the left of `*` is loaded into the temporary register `t0` before `factorial(n - 1)` to the right of `*` is evaluated. However, code generation for procedure bodies assumes that all temporary registers are available upon entering the code for a procedure body, just like the invariant on temporary registers before and after executing the code of a statement. A procedure call as statement is therefore not a problem but a procedure call in an expression may be a problem, as in our example. How do we solve the problem? The answer is simple. We generate code that saves the values of all currently used temporary registers on the call stack, using the procedure `save_temporaries`, before generating the code for a procedure call, and then generate code that restores those values, using the procedure `restore_temporaries`, after generating the code for a procedure call. Done! The above code shows the result for our example. This approach may result in inefficient code but doing something smarter is beyond our means here. Again for completeness, here is the assembly code generated for the `main` procedure that invokes `factorial` with the actual parameter `4`, this time as the expression in a `return` statement:
+
 ```asm
 // assert: top = sp, link = ra
 
@@ -5560,7 +5562,7 @@ The challenge with code generation for this example is the expression `n * facto
 0x208(~10): jalr zero,0(ra) // return from main
 ```
 
-data flow done
+Since `main` still does not access any formal parameters and local variables, only the parts of prologue and epilogue that save and restore the return address register `ra` are needed. We are finally done with code generation for data-flow semantics on all levels. There is only one thing missing, the use of local variables. Consider the following version of a `main` procedure:
 
 ```c
 uint64_t main() {
