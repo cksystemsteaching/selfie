@@ -5340,7 +5340,7 @@ Instead of keeping track of the value of `n` in a global variable, the above ver
 0x148(~4): sd s0,0(sp)   // save frame pointer s0 on stack
 0x14C(~4): addi s0,sp,0  // set frame pointer s0 to stack pointer sp
 
-// assert: sp == inv - 16, s0 = sp != frame, ra == link
+// assert: sp == top - 16, s0 = sp != frame, ra == link
 
 0x150(~4): ld t0,16(s0)          // if (n > 1) {
 0x154(~4): addi t1,zero,1
@@ -5352,19 +5352,19 @@ Instead of keeping track of the value of `n` in a global variable, the above ver
 0x168(~5): mul t0,t0,t1
 0x16C(~5): sd t0,-16(gp)
 
-// assert: sp == inv - 16, s0 = sp != frame, ra == link
+// assert: sp == top - 16, s0 == sp, ra == link
 
 0x170(~7): ld t0,16(s0)          //   factorial(n - 1);
 0x174(~7): addi t1,zero,1
 0x178(~7): sub t0,t0,t1
 0x17C(~7): addi sp,sp,-8         //   allocate memory on stack
-0x180(~7): sd t0,0(sp)           //   save n - 1 in register t0 on stack
+0x180(~7): sd t0,0(sp)           //   store value of n - 1 on stack
 
-// assert: sp == inv - 24, s0 = sp != frame, ra == link
+// assert: sp == top - 24, s0 == top - 16, ra == link
 
 0x184(~7): jal ra,-18[0x13C]     // }
 
-// assert: sp == inv - 16, s0 = sp != frame, ra != link or ra == link
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
 
 // factorial epilogue:
 0x188(~9): ld s0,0(sp)   // restore frame pointer s0 from stack
@@ -5372,7 +5372,7 @@ Instead of keeping track of the value of `n` in a global variable, the above ver
 0x190(~9): ld ra,0(sp)   // restore return address register ra from stack
 0x194(~9): addi sp,sp,16 // deallocate machine word for ra and for n on stack
 
-// assert: sp == inv + 8, s0 == frame, ra == link
+// assert: sp == top + 8, s0 == frame, ra == link
 
 0x198(~9): jalr zero,0(ra) // return from factorial
 ```
@@ -5381,9 +5381,7 @@ Both the full prologue and epilogue code generated for `factorial` is now necess
 
 > Procedure mark
 
-The memory for saving the values of `ra` and `s0` on the call stack is called *procedure mark*. The purpose of the frame pointer `s0` is to address the memory allocated for formal parameters and local variables on the call stack. The layout is such that memory for formal parameters has positive offsets relative to `s0` and is located above the procedure mark, and memory for local variables has negative offsets and is located below the procedure mark, as we see below.
-
-According to the assertions, the values of `s0` and `sp` are the same when executing the code in between prologue and epilogue. Thus, in principle, we could just use `sp` instead of `s0`. However, this only works as long as the amount of memory allocated for formal parameters and local variables is known at compile time which is the case when compiling C\* but not C and its derivates. We just mimic what production compilers do.
+The memory for saving the values of `ra` and `s0` on the call stack is called *procedure mark*. The purpose of the frame pointer `s0` is to address the memory allocated for formal parameters and local variables on the call stack. The layout is such that memory for formal parameters has positive offsets relative to `s0` and is located above the procedure mark, and memory for local variables has negative offsets and is located below the procedure mark, as we see below. Here is yet another invariant on procedure bodies: the value of the frame pointer `s0` does not change during execution of the code in between prologue and epilogue. That invariant allows us to address the memory for formal parameters and local variables relative to `s0`. While the value of `s0` does not change, the value of the stack pointer `sp` may change and can thus not be used instead of `s0`, at least not easily. The value of `sp` changes when executing code that prepares the call stack for procedure calls, as we see next.
 
 > Call frame
 
@@ -5411,15 +5409,15 @@ There is one more thing. How do we know the total number of actual parameters in
 
 0x1A4(~12) - 0x1AC(~12):  // redundant part of main prologue hidden
 
-// assert: sp == inv - 16, ra == link
+// assert: sp == top - 16, ra == link
 
 0x1B0(~12): addi t0,zero,4    // factorial(4);
 0x1B4(~12): addi sp,sp,-8     // allocate one machine word on stack
 0x1B8(~12): sd t0,0(sp)       // store value 4 on stack
 
-// assert: sp == top - 24, ra != link
+// assert: sp == top - 24, ra == link
 
-0x1BC(~12): jal ra,-32[0x13C]
+0x1BC(~12): jal ra,-32[0x13C] // call factorial(4)
 
 // assert: sp == top - 16, ra != link
 
@@ -5436,14 +5434,12 @@ There is one more thing. How do we know the total number of actual parameters in
 0x1D8(~15): ld ra,0(sp)  // necessary part of main epilogue
 0x1DC(~15): addi sp,sp,8
 
-// assert: sp == inv, ra == link
+// assert: sp == top, ra == link
 
 0x1E0(~15): jalr zero,0(ra) // return from main
 ```
 
-The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables.
-
-source-level data flow done
+The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables. The code generated for the procedure call to `factorial` is in line of what we saw above. By now, we are done with code generation for data-flow semantics, at least on the level of source code. There is, however, an additional issue on the level of machine code. Consider the following version which repeats the recursive implementation of `factorial` without the use of any global variables from the language chapter:
 
 ```c
 uint64_t factorial(uint64_t n) {
@@ -5458,12 +5454,18 @@ uint64_t main() {
 }
 ```
 
+The challenge with code generation for this example is the expression `n * factorial(n - 1)` which contains a procedure call to `factorial` whose return value is used right there in the expression but only after the left operand of the multiplication operator, the value of `n` to the left of `*`, has been evaluated. Here is the assembly code for this version of `factorial`:
+
 ```asm
+// assert: top = sp, frame = s0, link = ra
+
 0x13C(~2): addi sp,sp,-8 // factorial prologue
 0x140(~2): sd ra,0(sp)
 0x144(~2): addi sp,sp,-8
 0x148(~2): sd s0,0(sp)
 0x14C(~2): addi s0,sp,0
+
+// assert: sp == top - 16, s0 = sp != frame, ra == link
 
 0x150(~2): ld t0,16(s0)          // if (n > 1)
 0x154(~2): addi t1,zero,1
@@ -5472,15 +5474,27 @@ uint64_t main() {
 
 0x160(~3): ld t0,16(s0)          //   return n * factorial(n - 1);
 0x164(~3): addi sp,sp,-8         //   allocate one machine word on stack
-0x168(~3): sd t0,0(sp)           //   save n in register t0 on stack
+0x168(~3): sd t0,0(sp)           //   save value of n left to * on stack
+
+// assert: sp == top - 24, s0 == top - 16, ra == link
+
 0x16C(~3): ld t0,16(s0)
 0x170(~3): addi t1,zero,1
 0x174(~3): sub t0,t0,t1
 0x178(~3): addi sp,sp,-8         //   allocate one machine word on stack
-0x17C(~3): sd t0,0(sp)           //   save n - 1 in register t0 on stack
+0x17C(~3): sd t0,0(sp)           //   store value of n - 1 on stack
+
+// assert: sp == top - 32, s0 == top - 16, ra == link
+
 0x180(~3): jal ra,-17[0x13C]     //   call factorial(n - 1)
+
+// assert: sp == top - 24, s0 == top - 16, ra != link or ra == link
+
 0x184(~3): ld t0,0(sp)           //   restore n from stack into register t0
 0x188(~3): addi sp,sp,8          //   deallocate one machine word on stack
+
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
+
 0x18C(~3): addi t1,a0,0          //   retrieve return value of factorial(n - 1)
 0x190(~3): mul t0,t0,t1          //   evaluate n * factorial(n - 1)
 0x194(~3): addi a0,t0,0          //   store result in return value register a0
@@ -5494,24 +5508,40 @@ uint64_t main() {
 
 0x1AC(~6): addi a0,zero,0 // reset return value register a0, redundant
 
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
+
 0x1B0(~6): ld s0,0(sp)   // factorial epilogue
 0x1B4(~6): addi sp,sp,8
 0x1B8(~6): ld ra,0(sp)
 0x1BC(~6): addi sp,sp,16
 
+// assert: sp == top + 8, s0 == frame, ra == link
+
 0x1C0(~6): jalr zero,0(ra) // return from factorial
 ```
 
 ```asm
+// assert: top = sp, link = ra
+
 0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
 0x1C8(~9): sd ra,0(sp)
 
+// assert: sp == top - 8, ra == link
+
 0x1CC(~9) - 0x1D4(~9):   // redundant part of main prologue hidden
+
+// assert: sp == top - 16, ra == link
 
 0x1D8(~9): addi t0,zero,4    // return factorial(4);
 0x1DC(~9): addi sp,sp,-8     // allocate one machine word on stack
-0x1E0(~9): sd t0,0(sp)       // save 4 on stack
+0x1E0(~9): sd t0,0(sp)       // store value 4 on stack
+
+// assert: sp == top - 24, ra == link
+
 0x1E4(~9): jal ra,-42[0x13C] // call factorial(4)
+
+// assert: sp == top - 16, ra != link
+
 0x1E8(~9): addi t0,a0,0      // retrieve return value of factorial(4)
 0x1EC(~9): addi a0,t0,0      // store result in return value register a0
 0x1F0(~9): jal zero,2[0x1F8] // jump to epilogue
@@ -5520,8 +5550,12 @@ uint64_t main() {
 
 0x1F8(~10) - 0x1FC(~10): // redundant part of main epilogue hidden
 
+// assert: sp == top - 8, ra != link
+
 0x200(~10): ld ra,0(sp)  // necessary part of main epilogue
 0x204(~10): addi sp,sp,8
+
+// assert: sp == top, ra == link
 
 0x208(~10): jalr zero,0(ra) // return from main
 ```
@@ -5539,33 +5573,55 @@ uint64_t main() {
 ```
 
 ```asm
+// assert: top = sp, frame = s0, link = ra
+
 // main prologue:
 0x1C4(~11): addi sp,sp,-8
 0x1C8(~11): sd ra,0(sp)
 0x1CC(~11): addi sp,sp,-8
 0x1D0(~11): sd s0,0(sp)
 0x1D4(~11): addi s0,sp,0
+
+// assert: sp == top - 16, s0 = sp != frame, ra == link
+
+// still part of main prologue:
 0x1D8(~11): addi sp,sp,-8 // allocate one machine word for n on stack
+
+// assert: sp == top - 24, s0 == top - 16, ra == link
 
 0x1DC(~11): addi t0,zero,4    // n = 4;
 0x1E0(~11): sd t0,-8(s0)
 
 0x1E4(~13): ld t0,-8(s0)      // return factorial(n);
-0x1E8(~13): addi sp,sp,-8
-0x1EC(~13): sd t0,0(sp)
-0x1F0(~13): jal ra,-45[0x13C]
-0x1F4(~13): addi t0,a0,0
-0x1F8(~13): addi a0,t0,0
-0x1FC(~13): jal zero,2[0x204]
+0x1E8(~13): addi sp,sp,-8     // allocate one machine word on stack
+0x1EC(~13): sd t0,0(sp)       // store value of n on stack
+
+// assert: sp == top - 32, s0 == top - 16, ra == link
+
+0x1F0(~13): jal ra,-45[0x13C] // call factorial(n)
+
+// assert: sp == top - 24, s0 == top - 16, ra != link
+
+0x1F4(~13): addi t0,a0,0      // retrieve return value of factorial(n)
+0x1F8(~13): addi a0,t0,0      // store result in return value register a0
+0x1FC(~13): jal zero,2[0x204] // jump to epilogue
 
 0x200(~14): addi a0,zero,0 // reset return value register a0, redundant
 
+// assert: sp == top - 24, s0 == top - 16, ra != link
+
 // main epilogue:
-0x204(~14): addi sp,s0,0 // deallocate one machine word for n on stack
+0x204(~14): addi sp,s0,0 // deallocate memory for local variables on stack
+
+// assert: sp == top - 16, s0 == sp, ra != link
+
+// still part of main epilogue:
 0x208(~14): ld s0,0(sp)
 0x20C(~14): addi sp,sp,8
 0x210(~14): ld ra,0(sp)
 0x214(~14): addi sp,sp,8
+
+// assert: sp == top, s0 == frame, ra == link
 
 0x218(~14): jalr zero,0(ra) // return from main
 ```
