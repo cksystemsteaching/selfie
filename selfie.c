@@ -3360,7 +3360,7 @@ uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...) {
 }
 
 uint64_t printf_or_dprintf(uint64_t call) {
-  call = 0; // avoids unused parameter warning
+  call = call + 0; // avoids unused parameter warning
   if (output_fd == 1)
     return printf("%s", string_buffer);
   else
