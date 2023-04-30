@@ -1938,15 +1938,15 @@ Here, the relevant part of the output should be similar to this:
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 389332147 executed instructions [21.84% nops]
-./selfie:          2.64KB peak stack size
-./selfie:          3.23MB allocated in 23888 mallocs
-./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
-./selfie:          2.35MB(78.38% of 3MB) mapped memory
+./selfie: summary: 352722113 executed instructions [17.32% nops]
+./selfie:          2.57KB peak stack size
+./selfie:          3.23MB allocated in 23944 mallocs
+./selfie:          2.10MB(64.97% of 3.23MB) actually accessed
+./selfie:          2.28MB(76.30% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.15MB, that is, using only 66.54% of the 3.23MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.35MB of (mapped) memory which is 78.38% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.64KB at its peak. That memory is part of the 2.35MB of (mapped) memory.
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.10MB, that is, using only 64.97% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.28MB of (mapped) memory which is 76.30% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.57KB at its peak. That memory is part of the 2.28MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2136,8 +2136,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x0003F2B7: lui t0,0x3F
-0x4(~1): 0xC1028293: addi t0,t0,-1008
+0x0(~1): 0x0003B2B7: lui t0,0x3B
+0x4(~1): 0x4D828293: addi t0,t0,1240
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2149,17 +2149,16 @@ The output should be similar to this:
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
-0x34(~1): 0x00000513: addi a0,zero,0
-0x38(~1): 0x00013283: ld t0,0(sp)
-0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x01010293: addi t0,sp,16
-0x48(~1): 0x00513423: sd t0,8(sp)
-0x4C(~1): 0x5C42A0EF: jal ra,43377[0x2A610]
+0x34(~1): 0x00013283: ld t0,0(sp)
+0x38(~1): 0xFF810113: addi sp,sp,-8
+0x3C(~1): 0x00513023: sd t0,0(sp)
+0x40(~1): 0x01010293: addi t0,sp,16
+0x44(~1): 0x00513423: sd t0,8(sp)
+0x48(~1): 0x0E1270EF: jal ra,40504[0x27928]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 43,500 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 40,500 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
