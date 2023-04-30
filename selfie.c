@@ -166,7 +166,7 @@ uint64_t ratio_format_fractional_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_integral_2(uint64_t a, uint64_t b);
 uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b);
 
-uint64_t write_to_printf_console(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
+uint64_t write_to_printf(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 
 void put_character(char c);
 
@@ -196,6 +196,8 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* format, uint64_t* args);
 uint64_t non_0_boot_level_printf(char* format, ...);
 uint64_t non_0_boot_level_sprintf(char* str, char* format, ...);
 uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...);
+
+uint64_t printf_or_dprintf(uint64_t call);
 
 // selfie's malloc interface
 
@@ -240,6 +242,8 @@ uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
 char* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
+
+char* string_buffer; // buffer for formatting strings
 
 uint64_t MAX_FILENAME_LENGTH = 128;
 
@@ -337,6 +341,9 @@ void init_library() {
 
   // accommodate at least SIZEOFUINT64INBITS-numbers for itoa, no mapping needed
   integer_buffer = string_alloc(SIZEOFUINT64INBITS);
+
+  // accommodate at least standard terminal line, no mapping needed
+  string_buffer = string_alloc(80);
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
@@ -3035,7 +3042,7 @@ uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b) {
     return 0;
 }
 
-uint64_t write_to_printf_console(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
+uint64_t write_to_printf(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
   uint64_t bytes_written;
 
   if (fd == 1) {
@@ -3071,7 +3078,7 @@ void put_character(char c) {
 
     // assert: character_buffer is mapped
 
-    if (write_to_printf_console(output_fd, (uint64_t*) character_buffer, 1) != 1) {
+    if (write_to_printf(output_fd, (uint64_t*) character_buffer, 1) != 1) {
       // output failed
       if (output_fd != 1) {
         // failed output was not to console which has file descriptor 1
@@ -3350,6 +3357,14 @@ uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...) {
   var_end(args);
 
   return written_bytes;
+}
+
+uint64_t printf_or_dprintf(uint64_t call) {
+  call = 0; // avoids unused parameter warning
+  if (output_fd == 1)
+    return printf("%s", string_buffer);
+  else
+    return dprintf(output_fd, "%s", string_buffer);
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
@@ -7653,7 +7668,7 @@ void implement_write(uint64_t* context) {
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           buffer = tlb(get_pt(context), vbuffer);
 
-          actually_written = sign_extend(write_to_printf_console(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+          actually_written = sign_extend(write_to_printf(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
           if (actually_written == bytes_to_write) {
             written_total = written_total + actually_written;
@@ -9243,7 +9258,8 @@ void print_gc_profile(uint64_t* context) {
 
 uint64_t print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    return dprintf(output_fd, "(~%lu)", *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    return printf_or_dprintf(sprintf(string_buffer, "(~%lu)",
+      *(code_line_number + (address - offset) / INSTRUCTIONSIZE)));
   else
     return 0;
 }
@@ -9252,13 +9268,13 @@ uint64_t print_code_context_for_instruction(uint64_t address) {
   uint64_t w;
 
   if (run) {
-    w = dprintf(output_fd, "%s: pc==0x%lX", binary_name, address)
+    w = printf_or_dprintf(sprintf(string_buffer, "%s: pc==0x%lX", binary_name, address))
       + print_code_line_number_for_instruction(address, code_start);
     if (symbolic)
       // skip further output
       return w;
     else
-      return w + dprintf(output_fd, ": ");
+      return w + printf_or_dprintf(sprintf(string_buffer, ": "));
   } else if (model)
     return dprintf(output_fd, "0x%lX", address)
       + print_code_line_number_for_instruction(address, code_start)
@@ -9273,7 +9289,8 @@ uint64_t print_code_context_for_instruction(uint64_t address) {
 
 uint64_t print_lui() {
   return print_code_context_for_instruction(pc) +
-    dprintf(output_fd, "%s %s,0x%lX", get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20));
+    printf_or_dprintf(sprintf(string_buffer, "%s %s,0x%lX",
+      get_mnemonic(is), get_register_name(rd), sign_shrink(imm, 20)));
 }
 
 void print_lui_before() {
@@ -9325,9 +9342,10 @@ uint64_t print_addi() {
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
       if (imm == 0)
-        return w + dprintf(output_fd, "nop");
+        return w + printf_or_dprintf(sprintf(string_buffer, "nop"));
 
-  return w + dprintf(output_fd, "%s %s,%s,%ld", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), imm);
+  return w + printf_or_dprintf(sprintf(string_buffer, "%s %s,%s,%ld",
+    get_mnemonic(is), get_register_name(rd), get_register_name(rs1), imm));
 }
 
 void print_addi_before() {
@@ -9369,7 +9387,9 @@ void do_addi() {
 
 uint64_t print_add_sub_mul_divu_remu_sltu() {
   return print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%s,%s", get_mnemonic(is), get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%s,%s",
+        get_mnemonic(is), get_register_name(rd),
+          get_register_name(rs1), get_register_name(rs2)));
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -9544,7 +9564,8 @@ void do_sltu() {
 
 uint64_t print_load() {
   return print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rd), imm, get_register_name(rs1));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%ld(%s)",
+        get_mnemonic(is), get_register_name(rd), imm, get_register_name(rs1)));
 }
 
 void print_load_before() {
@@ -9637,7 +9658,8 @@ uint64_t do_load() {
 
 uint64_t print_store() {
   return print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rs2), imm, get_register_name(rs1));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%ld(%s)",
+        get_mnemonic(is), get_register_name(rs2), imm, get_register_name(rs1)));
 }
 
 void print_store_before() {
@@ -9739,7 +9761,9 @@ uint64_t print_beq() {
   uint64_t w;
 
   w = print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%s,%ld", get_mnemonic(is), get_register_name(rs1), get_register_name(rs2), signed_division(imm, INSTRUCTIONSIZE));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%s,%ld",
+        get_mnemonic(is), get_register_name(rs1), get_register_name(rs2),
+        signed_division(imm, INSTRUCTIONSIZE)));
   if (disassemble_verbose)
     return w + dprintf(output_fd, "[0x%lX]", pc + imm);
   else
@@ -9784,7 +9808,8 @@ uint64_t print_jal() {
   uint64_t w;
 
   w = print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%ld", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%ld",
+        get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE)));
   if (disassemble_verbose)
     return w + dprintf(output_fd, "[0x%lX]", pc + imm);
   else
@@ -9855,7 +9880,9 @@ void do_jal() {
 
 uint64_t print_jalr() {
   return print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s %s,%ld(%s)", get_mnemonic(is), get_register_name(rd), signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+    + printf_or_dprintf(sprintf(string_buffer, "%s %s,%ld(%s)",
+        get_mnemonic(is), get_register_name(rd),
+          signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1)));
 }
 
 void print_jalr_before() {
@@ -9902,7 +9929,7 @@ void do_jalr() {
 
 uint64_t print_ecall() {
   return print_code_context_for_instruction(pc)
-    + dprintf(output_fd, "%s", get_mnemonic(is));
+    + printf_or_dprintf(sprintf(string_buffer, "%s", get_mnemonic(is)));
 }
 
 void record_ecall() {
