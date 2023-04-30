@@ -6334,12 +6334,12 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf("%s: nothing to compile, only %s generated\n", selfie_name, source_name);
 
+  finalize_data_segment();
+
   emit_bootstrapping();
 
   if (GC_ON)
     emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
-
-  finalize_data_segment();
 
   if (number_of_symbol_lookups > 0)
     printf("%s: %lu symbol table lookups in %lu iterations on average\n", selfie_name,
