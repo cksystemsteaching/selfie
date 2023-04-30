@@ -6308,12 +6308,12 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf("%s: nothing to compile, only library generated\n", selfie_name);
 
+  finalize_data_segment();
+
   emit_bootstrapping();
 
   if (GC_ON)
     emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
-
-  finalize_data_segment();
 
   ELF_header = encode_elf_header();
 
