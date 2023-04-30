@@ -594,28 +594,28 @@ The first few lines of output give you an idea of the size of the system in term
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
 ./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
-./selfie: 346447 characters read in 11954 lines and 1699 comments
-./selfie: with 206502(59.60%) characters in 48118 actual symbols
-./selfie: 480 global variables, 631 procedures, 469 string literals
-./selfie: 2893 calls, 1340 assignments, 91 while, 894 if, 583 return
+./selfie: 348313 characters read in 11988 lines and 1711 comments
+./selfie: with 207832(59.66%) characters in 48508 actual symbols
+./selfie: 477 global variables, 628 procedures, 366 string literals
+./selfie: 1336 assignments, 89 while, 903 if, 2918 calls, 593 return
 ...
 ```
 
-What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 480 global variables and 631 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 477 global variables and 628 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
 ...
-./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
-./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
-./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
-./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
-./selfie: compare: sltu: 701(1.61%)
-./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
+./selfie: 175776 bytes generated with 40562 instructions and 13528 bytes of data
+./selfie: init:    lui: 2610(6.43%), addi: 11700(28.84%)
+./selfie: memory:  ld: 7583(18.69%), sd: 7240(17.84%)
+./selfie: compute: add: 3563(8.78%), sub: 718(1.77%), mul: 494(1.21%)
+./selfie: compute: divu: 89(0.21%), remu: 31(0.07%)
+./selfie: compare: sltu: 701(1.72%)
+./selfie: control: beq: 996(2.45%), jal: 4194(10.33%), jalr: 635(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-For example, the system generated 3,551 `add` instructions which is 8.17% of all 43,440 generated instructions. In the following, let us take a closer look using the `double.c` example.
+For example, the system generated 3,563 `add` instructions which is 8.78% of all 40,562 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -664,55 +664,54 @@ The relevant part of `double.s` looks as follows, with some code omitted (`...`)
 ```asm
 ...
 ---
-0x140(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
-0x144(~2): 0x00113023: sd ra,0(sp)
-0x148(~2): 0xFF810113: addi sp,sp,-8
-0x14C(~2): 0x00813023: sd s0,0(sp)
-0x150(~2): 0x00010413: addi s0,sp,0
+0x13C(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
+0x140(~2): 0x00113023: sd ra,0(sp)
+0x144(~2): 0xFF810113: addi sp,sp,-8
+0x148(~2): 0x00813023: sd s0,0(sp)
+0x14C(~2): 0x00010413: addi s0,sp,0
 ---
-0x154(~2): 0x01043283: ld t0,16(s0)      // return n + n;
-0x158(~2): 0x01043303: ld t1,16(s0)
-0x15C(~2): 0x006282B3: add t0,t0,t1
-0x160(~2): 0x00028513: addi a0,t0,0
-0x164(~2): 0x0040006F: jal zero,1[0x168]
+0x150(~2): 0x01043283: ld t0,16(s0)      //   return n + n;
+0x154(~2): 0x01043303: ld t1,16(s0)
+0x158(~2): 0x006282B3: add t0,t0,t1
+0x15C(~2): 0x00028513: addi a0,t0,0
+0x160(~2): 0x0080006F: jal zero,2[0x168]
 ---
-0x168(~3): 0x00040113: addi sp,s0,0      // }
-0x16C(~3): 0x00013403: ld s0,0(sp)
-0x170(~3): 0x00810113: addi sp,sp,8
-0x174(~3): 0x00013083: ld ra,0(sp)
-0x178(~3): 0x01010113: addi sp,sp,16
-0x17C(~3): 0x00008067: jalr zero,0(ra)
+0x164(~3): 0x00000513: addi a0,zero,0    // }
+0x168(~3): 0x00013403: ld s0,0(sp)
+0x16C(~3): 0x00810113: addi sp,sp,8
+0x170(~3): 0x00013083: ld ra,0(sp)
+0x174(~3): 0x01010113: addi sp,sp,16
+0x178(~3): 0x00008067: jalr zero,0(ra)
 ---
-0x180(~6): 0xFF810113: addi sp,sp,-8     // int main() {
-0x184(~6): 0x00113023: sd ra,0(sp)
-0x188(~6): 0xFF810113: addi sp,sp,-8
-0x18C(~6): 0x00813023: sd s0,0(sp)
-0x190(~6): 0x00010413: addi s0,sp,0
+0x17C(~6): 0xFF810113: addi sp,sp,-8     // int main() {
+0x180(~6): 0x00113023: sd ra,0(sp)
+0x184(~6): 0xFF810113: addi sp,sp,-8
+0x188(~6): 0x00813023: sd s0,0(sp)
+0x18C(~6): 0x00010413: addi s0,sp,0
 ---
-0x194(~6): 0x02A00293: addi t0,zero,42   // return double(42);
-0x198(~6): 0xFF810113: addi sp,sp,-8
-0x19C(~6): 0x00513023: sd t0,0(sp)
-0x1A0(~6): 0xFA1FF0EF: jal ra,-24[0x140]
-0x1A4(~6): 0x00050293: addi t0,a0,0
-0x1A8(~6): 0x00000513: addi a0,zero,0
-0x1AC(~6): 0x00028513: addi a0,t0,0
-0x1B0(~6): 0x0040006F: jal zero,1[0x1B4]
+0x190(~6): 0x02A00293: addi t0,zero,42   //   return double(42);
+0x194(~6): 0xFF810113: addi sp,sp,-8
+0x198(~6): 0x00513023: sd t0,0(sp)
+0x19C(~6): 0xFA1FF0EF: jal ra,-24[0x13C]
+0x1A0(~6): 0x00050293: addi t0,a0,0
+0x1A4(~6): 0x00028513: addi a0,t0,0
+0x1A8(~6): 0x0080006F: jal zero,2[0x1B0]
 ---
-0x1B4(~7): 0x00040113: addi sp,s0,0      // }
-0x1B8(~7): 0x00013403: ld s0,0(sp)
+0x1AC(~7): 0x00000513: addi a0,zero,0    // }
+0x1B0(~7): 0x00013403: ld s0,0(sp)
+0x1B4(~7): 0x00810113: addi sp,sp,8
+0x1B8(~7): 0x00013083: ld ra,0(sp)
 0x1BC(~7): 0x00810113: addi sp,sp,8
-0x1C0(~7): 0x00013083: ld ra,0(sp)
-0x1C4(~7): 0x00810113: addi sp,sp,8
-0x1C8(~7): 0x00008067: jalr zero,0(ra)
+0x1C0(~7): 0x00008067: jalr zero,0(ra)
 ---
 ...
 ```
 
-Assembly code might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `140`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`.
+Assembly code might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `13C`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`.
 
 > Every C\* statement translates to a block of RISC-U machine instructions
 
-The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x154` to `0x164`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
+The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x150` to `0x160`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
 
 > RISC-U machine code gives C\* code meaning!
 
@@ -721,14 +720,14 @@ There exists such a correspondence for all C\* code which makes reading machine 
 Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get the basic idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
 
 ```asm
-0x15C(~2): 0x006282B3: add t0,t0,t1
+0x158(~2): 0x006282B3: add t0,t0,t1
 ```
 
-We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x15C(~2)` refers to the address `0x15C` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
+We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x158(~2)` refers to the address `0x158` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
 
 > A machine instruction says what to do **and** which instruction is next
 
-So, what does `add t0,t0,t1` do? It instructs the processor to add the values stored in its *registers* `t0` and `t1`, then store the result in `t0`, and finally move on to the next instruction at address `0x160`. In other words, `add t0,t0,t1` is similar to an assignment `t0 = t0 + t1` but involving registers, not variables.
+So, what does `add t0,t0,t1` do? It instructs the processor to add the values stored in its *registers* `t0` and `t1`, then store the result in `t0`, and finally move on to the next instruction at address `0x15C`. In other words, `add t0,t0,t1` is similar to an assignment `t0 = t0 + t1` but involving registers, not variables.
 
 > Registers are the fastest and most valuable memory of a computer
 
@@ -736,7 +735,7 @@ Registers is where most of the work is done. There are usually only a few regist
 
 But you are right! We could have done the same thing using `add t0,t0,t0` and not even involve `t1` at all. But, again, this would be optimized code which is not easy to generate by a system designed for simplicity. So, we leave it at that for now. It is an exciting topic to study though and there is still a lot of research going on about how to do this best. After all, we want our code to be as fast and use as few instructions as possible.
 
-What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15. Note that hexa is derived from the Greek word for six and decimal from Latin for tenth. The etymologically correct term for hexadecimal is *senidenary* but anyway not used in practice.
+What about `0x158`, `0x15C`, and `0x006282B3`? Well, all three are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15. Note that hexa is derived from the Greek word for six and decimal from Latin for tenth. The etymologically correct term for hexadecimal is *senidenary* but anyway not used in practice.
 
 Each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value 348 because (**1** * 16 + **5**) * 16 + **12** is equal to 348 where **12** is represented by `C`. We say that hexadecimal notation uses *base* 16 whereas decimal notation uses base 10, that is, `0x15C` is just a shortcut for (**1** * 16 + **5**) * 16 + **12** and 348 is in fact a shortcut for (**3** * 10 + **4**) * 10 + **8**.
 
@@ -774,10 +773,10 @@ A debugger is a software tool for finding flaws in software called *bugs*. Lots 
 
 ```asm
 ...
-pc==0x10154(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
-pc==0x10158(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
-pc==0x1015C(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
-pc==0x10160(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
+pc==0x10150(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x10154(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x10158(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
+pc==0x1015C(~2): addi a0,t0,0: t0==84(0x54) |- a0==73728(0x12000) -> a0==84(0x54)
 ...
 ```
 
@@ -837,23 +836,23 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 60251 executed instructions [22.32% nops]
+./selfie: summary: 59140 executed instructions [18.54% nops]
 ./selfie:          0.46KB peak stack size
 ./selfie:          0.00MB allocated in 5 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
-./selfie:          0.19MB(19.92% of 1MB) mapped memory
+./selfie:          0.18MB(18.75% of 1MB) mapped memory
 ./selfie: --------------------------------------------------------------------------------
-./selfie: init:    lui: 283(0.46%)[0.00%], addi: 23559(39.10%)[19.10%]
-./selfie: memory:  ld: 14014(23.25%)[14.10%], sd: 8788(14.58%)[46.38%]
-./selfie: compute: add: 1726(2.86%)[5.90%], sub: 670(1.11%)[19.10%], mul: 1524(2.52%)[9.58%]
-./selfie: compute: divu: 662(1.09%)[7.70%], remu: 670(1.11%)[14.92%]
-./selfie: compare: sltu: 989(1.64%)[25.37%]
-./selfie: control: beq: 1258(2.08%)[62.32%], jal: 4044(6.71%)[33.06%], jalr: 1933(3.20%)[0.00%]
-./selfie: system:  ecall: 131(0.21%)
+./selfie: init:    lui: 283(0.47%)[0.00%], addi: 21920(37.06%)[16.65%]
+./selfie: memory:  ld: 13822(23.37%)[13.97%], sd: 9272(15.67%)[41.19%]
+./selfie: compute: add: 1724(2.91%)[5.97%], sub: 668(1.12%)[19.16%], mul: 1522(2.57%)[9.59%]
+./selfie: compute: divu: 662(1.11%)[7.70%], remu: 670(1.13%)[14.92%]
+./selfie: compare: sltu: 989(1.67%)[25.37%]
+./selfie: control: beq: 1258(2.12%)[62.32%], jal: 4165(7.04%)[0.00%], jalr: 2054(3.47%)[0.00%]
+./selfie: system:  ecall: 131(0.22%)
 ...
 ```
 
-Selfie reports how many instructions it executed just to print its synopsis: 60,251 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,726 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it executed just to print its synopsis: 59,140 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,724 times which is 2.91% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
