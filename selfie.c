@@ -7092,19 +7092,23 @@ void emit_string_data(uint64_t* entry) {
 }
 
 void finalize_data_segment() {
-  // assert: data_size > 0
+  uint64_t daddr;
 
-  // the data segment is populated in reverse order from end to start
-  if (data_size % sizeof(uint64_t) != 0)
-    // WORDSIZE may be less than sizeof(uint64_t)
-    // pad to align start of data segment
-    data_size = data_size + data_size % sizeof(uint64_t);
+  // assert: data_size <= MAX_DATA_SIZE
 
-  // set the actual start, given the final size of the data segment
-  data_binary = data_binary + (MAX_DATA_SIZE - data_size) / sizeof(uint64_t);
+  daddr = 0;
 
-  if (data_line_number != (uint64_t*) 0)
-    data_line_number = data_line_number + (MAX_DATA_SIZE - data_size) / WORDSIZE;
+  // data binary is populated in reverse order
+  // copy data to beginning of data binary
+  while (daddr < data_size) {
+    store_data(daddr, load_data(MAX_DATA_SIZE - data_size + daddr));
+
+    if (data_line_number != (uint64_t*) 0)
+      *(data_line_number + daddr / WORDSIZE) =
+        *(data_line_number + (MAX_DATA_SIZE - data_size + daddr) / WORDSIZE);
+
+    daddr = daddr + WORDSIZE;
+  }
 }
 
 uint64_t* touch(uint64_t* memory, uint64_t bytes) {
