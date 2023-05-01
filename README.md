@@ -1938,15 +1938,15 @@ Here, the relevant part of the output should be similar to this:
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 352722113 executed instructions [17.32% nops]
-./selfie:          2.57KB peak stack size
-./selfie:          3.23MB allocated in 23944 mallocs
-./selfie:          2.10MB(64.97% of 3.23MB) actually accessed
-./selfie:          2.28MB(76.30% of 3MB) mapped memory
+./selfie: summary: 353859954 executed instructions [17.32% nops]
+./selfie:          2.58KB peak stack size
+./selfie:          3.23MB allocated in 23994 mallocs
+./selfie:          2.14MB(66.10% of 3.23MB) actually accessed
+./selfie:          2.32MB(77.60% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.10MB, that is, using only 64.97% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.28MB of (mapped) memory which is 76.30% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.57KB at its peak. That memory is part of the 2.28MB of (mapped) memory.
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.14MB, that is, using only 66.10% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.32MB of (mapped) memory which is 77.60% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.58KB at its peak. That memory is part of the 2.32MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2137,7 +2137,7 @@ The output should be similar to this:
 
 ```
 0x0(~1): 0x0003B2B7: lui t0,0x3B
-0x4(~1): 0x4D828293: addi t0,t0,1240
+0x4(~1): 0x4E028293: addi t0,t0,1248
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2154,7 +2154,7 @@ The output should be similar to this:
 0x3C(~1): 0x00513023: sd t0,0(sp)
 0x40(~1): 0x01010293: addi t0,sp,16
 0x44(~1): 0x00513423: sd t0,8(sp)
-0x48(~1): 0x0E1270EF: jal ra,40504[0x27928]
+0x48(~1): 0x29D270EF: jal ra,40615[0x27AE4]
 ...
 ```
 
