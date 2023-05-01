@@ -594,28 +594,28 @@ The first few lines of output give you an idea of the size of the system in term
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
 ./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
-./selfie: 348313 characters read in 11988 lines and 1711 comments
-./selfie: with 207832(59.66%) characters in 48508 actual symbols
-./selfie: 477 global variables, 628 procedures, 366 string literals
-./selfie: 1336 assignments, 89 while, 903 if, 2918 calls, 593 return
+./selfie: 349005 characters read in 12019 lines and 1712 comments
+./selfie: with 208345(59.69%) characters in 48614 actual symbols
+./selfie: 478 global variables, 629 procedures, 366 string literals
+./selfie: 1338 assignments, 90 while, 903 if, 2936 calls, 595 return
 ...
 ```
 
-What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 477 global variables and 628 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 478 global variables and 629 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
 ...
-./selfie: 175776 bytes generated with 40562 instructions and 13528 bytes of data
-./selfie: init:    lui: 2610(6.43%), addi: 11700(28.84%)
-./selfie: memory:  ld: 7583(18.69%), sd: 7240(17.84%)
-./selfie: compute: add: 3563(8.78%), sub: 718(1.77%), mul: 494(1.21%)
-./selfie: compute: divu: 89(0.21%), remu: 31(0.07%)
-./selfie: compare: sltu: 701(1.72%)
-./selfie: control: beq: 996(2.45%), jal: 4194(10.33%), jalr: 635(1.56%)
+./selfie: 176224 bytes generated with 40672 instructions and 13536 bytes of data
+./selfie: init:    lui: 2608(6.41%), addi: 11749(28.88%)
+./selfie: memory:  ld: 7597(18.67%), sd: 7266(17.86%)
+./selfie: compute: add: 3563(8.76%), sub: 718(1.76%), mul: 494(1.21%)
+./selfie: compute: divu: 89(0.21%), remu: 29(0.07%)
+./selfie: compare: sltu: 702(1.72%)
+./selfie: control: beq: 997(2.45%), jal: 4216(10.36%), jalr: 636(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-For example, the system generated 3,563 `add` instructions which is 8.78% of all 40,562 generated instructions. In the following, let us take a closer look using the `double.c` example.
+For example, the system generated 3,563 `add` instructions which is 8.76% of all 40,672 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -836,23 +836,23 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 59140 executed instructions [18.54% nops]
+./selfie: summary: 59201 executed instructions [18.54% nops]
 ./selfie:          0.46KB peak stack size
-./selfie:          0.00MB allocated in 5 mallocs
+./selfie:          0.00MB allocated in 6 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
 ./selfie:          0.18MB(18.75% of 1MB) mapped memory
 ./selfie: --------------------------------------------------------------------------------
-./selfie: init:    lui: 283(0.47%)[0.00%], addi: 21920(37.06%)[16.65%]
-./selfie: memory:  ld: 13822(23.37%)[13.97%], sd: 9272(15.67%)[41.19%]
-./selfie: compute: add: 1724(2.91%)[5.97%], sub: 668(1.12%)[19.16%], mul: 1522(2.57%)[9.59%]
-./selfie: compute: divu: 662(1.11%)[7.70%], remu: 670(1.13%)[14.92%]
+./selfie: init:    lui: 284(0.47%)[0.00%], addi: 21945(37.06%)[16.65%]
+./selfie: memory:  ld: 13831(23.36%)[13.98%], sd: 9281(15.67%)[41.19%]
+./selfie: compute: add: 1727(2.91%)[5.96%], sub: 669(1.13%)[19.28%], mul: 1522(2.57%)[9.59%]
+./selfie: compute: divu: 662(1.11%)[7.70%], remu: 671(1.13%)[14.90%]
 ./selfie: compare: sltu: 989(1.67%)[25.37%]
-./selfie: control: beq: 1258(2.12%)[62.32%], jal: 4165(7.04%)[0.00%], jalr: 2054(3.47%)[0.00%]
-./selfie: system:  ecall: 131(0.22%)
+./selfie: control: beq: 1261(2.13%)[62.25%], jal: 4170(7.04%)[0.00%], jalr: 2057(3.47%)[0.00%]
+./selfie: system:  ecall: 132(0.22%)
 ...
 ```
 
-Selfie reports how many instructions it executed just to print its synopsis: 59,140 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,724 times which is 2.91% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it executed just to print its synopsis: 59,201 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,727 times which is 2.91% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
