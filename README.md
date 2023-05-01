@@ -2354,17 +2354,17 @@ The relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
-./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
-./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
-./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
-./selfie: compare: sltu: 701(1.61%)
-./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
+./selfie: 176224 bytes generated with 40672 instructions and 13536 bytes of data
+./selfie: init:    lui: 2608(6.41%), addi: 11749(28.88%)
+./selfie: memory:  ld: 7597(18.67%), sd: 7266(17.86%)
+./selfie: compute: add: 3563(8.76%), sub: 718(1.76%), mul: 494(1.21%)
+./selfie: compute: divu: 89(0.21%), remu: 29(0.07%)
+./selfie: compare: sltu: 702(1.72%)
+./selfie: control: beq: 997(2.45%), jal: 4216(10.36%), jalr: 636(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 43,440 RISC-U machine instructions as well as 15,376 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 33.56% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 40,672 RISC-U machine instructions as well as 13,536 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 28.88% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2400,8 +2400,8 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: 123 characters read in 14 lines and 0 comments
 ./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
-./selfie: 2 calls, 2 assignments, 1 while, 0 if, 2 return
-./selfie: symbol table search time was 3 iterations on average and 61 in total
+./selfie: 2 assignments, 1 while, 0 if, 1 calls, 2 return
+./selfie: 12 symbol table lookups in 1 iterations on average
 ./selfie: 512 bytes generated with 126 instructions and 8 bytes of data
 ./selfie: init:    lui: 2(1.58%), addi: 57(45.23%)
 ./selfie: memory:  ld: 23(18.25%), sd: 12(9.52%)
@@ -2410,7 +2410,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: compare: sltu: 1(0.79%)
 ./selfie: control: beq: 5(3.96%), jal: 5(3.96%), jalr: 7(5.55%)
 ./selfie: system:  ecall: 8(6.34%)
-./selfie: 4584 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
+./selfie: 4576 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
 ```
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
@@ -2432,22 +2432,21 @@ Selfie generates `126` instructions for the program of which we show only those 
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
-0x34(~1): 0x00000513: addi a0,zero,0
 ---
-0x38(~1): 0x00013283: ld t0,0(sp)
-0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x01010293: addi t0,sp,16
-0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
+0x34(~1): 0x00013283: ld t0,0(sp)
+0x38(~1): 0xFF810113: addi sp,sp,-8
+0x3C(~1): 0x00513023: sd t0,0(sp)
+0x40(~1): 0x01010293: addi t0,sp,16
+0x44(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ---
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ---
-0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
-0x54(~1): 0x00A13023: sd a0,0(sp)
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
-0x5C(~1): 0x00810113: addi sp,sp,8
-0x60(~1): 0x05D00893: addi a7,zero,93
-0x64(~1): 0x00000073: ecall            // exit
+0x4C(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x50(~1): 0x00A13023: sd a0,0(sp)
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x58(~1): 0x00810113: addi sp,sp,8
+0x5C(~1): 0x05D00893: addi a7,zero,93
+0x60(~1): 0x00000073: ecall            // exit
 ...
 ```
 
@@ -2456,84 +2455,87 @@ It may be hard to believe but after reading this chapter you will be able to und
 For now, let us focus on the `jal` instruction from the above code:
 
 ```asm
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ```
 
 As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A8`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
 
 ```asm
-0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // main prologue
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
 0x1B4(~13): 0x00813023: sd s0,0(sp)
-0x1B8(~13): 0x00010413: addi s0,sp,0
+0x1B8(~13): 0x00010413: addi s0,sp,0      // int main() {
 ---
-0x1BC(~13): 0x000022B7: lui t0,0x2        // return count(10000);
+0x1BC(~13): 0x000022B7: lui t0,0x2        //   return count(10000);
 0x1C0(~13): 0x71028293: addi t0,t0,1808
 0x1C4(~13): 0xFF810113: addi sp,sp,-8
 0x1C8(~13): 0x00513023: sd t0,0(sp)
-0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
-0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
-0x1D4(~13): 0x00000513: addi a0,zero,0
-0x1D8(~13): 0x00028513: addi a0,t0,0
-0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
+0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] //   call count procedure
+0x1D0(~13): 0x00050293: addi t0,a0,0      //   count returns here
+0x1D4(~13): 0x00028513: addi a0,t0,0
+0x1D8(~13): 0x0080006F: jal zero,2[0x1E0]
 ---
-0x1E0(~14): 0x00040113: addi sp,s0,0      // }
-0x1E4(~14): 0x00013403: ld s0,0(sp)
-0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00013083: ld ra,0(sp)
-0x1F0(~14): 0x00810113: addi sp,sp,8
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1DC(~14): 0x00000513: addi a0,zero,0    // }
+---
+0x1E0(~14): 0x00013403: ld s0,0(sp)       // main epilogue
+0x1E4(~14): 0x00810113: addi sp,sp,8
+0x1E8(~14): 0x00013083: ld ra,0(sp)
+0x1EC(~14): 0x00810113: addi sp,sp,8
+---
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 The very last instruction of `main`:
 
 ```asm
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
-makes the processor return to the instruction that follows the `jal ra,87[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
+makes the processor return to the instruction that follows the `jal ra,88[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
 ```asm
-0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
+0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] // call count procedure
 ```
 
-calls the code for `count` at address `0x140` which is right here:
+calls the code for `count` at address `0x13C` which is right here:
 
 ```asm
 ...
-0x140(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
-0x144(~4): 0x00113023: sd ra,0(sp)
-0x148(~4): 0xFF810113: addi sp,sp,-8
-0x14C(~4): 0x00813023: sd s0,0(sp)
-0x150(~4): 0x00010413: addi s0,sp,0
+0x13C(~4): 0xFF810113: addi sp,sp,-8      // count prologue
+0x140(~4): 0x00113023: sd ra,0(sp)
+0x144(~4): 0xFF810113: addi sp,sp,-8
+0x148(~4): 0x00813023: sd s0,0(sp)
+0x14C(~4): 0x00010413: addi s0,sp,0       // int count(int n) {
+0x150(~4): 0xFF810113: addi sp,sp,-8      //   int c;
 ---
-0x154(~4): 0xFF810113: addi sp,sp,-8      // int c;
+0x154(~4): 0x00000293: addi t0,zero,0     //   c = 0;
+0x158(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x158(~4): 0x00000293: addi t0,zero,0     // c = 0;
-0x15C(~4): 0xFE543C23: sd t0,-8(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ---
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ---
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x18C(~10): 0x00000513: addi a0,zero,0    // }
 ---
-0x190(~10): 0x00040113: addi sp,s0,0      // }
+0x190(~10): 0x00040113: addi sp,s0,0      // count epilogue
 0x194(~10): 0x00013403: ld s0,0(sp)
 0x198(~10): 0x00810113: addi sp,sp,8
 0x19C(~10): 0x00013083: ld ra,0(sp)
 0x1A0(~10): 0x01010113: addi sp,sp,16
+---
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
@@ -2543,7 +2545,7 @@ And again, the very last instruction of `count`:
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
-makes the processor return to the instruction that follows the `jal ra,-35[0x140]` instruction in `main`.
+makes the processor return to the instruction that follows the `jal ra,-36[0x13C]` instruction in `main`.
 
 Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. This is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
 
@@ -2562,30 +2564,30 @@ Here is the relevant output:
 ./selfie: examples/count.c exiting with exit code 10000
 ./selfie: selfie terminating 64-bit RISC-U binary examples/count.c with exit code 10000
 ...
-./selfie: summary: 90067 executed instructions [22.22% nops]
+./selfie: summary: 90064 executed instructions [22.21% nops]
 ...
-./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10033(11.13%)[0.03%]
-./selfie: memory:  ld: 30009(33.31%)[33.33%], sd: 10010(11.11%)[0.01%]
+./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10030(11.13%)[0.03%]
+./selfie: memory:  ld: 30009(33.32%)[33.33%], sd: 10010(11.11%)[0.01%]
 ./selfie: compute: add: 10000(11.10%)[0.00%], sub: 1(0.00%)[0.00%], mul: 0(0.00%)[0.00%]
 ./selfie: compute: divu: 0(0.00%)[0.00%], remu: 1(0.00%)[0.00%]
 ./selfie: compare: sltu: 10001(11.10%)[0.00%]
-./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.01%], jalr: 2(0.00%)[0.00%]
+./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.00%], jalr: 2(0.00%)[0.00%]
 ./selfie: system:  ecall: 3(0.00%)
 ./selfie: profile: total,max(ratio%)@address(line#),2ndmax,3rdmax
-./selfie: calls:   2,1(50.00%)@0x140(~4),1(50.00%)@0x1A8(~13),0(0.00%)
-./selfie: loops:   10000,10000(100.00%)@0x160(~6),0(0.00%),0(0.00%)
-./selfie: loads:   30009,10001(33.32%)@0x160(~6),10001(33.32%)@0x164(~6),10000(33.32%)@0x170(~7)
-./selfie: stores:  10010,10000(99.90%)@0x17C(~7),1(0.00%)@0x30(~1),1(0.00%)@0x40(~1)
+./selfie: calls:   2,1(50.00%)@0x13C(~4),1(50.00%)@0x1A8(~13),0(0.00%)
+./selfie: loops:   10000,10000(100.00%)@0x15C(~6),0(0.00%),0(0.00%)
+./selfie: loads:   30009,10001(33.32%)@0x15C(~6),10001(33.32%)@0x160(~6),10000(33.32%)@0x16C(~7)
+./selfie: stores:  10010,10000(99.90%)@0x178(~7),1(0.00%)@0x30(~1),1(0.00%)@0x3C(~1)
 ...
 ```
 
-The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90067` executed instructions. Dividing `90067` by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x160` to `0x180` which implement the `while` loop at lines `6` and `7` in `count.c`.
+The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90064` executed instructions. Dividing `90064` by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x15C` to `0x17C` which implement the `while` loop at lines `6` and `7` in `count.c`.
 
 You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The execution profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
 
 One more thing before we explain each RISC-U machine instruction in detail: there is a special instruction that we have not seen yet denoted `nop` in assembly where `nop` stands for *no operation*. We nevertheless do not count it as another instruction of the RISC-U ISA because it is just a special case of an `addi` instruction. The only thing a `nop` makes the CPU do is go to the next instruction without doing anything else. In other words, it just wastes time, space, and energy. Yet `nop` instructions have a purpose, also in selfie, namely for *padding* memory where code is stored.
 
-Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that a *dynamic* `nop`. For example, out of the `90067` executed instructions 22.22% were dynamic `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
+Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that a *dynamic* `nop`. For example, out of the `90064` executed instructions 22.21% were dynamic `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
 
 #### Initialization
 
@@ -2594,10 +2596,10 @@ The first two RISC-U instructions we introduce are the `lui` and `addi` instruct
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
 ```asm
-0x44(~1): 0x01010293: addi t0,sp,16
+0x40(~1): 0x01010293: addi t0,sp,16
 ```
 
-where `0x44` is the address of the instruction (ignore the `(~1)`), `0x01010293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,16` is the human-readable version of the instruction in *assembly code*. In other words, `0x01010293` and `addi t0,sp,16` mean exactly the same thing, just encoded differently. For the machine, `0x01010293` is all it needs while for us `addi t0,sp,16` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
+where `0x40` is the address of the instruction (ignore the `(~1)`), `0x01010293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,16` is the human-readable version of the instruction in *assembly code*. In other words, `0x01010293` and `addi t0,sp,16` mean exactly the same thing, just encoded differently. For the machine, `0x01010293` is all it needs while for us `addi t0,sp,16` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
 The instruction `addi t0,sp,16` makes the CPU add the *immediate* value `16` to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by the assignment `t0 = sp + 16` where, as mentioned before, `=` does not assert equality, but instead denotes an assignment of the value to which the expression `sp + 16` evaluates to register `t0`.
 
@@ -2655,7 +2657,7 @@ Let us explore two more important use cases of `addi`, other than just initializ
 obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
 
 ```asm
-0x3C(~1): 0xFF810113: addi sp,sp,-8
+0x38(~1): 0xFF810113: addi sp,sp,-8
 ```
 
 makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
@@ -2804,13 +2806,13 @@ So, what is stored in dynamic memory? Well, there is a *stack segment* in the hi
 Interestingly, the `sp` register is, besides the program counter `pc`, the only register that is initialized by the bootloader and not the code loaded by the bootloader. In other words, when the machine starts executing any code, `sp`, and `pc`, of course, are already initialized whereas all other registers are not. However, the actual content of the stack still requires some initialization which is performed by the following instruction:
 
 ```asm
-0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
+0x44(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ```
 
 And let us take a look at what the debugger says about this instruction when executing it:
 
 ```asm
-pc==0x10048(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
+pc==0x10044(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
 ```
 
 So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to a high address almost at the top of our address space. With offset `8`, the instruction stores the value of `t0`, which is the even higher address `0xFFFFFFD0`, in memory where `sp + 8` points to. What exactly the purpose of that is here is not so important right now. We clarify that later. But if you are curious you can check out the procedure `emit_bootstrapping` in `selfie.c` which generates the initialization code we discuss here.
@@ -2859,13 +2861,13 @@ In order to validate your findings you may want to have another look at the sour
 Let us now take a look at the `ld` instruction for loading a double word from memory into a register. Right before our example program exits with exit code `10000`, after the code of the `main` procedure returned, there is the following `ld` instruction:
 
 ```asm
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
 ```
 
-It copies the value at address `sp + 0` from memory, in fact, from the stack to register `a0`. That value is `10000` and the return value of `main` which is now being prepared to become the exit code of the program. The debugger confirms that:
+It copies the value at address `sp + 0` from memory, in fact, from the stack to register `a0`. That value is `10000` and the return value of `main` which is now being prepared to become the exit code of the program. The debugger confirms that, just scroll all the way down to the end of its output:
 
 ```asm
-pc==0x10058(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
+pc==0x10054(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
 ```
 
 Coincidentally, the value of `a0` was already `10000` before executing the instruction which means that the instruction did not change the state of the machine other than increasing the `pc` by `4` to go to the next instruction. This is our first example of a dynamic `nop`. However, if the instruction is executed under different circumstances, that is, if the value of `a0` differs from the value in memory at `sp + 0` before executing it, the instruction does change the machine state.
@@ -2873,8 +2875,8 @@ Coincidentally, the value of `a0` was already `10000` before executing the instr
 Let us take a look at another example. This time it is machine code that has a direct correspondence to the source code in `count.c`. The following two `ld` instructions have been generated by the selfie compiler to load the values of `c` and `n` from memory at addresses `s0 - 8` and `s0 + 16` into registers `t0` and `t1`, respectively:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
 ```
 
 The reason for that is to prepare the machine for comparing the values of `c` and `n`, which are stored in memory, to calculate if `c < n` is true or not. However, the machine can only compare values if they are stored in registers. The actual comparison is done by a subsequent `sltu` instruction which we explain further below. What is interesting here is to understand where the values of `c` and `n` are stored. Well, `c` is a local variable and `n` is a formal parameter that represents an actual parameter. The values of local variables and actual parameters are stored on the stack!
@@ -2886,8 +2888,8 @@ The reason why we use a frame pointer instead of a stack pointer is because, unl
 Here is what the debugger has to say about what happens when executing both `ld` instructions for the first time:
 
 ```asm
-pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
+pc==0x1015C(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10160(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
 ```
 
 The high value of `s0` indicates that the `s0` register indeed points to the stack. Moreover, the (initial) values of `c` and `n` stored in memory at `s0 - 8` and `s0 + 16` are `0` and `10000`, respectively, which sounds exactly right!
@@ -2895,7 +2897,7 @@ The high value of `s0` indicates that the `s0` register indeed points to the sta
 Here is another `ld` instruction that loads the value of `c` into register `t0` to prepare calculating `c + 1` inside the body of the `while` loop in `count.c`:
 
 ```asm
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
 ```
 
 The actual calculation of the addition is done by a subsequent `add` instruction which we explain next. Before doing so, we mention the official RISC-V ISA specification of the `ld` instruction:
@@ -2916,19 +2918,19 @@ The relevant output should be similar to this:
 
 ```
 ...
-./selfie: summary: 389358917 executed instructions [21.84% nops]
+./selfie: summary: 353859954 executed instructions [17.32% nops]
 ...
-./selfie: init:    lui: 816304(0.20%)[0.00%], addi: 160120965(41.12%)[20.61%]
-./selfie: memory:  ld: 87469271(22.46%)[14.05%], sd: 56838289(14.59%)[27.07%]
-./selfie: compute: add: 9240671(2.37%)[26.79%], sub: 4374208(1.12%)[9.28%], mul: 9155592(2.35%)[38.57%]
-./selfie: compute: divu: 3607169(0.92%)[43.48%], remu: 3698058(0.94%)[53.37%]
-./selfie: compare: sltu: 5829837(1.49%)[2.26%]
-./selfie: control: beq: 8227413(2.11%)[59.83%], jal: 26583416(6.82%)[35.12%], jalr: 13026077(3.34%)[0.00%]
-./selfie: system:  ecall: 371647(0.09%)
+./selfie: init:    lui: 786132(0.22%)[0.00%], addi: 135939288(38.41%)[15.10%]
+./selfie: memory:  ld: 80905514(22.86%)[13.92%], sd: 55074444(15.56%)[27.56%]
+./selfie: compute: add: 8882204(2.51%)[26.42%], sub: 4205862(1.18%)[9.49%], mul: 8814745(2.49%)[37.72%]
+./selfie: compute: divu: 3506798(0.99%)[40.88%], remu: 3585188(1.01%)[53.74%]
+./selfie: compare: sltu: 5611617(1.58%)[2.44%]
+./selfie: control: beq: 7955810(2.24%)[59.52%], jal: 25633766(7.24%)[0.00%], jalr: 12584576(3.55%)[0.00%]
+./selfie: system:  ecall: 374010(0.10%)
 ...
 ```
 
-While only 0.20% of all executed instructions were `lui` instructions, around 78% were `addi`, `ld`, and `sd` instructions (41.12% + 22.46% + 14.59%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
+While only 0.22% of all executed instructions were `lui` instructions, around 76% were `addi`, `ld`, and `sd` instructions (38.41% + 22.86% + 15.56%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
 
 Our next topic are the classical arithmetic instructions that most CPUs feature in one form or another.
 
@@ -2937,19 +2939,19 @@ Our next topic are the classical arithmetic instructions that most CPUs feature 
 RISC-U features five arithmetic instructions for addition (`add`), subtraction (`sub`), multiplication (`mul`), unsigned division (`divu`), and unsigned remainder (`remu`). The arithmetic C\* operators `+`, `-`, `*`, `/`, and `%` are implemented by `add`, `sub`, `mul`, `divu`, and `remu`, respectively. Here is an instance of an `add` instruction from our running example:
 
 ```asm
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ```
 
 This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld t0,-8(s0)` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi t1,zero,1` instruction loads the value `1` into register `t1`. The `add t0,t0,t1` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd t0,-8(s0)` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. When executing the four instructions the debugger confirms that:
 
 ```asm
-pc==0x10170(~7): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==1(0x1) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10174(~7): addi t1,zero,1: zero==0(0x0) |- t1==10000(0x2710) -> t1==1(0x1)
-pc==0x10178(~7): add t0,t0,t1: t0==0(0x0),t1==1(0x1) |- t0==0(0x0) -> t0==1(0x1)
-pc==0x1017C(~7): sd t0,-8(s0): s0==0xFFFFFF98,t0==1(0x1) |- mem[0xFFFFFF90]==0 -> mem[0xFFFFFF90]==t0==1(0x1)
+pc==0x1016C(~7): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==1(0x1) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10170(~7): addi t1,zero,1: zero==0(0x0) |- t1==10000(0x2710) -> t1==1(0x1)
+pc==0x10174(~7): add t0,t0,t1: t0==0(0x0),t1==1(0x1) |- t0==0(0x0) -> t0==1(0x1)
+pc==0x10178(~7): sd t0,-8(s0): s0==0xFFFFFF98,t0==1(0x1) |- mem[0xFFFFFF90]==0 -> mem[0xFFFFFF90]==t0==1(0x1)
 ```
 
 Here, the value of `c` stored in memory on the stack at address `0xFFFFFF90` is incremented from `0` to `1`. Have you noticed that by now you are already able to read machine code? And not only that! You can even follow its execution down to the level of every single bit involved in that. Awesome!
@@ -2994,10 +2996,10 @@ Both C\* and RISC-U only support unsigned integer division and remainder operato
 Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1` in our running example of which we have already seen the two `ld` instructions:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ```
 
 After loading the values of `c` and `n` from the stack into registers `t0` and `t1`, respectively, the `sltu t0,t0,t1` instruction makes the CPU compare the values of `t0` and `t1`, and then set the value of `t0` to `1` if the current value of `t0` is strictly less than the current value of `t1` where the current values of `t0` and `t1` are interpreted as unsigned integers. Otherwise, the CPU sets the value of `t0` to `0`. In other words, after executing the instruction a `1` in `t0` indicates that the value of `c` is indeed strictly less than the value of `n`, that is, `c < n` is true. A `0` in `t0` obviously indicates that `c < n` is false meaning that either the value of `c` is greater than or equal to the value of `n`. The following `beq` instruction makes the CPU execute, depending on the value of `t0`, either the instructions that implement the `while` loop body or the instructions that implement the statement `return c;` which follows the `while` loop. The details are right below after we are done with comparison.
@@ -3005,13 +3007,13 @@ After loading the values of `c` and `n` from the stack into registers `t0` and `
 However, a quick look at the output of the debugger when executing the four instructions for the first time does not hurt. Here, the value of `c` stored in memory on the stack at address `0xFFFFFF90` is still `0` while the value of `n` stored at `0xFFFFFFA8` is `10000`, meaning `c < n` is true:
 
 ```asm
-pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
-pc==0x10168(~6): sltu t0,t0,t1: t0==0(0x0),t1==10000(0x2710) |- t0==0(0x0) -> t0==1(0x1)
-pc==0x1016C(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x1016C -> pc==0x10170
+pc==0x1015C(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10160(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
+pc==0x10164(~6): sltu t0,t0,t1: t0==0(0x0),t1==10000(0x2710) |- t0==0(0x0) -> t0==1(0x1)
+pc==0x10168(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x10168 -> pc==0x1016C
 ```
 
-The `beq` instruction apparently sets the `pc` to `0x10170` which is the address of the first instruction that implements the `while` loop body. That sounds right! Just recall that the code in memory starts at address `0x10000`, not `0x0`.
+The `beq` instruction apparently sets the `pc` to `0x1016C` which is the address of the first instruction that implements the `while` loop body. That sounds right! Just recall that the code in memory starts at address `0x10000`, not `0x0`.
 
 Nevertheless, let us complete comparison first. Here is the official RISC-V ISA specification of the `sltu` instruction:
 
@@ -3019,7 +3021,7 @@ Nevertheless, let us complete comparison first. Here is the official RISC-V ISA 
 
 Similar to the arithmetic instructions, the `sltu` instruction only uses register addressing with `rs1`, `rs2`, and `rd` parameters and no immediate value and is thus encoded in the R-Format.
 
-Let us take another quick look back at the above profile when self-compiling. Turns out that arithmetic instructions even together with the comparison instruction only amount to 9.32% of all executed instructions. Even control-flow instructions are executed slightly more often, as we see below.
+Let us take another quick look back at the above profile when self-compiling. Turns out that arithmetic instructions even together with the comparison instruction only amount to around 10% of all executed instructions. Even control-flow instructions are executed slightly more often, as we see below.
 
 > Unsigned integer comparison is different from signed integer comparison
 
@@ -3033,36 +3035,39 @@ Our next topic takes us to control flow. We begin with the `beq` instruction whi
 
 The RISC-U ISA features three control-flow instructions: the *conditional branch* instruction `beq` and the *unconditional jump* instructions `jal` and `jalr`. The difference between a branch and a jump in machine code is simple. A branch gives the CPU two options to proceed depending on a condition: either just go to the next instruction in memory if the condition is false, or else take the  branch if the condition is true, that is, go to some instruction somewhere else in memory. A jump only allows to instruct the CPU to do the latter, that is, go to some instruction somewhere else in memory, unconditionally.
 
-We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x184]` instruction in our running example, this time in its full context:
+We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x180]` instruction in our running example, this time in its full context:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x154(~4): 0x00000293: addi t0,zero,0     //   c = 0;
+0x158(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
+---
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ```
 
-The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x184]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x10184`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x10170`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop. The output of the debugger shows exactly that, firstly when executing another iteration of the `while` loop:
+The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x180]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x10180`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x1016C`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop. The output of the debugger shows exactly that, firstly when executing another iteration of the `while` loop:
 
 ```asm
-pc==0x1016C(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x1016C -> pc==0x10170
+pc==0x10168(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x10168 -> pc==0x1016C
 ```
 
 and secondly when terminating the `while` loop:
 
 ```asm
-pc==0x1016C(~6): beq t0,zero,6: t0==0(0x0),zero==0(0x0) |- pc==0x1016C -> pc==0x10184
+pc==0x10168(~6): beq t0,zero,6: t0==0(0x0),zero==0(0x0) |- pc==0x10168 -> pc==0x10180
 ```
 
 Here is the official RISC-V ISA specification of the `beq` instruction which uses an addressing mode we have not seen yet explicitly called *pc-relative* addressing:
@@ -3084,38 +3089,37 @@ If the two source registers `rs1` and `rs2` contain the same value, the branch i
 
 In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12^ <= imm < 2^12^` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate values of `beq` instructions to *even* values only, that is, values with a remainder of `0` when divided by `2` or, in other words, values that are divisible by `2`. The strange out-of-order encoding of the immediate value enables fast decoding in hardware.
 
-Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the even value `24`, not `6`, and certainly not `0x184`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x184` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x184`, or in fact `0x10184`. Recall that each instruction is encoded in `4` bytes. Thus a `beq` instruction has a range of branching `1023` instructions forward and `1024` instructions backward since `2^12^/4` is equal to `1024`.
+Note that the immediate value of the `beq t0,zero,6[0x180]` instruction is the even value `24`, not `6`, and certainly not `0x180`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x180` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x180`, or in fact `0x10180`. Recall that each instruction is encoded in `4` bytes. Thus a `beq` instruction has a range of branching `1023` instructions forward and `1024` instructions backward since `2^12^/4` is equal to `1024`.
 
 Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
 
 ```asm
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
 ```
 
-Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x160`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
+Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x15C`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
 
 ```asm
-pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
+pc==0x1017C(~9): jal zero,-8: |- pc==0x1017C -> pc==0x1015C
 ```
 
 You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates for a given `while` loop both the *forward-branching* `beq` instruction (with a positive immediate value) and the *backward-jumping* `jal` instruction (with a negative immediate value). Selfie also generates *forward-jumping* `jal` instructions, that is, for implementing `if` and `return` statements, see the `compile_if` and the `compile_return` procedure, respectively. For example, the `return c;` statement in our running example is implemented by the following three instructions:
 
 ```asm
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ```
 
-with a forward-jumping `jal` instruction that, in this case, is actually redundant and could be removed since it always behaves like a `nop`. However, the code shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last four instructions implementing the `return count(10000)` statement, for example:
+with a forward-jumping `jal` instruction. The code also shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last three instructions implementing the `return count(10000)` statement, for example:
 
 ```asm
-0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
-0x1D4(~13): 0x00000513: addi a0,zero,0
-0x1D8(~13): 0x00028513: addi a0,t0,0
-0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
+0x1D0(~13): 0x00050293: addi t0,a0,0      //   count returns here
+0x1D4(~13): 0x00028513: addi a0,t0,0
+0x1D8(~13): 0x0080006F: jal zero,2[0x1E0]
 ```
 
-If you look carefully, you may notice that the last three instructions are actually redundant and could be removed. Even the first instruction can be removed as well since `t0` is not used anymore after that. However, in general, this is not true and making selfie not generate those instructions is harder than you might think. As we mentioned before, this is an advanced topic that we skip here. Instead let us focus on the fact that a `jal` instruction is actually capable of doing a bit more than just jumping unconditionally.
+If you look carefully, you may notice that the first two instructions are actually redundant and could be removed. However, in general, this is not true and making selfie not generate those instructions is harder than you might think. As we mentioned before, this is an advanced topic that we skip here. Instead let us focus on the fact that a `jal` instruction is actually capable of doing a bit more than just jumping unconditionally.
 
 Check out the official RISC-V ISA specification of a `jal` instruction:
 
@@ -3139,25 +3143,25 @@ Similar to the immediate value of a `beq` instruction, the immediate value of a 
 So, here is a `jal` instruction from our running example that actually uses a register other than `zero` for linking:
 
 ```asm
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ```
 
-This instruction links, that is, saves the value of `pc + 4`, which is here `0x1004C + 4` equals to `0x10050`, in the `ra` register and then makes the CPU jump `87` instructions forward to the instruction in memory at address `0x101A8` which is the first instruction that implements the `main` procedure. The debugger confirms that:
+This instruction links, that is, saves the value of `pc + 4`, which is here `0x10048 + 4` equals to `0x1004C`, in the `ra` register and then makes the CPU jump `88` instructions forward to the instruction in memory at address `0x101A8` which is the first instruction that implements the `main` procedure. The debugger confirms that:
 
 ```asm
-pc==0x1004C(~1): jal ra,87: |- ra==0x0,pc==0x1004C -> pc==0x101A8,ra==0x10050
+pc==0x10048(~1): jal ra,88: |- ra==0x0,pc==0x10048 -> pc==0x101A8,ra==0x1004C
 ```
 
 The idea of linking is to save the address of the next instruction in memory at `pc + 4` as *return address* in a register. Here we use the `ra` register where, you guessed right, `ra` stands for *return address*. Eventually, control is supposed to return to that address by setting the `pc` to that address when the code we jump to is done. We already saw above that returning to that address is done by a `jalr` instruction. The following instruction from our running example does exactly that:
 
 ```asm
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 It takes the value of the `ra` register, adds `0` to it, and then sets the `pc` to the result, that is, to `ra + 0`. For confirmation, let us have a look at what the debugger says:
 
 ```asm
-pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+pc==0x101F0(~14): jalr zero,0(ra): ra==0x1004C |- pc==0x101F0 -> pc==0x1004C
 ```
 
 Looks good! So, in fact, we always use a `jal` instruction involving the `ra` register in conjunction with a `jalr` instruction, again involving the `ra` register, to facilitate calling code that implements a procedure. The call of a procedure is done by `jal` and the eventual return from the procedure is done by `jalr`. More precisely, the very last instruction implementing a procedure is always a `jalr zero,0(ra)` instruction. For example, the last instruction of the `count` procedure is:
@@ -3169,35 +3173,48 @@ Looks good! So, in fact, we always use a `jal` instruction involving the `ra` re
 There is, however, a catch. What if a procedure calls another procedure before returning such as when `main` calls `count` before returning? In that case, the value of the `ra` register would be overwritten before returning. We therefore need to save its value and then restore it right before returning. Our running example actually shows you how this is done. The implementation of each procedure begins with a block of code called *prologue* and ends with a block of code called *epilogue*. For example, here is the prologue of `main`:
 
 ```asm
-0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // main prologue
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
 0x1B4(~13): 0x00813023: sd s0,0(sp)
-0x1B8(~13): 0x00010413: addi s0,sp,0
+0x1B8(~13): 0x00010413: addi s0,sp,0      // int main() {
 ```
 
 and the epilogue of `main`:
 
 ```asm
-0x1E0(~14): 0x00040113: addi sp,s0,0      // }
-0x1E4(~14): 0x00013403: ld s0,0(sp)
-0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00013083: ld ra,0(sp)
-0x1F0(~14): 0x00810113: addi sp,sp,8
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1E0(~14): 0x00013403: ld s0,0(sp)       // main epilogue
+0x1E4(~14): 0x00810113: addi sp,sp,8
+0x1E8(~14): 0x00013083: ld ra,0(sp)
+0x1EC(~14): 0x00810113: addi sp,sp,8
 ```
 
-The `count` procedure has a similar prologue and epilogue. The prologue saves the value of `ra` as well as the frame pointer in `s0` on the stack using `sd` instructions while the epilogue restores their values from the stack using `ld` instructions. That's all. This technique supports arbitrarily nested procedure calls including recursive calls. The only limitation is the size of the stack. For example, a non-terminating recursion would result in an ever growing stack that would eventually overflow into the heap.
+The `count` procedure has a similar prologue and epilogue. The prologue saves the value of `ra` as well as the frame pointer in `s0` on the stack using `sd` instructions while the epilogue restores their values from the stack using `ld` instructions. This technique supports arbitrarily nested procedure calls including recursive calls. The only limitation is the size of the stack. For example, a non-terminating recursion would result in an ever growing stack that would eventually overflow into the heap.
 
-Let us have a quick look at the output of the debugger right before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x10050`:
+The prologue of `count` features one more instruction than the prologue `main`:
 
 ```asm
-pc==0x101EC(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x10050 |- ra==0x101D0 -> ra==0x10050==mem[0xFFFFFFB8]
-pc==0x101F0(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
-pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+0x150(~4): 0xFF810113: addi sp,sp,-8      //   int c;
 ```
 
-The output shows that the `ld ra,0(sp)` instruction does in fact restore the value of `ra` to `0x10050` overwriting its previous value `0x101D0` which is the by now obsolete return address of the previous call to `count`. This way the `jalr zero,0(ra)` instruction does return to the right address. Beautiful!
+The purpose of that `addi` instruction is to allocate memory on the stack for storing the value of `c`. Right before the epilogue of, say, `main`, there is also an `addi` instruction:
+
+```asm
+0x1DC(~14): 0x00000513: addi a0,zero,0    // }
+```
+
+which sets the register `a0` to `0` making sure that there is a defined value in `a0`. However, the instruction is here redundant.
+
+Let us have a quick look at the output of the debugger executing the last two instructions of the `main` epilogue before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x1004C`:
+
+```asm
+pc==0x101E8(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x1004C |- ra==0x101D0 -> ra==0x1004C=
+=mem[0xFFFFFFB8]
+pc==0x101EC(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
+pc==0x101F0(~14): jalr zero,0(ra): ra==0x1004C |- pc==0x101F0 -> pc==0x1004C
+```
+
+The output shows that the `ld ra,0(sp)` instruction does in fact restore the value of `ra` to `0x1004C` overwriting its previous value `0x101D0` which is the by now obsolete return address of the previous call to `count`. This way the `jalr zero,0(ra)` instruction does return to the right address. Beautiful!
 
 Well, a `jalr` instruction can actually do even more than just returning. After all, `jalr` stands for *jump and link return*. So far, we have only seen the jump-return part. Here is the official RISC-V ISA specification:
 
@@ -3213,7 +3230,7 @@ In fact, the machine code generated by selfie only uses pc-relative addressing f
 
 Nevertheless, the disadvantage of pc-relative addressing is that the range of branching and jumping is limited by the range of immediate values. This is not a problem in the selfie system but could be a problem in systems and applications that require more code than selfie to implement.
 
-It is again time to reflect on what we have seen here. The instructions `beq` as well as `jal` and `jalr` facilitate control flow by allowing us to set the program counter to any memory address we like. Again, because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another quick look at the above output of selfie when self-compiling reveals that the three control-flow instructions are with 12.2% the second most often executed category of instructions, after initialization and memory instructions which account for around 78% of all executed instructions, and before arithmetic and comparison instructions which make up 9.32% of all executed instructions.
+It is again time to reflect on what we have seen here. The instructions `beq` as well as `jal` and `jalr` facilitate control flow by allowing us to set the program counter to any memory address we like. Again, because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another quick look at the above output of selfie when self-compiling reveals that the three control-flow instructions are with around 13% the second most often executed category of instructions, after initialization and memory instructions which account for around 76% of all executed instructions, and before arithmetic and comparison instructions which make up around 10% of all executed instructions.
 
 #### System
 
@@ -3240,12 +3257,12 @@ Relevant for us here is that system calls are logically like procedure calls, po
 Let us have a look at the code from our running example that terminates execution of the program using the `exit` system call which happens to be identified by system call number `93`:
 
 ```asm
-0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
-0x54(~1): 0x00A13023: sd a0,0(sp)
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
-0x5C(~1): 0x00810113: addi sp,sp,8
-0x60(~1): 0x05D00893: addi a7,zero,93
-0x64(~1): 0x00000073: ecall            // exit
+0x4C(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x50(~1): 0x00A13023: sd a0,0(sp)
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x58(~1): 0x00810113: addi sp,sp,8
+0x5C(~1): 0x05D00893: addi a7,zero,93
+0x60(~1): 0x00000073: ecall            // exit
 ```
 
 The `exit` system call has one parameter which is the exit code of the program, here provided by the return value of the `main` procedure. The first four instructions are actually redundant since the returned exit code is already in register `a0` but let us not worry about that. Important is that the `addi a7,zero,93` instruction initializes register `a7` with the value `93`. The following `ecall` instruction is thus recognized as the `exit` system call which terminates execution of the program and shuts down the machine.
@@ -3290,15 +3307,15 @@ As mentioned before, selfie reports how much physical memory was actually needed
 
 ```
 ...
-./selfie: summary: 389358917 executed instructions [21.84% nops]
-./selfie:          2.64KB peak stack size
-./selfie:          3.23MB allocated in 23888 mallocs
-./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
-./selfie:          2.35MB(117.59% of 2MB) mapped memory
+./selfie: summary: 353859954 executed instructions [17.32% nops]
+./selfie:          2.58KB peak stack size
+./selfie:          3.23MB allocated in 23994 mallocs
+./selfie:          2.14MB(66.10% of 3.23MB) actually accessed
+./selfie:          2.32MB(116.41% of 2MB) mapped memory
 ...
 ```
 
-In this case, 2.35MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 117.59% above the threshold of 2MB.
+In this case, 2.32MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 116.41% above the threshold of 2MB.
 
 > Console arguments of selfie
 
@@ -3529,8 +3546,8 @@ Check out the first appearance of L1 cache profiling data in the output:
 ```
 ...
 ./selfie: L1 caches:     accesses,hits,misses
-./selfie: data:          384783061,356471246(92.64%),28311815(7.35%)
-./selfie: instruction:   1022432666,925629531(90.53%),96803135(9.46%)
+./selfie: data:          504381463,478372443(94.84%),26009020(5.15%)
+./selfie: instruction:   1286141894,1197619569(93.11%),88522325(6.88%)
 ...
 ```
 
@@ -3606,7 +3623,7 @@ or, equivalently, just try:
 make emu
 ```
 
-This *self-executes* `mipster` by running a `mipster` instance, say, *U* on another `mipster` instance, say, *H*, just to run selfie on *U* without console arguments making selfie print its synopsis. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to *load* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then start *H* using the `-m 2` option to execute `selfie.m`. Next, we have `selfie.m` running on *H* load itself and then start *U* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *U* prints the synopsis of selfie. The relevant output is:
+This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, just to run selfie on *OS* without console arguments making selfie print its synopsis. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to *load* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then start *HW* using the `-m 2` option to execute `selfie.m`. Next, we have `selfie.m` running on *HW* load itself and then start *OS* on *HW* using the `-m 1` option to execute itself. Finally, `selfie.m` on *OS* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
@@ -3614,42 +3631,48 @@ synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binar
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-selfie.m: summary: 60251 executed instructions [22.32% nops]
+selfie.m: summary: 59201 executed instructions [18.54% nops]
 selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 5 mallocs
+selfie.m:          0.00MB allocated in 6 mallocs
 selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.20MB(20.31% of 1MB) mapped memory
+selfie.m:          0.19MB(19.14% of 1MB) mapped memory
 ...
 ./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-./selfie: summary: 166934931 executed instructions [17.81% nops]
+./selfie: summary: 154732339 executed instructions [13.27% nops]
 ./selfie:          0.90KB peak stack size
-./selfie:          2.91MB allocated in 26 mallocs
-./selfie:          2.10MB(72.25% of 2.91MB) actually accessed
-./selfie:          2.30MB(115.24% of 2MB) mapped memory
+./selfie:          2.82MB allocated in 27 mallocs
+./selfie:          2.01MB(71.03% of 2.82MB) actually accessed
+./selfie:          2.19MB(109.96% of 2MB) mapped memory
 ...
 ```
 
-Selfie running on `mipster` instance *U* took 60,251 RISC-U instructions and 0.20MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 166,934,931 RISC-U instructions and 2.30MB memory to run *U*. This means that, on average, *H* executed around 2,771 instructions just so that *U* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2,771 RISC-U instructions to implement a single RISC-U instruction, and an additional 2.10MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,771.
+Selfie running on `mipster` instance *OS* took 59,201 RISC-U instructions and 0.19MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *HW* took 154,732,339 RISC-U instructions and 2.19MB memory to run *OS*. This means that, on average, *HW* executed around 2,614 instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2,614 RISC-U instructions to implement a single RISC-U instruction, and an additional 2MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,614.
 
-What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *S*, assuming that *S* runs in between `mipster` instances *H* and *U*, and allocating 4MB rather than 2MB of physical memory to *H*:
+What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *VMM*, assuming that *VMM* runs in between `mipster` instances *HW* and *OS*, and allocating 4MB rather than 2MB of physical memory to *HW*:
 
 ```bash
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
-This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu`. In fact, this time, `mipster` instance *H* executed 380,176,379,307 RISC-U instructions to run both *S* and *U*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances, and even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
-
-But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U*, all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+or, equivalently, just try:
 
 ```bash
-./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
+make emu-emu
+```
+
+This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu`. In fact, this time, `mipster` instance *HW* executed 334,713,531,132 RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances, and even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
+
+But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-U processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+
+```bash
+./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -m 1
 ```
 
 or, equivalently:
 
 ```bash
-make os
+make emu-vmm
 ```
 
 The relevant output is:
@@ -3660,27 +3683,27 @@ synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binar
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-selfie.m: summary: 60251 executed instructions [22.32% nops]
+selfie.m: summary: 59201 executed instructions [18.54% nops]
 selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 5 mallocs
+selfie.m:          0.00MB allocated in 6 mallocs
 selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.20MB(20.31% of 1MB) mapped memory
+selfie.m:          0.19MB(19.14% of 1MB) mapped memory
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
 ./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-./selfie: summary: 212522027 executed instructions [18.52% nops]
+./selfie: summary: 195109886 executed instructions [13.86% nops]
 ./selfie:          0.90KB peak stack size
-./selfie:          4.91MB allocated in 28 mallocs
-./selfie:          2.89MB(58.82% of 4.91MB) actually accessed
-./selfie:          3.10MB(155.27% of 2MB) mapped memory
+./selfie:          4.82MB allocated in 29 mallocs
+./selfie:          2.78MB(57.64% of 4.82MB) actually accessed
+./selfie:          2.98MB(99.61% of 3MB) mapped memory
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time *H* took only 212,522,027 RISC-U instructions to run both *S* and *U*, compared to 166,934,931 RISC-U instructions to run just *U*. This is a factor of around 1.27 instructions for each instruction of *U*, even though *S* runs in between *H* and *U*. How is this possible?
+Now we are back from billions to millions of instructions. This time *HW* took only 195,109,886 RISC-U instructions to run both *VMM* and *OS*, compared to 154,732,339 RISC-U instructions to run just *OS*. This is a factor of around 1.26 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
 
-The key observation is that *S* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *U* in this case. But if *H* can execute the RISC-U code of *S*, it can also execute the RISC-U code of *U*, effectively bypassing *S*. The option `-y 1` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *S* which, similar to a `mipster` instance, executes *U*, yet not by interpretation but by instructing *H* to execute *U* on its behalf, through something called a *context switch*. The factor 1.28 overhead comes from context switching and may become even less if *U* were to run longer amortizing bootstrapping cost even more.
+The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y 2` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. The factor 1.26 overhead comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
 We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
