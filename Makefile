@@ -50,10 +50,16 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self 64-to-32-bit whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2 all
+.PHONY: self self-self 64-to-32-bit whitespace quine escape debug replay \
+		emu emu-emu emu-vmm os-vmm os self-self-os self-self-os-vmm min mob \
+		gib gclib giblib gclibtest boehmgc cache \
+		sat brr bzz mon smt beat btor2 all
 
-# Run everything that only requires standard tools
-all: self self-self 64-to-32-bit whitespace quine escape debug replay emu os vm min mob gib gclib giblib gclibtest boehmgc cache sat brr bzz mon smt beat btor2
+# Run everything that only requires standard tools and is not too slow
+all: self self-self 64-to-32-bit whitespace quine escape debug replay \
+		emu emu-vmm os-vmm os self-self-os self-self-os-vmm min mob \
+		gib gclib giblib gclibtest boehmgc cache \
+		sat brr bzz mon smt beat btor2
 
 # Self-compile selfie
 self: selfie
@@ -99,19 +105,37 @@ replay: selfie
 emu: selfie.m
 	./selfie -l selfie.m -m 2 -l selfie.m -m 1
 
-# Run hypervisor between emulators
+# Run emulator on emulator on emulator, warning: slow!
+emu-emu: selfie.m
+	./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
+
+# Run emulator on hypervisor on emulator
+emu-vmm: selfie.m
+	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -m 1
+
+# Run os on hypervisor on emulator
+os-vmm: selfie.m
+	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
+
+# Run os on emulator
 os: selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -y 2 -l selfie.m -m 1
+	./selfie -l selfie.m -m 1 -l selfie.m -y 1
 
-# Self-compile on two virtual machines
-vm: selfie.m selfie.s
-	./selfie -l selfie.m -m 3 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-vm.m -s selfie-vm.s
-	diff -q selfie.m selfie-vm.m
-	diff -q selfie.s selfie-vm.s
+# Self-self-compile on os
+self-self-os: selfie.m selfie.s
+	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -c selfie.c -o selfie-os.m -s selfie-os.s
+	diff -q selfie.m selfie-os.m
+	diff -q selfie.s selfie-os.s
 
-# Self-compile on two virtual machines on fully mapped virtual memory
+# Self-self-compile on os on hypervisor
+self-self-os-vmm: selfie.m selfie.s
+	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-os-vmm.m -s selfie-os-vmm.s
+	diff -q selfie.m selfie-os-vmm.m
+	diff -q selfie.s selfie-os-vmm.s
+
+# Self-self-compile on os on hypervisor on fully mapped virtual memory
 min: selfie.m selfie.s
-	./selfie -l selfie.m -min 15 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie-min.m -s selfie-min.s
+	./selfie -l selfie.m -min 15 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-min.m -s selfie-min.s
 	diff -q selfie.m selfie-min.m
 	diff -q selfie.s selfie-min.s
 
@@ -119,25 +143,25 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
-# Self-compile with garbage collector in mipster
+# Self-self-compile with garbage collector in mipster
 gib: selfie selfie.m selfie.s
 	./selfie -c selfie.c -gc -m 1 -c selfie.c -o selfie-gib.m -s selfie-gib.s
 	diff -q selfie.m selfie-gib.m
 	diff -q selfie.s selfie-gib.s
 
-# Self-compile with garbage collector in hypster
+# Self-self-compile with garbage collector in hypster
 hyb: selfie selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -gc -y 1 -c selfie.c -o selfie-hyb.m -s selfie-hyb.s
 	diff -q selfie.m selfie-hyb.m
 	diff -q selfie.s selfie-hyb.s
 
-# Self-compile with garbage collector as library
+# Self-self-compile with garbage collector as library
 gclib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 	./selfie -gc -c selfie.h tools/gc-lib.c -m 3 -c selfie.c -o selfie-gclib.m -s selfie-gclib.s
 	diff -q selfie.m selfie-gclib.m
 	diff -q selfie.s selfie-gclib.s
 
-# Self-compile with self-collecting garbage collectors
+# Self-self-compile with self-collecting garbage collectors
 giblib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 	./selfie -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c -o selfie-giblib.m -s selfie-giblib.s
 	diff -q selfie.m selfie-giblib.m
@@ -147,7 +171,7 @@ giblib: selfie selfie.h selfie.m selfie.s tools/gc-lib.c
 gclibtest: selfie selfie.h examples/gc/gc-test.c
 	./selfie -gc -c selfie.h examples/gc/gc-test.c -m 1
 
-# Self-compile with Boehm garbage collector
+# Self-self-compile with Boehm garbage collector
 boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c examples/gc/boehm-gc-test.c
 	./selfie -c selfie-gc.h tools/boehm-gc.c -o selfie-boehm-gc.m -gc -m 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 1
 	./selfie -l selfie-boehm-gc.m -m 6 -l selfie-boehm-gc.m -gc -y 2 -c selfie-gc.h tools/boehm-gc.c -gc -m 2
@@ -155,7 +179,7 @@ boehmgc: selfie selfie-gc.h selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c e
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c tools/gc-lib.c -gc -m 3 -nr -c selfie.c -gc -m 1
 	./selfie -gc -c selfie-gc-nomain.h tools/boehm-gc.c examples/gc/boehm-gc-test.c -m 1
 
-# Self-compile with L1 cache and test L1 data cache
+# Self-self-compile with L1 cache and test L1 data cache
 cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 	./selfie -c selfie.c -L1 2 -c selfie.c -o selfie-L1.m -s selfie-L1.s
 	diff -q selfie.m selfie-L1.m
