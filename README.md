@@ -77,16 +77,13 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 7. Computing
 
-   1. Compiler
-   2. Interpreter
-   3. Virtual Machine
-   4. Virtual Memory
-   5. Virtual Time
-   6. Virtual Machine Monitor
-   7. Computing as Utility
-   8. Cloud Computing
-   9. Life
-   10. Recommended Readings
+   1. Virtual Machine
+   2. Virtual Memory
+   3. Runtime Systems
+   4. Computing as Utility
+   5. Cloud Computing
+   6. Life
+   7. Recommended Readings
 
 8. Glossary
 
@@ -6097,17 +6094,24 @@ work in progress
 
 ## Computing
 
-### Compiler
-
-### Interpreter
+assembler-parser
+self-assembler
 
 ### Virtual Machine
 
+processes
+fork-wait
+
 ### Virtual Memory
 
-### Virtual Time
+fork-wait-exit
+lock
 
-### Virtual Machine Monitor
+### Runtime Systems
+
+threads
+threadsafe-malloc
+treiber-stack
 
 ### Computing as Utility
 
