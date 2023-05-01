@@ -4757,17 +4757,17 @@ make self-self
 The relevant output is at the very end:
 
 ```
-./selfie: t0 register:   460293569,230243247,230050322[1.00]
-./selfie: t1 register:   184970699,92509323,92461376[1.00]
-./selfie: t2 register:   39760688,19880344,19880344[1.00]
-./selfie: t3 register:   932838,466419,466419[1.00]
-./selfie: t4 register:   102700,51350,51350[1.00]
-./selfie: t5 register:   82160,41080,41080[1.00]
-./selfie: t6 register:   20540,10270,10270[1.00]
-./selfie: temps total:   686163194,343202033,342961161[1.00]
+./selfie: t0 register:   600386694,300304624,300082070[1.00]
+./selfie: t1 register:   248006892,124027597,123979295[1.00]
+./selfie: t2 register:   56700382,28350191,28350191[1.00]
+./selfie: t3 register:   2077786,1038893,1038893[1.00]
+./selfie: t4 register:   132670,66335,66335[1.00]
+./selfie: t5 register:   106136,53068,53068[1.00]
+./selfie: t6 register:   26534,13267,13267[1.00]
+./selfie: temps total:   907437094,453853975,453583119[1.00]
 ```
 
-For example, register `t0` is accessed around 460 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
+For example, register `t0` is accessed around 600 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
 
 > Constant folding
 
@@ -5171,24 +5171,24 @@ As instructed by the `-S` option, the above invocation of selfie generated assem
 // assert: link = ra
 
 0x13C(~5) - 0x14C(~5): // redundant factorial prologue hidden
-
+---
 0x150(~5): ld t0,-24(gp)         // while (n > 1) {
 0x154(~5): addi t1,zero,1
 0x158(~5): sltu t0,t1,t0
 0x15C(~5): beq t0,zero,10[0x184]
-
+---
 0x160(~6): ld t0,-16(gp)         //   f = f * n;
 0x164(~6): ld t1,-24(gp)
 0x168(~6): mul t0,t0,t1
 0x16C(~6): sd t0,-16(gp)
-
+---
 0x170(~8): ld t0,-24(gp)         //   n = n - 1;
 0x174(~8): addi t1,zero,1
 0x178(~8): sub t0,t0,t1
 0x17C(~8): sd t0,-24(gp)
-
+---
 0x180(~10): jal zero,-12[0x150]  // }
-
+---
 0x184(~10) - 0x190(~10): // redundant factorial epilogue hidden
 
 // assert: ra == link
@@ -5224,9 +5224,9 @@ The assertions help us in reasoning about important invariants. The first such i
 0x1B0(~15): ld t0,-16(gp)     // return f;
 0x1B4(~15): addi a0,t0,0      // load f into return value register a0
 0x1B8(~15): jal zero,2[0x1C0] // skip resetting a0
-
+---
 0x1BC(~16): addi a0,zero,0 // reset return value register a0, redundant
-
+---
 0x1C0(~16) - 0x1C4(~16): // redundant part of main epilogue hidden
 
 // assert: sp == top - 8, ra != link
@@ -5296,12 +5296,12 @@ The difference to the previous version of `factorial` is that we now us an `if` 
 0x154(~5): addi t1,zero,1
 0x158(~5): sltu t0,t1,t0
 0x15C(~5): beq t0,zero,10[0x184]
-
+---
 0x160(~6): ld t0,-16(gp)         //   f = f * n;
 0x164(~6): ld t1,-24(gp)
 0x168(~6): mul t0,t0,t1
 0x16C(~6): sd t0,-16(gp)
-
+---
 0x170(~8): ld t0,-24(gp)         //   n = n - 1;
 0x174(~8): addi t1,zero,1
 0x178(~8): sub t0,t0,t1
@@ -5365,7 +5365,7 @@ Instead of keeping track of the value of `n` in a global variable, the above ver
 0x154(~4): addi t1,zero,1
 0x158(~4): sltu t0,t1,t0
 0x15C(~4): beq t0,zero,11[0x188]
-
+---
 0x160(~5): ld t0,-16(gp)         //   f = f * n;
 0x164(~5): ld t1,16(s0)
 0x168(~5): mul t0,t0,t1
@@ -5443,9 +5443,9 @@ There is one more thing. How do we know the total number of actual parameters in
 0x1C0(~14): ld t0,-16(gp)     // return f;
 0x1C4(~14): addi a0,t0,0
 0x1C8(~14): jal zero,2[0x1D0]
-
+---
 0x1CC(~15): addi a0,zero,0 // reset return value register a0, redundant
-
+---
 0x1D0(~15) - 0x1D4(~15): // redundant part of main epilogue hidden
 
 // assert: sp == top - 8, ra != link
@@ -5490,7 +5490,7 @@ The challenge with code generation for this example is the expression `n * facto
 0x154(~2): addi t1,zero,1
 0x158(~2): sltu t0,t1,t0
 0x15C(~2): beq t0,zero,17[0x1A0]
-
+---
 0x160(~3): ld t0,16(s0)          //   return n * factorial(n - 1);
 0x164(~3): addi sp,sp,-8         //   allocate one machine word on stack
 0x168(~3): sd t0,0(sp)           //   save value of n left to * on stack
@@ -5518,13 +5518,13 @@ The challenge with code generation for this example is the expression `n * facto
 0x190(~3): mul t0,t0,t1          //   evaluate n * factorial(n - 1)
 0x194(~3): addi a0,t0,0          //   store result in return value register a0
 0x198(~3): jal zero,6[0x1B0]     //   jump to epilogue
-
+---
 0x19C(~5): jal zero,4[0x1AC]     // else
-
+---
 0x1A0(~5): addi t0,zero,1        //   return 1;
 0x1A4(~5): addi a0,t0,0          //   store 1 in return value register a0
 0x1A8(~5): jal zero,2[0x1B0]     //   jump to epilogue
-
+---
 0x1AC(~6): addi a0,zero,0 // reset return value register a0, redundant
 
 // assert: sp == top - 16, s0 == sp, ra != link or ra == link
@@ -5566,9 +5566,9 @@ The code generated for evaluating the expression `n * factorial(n - 1)` using th
 0x1E8(~9): addi t0,a0,0      // retrieve return value of factorial(4)
 0x1EC(~9): addi a0,t0,0      // store result in return value register a0
 0x1F0(~9): jal zero,2[0x1F8] // jump to epilogue
-
+---
 0x1F4(~10): addi a0,zero,0 // reset return value register a0, redundant
-
+---
 0x1F8(~10) - 0x1FC(~10): // redundant part of main epilogue hidden
 
 // assert: sp == top - 8, ra != link
@@ -5614,7 +5614,7 @@ Since local variables, and formal parameters, only have local scope, the name `n
 
 0x1DC(~11): addi t0,zero,4    // n = 4;
 0x1E0(~11): sd t0,-8(s0)
-
+---
 0x1E4(~13): ld t0,-8(s0)      // return factorial(n);
 0x1E8(~13): addi sp,sp,-8     // allocate one machine word on stack
 0x1EC(~13): sd t0,0(sp)       // store value of n on stack
@@ -5628,7 +5628,7 @@ Since local variables, and formal parameters, only have local scope, the name `n
 0x1F4(~13): addi t0,a0,0      // retrieve return value of factorial(n)
 0x1F8(~13): addi a0,t0,0      // store result in return value register a0
 0x1FC(~13): jal zero,2[0x204] // jump to epilogue
-
+---
 0x200(~14): addi a0,zero,0 // reset return value register a0, redundant
 
 // assert: sp == top - 24, s0 == top - 16, ra != link
