@@ -18,14 +18,14 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 2. [Selfie](#selfie)
 
-   1. [Recommended Readings](#recommended-readings)
+   1. [Recommended Readings](#recommended-readings-1)
 
 3. [Language](#language)
 
    1. [Programming Language C\*](#programming-language-c)
    2. [RISC-U Machine Code](#risc-u-machine-code)
    3. [EBNF Grammar](#ebnf-grammar)
-   4. [Recommended Readings](#recommended-readings-1)
+   4. [Recommended Readings](#recommended-readings-2)
 
 4. [Information](#information)
 
@@ -44,9 +44,9 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    13. [Video](#video)
    14. [Audio](#audio)
    15. [Code](#code)
-   16. [Apps](#apps)
-   17. [Life](#life)
-   18. [Recommended Readings](#recommended-readings-2)
+   16. [Apps](#apps-1)
+   17. [Life](#life-1)
+   18. [Recommended Readings](#recommended-readings-3)
 
 5. [Machine](#machine)
 
@@ -57,33 +57,33 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    5. [Instructions](#instructions)
    6. [Emulation](#emulation)
    7. [Performance](#performance)
-   8. [Life](#life-1)
-   9. [Recommended Readings](#recommended-readings-3)
+   8. [Life](#life-2)
+   9. [Recommended Readings](#recommended-readings-4)
 
 6. [Programming](#programming)
 
    1. [Literal](#literals)
    2. [Variable](#variables)
-   3. Expressions
-   4. Statements
-   5. Assignments
-   6. Loops
-   7. Conditionals
-   8. Procedures
-   9. Libraries
-   10. Apps
-   11. Life
-   12. Recommended Readings
+   3. [Expressions](#expressions)
+   4. [Statements](#statements)
+   5. [Assignments](#assignments)
+   6. [Loops](#loops)
+   7. [Conditionals](#conditionals)
+   8. [Procedures](#procedures)
+   9. [Libraries](#libraries)
+   10. [Apps](#apps-2)
+   11. [Life](#life-3)
+   12. [Recommended Readings](#recommended-readings-5)
 
-7. Computing
+7. [Computing](#computing)
 
-   1. Virtual Machine
-   2. Virtual Memory
-   3. Runtime Systems
-   4. Computing as Utility
-   5. Cloud Computing
-   6. Life
-   7. Recommended Readings
+   1. [Virtual Machine](#virtual-machine)
+   2. [Virtual Memory](#virtual-memory)
+   3. [Runtime Systems](#runtime-systems)
+   4. [Computing as Utility](#computing-as-utility)
+   5. [Cloud Computing](#cloud-computing)
+   6. [Life](#life-4)
+   7. [Recommended Readings](#recommended-readings-6)
 
 8. [Glossary](#glossary)
 
@@ -255,7 +255,7 @@ Try running the autograder on your code to see which grade you would get in clas
 
 If you see grade 2, you are good. Throughout the book, we point out exercises based on the assignments that the autograder supports.
 
-### Recommended Readings
+### Recommended Readings 1
 
 At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first two recommendations.
 
@@ -1040,7 +1040,7 @@ We introduced the programming language C\* which allows you to develop code. The
 
 With C\*, RISC-U, and EBNF introduced here by example, we are ready to take on the rest of the book in which we take a bottom-up approach from bits and bytes all the way to computing in the cloud. In particular, we fill you in on all the important details missing in this chapter that are necessary to see the big picture eventually. Here are also our recommendations for textbooks that provide the technical background of this chapter.
 
-### Recommended Readings
+### Recommended Readings 2
 
 > The C Programming Language by Brian W. Kernighan and Dennis M. Ritchie
 
@@ -2181,11 +2181,11 @@ hexdump -C selfie.m
 
 However, keep in mind that not all machine code can be executed by all computers, at least not directly. Machine code encodes instructions that a given machine can decode and execute. Your phone, for example, is unlikely to be able to execute machine code for your laptop, and vice versa. The story for source code is different though since it may be translated to different types of machine code, for your laptop as well as your phone. The same app on your laptop and your phone may therefore contain different machine code that may nevertheless still come from the same source code. This brings us to the question of what apps really are.
 
-### Apps
+### Apps 1
 
 An *application* or just *app* is a collection of files of which some are executable code while others are usually data files such as text, images, video, and audio depending on the type of app. For example, a social networking app contains code that *implements* chat functionality and data that the code uses to construct the visual appearance of the app on your screen. The type and format of the app files highly depend on the type of machine on which the app executes or *runs*. An app for Android phones does not run on iPhones and vice versa. However, it may still come from the same source code and the same data files. In many cases, there is much more data than code in apps, especially with games, even though the code is of course the most complex artifact among all app files and key to correct behavior of the app.
 
-### Life
+### Life 1
 
 Everything on a digital device is encoded in bits. As consequence, whatever we want such a machine do for us needs to be encoded in bits. We began by looking at how numbers are encoded in bits. It turned out that using binary notation is not all that different from decimal notation. Even arithmetic with binary numbers works essentially the same way as arithmetic with decimal numbers. Fortunately, for other types of information such as text, images, video, audio, and even code and apps, there is a lot of help these days in encoding and decoding them properly.
 
@@ -2201,7 +2201,7 @@ This is where life and in particular evolution comes in. Evolution is the proces
 
 The simplicity of that model is striking! But how can this ever work? Well, just like computing it is ultimately a matter of time, space, and energy. We need lots of time, or conversely mutate very fast and select effectively. We need lots of space for mutating and selecting in parallel, or conversely use space very efficiently, that is, be super tiny. And we need lots of energy, or conversely be very energy efficient. In other words, quantities matter! A few more zeroes in a number can make all the difference, in life and in computing. So, let us take a look at a real machine and see what it actually takes to compute.
 
-### Recommended Readings
+### Recommended Readings 3
 
 > Ones and Zeros: Understanding Boolean Algebra, Digital Circuits, and the Logic of Sets by John R. Gregg
 
@@ -3708,7 +3708,7 @@ The key observation is that *VMM* is RISC-U code that executes RISC-U code, that
 
 We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
-### Life
+### Life 2
 
 The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U is *universal* or *Turing-complete*, it can do anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms. Extending RISC-U with other RISC-V instructions for better performance is not difficult and the subject of exercises in the next chapter.
 
@@ -3716,7 +3716,7 @@ However, my true fascination comes from something else and that is related to li
 
 And this is where the next chapter comes in. Coding in machine code is tedious and errorprone and thus does not *scale* in complexity. If you would like the machine do something complex we need to raise the level of abstraction and then use tools, rather than our "hands", as in any other engineering discipline, that help us construct large amounts of machine code that actually work. For this purpose, computer scientists invented high-level programming languages. The next chapter is about that.
 
-### Recommended Readings
+### Recommended Readings 4
 
 > Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
 
@@ -6066,11 +6066,11 @@ The code in `encoding.c` uses procedures for printing as implemented in selfie. 
 
 Hard to believe but we have indeed reached the point where everything about programming in C\* and the selfie compiler in particular that comes to our mind has been said. It is finally time to reflect again on what we have achieved and then prepare for the final chapter.
 
-### Apps
+### Apps 2
 
 Are we finally able to develop apps for smartphones, tablets, and laptops, after going through all that material? Well, by now you should definitely be able to figure out how to develop code for apps in whatever programming languages are available for that. However, besides knowing the involved languages, the remaining and still considerable challenge is to figure out how to use their ecosystems, that is, their libraries and development environments. Those can be quite complex and therefore take time to utilize effectively. In any case, if I was young again I would develop apps all the time for no reason other than having fun. Making dumb machines do smart stuff can be extremely rewarding. Try it!
 
-### Life
+### Life 3
 
 Programming is the most precise known form of expressing your thoughts about a problem and how to solve it using a mindless machine. Even if you do not intend to develop code for a living or just fun, there is something to it that has a profound effect on the way you think once you know what it is and how to do it. Programming a machine that has no concept of the real world forces you to gain a level of understanding of a problem and its possible solutions that can even exceed what is involved in other complex activities in modern science and engineering. Modern cars, planes, smartphones, computers, vaccines, and so on are all incredibly complex human-made artifacts but they are still no match to the complexity of modern software. Only life itself still exceeds that level of complexity.
 
@@ -6080,7 +6080,7 @@ The challenge is to understand and acknowledge that programming languages are fo
 
 Programming even in the most modern programming languages may nevertheless often feel like a straitjacket on your creativity. However, new languages and tools that can significantly improve your experience are being developed all the time. We are still only at the beginning of that process. Tools in particular have a long way to go. Developing and running something as complex as software requires using tools, ideally the best possible tools available. The key challenge is to establish functional correctness as well as performance which is increasingly difficult with software growing in size and complexity. The challenge is so hard that even the most valuable companies in the world are unable to provide correct software that always performs as expected, for both technical as well as economical reasons. As consequence, we have all become accustomed to software bugs and performance issues that we would not tolerate in other domains. In the final chapter, we take a look at the fundamentals and show what is involved in scaling software complexity to the capabilities of modern hardware.
 
-### Recommended Readings
+### Recommended Readings 5
 
 > Compilers: Principles, Techniques, and Tools by Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman
 
@@ -6125,8 +6125,8 @@ treiber-stack
 
 ### Cloud Computing
 
-### Life
+### Life 4
 
-### Recommended Readings
+### Recommended Readings 6
 
 ## Glossary
