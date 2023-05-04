@@ -64,29 +64,26 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
    1. [Literal](#literals)
    2. [Variable](#variables)
-   3. Type
-   4. Expression
-   5. Assignment
-   6. Conditional
-   7. Loop
-   8. Procedure
+   3. Expressions
+   4. Statements
+   5. Assignments
+   6. Loops
+   7. Conditionals
+   8. Procedures
    9. Libraries
    10. Apps
    11. Life
    12. Recommended Readings
 
-7. [Tools](#tools)
+7. Computing
 
-   1. [Compiler](#compiler)
-   2. [Interpreter](#interpreter)
-   3. [Virtual Machine](#virtual-machine)
-   4. [Virtual Memory](#virtual-memory)
-   5. [Virtual Time](#virtual-time)
-   6. [Virtual Machine Monitor](#virtual-machine-monitor)
-   7. [Computing as Utility](#computing-as-utility)
-   8. [Cloud Computing](#cloud-computing)
-   9. [Life](#life-3)
-   10. [Recommended Readings](#recommended-readings-5)
+   1. Virtual Machine
+   2. Virtual Memory
+   3. Runtime Systems
+   4. Computing as Utility
+   5. Cloud Computing
+   6. Life
+   7. Recommended Readings
 
 8. [Glossary](#glossary)
 
@@ -108,21 +105,25 @@ Why is the *self* so important? Because it shows how meaning is created systemat
 
 After introducing selfie, we provide a preview of the kind of *language* we use later in the book. The bad news is that there are three different, in fact *formal languages* that you need to learn. The good news is that all three are widely used in practice and yet so simple that it is difficult to make them any simpler without loosing essential features or making them irrelevant in the real world. The first language is the *programming language* in which selfie is written. It is a tiny subset of the programming language C. The second language is the *machine language* in which the code that selfie translates to and executes is written. It is a tiny subset of 64-bit RISC-V. The third language is a formal language or *grammar* called EBNF for describing how code is supposed to look like. EBNF is incredibly cool because it can even describe how EBNF itself is supposed to look like. This is a beautiful example of self-referentiality that you can actually understand even without any further background in computer science.
 
-At this point you should be ready to do a bit of groundwork. We begin by emphasizing the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits using nothing but elementary arithmetic. This insight is key to understanding information technology and therefore emphasized throughout the book. We present examples of how every day *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits. We also show how those bits are later decoded back to their original form making them accessible to humans again.
+At this point you should be ready to do a bit of groundwork. We begin by emphasizing the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits using nothing but elementary arithmetic and logic. This insight is key to understanding information technology and therefore emphasized throughout the book. We present examples of how every day *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits. We also show how those bits are later decoded back to their original form making them accessible to humans again.
 
-The next topic is a simple yet representative *machine model* of virtually any computing device available today. The model is in fact a simplified version of a fully realistic 64-bit RISC-V machine. We developed the model during the course of teaching undergraduate students for two decades. The goal is to enable you to develop an intuition of how computers work on the level of bits, which may at first be a bit tedious but is nevertheless intellectually straightforward and worth it. Once you get the machine everything else falls into place! And you might even be surprised how fundamentally simple the machine is. Most of the complexity of modern computing devices is due to performance optimizations which we deliberately leave out to keep things accessible. Instead we focus on developing an early intuition on what code and data is, what the difference is, and the fact that both are anyway encoded in just bits. This chapter also includes a simple model of machine memory and exposes you to fundamental properties that have direct counterparts in the real world, as it is often the case with computer science, such as where to store information and how to find it again later.
+The next topic is a simple model of a *machine* that represents the core of virtually any general-purpose computing device available today. The model is in fact a simplified version of a fully realistic 64-bit RISC-V machine. We developed the model during the course of teaching undergraduate students for two decades. The goal is to enable you to develop an intuition of how computers work on the level of bits, which may at first be quite tedious but is nevertheless intellectually straightforward and worth it. Once you get the machine everything else falls into place! And you might even be surprised how fundamentally simple the machine is. Most of the complexity of modern computing devices is due to performance optimizations which we deliberately leave out to keep things accessible. Instead we focus on developing an early intuition on what code and data is, what the difference is, and the fact that both are anyway encoded in just bits. This chapter also includes a simple model of digital memory and exposes you to fundamental properties that have direct counterparts in the real world, as it is often the case with computer science, such as where to store information and how to find it again later.
 
-With the machine model in mind, you will appreciate the fact that developing software directly on the machine is possible but too cumbersome and errorprone. It is therefore time to study the notion of high-level *programming languages*. Similar to the machine model, we introduce our simple yet realistic programming language that we also developed during years of teaching. The idea is to walk you through each element of the language, explain what its purpose is and what it means intuitively, and then show how it translates to machine code. The challenge is to maintain two different perspectives in your mind simultaneously: the human perspective, that is, your understanding of what a language element means, and the machine's perspective, that is, what the machine actually makes of each element. Here we depart from the mainstream in programming language education which typically ignores the machine's perspective, assuming that it is unnecessary and anyway too difficult and time-consuming. While this may be true for full-fledged programming languages, we leverage the simplicity of our language and take you even further by demonstrating how the translation itself is implemented in our language. Formalizing the process of translation shows you, probably for the first time, what is actually going on when reading and understanding a non-trivial formalism. Here there are plenty of opportunities to point out fundamental questions such as how long and how much memory and energy it takes to solve a problem and whether a problem can be solved at all. The latter, for example, explains why computers sometime become unresponsive for unpredictable amounts of time driving their users mad.
+With the machine model in mind, you will appreciate the fact that developing software directly on the machine is possible but too cumbersome and errorprone. It is therefore time to study the notion of *programming* a computer in high-level programming languages. Similar to the machine model, we introduce our simple yet realistic programming language that we also developed during years of teaching. The idea is to walk you through each element of the language, explain what its purpose is and what it means intuitively, and then show how it translates to machine code. The challenge is to maintain two different perspectives in your mind simultaneously: the human perspective, that is, your understanding of what a language element means, and the machine's perspective, that is, what the machine actually makes of each element.
 
-Even the most convenient high-level programming languages are by far not enough to enable software developers build the most complex systems ever created by humans. Like all engineers they need *tools* to do it. Software development tools are interesting because their design explains a lot about what software is. In fact, the tools define the *semantics* of a programming language, that is, what a program written in a programming language actually means. Thus exposing you to the design of the tools is key to showing how meaning is given to code, at least in principle. There are fascinating analogies in the real world such as the self-referential paradox that an English dictionary defines the meaning of English using English. The same is true with software development tools. They are usually written in the programming language to which they give meaning. The difference to English though is that there is no apparent paradox here. Showing how that works is our goal. You will then start asking questions about computers you would have never been able to ask before. We envision the outcome to be new insights into what is possible and what is not, enabling you to develop more confidence when it comes to assessing new technologies such as artificial intelligence and self-driving cars.
+Here we depart from the mainstream in programming language education which typically ignores the machine's perspective, assuming that it is unnecessary and too difficult and time-consuming to understand it. While this may be true for full-fledged programming languages, we leverage the simplicity of our language and take you even further by demonstrating how the translation itself is implemented in our language. Formalizing the process of translation shows you, probably for the first time, what is actually going on when reading and understanding a non-trivial formalism. Here there are plenty of opportunities to point out fundamental questions such as how long and how much memory and energy it takes to solve a problem and whether a problem can be solved at all. The latter, for example, explains why computers sometime become unresponsive for unpredictable amounts of time driving their users mad.
 
-One of the key breakthroughs of recent years is that computation has become a utility just like electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. There is no need anymore to operate your own machines other than client machines such as your smartphone. As long as you have a network connection, any form of computational platform is available to you. The key enabling technology is *virtualization* which is a concept whose understanding is elusive even to many computer science students. However, we developed a way to teach virtualization in simple terms accessible to anyone based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create any computational platform, including the one it runs on, very efficiently. This is another form of self-referentiality that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of computing.
+Even the most convenient high-level programming languages are by far not enough to enable software developers build the most complex systems ever created by humans. Like all engineers they need *tools* to do it. Software development tools are interesting because their design explains a lot about what software is. In fact, the tools define the semantics of a programming language, that is, what a program written in a programming language actually means. Thus exposing you to the design of the tools is key to showing how meaning is given to code, at least in principle. There are fascinating analogies in the real world such as the self-referential paradox that an English dictionary defines the meaning of English using English. The same is true with software development tools. They are usually written in the programming language to which they give meaning. The difference to English though is that there is no apparent paradox here. Showing how that works is our goal. You will then start asking questions about computers you would have never been able to ask before. We envision the outcome to be new insights into what is possible and what is not, enabling you to develop more confidence when it comes to assessing new but often overpromised technologies such as artificial intelligence and self-driving cars.
+
+Once you have seen the basic principles of encoding *information* in bits, running actual code on a simple yet representative *machine*, and *programming* that machine in a simple yet realistic programming language, we are ready to embark on the probably single most important achievement of computer science so far: *computing* as commodity independent of any particular hardware and available to anyone with a network connection. In other words, computing has become a utility similar to electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. There is no need anymore to operate your own hardware other than client machines such as your smartphone. As long as you have a network connection, any form of computational platform is available to you, typically without being aware of what is involved, let alone understanding how it works. The key enabling technology is *virtualization* which is a concept whose understanding is elusive even to many computer science students. However, we developed a way to teach virtualization in simple terms accessible to anyone based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create any computational platform, including the one it runs on, very efficiently. This is another form of self-referentiality that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of computing.
+
+You might ask why it makes any difference if you understand computing or not. After all, most people know how to use smartphones and drive cars without understanding how they work. The reason why it makes in fact a big difference is that computing is a universal principle, similar to elementary arithmetic, geometry, and algebra, and even life itself. Computing is about the nature of information, and everything is information. Knowing at least the basic principles impacts virtually everything you do. Many people might say they were never good in math but can still function properly in modern society. However, most people know that a million dollars is quite a bit more than a thousand dollars, and what a line and a circle is, yet without being aware that their math education, as painful as it might have been, told them that. The computer science education provided here might be even more painful because we are only at the beginning of figuring out what should be taught and how, and what not. We all just need to try, probably fail to some extent, but then learn to improve.
 
 This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
 
 > To boldly go where no one has gone before!
 
-Before we begin, let me tell you how I stayed motivated when writing this book which was probably as hard for me as it is for you to read it all the way to the end. I picked some ideal that I wanted to be. Like many teenage boys I wanted to be an astronaut when I was young. Who do you want to be? Take your pick. When you are done reading all the way to the end, just exchange your pick with the ideal of a person that actually finished this book. Making it through the selfie, language, and information chapters is going to be increasingly challenging but still relatively easy compared to what comes after that. It is like doing the groundwork necessary to become, say, a candidate for astronaut training. The machine chapter after that is what probably happens when you start your training. It is not what you expected and it is brutal. In your mind, you will curse your coach. All those technical details that do not seem to get you anywhere. Why do I have to do this anyway? But then you graduate and they put you on a moon rocket. This is the programming chapter. I hope you are smiling by now. A good sense of humor is the only way. The programming chapter is not easy to read but is less painful than the machine chapter and a lot more rewarding yet you cannot understand it without making it through the machine chapter first. When you are done with the programming chapter you made it to the moon. This is the reward! Then just rest and reflect on what you have achieved. But then the good news comes in and they put you on another rocket to the stars. This is the tools chapter. Reading and actually understanding that chapter is what you have been waiting for all your life but could not get there without first going to the moon. It takes you to a level that you could not possibly have imagined. It will give you *your very own ideas* that no one else had before. To boldly go where no one has gone before!
+Before we begin, let me tell you how I stayed motivated when writing this book which was probably as hard for me as it is for you to read it all the way to the end. I picked some ideal that I wanted to be. Like many teenage boys I wanted to be an astronaut when I was young. Who do you want to be? Take your pick. When you are done reading all the way to the end, just exchange your pick with the ideal of a person that actually finished this book. Making it through the selfie, language, and information chapters is going to be increasingly challenging but still relatively easy compared to what comes after that. It is like doing the groundwork necessary to become, say, a candidate for astronaut training. The machine chapter after that is what probably happens when you start your training. It is not what you expected and it is brutal. In your mind, you will curse your coach. All those technical details that do not seem to get you anywhere. Why do I have to do this anyway? But then you graduate and they put you on a moon rocket. This is the programming chapter. I hope you are smiling by now. A good sense of humor is the only way. The programming chapter is not easy to read but is less painful than the machine chapter and a lot more rewarding yet you cannot understand it without making it through the machine chapter first. When you are done with the programming chapter you made it to the moon. This is the reward! Then just rest and reflect on what you have achieved. But then the good news comes in and they put you on another rocket to the stars. This is the computing chapter. Reading and actually understanding that chapter is what you have been waiting for all your life but could not get there without first going to the moon. It takes you to a level that you could not possibly have imagined. It will give you *your very own ideas* that no one else had before. To boldly go where no one has gone before!
 
 ## Selfie
 
@@ -200,7 +201,7 @@ make self
 
 Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. We just instructed selfie (using the `-c` *option* or *console argument*) to translate or *self-compile* the *source code* `selfie.c` in which selfie is written to *machine code* and thereby construct the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did.
 
-An important feature of selfie is that you actually have a chance to understand all of it, unlike most modern software systems that are based on the same basic principles but drown you in seemingly prohibitive complexity. Sure, even selfie may appear complex and you can verify that by taking a look at `selfie.c` on selfie's homepage or in your terminal by typing:
+An important feature of selfie is that you actually have a chance to understand all of it, unlike most modern software systems that are based on the same basic principles but drown you in seemingly prohibitive complexity. Sure, even selfie may appear complex and you can verify that by taking a look at `selfie.c` on the selfie homepage or in your terminal by typing:
 
 ```bash
 more selfie.c
@@ -218,9 +219,9 @@ or simply:
 make self-self
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. It self-self-compiled. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. It self-self-compiled. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on the selfie homepage that you may want to try out on your machine.
 
-Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *Turing-complete*, that is, it is *computationally universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
+Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which the source code of selfie is written is *Turing-complete*, that is, it is *computationally universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
@@ -292,7 +293,7 @@ Most importantly, take your time! We go through almost every detail and motivate
 
 ### Programming Language C\*
 
-C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
+C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 7 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
 
 [https://github.com/cksystemsteaching/selfie/blob/main/grammar.md](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)
 
@@ -338,11 +339,11 @@ Selfie responds with quite a bit of text but just look for `double.c exiting wit
 
 > Procedures may have formal parameters and be called with actual parameters
 
-There are a number of important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. The code of the procedure is in between curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`.
+There are a number of important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. Formal parameters and return type as in `int double(int n)` form what is called the *procedure signature*. The actual code of the procedure is in between curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`.
 
-> Procedures are defined once but may be called many times
+> Procedures are defined exactly once but may be used in procedure calls many times
 
-Importantly, there can only be one procedure definition per procedure (name) but as many procedure calls of the same procedure as you like. Makes sense? Okay, then let us try to change the definition or in fact implementation of `double`:
+Procedure definitions must be uniquely identified, say, by name, as in C\*, but can then be used in procedure calls as many times as you like from anywhere in the code. Makes sense? Okay, then let us try to change the definition or in fact implementation of `double`:
 
 ```c
 int double(int n) {
@@ -358,7 +359,7 @@ int square(int n) {
 }
 ```
 
-In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`. So, we may say something like this:
+In addition to `+` and `*`, C\* also supports the other two *operators* of elementary arithmetic for subtraction and division, denoted `-` and `/`, respectively, as well as remainder, denoted `%`, and parentheses for *grouping* arithmetic expressions to overrule the *precedence* of `*`, `/`, and `%` over `+` and `-`, as well as the *associativity* of `-`, `/`, and `%`. Remember, in elementary arithmetic `1 + 2 * 3` is equal to `1 + (2 * 3)`, not `(1 + 2) * 3`, because `*` has higher precedence than `+`, and `1 - 2 + 3` is equal to `(1 - 2) + 3`, not `1 - (2 + 3)`, because `-` and `+` are *left-associative*. So, we may say something like this:
 
 ```c
 int fancy(int n) {
@@ -379,7 +380,7 @@ int max(int n, int m) {
 }
 ```
 
-Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional statement*, which in C\* is called an `if` *statement*. The *comparison* or *logical expression* `n < m` is called an `if` *condition* which can evaluate either to *true* or to *false*. The statement `return m` is part of the `if` *body* of the `if` statement while the statement `return n` is part of the `else` *body* of the `if` statement.
+Again, the code can be read like a sentence in English: define a procedure `max` with two formal parameters `n` and `m` as follows. Given integer values for `n` and `m`, return the value of `m` if the value of `n` is less than the value of `m`. Otherwise, return the value of `n`. This is a *conditional statement*, which in C\* is called an `if` *statement*. The *comparison* or *relational expression* `n < m` is called an `if` *condition* which can evaluate either to *true* or to *false*. The statement `return m` is part of the `if` *body* of the `if` statement while the statement `return n` is part of the `else` *body* of the `if` statement.
 
 > Conditional: if this is true do that else do that
 
@@ -416,7 +417,7 @@ In fact, *after* the assignment is done, evaluating `c + 1` again would result i
 
 > Imperative programming: do that and then do that
 
-The presence of assignments in a programming language indicates that the language supports a *programming paradigm* called *imperative programming* in which a computer is told what to do in a sequence of statements, especially assignments, that are in a *before-and-after* relationship. The `count` procedure is our first example of such a program.
+The presence of assignments in a programming language indicates that the language supports a *programming paradigm* called *imperative programming* in which a computer is told what to do in a sequence of statements, especially assignments, that are in a *before-and-after* relationship. Doing so in procedures is a form of imperative programming called *procedural programming*. The `count` procedure is our first example of an imperative and even procedural program.
 
 > Iteration: do that again and again
 
@@ -483,7 +484,7 @@ This time the code is even in English a lot shorter: define a procedure `factori
 
 > Functional programming: just tell me what to do but not how
 
-In contrast to imperative programming, just using procedures without assignments follows a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the code almost looks like the mathematical definition of factorials and actually appears not to say how to compute factorials.
+Procedural programming without imperative programming, that is, programming procedures without assignments, follows a programming paradigm called *functional programming* since procedures without assignments resemble mathematical functions. Indeed, the above code almost looks like the mathematical definition of factorials and actually appears not to say how to compute factorials.
 
 > Recursion: solve a problem by assuming there is a partial solution
 
@@ -578,7 +579,7 @@ So, you might ask why all this matters. Well, there is an important lesson to be
 
 > Pointers: from numbers to data
 
-There is one more thing in C\* you have not seen yet. It is called *pointers*. They actually gave C\* its name because pointers in C are declared and *dereferenced* using the asterisk symbol `*`. They are the only means in C\* to construct any kind of *data structures* beyond mere integers. In other words, what you have seen of C\* so far only allows us to implement numerical functions, at least when using C\* as intended. Nevertheless, we would like to write code that handles not just numbers but any kind of information, of course. Pointers allow us to do that. However, understanding pointers requires a bit more background on how digital memory works. We therefore come back to the topic in subsequent chapters.
+There is one more thing in C\* you have not seen yet. It is called *pointers*. They actually gave C\* its name because pointers in C are declared and *dereferenced* using the asterisk symbol `*`. They are the only means in C\* to construct any kind of *data structure* beyond mere integers. In other words, what you have seen of C\* so far only allows us to implement numerical functions, at least when using C\* as intended. Nevertheless, we would like to write code that handles not just numbers but any kind of information, of course. Pointers allow us to do that. For example, the expression `*n` does not evaluate to the value of `n` but instead evaluates to the value stored in memory where the value of `n` points to. However, understanding pointers in detail requires a bit more background on how digital memory works. We therefore come back to the topic in subsequent chapters.
 
 By now, you have seen all features of C\* except pointers. We have shown you what C\* code looks like and what it means. But programming in C\*, or any other programming language, requires practice and curiosity. Try to verify your understanding of the language by writing small programs in C\*, similar to our code examples, and running them through selfie. Try to predict what your code does and then use selfie to see if it actually does that. If not, try to find out why by modifying your code.
 
@@ -594,28 +595,28 @@ The first few lines of output give you an idea of the size of the system in term
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
 ./selfie: selfie compiling selfie.c to 64-bit RISC-U with 64-bit starc
-./selfie: 346447 characters read in 11954 lines and 1699 comments
-./selfie: with 206502(59.60%) characters in 48118 actual symbols
-./selfie: 480 global variables, 631 procedures, 469 string literals
-./selfie: 2893 calls, 1340 assignments, 91 while, 894 if, 583 return
+./selfie: 349007 characters read in 12019 lines and 1712 comments
+./selfie: with 208318(59.69%) characters in 48612 actual symbols
+./selfie: 478 global variables, 629 procedures, 366 string literals
+./selfie: 1337 assignments, 90 while, 903 if, 2936 calls, 595 return
 ...
 ```
 
-For example, there are 480 global variables and 631 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
+What you see here is a *profile* of the compiled source code, reported by the selfie compiler called `starc`. For example, there are 478 global variables and 629 procedures in the source code of selfie. Some concepts we have not yet seen such as symbols and string literals are introduced in the programming chapter. The rest of the output provides insight into the machine code that selfie generated for itself:
 
 ```
 ...
-./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
-./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
-./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
-./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
-./selfie: compare: sltu: 701(1.61%)
-./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
+./selfie: 176200 bytes generated with 40666 instructions and 13536 bytes of data
+./selfie: init:    lui: 2607(6.41%), addi: 11747(28.88%)
+./selfie: memory:  ld: 7597(18.68%), sd: 7265(17.86%)
+./selfie: compute: add: 3561(8.75%), sub: 718(1.76%), mul: 494(1.21%)
+./selfie: compute: divu: 89(0.21%), remu: 29(0.07%)
+./selfie: compare: sltu: 702(1.72%)
+./selfie: control: beq: 997(2.45%), jal: 4216(10.36%), jalr: 636(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-What you see here is a *profile* of the generated machine instructions. For example, the system generated 3,551 `add` instructions which is 8.17% of all 43,440 generated instructions. In the following, let us take a closer look using the `double.c` example.
+For example, the system generated 3,561 `add` instructions which is 8.75% of all 40,666 generated instructions. In the following, let us take a closer look using the `double.c` example.
 
 ### RISC-U Machine Code
 
@@ -651,7 +652,7 @@ This time we show *line numbers* 1 to 7 of the code as a way to refer to individ
 
 Selfie follows a workflow that is standard for programming languages such as C. It first compiles a program written in C\* to RISC-U machine code, as instructed by the `-c` option. We could then take the machine code and run it on a RISC-U processor. Such processors exist but you are unlikely to have access to a computer with such a processor. Therefore, selfie also features an interpreter of RISC-U machine code which is invoked by the `-m 1` option. In other words, `./selfie -c examples/double.c -m 1` instructs selfie to compile the source code in `double.c` to RISC-U machine code and then execute it right away using its builtin RISC-U interpreter.
 
-Okay, that is all very nice and cool but how can we see what is actually going on? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`, or we can have selfie execute the compiled code and output in our terminal every single machine instruction that it actually executes. Let us try generating the assembly file first using selfie's *disassembler*:
+Okay, that is all very nice and cool but how can we see what is actually going on? There are essentially two ways. We can ask selfie to generate a human-readable RISC-U assembly file called `double.s` that contains the compiled code of `double.c`, or we can have selfie execute the compiled code and output in our terminal every single machine instruction that it actually executes. Let us try generating the assembly file first using the selfie *disassembler*:
 
 ```bash
 ./selfie -c examples/double.c -S double.s
@@ -664,55 +665,54 @@ The relevant part of `double.s` looks as follows, with some code omitted (`...`)
 ```asm
 ...
 ---
-0x140(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
-0x144(~2): 0x00113023: sd ra,0(sp)
-0x148(~2): 0xFF810113: addi sp,sp,-8
-0x14C(~2): 0x00813023: sd s0,0(sp)
-0x150(~2): 0x00010413: addi s0,sp,0
+0x13C(~2): 0xFF810113: addi sp,sp,-8     // int double(int n) {
+0x140(~2): 0x00113023: sd ra,0(sp)
+0x144(~2): 0xFF810113: addi sp,sp,-8
+0x148(~2): 0x00813023: sd s0,0(sp)
+0x14C(~2): 0x00010413: addi s0,sp,0
 ---
-0x154(~2): 0x01043283: ld t0,16(s0)      // return n + n;
-0x158(~2): 0x01043303: ld t1,16(s0)
-0x15C(~2): 0x006282B3: add t0,t0,t1
-0x160(~2): 0x00028513: addi a0,t0,0
-0x164(~2): 0x0040006F: jal zero,1[0x168]
+0x150(~2): 0x01043283: ld t0,16(s0)      //   return n + n;
+0x154(~2): 0x01043303: ld t1,16(s0)
+0x158(~2): 0x006282B3: add t0,t0,t1
+0x15C(~2): 0x00028513: addi a0,t0,0
+0x160(~2): 0x0080006F: jal zero,2[0x168]
 ---
-0x168(~3): 0x00040113: addi sp,s0,0      // }
-0x16C(~3): 0x00013403: ld s0,0(sp)
-0x170(~3): 0x00810113: addi sp,sp,8
-0x174(~3): 0x00013083: ld ra,0(sp)
-0x178(~3): 0x01010113: addi sp,sp,16
-0x17C(~3): 0x00008067: jalr zero,0(ra)
+0x164(~3): 0x00000513: addi a0,zero,0    // }
+0x168(~3): 0x00013403: ld s0,0(sp)
+0x16C(~3): 0x00810113: addi sp,sp,8
+0x170(~3): 0x00013083: ld ra,0(sp)
+0x174(~3): 0x01010113: addi sp,sp,16
+0x178(~3): 0x00008067: jalr zero,0(ra)
 ---
-0x180(~6): 0xFF810113: addi sp,sp,-8     // int main() {
-0x184(~6): 0x00113023: sd ra,0(sp)
-0x188(~6): 0xFF810113: addi sp,sp,-8
-0x18C(~6): 0x00813023: sd s0,0(sp)
-0x190(~6): 0x00010413: addi s0,sp,0
+0x17C(~6): 0xFF810113: addi sp,sp,-8     // int main() {
+0x180(~6): 0x00113023: sd ra,0(sp)
+0x184(~6): 0xFF810113: addi sp,sp,-8
+0x188(~6): 0x00813023: sd s0,0(sp)
+0x18C(~6): 0x00010413: addi s0,sp,0
 ---
-0x194(~6): 0x02A00293: addi t0,zero,42   // return double(42);
-0x198(~6): 0xFF810113: addi sp,sp,-8
-0x19C(~6): 0x00513023: sd t0,0(sp)
-0x1A0(~6): 0xFA1FF0EF: jal ra,-24[0x140]
-0x1A4(~6): 0x00050293: addi t0,a0,0
-0x1A8(~6): 0x00000513: addi a0,zero,0
-0x1AC(~6): 0x00028513: addi a0,t0,0
-0x1B0(~6): 0x0040006F: jal zero,1[0x1B4]
+0x190(~6): 0x02A00293: addi t0,zero,42   //   return double(42);
+0x194(~6): 0xFF810113: addi sp,sp,-8
+0x198(~6): 0x00513023: sd t0,0(sp)
+0x19C(~6): 0xFA1FF0EF: jal ra,-24[0x13C]
+0x1A0(~6): 0x00050293: addi t0,a0,0
+0x1A4(~6): 0x00028513: addi a0,t0,0
+0x1A8(~6): 0x0080006F: jal zero,2[0x1B0]
 ---
-0x1B4(~7): 0x00040113: addi sp,s0,0      // }
-0x1B8(~7): 0x00013403: ld s0,0(sp)
+0x1AC(~7): 0x00000513: addi a0,zero,0    // }
+0x1B0(~7): 0x00013403: ld s0,0(sp)
+0x1B4(~7): 0x00810113: addi sp,sp,8
+0x1B8(~7): 0x00013083: ld ra,0(sp)
 0x1BC(~7): 0x00810113: addi sp,sp,8
-0x1C0(~7): 0x00013083: ld ra,0(sp)
-0x1C4(~7): 0x00810113: addi sp,sp,8
-0x1C8(~7): 0x00008067: jalr zero,0(ra)
+0x1C0(~7): 0x00008067: jalr zero,0(ra)
 ---
 ...
 ```
 
-Assembly code might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `140`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`.
+Assembly code might look scary or at least cryptic to you but once you get the idea it is surprisingly simple. Each line that begins with `0x` corresponds to a single machine instruction. The number that follows `0x` such as `13C`, for example, is a *memory address* which is similar to a line number in source code. For readability, we highlight blocks of machine instructions using `---`.
 
 > Every C\* statement translates to a block of RISC-U machine instructions
 
-The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x154` to `0x164`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
+The key observation here is that there is an immediate correspondence between lines of code in `double.c` and blocks of machine instructions in `double.s`. For example, the statement `return n + n;` in line 2 of `double.c` corresponds to the block of machine instructions from `0x150` to `0x160`. In other words, the block of machine instructions shows you how the statement is actually implemented for real!
 
 > RISC-U machine code gives C\* code meaning!
 
@@ -721,14 +721,14 @@ There exists such a correspondence for all C\* code which makes reading machine 
 Instead of explaining all of the assembly code we see here, let us focus on just one instruction to get the basic idea. RISC-U is formally introduced and explained in the machine chapter. The following instruction implements the addition operator `+` in the statement `return n + n;` in line 2 of `double.c`:
 
 ```asm
-0x15C(~2): 0x006282B3: add t0,t0,t1
+0x158(~2): 0x006282B3: add t0,t0,t1
 ```
 
-We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x15C(~2)` refers to the address `0x15C` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
+We go through that line from right to left: `add t0,t0,t1` is the machine instruction in human-readable assembly code, `0x006282B3` is the binary code of the instruction as seen by the processor, and `0x158(~2)` refers to the address `0x158` in memory where the instruction is stored and the approximate line number `2` of the source code from which the instruction was compiled. In general, the line numbers are only approximate because generating accurate line numbers would make the selfie compiler more complicated.
 
 > A machine instruction says what to do **and** which instruction is next
 
-So, what does `add t0,t0,t1` do? It instructs the processor to add the values stored in its *registers* `t0` and `t1`, then store the result in `t0`, and finally move on to the next instruction at address `0x160`. In other words, `add t0,t0,t1` is similar to an assignment `t0 = t0 + t1` but involving registers, not variables.
+So, what does `add t0,t0,t1` do? It instructs the processor to add the values stored in its *registers* `t0` and `t1`, then store the result in `t0`, and finally move on to the next instruction at address `0x15C`. In other words, `add t0,t0,t1` is similar to an assignment `t0 = t0 + t1` but involving registers, not variables.
 
 > Registers are the fastest and most valuable memory of a computer
 
@@ -736,7 +736,7 @@ Registers is where most of the work is done. There are usually only a few regist
 
 But you are right! We could have done the same thing using `add t0,t0,t0` and not even involve `t1` at all. But, again, this would be optimized code which is not easy to generate by a system designed for simplicity. So, we leave it at that for now. It is an exciting topic to study though and there is still a lot of research going on about how to do this best. After all, we want our code to be as fast and use as few instructions as possible.
 
-What about `0x15C` and `0x006282B3`? Well, both are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15. Note that hexa is derived from the Greek word for six and decimal from Latin for tenth. The etymologically correct term for hexadecimal is *senidenary* but anyway not used in practice.
+What about `0x158`, `0x15C`, and `0x006282B3`? Well, all three are *hexadecimal numbers* using *hexadecimal notation*, as indicated by the *prefix* `0x`. The only difference between hexadecimal and decimal notation is that hexadecimal notation supports 16 rather than 10 different characters per digit, that is, `0` to `9` as well as `A` to `F` where `A` stands for the decimal value 10, `B` for 11, `C` for 12, `D` for 13, `E` for 14, and `F` for 15. Note that hexa is derived from the Greek word for six and decimal from Latin for tenth. The etymologically correct term for hexadecimal is *senidenary* but anyway not used in practice.
 
 Each digit of a hexadecimal number represents 16-times rather than 10-times more value than the digit to its immediate right. Thus `0x15C`, for example, stands for the decimal value 348 because (**1** * 16 + **5**) * 16 + **12** is equal to 348 where **12** is represented by `C`. We say that hexadecimal notation uses *base* 16 whereas decimal notation uses base 10, that is, `0x15C` is just a shortcut for (**1** * 16 + **5**) * 16 + **12** and 348 is in fact a shortcut for (**3** * 10 + **4**) * 10 + **8**.
 
@@ -774,10 +774,10 @@ A debugger is a software tool for finding flaws in software called *bugs*. Lots 
 
 ```asm
 ...
-pc==0x10154(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
-pc==0x10158(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
-pc==0x1015C(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
-pc==0x10160(~2): addi a0,t0,0: t0==84(0x54) |- a0==0(0x0) -> a0==84(0x54)
+pc==0x10150(~2): ld t0,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t0==42(0x2A) -> t0==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x10154(~2): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==42 |- t1==0(0x0) -> t1==42(0x2A)==mem[0xFFFFFFA8]
+pc==0x10158(~2): add t0,t0,t1: t0==42(0x2A),t1==42(0x2A) |- t0==42(0x2A) -> t0==84(0x54)
+pc==0x1015C(~2): addi a0,t0,0: t0==84(0x54) |- a0==73728(0x12000) -> a0==84(0x54)
 ...
 ```
 
@@ -837,23 +837,23 @@ Selfie responds with its synopsis which is written in EBNF! But have a look at t
 ```
 ...
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 60251 executed instructions [22.32% nops]
+./selfie: summary: 59201 executed instructions [18.54% nops]
 ./selfie:          0.46KB peak stack size
-./selfie:          0.00MB allocated in 5 mallocs
+./selfie:          0.00MB allocated in 6 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
-./selfie:          0.19MB(19.92% of 1MB) mapped memory
+./selfie:          0.18MB(18.75% of 1MB) mapped memory
 ./selfie: --------------------------------------------------------------------------------
-./selfie: init:    lui: 283(0.46%)[0.00%], addi: 23559(39.10%)[19.10%]
-./selfie: memory:  ld: 14014(23.25%)[14.10%], sd: 8788(14.58%)[46.38%]
-./selfie: compute: add: 1726(2.86%)[5.90%], sub: 670(1.11%)[19.10%], mul: 1524(2.52%)[9.58%]
-./selfie: compute: divu: 662(1.09%)[7.70%], remu: 670(1.11%)[14.92%]
-./selfie: compare: sltu: 989(1.64%)[25.37%]
-./selfie: control: beq: 1258(2.08%)[62.32%], jal: 4044(6.71%)[33.06%], jalr: 1933(3.20%)[0.00%]
-./selfie: system:  ecall: 131(0.21%)
+./selfie: init:    lui: 284(0.47%)[0.00%], addi: 21945(37.06%)[16.65%]
+./selfie: memory:  ld: 13831(23.36%)[13.98%], sd: 9281(15.67%)[41.19%]
+./selfie: compute: add: 1727(2.91%)[5.96%], sub: 669(1.13%)[19.28%], mul: 1522(2.57%)[9.59%]
+./selfie: compute: divu: 662(1.11%)[7.70%], remu: 671(1.13%)[14.90%]
+./selfie: compare: sltu: 989(1.67%)[25.37%]
+./selfie: control: beq: 1261(2.13%)[62.25%], jal: 4170(7.04%)[0.00%], jalr: 2057(3.47%)[0.00%]
+./selfie: system:  ecall: 132(0.22%)
 ...
 ```
 
-Selfie reports how many instructions it took just to print its synopsis: 60,251 instructions! The system also provides another profile but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,726 times which is 2.86% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
+Selfie reports how many instructions it executed just to print its synopsis: 59,201 instructions! The system also provides another *profile* but this time of the executed instructions, not the generated instructions. For example, the `add` instruction was executed 1,727 times which is 2.91% of all executed instructions. There is even more detailed information after that which we skip here. The machine chapter has more on that.
 
 ### EBNF Grammar
 
@@ -913,7 +913,7 @@ Our definition of regular expressions is just one out of many possible definitio
 
 > Specification by regular expression, implementation by finite state machine
 
-For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The key idea is to match those characters with terminals in the regular expression which is exactly what an FSM can do, not more but also not less. The tool chapter has more on that.
+For any regular expression there exists an FSM that can be implemented in C\*, for example, to check efficiently whether a given sequence of characters is indeed a sentence in the language defined by the regular expression. In other words, there is an FSM to check if a sequence of characters is a decimal number or not, for example. The key idea is to match those characters with terminals in the regular expression which is exactly what an FSM can do, not more but also not less. The programming chapter has more on that.
 
 There are, however, grammars that cannot be expressed in a single EBNF production and are therefore not regular. Those are called *context-free*. The language of arithmetic expressions in C\* is an example of a context-free language that can only be defined by a context-free grammar, that is, by more than one EBNF production. For simplicity, we show you here a context-free grammar in EBNF that defines C\* assignments involving just a subset of all possible arithmetic C\* expressions which nevertheless still require a context-free grammar:
 
@@ -944,8 +944,7 @@ Let us go through the EBNF of an `expression` step by step. An `expression` is a
 
 > Recursion in EBNF enables arbitrarily nested structures
 
-The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors.
-Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
+The occurrence of `expression` in the RHS of the production for `factor` is recursion in EBNF! The recursion prevents us from being able to substitute the productions for `expression`, `term`, and `factor` into a single EBNF production, effectively making the language of expressions context-free. If we were to remove the recursion the language of expressions would be regular. We nevertheless need to use recursion here because arithmetic expressions may contain arbitrarily *nested subexpressions* and not just terms of factors. Recall the above procedure `fancy` which involves the subexpression `(n + 1)`:
 
 ```c
 int fancy(int n) {
@@ -971,7 +970,7 @@ The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. B
 
 What if for some reason we would like to give addition and subtraction precedence over multiplication and division? Easy. Just exchange `"+"` and `"*"` as well as `"-"` and `"/"` in the EBNF of expressions. In other words, grammars may have an effect on semantics, not just syntax!
 
-Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
+Fortunately, recursion in EBNF even allows us to control the structure of expressions to overrule the precedence and associativity of arithmetic operators using parenthesis as grouping operators, for example. The derivation tree of `n * (n + 1) - n / 2 + 42` reveals its structural difference to `n * n + 1 - n / 2 + 42` right away:
 
 ```
              ___________
@@ -991,13 +990,15 @@ factor:  n       1
 
 To calculate the value of the expression, again with `4` as value for `n`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. This time the result is `60`.
 
+There is, however, a subtle issue here. EBNF can express precedence but not associativity which controls the grouping of operators that have the same precedence such as `+` and `-`. So far, we silently assumed that expressions are grouped from left to right, not from right to left, which does make sense, however, because `-` in particular is left-associative, not *right-associative*. For example, `n * n + 1 - n / 2 + 42` is grouped as in `(n * n + 1 - n / 2) + 42`, not `n * n + 1 - (n / 2 + 42)`.
+
 > Specification by context-free grammar, implementation by pushdown automaton
 
 Before moving on, we would like to answer an important question: is there a model of computation similar to finite state machines that can implement context-free grammars? The answer is yes. Any context-free grammar can be implemented by a *pushdown automaton* (PDA) which is a model of computation that can do just a bit more than a finite state machine but is still simpler than that of a processor.
 
 > A pushdown automaton is a finite state machine with a stack
 
-More precisely, a PDA is a finite state machine plus a *stack*. Similar to regular expressions and finite state machines, there is a PDA to check if a sequence of characters is an arithmetic expression or not, for example. Again, the key idea is to match those characters with terminals in the grammar. However, a PDA also needs to make sure that there are as many right parentheses as there are left parentheses, for example. For this purpose, it pushes each left parenthesis down onto its stack and pops one off the stack with each right parenthesis. When it is done, an empty stack indicates success. This is a limited form of counting which is fundamental in recognizing nested structure. Again, the tool chapter has more on that.
+More precisely, a PDA is a finite state machine plus a *stack*. Similar to regular expressions and finite state machines, there is a PDA to check if a sequence of characters is an arithmetic expression or not, for example. Again, the key idea is to match those characters with terminals in the grammar. However, a PDA also needs to make sure that there are as many right parentheses as there are left parentheses, for example. For this purpose, it pushes each left parenthesis down onto its stack and pops one off the stack with each right parenthesis. When it is done, an empty stack indicates success. This is a limited form of counting which is fundamental in recognizing nested structure. Again, the programming chapter has more on that.
 
 There is one thing that is important to realize here. All we do with these grammars and machines is formalizing the process of reading that we as humans do without even noticing what is happening. By going through this exercise of formalization we not only enable us to build software that can do this for us incredibly fast and efficiently but also sharpen our own understanding of notation and its meaning. Here is the final step demonstrating that. How about defining the syntax of EBNF using EBNF? The following EBNF does exactly that:
 
@@ -1035,7 +1036,7 @@ The final question about EBNF that often comes up in class is why context-free g
 
 The purpose of this chapter was to give you an idea of what it means to express your thoughts in formal languages rather than just English. Formalization is key in computer science and many other scientific fields. It may appear very cumbersome to do that at first but you probably already see the power of formalization.
 
-We introduced the programming language C\* which allows you to develop code. The language is simple enough to understand its meaning completely down to every single detail. Then we introduced the machine language RISC-U which gives you an idea of how a computer actually works and executes code. We also showed you how C\* translates to RISC-U. This is important for understanding the true meaning of C\*. Finally, we introduced EBNF, a formal grammar for specifying the syntax of programming languages and other formal languages including itself. While EBNF is not executable on a computer, unlike C\* and RISC-U code, it can be implemented in C\* based on finite state machines and pushdown automata. The tool chapter shows how this works. Seeing a formal language like EBNF is nevertheless important for understanding that computer science is not just about programming but also about modeling complex structure such as the syntax of programming languages. There are lots of other formal languages in computer science intended for modeling rather than programming. EBNF is just one example.
+We introduced the programming language C\* which allows you to develop code. The language is simple enough to understand its meaning completely down to every single detail. Then we introduced the machine language RISC-U which gives you an idea of how a computer actually works and executes code. We also showed you how C\* translates to RISC-U. This is important for understanding the true meaning of C\*. Finally, we introduced EBNF, a formal grammar for specifying the syntax of programming languages and other formal languages including itself. While EBNF is not executable on a computer, unlike C\* and RISC-U code, it can be implemented in C\* based on finite state machines and pushdown automata. The programming chapter shows how this works. Seeing a formal language like EBNF is nevertheless important for understanding that computer science is not just about programming but also about modeling complex structure such as the syntax of programming languages. There are lots of other formal languages in computer science intended for modeling rather than programming. EBNF is just one example.
 
 With C\*, RISC-U, and EBNF introduced here by example, we are ready to take on the rest of the book in which we take a bottom-up approach from bits and bytes all the way to computing in the cloud. In particular, we fill you in on all the important details missing in this chapter that are necessary to see the big picture eventually. Here are also our recommendations for textbooks that provide the technical background of this chapter.
 
@@ -1089,7 +1090,7 @@ The output of selfie shows that 85 is in fact 1010101 in binary which in turn ma
 85 in binary:      0b1010101
 ```
 
-You may also want to take a look at the program `examples/encoding.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
+You may also want to take a look at the program `examples/encoding.c` that made selfie produce this output either on the selfie homepage, in your text editor, or in your terminal by typing:
 
 ```bash
 more examples/encoding.c
@@ -1856,7 +1857,7 @@ There is one more, particularly interesting control character called the *NULL c
 
 In addition to the encoding of most web pages on the Internet, there is another major application of ASCII that we would like to mention which is *email*. All your email is encoded in ASCII. This was fine before people wanted to email pictures and PDFs as attachments to their email. The solution that people came up with is to encode all content of your email including all attachments, yes, in ASCII! Some email clients allow you to see that by viewing email in *raw* format. You can then see that even your pictures and PDFs are encoded in, unsurprisingly, rather long sequences of ASCII characters. The standard that defines how to encode attachments in ASCII is called *Multipurpose Internet Mail Extensions* abbreviated *MIME*. This is an example of a two-layered encoding of information. MIME encodes attachments in a sequence of ASCII characters which in turn are encoded in a sequence of ASCII codes since everything in the end needs to be just bits.
 
-ASCII is great but what about Greek letters, Chinese letters, and so on, but also accents and, of course, all those Emojis? ASCII only supports a total of 128 different characters because that is what fits into seven bits. You have probably encountered that limitation if you use languages other than English. Well, there is a newer standard for encoding characters called *8-bit Unicode Transformation Format* abbreviated *UTF-8*. One important difference to ASCII is that UTF-8 uses eight rather than seven bits to encode characters. In fact, UTF-8 uses multiples of eight-bit binary numbers for encoding a lot more than just 128 characters. However, UTF-8 is *backwards-compatible* to ASCII by setting the eighth most-significant bit, which is unused in ASCII, to 0 to distinguish ASCII from encodings that use more than the seven bits of ASCII. These days most text including most ASCII is encoded in UTF-8, even selfie's source code in `selfie.c`. If you are interested how this works in detail follow up about ASCII and UTF-8 on the web!
+ASCII is great but what about Greek letters, Chinese letters, and so on, but also accents and, of course, all those Emojis? ASCII only supports a total of 128 different characters because that is what fits into seven bits. You have probably encountered that limitation if you use languages other than English. Well, there is a newer standard for encoding characters called *8-bit Unicode Transformation Format* abbreviated *UTF-8*. One important difference to ASCII is that UTF-8 uses eight rather than seven bits to encode characters. In fact, UTF-8 uses multiples of eight-bit binary numbers for encoding a lot more than just 128 characters. However, UTF-8 is *backwards-compatible* to ASCII by setting the eighth most-significant bit, which is unused in ASCII, to 0 to distinguish ASCII from encodings that use more than the seven bits of ASCII. These days most text including most ASCII is encoded in UTF-8, even the source code in `selfie.c`. If you are interested how this works in detail follow up about ASCII and UTF-8 on the web!
 
 To see ASCII and UTF-8 at work, you can also try:
 
@@ -1938,15 +1939,15 @@ Here, the relevant part of the output should be similar to this:
 ...
 ./selfie: selfie.c exiting with exit code 0
 ...
-./selfie: summary: 389332147 executed instructions [21.84% nops]
-./selfie:          2.64KB peak stack size
-./selfie:          3.23MB allocated in 23888 mallocs
-./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
-./selfie:          2.35MB(78.38% of 3MB) mapped memory
+./selfie: summary: 353831956 executed instructions [17.32% nops]
+./selfie:          2.57KB peak stack size
+./selfie:          3.23MB allocated in 23993 mallocs
+./selfie:          2.14MB(66.10% of 3.23MB) actually accessed
+./selfie:          2.32MB(77.60% of 3MB) mapped memory
 ...
 ```
 
-We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.15MB, that is, using only 66.54% of the 3.23MB in storage. Moreover, selfie needed an additional 0.20MB of storage for its code, that is, in sum 2.35MB of (mapped) memory which is 78.38% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.64KB at its peak. That memory is part of the 2.35MB of (mapped) memory.
+We configured selfie (using the `-m` option) with 3MB of main memory storage (physical memory) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.14MB, that is, using only 66.10% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.32MB of (mapped) memory which is 77.60% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.57KB at its peak. That memory is part of the 2.32MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2121,7 +2122,7 @@ Code exists in very different forms such as *source code* like `selfie.c` or act
 
 Machine code or just code is a sequence of *machine instructions* where each instruction is encoded in four bytes, at least in our case here. There are machines that use different encodings but our choice is quite common and as good as any other for our purpose. Four bytes are 32 bits. This means we could distinguish 2^32^ different instructions in four bytes, that is, around four billion different instructions. This is way too many! A computer usually distinguishes a few dozen to a few hundred and sometimes even a few thousand instructions but not more than that. Out of the 32 bits encoding an instruction only a few bits are therefore used to encode which instruction it actually is. The remaining bits encode the *parameters* and *arguments* of an instruction which are typically addresses or just integers. For example, there is usually an instruction that makes the machine load two integers from memory, add them, and store the result back in memory. We saw that before. There are of course similar instructions for integer subtraction, multiplication, division, and remainder. The other thing these instructions do, and all instruction have that in common, is that they tell the machine where the next instruction in memory is. And that's it! Really!
 
-To get another glimpse of what machine code looks like, try selfie's disassembler on selfie:
+To get another glimpse of what machine code looks like, try the selfie disassembler on selfie:
 
 ```bash
 ./selfie -c selfie.c -S selfie.s
@@ -2136,8 +2137,8 @@ more selfie.s
 The output should be similar to this:
 
 ```
-0x0(~1): 0x0003F2B7: lui t0,0x3F
-0x4(~1): 0xC1028293: addi t0,t0,-1008
+0x0(~1): 0x0003B2B7: lui t0,0x3B
+0x4(~1): 0x4E028293: addi t0,t0,1248
 0x8(~1): 0x00028193: addi gp,t0,0
 0xC(~1): 0x00000513: addi a0,zero,0
 0x10(~1): 0x0D600893: addi a7,zero,214
@@ -2149,23 +2150,22 @@ The output should be similar to this:
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
-0x34(~1): 0x00000513: addi a0,zero,0
-0x38(~1): 0x00013283: ld t0,0(sp)
-0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x01010293: addi t0,sp,16
-0x48(~1): 0x00513423: sd t0,8(sp)
-0x4C(~1): 0x5C42A0EF: jal ra,43377[0x2A610]
+0x34(~1): 0x00013283: ld t0,0(sp)
+0x38(~1): 0xFF810113: addi sp,sp,-8
+0x3C(~1): 0x00513023: sd t0,0(sp)
+0x40(~1): 0x01010293: addi t0,sp,16
+0x44(~1): 0x00513423: sd t0,8(sp)
+0x48(~1): 0x281270EF: jal ra,40608[0x27AC8]
 ...
 ```
 
-What you see here is the machine code that selfie generates when translating its own source code. It is around 43,500 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
+What you see here is the machine code that selfie generates when translating its own source code. It is around 40,000 instructions, so no need to look at it all. The first column is the address of each instruction in memory. The second column is the actual machine code in hexadecimal with 32 bits per instruction. The third column is the machine code in a more human-readable form called *assembly*. The machine only needs the second column to execute the code.
 
 > Fetch, decode, execute is all a computer does, all day long
 
 So, when you turn on a computer, the only thing the machine does is *fetch* an instruction, that is, 32 bits from memory, *decode* the instruction, that is, figure out which instruction it is and what the parameters and arguments are, and finally *execute* the instruction, that is, perform what the instruction tells the machine to do. When the machine is done, it fetches the next instruction, as told by the current instruction, decodes it, executes it, and so on. That's all there is until you cut power. Everything you see on your screen and you hear on your speakers and so on is the result of the machine doing that at probably a few billion instructions per second. The only reason why computers have become so important is because they can execute these instructions so fast with little power consumption and have lots of memory to do so. However, each individual instruction executed by a computer is incredibly simple. Machine instructions are so simple that anyone can understand what they do.
 
-The challenge is of course how to put them together to make the machine do anything interesting. This is usually not done at the level of machine code but in source code which is then translated to machine code, not by hand, but by a computer executing *software tools* like selfie that instruct the machine how to translate source code. The tools chapter explains how this works. The topic is fascinating because it shows how the meaning of source code can be created through translation to simple machine code which is easy to understand.
+The challenge is of course how to put them together to make the machine do anything interesting. This is usually not done at the level of machine code but in source code which is then translated to machine code, not by hand, but by a computer executing *software tools* like selfie that instruct the machine how to translate source code. The programming chapter explains how this works. The topic is fascinating because it shows how the meaning of source code can be created through translation to simple machine code which is easier to understand properly than source code.
 
 Machine code is stored in files as a sequence of bytes, just like text, images, video, audio, and so on. The big difference is that machine code is *executable*, that is, it can instruct a machine to do something. The well-known file extension `.exe` indicates that on Windows machines. Selfie generates machine code (without the human-readable assembly) using option `-o` and file extension `.m` as follows:
 
@@ -2187,11 +2187,11 @@ An *application* or just *app* is a collection of files of which some are execut
 
 ### Life
 
-Everything on a digital device is encoded in bits. As a consequence, whatever we want such a machine do for us needs to be encoded in bits. We began by looking at how numbers are encoded in bits. It turned out that using binary notation is not all that different from decimal notation. Even arithmetic with binary numbers works essentially the same way as arithmetic with decimal numbers. Fortunately, for other types of information such as text, images, video, audio, and even code and apps, there is a lot of help these days in encoding and decoding them.
+Everything on a digital device is encoded in bits. As consequence, whatever we want such a machine do for us needs to be encoded in bits. We began by looking at how numbers are encoded in bits. It turned out that using binary notation is not all that different from decimal notation. Even arithmetic with binary numbers works essentially the same way as arithmetic with decimal numbers. Fortunately, for other types of information such as text, images, video, audio, and even code and apps, there is a lot of help these days in encoding and decoding them properly.
 
-There are keyboards that encode the keys you type into bits that represent ASCII characters that form text when put together. There are digital cameras and smartphones that encode the pictures, videos, and audio recordings you take into bits. There are screens that decode text, images, and videos from bits into pixels for you to enjoy. There are speakers that decode audio from bits into sound. And then there are software tools that translate the source code you write for an app into machine code encoded in bits that your machine then decodes and executes, together with the data files in your app.
+There are keyboards that encode the keys you type into bits that represent ASCII characters that form text when put together. There are digital cameras and smartphones that encode the pictures, videos, and audio recordings you take in bits. There are screens that decode text, images, and videos from bits into pixels for you to enjoy. There are speakers that decode audio from bits into sound. And then there are software tools that translate the source code you write for an app into machine code encoded in bits that your machine then decodes and executes, together with the data files in your app.
 
-But what about life in general? What can we learn about life from the fact that everything can be encoded in bits? Can we encode the DNA of a person in binary? Yes, of course! Mathematically speaking, the only difference between DNA and binary is that DNA is a base-4 encoding whereas binary is a base-2 encoding. So, DNA is more compact than binary by a factor of 2 but that's all. In other words, a DNA sequence of length `n` can encode `4^n^` different DNAs but we only need `2 * n` bits to be able to do the same thing in binary.
+Can any information be encoded in bits? Well, binary encoding is *universal* in the sense that any finite amount of information can be encoded in a finite amount of bits. What about life in general? What can we learn about life from the fact that everything finite can be encoded in bits? Can we encode the DNA of a person in binary? Yes, of course! Mathematically speaking, the only difference between DNA and binary is that DNA is a base-4 encoding whereas binary is a base-2 encoding. So, DNA is more compact than binary by a factor of 2 but that's all. In other words, a DNA sequence of length `n` can encode `4^n^` different DNAs but we only need `2 * n` bits to be able to do the same thing in binary.
 
 Alright, so the blueprints of life can be encoded in bits. Now, let us conduct a thought experiment also called a Gedankenexperiment. Can we write a program that instructs a computer to go through all possible states the machine can be in? In other words, can we make a computer that can store `n` bits *enumerate* all `2^n^` states the machine can be in? Yes, of course! Such a program is actually quite easy to write. Just view all of the machine's memory as storage for a single integer that is incremented by that program. The only problem is that it will take the computer a very long time to complete the execution of the program. In fact, as mentioned before, the computer will long have turned to dust before even getting close to completion.
 
@@ -2199,7 +2199,7 @@ However, suppose we had a computer that could run for a very long time. What wou
 
 This is where life and in particular evolution comes in. Evolution is the process of enumerating DNA sequences through alteration called *mutation* and then selecting DNA sequences for further mutation based on criteria such as their reproductive success. Interestingly, evolution can be modeled as a computer executing a program that enumerates and selects integers. The only difference is that evolution is a physical process bound by the laws of physics whereas executing a program is a virtual process bound by the laws of Boolean logic and elementary arithmetic, at least as long as the machine executing the program is not faulty.
 
-The simplicity of that model is striking! But how can this ever work? Well, just like computing it is ultimately a matter of time, space, and energy. We need lots of time, or conversely mutate very fast and select effectively. We need lots of space for mutating and selecting in parallel, or conversely use space very efficiently, that is, be super tiny. And we need lots of energy, or conversely be very energy efficient. In other words, quantities matter! A few more zeroes in a number can make all the difference, in life and in computing.
+The simplicity of that model is striking! But how can this ever work? Well, just like computing it is ultimately a matter of time, space, and energy. We need lots of time, or conversely mutate very fast and select effectively. We need lots of space for mutating and selecting in parallel, or conversely use space very efficiently, that is, be super tiny. And we need lots of energy, or conversely be very energy efficient. In other words, quantities matter! A few more zeroes in a number can make all the difference, in life and in computing. So, let us take a look at a real machine and see what it actually takes to compute.
 
 ### Recommended Readings
 
@@ -2257,7 +2257,7 @@ The *program counter* of a CPU, and they all have one, is like a register but wi
 
 > All day long: fetch, decode, execute
 
-So, what exactly does a processor do? We briefly mentioned that in the information chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program pointer points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. For this purpose, the processor maintains a hidden *instruction register* denoted `ir` that stores the currently executed instruction. Most importantly, all instructions have in common that they make the processor set the `pc` to another memory address when done. Then the processor fetches the next instruction into `ir`, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
+So, what exactly does a processor do? We briefly mentioned that in the information chapter but would like to go back to that here. The only thing a processor does is *fetch* a machine word (here 32 bits) from memory at the address where the program counter points to, *decode* the machine word to figure out which instruction it actually is and what its parameters and arguments are, and finally *execute* the instruction. For this purpose, the processor maintains a hidden *instruction register* denoted `ir` that stores the currently executed instruction. Most importantly, all instructions have in common that they make the processor set the `pc` to another memory address when done. Then the processor fetches the next instruction into `ir`, as told by the current instruction, decodes it, executes it, and so on, until power is cut.
 
 ![RISC-U ISA](figures/machine.png "RISC-U ISA")
 
@@ -2355,17 +2355,17 @@ The relevant part of the output should be similar to this:
 
 ```
 ...
-./selfie: 189136 bytes generated with 43440 instructions and 15376 bytes of data
-./selfie: init:    lui: 2621(6.03%), addi: 14581(33.56%)
-./selfie: memory:  ld: 7648(17.60%), sd: 7211(16.59%)
-./selfie: compute: add: 3551(8.17%), sub: 721(1.65%), mul: 495(1.13%)
-./selfie: compute: divu: 88(0.20%), remu: 31(0.07%)
-./selfie: compare: sltu: 701(1.61%)
-./selfie: control: beq: 989(2.27%), jal: 4164(9.58%), jalr: 631(1.45%)
+./selfie: 176200 bytes generated with 40666 instructions and 13536 bytes of data
+./selfie: init:    lui: 2607(6.41%), addi: 11747(28.88%)
+./selfie: memory:  ld: 7597(18.68%), sd: 7265(17.86%)
+./selfie: compute: add: 3561(8.75%), sub: 718(1.76%), mul: 494(1.21%)
+./selfie: compute: divu: 89(0.21%), remu: 29(0.07%)
+./selfie: compare: sltu: 702(1.72%)
+./selfie: control: beq: 997(2.45%), jal: 4216(10.36%), jalr: 636(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
 ```
 
-Selfie reports that it generated 43,440 RISC-U machine instructions as well as 15,376 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 33.56% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 40,666 RISC-U machine instructions as well as 13,536 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 28.88% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2386,13 +2386,13 @@ int main() {
 }
 ```
 
-You can find the source code in a text file called `count.c` in the `examples` folder of the selfie system. The human-readable assembly code for the program is obtained as before using selfie's disassembler:
+You can find the source code in a text file called `count.c` in the `examples` folder of the selfie system. The human-readable assembly code for the program is obtained as before using the selfie disassembler:
 
 ```bash
 ./selfie -c examples/count.c -S count.s
 ```
 
-where selfie stores the assembly code in a text file called `count.s` and responds with the following profile:
+where selfie stores the assembly code in a text file called `count.s` and responds with the following profile of the compiled source code and the generated instructions:
 
 ```
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
@@ -2401,8 +2401,8 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: 123 characters read in 14 lines and 0 comments
 ./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
-./selfie: 2 calls, 2 assignments, 1 while, 0 if, 2 return
-./selfie: symbol table search time was 3 iterations on average and 61 in total
+./selfie: 2 assignments, 1 while, 0 if, 1 calls, 2 return
+./selfie: 12 symbol table lookups in 1 iterations on average
 ./selfie: 512 bytes generated with 126 instructions and 8 bytes of data
 ./selfie: init:    lui: 2(1.58%), addi: 57(45.23%)
 ./selfie: memory:  ld: 23(18.25%), sd: 12(9.52%)
@@ -2411,7 +2411,7 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: compare: sltu: 1(0.79%)
 ./selfie: control: beq: 5(3.96%), jal: 5(3.96%), jalr: 7(5.55%)
 ./selfie: system:  ecall: 8(6.34%)
-./selfie: 4584 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
+./selfie: 4576 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
 ```
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
@@ -2433,22 +2433,21 @@ Selfie generates `126` instructions for the program of which we show only those 
 0x28(~1): 0x0D600893: addi a7,zero,214
 0x2C(~1): 0x00000073: ecall
 0x30(~1): 0xFEA1BC23: sd a0,-8(gp)     // initialize heap
-0x34(~1): 0x00000513: addi a0,zero,0
 ---
-0x38(~1): 0x00013283: ld t0,0(sp)
-0x3C(~1): 0xFF810113: addi sp,sp,-8
-0x40(~1): 0x00513023: sd t0,0(sp)
-0x44(~1): 0x01010293: addi t0,sp,16
-0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
+0x34(~1): 0x00013283: ld t0,0(sp)
+0x38(~1): 0xFF810113: addi sp,sp,-8
+0x3C(~1): 0x00513023: sd t0,0(sp)
+0x40(~1): 0x01010293: addi t0,sp,16
+0x44(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ---
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ---
-0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
-0x54(~1): 0x00A13023: sd a0,0(sp)
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
-0x5C(~1): 0x00810113: addi sp,sp,8
-0x60(~1): 0x05D00893: addi a7,zero,93
-0x64(~1): 0x00000073: ecall            // exit
+0x4C(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x50(~1): 0x00A13023: sd a0,0(sp)
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x58(~1): 0x00810113: addi sp,sp,8
+0x5C(~1): 0x05D00893: addi a7,zero,93
+0x60(~1): 0x00000073: ecall            // exit
 ...
 ```
 
@@ -2457,84 +2456,87 @@ It may be hard to believe but after reading this chapter you will be able to und
 For now, let us focus on the `jal` instruction from the above code:
 
 ```asm
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ```
 
 As stated in the comments, after initializing various aspects of the machine, this instruction calls the `main` procedure by making the processor *jump* to the code that implements `main` at address `0x1A8`. The `j` in `jal` stands for jump! When `main` is done, the processor returns to the instruction that follows the `jal` instruction and eventually exits the program. Here is the code that implements `main`:
 
 ```asm
-0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // main prologue
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
 0x1B4(~13): 0x00813023: sd s0,0(sp)
-0x1B8(~13): 0x00010413: addi s0,sp,0
+0x1B8(~13): 0x00010413: addi s0,sp,0      // int main() {
 ---
-0x1BC(~13): 0x000022B7: lui t0,0x2        // return count(10000);
+0x1BC(~13): 0x000022B7: lui t0,0x2        //   return count(10000);
 0x1C0(~13): 0x71028293: addi t0,t0,1808
 0x1C4(~13): 0xFF810113: addi sp,sp,-8
 0x1C8(~13): 0x00513023: sd t0,0(sp)
-0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
-0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
-0x1D4(~13): 0x00000513: addi a0,zero,0
-0x1D8(~13): 0x00028513: addi a0,t0,0
-0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
+0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] //   call count procedure
+0x1D0(~13): 0x00050293: addi t0,a0,0      //   count returns here
+0x1D4(~13): 0x00028513: addi a0,t0,0
+0x1D8(~13): 0x0080006F: jal zero,2[0x1E0]
 ---
-0x1E0(~14): 0x00040113: addi sp,s0,0      // }
-0x1E4(~14): 0x00013403: ld s0,0(sp)
-0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00013083: ld ra,0(sp)
-0x1F0(~14): 0x00810113: addi sp,sp,8
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1DC(~14): 0x00000513: addi a0,zero,0    // }
+---
+0x1E0(~14): 0x00013403: ld s0,0(sp)       // main epilogue
+0x1E4(~14): 0x00810113: addi sp,sp,8
+0x1E8(~14): 0x00013083: ld ra,0(sp)
+0x1EC(~14): 0x00810113: addi sp,sp,8
+---
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 The very last instruction of `main`:
 
 ```asm
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
-makes the processor return to the instruction that follows the `jal ra,87[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
+makes the processor return to the instruction that follows the `jal ra,88[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
 ```asm
-0x1CC(~13): 0xF75FF0EF: jal ra,-35[0x140] // call count procedure
+0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] // call count procedure
 ```
 
-calls the code for `count` at address `0x140` which is right here:
+calls the code for `count` at address `0x13C` which is right here:
 
 ```asm
 ...
-0x140(~4): 0xFF810113: addi sp,sp,-8      // int count(int n) {
-0x144(~4): 0x00113023: sd ra,0(sp)
-0x148(~4): 0xFF810113: addi sp,sp,-8
-0x14C(~4): 0x00813023: sd s0,0(sp)
-0x150(~4): 0x00010413: addi s0,sp,0
+0x13C(~4): 0xFF810113: addi sp,sp,-8      // count prologue
+0x140(~4): 0x00113023: sd ra,0(sp)
+0x144(~4): 0xFF810113: addi sp,sp,-8
+0x148(~4): 0x00813023: sd s0,0(sp)
+0x14C(~4): 0x00010413: addi s0,sp,0       // int count(int n) {
+0x150(~4): 0xFF810113: addi sp,sp,-8      //   int c;
 ---
-0x154(~4): 0xFF810113: addi sp,sp,-8      // int c;
+0x154(~4): 0x00000293: addi t0,zero,0     //   c = 0;
+0x158(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x158(~4): 0x00000293: addi t0,zero,0     // c = 0;
-0x15C(~4): 0xFE543C23: sd t0,-8(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ---
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ---
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x18C(~10): 0x00000513: addi a0,zero,0    // }
 ---
-0x190(~10): 0x00040113: addi sp,s0,0      // }
+0x190(~10): 0x00040113: addi sp,s0,0      // count epilogue
 0x194(~10): 0x00013403: ld s0,0(sp)
 0x198(~10): 0x00810113: addi sp,sp,8
 0x19C(~10): 0x00013083: ld ra,0(sp)
 0x1A0(~10): 0x01010113: addi sp,sp,16
+---
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
@@ -2544,7 +2546,7 @@ And again, the very last instruction of `count`:
 0x1A4(~10): 0x00008067: jalr zero,0(ra)   // return to main
 ```
 
-makes the processor return to the instruction that follows the `jal ra,-35[0x140]` instruction in `main`.
+makes the processor return to the instruction that follows the `jal ra,-36[0x13C]` instruction in `main`.
 
 Notice that in `count.s` the code for `count` actually appears before the code for `main`. You can even see that by just looking at the code addresses. This is because `count` appears before `main` in the source code, and the selfie compiler just generates code from top to bottom, independently of how the code is executed later.
 
@@ -2563,30 +2565,30 @@ Here is the relevant output:
 ./selfie: examples/count.c exiting with exit code 10000
 ./selfie: selfie terminating 64-bit RISC-U binary examples/count.c with exit code 10000
 ...
-./selfie: summary: 90067 executed instructions [22.22% nops]
+./selfie: summary: 90064 executed instructions [22.21% nops]
 ...
-./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10033(11.13%)[0.03%]
-./selfie: memory:  ld: 30009(33.31%)[33.33%], sd: 10010(11.11%)[0.01%]
+./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10030(11.13%)[0.03%]
+./selfie: memory:  ld: 30009(33.32%)[33.33%], sd: 10010(11.11%)[0.01%]
 ./selfie: compute: add: 10000(11.10%)[0.00%], sub: 1(0.00%)[0.00%], mul: 0(0.00%)[0.00%]
 ./selfie: compute: divu: 0(0.00%)[0.00%], remu: 1(0.00%)[0.00%]
 ./selfie: compare: sltu: 10001(11.10%)[0.00%]
-./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.01%], jalr: 2(0.00%)[0.00%]
+./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.00%], jalr: 2(0.00%)[0.00%]
 ./selfie: system:  ecall: 3(0.00%)
 ./selfie: profile: total,max(ratio%)@address(line#),2ndmax,3rdmax
-./selfie: calls:   2,1(50.00%)@0x140(~4),1(50.00%)@0x1A8(~13),0(0.00%)
-./selfie: loops:   10000,10000(100.00%)@0x160(~6),0(0.00%),0(0.00%)
-./selfie: loads:   30009,10001(33.32%)@0x160(~6),10001(33.32%)@0x164(~6),10000(33.32%)@0x170(~7)
-./selfie: stores:  10010,10000(99.90%)@0x17C(~7),1(0.00%)@0x30(~1),1(0.00%)@0x40(~1)
+./selfie: calls:   2,1(50.00%)@0x13C(~4),1(50.00%)@0x1A8(~13),0(0.00%)
+./selfie: loops:   10000,10000(100.00%)@0x15C(~6),0(0.00%),0(0.00%)
+./selfie: loads:   30009,10001(33.32%)@0x15C(~6),10001(33.32%)@0x160(~6),10000(33.32%)@0x16C(~7)
+./selfie: stores:  10010,10000(99.90%)@0x178(~7),1(0.00%)@0x30(~1),1(0.00%)@0x3C(~1)
 ...
 ```
 
-The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90067` executed instructions. Dividing `90067` by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x160` to `0x180` which implement the `while` loop at lines `6` and `7` in `count.c`.
+The program does return `10000` as exit code but the fact that it counts from `0` to `10000` is only visible by looking at the number of executed instructions. There are only `126` instructions that implement the program but `90064` executed instructions. Dividing `90064` by `10000` equals around `9` which means that it takes around `9` instructions for an increment by `1`. Which instructions are those? Easy. It is the `9` instructions from address `0x15C` to `0x17C` which implement the `while` loop at lines `6` and `7` in `count.c`.
 
-You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
+You can even see the exact breakdown of how many instructions of each kind were executed and the number of loop iterations that were taken including approximate source code line numbers. The execution profile also shows the *hotspots*: the loop with the most, second-most, and third-most iterations (max, 2ndmax, 3rdmax), and similarly procedure calls as well as memory loads and stores.
 
 One more thing before we explain each RISC-U machine instruction in detail: there is a special instruction that we have not seen yet denoted `nop` in assembly where `nop` stands for *no operation*. We nevertheless do not count it as another instruction of the RISC-U ISA because it is just a special case of an `addi` instruction. The only thing a `nop` makes the CPU do is go to the next instruction without doing anything else. In other words, it just wastes time, space, and energy. Yet `nop` instructions have a purpose, also in selfie, namely for *padding* memory where code is stored.
 
-Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that a *dynamic* `nop`. For example, out of the `90067` executed instructions 22.22% were dynamic `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
+Also, in the above profile, selfie reports in brackets `[]` the percentage of how many times an executed instruction *behaved* like a `nop` instruction without necessarily *being* a `nop` instruction. We call that a *dynamic* `nop`. For example, out of the `90064` executed instructions 22.21% were dynamic `nops` just wasting time, space, and energy. Getting rid of those is an advanced topic in computer science called *code optimization* which we skip here. We nevertheless provide more examples below.
 
 #### Initialization
 
@@ -2595,10 +2597,10 @@ The first two RISC-U instructions we introduce are the `lui` and `addi` instruct
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
 ```asm
-0x44(~1): 0x01010293: addi t0,sp,16
+0x40(~1): 0x01010293: addi t0,sp,16
 ```
 
-where `0x44` is the address of the instruction (ignore the `(~1)`), `0x01010293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,16` is the human-readable version of the instruction in *assembly code*. In other words, `0x01010293` and `addi t0,sp,16` mean exactly the same thing, just encoded differently. For the machine, `0x01010293` is all it needs while for us `addi t0,sp,16` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
+where `0x40` is the address of the instruction (ignore the `(~1)`), `0x01010293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,16` is the human-readable version of the instruction in *assembly code*. In other words, `0x01010293` and `addi t0,sp,16` mean exactly the same thing, just encoded differently. For the machine, `0x01010293` is all it needs while for us `addi t0,sp,16` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
 The instruction `addi t0,sp,16` makes the CPU add the *immediate* value `16` to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by the assignment `t0 = sp + 16` where, as mentioned before, `=` does not assert equality, but instead denotes an assignment of the value to which the expression `sp + 16` evaluates to register `t0`.
 
@@ -2633,6 +2635,8 @@ In addition to the `opcode`, there is also the `funct3` portion of the I-Format 
 
 Notice that the `immediate` value `16` is data encoded in code whereas the `rs1` and `rd` values `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other instructions which we introduce below.
 
+The procedures `encode_i_format` and `decode_i_format` in the source code of selfie encode and decode instructions in I-Format, respectively. There are similar procedures for other formats introduced below as well. Note that the source code of selfie mostly uses the keyword `uint64_t` instead of the keyword `int`. In C\* both keywords mean the same thing: unsigned integer 64-bit type! However, the keyword `int` actually means something different in standard C which may be confusing to readers who know C. So, here `int` is just like `uint64_t`.
+
 Let us go back to the example. You might ask yourself how `addi t0,sp,16` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction taken from the running example:
 
 ```asm
@@ -2654,7 +2658,7 @@ Let us explore two more important use cases of `addi`, other than just initializ
 obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
 
 ```asm
-0x3C(~1): 0xFF810113: addi sp,sp,-8
+0x38(~1): 0xFF810113: addi sp,sp,-8
 ```
 
 makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
@@ -2689,7 +2693,7 @@ Again, let us go through that line step by step. First of all, the `pc` is `0x10
 
 Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008` where `==` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `69640` in decimal notation and `0x11008` in hexadecimal notation. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but only after executing the instruction. With `gp` now equal to `0x11008`, the value in `t0` has obviously been copied to `gp`.
 
-Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` instruction formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*. In fact, here it is *sequential* control flow, that is, control flow from one instruction to the next instruction in memory.
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` instruction formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0==69640(0x11008) |- gp==0x0 -> gp==0x11008`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by the selfie debugger, is called *control flow*. In fact, here it is *sequential* control flow, that is, control flow from one instruction to the next instruction in memory.
 
 > All instructions entail control flow, many but not all also entail data flow
 
@@ -2707,7 +2711,7 @@ In computer science *bitwise shifting* is a standard operation. Left-shifting ad
 
 > Multiplication and division by powers of 2 mimics logical bitwise left and right shifting, respectively
 
-Interestingly, multiplying and dividing binary numbers with powers of 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of 10 rather than 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist and are more efficient than their arithmetic counterparts. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
+Interestingly, multiplying and dividing binary numbers with powers of 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of 10 rather than 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist and are more efficient than their arithmetic counterparts. RISC-V, for example, features `sll` and `srl` instructions for logical bitwise left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
 Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x11008` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x11008` into the 8 MSBs `0x11` and the 12 LSBs `0x008` (which is obviously 8 in decimal) and then do what the first three instructions in the running example do:
 
@@ -2803,13 +2807,13 @@ So, what is stored in dynamic memory? Well, there is a *stack segment* in the hi
 Interestingly, the `sp` register is, besides the program counter `pc`, the only register that is initialized by the bootloader and not the code loaded by the bootloader. In other words, when the machine starts executing any code, `sp`, and `pc`, of course, are already initialized whereas all other registers are not. However, the actual content of the stack still requires some initialization which is performed by the following instruction:
 
 ```asm
-0x48(~1): 0x00513423: sd t0,8(sp)      // initialize stack
+0x44(~1): 0x00513423: sd t0,8(sp)      // initialize stack
 ```
 
 And let us take a look at what the debugger says about this instruction when executing it:
 
 ```asm
-pc==0x10048(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
+pc==0x10044(~1): sd t0,8(sp): sp==0xFFFFFFC0,t0==4294967248(0xFFFFFFD0) |- mem[0xFFFFFFC8]==1 -> mem[0xFFFFFFC8]==t0==4294967248(0xFFFFFFD0)
 ```
 
 So, the value of `sp` is `0xFFFFFFC0` which means that `sp` does indeed point to a high address almost at the top of our address space. With offset `8`, the instruction stores the value of `t0`, which is the even higher address `0xFFFFFFD0`, in memory where `sp + 8` points to. What exactly the purpose of that is here is not so important right now. We clarify that later. But if you are curious you can check out the procedure `emit_bootstrapping` in `selfie.c` which generates the initialization code we discuss here.
@@ -2826,7 +2830,7 @@ does exactly that. Another look at the output of the debugger tells us what exac
 pc==0x10030(~1): sd a0,-8(gp): gp==0x11008,a0==73728(0x12000) |- mem[0x11000]==0 -> mem[0x11000]==a0==73728(0x12000)
 ```
 
-Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the programming and tools chapters.
+Apparently, the heap initially ends (and starts) at `0x12000` which we remember in the data segment at `0x11000`. In our example, that is actually the only information stored in the data segment since there are no global variables, string literals, and big integers in `count.c`. In other words, the data segment always contains at least one machine word at the end that stores the address of the end of the heap, instead of using, say, a register for that. In `selfie.c` that machine word is referred to as the (hidden) global variable `_bump` which is always there even if there are no other global variables. The full details of heap management are explained in the programming and computing chapters.
 
 In sum, our memory layout is determined by the `gp` register which marks the end of the data segment, the `sp` register which marks the start of the stack segment, and the machine word referred to as `_bump` which marks the end of the heap segment. The registers `gp` and `sp` are sufficient to find everything in memory while the machine word `_bump` is sufficient to manage the heap.
 
@@ -2853,18 +2857,18 @@ Interestingly, the immediate value is split into two parts `imm1` and `imm2` of 
 
 From now on we do not explicitly decode instructions anymore but feel free to practice yourself. For example, the instruction `sd a0,-8(gp)` is encoded in `0xFEA1BC23`. Decoding it according to the S-Format reveals that the opcode of `sd` is `0x23`. Try to figure out what the register numbers of `a0` and `gp` are and how the offset `-8` is encoded. Hint: `-8` in 12-bit two's complement is `111111111000`.
 
-In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. The code that encodes and decodes instructions in S-Format is defined by the procedures `encode_s_format` and `decode_s_format`, respectively. There are similar procedures for the other formats as well. Note that the source code of selfie mostly uses the keyword `uint64_t` instead of the keyword `int`. In C\* both keywords mean the same thing: unsigned integer 64-bit type! However, the keyword `int` actually means something different in standard C which may be confusing to readers who know C. So, here `int` is just like `uint64_t`.
+In order to validate your findings you may want to have another look at the source code in `selfie.c` which formally defines everything we describe here. Look for the definitions of the global variables `REG_A0` and `REG_GP`. The opcode of `sd` is defined by the global variable `OP_STORE`. Even `funct3` which we previously ignored is defined for `sd` by the global variable `F3_SD`. It determines the size of the stored machine word to be a double word. Other choices such as `F3_SW` for storing single words are possible but not relevant here. Instructions in S-Format are encoded and decoded by the procedures `encode_s_format` and `decode_s_format`, respectively.
 
 Let us now take a look at the `ld` instruction for loading a double word from memory into a register. Right before our example program exits with exit code `10000`, after the code of the `main` procedure returned, there is the following `ld` instruction:
 
 ```asm
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
 ```
 
-It copies the value at address `sp + 0` from memory, in fact, from the stack to register `a0`. That value is `10000` and the return value of `main` which is now being prepared to become the exit code of the program. The debugger confirms that:
+It copies the value at address `sp + 0` from memory, in fact, from the stack to register `a0`. That value is `10000` and the return value of `main` which is now being prepared to become the exit code of the program. The debugger confirms that, just scroll all the way down to the end of its output:
 
 ```asm
-pc==0x10058(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
+pc==0x10054(~1): ld a0,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==10000 |- a0==10000(0x2710) -> a0==10000(0x2710)==mem[0xFFFFFFB8]
 ```
 
 Coincidentally, the value of `a0` was already `10000` before executing the instruction which means that the instruction did not change the state of the machine other than increasing the `pc` by `4` to go to the next instruction. This is our first example of a dynamic `nop`. However, if the instruction is executed under different circumstances, that is, if the value of `a0` differs from the value in memory at `sp + 0` before executing it, the instruction does change the machine state.
@@ -2872,40 +2876,40 @@ Coincidentally, the value of `a0` was already `10000` before executing the instr
 Let us take a look at another example. This time it is machine code that has a direct correspondence to the source code in `count.c`. The following two `ld` instructions have been generated by the selfie compiler to load the values of `c` and `n` from memory at addresses `s0 - 8` and `s0 + 16` into registers `t0` and `t1`, respectively:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
 ```
 
 The reason for that is to prepare the machine for comparing the values of `c` and `n`, which are stored in memory, to calculate if `c < n` is true or not. However, the machine can only compare values if they are stored in registers. The actual comparison is done by a subsequent `sltu` instruction which we explain further below. What is interesting here is to understand where the values of `c` and `n` are stored. Well, `c` is a local variable and `n` is a formal parameter that represents an actual parameter. The values of local variables and actual parameters are stored on the stack!
 
 But we obviously do not use the `sp` register to find them. This is strange but there is a good reason for that. Instead of `sp`, we use the `s0` register, also called the *frame pointer*, where the `s` in `s0` stands for `saved`. Every time a procedure such as `count` is called the value of `s0` is saved on the stack and then set to an address that is right between where the values of  local variables and actual parameters of the called procedure are stored on the stack. The values of local variables are stored below that address hence the positive offset `16` in our example. Similarly, the values of actual parameters are stored above that address hence the negative offset `-8`. Apparently, there are two machine words in between at `s0 + 0` and `s0 + 8` which are used for bookkeeping. We explain those later.
 
-The reason why we use a frame pointer instead of a stack pointer is because, unlike the frame pointer, the stack pointer may change when preparing another procedure call. However, doing so may still require finding the values of the local variables and actual parameters of the currently called procedure. The exact details are discussed in the programming and tools chapters.
+The reason why we use a frame pointer instead of a stack pointer is because, unlike the frame pointer, the stack pointer may change when preparing another procedure call. However, doing so may still require finding the values of the local variables and actual parameters of the currently called procedure. The exact details are discussed in the programming chapter.
 
 Here is what the debugger has to say about what happens when executing both `ld` instructions for the first time:
 
 ```asm
-pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
+pc==0x1015C(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10160(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
 ```
 
 The high value of `s0` indicates that the `s0` register indeed points to the stack. Moreover, the (initial) values of `c` and `n` stored in memory at `s0 - 8` and `s0 + 16` are `0` and `10000`, respectively, which sounds exactly right!
 
-Here is another `ld` instruction that loads the value of `c` into register `t0` to prepare calculating `c + 1` inside the body of the while loop in `count.c`:
+Here is another `ld` instruction that loads the value of `c` into register `t0` to prepare calculating `c + 1` inside the body of the `while` loop in `count.c`:
 
 ```asm
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
 ```
 
 The actual calculation of the addition is done by a subsequent `add` instruction which we explain next. Before doing so, we mention the official RISC-V ISA specification of the `ld` instruction:
 
 `ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11^ <= imm < 2^11^`
 
-Similar to the `addi` instruction, `ld` uses a source register `rs1` but interpreted as address and not an integer, and a destination register `rd`. Therefore, `ld` is encoded in the I-Format, just like `addi`, but with opcode `0x3` rather than `0x13`. The exact details are in selfie's source code.
+Similar to the `addi` instruction, `ld` uses a source register `rs1` but interpreted as address and not an integer, and a destination register `rd`. Therefore, `ld` is encoded in the I-Format, just like `addi`, but with opcode `0x3` rather than `0x13`. The exact details are in the source code of selfie.
 
 > Data flows from immediate values to registers, from registers to registers and memory, and from memory back to registers
 
-Before moving on, it is time to reflect on what we have seen so far in this chapter. The two instruction pairs `lui` and `addi` as well as `ld` and `sd` facilitate data flow by allowing us to initialize registers and memory to any value we like, address memory anywhere we want, and copy data from registers to memory, from register to register, and from memory back to registers. Because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another look at selfie's output when self-compiling gives us a quantitative idea of the importance of these instructions. Try:
+Before moving on, it is time to reflect on what we have seen so far in this chapter. The two instruction pairs `lui` and `addi` as well as `ld` and `sd` facilitate data flow by allowing us to initialize registers and memory to any value we like, address memory anywhere we want, and copy data from registers to memory, from register to register, and from memory back to registers. Because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another look at the output of selfie when self-compiling gives us a quantitative idea of the importance of these instructions. Try:
 
 ```bash
 ./selfie -c selfie.c -m 3 -c selfie.c
@@ -2915,19 +2919,19 @@ The relevant output should be similar to this:
 
 ```
 ...
-./selfie: summary: 389358917 executed instructions [21.84% nops]
+./selfie: summary: 353831956 executed instructions [17.32% nops]
 ...
-./selfie: init:    lui: 816304(0.20%)[0.00%], addi: 160120965(41.12%)[20.61%]
-./selfie: memory:  ld: 87469271(22.46%)[14.05%], sd: 56838289(14.59%)[27.07%]
-./selfie: compute: add: 9240671(2.37%)[26.79%], sub: 4374208(1.12%)[9.28%], mul: 9155592(2.35%)[38.57%]
-./selfie: compute: divu: 3607169(0.92%)[43.48%], remu: 3698058(0.94%)[53.37%]
-./selfie: compare: sltu: 5829837(1.49%)[2.26%]
-./selfie: control: beq: 8227413(2.11%)[59.83%], jal: 26583416(6.82%)[35.12%], jalr: 13026077(3.34%)[0.00%]
-./selfie: system:  ecall: 371647(0.09%)
+./selfie: init:    lui: 786028(0.22%)[0.00%], addi: 135928217(38.41%)[15.10%]
+./selfie: memory:  ld: 80899343(22.86%)[13.92%], sd: 55070088(15.56%)[27.56%]
+./selfie: compute: add: 8881449(2.51%)[26.41%], sub: 4205537(1.18%)[9.49%], mul: 8813865(2.49%)[37.72%]
+./selfie: compute: divu: 3506467(0.99%)[40.87%], remu: 3584847(1.01%)[53.74%]
+./selfie: compare: sltu: 5611254(1.58%)[2.44%]
+./selfie: control: beq: 7955343(2.24%)[59.52%], jal: 25631889(7.24%)[0.00%], jalr: 12583618(3.55%)[0.00%]
+./selfie: system:  ecall: 374011(0.10%)
 ...
 ```
 
-While only 0.20% of all executed instructions were `lui` instructions, around 78% were `addi`, `ld`, and `sd` instructions (41.12% + 22.46% + 14.59%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
+While only 0.22% of all executed instructions were `lui` instructions, around 76% were `addi`, `ld`, and `sd` instructions (38.41% + 22.86% + 15.56%). In other words, three quarters of all executed instructions are just these four instructions. That ratio is likely to be lower if we were to optimize the code generated by the selfie compiler but it still shows their importance. By the way, `lui` was executed less often because the 12-bit immediate values of `addi`, `ld`, and `sd` are often enough to get the job done.
 
 Our next topic are the classical arithmetic instructions that most CPUs feature in one form or another.
 
@@ -2936,19 +2940,19 @@ Our next topic are the classical arithmetic instructions that most CPUs feature 
 RISC-U features five arithmetic instructions for addition (`add`), subtraction (`sub`), multiplication (`mul`), unsigned division (`divu`), and unsigned remainder (`remu`). The arithmetic C\* operators `+`, `-`, `*`, `/`, and `%` are implemented by `add`, `sub`, `mul`, `divu`, and `remu`, respectively. Here is an instance of an `add` instruction from our running example:
 
 ```asm
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ```
 
 This code implements the assignment `c = c + 1` in the body of the `while` loop in `count.c`. Generated for the occurrence of `c` in the RHS of the assignment, the `ld t0,-8(s0)` instruction loads the value of `c` from memory, in fact the stack, into register `t0`. Similarly, generated for the occurrence of `1`, the `addi t1,zero,1` instruction loads the value `1` into register `t1`. The `add t0,t0,t1` instruction, which can only operate on registers, calculates `t0 + t1` and stores the result in `t0`. If we were to use any of the other arithmetic operators in the assignment, the corresponding arithmetic instruction would be used instead of `add`. Finally, generated for the occurrence of `c` in the LHS of the assignment, the `sd t0,-8(s0)` instruction stores the value of `t0` in memory on the stack where the value of `c` is stored. When executing the four instructions the debugger confirms that:
 
 ```asm
-pc==0x10170(~7): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==1(0x1) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10174(~7): addi t1,zero,1: zero==0(0x0) |- t1==10000(0x2710) -> t1==1(0x1)
-pc==0x10178(~7): add t0,t0,t1: t0==0(0x0),t1==1(0x1) |- t0==0(0x0) -> t0==1(0x1)
-pc==0x1017C(~7): sd t0,-8(s0): s0==0xFFFFFF98,t0==1(0x1) |- mem[0xFFFFFF90]==0 -> mem[0xFFFFFF90]==t0==1(0x1)
+pc==0x1016C(~7): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==1(0x1) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10170(~7): addi t1,zero,1: zero==0(0x0) |- t1==10000(0x2710) -> t1==1(0x1)
+pc==0x10174(~7): add t0,t0,t1: t0==0(0x0),t1==1(0x1) |- t0==0(0x0) -> t0==1(0x1)
+pc==0x10178(~7): sd t0,-8(s0): s0==0xFFFFFF98,t0==1(0x1) |- mem[0xFFFFFF90]==0 -> mem[0xFFFFFF90]==t0==1(0x1)
 ```
 
 Here, the value of `c` stored in memory on the stack at address `0xFFFFFF90` is incremented from `0` to `1`. Have you noticed that by now you are already able to read machine code? And not only that! You can even follow its execution down to the level of every single bit involved in that. Awesome!
@@ -2993,10 +2997,10 @@ Both C\* and RISC-U only support unsigned integer division and remainder operato
 Even though C\* features six operators `==`, `!=`, `<`, `<=`, `>`, and `>=` for integer comparison, we only need a single RISC-U instruction to implement them all called `sltu` which stands for *set less than unsigned*. Before we explain how this works, let us have a look at the instruction `sltu t0,t0,t1` in our running example of which we have already seen the two `ld` instructions:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ```
 
 After loading the values of `c` and `n` from the stack into registers `t0` and `t1`, respectively, the `sltu t0,t0,t1` instruction makes the CPU compare the values of `t0` and `t1`, and then set the value of `t0` to `1` if the current value of `t0` is strictly less than the current value of `t1` where the current values of `t0` and `t1` are interpreted as unsigned integers. Otherwise, the CPU sets the value of `t0` to `0`. In other words, after executing the instruction a `1` in `t0` indicates that the value of `c` is indeed strictly less than the value of `n`, that is, `c < n` is true. A `0` in `t0` obviously indicates that `c < n` is false meaning that either the value of `c` is greater than or equal to the value of `n`. The following `beq` instruction makes the CPU execute, depending on the value of `t0`, either the instructions that implement the `while` loop body or the instructions that implement the statement `return c;` which follows the `while` loop. The details are right below after we are done with comparison.
@@ -3004,13 +3008,13 @@ After loading the values of `c` and `n` from the stack into registers `t0` and `
 However, a quick look at the output of the debugger when executing the four instructions for the first time does not hurt. Here, the value of `c` stored in memory on the stack at address `0xFFFFFF90` is still `0` while the value of `n` stored at `0xFFFFFFA8` is `10000`, meaning `c < n` is true:
 
 ```asm
-pc==0x10160(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
-pc==0x10164(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
-pc==0x10168(~6): sltu t0,t0,t1: t0==0(0x0),t1==10000(0x2710) |- t0==0(0x0) -> t0==1(0x1)
-pc==0x1016C(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x1016C -> pc==0x10170
+pc==0x1015C(~6): ld t0,-8(s0): s0==0xFFFFFF98,mem[0xFFFFFF90]==0 |- t0==0(0x0) -> t0==0(0x0)==mem[0xFFFFFF90]
+pc==0x10160(~6): ld t1,16(s0): s0==0xFFFFFF98,mem[0xFFFFFFA8]==10000 |- t1==0(0x0) -> t1==10000(0x2710)==mem[0xFFFFFFA8]
+pc==0x10164(~6): sltu t0,t0,t1: t0==0(0x0),t1==10000(0x2710) |- t0==0(0x0) -> t0==1(0x1)
+pc==0x10168(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x10168 -> pc==0x1016C
 ```
 
-The `beq` instruction apparently sets the `pc` to `0x10170` which is the address of the first instruction that implements the `while` loop body. That sounds right! Just recall that the code in memory starts at address `0x10000`, not `0x0`.
+The `beq` instruction apparently sets the `pc` to `0x1016C` which is the address of the first instruction that implements the `while` loop body. That sounds right! Just recall that the code in memory starts at address `0x10000`, not `0x0`.
 
 Nevertheless, let us complete comparison first. Here is the official RISC-V ISA specification of the `sltu` instruction:
 
@@ -3018,7 +3022,7 @@ Nevertheless, let us complete comparison first. Here is the official RISC-V ISA 
 
 Similar to the arithmetic instructions, the `sltu` instruction only uses register addressing with `rs1`, `rs2`, and `rd` parameters and no immediate value and is thus encoded in the R-Format.
 
-Let us take another quick look back at selfie's profiler output above when self-compiling. Turns out that arithmetic instructions even together with the comparison instruction only amount to 9.32% of all executed instructions. Even control-flow instructions are executed slightly more often, as we see below.
+Let us take another quick look back at the above profile when self-compiling. Turns out that arithmetic instructions even together with the comparison instruction only amount to around 10% of all executed instructions. Even control-flow instructions are executed slightly more often, as we see below.
 
 > Unsigned integer comparison is different from signed integer comparison
 
@@ -3032,36 +3036,39 @@ Our next topic takes us to control flow. We begin with the `beq` instruction whi
 
 The RISC-U ISA features three control-flow instructions: the *conditional branch* instruction `beq` and the *unconditional jump* instructions `jal` and `jalr`. The difference between a branch and a jump in machine code is simple. A branch gives the CPU two options to proceed depending on a condition: either just go to the next instruction in memory if the condition is false, or else take the  branch if the condition is true, that is, go to some instruction somewhere else in memory. A jump only allows to instruct the CPU to do the latter, that is, go to some instruction somewhere else in memory, unconditionally.
 
-We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x184]` instruction in our running example, this time in its full context:
+We first focus on the `beq` instruction and then explain the `jal` and `jalr` instructions. Consider the `beq t0,zero,6[0x180]` instruction in our running example, this time in its full context:
 
 ```asm
-0x160(~6): 0xFF843283: ld t0,-8(s0)       // while (c < n)
-0x164(~6): 0x01043303: ld t1,16(s0)
-0x168(~6): 0x0062B2B3: sltu t0,t0,t1
-0x16C(~6): 0x00028C63: beq t0,zero,6[0x184]
+0x154(~4): 0x00000293: addi t0,zero,0     //   c = 0;
+0x158(~4): 0xFE543C23: sd t0,-8(s0)
 ---
-0x170(~7): 0xFF843283: ld t0,-8(s0)       //   c = c + 1;
-0x174(~7): 0x00100313: addi t1,zero,1
-0x178(~7): 0x006282B3: add t0,t0,t1
-0x17C(~7): 0xFE543C23: sd t0,-8(s0)
+0x15C(~6): 0xFF843283: ld t0,-8(s0)       //   while (c < n)
+0x160(~6): 0x01043303: ld t1,16(s0)
+0x164(~6): 0x0062B2B3: sltu t0,t0,t1
+0x168(~6): 0x00028C63: beq t0,zero,6[0x180]
 ---
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x16C(~7): 0xFF843283: ld t0,-8(s0)       //     c = c + 1;
+0x170(~7): 0x00100313: addi t1,zero,1
+0x174(~7): 0x006282B3: add t0,t0,t1
+0x178(~7): 0xFE543C23: sd t0,-8(s0)
 ---
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
+---
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ```
 
-The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x184]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x10184`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x10170`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop. The output of the debugger shows exactly that, firstly when executing another iteration of the `while` loop:
+The mnemonic `beq` stands for *branch on equal* and that is exactly what the `beq t0,zero,6[0x180]` instruction does here: branch to the `6`-th instruction below, by setting the `pc` to the address `0x10180`, if the value of `t0` is equal to the value of `zero`, that is, if the value of `t0` is `0`. Otherwise, go to the instruction that follows the `beq` instruction at `0x1016C`. Recall that `c < n` is false, if the value of `t0` is `0`, and true otherwise. So, the `beq` instruction terminates the `while` loop if `c < n` is false by branching to the first instruction that implements the statement that follows the loop which is the `return c;` statement. Otherwise, the `beq` instruction just goes to the first instruction that implements the body of the `while` loop. The output of the debugger shows exactly that, firstly when executing another iteration of the `while` loop:
 
 ```asm
-pc==0x1016C(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x1016C -> pc==0x10170
+pc==0x10168(~6): beq t0,zero,6: t0==1(0x1),zero==0(0x0) |- pc==0x10168 -> pc==0x1016C
 ```
 
 and secondly when terminating the `while` loop:
 
 ```asm
-pc==0x1016C(~6): beq t0,zero,6: t0==0(0x0),zero==0(0x0) |- pc==0x1016C -> pc==0x10184
+pc==0x10168(~6): beq t0,zero,6: t0==0(0x0),zero==0(0x0) |- pc==0x10168 -> pc==0x10180
 ```
 
 Here is the official RISC-V ISA specification of the `beq` instruction which uses an addressing mode we have not seen yet explicitly called *pc-relative* addressing:
@@ -3083,38 +3090,37 @@ If the two source registers `rs1` and `rs2` contain the same value, the branch i
 
 In this format the LSB of the immediate value is assumed to be `0` and thus ignored, extending the interval of immediate values to `-2^12^ <= imm < 2^12^` which is by one bit larger than the interval supported by the I-Format and the S-Format. The above condition `imm % 2 == 0` constrains the immediate values of `beq` instructions to *even* values only, that is, values with a remainder of `0` when divided by `2` or, in other words, values that are divisible by `2`. The strange out-of-order encoding of the immediate value enables fast decoding in hardware.
 
-Note that the immediate value of the `beq t0,zero,6[0x184]` instruction is the even value `24`, not `6`, and certainly not `0x184`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x184` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x184`, or in fact `0x10184`. Recall that each instruction is encoded in `4` bytes. Thus a `beq` instruction has a range of branching `1023` instructions forward and `1024` instructions backward since `2^12^/4` is equal to `1024`.
+Note that the immediate value of the `beq t0,zero,6[0x180]` instruction is the even value `24`, not `6`, and certainly not `0x180`. Try to decode the binary code `0x00028C63` of the instruction to see for yourself! The values `6` and `0x180` are relative and absolute addresses, respectively, only shown for our convenience. They stand for branching forward by `6` instructions, that is, by `6 * 4 == 24` bytes, to the instruction at address `0x180`, or in fact `0x10180`. Recall that each instruction is encoded in `4` bytes. Thus a `beq` instruction has a range of branching `1023` instructions forward and `1024` instructions backward since `2^12^/4` is equal to `1024`.
 
 Alright, but how do we complete the `while` loop in our example? Well, the only instruction we have not explained yet is the `jal` instruction that appears after the four instructions that implement the assignment `c = c + 1` in the body of the loop:
 
 ```asm
-0x180(~9): 0xFE1FF06F: jal zero,-8[0x160] // end of while loop
+0x17C(~9): 0xFE1FF06F: jal zero,-8[0x15C] //   end of while loop
 ```
 
-Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x160`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
+Probably, you can already guess what it does. It instructs the CPU to jump back `8` instructions to the first instruction that implements the condition of the `while` loop at `0x15C`. This way the CPU checks the condition again to see if it is still true or not. The output of the debugger confirms that:
 
 ```asm
-pc==0x10180(~9): jal zero,-8: |- pc==0x10180 -> pc==0x10160
+pc==0x1017C(~9): jal zero,-8: |- pc==0x1017C -> pc==0x1015C
 ```
 
 You may also want to take a look at the `compile_while` procedure in `selfie.c` which generates for a given `while` loop both the *forward-branching* `beq` instruction (with a positive immediate value) and the *backward-jumping* `jal` instruction (with a negative immediate value). Selfie also generates *forward-jumping* `jal` instructions, that is, for implementing `if` and `return` statements, see the `compile_if` and the `compile_return` procedure, respectively. For example, the `return c;` statement in our running example is implemented by the following three instructions:
 
 ```asm
-0x184(~9): 0xFF843283: ld t0,-8(s0)       // return c;
-0x188(~9): 0x00028513: addi a0,t0,0
-0x18C(~9): 0x0040006F: jal zero,1[0x190]
+0x180(~9): 0xFF843283: ld t0,-8(s0)       //   return c;
+0x184(~9): 0x00028513: addi a0,t0,0
+0x188(~9): 0x0080006F: jal zero,2[0x190]
 ```
 
-with a forward-jumping `jal` instruction that, in this case, is actually redundant and could be removed since it always behaves like a `nop`. However, the code shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last four instructions implementing the `return count(10000)` statement, for example:
+with a forward-jumping `jal` instruction. The code also shows something else that is interesting. The value of `c` is obviously supposed to be returned to the caller of the `count` procedure. This is done by convention through register `a0`, that is, by copying the value of `c` from memory to `a0`. The caller can then pick up the returned value in `a0`, see the last three instructions implementing the `return count(10000)` statement, for example:
 
 ```asm
-0x1D0(~13): 0x00050293: addi t0,a0,0      // count returns here
-0x1D4(~13): 0x00000513: addi a0,zero,0
-0x1D8(~13): 0x00028513: addi a0,t0,0
-0x1DC(~13): 0x0040006F: jal zero,1[0x1E0]
+0x1D0(~13): 0x00050293: addi t0,a0,0      //   count returns here
+0x1D4(~13): 0x00028513: addi a0,t0,0
+0x1D8(~13): 0x0080006F: jal zero,2[0x1E0]
 ```
 
-If you look carefully, you may notice that the last three instructions are actually redundant and could be removed. Even the first instruction can be removed as well since `t0` is not used anymore after that. However, in general, this is not true and making selfie not generate those instructions is harder than you might think. As we mentioned before, this is an advanced topic that we skip here. Instead let us focus on the fact that a `jal` instruction is actually capable of doing a bit more than just jumping unconditionally.
+If you look carefully, you may notice that the first two instructions are actually redundant and could be removed. However, in general, this is not true and making selfie not generate those instructions is harder than you might think. As we mentioned before, this is an advanced topic that we skip here. Instead let us focus on the fact that a `jal` instruction is actually capable of doing a bit more than just jumping unconditionally.
 
 Check out the official RISC-V ISA specification of a `jal` instruction:
 
@@ -3138,25 +3144,25 @@ Similar to the immediate value of a `beq` instruction, the immediate value of a 
 So, here is a `jal` instruction from our running example that actually uses a register other than `zero` for linking:
 
 ```asm
-0x4C(~1): 0x15C000EF: jal ra,87[0x1A8] // call main procedure
+0x48(~1): 0x160000EF: jal ra,88[0x1A8] // call main procedure
 ```
 
-This instruction links, that is, saves the value of `pc + 4`, which is here `0x1004C + 4` equals to `0x10050`, in the `ra` register and then makes the CPU jump `87` instructions forward to the instruction in memory at address `0x101A8` which is the first instruction that implements the `main` procedure. The debugger confirms that:
+This instruction links, that is, saves the value of `pc + 4`, which is here `0x10048 + 4` equals to `0x1004C`, in the `ra` register and then makes the CPU jump `88` instructions forward to the instruction in memory at address `0x101A8` which is the first instruction that implements the `main` procedure. The debugger confirms that:
 
 ```asm
-pc==0x1004C(~1): jal ra,87: |- ra==0x0,pc==0x1004C -> pc==0x101A8,ra==0x10050
+pc==0x10048(~1): jal ra,88: |- ra==0x0,pc==0x10048 -> pc==0x101A8,ra==0x1004C
 ```
 
 The idea of linking is to save the address of the next instruction in memory at `pc + 4` as *return address* in a register. Here we use the `ra` register where, you guessed right, `ra` stands for *return address*. Eventually, control is supposed to return to that address by setting the `pc` to that address when the code we jump to is done. We already saw above that returning to that address is done by a `jalr` instruction. The following instruction from our running example does exactly that:
 
 ```asm
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1F0(~14): 0x00008067: jalr zero,0(ra)   // return to exit
 ```
 
 It takes the value of the `ra` register, adds `0` to it, and then sets the `pc` to the result, that is, to `ra + 0`. For confirmation, let us have a look at what the debugger says:
 
 ```asm
-pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+pc==0x101F0(~14): jalr zero,0(ra): ra==0x1004C |- pc==0x101F0 -> pc==0x1004C
 ```
 
 Looks good! So, in fact, we always use a `jal` instruction involving the `ra` register in conjunction with a `jalr` instruction, again involving the `ra` register, to facilitate calling code that implements a procedure. The call of a procedure is done by `jal` and the eventual return from the procedure is done by `jalr`. More precisely, the very last instruction implementing a procedure is always a `jalr zero,0(ra)` instruction. For example, the last instruction of the `count` procedure is:
@@ -3168,35 +3174,48 @@ Looks good! So, in fact, we always use a `jal` instruction involving the `ra` re
 There is, however, a catch. What if a procedure calls another procedure before returning such as when `main` calls `count` before returning? In that case, the value of the `ra` register would be overwritten before returning. We therefore need to save its value and then restore it right before returning. Our running example actually shows you how this is done. The implementation of each procedure begins with a block of code called *prologue* and ends with a block of code called *epilogue*. For example, here is the prologue of `main`:
 
 ```asm
-0x1A8(~13): 0xFF810113: addi sp,sp,-8     // int main() {
+0x1A8(~13): 0xFF810113: addi sp,sp,-8     // main prologue
 0x1AC(~13): 0x00113023: sd ra,0(sp)
 0x1B0(~13): 0xFF810113: addi sp,sp,-8
 0x1B4(~13): 0x00813023: sd s0,0(sp)
-0x1B8(~13): 0x00010413: addi s0,sp,0
+0x1B8(~13): 0x00010413: addi s0,sp,0      // int main() {
 ```
 
 and the epilogue of `main`:
 
 ```asm
-0x1E0(~14): 0x00040113: addi sp,s0,0      // }
-0x1E4(~14): 0x00013403: ld s0,0(sp)
-0x1E8(~14): 0x00810113: addi sp,sp,8
-0x1EC(~14): 0x00013083: ld ra,0(sp)
-0x1F0(~14): 0x00810113: addi sp,sp,8
-0x1F4(~14): 0x00008067: jalr zero,0(ra)   // return to exit
+0x1E0(~14): 0x00013403: ld s0,0(sp)       // main epilogue
+0x1E4(~14): 0x00810113: addi sp,sp,8
+0x1E8(~14): 0x00013083: ld ra,0(sp)
+0x1EC(~14): 0x00810113: addi sp,sp,8
 ```
 
-The `count` procedure has a similar prologue and epilogue. The prologue saves the value of `ra` as well as the frame pointer in `s0` on the stack using `sd` instructions while the epilogue restores their values from the stack using `ld` instructions. That's all. This technique supports arbitrarily nested procedure calls including recursive calls. The only limitation is the size of the stack. For example, a non-terminating recursion would result in an ever growing stack that would eventually overflow into the heap.
+The `count` procedure has a similar prologue and epilogue. The prologue saves the value of `ra` as well as the frame pointer in `s0` on the stack using `sd` instructions while the epilogue restores their values from the stack using `ld` instructions. This technique supports arbitrarily nested procedure calls including recursive calls. The only limitation is the size of the stack. For example, a non-terminating recursion would result in an ever growing stack that would eventually overflow into the heap.
 
-Let us have a quick look at the output of the debugger right before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x10050`:
+The prologue of `count` features one more instruction than the prologue `main`:
 
 ```asm
-pc==0x101EC(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x10050 |- ra==0x101D0 -> ra==0x10050==mem[0xFFFFFFB8]
-pc==0x101F0(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
-pc==0x101F4(~14): jalr zero,0(ra): ra==0x10050 |- pc==0x101F4 -> pc==0x10050
+0x150(~4): 0xFF810113: addi sp,sp,-8      //   int c;
 ```
 
-The output shows that the `ld ra,0(sp)` instruction does in fact restore the value of `ra` to `0x10050` overwriting its previous value `0x101D0` which is the by now obsolete return address of the previous call to `count`. This way the `jalr zero,0(ra)` instruction does return to the right address. Beautiful!
+The purpose of that `addi` instruction is to allocate memory on the stack for storing the value of `c`. Right before the epilogue of, say, `main`, there is also an `addi` instruction:
+
+```asm
+0x1DC(~14): 0x00000513: addi a0,zero,0    // }
+```
+
+which sets the register `a0` to `0` making sure that there is a defined value in `a0`. However, the instruction is here redundant.
+
+Let us have a quick look at the output of the debugger executing the last two instructions of the `main` epilogue before executing the `jalr zero,0(ra)` instruction that makes the CPU return from `main` to the instruction at address `0x1004C`:
+
+```asm
+pc==0x101E8(~14): ld ra,0(sp): sp==0xFFFFFFB8,mem[0xFFFFFFB8]==0x1004C |- ra==0x101D0 -> ra==0x1004C=
+=mem[0xFFFFFFB8]
+pc==0x101EC(~14): addi sp,sp,8: sp==0xFFFFFFB8 |- sp==0xFFFFFFB8 -> sp==0xFFFFFFC0
+pc==0x101F0(~14): jalr zero,0(ra): ra==0x1004C |- pc==0x101F0 -> pc==0x1004C
+```
+
+The output shows that the `ld ra,0(sp)` instruction does in fact restore the value of `ra` to `0x1004C` overwriting its previous value `0x101D0` which is the by now obsolete return address of the previous call to `count`. This way the `jalr zero,0(ra)` instruction does return to the right address. Beautiful!
 
 Well, a `jalr` instruction can actually do even more than just returning. After all, `jalr` stands for *jump and link return*. So far, we have only seen the jump-return part. Here is the official RISC-V ISA specification:
 
@@ -3212,7 +3231,7 @@ In fact, the machine code generated by selfie only uses pc-relative addressing f
 
 Nevertheless, the disadvantage of pc-relative addressing is that the range of branching and jumping is limited by the range of immediate values. This is not a problem in the selfie system but could be a problem in systems and applications that require more code than selfie to implement.
 
-It is again time to reflect on what we have seen here. The instructions `beq` as well as `jal` and `jalr` facilitate control flow by allowing us to set the program counter to any memory address we like. Again, because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another quick look at selfie's output above when self-compiling reveals that the three control-flow instructions are with 12.2% the second most often executed category of instructions, after initialization and memory instructions which account for around 78% of all executed instructions, and before arithmetic and comparison instructions which make up 9.32% of all executed instructions.
+It is again time to reflect on what we have seen here. The instructions `beq` as well as `jal` and `jalr` facilitate control flow by allowing us to set the program counter to any memory address we like. Again, because of the nature of digital memory, in particular of address spaces, addition and subtraction play a crucial role in calculating memory addresses. Another quick look at the above output of selfie when self-compiling reveals that the three control-flow instructions are with around 13% the second most often executed category of instructions, after initialization and memory instructions which account for around 76% of all executed instructions, and before arithmetic and comparison instructions which make up around 10% of all executed instructions.
 
 #### System
 
@@ -3228,7 +3247,7 @@ Another source of confusion with the `ecall` instruction is that it does not hav
 
 Here is how this works and keep in mind that the CPU can only execute one instruction after another. There is no waiting or doing something else. When the CPU executes an `ecall` instruction it saves at least part of the machine state, in particular the value of the `pc`, similar to a `jal` instruction, and then sets the value of the `pc` to some fixed address specified by the RISC-V standard. Thus the code at that address is executed next. That code is called *system call handler* because it is supposed to handle, well, system calls.
 
-Now, here is the interesting part. The system call handler checks the integer value of register `a7` to find out which system call we would actually like to invoke, and then invokes, on our behalf, the code that implements that system call. In other words, a system call is identified by an integer value, not an address. The mapping from value to address is done by the system call handler. The idea is that the system call handler is privileged code beyond our control that is part of the operating system. The *system call number* in `a7` simply allows us to identify system calls without even knowing where in memory the code is that implements them. The tools and computing chapters have more on that.
+Now, here is the interesting part. The system call handler checks the integer value of register `a7` to find out which system call we would actually like to invoke, and then invokes, on our behalf, the code that implements that system call. In other words, a system call is identified by an integer value, not an address. The mapping from value to address is done by the system call handler. The idea is that the system call handler is privileged code beyond our control that is part of the operating system. The *system call number* in `a7` simply allows us to identify system calls without even knowing where in memory the code is that implements them. The programming and computing chapters have more on that.
 
 > Application Binary Interface (ABI)
 
@@ -3239,19 +3258,19 @@ Relevant for us here is that system calls are logically like procedure calls, po
 Let us have a look at the code from our running example that terminates execution of the program using the `exit` system call which happens to be identified by system call number `93`:
 
 ```asm
-0x50(~1): 0xFF810113: addi sp,sp,-8    // main returns here
-0x54(~1): 0x00A13023: sd a0,0(sp)
-0x58(~1): 0x00013503: ld a0,0(sp)      // load exit code
-0x5C(~1): 0x00810113: addi sp,sp,8
-0x60(~1): 0x05D00893: addi a7,zero,93
-0x64(~1): 0x00000073: ecall            // exit
+0x4C(~1): 0xFF810113: addi sp,sp,-8    // main returns here
+0x50(~1): 0x00A13023: sd a0,0(sp)
+0x54(~1): 0x00013503: ld a0,0(sp)      // load exit code
+0x58(~1): 0x00810113: addi sp,sp,8
+0x5C(~1): 0x05D00893: addi a7,zero,93
+0x60(~1): 0x00000073: ecall            // exit
 ```
 
 The `exit` system call has one parameter which is the exit code of the program, here provided by the return value of the `main` procedure. The first four instructions are actually redundant since the returned exit code is already in register `a0` but let us not worry about that. Important is that the `addi a7,zero,93` instruction initializes register `a7` with the value `93`. The following `ecall` instruction is thus recognized as the `exit` system call which terminates execution of the program and shuts down the machine.
 
 > Selfie system calls: `exit`, `open`, `read`, `write`, `brk`
 
-But how do we do that? We only have those 14 RISC-U instructions. The answer is that, in a real RISC-V system, there are special instructions for this purpose. However, we decided to avoid introducing those and instead implement the system calls we actually need in selfie as if they were special instructions: `exit`, `open`, `read`, `write`, and `brk`. The `open`, `read`, and `write` system calls are for handling I/O, and the `brk` system call is for allocating memory. Their system call numbers are of course also defined in the selfie code. Again, the tools and computing chapters have more details on system calls.
+But how do we do that? We only have those 14 RISC-U instructions. The answer is that, in a real RISC-V system, there are special instructions for this purpose. However, we decided to avoid introducing those and instead implement the system calls we actually need in selfie as if they were special instructions: `exit`, `open`, `read`, `write`, and `brk`. The `open`, `read`, and `write` system calls are for handling I/O, and the `brk` system call is for allocating memory. Their system call numbers are of course also defined in the selfie code. Again, the programming and computing chapters have more details on system calls.
 
 Well, it is time to celebrate. By now, you have all the information necessary to understand our running example, except for the code at the very beginning that prepares initializing the heap. There are two `ecall` invocations of, in fact, the `brk` system call but never mind those. They become clear later. Now, it is time to look at how our RISC-U machine works in selfie.
 
@@ -3263,41 +3282,41 @@ RISC-U code including selfie runs on actual RISC-V hardware. If you are interest
 
 Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that mimics actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org). By the way, the difference between *emulation* and *simulation* is important. Emulation *reproduces* exact functionality (but not performance) whereas simulation *approximates* behavior. Both methods are usually slower than the real thing but there are ways to make them faster. For example, an emulator typically uses interpretation, which is slow, but can also use compilation by translating at least parts of the code to machine code that can run directly on the machine without interpretation (in software). QEMU does that. In any case, it is impossible for any code to know if it is running on hardware or an emulator, assuming hardware and emulator are sound, and the code has no way of checking the progress of real time.
 
-> RISC-U emulation with mipster
+> RISC-U emulation with `mipster`
 
-Selfie implements an emulator called *mipster* that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ mipster throughout the book for a number of reasons. First of all, the design of mipster is simple and educational. In fact, right below we use mipster code to explain emulation. Then, we use mipster to explain algorithmic complexity and performance in more detail than before, ultimately leveraging the fact that mipster can execute mipster. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use mipster, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran mipster before using the `-m` option, for example:
+Selfie implements an emulator called `mipster` that just supports RISC-U based on the RISC-U interpreter that we mentioned before. Older versions of selfie emulated *MIPS*, an ISA preceding RISC-V, hence the name. We employ `mipster` throughout the book for a number of reasons. First of all, the design of `mipster` is simple and educational. In fact, right below we use `mipster` code to explain emulation. Then, we use `mipster` to explain algorithmic complexity and performance in more detail than before, ultimately leveraging the fact that `mipster` can execute `mipster`. After EBNF defining EBNF, this is our second example of self-referentiality. Lastly, for simplicity and our convenience, we use `mipster`, rather than actual hardware or other emulators, for executing RISC-U code in all our examples. We already ran `mipster` before using the `-m` option, for example:
 
 ```bash
 ./selfie -c selfie.c -m 1
 ```
 
-We go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates, in software, an *instance* or *context* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a summary of what happened during execution called a *profile* and then exits. Using the `-d 1` option does the same as `-m 1` except that all executed instructions are printed as well. Selfie implements the above routine in the procedures `selfie_run`, `boot_loader`, and `mipster`.
+We go through this invocation step by step. Selfie first compiles `selfie.c` to RISC-U code as instructed by the `-c` option. After that, selfie creates, in software, an *instance* or *context* of a RISC-U machine with 1MB of physical memory, as instructed by the `-m 1` option, loads the compiled RISC-U code into the machine's main memory, prepares program counter and stack, as discussed before, and then starts executing the loaded code. When done, selfie prints a profile of what happened during execution, and then exits. The `-d 1` option is similar to the `-m 1` option except that all executed instructions are also printed on the console. Selfie implements compilation in the procedure `selfie_compile` and emulation in the procedure `selfie_run`.
 
 > Machine context for emulation
 
-Selfie maintains what we call a *machine context* for emulating a RISC-U machine. Look for that term in the source code of selfie. A machine context essentially gathers all information about the state of a RISC-U machine, in particular, the values of all registers and the program counter, and the values of all machine words stored in main memory. There is also some concurrency and memory management information that we explain in the computing chapter. The `selfie_run` procedure essentially creates a machine context, then initializes the context by calling the `boot_loader` procedure, and finally executes the context by calling the `mipster` procedure.
+Selfie maintains what we call a *machine context* for emulating a RISC-U machine. Look for that term in the source code of selfie. A machine context essentially gathers all information about the state of a RISC-U machine, in particular, the values of all registers and the program counter, and the values of all machine words stored in main memory. There is also some concurrency and memory management information that we explain in the computing chapter. The `selfie_run` procedure essentially creates a machine context, then initializes the context by calling the procedure `boot_loader`, and finally executes the context by calling the procedure `mipster`.
 
-> Physical memory of mipster
+> Physical memory of `mipster`
 
-There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space but usually much less physical memory. However, mipster tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke mipster with just an estimate of how much memory is actually needed. Try, for example, selfie's self-compilation with 2MB rather than 3MB of physical memory:
+There are a two points that we should mention here before focusing on code execution. By 1MB of physical memory we mean the amount of main memory that is available for storage, not for addressing. A RISC-U machine always has 4GB of main memory address space but usually much less physical memory. However, `mipster` tolerates the executed code to access up to twice the amount of available physical memory, making it easier to invoke `mipster` with just an estimate of how much memory is actually needed. Try, for example, self-compilation of selfie with 2MB rather than 3MB of physical memory:
 
 ```bash
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
-As mentioned before, selfie reports how much physical memory was actually needed in the last line of the profile summary under mapped memory:
+As mentioned before, selfie reports how much physical memory was actually needed in the last line of the execution profile under mapped memory:
 
 ```
 ...
-./selfie: summary: 389358917 executed instructions [21.84% nops]
-./selfie:          2.64KB peak stack size
-./selfie:          3.23MB allocated in 23888 mallocs
-./selfie:          2.15MB(66.54% of 3.23MB) actually accessed
-./selfie:          2.35MB(117.59% of 2MB) mapped memory
+./selfie: summary: 353831956 executed instructions [17.32% nops]
+./selfie:          2.57KB peak stack size
+./selfie:          3.23MB allocated in 23993 mallocs
+./selfie:          2.14MB(66.10% of 3.23MB) actually accessed
+./selfie:          2.32MB(116.41% of 2MB) mapped memory
 ...
 ```
 
-In this case, 2.35MB of the available 2MB of physical memory were needed, that is, mipster tolerated memory usage of 117.59% above the threshold of 2MB.
+In this case, 2.32MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 116.41% above the threshold of 2MB.
 
 > Console arguments of selfie
 
@@ -3330,9 +3349,9 @@ argv: *
 "./selfie" "-c" "selfie.c" "-m" "2" "-c" "selfie.c"
 ```
 
-Where is all this information stored in memory? On the stack! The procedure `up_load_arguments` in `selfie.c` shows you how. The details are non-trivial and revisited in the tools and computing chapters.
+Where is all this information stored in memory? On the stack! The procedure `up_load_arguments` in `selfie.c` shows you how. The details are non-trivial and revisited in the programming and computing chapters.
 
-Interestingly, whenever mipster is invoked, say, with `-m 2 -c selfie.c`, the `boot_loader` procedure passes the remaining arguments `-c selfie.c` to the code that mipster is about to execute including the filename of the executed code which is here `selfie.c`:
+Interestingly, whenever `mipster` is invoked, say, with `-m 2 -c selfie.c`, the `boot_loader` procedure passes the remaining arguments `-c selfie.c` to the code that `mipster` is about to execute including the filename of the executed code which is here `selfie.c`:
 
 ```
 argc: 3
@@ -3375,7 +3394,7 @@ which corresponds to:
 ./selfie -c selfie.c
 ```
 
-with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas the occurrence of `selfie.c` before `-c` in `selfie.c -c selfie.c` represents RISC-U code compiled from `selfie.c` and then executed by mipster.
+with the only difference that `./selfie` is machine code of the computer on which you run selfie whereas the occurrence of `selfie.c` before `-c` in `selfie.c -c selfie.c` represents RISC-U code compiled from `selfie.c` that is then executed by `mipster`.
 
 How about repeating that pattern? Can we do that? Yes, of course, try:
 
@@ -3383,7 +3402,7 @@ How about repeating that pattern? Can we do that? Yes, of course, try:
 ./selfie -c selfie.c -m 4 -c selfie.c -m 2 -c selfie.c
 ```
 
-In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a mipster on a mipster. However, this will take a few hours to complete. We explain why below.
+In this case, selfie compiles itself, then runs the compiled code to compile itself, and then runs that code to compile itself again, running a `mipster` on another `mipster`. However, this will take a few hours to complete. We explain why below.
 
 > The core
 
@@ -3440,25 +3459,25 @@ void do_lui() {
 }
 ```
 
-Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The global variable `ic_lui` (`nopc_lui`) counts the number of times a `lui` instruction has been executed (without effect).
+Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The global variables `ic_lui` and `nopc_lui` count the number of times a `lui` instruction has been executed with and without effect, respectively. There are similar variables prefixed `ic_` and `nopc_` for the other instructions as well. Note that the selfie compiler also uses the variables prefixed `ic_` to count how many instructions of each type it generated.
 
-For all instructions, there are also procedures prefixed `print_` which are used by selfie's debugger and disassembler for printing instructions. Moreover, selfie's debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively. Studying those procedures is recommended to deepen your understanding of the semantics of each instruction. There is also an easy way to invoke the debugger on a simple example, just try:
+For all instructions, there are also procedures prefixed `print_` which are used by the selfie debugger and disassembler for printing instructions. Moreover, the selfie debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively. Studying those procedures is recommended to deepen your understanding of the semantics of each instruction. There is also an easy way to invoke the debugger on a simple example, just try:
 
 ```bash
 make debug
 ```
 
-There is one more thing before we move on. Selfie's mipster supports *replay* using the option `-r` instead of `-m`: Try, for example:
+There is one more thing before we move on. The selfie emulator supports *replay* using the option `-r` instead of `-m`: Try, for example:
 
 ```bash
 make replay
 ```
 
-During code execution, rather than printing all executed instructions with the debugger, replay only prints the last, say, 100 executed instructions *before* running into an error such as division by zero. But how is this possible without knowing when such an error occurs? Well, if replay is enabled, mipster *records*, during code execution, information about the last 100 executed instructions. Turns out, for this purpose, it is enough to record just the current program counter value and the possibly affected register value or machine word in memory *before* executing an instruction. In particular, mipster neither needs to record the rest of the *context* in which an instruction runs, that is, the part of the machine state the instruction just reads from, nor the *effect* of the instruction on the machine state.
+During code execution, rather than printing all executed instructions with the debugger, replay only prints the last, say, 100 executed instructions *before* running into an error such as division by zero. But how is this possible without knowing when such an error occurs? Well, if replay is enabled, `mipster` *records*, during code execution, information about the last 100 executed instructions. Turns out, for this purpose, it is enough to record just the current program counter value and the possibly affected register value or machine word in memory *before* executing an instruction. In particular, `mipster` neither needs to record the rest of the *context* in which an instruction runs, that is, the part of the machine state the instruction just reads from, nor the *effect* of the instruction on the machine state.
 
 > The inverse semantics of instructions
 
-In short, mipster only records what an instruction overwrites. Suppose mipster encounters a division by zero. In this case, it looks up the most recently updated program counter value to determine which instruction had been executed right before the division. Then, mipster re-executes that instruction but this time using its *inverse* semantics which is implemented in procedures prefixed `undo_` rather than `do_`. This puts the machine back into the state right before executing the instruction. After that, mipster just applies that routine to the remaining 99 recorded instructions in the reverse order of how they were recorded. When done, mipster replays code execution, this time printing each executed instruction like the debugger, until it hits division by zero again.
+In short, `mipster` only records what an instruction overwrites. Suppose `mipster` encounters a division by zero. In this case, it looks up the most recently updated program counter value to determine which instruction had been executed right before the division. Then, `mipster` re-executes that instruction but this time using its *inverse* semantics which is implemented in procedures prefixed `undo_` rather than `do_`. This puts the machine back into the state right before executing the instruction. After that, `mipster` just applies that routine to the remaining 99 recorded instructions in the reverse order of how they were recorded. When done, `mipster` replays code execution, this time printing each executed instruction like the debugger, until it hits division by zero again.
 
 > A RISC-U machine is deterministic
 
@@ -3466,7 +3485,7 @@ Replay is always possible because a RISC-U machine is *deterministic*. This mean
 
 > Again, fetch, decode, execute
 
-It is time to summarize what we have seen so far before focusing a bit on performance, something we have largely ignored until now. A computer is usually equipped with at least one CPU (or processor), some main memory, and some I/O devices. A CPU has a set of registers and a set of instructions, as specified by its instruction set architecture (ISA). All a CPU does, and that includes a RISC-U processor, is fetch, decode, and execute code. Ultimately, it is a circuit that never stops or waits, until power is cut. An emulator does the same thing, just in software. As a consequence, any computer can emulate any other computer. The advantage of emulation is its convenience. It is often easier to use than real hardware, see mipster. The only issue with emulation is performance. Emulation is usually slower than real hardware but can be made almost as fast. This takes us to our next topic.
+It is time to summarize what we have seen so far before focusing a bit on performance, something we have largely ignored until now. A computer is usually equipped with at least one CPU (or processor), some main memory, and some I/O devices. A CPU has a set of registers and a set of instructions, as specified by its instruction set architecture (ISA). All a CPU does, and that includes a RISC-U processor, is fetch, decode, and execute code. Ultimately, it is a circuit that never stops or waits, until power is cut. An emulator does the same thing, just in software. As a consequence, any computer can emulate any other computer. The advantage of emulation is its convenience. It is often easier to use than real hardware, see `mipster`. The only issue with emulation is performance. Emulation is usually slower than real hardware but can be made almost as fast. This takes us to our next topic.
 
 ### Performance
 
@@ -3505,7 +3524,7 @@ When it comes to performance, [there is no such thing as a free lunch](https://e
 
 > Caches
 
-While we largely stay away from covering performance optimizations in this book, we should still mention that selfie supports the simulation of *Level 1 (L1) instruction and data caches* in mipster which are a key component in any modern processor and a beautiful example of a time-space-energy tradeoff. Such caches aim at reducing the effects of the von Neumann bottleneck.
+While we largely stay away from covering performance optimizations in this book, we should still mention that selfie supports the simulation of *Level 1 (L1) instruction and data caches* in `mipster` which are a key component in any modern processor and a beautiful example of a time-space-energy tradeoff. Such caches aim at reducing the effects of the von Neumann bottleneck.
 
 With an L1 instruction cache, every time the CPU fetches an instruction it first searches the cache if it contains the instruction already and, if yes, takes it from there. This is called a *cache hit* which is much faster than accessing main memory. However, if the instruction is not in the cache, it is indeed fetched from main memory and only then transferred to the CPU and stored in the cache for future access. This is called a *cache miss* which is slower than accessing main memory but not by as much as a cache hit is faster. The same applies to data caches which are used by load and store operations.
 
@@ -3513,11 +3532,11 @@ With an L1 instruction cache, every time the CPU fetches an instruction it first
 
 L1 caches are usually much smaller than main memory. If the cache is full upon a cache miss, an entry in the cache is identified for *eviction* to make room for caching the new instruction or memory word. Selfie implements the standard eviction policy called *least recently used (LRU)* which chooses the entry in the cache for eviction that has been accessed the furthest into the past, betting the entry will not be used anymore, at least in the near future. In fact, LRU is an attempt to approximate the best possible yet generally unknown choice which is to evict the entry that will be accessed the furthest into the future, or even better never again. In a different context, we come across LRU in the computing chapter again.
 
-> Associativity
+> Set associativity
 
 Moreover, most caches have limited *set associativity*, or just *associativity* for short, which restricts where instructions or memory words, depending on their address in memory, can actually be stored in a cache. The higher the associativity is the higher the chances are that there are free or unused entries that can actually accommodate cache misses but also the slower and energy-intensive the search for used entries in the cache is. For small caches, increasing associativity thus improves the chances for cache hits similar to increasing cache size, yet at the expense of increased search cost.
 
-Lastly, caches usually cache, in a *cache block* or *cache line*, not just a single instruction or memory word at a time, but two or even more that are located next to each other in memory. For example, mipster's default cache configuration is a *2-way set associative 16KB L1 instruction cache* and a *3-way set associative 32KB L1 data cache*, both with 16B cache lines. Other choices are possible as well, see the source code of selfie. To see it in action, just use the `-L1` option instead of the `-m` option, or even simpler, try:
+Lastly, caches usually cache, in a *cache block* or *cache line*, not just a single instruction or memory word at a time, but two or even more that are located next to each other in memory. For example, `mipster`'s default cache configuration is a *2-way set associative 16KB L1 instruction cache* and a *3-way set associative 32KB L1 data cache*, both with 16B cache lines. Other choices are possible as well, see the source code of selfie. To see it in action, just use the `-L1` option instead of the `-m` option, or even simpler, try:
 
 ```bash
 make cache
@@ -3528,8 +3547,8 @@ Check out the first appearance of L1 cache profiling data in the output:
 ```
 ...
 ./selfie: L1 caches:     accesses,hits,misses
-./selfie: data:          384783061,356471246(92.64%),28311815(7.35%)
-./selfie: instruction:   1022432666,925629531(90.53%),96803135(9.46%)
+./selfie: data:          414773558,399182665(96.24%),15590893(3.75%)
+./selfie: instruction:   1059907252,1002146845(94.55%),57760407(5.44%)
 ...
 ```
 
@@ -3579,7 +3598,7 @@ However, keep in mind that the constant factors *k* in Big-O and Big-Omega notat
 
 ![Constants](figures/constants.png "Constants")
 
-Suddenly, the world seems to be upside down. Up to input sizes of *s_0*, the program with exponential complexity is in fact the fastest program while the program with constant complexity is the slowest, with all others in between. The lesson to be learned here is that if there are algorithms with different algorithmic complexity that solve the same problem, the algorithm with the best complexity may not always be the best choice. That also depends on the workload, that is, the input size that the program will be running on in practice. Nevertheless, algorithmic complexity is an important tool for abstracting code into a simple formula that captures a key property. In the tools and computing chapters we hear more about how to come up with the algorithmic complexity of an algorithm.
+Suddenly, the world seems to be upside down. Up to input sizes of *s_0*, the program with exponential complexity is in fact the fastest program while the program with constant complexity is the slowest, with all others in between. The lesson to be learned here is that if there are algorithms with different algorithmic complexity that solve the same problem, the algorithm with the best complexity may not always be the best choice. That also depends on the workload, that is, the input size that the program will be running on in practice. Nevertheless, algorithmic complexity is an important tool for abstracting code into a simple formula that captures a key property. In the programming and computing chapters we hear more about how to come up with the algorithmic complexity of an algorithm.
 
 > Two ways to make things faster, really faster
 
@@ -3605,7 +3624,7 @@ or, equivalently, just try:
 make emu
 ```
 
-This *self-executes* mipster by running a mipster instance, say, *U* on another mipster instance, say, *H*, just to run selfie on *U* without console arguments making selfie print its synopsis. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to *load* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then start *H* using the `-m 2` option to execute `selfie.m`. Next, we have `selfie.m` running on *H* load itself and then start *U* on *H* using the `-m 1` option to execute itself. Finally, `selfie.m` on *U* prints the synopsis of selfie. The relevant output is:
+This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, just to run selfie on *OS* without console arguments making selfie print its synopsis. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to *load* its own RISC-U code in `selfie.m` using the `-l selfie.m` option and then start *HW* using the `-m 2` option to execute `selfie.m`. Next, we have `selfie.m` running on *HW* load itself and then start *OS* on *HW* using the `-m 1` option to execute itself. Finally, `selfie.m` on *OS* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
@@ -3613,42 +3632,48 @@ synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binar
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-selfie.m: summary: 60251 executed instructions [22.32% nops]
+selfie.m: summary: 59201 executed instructions [18.54% nops]
 selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 5 mallocs
+selfie.m:          0.00MB allocated in 6 mallocs
 selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.20MB(20.31% of 1MB) mapped memory
+selfie.m:          0.19MB(19.14% of 1MB) mapped memory
 ...
 ./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-./selfie: summary: 166934931 executed instructions [17.81% nops]
+./selfie: summary: 154729156 executed instructions [13.27% nops]
 ./selfie:          0.90KB peak stack size
-./selfie:          2.91MB allocated in 26 mallocs
-./selfie:          2.10MB(72.25% of 2.91MB) actually accessed
-./selfie:          2.30MB(115.24% of 2MB) mapped memory
+./selfie:          2.82MB allocated in 27 mallocs
+./selfie:          2.01MB(71.03% of 2.82MB) actually accessed
+./selfie:          2.19MB(109.96% of 2MB) mapped memory
 ...
 ```
 
-Selfie running on mipster instance *U* took 60,251 RISC-U instructions and 0.20MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *H* took 166,934,931 RISC-U instructions and 2.30MB memory to run *U*. This means that, on average, *H* executed around 2,771 instructions just so that *U* executes a single instruction. In other words, mipster takes, at least on this workload, on average around 2,771 RISC-U instructions to implement a single RISC-U instruction, and an additional 2.10MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,771.
+Selfie running on `mipster` instance *OS* took 59,201 RISC-U instructions and 0.19MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *HW* took 154,729,156 RISC-U instructions and 2.19MB memory to run *OS*. This means that, on average, *HW* executed around 2,614 instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2,614 RISC-U instructions to implement a single RISC-U instruction, and an additional 2MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,614.
 
-What if we stack even more mipsters onto each other just to see what happens? On my laptop, I ran three mipster instances, calling the third mipster instance *S*, assuming that *S* runs in between mipster instances *H* and *U*, and allocating 4MB rather than 2MB of physical memory to *H*:
+What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *VMM*, assuming that *VMM* runs in between `mipster` instances *HW* and *OS*, and allocating 4MB rather than 2MB of physical memory to *HW*:
 
 ```bash
 ./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 ```
 
-This took a few hours to complete, as opposed to a few seconds for just the two mipster instances with `make emu`. In fact, this time, mipster instance *H* executed 380,176,379,307 RISC-U instructions to run both *S* and *U*. Looks like with each mipster instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of mipster instances, and even if we optimized mipster such that executing a single instruction would take only two instructions there would be exponential growth.
-
-But how is this relevant in practice? Well, there is a reason why we called the three mipster instances *H*, *S*, and *U*. Suppose *H* represents *hardware*, an actual RISC-U processor, and *U* represents a *user* program. Yet we do not want *U* running directly on hardware but need an *operating system* *S* in between *H* and *U* so that we can eventually run more user programs than just *U*, all sharing *H*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+or, equivalently, just try:
 
 ```bash
-./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -m 1
+make emu-emu
+```
+
+This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu`. In fact, this time, `mipster` instance *HW* executed more than 300 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances, and even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
+
+But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-U processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+
+```bash
+./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -m 1
 ```
 
 or, equivalently:
 
 ```bash
-make os
+make emu-vmm
 ```
 
 The relevant output is:
@@ -3659,33 +3684,33 @@ synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binar
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-selfie.m: summary: 60251 executed instructions [22.32% nops]
+selfie.m: summary: 59201 executed instructions [18.54% nops]
 selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 5 mallocs
+selfie.m:          0.00MB allocated in 6 mallocs
 selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.20MB(20.31% of 1MB) mapped memory
+selfie.m:          0.19MB(19.14% of 1MB) mapped memory
 ...
 selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
 ./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
 ...
-./selfie: summary: 212522027 executed instructions [18.52% nops]
+./selfie: summary: 195104768 executed instructions [13.86% nops]
 ./selfie:          0.90KB peak stack size
-./selfie:          4.91MB allocated in 28 mallocs
-./selfie:          2.89MB(58.82% of 4.91MB) actually accessed
-./selfie:          3.10MB(155.27% of 2MB) mapped memory
+./selfie:          4.82MB allocated in 29 mallocs
+./selfie:          2.78MB(57.64% of 4.82MB) actually accessed
+./selfie:          2.98MB(99.61% of 3MB) mapped memory
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time *H* took only 212,522,027 RISC-U instructions to run both *S* and *U*, compared to 166,934,931 RISC-U instructions to run just *U*. This is a factor of around 1.27 instructions for each instruction of *U*, even though *S* runs in between *H* and *U*. How is this possible?
+Now we are back from billions to millions of instructions. This time *HW* took only 195,104,768 RISC-U instructions to run both *VMM* and *OS*, compared to 154,732,339 RISC-U instructions to run just *OS*. This is a factor of around 1.26 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
 
-The key observation is that *S* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *U* in this case. But if *H* can execute the RISC-U code of *S*, it can also execute the RISC-U code of *U*, effectively bypassing *S*. The option `-y 1` in the above invocation of selfie does exactly that. Instead of launching a mipster instance, it creates a *hypster* instance for *S* which, similar to a mipster instance, executes *U*, yet not by interpretation but by instructing *H* to execute *U* on its behalf, through something called a *context switch*. The factor 1.28 overhead comes from context switching and may become even less if *U* were to run longer amortizing bootstrapping cost even more.
+The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y 2` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. The factor 1.26 overhead comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
-We say that hypster *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
+We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
 ### Life
 
-The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U can implement anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms.
+The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U is *universal* or *Turing-complete*, it can do anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms. Extending RISC-U with other RISC-V instructions for better performance is not difficult and the subject of exercises in the next chapter.
 
 However, my true fascination comes from something else and that is related to life. While the process of developing code can be extremely slow and tedious and even nerve wrecking sometimes, especially when writing machine code, the execution of code is not because that is done by a machine, not me. That moment when running some new code that does something I cannot or do not want to do by hand is like magic. It is as if the code comes alive. Coding is really about automating something important in life that I have to do but cannot or do not want to do so that I can do something I want to do, like coding. An important side effect of coding is that I am creating a well-defined description of how to automate something that others can read, use, extend, and improve.
 
@@ -3703,7 +3728,7 @@ This is the default choice when it comes to algorithms and data structures. If a
 
 ## Programming
 
-Almost all code today is written in high-level programming languages. There are many languages to choose from and, for better or worse, there are new languages being developed all the time. Also, modern languages usually come with a whole ecosystem of libraries and tools that play an important role in addition to the language itself. Libraries are collections of code, often written by experts, for others to use. Tools are compilers, interpreters, debuggers, and so on. Selfie includes simple but realistic versions of a library and tools that you can actually understand in full detail.
+Almost all code today is written in high-level programming languages. There are many languages to choose from and, for better or worse, there are new languages being developed all the time. Also, modern languages usually come with a whole ecosystem of libraries and tools that play an important role in addition to the language itself. Libraries are collections of code, often written by experts, for others to use. Tools are compilers, interpreters, debuggers, and so on. Selfie includes simple but realistic versions of a code library and tools that you can actually understand in full detail.
 
 While programming languages might differ in their ecosystems, they typically share some basic language concepts that we introduce and focus on here. We do that in a subset of the programming language C called C\* which we specifically designed for this purpose. C\* ignores many of the more recently introduced innovations in programming languages. However, there are plenty of books available on the latest in programming languages, see the recommended readings at the end of this chapter.
 
@@ -3717,21 +3742,21 @@ Suppose we would like to build a suspension bridge. What we essentially need, ot
 
 High-level programming languages enable *scalability* of coding through libraries and tools, just like cranes and trucks enable us to build enormous structures such as a suspension bridge. The challenge of learning a programming language is thus not just learning the language but also what libraries and tools do and how to use them properly. In fact, it is usually easy to implement something in a language of which you only know a fraction of all its features as long as you know how to use its libraries and tools whereas the converse is not true! We therefore introduce basic concepts of programming languages not just by explaining their design but in particular by showing how they facilitate an actual implementation on the machine we introduced in the previous chapter.
 
-### Problem versus Solution
+> Problem versus Solution
 
 While there have been many different ways to introduce people to programming, our approach is new and arguably quite different from all of them and thus risky but worth a shot simply because people have different backgrounds and there may be quite a few that can benefit from that. We introduce you to programming by introducing basic language elements, starting with the simplest and slowly making our way up to the more complex. At the same time we show you how each element is actually implemented in selfie using real code written in the language we introduce here. In short, you learn programming by example where each example illustrates how the meaning of a particular language element is actually created on the machine. Since we do that starting with the simplest elements and then moving towards the more complex, the code examples also increase in complexity, covering increasingly complex models of computation and algorithms, which show you how precisely defined problems are solved on a computer.
 
-> First try to define the problem, and only then try to solve it, maybe fail, refine the problem, try to solve it again, and so on
+> First try to define the problem, and only then try to solve it, fail, refine the problem, try to solve it again, and so on until you succeed
 
-This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Only then you are able to check if your program is actually a proper solution. Students often rush to programming a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Focusing on solutions feels safer than not even knowing what the problem is that one should solve. Google, for example, gives you answers to a question you might have. But what if you do not even know what to ask? Even Google cannot help you then. The key role of a teacher is to ask the right questions so that the students have something meaningful to work on. Good teachers define interesting problems, bad teachers do not. Besides learning how to solve problems, the ultimate goal beyond that is to teach students how to ask the right questions themselves. This takes time and a lot of work. My advice is to focus on the questions you truly care about. The closer you get to your own actual interests the better and more unique the questions you will ask.
+This takes us to the two key challenges in programming education. The first is obvious: how to express your solution to a problem in a programming language. The second much less so: how to specify and understand the actual problem you are trying to solve. Only then you are able to check if your program is actually a proper solution. Students often rush to programming a solution to a problem before even understanding the problem. What happens then is that they typically go through multiple non-solutions that make them realize what the problem actually is. The underlying issue is that inexperienced people often tend to favor solutions rather than focus on the problem first. Focusing on solutions feels safer than not even knowing what the problem is that one should solve. Google, for example, gives you answers to a question you might have. But what if you do not even know what to ask? Google may be able to assist but ultimately even Google cannot solve that problem for you. The key role of a teacher is to ask the right questions so that the students have something meaningful to work on. Good teachers define interesting problems, bad teachers do not. Besides learning how to solve problems, the ultimate goal beyond that is to teach students how to ask the right questions themselves. This takes time and a lot of work. My advice is to focus on the questions you truly care about. The closer you get to your own actual interests the better and more unique the questions you will ask but, again, getting there is far from easy.
 
 > Motivation is subjective, problems are objective
 
 Another common mistake that many students and even some more experienced people make during presentations and in writing is that they talk about their solutions before the audience even understands what the problem is that they are trying to solve. Bad presentations usually go wrong already at the beginning when people mistake motivation for problem. Motivation to do something based on perceived importance is not a problem definition. Just say what you think the problem is you are trying to solve and leave the decision as to whether it is an interesting and important problem to the audience. You may help the audience make that decision but ultimately no one knows the future. Keep that in mind as we are going through the material. The advantage of our teaching approach here is that the problems for which we are trying to program solutions are well-defined and representative but have of course been solved quite some time ago and established as highly relevant in practice.
 
-### Syntax versus Semantics
+> Syntax versus Semantics
 
-The first problem we focus on is how to make the machine read source code. Seeing that makes you realize how you actually read code as a human. The machine just mimics that albeit in a much more systematic fashion. Code written in a high-level programming language is just a sequence of characters usually encoded in UTF-8. We read from left to right and so does the machine. The challenge is to recognize as soon as possible into reading when we have seen something potentially meaningful such as an integer literal, an identifier, or even a whole procedure, or else something meaningless, that is, a sequence of characters that is not part of our language. In that case, we speak of a syntax error and reject the sequence as something that is not code in our language. In more abstract terms, the problem is thus to detect efficiently whether a given sequence of characters is in our language or not. In formal languages this is called a membership test.
+The first problem we focus on is how to make the machine read source code. Seeing that makes you realize how you actually read code as a human. The machine just mimics that albeit in a much more systematic mechanized fashion. Code written in a high-level programming language is just a sequence of characters usually encoded in UTF-8. We read from left to right and so does the machine. The challenge is to recognize as soon as possible into reading when we have seen something potentially meaningful such as an integer literal, an identifier, or even a whole procedure, or else something meaningless, that is, a sequence of characters that is not part of our language. In that case, we speak of a syntax error and reject the sequence as something that is not code in our language. In more abstract terms, the problem is thus to detect efficiently whether a given sequence of characters is in our language or not. In formal languages this is called a membership problem.
 
 > Scanning and parsing handle syntax
 
@@ -3743,11 +3768,11 @@ On a more abstract level, scanning and parsing is concerned with the *syntax* of
 
 Thus the second problem we focus on is how to make the compiler generate machine code. Here the parser of the selfie compiler does something remarkable. It generates machine code as soon as there is enough information to do so and as long as the already parsed sequence of symbols is syntactically correct. In other words, the parser does not parse the entire sequence first and then generates code. Instead, it really generates code as soon as possible, much like a simultaneous translator translating text from one language to another on the fly in real time. A compiler with a parser that does that is called a *single-pass* compiler. The advantage is that the compiler does not even need to store the whole program in memory which was important when computer memory was scarce. The disadvantage is that the program context that the compiler may consider at any time is limited preventing the compiler from performing advanced code optimization. Modern production compilers are therefore *multi-pass* compilers that first parse the whole program and represent its full syntactic structure in memory in something called a *syntax tree*. Then the compiler takes multiple passes over the syntax tree to analyze and optimize it before generating code. The selfie compiler does not do that for obvious reasons. We need to keep things simple.
 
-### Compiler versus Interpreter
+> Compiler versus Interpreter
 
 Scanner and parser of a compiler are referred to as the *frontend* of the compiler while the code generator is called the *backend*. Keeping both separate facilitates exchanging frontends and backends to support compilation of different combinations of source and machine languages in the same system. Modern production compilers do that by internally generating a source- and machine-independent *intermediate representation* (IR) first and only then generating actual machine code from the IR. Again, the selfie compiler does not do that but instead generates code from within its parser. Its tight coupling of frontend and backend makes supporting new combinations of source and machine languages difficult but we do not intend to do that with selfie anyway.
 
-Code generation involves encoding machine instructions in the format that the target processor expects when decoding the instructions before executing them. A processor can be seen as interpreter of machine code with a frontend that scans the code generated by the backend of a compiler. We took the opportunity to demonstrate that by implementing encoding and decoding of machine instructions in selfie next to each other. In other words, the very backend of the selfie compiler is implemented next to the very frontend of mipster, the selfie emulator that implements a RISC-U processor for executing the code generated by the selfie compiler.
+Code generation involves encoding machine instructions in the format that the target processor expects when decoding the instructions before executing them. A processor can be seen as interpreter of machine code with a frontend that scans the code generated by the backend of a compiler. We took the opportunity to demonstrate that by implementing encoding and decoding of machine instructions in selfie next to each other. In other words, the very backend of the selfie compiler is implemented next to the very frontend of `mipster`, the selfie emulator that implements a RISC-U processor for executing the code generated by the selfie compiler.
 
 There is one important question that we should consider before moving on. Why do we compile source code to machine code and then have a processor interpret the generated code? We could also design and implement source code interpreters avoiding compilers altogether, right? The answer is yes, we could do that and it has in fact been done for many programming languages such as Python, for example. In essence, both compilation and interpretation have numerous advantages and disadvantages. First of all, a source code interpreter requires a scanner and parser just like a compiler. The real difference is in the immediate execution of source code instead of generating machine code. A drawback of source code interpretation is that it is usually slower than compiling the code first and then executing the generated code instead. However, modern source code interpreters often have compilers built in that internally generate machine code on demand instead of interpreting source code. The javascript interpreter in your web browser does that enabling advanced web applications such as gmail. Awesome, right? Well, for our purposes here, it is important to cover both compilation and interpretation as the two fundamental techniques for creating the semantics of programming and machine languages. We nevertheless only discuss compilation of source code here and interpretation of machine code, as already done in the machine chapter.
 
@@ -3755,7 +3780,7 @@ There is one important question that we should consider before moving on. Why do
 
 Literals in programming languages are arguably the most basic programming element. They represent a value that remains the same, that is, *constant* throughout the execution of the program. C\* features three kinds of literals: integer literals in decimal notation such as `85`, character literals such `'H'`, and string literals such as `"Hello World!"`. They are called literals because the programmer really means them to be as they appear in the program, literally. In contrast, variable names, for example, are just names such as `x` or `y` or `i_am_a_variable`. Which name you pick is not important as long as you use the name consistently in all places where you would like to talk about that particular variable. So, `x` and `'x'` are very different things. By `x` you mean the variable `x` whereas by `'x'` you literally mean the character `x`.
 
-In the following, we focus on three different problems whose solutions enable us to have a machine distinguish, say, integer literals in decimal notation from anything that is not and even compute the numerical value they represent:
+In the following, we first focus on three different problems whose solutions enable us to have a machine distinguish, say, integer literals in decimal notation from anything that is not and even compute the numerical value they represent:
 
 1. How do we define the sequences of characters that denote integer literals in decimal notation? This is a *specification* problem.
 2. How do we model scanning, that is, the process of checking whether an arbitrary sequence of characters denotes an integer literal in decimal notation? This is a *modeling* problem.
@@ -3851,7 +3876,7 @@ Let us move on to the third problem of designing and implementing an algorithm f
 
 ![Scanning Integer Literals](figures/scanning-integer-literals.png "Scanning Integer Literals")
 
-The solution to the implementation problem can be found in selfie in a procedure called `get_symbol()`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85` as input to the code shown on the left. The code itself is shown in the middle. Moreover, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
+The solution to the implementation problem can be found in selfie in a procedure called `get_symbol`. That procedure does in fact implement the whole scanner of the selfie compiler. The above figure only shows the part of the procedure that scans integer literals. As example, we again use the sequence of characters `85` as input to the code shown on the left. The code itself is shown in the middle. Moreover, the state of main memory after the code finished accepting `85` is shown to the right. For reference, the (correct) regular expression and (correct) finite state machine are also there.
 
 One more thing: there is also a shorter version of the code shown on the left that only implements the FSM without the code for computing numerical values. This version just handles syntax but not semantics. We get to that further below.
 
@@ -3875,9 +3900,9 @@ Notice that the `if (character == '0')` statement implements the `|` operator in
 
 > Preconditions, postconditions, and invariants!
 
-The important item here are the calls to `get_character()` which is a procedure that reads the next character and stores it in `character`, to prepare for examining the next character, in the current invocation of the scanner (the call in the loop body), and even in subsequent invocations of the scanner (the call in the `if` body and the final call in the loop body whenever the loop terminates). Thereby, the scanner maintains something very important, a property known as *invariant*: `character` always contains the character that is to be scanned next. In other words, upon examining `character` and even upon invoking the scanner, we assume the invariant holds as a *precondition*. This even means that upon invoking the scanner for the first time, we actually have to call `get_character()` once before that to make that assumption true. Try finding that call in the selfie code!
+The important item here are the calls to `get_character` which is a procedure that reads the next character and stores it in `character`, to prepare for examining the next character, in the current invocation of the scanner (the call in the loop body), and even in subsequent invocations of the scanner (the call in the `if` body and the final call in the loop body whenever the loop terminates). Thereby, the scanner maintains something very important, a property known as *invariant*: `character` always contains the character that is to be scanned next. In other words, upon examining `character` and even upon invoking the scanner, we assume the invariant holds as a *precondition*. This even means that upon invoking the scanner for the first time, we actually have to call `get_character` once before that to make that assumption true. Try finding that call in the selfie code!
 
-Notice that the invariant is temporarily violated while the scanner is examining `character` because then `character` contains the currently scanned character rather than the next character to scan, until the scanner calls `get_character()` again, reestablishing the invariant. In other words, after examining `character`, the scanner needs to make sure that the invariant holds again as a *postcondition* by calling `get_character()`, even before terminating to prepare for the next invocation of the scanner. This may look like nitpicking but reasoning in terms of invariants as well as pre- and postconditions helps tremendeously when developing code in imperative programming languages.
+Notice that the invariant is temporarily violated while the scanner is examining `character` because then `character` contains the currently scanned character rather than the next character to scan, until the scanner calls `get_character` again, reestablishing the invariant. In other words, after examining `character`, the scanner needs to make sure that the invariant holds again as a *postcondition* by calling `get_character`, even before terminating to prepare for the next invocation of the scanner. This may look like nitpicking but reasoning in terms of invariants as well as pre- and postconditions helps tremendeously when developing code in imperative programming languages.
 
 Every time you would like to write down a statement in, say, C\* think of which property of the program state needs to hold before executing the statement so that executing the statement works as intended. This is the precondition. And then think of which property of the program state holds after executing the statement, assuming the precondition is true. This is the postcondition which becomes the precondition for the next statement and so on. Invariants apply to iterative and recursive code, that is, to loops, as we already saw, and recursive procedures, which here are the parser procedures that keep calling the scanner, as we see further below. In short, an invariant is a property that is both pre- and postcondition of a loop or recursive procedure. When reasoning about loops and recursive procedures, the key question is what exactly the invariants of those loops and recursive procedures are, which is usually harder to do than just figuring out pre- and postconditions of sequential code.
 
@@ -3899,15 +3924,15 @@ A fundamental question in computer science is whether a formal language can be c
 
 Let us go back to the `if (character == '0')` statement in the full version of the code. In our example, the value of `character` is equal to `'8'` which takes us to the `else` body. We now discuss the code that deals with computing the numerical value of an integer literal. To do so the scanner, unlike the FSM it implements, does actually not forget the characters that form an integer literal but instead stores them on the heap to prepare computing the numerical value they represent.
 
-The first statement calls the procedure `string_alloc()` to allocate 20+1 bytes of zeroed memory on the heap, that is, memory that is initialized to zero, to accommodate a string of up to 20 characters plus its null termination (`MAX_INTEGER_LENGTH` is initialized to `20`). That string can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, this limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
+The first statement calls the procedure `string_alloc` to allocate 20+1 bytes of zeroed memory on the heap, that is, memory that is initialized to zero, to accommodate a string of up to 20 characters plus its null termination (`MAX_INTEGER_LENGTH` is initialized to `20`). That string can represent even the largest unsigned integer literal selfie can handle, which is 2^64^-1 or 18446744073709551615 in decimal, a number with 20 digits. Interestingly, this limitation neither shows up in the regular expression nor the FSM. Both impose no bound on the length of accepted sequences of characters.
 
 Well, we could implement support of integer literals whose length in decimal notation would only be bounded by the available memory of the machine. In fact, there are programming languages and in particular libraries that do that but it is unnecessarily complex to do that here. So, the reality is that an implementation, ours included, is often just an approximation of an idealistic specification and model.
 
-The procedure `string_alloc()` returns a pointer into the heap where there is guaranteed storage for at least 20+1 bytes. In fact, the amount of storage is always rounded up to machine word size (8 bytes on 64-bit machines, 4 bytes on 32-bit machines), so to 24 bytes here. The pointer is stored in the global variable `integer`. The above figure shows the resulting memory layout on the right.
+The procedure `string_alloc` returns a pointer into the heap where there is guaranteed storage for at least 20+1 bytes. In fact, the amount of storage is always rounded up to machine word size (8 bytes on 64-bit machines, 4 bytes on 32-bit machines), so to 24 bytes here. The pointer is stored in the global variable `integer`. The above figure shows the resulting memory layout on the right.
 
-Next, the local variable `i` is initialized to `0`. As mentioned before, we use `i` to keep track of where in memory to store the next character. Then there is the `while` loop that scans characters as long as they are digits. In our example, the value of `character` is `'8'` upon entering the loop body for the first time. The following nested `if` statements check if we have reached the limit of 20 digits. If not, we are good and store the value of `character` in memory where the value of `integer` plus the value of `i` points to, using the `store_character()` procedure. Doing that properly is not so easy here because we can only store a whole machine word at a time, not individual characters, that is, bytes. Check out the code of `store_character()` to see how it is done. This is advanced code which you may have to revisit as you gain more experience.
+Next, the local variable `i` is initialized to `0`. As mentioned before, we use `i` to keep track of where in memory to store the next character. Then there is the `while` loop that scans characters as long as they are digits. In our example, the value of `character` is `'8'` upon entering the loop body for the first time. The following nested `if` statements check if we have reached the limit of 20 digits. If not, we are good and store the value of `character` in memory where the value of `integer` plus the value of `i` points to, using the `store_character` procedure. Doing that properly is not so easy here because we can only store a whole machine word at a time, not individual characters, that is, bytes. Check out the code of `store_character` to see how it is done. This is advanced code which you may have to revisit as you gain more experience.
 
-The two last statements in the loop body increment the value of `i` by `1` and get the next character to prepare for scanning it in the next iteration of the loop. As soon as the loop condition evaluates to false, however, meaning the value of `character` is not a digit, the loop terminates. In our example, this happens when both `'8'` and `'5'` have been scanned. The situation in memory is now that `'8'` is stored in memory where the value of `integer` points to, followed by `'5'` where the value of `integer` plus `1` points to. The only thing left to do so that `integer` refers to a proper string is to terminate it by storing the value `0`, not `'0'`, in memory at the value of `integer` plus `2` right after where `'5'` is stored. This is done by the call to the `store_character()` procedure right after the loop body. At this point the value of `i` is indeed `2`. Please confirm that for yourself. But wait, you may still argue that the memory has been zeroed, that is, initialized to zero, so terminating the string is not necessary. True! We do it anyway just to be nice.
+The two last statements in the loop body increment the value of `i` by `1` and get the next character to prepare for scanning it in the next iteration of the loop. As soon as the loop condition evaluates to false, however, meaning the value of `character` is not a digit, the loop terminates. In our example, this happens when both `'8'` and `'5'` have been scanned. The situation in memory is now that `'8'` is stored in memory where the value of `integer` points to, followed by `'5'` where the value of `integer` plus `1` points to. The only thing left to do so that `integer` refers to a proper string is to terminate it by storing the value `0`, not `'0'`, in memory at the value of `integer` plus `2` right after where `'5'` is stored. This is done by the call to the `store_character` procedure right after the loop body. At this point the value of `i` is indeed `2`. Please confirm that for yourself. But wait, you may still argue that the memory has been zeroed, that is, initialized to zero, so terminating the string is not necessary. True! We do it anyway just to be nice.
 
 The only remaining job is to compute the numerical value represented by the string `integer` refers to. Before we look at the code, consider a nice little exercise that we can do together: determine the actual value of the 64-bit machine word in memory that contains both characters in that order. Remember, the machine has no concept of `'8'` and `'5'`, only of bits. So, the word in memory is:
 
@@ -3929,7 +3954,7 @@ So, the decimal number `13624` encodes the string `"85"`. Who would have thought
 
 > Error handling: printing errors, sure, but then to exit or not to exit?
 
-Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits. If yes, we need to deal with the situation. First up, we should report the error. This is done using the procedure `syntax_error_message()` which in turn uses a procedure that is *builtin* into C and its dialects called `printf()` which stands for *print formatted*. We explain that procedure as needed but leave it at that for now. There is another global variable here called `integer_is_signed` that we have ignored so far. It indicates whether a dash `-` has been scanned right before the integer literal. After reporting the error we do something rather lazy. We simply give up and exit, terminating compilation altogether, so not just the scanner but also the parser, and in fact the whole compiler around it. The `exit()` procedure is another builtin procedure that you can call anywhere you like to exit *explicitly* with its sole parameter being returned as the *exit code* that we mentioned before, instead of tediously returning to the `main()` procedure and exiting there *implicitly* without calling `exit()`. In fact, `exit()` is actually a convenient way to prototype code and use it whenever you do not want to deal with a problem but rather focus on something else first and only later come back and code a solution. In scanning and parsing, this is possible with virtually no limit to your imagination on what can be done. However, in the interest of simplicity we decided not to do that here. We do, however, continue parsing in other circumstances performing proper *error handling*, as shown later.
+Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits. If yes, we need to deal with the situation. First up, we should report the error. This is done using the procedure `syntax_error_message` which in turn uses a procedure that is *builtin* into C and its dialects called `printf` which stands for *print formatted*. We explain that procedure as needed but leave it at that for now. There is another global variable here called `integer_is_signed` that we have ignored so far. It indicates whether a dash `-` has been scanned right before the integer literal. After reporting the error we do something rather lazy. We simply give up and exit, terminating compilation altogether, so not just the scanner but also the parser, and in fact the whole compiler around it. The `exit` procedure is another builtin procedure that you can call anywhere you like to exit *explicitly* with its sole parameter being returned as the *exit code* that we mentioned before, instead of tediously returning to the `main` procedure and exiting there *implicitly* without calling `exit`. In fact, the `exit` procedure provides a convenient way to prototype code whenever you do not want to deal with a problem but rather focus on something else first and only later come back and code a solution. In scanning and parsing, this is possible with virtually no limit to your imagination on what can be done. However, in the interest of simplicity we decided not to do that here. We do, however, continue parsing in other circumstances performing proper *error handling*, as shown later.
 
 > Corner cases are hard
 
@@ -3941,11 +3966,11 @@ So, when exactly is the limit of scanning 20 digits reached? It is reached when 
 
 ![Computing Numerical Values](figures/atoi.png "Computing Numerical Values")
 
-The final step of scanning integer literals is to compute their numerical value. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi()` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa()` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi()` encodes `s` into `n`, and `itoa()` decodes `n` back to `s`.
+The final step of scanning integer literals is to compute their numerical value. The above figure shows the code in the middle, its input and output on the left, here `85` and `1010101`, respectively, and the state of memory when done on the right. Given a string of digits `s`, the rather famous procedure `atoi` computes the numerical value `n` that `s` represents. The name `atoi` stands for *ASCII to integer*. There is also a procedure called `itoa` that does the opposite for printing integer values, see the selfie source code for its implementation. In essence, `atoi` encodes `s` into `n`, and `itoa` decodes `n` back to `s`.
 
-The scanner calls `atoi()` on `integer` to compute the numerical value that the string to which the value of `integer` points to represents. The numerical value is then stored in the global variable `literal`. Communicating the string to `atoi()` works by storing the value of `integer` on the stack. This is interesting because it avoids copying the string. The memory layout shown on the right of the above figure shows that. From then on, `atoi()` refers to the string using the formal parameter `s`, not `integer`. Also, `atoi()` allocates memory on the stack for storing its local variables `i`, `n`, and `c`. The variable `i` is again used as index, here into the string where the value of `s` points to. The variable `n`, as mentioned before, is used for storing the numerical value. The variable `c` stores the character from `s` at index `i` that is to be processed next. That character is loaded from memory using the `load_character()` procedure which is the counterpart to the procedure `store_character()` used in the scanner.
+The scanner calls `atoi` on `integer` to compute the numerical value that the string to which the value of `integer` points to represents. The numerical value is then stored in the global variable `literal`. Communicating the string to `atoi` works by storing the value of `integer` on the stack. This is interesting because it avoids copying the string. The memory layout shown on the right of the above figure shows that. From then on, `atoi` refers to the string using the formal parameter `s`, not `integer`. Also, `atoi` allocates memory on the stack for storing its local variables `i`, `n`, and `c`. The variable `i` is again used as index, here into the string where the value of `s` points to. The variable `n`, as mentioned before, is used for storing the numerical value. The variable `c` stores the character from `s` at index `i` that is to be processed next. That character is loaded from memory using the `load_character` procedure which is the counterpart to the procedure `store_character` used in the scanner.
 
-The `while` loop iterates over `s` until its termination. In each iteration, the value of `c` is *normalized* by `c = c - '0'` from ASCII code to the numerical value it actually represents. This is the semantics of individual digits! Ignoring all checks for validity and overflows, the most important statement of `atoi()` is the assignment `n = n * 10 + c` which implements the semantics of hindu-arabic notation of decimal numbers, hence the factor `10`. If we were computing numerical values of binary numbers, for example, that factor would be `2`. The mathematical principle that `atoi()` implements is called a *recurrence relation*. With our example of scanning `85` it works by computing the numerical value of `85` in sequence from the leftmost to the rightmost digit:
+The `while` loop iterates over `s` until its termination. In each iteration, the value of `c` is *normalized* by `c = c - '0'` from ASCII code to the numerical value it actually represents. This is the semantics of individual digits! Ignoring all checks for validity and overflows, the most important statement of `atoi` is the assignment `n = n * 10 + c` which implements the semantics of hindu-arabic notation of decimal numbers, hence the factor `10`. If we were computing numerical values of binary numbers, for example, that factor would be `2`. The mathematical principle that `atoi` implements is called a *recurrence relation*. With our example of scanning `85` it works by computing the numerical value of `85` in sequence from the leftmost to the rightmost digit:
 
 ```c
 n = 0
@@ -3953,17 +3978,17 @@ n = 0 * 10 + 8 = 8
 n = 8 * 10 + 5 = 85
 ```
 
-Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` in memory, and eventually for `literal`, after `atoi()` returned to the scanner. There is also code, not shown here, for handling unsigned integer overflows to make sure that `0 <= n <= UINT64_MAX` holds. Additionally, the scanner also checks signed integer overflows to make sure that `INT64_MIN <= -n <= 0` holds if a dash `-` has been scanned right before the integer literal.
+Since `85` is `1010101` in binary, `1010101` is the value being stored for `n` in memory, and eventually for `literal`, after `atoi` returned to the scanner. There is also code, not shown here, for handling unsigned integer overflows to make sure that `0 <= n <= UINT64_MAX` holds. Additionally, the scanner also checks signed integer overflows to make sure that `INT64_MIN <= -n <= 0` holds if a dash `-` has been scanned right before the integer literal.
 
 > Scanning hexadecimal numbers!
 
-It is time for your first assignment. Design and implement support of integer literals in hexadecimal notation in selfie. First, think about how to extend the C\* grammar and then modify the `grammar.md` file in the selfie repository accordingly. Do not forget to include the prefix `0x` for hexadecimal numbers. Then, think about how to extend the above FSM for decimal numbers to hexadecimal numbers. After that, make a plan on how to extend the code in `get_symbol()` and `atoi()`, and then implement your solution in `selfie.c`. To see if it works, run:
+It is time for your first exercise. Design and implement support of integer literals in hexadecimal notation in selfie. First, think about how to extend the C\* grammar and then modify the `grammar.md` file in the selfie repository accordingly. Do not forget to include the prefix `0x` for hexadecimal numbers. Then, think about how to extend the above FSM for decimal numbers to hexadecimal numbers. After that, make a plan on how to extend the code in `get_symbol` and `atoi`, and then implement your solution in `selfie.c`. To see if it works, run:
 
 ```bash
 ./grader/self.py hex-literal
 ```
 
-When you are done with the assignment, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
+When you are done with the exercise, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
 
 #### Memory Management
 
@@ -3997,11 +4022,11 @@ character = "'" printable_character "'" .
 
 Thus, whenever the scanner detects a single quote, then it must be followed by a single printable character followed by a single quote, see the finite state machine in the above figure. Otherwise, there is a syntax error in the scanned sequence of characters.
 
-Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character()` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
+Computing the numerical value of a character literal is trivial. In fact, the procedure `get_character` has already done that for us and stored it in the global variable `character`. So, the only thing left to do is to take that value and store it in the global variable `literal` and indicate that we just scanned a character literal by storing the value of the global variable `SYM_CHARACTER` in the global variable `symbol`. Done!
 
 > Dynamic memory allocation
 
-We have also seen already how to perform dynamic memory allocation, and deallocation in fact, by using parameters and local variables of procedures such as the procedure `atoi()` above. Every time `atoi()` is called, memory is allocated on the stack dynamically, that is, at runtime during code execution, for storing the values of its formal parameter and local variables. In contrast to static memory allocation, there is, however, an important challenge with dynamic memory allocation which is when exactly to deallocate memory again, not to run out of memory eventually. With parameters and local variables this is done automatically for us, simply upon returning from a procedure call. This is great and the reason why stack allocation is the most widely used dynamic memory allocation technique.
+We have also seen already how to perform dynamic memory allocation, and deallocation in fact, by using parameters and local variables of procedures such as the procedure `atoi` above. Every time `atoi` is called, memory is allocated on the stack dynamically, that is, at runtime during code execution, for storing the values of its formal parameter and local variables. In contrast to static memory allocation, there is, however, an important challenge with dynamic memory allocation which is when exactly to deallocate memory again, not to run out of memory eventually. With parameters and local variables this is done automatically for us, simply upon returning from a procedure call. This is great and the reason why stack allocation is the most widely used dynamic memory allocation technique.
 
 But stack allocation comes with an important limitation. Deallocation of memory for parameters and local variables is done exactly in reverse order of allocating memory for them. That is why a stack is the correct implementation of that behavior. But what if we need to store information that we need elsewhere in the code outside of the procedure body where the memory is allocated? Well, we can take the information and pass it around as actual parameters and return values of the involved procedures. That style of programming is called *functional programming* as we mentioned before. There is, however, an alternative which have already seen with scanning integer literals and revisit here in more detail.
 
@@ -4019,7 +4044,7 @@ string = """ { printable_character } """ .
 
 Thus, whenever the scanner detects a double quote, then it must be followed by any number of printable characters followed by a double quote, see the finite state machine in the above figure. Otherwise, there is a syntax error in the scanned sequence of characters.
 
-The (non-numerical) value of a string literal is the scanned string itself as is, without any further calculations. However, the scanned string needs to be stored in memory and later added to the generated code. As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc()`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters.
+The (non-numerical) value of a string literal is the scanned string itself as is, without any further calculations. However, the scanned string needs to be stored in memory and later added to the generated code. As before with scanning integer literals, we allocate memory on the heap for storing the string using the procedure `string_alloc`. This time we allocate 128+1 bytes (`MAX_STRING_LENGTH` is initialized to `128`) implying that string literals cannot be longer than 128 characters.
 
 In contrast to scanning integer literals, string literals really need to be kept around as is until code generation and we show how this is done below. We do the same with integer literals but that is a choice we made for handling big integers which could also be handled differently. Again, for now, the only thing left to do, after storing the scanned string and refering to it in the global variable `string`, is to indicate that we just scanned a string literal by storing the value of the global variable `SYM_STRING` in the global variable `symbol`.
 
@@ -4031,7 +4056,7 @@ Liveness is safe to be overapproximated, death is not. In particular, assuming a
 
 > Data management: short-term versus long-term information
 
-Look at the code for scanning integer, character, and string literals. For example, the parameter and local variables of the procedure `atoi()` are used for *short-term* information that expires as soon as the procedure returns. In contrast, scanned integer and string literals are *long-term* information stored on the heap and referred to using global variables `integer` and `string`, respectively. We need the scanned integer and string literals possibly until all code has been emitted because only then we may be able include them as part of the code. In other words, we need the information until the whole program has been scanned and parsed which is a moment in time we do not know while scanning integer and string literals. Moreover, code is emitted, at least in our implementation, in a different part of the implementation than the scanner, making integer and string literals global information. However, local and global variables as well as stack and heap are not synonymous with short-term and long-term information, respectively. The situation is, unfortunately, more complicated and ultimately a weakness of programming languages such as C.
+Look at the code for scanning integer, character, and string literals. For example, the parameter and local variables of the procedure `atoi` are used for *short-term* information that expires as soon as the procedure returns. In contrast, scanned integer and string literals are *long-term* information stored on the heap and referred to using global variables `integer` and `string`, respectively. We need the scanned integer and string literals possibly until all code has been emitted because only then we may be able include them as part of the code. In other words, we need the information until the whole program has been scanned and parsed which is a moment in time we do not know while scanning integer and string literals. Moreover, code is emitted, at least in our implementation, in a different part of the implementation than the scanner, making integer and string literals global information. However, local and global variables as well as stack and heap are not synonymous with short-term and long-term information, respectively. The situation is, unfortunately, more complicated and ultimately a weakness of programming languages such as C.
 
 > Code management: local versus global information
 
@@ -4052,11 +4077,11 @@ Memory management generally involves performing four different tasks:
 
 The challenge is to allocate, deallocate, access, and defragment memory as fast as possible, ideally in time independent of the amount of used and free memory, and with minimal memory fragmentation. Moreover, allocating certain free memory may be better than other free memory because memory access may be faster or slower depending on where the access happens in memory due to complex hierarchical memory hardware. Memory managment is subject to fundamental time-space tradeoffs implying that there is no best solution which has motivated computer scientists including us to work on memory management algorithms for decades.
 
-The good news is that you do not need to know those algorithms to become a programmer or to understand selfie. However, it does help to know what exactly makes memory management hard, how to avoid that part, and then just work with the simplest possible solution. We nevertheless get back to memory management in the tools chapter to see some of the more involved solutions.
+The good news is that you do not need to know those algorithms to become a programmer or to understand selfie. However, it does help to know what exactly makes memory management hard, how to avoid that part, and then just work with the simplest possible solution. We nevertheless get back to memory management in the computing chapter to see some of the more involved solutions.
 
 > What makes memory management hard?
 
-One way to make memory management simple and even optimally efficient in terms of time and space, that is, as fast as possible with minimal memory fragmentation, is by only allocating and using memory blocks of the same size. That's it! It is like turning memory into a checkerboard where any free spot will do. Hard to believe but all modern operating systems, most likely including the one running on your smart phone, tablet, and laptop, exploit that property very effectively, as also explained in the tools chapter.
+One way to make memory management simple and even optimally efficient in terms of time and space, that is, as fast as possible with minimal memory fragmentation, is by only allocating and using memory blocks of the same size. That's it! It is like turning memory into a checkerboard where any free spot will do. Hard to believe but all modern operating systems, most likely including the one running on your smart phone, tablet, and laptop, exploit that property very effectively, as also explained in the computing chapter.
 
 > Memory blocks of different size
 
@@ -4086,23 +4111,23 @@ Let us revisit the four segments in memory for storing code and data, now with a
 
 In sum, allocating memory requires in the code segment, well, code, and in the data segment, global variables and literals. Allocating and deallocating memory in the stack segment is done by calling procedures and eventually returning from procedure calls, respectively. Lastly, allocating and deallocating memory in the heap segment is done by calling special procedures which we explain next.
 
-> `malloc()`: dynamic memory allocation on the heap
+> `malloc`: dynamic memory allocation on the heap
 
-The previously mentioned procedure `string_alloc()` allocates a contiguous block of zeroed memory on the heap for storing a sequence of characters such as an integer or string literal. Ultimately, however, heap allocation is done using the infamous procedure `malloc()` which stands for *memory allocate* on the heap at runtime. That procedure is available in virtually all dialects of C including C\* and so important that it is even built into the language. C compilers including the selfie compiler attach code that implements the procedure to any compiled code that uses it. Programming languages other than C likely feature builtin procedures similar to `malloc()` such as Java, for example, where its counterpart is called `new()`.
+The previously mentioned procedure `string_alloc` allocates a contiguous block of zeroed memory on the heap for storing a sequence of characters such as an integer or string literal. Ultimately, however, heap allocation is done using the infamous procedure `malloc` which stands for *memory allocate* on the heap at runtime. That procedure is available in virtually all dialects of C including C\* and so important that it is even built into the language. C compilers including the selfie compiler attach code that implements the procedure to any compiled code that uses it. Programming languages other than C likely feature builtin procedures similar to `malloc` such as Java, for example, where its counterpart is called `new`.
 
-Why infamous? Well, dynamic memory allocation, as we have seen before, comes with two challenges: first, you need to decide which type of memory allocation to use, stack allocation through procedures with parameters and local variables, or heap allocation through `malloc()`, and second, if you decide to use `malloc()`, you need to figure out when to free memory using another builtin procedure called `free()` to avoid running out of memory eventually, that is, memory addresses, just to be precise.
+Why infamous? Well, dynamic memory allocation, as we have seen before, comes with two challenges: first, you need to decide which type of memory allocation to use, stack allocation through procedures with parameters and local variables, or heap allocation through `malloc`, and second, if you decide to use `malloc`, you need to figure out when to free memory using another builtin procedure called `free` to avoid running out of memory eventually, that is, memory addresses, just to be precise.
 
-Stack allocation simplifies the problem of deciding when to free memory because it happens implicitly when returning from a procedure call. However, dynamic memory allocation on the stack through procedures is essentially functional programming which requires a background that many inexperienced programmers lack. So, `malloc()` it often is, even if there exist more elegant implementations not using `malloc()`. But then there is the second challenge.
+Stack allocation simplifies the problem of deciding when to free memory because it happens implicitly when returning from a procedure call. However, dynamic memory allocation on the stack through procedures is essentially functional programming which requires a background that many inexperienced programmers lack. So, `malloc` it often is, even if there exist more elegant implementations not using `malloc`. But then there is the second challenge.
 
-> `free()`: dynamic memory deallocation on the heap
+> `free`: dynamic memory deallocation on the heap
 
 Freeing memory is hard on two different levels which we mentioned before but summarize here again. It is the when and the how. Firstly, it is difficult to know when memory can be freed, that is, when values in memory die. Knowing that involves knowing the future. Also, freeing too early may result in unsafe memory access while freeing too late may result in out-of-memory errors. Secondly, freeing memory of different size and in arbitrary order may result in fragmented memory that resembles a swiss cheese. Finding free space in there that fits is difficult and thus may get slow and even futile.
 
-The procedure `free()` is the counterpart to `malloc()` and also built into virtually all dialects of C, just not C\*, because sometimes lack of something has significant educational value too. Firstly, it frees students from `free()`. Secondly, it provides an opportunity for students to design and implement their own `free()`. But, most importantly, it creates awareness among students what memory management actually is. Nevertheless, there is an implementation of `free()` in selfie that is not explicitly accessible but it is there.
+The procedure `free` is the counterpart to `malloc` and also built into virtually all dialects of C, just not C\*, because sometimes lack of something has significant educational value too. Firstly, it frees students from `free`. Secondly, it provides an opportunity for students to design and implement their own `free`. But, most importantly, it creates awareness among students what memory management actually is. Nevertheless, there is an implementation of `free` in selfie that is not explicitly accessible but it is there.
 
 > Garbage collection!
 
-The implementation of `free()` is part of a *conservative garbage collector* in selfie which we explain in the tools chapter. For now, we only mention that garbage collectors free memory that is guaranteed to contain dead values, so there is no need to use `free()` explicitly. But, even then, programmers are still required to help the garbage collectors with that, by showing in the code which values are dead. Without any help, garbage collectors may not be able to free memory either, simply trading space for safety. The fundamental problem of knowing the future is here to stay, despite the common but incorrect belief that garbage collectors solve the problem of memory management. Garbage-collected systems help to avoid unsafe memory access but may still run out of memory, just like systems that are not garbage-collected and, even worse, may spend a lot more time doing so.
+The implementation of `free` is part of a *conservative garbage collector* in selfie which we explain in the computing chapter. For now, we only mention that garbage collectors free memory that is guaranteed to contain dead values, so there is no need to use `free` explicitly. But, even then, programmers are still required to help the garbage collectors with that, by showing in the code which values are dead. Without any help, garbage collectors may not be able to free memory either, simply trading space for safety. The fundamental problem of knowing the future is here to stay, despite the common but incorrect belief that garbage collectors solve the problem of memory management. Garbage-collected systems help to avoid unsafe memory access but may still run out of memory, just like systems that are not garbage-collected and, even worse, may spend a lot more time doing so.
 
 > Bump pointer allocator
 
@@ -4120,9 +4145,9 @@ uint64_t* malloc(uint64_t bytes) {
 }
 ```
 
-Selfie implements the procedure `malloc()` with a bump pointer allocator. However, the code in selfie is a bit more involved than the above pseudo code but based on the same principle. There are two important observations we can make here. Firstly, a bump pointer allocator is fast, it even allocates memory in constant time, just like a stack allocator. Secondly, a bump pointer allocator makes the heap grow towards higher memory addresses while a stack allocator makes the stack grow towards lower memory addresses. In other words, heap and stack grow towards each other. What happens when they meet? Bad luck. It means that we are out of memory addresses. In this case, selfie and other systems report an error and terminate code execution.
+Selfie implements the procedure `malloc` with a bump pointer allocator. However, the code in selfie is a bit more involved than the above pseudo code but based on the same principle. There are two important observations we can make here. Firstly, a bump pointer allocator is fast, it even allocates memory in constant time, just like a stack allocator. Secondly, a bump pointer allocator makes the heap grow towards higher memory addresses while a stack allocator makes the stack grow towards lower memory addresses. In other words, heap and stack grow towards each other. What happens when they meet? Bad luck. It means that we are out of memory addresses. In this case, selfie and other systems report an error and terminate code execution.
 
-While a stack allocator deallocates memory in reverse order of allocation, a bump pointer allocator does not do that. It can only bump up, not down. In order to prevent it from eventually bumping into the stack, allocated memory below the bump pointer needs to be marked as free and then reused. The tools chapter has more on that. As mentioned before, selfie does not support freeing memory explicitly.
+While a stack allocator deallocates memory in reverse order of allocation, a bump pointer allocator does not do that. It can only bump up, not down. In order to prevent it from eventually bumping into the stack, allocated memory below the bump pointer needs to be marked as free and then reused. The computing chapter has more on that. As mentioned before, selfie does not support freeing memory explicitly.
 
 Enough of memory management for now. Our primary goal here is to understand how integer, character, and string literals are handled. So far, we have seen how their syntactic structure is specified, how detecting them in a sequence of characters is modeled, and finally how that, together with the computation of the values they represent, is implemented in C\*. Before showing how literals are parsed as C\* symbols in a sequence of arbitrary C\* symbols, it is time to mention how the remaining C\* symbols are handled.
 
@@ -4143,7 +4168,7 @@ and then substitute all non-terminal symbols in its right-hand side with their d
 
 ![Scanner](figures/scanner.png "Scanner")
 
-The scanner for all of C\* is depicted in the above figure, in particular the full finite state machine and a sketch of its implementation in the `get_symbol()` procedure. The finite state machines for integer, character, and string literals along with the finite state machine for identifiers are part of that.
+The scanner for all of C\* is depicted in the above figure, in particular the full finite state machine and a sketch of its implementation in the `get_symbol` procedure. The finite state machines for integer, character, and string literals along with the finite state machine for identifiers are part of that.
 
 > Look ahead!
 
@@ -4153,7 +4178,7 @@ This is not a coincidence. C\* symbols and the symbols of many other programming
 
 > Whitespace
 
-One more thing before moving on to parsing literals. C\* is a programming language in which *whitespace* such as, well, the *space* character but also *carriage return*, *line feed*, and *tabulator*, has no impact on semantics, unlike Python, for example, where indentation does matter. C\* also supports single-line comments using `//` and multi-line comments using `/*` and `*/`. In other words, the C\* scanner ignores all characters to the right of `//`, in a single line, and in between `/*` and `*/`, even across multiple lines. The implementation is not trivial, see the procedure `find_next_character()` in the selfie code for all the details.
+One more thing before moving on to parsing literals. C\* is a programming language in which *whitespace* such as, well, the *space* character but also *carriage return*, *line feed*, and *tabulator*, has no impact on semantics, unlike Python, for example, where indentation does matter. C\* also supports single-line comments using `//` and multi-line comments using `/*` and `*/`. In other words, the C\* scanner ignores all characters to the right of `//`, in a single line, and in between `/*` and `*/`, even across multiple lines. The implementation is not trivial, see the procedure `find_next_character` in the selfie code for all the details.
 
 To demonstrate that whitespace and comments are fully ignored by the C\* scanner, we have prepared a *Hello World!* program in C\* that prints `Hello World!` onto the console:
 
@@ -4191,12 +4216,11 @@ uint64_t*foo;uint64_t*main(){foo="Hello World!    ";while(*foo!=0){write(1,foo,8
 
 Minification is typically used to decrease the size of source code that is sent across the Internet for the purpose of code execution rather than for reading by humans. For example, Javascript programs are often sent to browsers as minified code. To see that both versions are indeed semantically equivalent, try:
 
-
 ```bash
 make whitespace
 ```
 
-In fact, even the machine code and the assembly code generated for both versions are identical. The output of selfie shows that the only difference between the two versions are the number of characters in the code: 737 characters in 23 lines and 9 comments for the original and 94 characters in 1 line and 0 comments for the minified version. Only 94 characters, that is, 12.75% of the 737 characters are used in 39 actual symbols whereas 100% of the 94 characters in the minified version are used in the same symbols. One could decrease the size of the minified version even further by renaming the variable `foo` to a 1-letter identifier such as `f`. Try that! It will not change the semantics either.
+In fact, even the machine code and the assembly code generated for both versions are identical. The *profile* of the compiled source code shows that the only difference between the two versions are the number of characters in the code: 737 characters in 23 lines and 9 comments for the original and 94 characters in 1 line and 0 comments for the minified version. Only 94 characters, that is, 12.75% of the 737 characters are used in 39 actual symbols whereas 100% of the 94 characters in the minified version are used in the same symbols. One could decrease the size of the minified version even further by renaming the variable `foo` to a 1-letter identifier such as `f`. Try that! It will not change the semantics either.
 
 #### Parser
 
@@ -4251,7 +4275,8 @@ arithmetic = term { ( "+" | "-" ) term } .
 
 term       = factor { ( "*" | "/" | "%" ) factor } .
 
-factor     = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor     = [ cast ] [ "-" ] [ "*" ]
+             ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 
 literal    = value | string .
 
@@ -4271,9 +4296,9 @@ call       = identifier "(" [ expression { "," expression } ] ")" .
 return     = "return" [ expression ] .
 ```
 
-The rest of the chapter is essentially about that grammar, how the language it defines is parsed, and how code is generated during parsing. The key difference between the grammar of C\* symbols and the C\* grammar, that is, the grammar of C\* programs, is that the latter consists of multiple EBNF rules that cannot be substituted into a single EBNF rule. The C\* grammar is indeed not regular.
+The rest of the chapter is essentially about that grammar, how the language it defines is parsed, and how code is generated during parsing. The key difference between the grammar of C\* symbols and the C\* grammar, that is, the grammar of C\* programs, is that the latter consists of multiple EBNF rules that cannot be substituted into a single EBNF rule. The C\* grammar is indeed not regular and thus requires a pushdown automaton, that is, a finite state machine with a stack, to recognize sentences that are syntactically valid.
 
-The non-terminal symbol `cstar` in the left-hand side of the first rule is called the *start symbol*. This is where the derivation of syntactically correct C\* programs begins. But how do we deal with multiple EBNF rules in the implementation of a parser? Simple! We just introduce, not just one scanner procedure such as `get_symbol()`, but multiple parser procedures named `compile_X()`, one for each rule where `X` is the non-terminal in the left-hand side of the rule. For example, for the first rule, we introduce the procedure `compile_cstar()` and then implement the right-hand side of the rule in the procedure. For each occurrence of a non-terminal symbol `X` we simply call the procedure `compile_X()`. The result is a recursive-descent parser that is invoked by calling `compile_cstar()`. See for yourself by looking up those procedures in the selfie source code.
+The non-terminal symbol `cstar` in the left-hand side of the first rule is called the *start symbol*. This is where the derivation of syntactically correct C\* programs begins. But how do we deal with multiple EBNF rules in the implementation of a parser? Simple! We just introduce, not just one scanner procedure such as `get_symbol`, but multiple parser procedures named `compile_X`, one for each rule where `X` is the non-terminal in the left-hand side of the rule. For example, for the first rule, we introduce the procedure `compile_cstar` and then implement the right-hand side of the rule in the procedure. For each occurrence of a non-terminal symbol `X` we simply call the procedure `compile_X`. The result is a recursive-descent parser that implements a pushdown automaton and is invoked by calling `compile_cstar`. See for yourself by looking up those procedures in the selfie source code.
 
 Recursive-descent parsers use recursion to descent *top down* into the grammar beginning with the EBNF rule containing the start symbol. Recursion terminates whenever a terminal symbol is encountered. Parsers for languages other than LL(1) often work *bottom up* which is a technique that allows parsing syntactically more complex languages such as LR(1) and others.
 
@@ -4289,15 +4314,16 @@ We have seen the definition of `string` before. So a `value` is:
 value = integer | character .
 ```
 
-Here you have it. A `literal` is indeed either an `integer`, a `character`, or a `string` literal. The respective parsing procedures are `compile_literal()` and `compile_value()`.
+Here you have it. A `literal` is indeed either an `integer`, a `character`, or a `string` literal. The respective parsing procedures are `compile_literal` and `compile_value`.
 
 A careful check reveals that literals are only used in one place in the C\* grammar:
 
 ```ebnf
-factor = [ cast ] [ "-" ] [ "*" ] ( literal | identifier | call | "(" expression ")" ) .
+factor = [ cast ] [ "-" ] [ "*" ]
+         ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
 ```
 
-The procedure for parsing a `factor` is `compile_factor()`. See how beautiful this is?
+The procedure for parsing a `factor` is `compile_factor`. See how beautiful this is?
 
 ![Parsing Literals](figures/parsing-literals.png "Parsing Literals")
 
@@ -4310,27 +4336,27 @@ There is an important new element in the figure compared to the figures on scann
 1. *Compile time* refers to the time of compiling source code.
 2. *Runtime* refers to the time of executing compiled machine code.
 
-Compile time includes the time when source code is not just compiled but developed. Runtime is really just the time when compiled machine code is executed. Anything to the left of the vertical black bar happens at compile time, that is, compilation of C\* code to RISC-U machine code by the starc compiler of selfie. Anything to the right happens at runtime. In the figures below the right part is populated with the initial machine state for executing the compiled RISC-U machine code.
+Compile time includes the time when source code is not just compiled but developed. Runtime is really just the time when compiled machine code is executed. Anything to the left of the vertical black bar happens at compile time, that is, compilation of C\* code to RISC-U machine code by the selfie compiler. Anything to the right happens at runtime. In the figures below the right part is populated with the initial machine state for executing the compiled RISC-U machine code.
 
 Keeping the two timelines strictly separate from each other in your mind is important but not always easy. Some students struggle with this. One reason might be that compile time is also runtime but for the compiled machine code of the compiler, not the machine code compiled by the compiler. Read that again! We therefore try to distinguish both timelines as much as possible.
 
 > Syntax error handling
 
-Consider the procedure `compile_factor()`. The first `while` loop does something fascinating. It handles syntax errors in the sequence of symbols. An important part of compiler design is to parse the entire program even in the presence of syntax errors. Instead of terminating compilation during parsing, a compiler is supposed to report a syntax error but then continue compiling to the end of the program, even if the generated code may then not make much sense. Designing good syntax error handling is nevertheless more of an art rather than a science.
+Consider the procedure `compile_factor`. The first `while` loop does something fascinating. It handles syntax errors in the sequence of symbols. An important part of compiler design is to parse the entire program even in the presence of syntax errors. Instead of terminating compilation during parsing, a compiler is supposed to report a syntax error but then continue compiling to the end of the program, even if the generated code may then not make much sense. Designing good syntax error handling is nevertheless more of an art rather than a science.
 
 > Weak and strong symbols
 
-The problem is that upon the occurrence of a syntax error, we need to make assumptions on the chances of finding a spot in the sequence of symbols that is syntactically correct. A simple approach is to partition the set of symbols into *weak* and *strong* symbols. A weak symbol is a symbol that programmers tend to forget such as a right parenthesis or a semicolon. A strong symbol is the opposite of a weak symbol such as a left parenthesis or a `while` keyword. Whenever a weak symbol is missing, the compiler reports that but then simply assumes it was there and continues parsing. But what if a symbol is missing that is needed to decide how to proceed? In that case, the compiler keeps scanning symbols, reporting each as syntax error, until it finds a strong symbol and then resumes parsing. The first `while` loop in `compile_factor()` does exactly that. It looks for a symbol that a `factor` starts with, considering those as strong. There are other procedures in the parser that do something similar using `while` loops, we point them out below. Yet note that if the parsed sequence of symbols is syntactically correct those `while` loops are never entered.
+The problem is that upon the occurrence of a syntax error, we need to make assumptions on the chances of finding a spot in the sequence of symbols that is syntactically correct. A simple approach is to partition the set of symbols into *weak* and *strong* symbols. A weak symbol is a symbol that programmers tend to forget such as a right parenthesis or a semicolon. A strong symbol is the opposite of a weak symbol such as a left parenthesis or a `while` keyword. Whenever a weak symbol is missing, the compiler reports that but then simply assumes it was there and continues parsing. But what if a symbol is missing that is needed to decide how to proceed? In that case, the compiler keeps scanning symbols, reporting each as syntax error, until it finds a strong symbol and then resumes parsing. The first `while` loop in `compile_factor` does exactly that. It looks for a symbol that a `factor` starts with, considering those as strong. There are other procedures in the parser that do something similar using `while` loops, we point them out below. Yet note that if the parsed sequence of symbols is syntactically correct those `while` loops are never entered.
 
 > Optionality in EBNF
 
-The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` part for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor()`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics of these optional elements is handled after parsing the rest of a `factor`. We discuss what is done for dashes and asterisks when it comes to parsing expressions.
+The first three elements of a `factor` are optional. There may or may not be a `cast`, a dash `-`, and an asterisk `*` at the start of a `factor`. Parsing of optional elements is handled by `if` statements that do not use their `else` body for parsing such as the three `if (symbol == ...)` statements following the first `while` loop in `compile_factor`. Note that a `cast` starts with a left parenthesis `(`. The effect on semantics of these optional elements is handled after parsing the rest of a `factor`. We discuss how that is done when it comes to parsing expressions.
 
 > Typing and casting
 
-Casting we can handle here but it does require a little excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
+The semantics of casting, however, we can handle here since it does not involve code generation but it does require a little yet relevant excursion to typing. C\* features two different *data types* denoted `uint64_t` and `uint64_t*`. As mentioned before, the former stands for *unsigned integer 64-bit type` and the latter for pointer to `uint64_t`.
 
-In C\* variables and procedure arguments as well as literals and expressions are all *typed*, that is, have a type which can only be one of the two C\* data types. Casting allows changing types, here from one type to the other type, without applying any operations on any involved values. That's all. For example, integer literals such as `85` are of type `uint64_t` in C\* which we can nevertheless change to `uint64_t*` through casting:
+In C\*, variables and procedure arguments as well as literals and expressions are all *typed*, that is, have a type which can only be one of the two C\* data types. Casting allows changing types, here from one type to the other type, without applying any operations on any involved values. That's all. For example, integer literals such as `85` are of type `uint64_t` in C\* which we can nevertheless change to `uint64_t*` through casting:
 
 ```
 (uint64_t*) 85
@@ -4356,31 +4382,25 @@ Data types are arguably the most successful innovation in programming languages 
 
 Data types induce a notion of *type error*, similar to a syntax error, but indicating a possible lack of meaning rather than a purely syntactic issue. The advantage is that code can be efficiently checked for type errors even at compile time, that is, for certain kinds of errors in meaning even before executing the code. For example, the selfie compiler reports an error when trying to perform addition of two operands that are both of type `uint64_t*`, assuming that adding a pointer to another pointer is meaningless.
 
-> Type polymorphism
+> Type polymorphism through overloading
 
-What about using data types not just *analytically* for finding semantical errors but also *constructively* for producing code with the same syntax as before but more complex semantics? This is indeed possible through what computer scientists call *type polymorphism*. The idea is to make the semantics of code such as the semantics of arithmetic operators dependent on the type of the involved operands. In C and C\*, adding an integer to another integer has a different semantics than adding an integer to a pointer which is in fact meaningful and not reported as type error. In other words, the addition operator `+` has different meaning depending on the type of its operands. This is called *overloading* which avoids introducing different syntax for different semantics depending on operand types. More on that below. For now, just be careful when reading code. It may not mean what you think it means and type polymorphism may be one of the reasons. Unfortunately, as we mentioned before, computer scientists use notation such as the `+` symbol that has well-established semantics in mathematics with different semantics in programming languages and other formal languages.
+What about using data types not just *analytically* for finding semantical errors but also *constructively* for producing code with the same syntax as before but more complex semantics? This is indeed possible through what computer scientists call *type polymorphism*. The idea is to alter the semantics of code so that the semantics of, say, arithmetic operators depends on the type of the involved operands. In C and C\*, adding an integer to another integer has a different semantics than adding an integer to a pointer which is in fact meaningful and not reported as type error. In other words, the addition operator `+` has different meaning depending on the type of its operands. This is called *overloading* which avoids introducing different syntax for different semantics depending on operand types. More on that below. For now, just be careful when reading code. It may not mean what you think it means and type polymorphism may be one of the reasons. Unfortunately, as we mentioned before, computer scientists use notation such as the `+` symbol that has well-established semantics in mathematics with different semantics in programming languages and other formal languages.
 
 > Grammar attributes
 
-Let us go back to the code of the `compile_factor()` procedure. Also, consider the code of the procedure `compile_literal()` as well, which is called by `compile_factor()` upon parsing C\* literals. The interaction between the two procedures shows how we handle type information. The challenge is to communicate the type of a symbol such as the type of a `literal` to other procedures involved in parsing. We do that by turning the type into a *grammar attribute* which is then passed around as return value of the procedures of the recursive-descent parser.
+Let us go back to the code of the `compile_factor` procedure. Also, consider the code of the procedure `compile_literal` as well, which is called by `compile_factor` upon parsing C\* literals. The interaction between the two procedures shows how we handle type information. The challenge is to communicate the type of a symbol such as the type of a `literal` to other procedures involved in parsing. We do that by turning the type into a *grammar attribute* which is then passed around as return value of the procedures of the recursive-descent parser.
 
-For example, `compute_literal()` determines the type of integer and character literals to be `UINT64_T` which is a global variable initialized to a value that uniquely identifies the type `uint64_t`. Similarly, `compute_literal()` determines the type of string literals to be `UINT64STAR_T` which is another global variable initialized to a different value than `UINT64_T` that uniquely identifies the type `uint64_t*`. The type is then returned to `compile_factor()` as grammar attribute which in turn may cast it to another type or just keep it as is and return it to its caller as grammar attribute and so on. We ignore the code for handling syntax errors in `compile_literal()` and do not show the code of the procedure `compile_cast()` either. It is simple code that obviously parses `cast` and then returns the type to which the `cast` casts as grammar attribute. For more details see selfie's source code.
+For example, `compute_literal` determines the type of integer and character literals to be `UINT64_T` which is a global variable initialized to a value that uniquely identifies the type `uint64_t`. Similarly, `compute_literal` determines the type of string literals to be `UINT64STAR_T` which is another global variable initialized to a different value than `UINT64_T` that uniquely identifies the type `uint64_t*`. The type is then returned to `compile_factor` as grammar attribute which in turn may cast it to another type or just keep it as is and return it to its caller as grammar attribute and so on. We ignore the code for handling syntax errors in `compile_literal` and do not show the code of the procedure `compile_cast` either. It is simple code that obviously parses `cast` and then returns the type to which the `cast` casts as grammar attribute. For more details see the source code of selfie.
 
-We do, however, show the code of the procedure `compile_value()` which parses integer and character literals and is thus also quite simple but demonstrates a different use case for grammar attributes. This procedure does not return a type but instead returns the value represented by the parsed literal as stored in the global variable `literal`. Values as grammar attributes can be used to perform simple code optimizations such as *constant folding*. We explain how that works in principle below.
-
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
+We do, however, show the code of the procedure `compile_value` which parses integer and character literals and is thus also quite simple but demonstrates a different use case for grammar attributes. This procedure does not return a type but instead returns the value represented by the parsed literal as stored in the global variable `literal`. Values as grammar attributes can be used to perform simple code optimizations such as *constant folding*. We explain how that works in principle below.
 
 #### Code Generation
 
 We made it all the way to the last step of implementing literals. Code generation produces an implementation of high-level programming language constructs in machine code, including constructs as simple as literals. But what is really the meaning of literals? The challenge, besides implementing semantics through code generation, is to figure out what semantics we actually want. We need to be absolutely certain about that. This is relatively easy with literals but not so much with other constructs. It took computer scientists years to figure out and agree on which semantics basic programming language constructs should have.
 
-Integer and character literals are easy to figure out. An integer literal as well as a character literal, through its ASCII code, both represent a numerical value. But a string literal is already more complex. It represents, as its value, a pointer to the memory address where the string actually starts in main memory plus the actual string itself as stored in main memory.
+Integer and character literals are easy to figure out. An integer literal as well as a character literal through its ASCII code both represent a numerical value. Yet a string literal is already more complex. It represents, as its value, a pointer to the memory address where the string actually starts in main memory plus the actual string itself as stored in main memory.
 
-Sounds like we also need to know how the target machine works and what machine code can do for us. Recall that all computation happens on the CPU in registers. Code and data is all stored in main memory. Data is loaded into CPU registers from memory, then manipulated in CPU registers, and finally stored from CPU registers back into memory. Since all data manipulation happens in registers, we need to generate code for literals that loads their values into registers. In sum, there are four distinct problems we need to solve to make all of this work.
+Sounds like we also need to know how the target machine works and what machine code can do for us. Recall that all computation happens on the CPU in registers. Code and data is all stored in main memory. Data is loaded into CPU registers from memory, then manipulated in CPU registers, and finally stored from CPU registers back into memory. Since all data manipulation happens in registers, we need to generate code for literals that loads their values into registers. In sum, there are three distinct problems we need to solve to make all of this work.
 
 > Code allocation and storage
 
@@ -4390,89 +4410,1716 @@ Another global variable called `code_size` keeps track of the number of bytes ge
 
 > Data allocation and storage
 
-Secondly, we need to store string literals and big integers as well as the values of global variables. Similar to `code_binary`, the selfie compiler allocates a large block of memory referred to by a global variable called `data_binary`. Again, the content of `data_binary` may be copied to an executable or loaded into the data segment for execution, and the size of `data_binary` is fixed as well. Thus, again, if there is not enough space, the compiler reports an error and quits. There is also a global variable called `data_size` which keeps track of the number of bytes generated for data. Initially, the value of `data_size` is `0` and then incremented by `8` bytes for each generated machine word, again similar to a bump pointer allocator, but at compile time!
+Secondly, we need to store the values of string literals and big integers as well as the values of global variables in memory. Similar to `code_binary`, the selfie compiler allocates a large block of memory referred to by a global variable called `data_binary`. Again, the content of `data_binary` may be copied to an executable or loaded into the data segment for execution, and the size of `data_binary` is fixed as well. Thus, again, if there is not enough space, the compiler reports an error and quits. There is also a global variable called `data_size` which keeps track of the number of bytes generated for data. Initially, the value of `data_size` is `0` and then incremented by `8` bytes for each generated machine word, again similar to a bump pointer allocator, but at compile time!
 
-Unlike code, however, recall that data in the data segment in main memory is referenced relative to the global-pointer register `gp` which points to the end of the data segment, not the start. This means that during parsing data must be stored in reverse order in `data_binary` using the negative (!) current value of `data_size` as offset relative to the value of `gp`. For example, the first machine word that makes it into `data_binary` has, in the data segment in main memory, offset `-8` relative to the value of `gp`, the second `-16`, and so on. Thus string literals, big integers, and global variables are actually a means for implicit static memory allocation in the data segment using an effectively reverse bump pointer allocator that allocates memory from high to low addresses at compile time, similar to a stack allocator at runtime.
-
-> Symbol table
-
-Thirdly,
+Unlike code, however, recall that data in the data segment in main memory is referenced relative to the global-pointer register `gp` which points to the end of the data segment, not the start. This means that during parsing, data must be stored in reverse order in `data_binary` using the negative (!) current value of `data_size` as offset relative to the value of `gp`. For example, the first machine word that makes it into `data_binary` has, in the data segment in main memory, offset `-8` relative to the value of `gp`, the second `-16`, and so on. Thus string literals, big integers, and global variables are actually a means for implicit static memory allocation in the data segment using an effectively reverse bump pointer allocator that allocates memory from high to low addresses at compile time, similar to a stack allocator at runtime.
 
 > Register allocation
 
-Fourthly,
+Thirdly, we need to choose CPU registers for performing any kind of calculation, also known as the *register allocation problem*, and then keep track of which register is currently being used for which value. Out of the 32 available CPU registers of our RISC-U machine, we only use 7 so-called temporary registers for calculations named `t0` to `t6`. Recall that the `t` stands for *temporary*. There are numerous algorithms for solving the register allocation problem. In fact, compiler books typically feature a whole chapter on this topic. It is an important problem because CPU registers are arguably the most important resource of a computer. At any given time during code execution, we want those registers to hold live data, meaning that the values stored in those registers are all still needed.
+
+As you might guess, we ignore that in selfie and instead opt for simplicity, arguably the simplest way of allocating and deallocating registers. We use a stack allocator, but again at compile time! There are two procedures: `talloc` allocates a new register, starting with `t0` and then going up to `t6`, and `tfree` deallocates the register most recently allocated by `talloc`. Does this always work? Do registers really become free in exactly the reverse order in which they were allocated? With code compiled by the selfie compiler from C\* programs they do! Yet this is not true in general but not our concern here.
+
+Then there are are two more procedures: `current_temporary` returns the register most recently allocated by `talloc` and `previous_temporary` returns the register second most recently allocated by `talloc`. Knowing the two most recently allocated registers is sufficient to generate code in all situations encountered by the selfie compiler. Beautiful!
 
 ![Emitting Literals](figures/emitting-literals.png "Emitting Literals")
 
-load_X procedures
+We are finally ready to get to the last step in dealing with literals. The above figure shows the source code involved in generating machine code for literals. The relevant procedures are `load_integer` which emits code into `code_binary` that loads the value of an integer or character literal into a register, and `load_string` which first emits a string literal into `data_binary` and then emits code into `code_binary` that loads the address of that string literal in memory into a register.
 
-everything introduced but fixup chains
+> Emitting code and data
+
+Code generated by the selfie compiler is emitted into `code_binary` by procedures named `emit_X`, one for each RISC-U machine instruction where `X` is the mnemonic of the instruction such as `addi` which is emitted by the procedure `emit_addi`. In turn, each `emit_X` procedure invokes a procedure for encoding the instruction according to its format such as the procedure `encode_i_format` for the I-Format. Data generated by the selfie compiler is emitted into `data_binary` by the procedure `emit_data_word`. A beautiful unique feature of `selfie.c` is that encoding of instructions, which is part of the backend of the selfie compiler, is implemented right next to decoding of instructions, which is part of the frontend of the selfie emulator that executes the code generated by the selfie compiler. Enjoy!
+
+Well, let us get back to generating code, first for integer and character literals. Since integer values in C\* can be up to 64 bits, there are actually three different cases to consider: small 12-bit values, medium 32-bit values, and big 64-bit values. We only look at the simplest case of loading 12-bit values here. For the other cases, refer to the source code of selfie. It is an interesting excercise in reading non-trivial code. Handling medium 32-bit values involves generating more than one machine instruction and handling big 64-bit values is similar to handling string literals. The case of 12-bit values is simple because those values can be loaded into a register with a single `addi` instruction. For this purpose, `load_integer` allocates a register and then invokes the procedure `load_small_and_medium_integer` which in turn emits the actual `addi` instruction using the procedure `current_temporary` to obtain the just allocated register, as shown in the above figure. That's all.
+
+> Assertions against register leaks
+
+There is one more thing though. Notice the comments at the beginning and end of `load_integer`. They express an *assertion* on the number of currently allocated temporary registers. When invoking `load_integer` we assume that `n` temporary registers have already been allocated. Before returning from `load_integer` that number obviously goes to `n+1`. The reason why we use such assertions is to keep track of currently allocated temporary registers, and in particular when to deallocate them, avoiding a register leak which would make the compiler run out of registers eventually. Some programming languages support such assertions explicitly, not just in comments, enabling compilers to enforce them. If you come across assertions, feel encouraged to use them!
+
+Loading string literals is more involved than loading integer and character literals. The relevant code here is the procedure calls `emit_string_data(entry)` and `load_address(entry)` in the procedure `load_string`, ignoring the other code for now. The variable `entry` refers to information about the string literal, in particular the address of the string literal in memory as offset relative to the global pointer `gp`. Details are discussed below in the context of handling variables. The procedure `emit_string_data` emits the actual string literal into `data_binary` using the procedure `emit_data_word`. The procedure `load_address` emits code that loads the address of the string literal in memory into a temporary register. It does so in two steps, by first emitting code that loads the offset relative to `gp` into a temporary register, using the procedure `load_integer`, and then emitting a single `add` instruction that adds to the value of the temporary register the value of `gp`, as shown in the above figure. That's it.
+
+> Still to do: symbol tables and fixup chains
+
+Hard to believe but we are done handling literals and now have time to reflect. Literals are the arguably simplest concept in programming languages and yet it took introducing a lot of material to understand how their syntax and semantics is actually specified and implemented. In particular, it took regular expressions, finite state machines, scanning, context-free grammars, recursive-descent parsing, memory management, the notion of compile time and runtime as well as code, data, and register allocation, and code generation. The good news is that there is only one problem left and two implementation techniques for solving it to handle all other concepts in C\*. We are talking about *symbolic references* and how to resolve them into *direct references*. The issue is that handling literals can be done on the spot when parsing them but not so with other programming elements such as variables and procedures. The name of a variable or procedure refers *symbolically* to data or code, respectively. At the level of the machine, however, not names but memory addresses refer *directly* to data or code. We therefore need to resolve symbolic references to direct references and do so using *symbol tables* and *fixup chains*. The former are introduced next for handling variables, the latter when we get to handling conditional and loop statements.
 
 ### Variables
 
+Handling the syntax and semantics of literals as the arguably simplest concept of programming languages took an amount of work that was even surprising to us. On the flip side, by now we have seen almost everything necessary to handle the remaining concepts, except for symbol tables and fixup chains. Yet the lesson even we learned when writing this up is that a simple concept such as literals is already quite powerful and therefore requires a lot of machinery. Being able to write down numbers, characters, and even strings as is in a high-level programming language, not worrying about how they are encoded and handled by a computer, is an early achievement of computer science. Still, knowing how they are encoded and handled makes a big difference when programming. Sure, you can drive a car with manual transmission without knowing how a clutch works but you cannot become a good driver and certainly not a race driver until you do know!
+
+The arguably second simplest concept, after literals, that can also be seen as an immediate generalization of literals, is variables which are therefore our next topic. A *variable* in a programming language such as C\* and many others essentially represents exactly one value at any given time during program execution, out of a choice of finitely many values. In C\*, that value is a 64-bit integer, meaning there is a choice of 2^64^ different integers, either interpreted as unsigned integer or pointer. The value of a variable can be defined by an *expression* of which literals are a special case, as we see below. The value represented by a variable is stored somewhere in memory, here in exactly one 64-bit machine word, which in turn is identified by a memory address. Thus a variable can also be seen as an abstraction of a memory address, essentially by giving that memory address a name. That name is provided syntactically by an *identifier*.
+
+> Variables are memory
+
+Most importantly, variables in programming language are similar to variables in mathematical formulae and in fact inspired by those but they are not the same, often causing confusion! A variable in a mathematical formula serves as placeholder for essentially anything we want it to be, even something infinitely large. A variable in a programming language can never be more than an abstraction of finite memory, or in other words, an approximation of a variable in a mathematical formula. There are formalisms in computer science with variables as in mathematical formulae but those are typically meant for specification, modeling, and analysis, not programming.
+
+Back to variables in programming languages, how do we handle their syntax and semantics? We first focus on their syntactical representation with identifiers, and only then figure out their semantics through memory allocation and code generation.
+
+#### Identifiers
+
+As with literals, we go through specification, modeling, and implementation of the syntax of identifiers first. The EBNF of identifiers is:
+
+```ebnf
+identifier = letter { letter | digit | "_" } .
+```
+
+where a *letter* is, as we saw before with the syntax of EBNF itself:
+
+```ebnf
+letter = "a" | ... | "z" | "A" | ... | "Z" .
+```
+
+We already saw what a digit is before when handling integer literals. An identifier obviously must begin with a letter followed by any number of letters, digits, and underscores `"_"`. The reason as to why identifiers must begin with a letter is simple. It allows the scanner to distinguish identifiers from integer literals upon seeing the first character! Very nice.
+
 ![Scanning Identifiers](figures/scanning-identifiers.png "Scanning Identifiers")
 
-keywords vs identifiers
+The finite state machine for recognizing identifiers and the implementation of the FSM in selfie is shown in the above figure. The code is part of the procedure `get_symbol` which we have seen before. As example, we use the sequence of characters `actual_id42` which is obviously a syntactically valid identifier. Similar to integer and string literals, there is a limitation in the length of identifiers given by the global variable `MAX_IDENTIFIER_LENGTH` which is set to 64 in selfie. That is plenty given that identifiers are names of variables in C\*. The same applies to procedure names which are the only other use of identifiers in C\*. Have a quick look at the C\* grammar to confirm that. Handling the syntax of identifiers is straightforward after seeing how the syntax of literals is handled.
 
-The C\* grammar is LL(1) with 6 keywords and 22 symbols.
+There is one problem with identifiers, however. C\* features the following seven *keywords*:
 
-C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
+`uint64_t`, `void`, `sizeof`, `if`, `else`, `while`, and `return`
 
-variable versus call: lookahead of 1
+These keywords are syntactically identifiers but obviously serve a very different purpose. Therefore, the scanner needs to distinguish identifiers from keywords. Instead of modeling that in a finite state machine, we just implemented a procedure `identifier_or_keyword` that compares a potential identifier with the strings for all seven keywords. If it finds a match, the potential identifier is actually a keyword and returned as such, see the code of `identifier_or_keyword` for the details.
 
-variable declarations and definitions
+> Declaration, definition, use
 
-find next strong symbol: type or void
+Identifiers appear in a number of places in the C\* grammar. Some occurrences identify variables, the rest procedures. Another important distinction that applies to both variables and procedures is that identifiers always appear, explicitly in syntax or implicitly in semantics, in the following three different roles:
 
-variable vs procedure: lookahead of 1
+1. a *declaration* which introduces an identifier either as variable or as procedure. In particular, the occurrence of `identifier` in the rule for `cstar` via the rule for `variable` declares a global variable. The occurrence of `identifier` in the rule for `procedure` via the rule for `variable` declares a local variable or formal parameter of a procedure. The occurrence of `identifier` in the rule for `procedure` declares a procedure.
+
+2. a *definition* which specifies either the value of a variable or the code of a procedure. In particular, the occurrence of `initialize` in the rule for `cstar` defines the initial value of a global variable. The occurrence of `identifier` in the rule for `assignment` (without the optional occurrence of `*`) defines the current value of a global variable or a local variable or formal parameter of a procedure. The occurrence of `expression` in the rule for `call` defines the value of a formal parameter upon a procedure call. The occurrence of `statement` in the rule for `procedure` defines the implementation of a procedure.
+
+3. a *use* which either obtains the value of a variable or invokes a procedure. In particular, the occurrence of `identifier` in the rule for `factor` obtains the current value of a global variable or a local variable or formal parameter of a procedure. The occurrence of `identifier` in the rule for `call` invokes the code of a procedure.
+
+The following C\* program features all of the above:
+
+```c
+uint64_t x = 42;
+
+uint64_t p(uint64_t y);
+
+uint64_t p(uint64_t y) {
+  uint64_t z;
+
+  z = x;
+
+  if (y < z)
+    return p(y + 1);
+  else
+    return y;
+}
+```
+
+Try to spot each case for yourself! For example, the assignment `z = x;` defines the value of `z` using the value of `x` which is the simplest form of an expression other than a literal. The procedure call `p(y + 1)` uses the value of the expression `y + 1` to define the value of the formal parameter `y`. It also uses the code of the procedure `p` by invoking `p`, and so on.
+
+> Implicit declaration and definition
+
+Declarations and definitions may be implicit without any syntactical elements. In particular, initialization of global variables is optional. If there is none for a given variable, the value of that variable is set to `0`. Local variables cannot be initialized in C\*. Their initial value is *undefined*. Make sure to set their initial value in assignments before using them. This is a source of errors that production compilers point out but not the selfie compiler. Think about how to extend language and compiler accordingly!
+
+> Forward declaration
+
+Procedures may be declared but do not have to. The definition of a procedure is also an implicit declaration. An explicit *procedure declaration* is only necessary if the declared procedure is used in procedure calls before it is defined. In that case, the declaration is called a *forward declaration*. Some of the procedures implementing the recursive-descent parser in the selfie compiler are an example of that since they use each other. Production compilers enforce forward declarations to check that procedures are used with properly typed actual arguments. The selfie compiler does not do that either, so watch out. This is another opportunity for students to enhance the compiler accordingly.
+
+> Lookahead for variables versus procedures
+
+Let us point out the challenges in parsing identifiers before going into the details of how to do that. There are two scenarios that require attention: are we dealing with a variable or a procedure in declarations and definitions, and similarly, in uses. For example, when parsing `uint64_t x = 42;` in the above code, the fact that `x` denotes a variable and not a procedure only becomes apparent through a lookahead of 1 to the next symbol. Since the next symbol is `=` and not `(`, the `x` is recognized as an identifier that denotes a variable. Similarly, upon parsing the procedure call `p(y + 1)`, the fact that `p` denotes a procedure and not a variable only becomes apparent, again, through a lookahead of 1 to the next symbol. Since the next symbol is `(` and not something else, `p` is recognized as an identifier that is supposed to denote a procedure. The selfie compiler then checks if `p` has indeed been previously declared or defined to denote a procedure.
+
+Next, we look into parsing global variable declarations, followed by parsing uses of global and local variables as well as formal parameters. Variable and formal parameter definition in assignments is discussed in the section on assignments. Local variable and formal parameter declarations as well as formal parameter definitions in procedure calls are handled when we discuss procedures. One more thing: the keywords `uint64_t` and `void` serve as strong symbols in syntax error handling when parsing global variable and procedure declarations because both symbols are rarely forgotten by programmers. See the use of the procedure `is_neither_type_nor_void` in the selfie source code for the details.
+
+#### Global Variable Declaration
+
+A global variable declaration introduces a global variable by name through an identifier and defines the type of the variable, that is, how the value represented by the variable is interpreted, here as unsigned integer or pointer. The relevant part of the C\* grammar is:
+
+```ebnf
+cstar      = { variable [ initialize ] ";" | procedure } .
+
+variable   = type identifier .
+
+...
+
+initialize = "=" [ cast ] [ "-" ] value .
+```
+
+We have already seen the definition of `type`, `cast`, and `value`. The definition of `procedure` is not relevant here. The optional initial value of a global variable can only be a possibly negative integer or character literal, possibly casted to a pointer. Similar to big integers and string literals, we need to allocate memory in the data segment for storing the value of a global variable. However, there is no code generation involved in global variable declarations and thus also no register allocation. Code is only generated when using variables in expressions and defining them in assignments.
+
+There is, however, a remaining challenge that takes some effort to solve. A global variable declaration is de facto static memory allocation in the data segment, preparing for the eventual and possibly repeated definition and use of the declared variable in possibly many places throughout the parsed program. Whenever parsing definition and use of a variable, the memory address of where its value is stored and how it is interpreted must be known. In other words, as mentioned before, whenever encountering a symbolic reference to a variable in source code, we need to be able to resolve it into a direct reference in machine code.
+
+![Global Variable Declaration](figures/global-variable-declaration.png "Global Variable Declaration")
+
+The above figure shows what is involved in parsing global variable declarations with optional definition of initial values. As example, we use `uint64_t x = 42;` to declare and define a global variable `x` with its value interpreted as unsigned 64-bit integer and set to the initial value `42`. The syntax of global variable declarations and definitions is specified in the rule for the start symbol `cstar` of the C\* grammar. Hence the procedure `compile_cstar` is in charge of parsing global variable declarations and definitions. It also parses procedure declarations and definitions which we ignore here. The procedure `compile_type` parses the type keyword `uint64_t` followed by an optional `*`. Upon parsing the identifier that is being declared here, the distinction between variable and procedure declaration is not yet known. A lookahead of 1 is still necessary, as mentioned before.
+
+If the next symbol is not a left parenthesis `(`, we know that a variable is supposed to be declared, not a procedure. The procedure `compile_variable` takes the parsed identifier, here `x`, and then checks if the parser has seen a global variable, or even a procedure declaration for `x` before. In that case, a syntax error is reported and the currently parsed declaration is ignored. The names of global variables and procedures must be unique. The parser remembers the names of all global variables, and in fact procedures and other information, in a *symbol table*, which can be thought of as a *database* for symbols. We explain how that works below.
+
+If `x` has not been declared yet, a 64-bit machine word is allocated in the data segment for storing the value represented by `x` at runtime, similar to the memory allocated for big integers and string literals. Then, a new entry in the symbol table is created, remembering `x` along with additional information such as the source code line number of the declaration, the fact that `x` denotes a variable called its *class*, its type, its initial value which is for now assumed to be `0`, and its offset relative to the global pointer in the data segment.
+
+Finally, the procedure `compile_initialize` parses the optional definition of an initial value, here `42`. The value itself is parsed by the procedure `compile_value`. When done, the value `42` is returned to `compile_cstar` which in turn sets the initial value of `x` to `42` in the symbol table entry for `x`. At this point, the parser is ready to emit the value `42` into `data_binary` using the procedure `emit_data_word`, similar to what is done for big integers and string literals. Recall the procedure `emit_string_data`. That procedure uses `emit_data_word` as well.
+
+In fact, have a quick look at the procedure `load_string` again. Turns out that string literals, and even big integers, are remembered in the same symbol table as variables and procedures. However, the same string literal, or big integer, is perfectly fine to appear in different places in the parsed source code, so there is no syntax error message if they do. Why do we then remember them? Well, read the code carefully. If a string literal is already in the symbol table, we simply do not allocate memory for it anymore, but just reuse the address of the same string literal we parsed before. The same applies to big integers. Reusing the memory for string literals saves more than 2KB in the data segment when self-compiling selfie. Not much but the implementation is so simple, we just could not resist doing that little optimization.
+
+Let us point out that global variable declarations and definitions do not result in any code generation, only data generation. Code is only generated when variables are actually used, and defined in assignments.
+
+#### Variable Use
+
+Using a variable, or a formal parameter for that matter, that is, using its current value in a calculation, to be more precise, is only possible in exactly one spot in the C\* grammar, namely where the symbol `identifier` occurs in the rule for `factor`:
+
+```ebnf
+factor = [ cast ] [ "-" ] [ "*" ]
+         ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
+
+...
+
+call   = identifier "(" [ expression { "," expression } ] ")" .
+```
+
+In other words, we need to take another look at the procedure `compile_factor` for parsing a `factor`. The relevant part of the grammar also shows that there is a lookahead of 1 necessary to be sure that we are dealing with a global or local variable or a formal parameter, and not a procedure call.
+
+![Variable Use](figures/variable-use.png "Variable Use")
+
+The above figure shows how variable use is parsed and how code is generated for that. As example, we use an assignment `x = x + 7;` where only the second occurrence of `x` is relevant since it denotes the use of `x`. The first occurrence of `x` defines the value of `x` which is relevant later when we get to assignments.
+
+Once the parser has figured out through a lookhead of 1 that the parsed identifier does in fact denote the use of a variable or formal parameter, not a procedure call, the procedure `load_variable` is invoked. That procedure first invokes the procedure `get_variable_entry` to see if the parsed identifier denotes a variable or formal parameter that has actually been declared before. To do so, something almost magical happens. Well, we probably exaggerate but still there is something very powerful about what is done next.
+
+> Scope: global versus local
+
+Remember our discussion of global versus local variables and formal parameters? The key difference is their *scope* and *memory*, that is, where in source code they can be used and where in memory their values are stored. In our example, we have actually not specified whether `x` denotes a global or local variable or even a formal parameter. In fact, `x` could denote both a global variable and a local variable or formal parameter in which case its role as local variable or formal parameter takes priority over its role as global variable. So, how do we figure out what is going on?
+
+> Symbol table: global versus local
+
+There are different choices but one choice in particular is arguably the simplest. We use two symbol tables rather than one: a *global symbol table* and a *local symbol table*. The global symbol table is where we gather information about global variables, big integers, string literals, and procedures. The local symbol table is where we gather information about local variables and formal parameters of a procedure. Whenever we are trying to find information about an identifier that is supposed to denote a variable or formal parameter, we first check the local symbol table, and only refer to the global symbol table if the local symbol table did not return anything. This is exactly what the procedure `get_scoped_symbol_table_entry` does.
+
+If there is no entry in neither the local nor the global symbol table, meaning the identifier has not been declared yet, the compiler reports a syntax error and terminates. That behavior is a bit lazy and could be improved since the use of a variable can be seen as an implicit declaration. In other words, the compiler could do what it does for an explicit declaration anyway. Only determining the type of a variable may be more involved, requiring an analysis of the context in which it is used. Production compilers do all that and programming languages other than C and its derivates allow and even encourage the use of undeclared variables. Mostly for simplicity, we do not do any of that in the selfie compiler.
+
+While the global symbol table persists during parsing, a local symbol table does not, simply because it is only needed when parsing a given procedure declaration or definition. Upon moving on to parsing the next procedure, a new, empty local symbol table is created. This means that the global symbol table may get rather large, in fact asymptotically as large as the source code, while a local symbol table may only get as large as the largest procedure in the code. Keep that in mind as we look into the details of symbol tables. We get back to local symbol tables when we explain how procedures are handled by the compiler.
+
+> Using is loading, defining is storing
+
+Alright, once the parser has found an entry, here for `x`, in one of the two symbol tables, it is time to generate code for loading the current value of `x` into a register by invoking the procedure `load_value`. Besides allocating a temporary register, the challenge is to determine the address of where the value is stored in memory. Ultimately, the address is composed of a register, that is, either the `gp` register for global variables or the `s0` register for local variables and formal parameters, as provided by the procedure `get_scope`, and the offset relative to that register, as provided by the procedure `get_address`. This is only a slight misnomer since `get_address` does indeed return an actual address for entries that represent procedures. Either way, offsets may or may not fit into 12 bits. If they do not, code generation is a bit more involved, see the source code for the details. If the offset does fit, only a single load instruction is generated, as shown in the above figure for the case of `x` being a global variable. When we get to assignments, we see that the only difference between using the current value of a variable versus defining it, as in `x = x + 7;`, is that a store instruction is generated, instead of a load instruction but with the exact same parameters as the load instruction. We finally made it to our last big topic before looking into expressions.
+
+#### Symbol Table
+
+A symbol table is our first example of a non-trivial data structure where there is a lot to learn. An interesting observation is that compiling most aspects of programming languages does not even require symbol tables. Only when it comes to handling a context larger than, say, a line of code, up to even the whole program, finite state machines, even with stacks, reach their limits. We need something that remembers what we have seen, possibly in any order, so that we can use it properly later.
+
+![Symbol Table](figures/symbol-table.png "Symbol Table")
+
+The idea of a symbol table is to keep track of symbols that have grammar attributes that are relevant elsewhere in the code such as their class and type as well the address in memory where the value they might represent is stored, and even the line number where they occurred in source code. A symbol table is a *database*, or more specifically, a *key-value store* that maps a "key", here a symbol, to a unique "value", here the attributes of the symbol. Whenever the parser encounters a symbol with attributes it may store the symbol with its attributes in the symbol table. Later, the parser may search the symbol table to find out about the attributes of a given symbol. The above figure shows an example of a symbol table with entries for an identifier `x` and a string literal `"Hello World!"`. Their "keys" are the strings `"x"` and `"Hello World!"`, respectively. Their "values" are the offsets relative to either the `gp` or `s0` register of where their actual values are stored in the data segment at runtime. We also store other attributes and mention some of them below.
+
+> Data structures and algorithms
+
+The important insight here goes far beyond symbol tables which are our first example of a *data structure* for encoding *composite* information beyond strings and *scalar* information such as integers, characters, and pointers. The key to understanding data structures is to distinguish explicitly their functional *logic*, typically in some informal form of *specification*, from their algorithmic *implementation*, or in short the what from the how. Abstract models of computation such as finite state machines could be used in formal specifications of data structures but are often either not sufficiently expressive or difficult to use. Every data structure has a functional purpose but may be implemented in different ways which dictate its temporal and spatial performance, and algorithmic complexity. The above figure shows the logic of a symbol table and two different ways of achieving the same logic using two different implementations with different algorithmic complexity. Lots of other choices are possible too, we only show the two choices that are actually implemented in selfie.
+
+> Application programming interface
+
+When it comes to designing data structures, and in fact many other things, as we saw before, logic is first and implementation is second. We first need to be clear on what functional logic we actually want from a data structure and then write it down as a list of procedures that form the *application programming interface* or *API* of the data structure. A symbol table, for example, comes with only two functions implemented by a procedure for inserting data into the symbol table and a procedure for retrieving data from the symbol table. In selfie, they are called `create_symbol_table_entry` and `search_symbol_table`, respectively. The former obviously creates a new entry in the symbol table, given a symbol and its attributes. The latter searches the symbol table, given a symbol, and returns its attributes, if there is an entry for the symbol in the symbol table. Otherwise, it returns a *null pointer* which is, as the name suggests, the value `0` interpreted as pointer.
+
+Unfortunately, there are also some subtle issues here that make things a bit more complicated. For example, what happens if we create an entry for a symbol that already has an entry in the symbol table? Logically, we do not want multiple entries for the same symbol and we could easily avoid those in an implementation by always searching the symbol table for a given symbol before creating an entry for that symbol. However, always searching the symbol table may be slow and often not even necessary, in case we know that a given symbol cannot have an entry yet. Also, there may be situations where we need to know if there was an entry or not before creating one. The lesson to be learned here is that all those subtleties can and should already be considered before even worrying about any implementation. In our experience, however, many people, including us, often rush to an implementation without getting the logic right first. The result is an unpleasant back and forth between logic and implementation until things work out properly.
+
+> Lists versus arrays: to point or not to point?
+
+Hard to believe, but there are only two fundamentally different choices to be made when it comes to implementing data structures. It all comes down to their layout in memory and how to navigate that layout. This is a prime example of how the properties of digital memory technology dictate programming. We may either use pointers to create composite *list*-like structures in memory *explicitly* or contiguous blocks of memory that represent composite *array*-like structures *implicitly*, or in fact any combination of both. This even applies to modern high-level programming languages that do not feature pointers explicitly. Under the hood, they all use pointers anyway making you a better programmer if you know what they are, and possibly a not-so-good programmer if you do not.
+
+A *list* is essentially a pointer, called *head pointer* or just *head*, that points to a sequence of contiguous memory blocks, called *list elements*, that may be allocated in memory in any order but are linked by pointers in exactly one list order. Lists can easily grow and shrink in length during runtime by manipulating the pointers that form the list. In contrast, an *array* is a pointer to a fixed sequence of machine words, here called *array elements*, that are typically stored in a single contiguous memory block whose size is also fixed when allocated.
+
+The above figure shows our list and array implementations of a symbol table in selfie. The list implementation maintains a *singly-linked list* of *symbol table entries* where each entry is represented by a 64B array of 8 64-bit machine words. The array implementation is an 8KB array of 1024 64-bit machine words where each machine word is interpreted as a head pointer to a list-based symbol table. The 8KB array implements a *hashtable*, here over list-based symbol tables, to speed up search while maintaining speed of insertion. Logically, however, the hashtable is seen as a single symbol table albeit made up from 1024 smaller symbol tables. It is a truly fascinating example of data structure magic that we explain in a moment.
+
+> Fields of data
+
+While the 1024 machine words of the 8KB array are all interpreted the same, the 8 machine words of the 64B arrays are not. We therefore do not call the 8 machine words array elements but *fields*. The first field is interpreted as a pointer to the *next* list element in the list, also called *next pointer*. The end of the list is marked by a null pointer as next pointer. The second field is interpreted as a pointer to the "key" of the symbol table entry, here the string identifying the symbol. The address of the 2-nd field in memory is, counting from 0, 1 times 8 bytes above where the list element is located in memory, as shown in the above figure. The 7-th (!) field is interpreted as a signed integer that represents part of the "value" of the symbol table entry, here its address in the data segment as offset relative to either the `gp` or `s0` register. The address of the 7-th field in memory is, again counting from 0, 6 times 8 bytes or 48 bytes above where the list element is located in memory. There is also a field not shown here for storing which of the two registers is used, so exactly the information we need to remember. The other fields contain attributes not relevant here.
+
+> Indexing
+
+The key advantage of fields, and array elements in general, is that given an integer `i` into the array called an *index*, it only takes constant time to compute the address of the `i`-th element in memory just involving elementary arithmetic, which is possible if arrays are represented by contiguous blocks of memory, and they mostly are, including in selfie. Another example is the 13-th array element in the hashtable which is, again counting from 0, 12 times 8 bytes or 96 bytes above where the hashtable is located in memory, as shown in the above figure. Similarly, the 43-rd element is 42 times 8 bytes or 336 bytes above the beginning of the hashtable. The address calculation uses what is called *pointer arithmetic*. We see below how that works in details. In contrast to arrays, finding the `i`-th element in a list takes linear time in the value of `i` since we need to traverse the list to find the element. If this is done often, even for small values of `i`, using an array will be much faster. However, there is, as always, a price to pay for using arrays which is memory fragmentation. If we use lots of arrays of different size and keep allocating and deallocating them, memory fragmentation may become an issue and eventually result in performance degradation when trying to decrease memory fragmentation.
+
+> Structs by convention
+
+Readers familiar with the programming language C might be puzzled by our choice of terminology here. So let us try to clear things up. First of all, C features arrays but C\* does not. In fact, unlike C\*, C also features what is known as *structs*. The problem is that we use both, implicitly as concept, but do so by convention using pointers without supporting arrays and structs explicitly in C\*. This keeps selfie simple, and, very importantly, gives students the opportunity to implement explicit support of arrays and structs in homework assignments. We point those out below.
+
+Essentially, structs are here similar to arrays but with fields that all have the same size, one machine word each, and which may be interpreted differently, as integer or as pointer. In order to keep the code organized and readable, we use *getters* and *setters* by convention to access individual fields. For example, given a list element, the procedure `get_next_entry` returns the next pointer to the next list element in the list-based implementation of our symbol table. Similarly, the procedure `set_next_entry` sets its next pointer to the next list element. There are also getters and setters for all other fields such as the procedures `get_scope` and `get_address` that we saw before, and for other data structures altogether. For example, `get_address` is implemented by a single return statement `return *(entry + 6);` which returns the 7-th field of a symbol table `entry`. However, the `+` operator performs pointer arithmetic in this case meaning that it actually adds not just 6 to the value of `entry`, which is interpreted as pointer, but 6 times 8 or 48 which, as we mentioned before, is exactly the number of bytes above the machine word where `entry` points to in memory, and thus where the 7-th field is located in memory. Pointer arithmetic appears to be strange but does make sense as soon as we get to it in more detail and clear up the mystery. For now, see the selfie source code for the details on other getters and setters.
+
+> The algorithm of a data structure
+
+So, how does insertion of new list elements and finding them later in a list work? Insertion is easy. Just allocate memory on the heap for a new list element, populate its fields with data, in particular set the first field to the *head* of the list, which is a pointer to the currently first element of the list. The head pointer may also be a null pointer if the list is empty. Finally, update the head pointer to point to the new list element. In other words, insert the new element at the beginning of the list. Finding a list element is easy too. Given a symbol you are looking for, just go through the list from beginning to end and compare the "key" of the symbol with the "key" of each list element. If you find a match, return the pointer to the matching list element. If not, return a null pointer. How long does insertion and search take, asymptotically? Well, insertion takes constant time because it always takes the same amount of work no matter how long the list is. Search, however, takes linear time in the length of the list, in the worst case, which matters if we are interested in asymptotic complexity.
+
+Is this a problem? It could be, if the list gets really long. In selfie, we actually use different symbol tables for different purposes. Some remain short such as local symbol tables, others not such as the global symbol table. For the latter, we decided to speed up search, in practice, not asymptotically, at least not in general, without making insertion asymptotically slower. In general, this is not easy to do. Usually, speeding up parts of an API, especially asymptotically, comes at the cost of making other parts of the API asymptotically slower. Also, doing so often requires more memory, even asymptotically, making it yet another instance of a time-space tradeoff. Computer scientists working on data structures and algorithms know all too well about that. It is a fundamental, seemingly endless intellectual challenge. Countless textbooks and entire careers have been devoted to that topic, see our recommended readings.
+
+How can we make searching a list faster? Well, we can break up the list into smaller lists in such a way that we only need to search a few or ideally just one of the smaller lists. There are different ways to do that and we could go on about them until the end of time. Instead, we only present the arguably simplest way using a hashtable. The concept of a hashtable exploits the fundamental advantage of arrays over lists: the constant access time through indexes! Instead of maintaining a single list of symbol table entries, we use, say, 1024 lists which are all empty in the beginning, just like the single list. Where do we store the 1024 head pointers? Well, in a hashtable which is here, again, an 8KB array of 1024 64-bit machine words that are interpreted as pointers, initially set to `0`.
+
+> Hashing
+
+Now, for insertion we need to figure out in which list we actually insert a given symbol and its attributes. This is where *hashing* comes in. The problem is that we can only identify a list among the 1024 lists by its index in the array or, well, hashtable. So, how do we get from a symbol to an index? We *hash* the symbol, that is, we design and implement a function that maps symbols to indexes.
+
+> Hash collisions
+
+There are endless ways to do that which can nevertheless all be assessed by essentially two characteristics: how long does it take to compute the hash and how likely is it that two different symbols hash to the same index? The latter is called a *hash collision*. If computing the hash takes too long, that is, essentially more than constant time, the advantage of using a hashtable may disappear, or even turn into a disadvantage. If many different symbols hash to the same index, then they all end up in the same list, which means that, again, the advantage may become a disadvantage. In short, a good hash can be computed fast in constant time and has a high chance of preventing hash collisions. The size of hashtables plays an important role too. The bigger it is the higher the chances are of preventing hash collisions, at the expense of increased memory consumption, of course. What about searching for a given symbol? Easy. We hash the symbol to its index and then only search the list with that index. Done.
+
+> Practice!
+
+Good hashing does improve temporal performance but not asymptotic complexity. Here, insertion and search still take constant and linear time, respectively. Why did we pick 1024 lists as size of our hashtable in selfie? We did that by running experiments with different sizes. It turned out that during self-compilation less than 1024 lists increased hash collisions while more than 1024 lists did not decrease hash collisions significantly anymore. After compilation, selfie even reports the number of symbol table lookups as well as the number of iterations taken on average per lookup. Self-compilation takes around 20 thousand symbol table lookups which in turn take 2 iterations on average per lookup, that is, a total of around 40 thousand iterations in all lookups combined, as opposed to more than 500 iterations on average per lookup and a total of around 10 million (!) iterations in all lookups combined without using a hashtable. Try that yourself. Just set the global variable `HASH_TABLE_SIZE` in the selfie source code to 1 instead of 1024, effectively turning the hashtable into a single list. Last time we checked, the speedup of self-compilation through our hashtable was more than 60%! That is why we did this, and to teach students the magic of hashing, of course.
+
+> How to hash
+
+Again, there are a lot of ways to compute a hash, we only implemented a simple, constant-time version of hashing a symbol to an index in the procedure `hash` in selfie. On a high level of abstraction, the challenge is to map sequences of bits to typically shorter sequences of bits that are all of the same fixed length in such a way that two different sequences of bits are likely to map to two different sequences of bits of that fixed length. We say likely because it is impossible to guarantee that in general. Hashing generally removes information. In our case, the procedure `hash` maps a string representing an identifier, string literal, or big integer, to an integer that must be an index into our hashtable, meaning that its value can only be between 0 and 1023 since indexes start at 0, not 1. In other words, `hash` maps strings to a 10-bit integer.
+
+The length of those strings is bounded in selfie by whatever bounds we imposed on the length of identifiers, string literals, and big integers. A simple solution would be to iterate over the characters of those strings but that would result in a linear-time algorithm. Instead, we only consider the first 8 characters and, since they all fit into the first machine word representing a string, we effectively consider only a single machine word. This means that any two strings whose first 8 characters are the same, that is, have the same 8-character *prefix*, map to the same integer value. In our case, that is alright. Just check how many pairs of global variable and procedure names have that property in the selfie source code. Not that many, if any. Check the implementation of `hash`, which fits into a single line of code, for the details. The key operation is to divide the value of a simple calculation over the first machine word by 1024 and then use the remainder, which is obviously between 0 and 1023, as index.
+
+> When to hash
+
+Hashtables can be used to speed up search for all kinds of applications, not just symbol tables. Developing a sense for when to use hashtables is not easy though. A common mistake is that developers use them and other more advanced data structures even though using a simple data structure despite its inferior performance is often just fine. A singly-linked list for local symbol tables is an example of that. A good strategy is to implement any desired logic first with the simplest possible data structure, just to get it right in terms of functional correctness. Only later, if performance becomes an issue, it may be worth taking the risk and look into more complex data structures. Complexity should always be justified.
 
 ### Expressions
 
-type polymorphism
+Literals and variables are the most basic form of arithmetic and relational expressions which in turn allow us to formulate arithmetic and relational calculations over literals and variables. Expressions in C\* are therefore the next best candidate to look into. Before we get to the actual grammar of expressions in C\*, let us take a look at a strict subset of the C\* grammar that defines *elementary expressions* which only involve arithmetic operators, literals, and variables:
 
-unary operators in factor: cast, -, *
+```ebnf
+expression = term { ( "+" | "-" ) term } .
 
-cast versus expression: lookahead of 1
+term       = factor { ( "*" | "/" | "%" ) factor } .
 
-![Expressions](figures/expressions.png "Expressions")
+factor     = literal | identifier | "(" expression ")" .
+```
 
-constant folding
+An example of an elementary expression is `x + 7` which we saw before when parsing literals. Three more examples that help in the discussion below are the elementary expressions `x + 7 * y`, `x - 7 + y`, and `x + 7 - y`.
+
+> Precedence
+
+The expression `x + 7 * y` demonstrates the notion of *precedence* of operators which we discussed before in the context of arithmetic expressions as well as grammar expressions. For example, the expression `x + 7 * y` is grouped as in `x + (7 * y)`, in particular in contrast to `(x + 7) * y`. In other words, the operator `*` has precedence over the operator `+`. More generally, the operators `*`, `/`, and `%` have precedence over the operators `+` and `-`. Recall that operator precedence is already expressed syntactically in the structure of the grammar where the operators with lower precedence appear in grammar rules that use the grammar rules involving the operators with higher precedence, and not the other way around. That structure is maintained in the part of the recursive-descent parser that handles expressions.
+
+> Associativity
+
+But what if some operators have the same precedence such as `+` and `-` as well as `*`, `/`, and `%`? In that case, *associativity* of operators determines grouping. For example, the expression `x - 7 + y` is grouped as in `(x - 7) + y`, again in particular in contrast to `x - (7 + y)`. This is because the `-` operator is *left-associative* in C\*, in fact along with the other arithmetic and even relational operators in C\*, which means that expressions are grouped from left to right across operators of the same precedence. Associativity, however, cannot be expressed in EBNF. It only shows up in the parser that handles those operators, as we see below.
+
+Are there also *right-associative* operators in C\*? Yes, we discuss them as soon as we are done here. Making the `-` operator left-associative makes sense because subtraction is left-associative in elementary arithmetic, along with division and remainder. But what about operators that are actually *associative* in elementary arithmetic such as `+` and `*`? After all, expressions with addition and multiplication can be grouped in any order without an effect on the outcome, at least in elementary arithmetic. Why do we make even them left-associative in C\*, and in fact many other programming languages? Well, mixing associativity of operators with the same precedence may result in grouping conflicts. For example, how would you group the expression `x + 7 - y` if `+` was right-associative? Is it `(x + 7) - y` or `x + (7 - y)`? The former respects left-associativity of `-` but not the right-associativity of `+`, and the latter vice versa. So, left-associativity for `+` and `*` it is.
+
+![Elementary Expressions](figures/elementary-expressions.png "Elementary Expressions")
+
+The above figure shows the pushdown automaton that handles the grammar of elementary expressions. Recall that a pushdown automaton is a finite state machine with a stack. The implementation of that pushdown automaton in a recursive-descent parser implicitly maintains the stack of the automaton using the call stack for procedures. In selfie, those procedures would be the parser procedures named `compile_X` that handle the grammar rules defining non-terminals `X`. For example, similar to the non-terminal `factor` implemented by the procedure `compile_factor`, the non-terminals `expression` and `term` would be implemented by procedures called `compile_expression` and `compile_term`, respectively. The interesting case where these procedures actually form a recursion is the occurrence of the grammar expression `"(" expression ")"` in the right-hand side of the grammar rule that defines the non-terminal `factor`. The procedure `compile_factor` does indeed call the procedure `compile_expression` recursively to handle that part of the rule.
+
+The full C\* grammar of expressions extends the grammar of elementary expressions with the full grammar rule for the non-terminal `factor` and a new grammar rule for comparison operators, which have lower precedence than all other operators, replacing the grammar rule for elementary `expression` which still appears but now defines the non-terminal `arithmetic` instead:
+
+```ebnf
+expression = arithmetic [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) arithmetic ] .
+
+arithmetic = term { ( "+" | "-" ) term } .
+
+term       = factor { ( "*" | "/" | "%" ) factor } .
+
+factor     = [ cast ] [ "-" ] [ "*" ]
+             ( "sizeof" "(" type ")" | literal | identifier | call | "(" expression ")" ) .
+```
+
+The arithmetic and comparison operators used in the first three rules are all *binary* operators in the sense that they have two operands. In contrast, the `cast`, minus, and dereference operators used in the rule for `factor` are *unary* operators with only one operand. Notably, the keyword `sizeof` also denotes a unary operator, not a procedure, which, in C\*, can only be applied to a `type`! In C\*, the unary operators have highest precedence among all operators in expressions and, notably, are all *right-associative*. For example, the expression `*x + 7` is grouped as in `(*x) + 7`, not `*(x + 7)`.
+
+> Ambiguity and determinism
+
+Precedence and associativity groups expressions in ways which, ideally, are as close as possible to what we already know as something that works well such as elementary arithmetic. More importantly, however, is to group any expression in exactly one way, not two, or even more, removing all *ambiguity* from syntax because unambiguous syntactical structure is a prerequisite for *determinism* in semantics. In other words, what we really want is that any expression actually means exactly one thing and one thing only, again not two, or even more. In fact, we also want that from whole programs, not just expressions.
+
+Just imagine for a moment that the semantics of source code would be *non-deterministic*, that is, the code could have more than one meaning. In that case, its actual meaning during execution would depend on the compiler, the libraries, and the machine you use for compilation and execution. If you later decide to deploy the same source code in a different setting you could see different behavior. In short, establishing correctness would be even harder because you would have to develop the code with all its possible meanings in mind.
+
+Still, are there programming languages with non-deterministic semantics? Yes, C, for example, and the reason is performance. The potential presence of non-determinism in the context of programming languages gives compilers more freedom in optimizing code. Also, removing all sources of non-determinism from a programming language is not easy. Everything, even the smallest detail, has to be defined. We tried our best to remove the non-determinism in C from the semantics of C\* but at least the procedures for input and output and memory allocation in selfie may still be non-deterministic.
+
+> Order of evaluation and side effects
+
+Are precedence and associativity enough to make the semantics of expressions deterministic? For elementary expressions, the answer is yes! However, for C\* expressions, the answer is no! While precedence and associativity determine syntactical structure, they do not determine *order of evaluation* of individual parts of expressions. For example, the order of evaluation in an expression such as `x + y` is obviously not relevant, that is, the value of `x` could be determined before or after the value of `y` without an effect on the outcome. In fact, any order of evaluation in elementary expressions is fine. However, in C\* expressions, there are cases in which the order of evaluation could matter, namely, in the presence of procedure calls.
+
+For example, evaluating `x` before or after calling a procedure `p` in an expression `x + p()` could make a difference. How is that possible you might ask? Well, `p` can have *side effects* on the program state beyond just computing a return value. For example, `p` could have a side effect,  if `x` is a global variable, by changing the value of `x`. In that case, the order of evaluation in `x + p()` would obviously matter. How do we solve that problem? Well, the selfie compiler generates code that always evaluates left operands before right operands, and each operand exactly once. Still, if procedure calls were not allowed in expressions, we could in principle generate code that evaluates operands in any order without effecting the outcome.
+
+> Undefined behavior
+
+How do designers of languages such as C and its derivates solve the problem? The answer might surprise you. Essentially, they call potential sources of non-determinism *undefined behavior* and leave it to the programmer to avoid that by following a list of complex rules that define those potential sources of undefined behavior. Yet their presence in code can in general not be detected by compilers. The aim is to increase the potential for code optimization and thus performance, for example by exploring different orders of evaluation through reordering of machine instructions. This is another example of a fundamental tradeoff, this time between performance and determinism. In the computing chapter, we get back to that tradeoff in a different but related context.
+
+An important lesson to learn here is that the semantics of code can be a lot more involved than one might think. Formalisms such as programming languages, even simple ones like C\*, are very powerful tools. There is no such things as casual programming, only casual expectations. If correctness of code does not matter too much, fine, but if it does, proper education is the only way, and a lot more fun than not knowing what is actually going on. So, keep going.
+
+In the following, we explain code generation, first for arithmetic operators, since it is the simplest case, then for comparison operators, which is a bit more involved, and finally for the unary minus and dereference operators. Casting does not involve code generation as mentioned before.
+
+#### Arithmetic Operators
+
+Compiling arithmetic operators is surprisingly simple as long as there are machine instructions that match the semantics of those operators. In case of C\* and RISC-U they do. To some extent this is also true for comparison operators but only when considering all of RISC-V, not just RISC-U. We therefore look into compiling comparison operators after we are done with arithmetic operators. Among the arithmetic operators of C\*, the operators for multiplication, division, and remainder are even a bit easier to handle than the operators for addition and subtraction since the latter have different semantics depending on the type of their operands. So, for now, let us take the expression `x * 7` as example, instead of `x + 7`.
+
+![Terms](figures/emitting-terms.png "Terms")
+
+The above figure shows how the procedure `compile_term` implements the grammar rule that defines the non-terminal `term`, including emitting code. As before, the first occurrence of the non-terminal `factor` is handled by a call to the procedure `compile_factor`, followed by a `while` loop that iterates of any number of occurrences of the `*`, `/`, or `%` symbols, and another occurrence of `factor`, which again is handled by a call to `compile_factor`. Besides checking and remembering the type of each factor in local variables `ltype` and `rtype` on the call stack, where `ltype` eventually becomes the type of the parsed term and is return as grammar attribute, the code also remembers the currently parsed operator symbol in a local variable called `operator_symbol`, also on the call stack. This is important. If we just continued parsing without remembering the operator symbol, we would not know what the operator is anymore after parsing the following factor.
+
+> From infix to postfix
+
+What effectively happens here is that the code turns *infix* operators into *postfix* operators which requires remembering the infix operator symbol. The binary operator `*`, as well as all other binary operators in C\*, is infix because it occurs in between its two operands, here `x` and `7`. However, the generated machine instruction that implements `x * 7` is postfix because it first loads both the value of `x` into register `t0` using the machine instruction `ld t0,-ds(gp)` and the value `7` into register `t1` using `addi t1,zero,7`. Only then, with both operands in registers, the machine instruction `mul t0,t0,t1` generated here implements the operator `*`. For the operators `/` and `%`, code generation works the same way but using the `divu` and `remu` instructions, respectively. That's it!
+
+> Running out of registers
+
+Well, not quite. Notice the call to the procedure `tfree`. This is important too. The most recently allocated register, here register `t1`, is actually not needed anymore as soon as the calculation is done, at runtime! This means we actually have to deallocate it and thus make it reusable for other purposes, at compile time! Otherwise, we would sooner or later run out of registers. Speaking of which, can we actually run out of registers at compile time? Yes, of course. Try to design an expression for which the selfie compiler does indeed run out of registers. Hint: grouping nested subexpressions does the trick. For example, the expression `x * (x * (x * 7))` requires a total of four temporary registers and thus still compiles. Extend the expression until the selfie compiler fails.
+
+Could we enhance the compiler to handle any syntactically valid expression? Yes, of course. One way to do that is to use memory as temporary space for saving register values. However, doing so results in machine code that stores and later loads those values again which may be slow. Moreover, there is significant complexity involved in doing this correctly in the compiler. As usual, we have avoided that complexity and instead report an error and terminate. Yet modern production compilers do address the problem more thoroughly.
+
+> Efficient use of registers
+
+There is another related problem which is the efficiency of using registers. The register allocator in the selfie compiler is a stack allocator which means that temporary registers are used unevenly. In fact, register `t0` is used the most, followed by register `t1`, and so on. You can actually see that by looking at the output of self-compilation of selfie. Try:
+
+```bash
+make self-self
+```
+
+The relevant output is at the very end:
+
+```
+./selfie: t0 register:   492470109,246325982,246144127[1.00]
+./selfie: t1 register:   208273821,104161060,104112761[1.00]
+./selfie: t2 register:   48859158,24429579,24429579[1.00]
+./selfie: t3 register:   2077494,1038747,1038747[1.00]
+./selfie: t4 register:   132660,66330,66330[1.00]
+./selfie: t5 register:   106128,53064,53064[1.00]
+./selfie: t6 register:   26532,13266,13266[1.00]
+./selfie: temps total:   751945902,376088028,375857874[1.00]
+```
+
+For example, register `t0` is accessed around 500 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
+
+> Constant folding
+
+Before moving on there is yet another opportunity here to talk about code optimization. What if we compile an expression with constant operands such as `42 * 7`, for example? The selfie compiler would still generate code for that even though it could easily figure out to which value the expression evaluates, and then just use that value, instead of generating code for the whole expression. Doing so is called *constant folding* which is arguably the most basic form of code optimization, and implemented in virtually all production compilers. In other words, if spelling out `42 * 7` in your code, instead of just saying `294`, makes the code more readable, keep it and do not worry about performance. Your compiler takes care of that, and many other apparent inefficiencies.
+
+The other reason we mention constant folding is because it beautifully shows the tradeoff between compile time and runtime. The more time we spend at compile time trying to compute as much as possible just once before generating code, the more time we may save at runtime recomputing values again and again that could have been computed just once before. While constant folding is relatively easy to do and an interesting exercise for students, other code optimization techniques can be a lot more involved but nevertheless explore the same tradeoff.
+
+![Arithmetic](figures/emitting-arithmetic.png "Arithmetic")
+
+Compiling arithmetic expressions with operators for addition and subtraction works the same way as compiling terms with operators for multiplication, division, and remainder. Code generation just uses the `add` and `sub` instructions for the operators `+` and `-`, respectively. The above figure shows how the procedure `compile_arithmetic` implements the grammar rule that defines the non-terminal `arithmetic`, including emitting code.
+
+> Type polymorphism through overloading, again
+
+An interesting twist, however, is that both `+` and `-` are *overloaded* operators in C\*, and many other programming languages, with *type polymorphism*, as mentioned before. Their semantics depends on the type of their operands. Fortunately, there are only two types in C\* for unsigned integers and pointers to unsigned integers denoted `uint64_t` and `uint64_t*`, respectively, leaving us with four combinations for each operator. In the following, we focus on addition. Subtraction is handled similarly but not exactly the same as addition. Refer to the source code of selfie for the details.
+
+The simplest combination of types is if both operands are of type unsigned integer. In that case, generating a single `add` instruction, or `sub` instruction, is sufficient. Another simple case is if both operands are of type pointer to unsigned integer. That case is actually an error with addition, but not with subtraction, and reported as such yet without terminating compilation.
+
+> Pointer arithmetic
+
+The two remaining cases are symmetric with addition, so we only focus on the case where the left operand is of type pointer to unsigned integer and the right operand is of type unsigned integer. Our example in the above figure is the expression `x + 7`. Turning the example into the case we are interested in here is easy, just declare the variable `x` to be of type `uint64_t*`. What happens then is that the semantics of the `+` operator changes from integer arithmetic to *pointer arithmetic*. For the sake of an example, suppose that the value of `x` is `42` which is not even a valid memory address in our machine model since `42` is not a multiple of `8`, the size of a machine word in bytes. But never mind, it works either way. Clearly, you would think that `x + 7` evaluates to `49` in that case which is true but only if `x` is of type `uint64_t`. If `x` is of type `uint64_t*`, however, `x + 7` evaluates to `98`. How does that make any sense?
+
+The expression `x + 7` evaluates to `98` in that case because `42 + 7 * 8` evaluates to `98` where the factor `8` is the size of `uint64_t` in bytes. The idea of pointer arithmetic is to provide a simple way of computing memory addresses in order to access array elements and fields in memory, as we mentioned before. With `x + 7` and `x` being of type `uint64_t*`, we intend to compute the address that is `7` unsigned integers, not bytes, above where `x` points to in memory, simply because `x` is a pointer to unsigned integers. If `x` was a pointer to a type of different size in memory then we would use that size as factor in bytes, instead of `8`. There are plenty of examples in the source code of selfie where we use pointer arithmetic. Check out all those getters and setters we mentioned before. They all use pointer arithmetic.
+
+Generating code that implements pointer arithmetic is not hard. The procedure `emit_multiply_by` emits an `addi` instruction to load the factor, here `8`, into an unused register, here `t2`, followed by a `mul` instruction that multiplies the value of the right operand, here `7`, with the value of register `t2`. After that, the following `add` instruction is the same as the `add` instruction that implements integer arithmetic.
+
+The take away message here is that pure operator syntax does not necessarily determine semantics which can depend on other aspects such as the types of operands, or even more contextual information. People with little programming experience are often not familiar with that and therefore struggle to produce correct code. It is of course possible to introduce a different symbol for, say, pointer arithmetic to make the distinction syntactically explicit. In fact, this has been done, even in programming languages such as C. For example, `x` could be declared as array of, say, 10 unsigned integers using `uint64_t x[10];` instead of declaring `x` as pointer to unsigned integers. Then, the expression `x[7]` would be semantically equivalent to `*(x + 7)` where the leading `*` operator dereferences the memory address calculated by `x + 7`. The details of that are explained below.
+
+> Syntactic sugar
+
+The `[]` operator is considered *syntactic sugar* which makes the code look "sweeter" to humans, that is, closer to what is intended, namely, access of array elements rather than pointer arithmetic which is only a means to get there. However, support of syntactic sugar is not strictly necessary. C\* does not support arrays explicitly in syntax but there is an exercise on implementing array support in C\*. However, doing the exercise requires additional knowledge in how procedures work, so we wait with the exercise until we get to procedures. However, there is an opportunity to do another, very enlightning exercise which helps you deepen your understanding of the material presented so far.
+
+> Bitwise shift operators
+
+C\* only features arithmetic and comparison operators. However, most programming languages also provide *bitwise* operators for manipulating individual bits of data. We discuss bitwise *shift* operators here and bitwise *logical* operators further below. The need for bitwise operators arises because modern computers, for the sake of increased throughput, only allow transferring data at the level of whole bytes or even just words, as in our machine model, but not bits. Also, while bitwise operations can be mimicked using integer arithmetic, native hardware support is obviously much faster and source code using bitwise operators explicitly is certainly more readable. The lack of support in selfie requires us to implement bitwise operators some other way. We choose to do that in library procedures such as `left_shift` and `right_shift` which demonstrate how to mimic bitwise shifting using integer multiplication and division, respectively, see the source code for the details.
+
+Explicit support of bitwise operators in C\* takes us to our first, more advanced exercise that involves code generation and therefore comes in two increasingly challenging parts. The first part called `bitwise-shift-compilation` focuses on handling their syntax. Only the second part called `bitwise-shift-execution` involves actual code generation. Try:
+
+```bash
+./grader/self.py bitwise-shift-compilation
+```
+
+This exercise involves implementing scanner and parser support of the bitwise *shift* operators `<<` and `>>` which perform logical bitwise left and right shifting, respectively. Interestingly, you do not even need to know what bitwise shifting is to complete the entire exercise. For the first part, you just need to find out what the precedence of these operators in standard C is relative to the already supported operators in C\*. The next step is to enhance the C\* grammar accordingly, followed by the actual implementation in the scanner and parser of selfie.
+
+The second part of the exercise involves not only implementing code generation for these operators in the selfie compiler but also implementing support of the RISC-V machine instructions `sll` and `srl` for logical bitwise left and right shifting, respectively, in the selfie emulator. Try:
+
+```bash
+./grader/self.py bitwise-shift-execution
+```
+
+The interesting twist of this exercise is that you can and should use the `<<` and `>>` operators in your implementation of the `sll` and `srl` instructions, respectively. In other words, use what you implement to implement it! This is selfie at its best. Recall that the RISC-U instructions are implemented by procedures with the prefix `do_`, look for `do_add`, for example. That procedure ultimately uses the `+` operator to implement the `add` instruction in the selfie emulator while the `+` operator is compiled to an `add` instruction by the selfie compiler.
+
+Do exactly the same in this exercise, and it will work! There is no need to use the procedures `left_shift` and `right_shift` to do that. The reason why this works is because the semantics of the `<<` and `>>` operators in C is exactly the same as the semantics of the `sll` and `srl` instructions in RISC-V. The same is true for the `+` operator and the `add` instruction, and similarly for the other arithmetic operators. Fully understanding how this results in a functioning system is the ultimate goal of this chapter, so keep going.
+
+#### Comparison Operators
+
+C\* features operators for comparing unsigned integer values, see the grammar rule that defines the non-terminal `expression`. The syntax of relational expressions is defined in that rule because all involved comparison operators have lower precedence than any of the arithmetic operators in C\*. For example, the expression `x - 1 < 7` is semantically equivalent to the expression `(x - 1) < 7`, not the expression `x - (1 < 7)`.
+
+![Expressions](figures/emitting-expressions.png "Expressions")
+
+The above figure shows how the procedure `compile_expression` works for the operators `==` and `<`, not showing the code for the other comparison operators. Refer to the source code for those. The occurrence of a comparison operator in an expression is optional and thus implemented by a conditional statement that checks if a comparison operator is present or not. In terms of semantics, the first thing we should note is that all comparison operators must evaluate to either `0` or `1`, nothing else, indicating that the comparison evaluated to false or true, respectively.
+
+Before we get to the example in the figure, the expression `x == 7`, consider as example the expression `x < 7` instead. Code generation for the `<` operator is straightforward because the `sltu` instruction in RISC-U matches the semantics of the `<` operator exactly. Recall that `sltu` stores `1` in its destination register, here `t0`, if the value in the first source register, again here `t0`, is strictly less than the value in the second source register, here `t1`, using the unsigned interpretation of those values. Otherwise, `sltu` stores `0` in its destination register. So, for the `<` operator we just generate a single `sltu` instruction, deallocate the second source register, and are done.
+
+Support of the `>` operator is symmetric. Only the other four comparison operators are more involved. We use the `==` operator in the expression `x == 7` as example. How do we make sure that the destination register, here `t0`, only contains `1` if the value of `x` is equal to `7`, and otherwise `0`? Well, `x == 7` is true if and only if `7 - x < 1` is true, assuming, and that is important, unsigned interpretation of the values. In that case, no value other than `0` can be less than `1`, and `7 - x` can obviously only evaluate to `0` if `x` is equal to `7`. So, we first generate code that implements `7 - x` using a `sub` instruction, followed by an `addi` instruction for loading `1`, and finally followed by an `sltu` instruction for the comparison, just like before. That's it! Check the implementation of the other comparison operators. We use similar reasoning there. It's fun.
+
+#### Unary Operators
+
+Besides binary operators, expressions in C\* also feature unary operators for casting, changing the sign of integer values using the unary `-` operator, dereferencing of pointers using the unary `*` operator, and obtaining the size of a type in bytes using the unary `sizeof` operator. All four operators appear, with the first three operators as options, in the C\* grammar rule that defines the non-terminal `factor`, which we saw before, and is implemented in the procedure `compile_factor`, which we also discussed before.
+
+> From prefix to postfix
+
+All four unary operators in C\* are *prefix* operators which means that they appear before, not after, their operand. As with the binary infix operators in C\*, compilation of unary prefix operators requires remembering them until their operand is compiled. Only then, they can take effect through casting or code generation of postfix instructions. With the unary operators appearing as options, this is done in reverse order of their relative occurrence since they are right-associative. So, dereferencing is done before changing signs which is done before casting.
+
+> Unary `sizeof` operator
+
+Compiling the `sizeof` operator is simpler than the others. In C\*, `sizeof` can only be applied to types of which there is only `uint64_t` and `uint64_t*`. In both cases, `sizeof` is supposed to evaluate to the value `8` because storing values of either type requires exactly `8` bytes in memory. Generating a single `addi` instruction that loads `8` into a temporary register does the job.
+
+> Cast
+
+We mentioned the semantics of casting before. Handling the syntax of a `cast` is not difficult but it does involve a lookahead of 1 to distinguish it from grouping an `expression` using left and right parenthesis. See the code of the procedure `compile_factor` shown before to spot the lookahead, or the source code of selfie for the full details. While `cast` appears first in the grammar rule and is thus parsed first in `compile_factor`, its effect only takes place after the rest of the rule is parsed right before `compile_factor` returns the resulting and possibly casted type as grammar attribute.
+
+> Unary minus operator
+
+Next is the optional unary minus operator, denoted `-` just like its binary twin, which is parsed right after the optional `cast`. Again, its effect only takes place after the rest of the entire grammar rule for `factor` is parsed. How do we implement it? Well, the unary `-` operator in expressions such as `-x` is just syntactic sugar for `0 - x`. So, we generate a single `sub` instruction for subtracting the value of `x` from `0` using the `zero` register. Knowing how this is done enables us to go for another exercise.
+
+> Bitwise logical operators
+
+In addition to bitwise shift operators, there are also bitwise *logical* operators in C which give rise to an exercise that involves implementing support of bitwise *AND* denoted `&`, bitwise *OR* denoted `|`, and bitwise *NOT* denoted `~`. The `~` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
+
+```bash
+./grader/self.py bitwise-and-or-not
+```
+
+As before, determine the precedence of the binary operators in C, which is not the same in this case, enhance the C\* grammar, and only then implement support of them in selfie. You also need to implement support of three more RISC-V machine instructions called `and`, `or`, and `xori`. The `xori` instruction performs bitwise *exclusive-or* or *XOR* on the value of a register with an immediate value. Generate that instruction to implement support of the `~` operator. There are two challenges involved in the exercise beyond what you saw before in related exercises. Firstly, when generating the `xori` instruction you need to figure out which immediate value to use. Hint: the immediate value is always the same. Secondly, while the implementation of the `and` and `or` instructions is straightforward using the `&` and `|` operators, respectively, the implementation of the `xori` instruction is more involved since there is no operator for *XOR* in C\*. However, XOR can be implemented using a combination of the `&`, `|`, and `~` operators. You just need to figure out which combination is correct which does involve understanding what XOR is. You could also implement support of the `^` operator in C for XOR and the `xor` machine instruction in RISC-V and then use the `^` operator in the implementation of the `xori` instruction but that is more work.
+
+Besides support of bitwise logical operators, there is also an exercise on the support of *Boolean* logical operators available in C for constructing logical conditions. The exercise involves implementing support of logical *conjunction* denoted `&&`, logical *disjunction* denoted `||`, and logical *negation* denoted `!`. Similar to the bitwise `~` operator, the `!` operator is unary and right-associative with the same precedence as the other unary operators in C\*. Try:
+
+```bash
+./grader/self.py logical-and-or-not
+```
+
+Again, determine the precedence of the binary operators in C, which is also not the same in this case, enhance the C\* grammar, and only then implement support of them in selfie. There is, however, no need to implement support of additional instructions. Instead, the challenge is to figure out how to implement operator semantics using the existing machine instructions. Hint: use combinations of `sltu`, `and`, `or`, and `xori` instructions. Combinations of `sltu`, `mul`, `add`, and `sub` instructions also work if you would like your solution to be independent of the previous exercise. All three logical operators must evaluate to either `0` or `1`. In particular, the `&&` operator evaluates to `1` only if both operands evaluate to values that are not `0`. The `||` operator evaluates to `1` only if either one or both operands evaluate to values that are not `0`. The `!` operator evaluates to `1` if the operand evaluates to `0`. In all other cases, all operators evaluate to `0`.
+
+> Lazy evaluation
+
+There is, however, one more thing. The semantics of logical operators in C is actually more involved than the above. The right operands of the `&&` and `||` operators are evaluated *lazily* which means that they are only evaluated if the value to which the left operand evaluates is not sufficient to determine the overall result. For example, an expression `X && Y` evaluates to `0` if the left operand `X` evaluates to `0`, regardless of the value to which the right operand `Y` evaluates. In that case, `Y` is not supposed to be evaluated at all, which is called *lazy evaluation*. Similarly, an expression `X || Y` evaluates to `1` if `X` evaluates to a value that is not `0`, again regardless of the value to which `Y` evaluates. The situation gets quite tricky if logical operators are used in sequence or even nested, which is no problem with *eager evaluation*, as in the above exercise. The solution is to use control flow, in addition to data flow, to implement the semantics of logical operators. We get to an exercise about that in the context of conditionals.
+
+> Dereference operator
+
+The name C\* is inspired by the dereference operator in C denoted by the unary and right-associative `*` operator. That operator is arguably the most important operator in C\* since it provides the only way to access dynamically allocated memory outside of the memory allocated for global variables in the data segment and local variables and formal parameters in the stack segment. Moreover, the dereference operator combined with pointer arithmetic turns all operators for accessing composite information in memory through data types such as arrays and structs into syntactic sugar. Earlier versions of C\* still featured some of these operators until we realized that we could do completely without them and thereby reduce language and compiler complexity significantly. Instead, we turned support of arrays and structs into the subject of homework assignments and exercises. It may be hard to believe but the design of C\* was one of the great challenges in the early days of selfie and took several years going through many iterations to complete.
+
+Compiling the dereference operator is relatively easy because its semantics is close to the semantics of the machine but that is also the source of its biggest drawback. Using the dereference operator properly in C\* and even more so in C is not easy at all. The dereference operator is even infamous for causing many bugs that could be avoided by using arrays and structs, for example. Many programming languages other than C and its derivates therefore do not feature a dereference operator. However, we argue that seeing the dereferencing operator in action is actually a prerequisite to being able to appreciate its absence.
+
+> Dereference semantics
+
+There are at least two problems with dereferencing pointers. Firstly, the dereference operator is only intended to access memory in the heap segment, at least in C\*. However, you can use it to access memory anywhere you like. Just provide a value in an expression and the dereference operator will interpret it as an address and return the value stored at that address, regardless of whether that access is safe or not. For example, the expression `*x` does not evaluate to the value of `x` but instead to the value stored in memory at the address equal to the value of `x`. In other words, `*x` interprets the value of `x` as pointer and dereferences it to obtain the value stored in memory where `x` points to. You can even apply the dereference operator to any expression you like such as in the expression `*(x + 7)`, for example. If `x` is declared as pointer to unsigned integer, `*(x + 7)` evaluates to the value stored in memory 7 unsigned integers above where `x` points to. That takes us to the second problem. If you do not understand pointer arithmetic, as here in `x + 7`, you are likely to struggle in producing correct code in C\*. Many students have that problem.
+
+The problem gets even worse considering that the dereference operator can also be used in the left-hand side of assignments. For example, the assignment `*x = *x + 1` does not increment the value of `x` but instead increments the value in memory where `x` points to. In other words, the `*` operator in `*x` that occurs in the left-hand side of the assignment dereferences `x` but not for the purpose of loading the value in memory where `x` points to but instead for storing a new value there, namely, the value to which the expression `*x + 1` in the right-hand side of the assignment evaluates to. We can easily make that example even more interesting. For example, the assignment `*x = *(x + 1)` does not increment anything but instead copies the value stored in memory 1 unsigned integer above where `x` points to to memory where `x` points to whereas the expression `*(x + 1) = *x` does the opposite.
+
+We discuss compiling the dereference operator as it occurs in expressions here and only explain its use in the left-hand side of assignments right below. Similar to the other two unary operators in C\*, the dereference operator is parsed and remembered as such until after parsing its operand is done in the procedure `compile_factor`. Only then, code is generated for it before code is generated for the unary `-` operator if that operator is present too. The code that implements dereferencing is simple, a single `ld` instruction will do. Suppose the value of the operand is stored in register `t0`. In that case, we generate `ld t0,0(t0)` which loads the machine word stored in memory at address `t0 + 0` into `t0`. That's all. The generated instruction is ultimate proof of what dereferencing really is. Any value can be turned into an address in memory through dereferencing for accessing the value stored there. This is very powerful but power comes with responsibility. This concludes our treatment of expressions in C\*.
+
+> What you see is not what you get
+
+Before moving on, it is time to reflect on what we have seen so far. Expressions in programming languages such as C\* and many other languages have been inspired by elementary arithmetic and mathematical logic, and indeed look very much like expressions used in mathematics. Yet while their syntax is similar and in many cases identical, their semantics is only related but still far from identical. Code generation has told us that once and for all. Integer overflows and wrap-around semantics are probably the most important differences here. Using essentially the same notation in programming languages as in mathematics is an unfortunate choice that was made a long time ago and is now very hard to undo. The reasons are rooted in the origins of computer science in mathematics and therefore certainly understandable but still unfortunate. If programming languages would use their own unique symbols in expressions different from the symbols used in mathematical formulae, the semantical difference would be easier to recognize and acknowledge by everyone. Computer science students would probably have an easier time understanding that all those discrete math and linear algebra classes they have to endure are only there to teach them the foundation of programming language and machine semantics, assuming, of course, that all classes use the notation properly. Even people in general would question the meaning of what they see if they could not relate it immediately yet falsely to something they know. The key lesson for us here is to question the meaning of what you see and educate yourself until you truly know what the actual meaning is.
 
 ### Statements
 
-find next strong symbol: keyword etc.
+C\* features five *statements* for assignment, conditionals, loops, procedure calls, and returning from procedure calls. We go through them in that order. While covering literals, variables, and expressions required introducing a lot of material, there is not much left we have to introduce. Resolving symbolic references in control flow through fixup chains is essentially the only technique we have not introduced yet. In other words, the worst is over. Superficially, that is somewhat surprising since expressions only occupy a relatively small part of the C\* grammar. However, their semantics is rather dense and complex, or conversely, their syntax is quite compact, even beautiful. Well, the syntax of expressions has been derived from mathematical notation which took centuries to develop whereas the syntax of statements in imperative programming languages is a recent achievement. More modern programming languages than C do in fact show that there is a lot of room for improvement over the syntax of statements in C. Using that modern syntax correctly is, however, not easy, just like writing an expression that is actually correct. In short, with statements in C\* we go from the established to the new, from solid mathematics to work-in-progress computer science.
+
+The syntax of a `statement` in C\* is simple but does involve a lookahead of 1 during parsing to distinguish an `assignment` that begins with an `identifier` from a procedure `call` that always begins with an `identifier`:
+
+```ebnf
+statement = assignment ";" | if | while | call ";" | return ";" .
+```
+
+The procedure `compile_statement` compiles `statement` after looking for strong symbols that statements begin with such as the keywords `if`, `while`, and `return`, and others, see the procedure `is_not_statement` for the full list. There is an important invariant that `compile_statement` maintains: no temporary registers are allocated before and after compiling any statement! In other words, when compiling a statement all temporary registers are available. However, maintaining the invariant requires of course to deallocate all allocated registers eventually before returning from compiling any statement. We do not show the code of `compile_statement` here since it is straightforward, again see the source code for the details. The first kind of statement we look into is assignments which is the natural choice to talk about after expressions.
 
 ### Assignments
 
-### Conditionals
+The notion of assignment of a value to a variable, or more generally to a memory location, is the key distinguishing feature of imperative programming. The semantics of assignment ultimately requires introducing the notion of program or machine state *before* and *after* executing an assignment. Similar to expressions, we first focus on a strict subset of the C\* grammar that defines *variable assignments* which only enable assignment of values to variables:
+
+```ebnf
+assignment = identifier "=" expression .
+```
+
+An example of a variable assignment is `x = x + 7`. In terms of syntax, the assignment operator `=` is obviously a binary operator with lower precedence than any other operator in expressions yet the only binary operator in C\* that is right-associative. In other words, `x = x + 7` is grouped as in `x = (x + 7)`, and certainly not as in `(x = x) + 7`. As mentioned before, the left and right operands of `=` are called the left- and right-hand sides of an assignment, respectively.
+
+In terms of semantics, variable assignment first calculates the value to which the `expression` in the right-hand side evaluates, before assigning the value to the variable named by `identifier` in the left-hand side, and only then, after obtaining the value, actually assigns it to the variable, overwriting whatever value was assigned to the variable before the assignment. While the involved values are only known at runtime, their type is already known at compile time and can therefore be checked for compatibility. The type of the right-hand side, or more precisely the value to which the right-hand side evaluates, should be the same as or at least compatible with the type of the left-hand side, or more precisely the type of the overwritten value.
+
+> lvalues and rvalues
+
+An assignment turns the value to which an expression evaluates, called *rvalue*, into a value with a name or memory address, depending on program or machine perspective, called *lvalue*. An rvalue is temporary because next time the same expression may evaluate to a different value, as the expression `x + 7` in our example actually does. An lvalue, however, may persist as part of the program or machine state. Also, an lvalue has an address in memory whereas an rvalue does not. In fact, when generating code for an assignment, the challenge is to calculate the address of that lvalue. In other words, evaluating the left-hand side of an assignment is not about obtaining a value but an address, which in our example is the address of where the value of `x` is stored in memory. How that works we have seen before in the context of compiling variables and formal parameter occurring in expressions. Now, we need to do exactly the same thing but generating an `sd` instruction, instead of an `ld` instruction, for the final step of an assignment.
+
+This takes us to the issue of order of evaluation which is rather sensitive, similar to expressions. Since the addresses of variables and formal parameters in memory are not affected by assignments, the order of evaluating left- and right-hand sides of variable assignments has no effect on the outcome. For simplicity, we therefore decided generating the code that computes the address of the lvalue in an assignment before generating the code that computes the rvalue, followed by generating a single `sd` instruction that completes the actual assignment.
+
+![Assignments](figures/emitting-assignments.png "Assignments")
+
+The above figure shows how variable assignments are compiled in the procedure `compile_assignment` using our example `x = x + 7`. The code that handles the full C\* grammar of assignments is not shown. Because of the lookahead for distinguishing variable assignments from procedure calls, `compile_assignment` is invoked with the variable in the left-hand side of the assignment, here `x`, already parsed. In this case, the address of the value of the variable in memory at runtime is determined by searching the global and local symbol tables for the variable, similar to occurrences of variables in expressions. In particular, we determine if the address is calculated relative to the `gp` or `s0` register using `get_scope` and remember that in a local variable called `base`, and we determine the involved offset using `get_address` and remember that in a local variable called `offset`.
+
+Interestingly, there is no code generation necessary if `offset` is a 12-bit signed integer since it fits as immediate value of an `sd` instruction in that case. Otherwise, the procedure `load_upper_address` generates code that adds the uppper, as in more significant, portion of `offset` that does not fit in 12 bits to the `base` register and saves the result in a temporary register which then becomes the `base` register, instead of `gp` or `s0`. The upper portion is then removed from `offset`. The rest is straightforward. After parsing the assignment operator `=`, the expression in the right-hand side of the assignment, here `x + 7`, is compiled by the procedure `compile_expression` returning the type of the value to which the expression evaluates to allowing us to check it against the type of the variable the value is assigned to, here `x`. After that, a single `sd` instruction is generated that stores the value in memory where the `base` register plus `offset` refers to. Before `compile_assignment` returns, the temporary register holding the value of the expression and the `base` register, if temporary, are deallocated, establishing the invariant that no temporary registers are allocated before and after any assignment, assuming that `compile_expression` returns with exactly one more temporary register allocated than before invoking it.
+
+There is one more detail related to profiling source code. The number of compiled assignments is recorded in a global variable called `number_of_assignments` during compilation and reported by the selfie compiler when done. For example, the selfie source code contains more than a thousand assignments. By convention, we name most variables that represent counters with a prefix "number_of_". There are numerous such variables for counting all kinds of things. Search the source code to find them!
+
+The full C\* grammar of assignments introduces the dereference operator applied to variables and even full expressions, in particular involving pointer arithmetic, into the left-hand side of assignments:
+
+```ebnf
+assignment = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression .
+```
+
+An example of a *dereferencing* assignment we saw before that uses the dereference operator in the left-hand side is `*x = *x + 7`. The full semantics of the dereference operator depends on where it is used. If used at the very beginning of the left-hand side of an assignment, the dereference operator returns an lvalue, that is, the value that its operand evaluates to interpreted as an address in memory, not the value that is stored in memory at that address! Otherwise, if used anywhere else, including the grouped expression in the left-hand side of an assignment, the dereference operator has the semantics as in any expression. In other words, it returns an rvalue, that is, the actual value stored in memory where its operand points to, or more precisely, where the value that its operand evaluates to, interpreted as an address, refers to. In our example, `*x` in the left-hand side of the assignment returns the value that `x` evaluates to, interpreted as an address, whereas `*x` in the right-hand side returns, as we explained before, the value stored in memory where `x` points to.
+
+> Order of evaluation
+
+Interestingly, compiling dereferencing assignments is easier than compiling variable assignments. We only need to generate code that loads the value of a variable, simply by reusing the procedure `load_variable` or, more generally, evaluates an expression, by reusing the procedure `compile_expression`, see the source code for the details. However, doing so before generating code that evaluates the expression in the right-hand side of an assignment may result in different semantics than generating the code in the opposite order. For example, just like the expression `x + p()` we mentioned before where `x` is a global variable of type unsigned integer whose value a procedure `p` modifies, an assignment `*x = p()` where `x` is of type pointer to unsigned integer has different semantics depending on whether `x` is evaluated before or after calling `p`. Either way, the selfie compiler always generates the code for evaluating the left-hand side of an assignment before the code for evaluating the right-hand side.
+
+> Data flow and control flow
+
+Assignments essentially facilitate *data flow* as opposed to *control flow*. Both, control and data flow is something we have already seen in the context of machine code. In source code, specifically in assignments, data flows from variables and even memory locations to the same and other variables and memory locations during program execution. In contrast, conditional and loop statements determine how control over which statement executes next flows through the statements of programs during program execution. Loop statements are our next topic. They are syntactically simpler and yet semantically more general than conditional statements. In the context of loop statements, there is an opportunity for an exercise that involves implementing support of *for* loops in selfie. After that, we focus on conditional statements and finally on procedures, in particular procedure calls and return statements. The latter two facilitate both, data and control flow, by passing values from one procedure to another and invoking each others' code, respectively. Strictly speaking, procedure calls in expressions therefore also facilitate control flow in assignments, not just data flow. Yet most operators used in expressions are data-flow operators, except for logical operators which are the subject of another, quite challenging exercise in the context of conditional statements.
 
 ### Loops
 
+Assignments and loops are sufficient to make programming languages *universal* or *Turing-complete*. No other statements are necessary. Any code written in any programming language can be rewritten to use assignments and loops only, and nothing else. It may not be very convenient to do that but it is always possible. Conditional statements in particular can always be replaced by loop statements but not the other way around. However, the use case for conditional statements is so common that virtually all programming languages feature conditional statements. Similarly, procedures are not strictly necessary, recursion in particular can always be replaced by iteration in loops, but also the other way around, iteration can always be replaced by recursion in procedures. Either way, the use cases for loops and procedures are so common as well that most languages feature both in one form or another. Nevertheless, when done with loops we are already Turing-complete!
+
+The C\* grammar of `while` loops is straightforward and so is parsing them:
+
+```ebnf
+while = "while" "(" expression ")"
+          ( statement | "{" { statement } "}" ) .
+```
+
+The condition of a `while` loop can be any C\* expression and the body can either be a single C\* statement or a possibly empty sequence of C\* statements surrounded by curly braces. The procedure `compile_while` implements compiling of `while` loops, invoking the procedures `compile_expression` and `compile_statement` to compile loop condition and loop body, respectively. The intuitive semantics of a `while` loop is that, if the loop condition evaluates to `0`, which represents the condition being false, the loop is terminated, and the next statement that follows the loop is executed. Otherwise, if the condition evaluates to any value but `0`, which represents the condition being true, the loop body is executed once. After that, the loop condition is evaluated again, and so on. Note that a loop `while (0) ...` never executes and a loop `while (1) ...` never terminates, unless there is a `return` statement in the loop body. During debugging, C programmers sometimes use `0` as loop condition to turn loops off. As a more meaningful example, consider the following `while` loop with a single assignment as loop body:
+
+```c
+while (x < 7)
+  x = x + 7;
+```
+
+In short, the `while` loop increases the value of `x` in increments of `7` until the value of `x` is not less than `7` anymore. If the value of `x` is already not less than `7` when reaching the `while` loop, the loop body is not even executed once. The example reuses the expression `x < 7` and the assignment `x = x + 7` that appeared as examples before in order to raise an important point.
+
+> From composability to compositionality
+
+According to the C\* grammar, any expression may appear as loop condition and any statement and even any sequence of statements may appear as loop body in a `while` loop. In short, the grammar defines what we can use to *compose* a `while` loop, and what not. More generally, a grammar determines *composability* of individual syntactic elements of a formal language. However, the fact that we can compose something does not mean that all compositions are meaningful. What we actually often want is *compositionality* of which composability is only a prerequisite. We need to be able to compose a complex system from individual components that are all simpler than the system but what we also need is that the components do not change their meaning depending on how they are composed into a system. Only then, we can decompose reasoning about system correctness to reasoning about component correctness, effectively reducing system complexity to component complexity. We say that a composition of individual components is *compositional* if the meaning of the individual components in isolation is the same as their meaning within the composition.
+
+Not all composable elements of C\* are also compositional. For example, a procedure that accesses a global variable, with or without side effect on that variable, may have a different meaning depending on the value of that variable, that is, the context in which it is invoked. But even procedures not accessing any global variables can still be non-compositional. For example, a procedure can still access a memory location, again with or without side effect on that location, by dereferencing a pointer provided as an actual parameter to the procedure. Functional programming is an attempt to increase compositionality by avoiding access to global state information, which is why we sometimes mimic functional programming in the selfie code. On the flip side, sharing global state information in imperative programming can sometimes help reduce code size, which is why we also do that in some places in the selfie code but at the risk of introducing bugs. The challenge is to find the right balance of functional and imperative programming. More modern programming languages such as Rust, for example, enable addressing that challenge explicitly in the language and thus allow compilers to help.
+
+> Compositional parsing and code generation
+
+The reason why we raise the issue here is because we would like to reuse in the procedure `compile_while` the code for compiling expressions and statements including code generation. In short, we would like to make not just parsing but also code generation compositional. In hindsight, we could have raised that issue already earlier when dealing with expressions and assignments where we implicitly assume that the involved compiler procedures are compositional. However, we waited until here because the issue is even more pronounced at the level of whole statements and entire sequences of statements. In general, we prefer compiler procedures used in more than one place to be compositional which includes the code they generate. For example, the code generated for the expression `x < 7` and the assignment `x = x + 7` in isolation, as shown earlier, should ideally also work if the expression and assignment appear in a `while` loop.
+
+The key to making that work are the temporary registers used in code generation. After compiling an expression with the procedure `compile_expression`, we need to be sure that the value to which the expression evaluates at runtime is stored in the register returned by the procedure `current_temporary`. Only then, we can be sure where to find that value. In the procedure `compile_assignment`, we already exploited that property when identifying the register that holds the value to which the right-hand side of an assignment evaluates. In contrast, after compiling a statement with the procedure `compile_statement`, we need to be sure that no temporary registers are allocated, which is an invariant on temporary registers we mentioned earlier already that needs to hold in between any two statements. Our choice of how we use temporary registers is arguably the simplest way that enables compositional code generation. Other, more efficient choices are possible but too complex for our purpose.
+
+![While Loops](figures/emitting-while-loops.png "While Loops")
+
+The above figure shows the code of the procedure `compile_while` for compiling `while` loops with a single-statement loop body. Our example of a `while` loop is shown on the left and the code generated for the example is shown on the right. In order to focus on the generated code, we omit the details on the compile-time and runtime machine states. Notice that the code generated for the expression `x < 7` and the assignment `x = x + 7` appears exactly as before when we compiled both in isolation. Well, there is a tiny but irrelevant notational difference. We use the actual value `-16` as offset for loading and storing the value of `x`, as generated by the selfie compiler for a program in which `x` is the only global variable.
+
+As you can see in the code of `compile_while` and the generated code, there are only two instructions generated for a `while` loop. There is a conditional branch instruction, here `beq t0,zero,6`, right after the code that evaluates the loop condition and an unconditional jump instruction, here `jal zero,-8`, at the very end after the code that implements the loop body. These two instructions implement the exact semantics of a `while` loop. That's all there is.
+
+> Conditional forward branch and unconditional backward jump
+
+In particular, after executing the code that evaluates the loop condition, the `t0` register, as returned by the procedure `current_temporary`, contains the value to which the loop condition evaluates. The following `beq` instruction checks if the value of `t0` is equal to `0` using the `zero` register that always contains the value `0`. If yes, meaning the loop condition evaluated to false, `beq t0,zero,6` instructs the machine to *forward branch*, here by `6` instructions, to the first instruction after the unconditional jump instruction, effectively terminating the loop. If no, meaning the loop condition evaluated to true, `beq t0,zero,6` instructs the machine to execute the next instruction, here the second occurrence of the `ld t0,-16(gp)` instruction that follows the `beq` instruction, effectively entering the loop body. The `jal zero,-8` instruction at the very end instructs the machine to *backward jump*, here by `8` instructions hence the negative offset `-8`, to the first instruction of the code that evaluates the loop condition, here the first occurrence of the `ld t0,-16(gp)` instruction, effectively looping around to evaluate the loop condition again.
+
+The selfie compiler only generates backward jumps with negative offsets in two scenarios: `while` loops and some procedure calls. On machine level, the former obviously indicates repetition through iteration. The latter occurs if the code of the caller is stored at a higher address in memory than the address of the code of the callee, only indicating potential repetition through recursion. However, forward jumps with positive offsets generated for procedure calls do that to. The difference between jumps generated for `while` loops and procedure calls is that the latter use a register other than the `zero` register for the purpose of saving their return address. We get to that in the context of procedures.
+
+> Fixup
+
+Arguably the only true challenge involved in compiling `while` loops is to handle the forward branch of the conditional branch instruction. The problem is that by the time we generate that instruction we do not yet know where to branch to, simply because we do not know how many instructions will be generated for the loop body. Only when we are done generating code for the whole loop, we know where to branch to, here `6` instructions forward. How do we solve that problem? Well, we generate the `beq` instruction, here as `beq t0,zero,0`, with a preliminary offset of `0` indicating that the offset still requires work. Also, we remember the address of the `beq` instruction in a local variable called `branch_forward_to_end`. Later, once we know the actual offset, we go back to the `beq` instruction and replace the offset `0` with the actual offset. This is called a *fixup* which is implemented for instructions encoded in B-Format such as the `beq` instruction in the procedure `fixup_BFormat`.
+
+Luckily, the backward jump of the unconditional jump instruction does not involve a fixup because by the time we generate that instruction we already know where to jump to, namely, to the first instruction of the code that evaluates the loop condition. However, we do have to remember the address of that first instruction, of course, which is done in a local variable called `jump_back_to_while`. The need for fixups appears again in compiling conditional statements, and, in more complex scenarios, in compiling procedure calls and return statements.
+
+In order to deepen your understanding of `while` loops, let us take a look at another exercise, this time about implementing support of `for` loops, which are standard in C and many other programming languages. Use the autograder as follows to check your solution:
+
+```bash
+./grader/self.py for-loop
+```
+
+A `for` loop is meant to provide language support for expressing a pattern of loops that is quite common in code. Consider the following example:
+
+```c
+for (x = 0; x < 7; x = x + 7)
+  y = x + 1;
+```
+
+Compared to a `while` loop, a `for` loop allows us to initialize a variable, here `x`, called an *iterator*, using an assignment, here `x = 0`, that is only executed once before entering the loop. Then, there is a loop condition, here `x < 7`, that is checked *before* each iteration of the loop, just like in a `while` loop. Finally, there is another assignment, here `x = x + 7`, that is executed *after* each iteration, *before* checking the loop condition again. Thus the above example is a more compact version of the following `while` loop:
+
+```c
+x = 0;
+
+while (x < 7) {
+   y = x + 1;
+
+   x = x + 7;
+}
+```
+
+Implementing support of `for` loops in selfie requires carefully generating a number of unconditional jumps to get the semantics right. Before you begin coding, design an EBNF rule that defines the syntax of `for` loops, which can be simpler than the official syntax in C as long as it allows you to write `for` loops as in the above example. Modify the `grammar.md` file in the selfie repository accordingly. Then, take a copy of the procedure `compile_while` and modify it until it deserves to be called `compile_for`. Finally, integrate that procedure properly into the rest of the selfie parser. This is a fun exercise, not too hard, not too easy. When you are done, replace some `while` loops in the selfie code with `for` loops and check if self-compilation still works.
+
+### Conditionals
+
+Conditional statements represent important use cases in programming, even though they are technically redundant if loop statements are available. For example, there are around ten times more `if` statements than `while` loops in the selfie code. Just self-compile selfie and check the compiler profile to see that. The syntax of `if` statements is a bit more involved than the syntax of `while` loops because of the optional `else` body but parsing them is still easy:
+
+```ebnf
+if = "if" "(" expression ")"
+       ( statement | "{" { statement } "}" )
+     [ "else"
+       ( statement | "{" { statement } "}" ) ] .
+```
+
+Without the `else` body, the syntax of `if` statements is exactly the same as the syntax of `while` loops except for the keyword. In particular, the condition of an `if` statement can also be any C\* expression and the `if` body, as well as the `else` body, can also either be a single C\* statement or a possibly empty sequence of C\* statements surrounded by curly braces. The procedure `compile_if` implements compiling of `if` statements, invoking the procedures `compile_expression` and `compile_statement` to compile `if` condition as well as `if` body and `else` body, respectively. The intuitive semantics of an `if` statement is that, if the `if` condition evaluates to `0`, which represents the condition being false, the `if` body is skipped, and the next statement that follows the `if` body is executed, which is the first statement of the `else` body, if present, or else the first statement that follows the entire `if` statement. Otherwise, if the condition evaluates to any value but `0`, which represents the condition being true, the `if` body is executed once. After that, the `else` body is skipped, if present, and the first statement that follows the entire `if` statement is executed. Similar to `while` loops, an `if` statement `if (0) ... else ...` always executes the `else` body and an `if` statement `if (1) ... else ...` always executes the `if` body. You can use that feature for debugging your code. Consider the following `if` statement with a single assignment as `if` body and another single assignment as `else` body:
+
+```c
+if (x < 7)
+  x = x + 7;
+else
+  x = x - 7;
+```
+
+In short, the `if` statement increments the value of `x` by `7` if the value of `x` is less than `7`. Otherwise, it decrements the value of `x` by `7`. Again, the example reuses the expression `x < 7` and the assignment `x = x + 7` that appeared as examples before. Compositional parsing and code generation is just as important here as it is with `while` loops.
+
+![If Statements](figures/emitting-if-statements.png "If Statements")
+
+The above figure shows the code of the procedure `compile_if` for compiling `if` statements with a single-statement `if` body and a single-statement `else` body. Our example of an `if` statement is shown on the left and the code generated for the example is shown on the right. In order to focus on the generated code, we again omit the details on the compile-time and runtime machine states. Also, the code generated for the expression `x < 7` and the assignment `x = x + 7` appears exactly as before when we compiled both in isolation. We again use the actual value `-16` as offset for loading and storing the value of `x`, as generated by the selfie compiler for a program in which `x` is the only global variable.
+
+As you can see in the code of `compile_if` and the generated code, there are only two instructions generated for an `if` statement with an `else` body. There is a conditional branch instruction, here `beq t0,zero,6`, right after the code that evaluates the `if` condition and an unconditional jump instruction, here `jal zero,6`, right after the code that implements the `if` body. These two instructions implement the exact semantics of an `if` statement with an `else` body. Without an `else` body, the unconditional jump instruction is unnecessary and therefore not generated.
+
+> Conditional forward branch and unconditional forward jump
+
+Similar to `while` loops, after executing the code that evaluates the `if` condition, the `t0` register, as returned by the procedure `current_temporary`, contains the value to which the `if` condition evaluates. The following `beq` instruction checks if the value of `t0` is equal to `0` using the `zero` register that always contains the value `0`. If yes, meaning the `if` condition evaluated to false, `beq t0,zero,6` instructs the machine to forward branch, here by `6` instructions, to the first instruction after the unconditional jump instruction, effectively skipping the `if` body to execute the `else` body instead. If no, meaning the `if` condition evaluated to true, `beq t0,zero,6` instructs the machine to execute the next instruction, here the second occurrence of the `ld t0,-16(gp)` instruction that follows the `beq` instruction, effectively entering the `if` body. Unlike with `while` loops, the `jal zero,6` instruction at the end of the code that implements the `if` body instructs the machine to *forward jump*, here by `6` instructions, to the first instruction after the code that implements the `else` body, effectively skipping the `else` body. In particular, there are no backward jumps here.
+
+> Fixup, again
+
+Similar to `while` loops, the only true challenge involved in compiling `if` statements is to fixup the forward branch of the conditional branch instruction, and additionally the forward jump of the unconditional jump instruction. The fixup of instructions that are encoded in J-Format such as the `jal` instruction is implemented in the procedure `fixup_JFormat`. For the purpose of those fixups, the addresses of the conditional branch instruction and the unconditional jump instruction are stored in the local variables `branch_forward_to_else_or_end` and`jump_forward_to_end`, respectively. That's it.
+
+> Lazy evaluation, again
+
+With our understanding of how to compile `if` statements, we are ready to do another exercise that we mentioned before which is the support of *lazy evaluation* of Boolean logical operators. The exercise involves extending your solution of the exercise about Boolean logical operators without lazy evaluation. Here, the autograder is invoked as follows:
+
+```bash
+./grader/self.py lazy-evaluation
+```
+
+Recall that the right operands of the `&&` and `||` operators are supposed to be evaluated *lazily* which means that they are only evaluated if the value to which the left operand evaluates is not sufficient to determine the overall result. For example, in an expression `X && Y`, the right operand `Y` is not supposed to be evaluated if the left operand `X` evaluates to `0`, exploiting the fact that `X && Y` must evaluate to `0` in that case regardless of the value to which `Y` would evaluate. Similarly, in an expression `X || Y`, `Y` is not supposed to be evaluated if `X` evaluates to a value that is not `0`, exploiting the fact that `X || Y` must evaluate to `1` in that case, again, regardless of the value to which `Y` would evaluate.
+
+You might ask what the use cases are for lazy evaluation of logical operators. Here is an example of a quite common use case where `x` is declared as pointer to unsigned integer:
+
+```c
+if (x != (uint64_t*) 0 && *x < 7)
+  ...
+```
+
+This code dereferences `x` to check if the value in memory to which `x` points is less than `7` but only if `x` is not a null pointer, that is, if `x` points to something rather than nothing. Pointing to memory address `0` is almost always considered pointing to nothing. Sure, we could do the same as lazy evaluation but using two `if` statements instead:
+
+```c
+if (x != (uint64_t*) 0)
+  if (*x < 7)
+    ...
+```
+
+Using `if` statements rather than lazy evaluation of logical operators is in fact always possible but it does in general result in code duplication in `if` conditions as well as `if` and `else` bodies which is something to avoid. Maintaining duplicated code is often more work and more likely to result in bugs. Try for yourself. Write down a more involved `if` condition using logical operators and then code the same using nested `if` statements instead that mimic the behavior of lazy evaluation. Things get out of hand quite quickly. In fact, the situation gets quite tricky if logical operators are used in sequence or even nested. For example, in an expression `X && Y && Z` that uses two `&&` operators in sequence, `Y` and `Z` are not supposed to be evaluated if `X` evaluates to `0`. Similarly, in an expression `X || Y || Z`, `Y` and `Z` are not supposed to be evaluated if `X` evaluates to a value that is not `0`. Even more tricky is nested use of logical operators. For example, in an expression `X && Y || Z && U`, `Y` is not supposed to be evaluated, if `X` evaluates to `0`, but then `Z` still is whereas `U` is not, if `Z` evaluates to `0`, all because `&&` has higher precedence than `||`. Thus in an expression `X || Y && Z || U`, `Y`, `Z`, and `U` are not supposed to be evaluated, if `X` evaluates to a value other than `0`. Practice your understanding by listing all remaining scenarios.
+
+So, how do you solve the exercise? Well, if the previous exercises were not challenging enough, this one probably is. But only until you realize how to think properly using abstraction. Lazy evaluation can be handled in each of the parser procedures for `&&` and `||` individually. You only need to generate conditional branch instructions that forward branch to implement lazy evaluation. Since they forward branch they require fixup but that we already know how to do. The only real issue arises in the presence of sequenced logical operators whereas support of nested logical operators comes for free. With sequenced logical operators there could be any number of conditional branch instructions that still require fixup. There are essentially two solutions to that. Either you represent all instructions that still require fixup in a list explicitly called a *fixup chain*, which is something we actually do for procedure calls and return statements. However, here you can also use recursion by having the parser procedures for `&&` and `||` call themselves recursively and thereby use their local variables on the call stack implicitly as list, instead of an explicit list. The only drawback of that approach is that the conditional branch instructions generated for `if` statements and `while` loops become redundant and are thus inefficient. Delayed code generation that manages two fixup chains for `&&` and `||` simultaneously can solve that problem but never mind, unless you really enjoy the challenge.
+
 ### Procedures
 
-### Library
+Most programming languages feature a notion of procedures, one way or another, maybe not called procedures but functions or methods, but still. The idea of procedures and their great success in programming languages in particular can be explained from two, quite different perspectives: procedures as effective programming abstraction and, less common, as efficient implementation technology. Procedures are a great, widely used programming abstraction which facilitates tool-supported structured programming that promotes efficient code reuse and dynamic memory management in constant time. The fact that procedures can be implemented very efficiently is ultimately the reason why procedures survived the test of time.
+
+A procedure gives code a name that allows reusing that code in different contexts from within other code through procedure calls which simultaneously feature and require stack allocation through dynamic allocation and deallocation of the involved memory on a call stack. There is a potential problem, however, which is, as so often, correctness. Reusing the same code correctly in different contexts is powerful but also hard to get right. A procedure not only provides a piece of code for structured reuse through procedure calls by name but also an *interface* through some form of specification such as its *signature* which facilitates checking at least type compatibility of reuse in different contexts. Type checking of procedure calls, that is, checking type compatibility of actual parameters with formal parameters, similar to checking type compatibility of operands in expressions as well as right-hand sides of assignments with their left-hand sides, has become the arguably most successful form of program analysis.
+
+Here is the C\* grammar for procedure declarations and definitions as well as procedure calls and return statements:
+
+```ebnf
+procedure = ( type | "void" ) identifier "(" [ variable { "," variable } [ "," "..." ] ] ")"
+            ( ";" | "{" { variable ";" } { statement } "}" ) .
+
+call      = identifier "(" [ expression { "," expression } ] ")" .
+
+return    = "return" [ expression ] .
+```
+
+The grammar rule for the non-terminal `procedure` defines the syntax of procedure declarations with a semicolon `;` right after the procedure signature, and procedure definitions with a procedure body enclosed in a left brace `{` and a right brace `}`, instead of a semicolon. The `type` non-terminal and the `void` keyword define the return type of a procedure, the `identifier` non-terminal defines the name of a procedure. The following optional sequence of `variable` non-terminals defines the formal parameters of a procedure. The name of each formal parameter must be unique among all formal parameters, and all local variables, of a procedure. The optional ellipsis symbol `...` defines a procedure as *variadic* meaning that the procedure may be invoked with more actual parameters than formal parameters and in particular with a different number of actual parameters in different procedure calls. The procedure `printf`, which is widely used in C and its derivates, is an example of a variadic procedure. We explain variadic procedures further below. The optional sequence of `variable` non-terminals in the procedure body defines the local variables of a procedure. Again, the name of each local variable must be unique among all local variables, and all formal parameters, of a procedure. The sequence of `statement` non-terminals defines the implementation of a procedure.
+
+The grammar rule for the non-terminal `call` defines the syntax of a call to a procedure with the name given by the `identifier` non-terminal. The optional sequence of `expression` non-terminals defines the actual parameters of a procedure call. The type of each expression, or more precisely the type of the value to which each expression evaluates, should be compatible with the type of the formal parameter of the called procedure that appears at the same position in the sequence of formal parameters as the position of the expression in the sequence of expressions, that is, actual parameters.
+
+The grammar rule for the non-terminal `return` defines the syntax of `return` statements. The optional `expression` non-terminal defines an expression that evaluates to the return value of a procedure. The type of the expression, or again more precisely the type of the value to which the expression evaluates, should be compatible with the return type of the procedure from which the `return` statement returns. This means that `return` statements returning from procedures with `void` return type should not use the optional `expression`.
+
+> Semantics of procedures
+
+As usual, the procedures `compile_procedure`, `compile_call`, and `compile_return` implement compilation of `procedure`, `call`, and `return`, respectively. The semantics of procedure calls and return statements as well as procedure bodies in general is non-trivial. We therefore do not explain the source code of `compile_procedure`, `compile_call`, and `compile_return` directly but instead discuss compilation of code examples with increasing complexity. Before doing so, let us summarize the semantics of procedures in C\*.
+
+> Semantics of procedure calls
+
+We distinguish the control flow involved in a procedure call from the data flow. In terms of control flow, a procedure call invokes the code of the *callee*, the procedure being called, with the expectation that the callee eventually returns control to the *caller*, the procedure calling the callee. Upon returning control, the caller continues execution with the statement that follows the procedure call. If the callee has no formal parameters and no return value, there is no data flow involved in a procedure call to that callee. If the callee has formal parameters, any procedure call to that callee involves expressions that evaluate to actual parameters which in turn become the values of the formal parameters at runtime. The actual parameters of the caller are passed-by-value, as mentioned before, to the formal parameters of the callee, in the order of their appearence in the procedure call of the caller and the procedure signature of the callee, respectively. If the callee has a return value, the caller receives the value returned by the callee with a procedure call and can then use that value in an expression but may also ignore it when using a procedure call as statement.
+
+> Semantics of procedure bodies
+
+Procedure bodies consist of a possibly empty sequence of local variable declarations followed by a possibly empty sequence of statements. The scope of local variables is limited to the procedure body in which the variables are declared. Similarly, the scope of formal parameters of a procedure is limited to the body of the procedure. If a local variable or formal parameter has the same name as a global variable, the name identifies the local variable or formal parameter, not the global variable, making the global variable inaccessible in the procedure body. In C\*, local variables of procedures are not initialized.
+
+> Semantics of return statements
+
+Similar to procedure calls, we distinguish the control flow involved in a return statement from the data flow. In terms of control flow, a return statement terminates the execution of the procedure body in which it occurs, immediately returning control from callee to caller. In particular, a return statement skips the execution of all statements that follow the return statement in a procedure body. Moreover, if a return statement occurs in a loop, that loop, and all loops containing that loop are terminated. If a return statement does not involve an expression, there is no data flow involved in the return statement. If a return statement involves an expression, the value to which the expression evaluates at runtime is returned as return value of the callee to the caller.
+
+> Implementation by example
+
+Our first example shows the arguably simplest use of procedures, which does not involve any local variables and parameters, and in fact only one explicit procedure call. The example is inspired by the `factorial` procedures introduced in the language chapter:
+
+```c
+uint64_t f = 1;
+uint64_t n = 4;
+
+void factorial() {
+  while (n > 1) {
+    f = f * n;
+
+    n = n - 1;
+  }
+}
+
+uint64_t main() {
+  factorial();
+
+  return f;
+}
+```
+
+The `main` procedure invokes the procedure `factorial` which in turn computes the factorial of `n`, a global variable initialized to the value `4`, and stores the result in `f`, another global variable initialized to the value `1`. When `factorial` returns control to `main`, the value of `f`, which is here the value `24`, is returned as exit code of `main`. To see that save the above code in a file called `factorial.c` and then invoke selfie as follows:
+
+```bash
+./selfie -c factorial.c -S factorial.s -m 1
+```
+
+The relevant line in the output is:
+
+```
+./selfie: factorial.c exiting with exit code 24
+```
+
+The example features all three elements of procedures: a procedure call, a return statement, and a procedure body, for `factorial` and in fact another one for `main`. However, the example makes very limited use of procedures. There are neither any local variables nor parameters, and the procedure `factorial` does not invoke any procedure with a procedure call and only returns implicitly without any explicit return statement. In fact, we could replace the procedure call `factorial();` with a copy of the procedure body of `factorial` and remove the procedure `factorial` entirely from the code, and still obtain the exact same behavior. Therefore, most of the code specifically generated for procedure bodies is here not necessary, that is, *redundant*, which allows us to focus on the generated code that is necessary.
+
+As instructed by the `-S` option, the above invocation of selfie generated assembly code for the example into a file called `factorial.s`. The following assembly code is taken from that file and shows the instructions generated by the procedure `compile_procedure` for the procedure `factorial` except for the instructions that are here redundant:
+
+```asm
+// assert: link = ra
+
+0x13C(~5) - 0x14C(~5): // redundant factorial prologue hidden
+---
+0x150(~5): ld t0,-24(gp)         // while (n > 1) {
+0x154(~5): addi t1,zero,1
+0x158(~5): sltu t0,t1,t0
+0x15C(~5): beq t0,zero,10[0x184]
+---
+0x160(~6): ld t0,-16(gp)         //   f = f * n;
+0x164(~6): ld t1,-24(gp)
+0x168(~6): mul t0,t0,t1
+0x16C(~6): sd t0,-16(gp)
+---
+0x170(~8): ld t0,-24(gp)         //   n = n - 1;
+0x174(~8): addi t1,zero,1
+0x178(~8): sub t0,t0,t1
+0x17C(~8): sd t0,-24(gp)
+---
+0x180(~10): jal zero,-12[0x150]  // }
+---
+0x184(~10) - 0x190(~10): // redundant factorial epilogue hidden
+
+// assert: ra == link
+
+0x194(~10): jalr zero,0(ra) // return from factorial
+```
+
+The procedure `compile_procedure` generates two blocks of code, one at the very beginning called *prologue* using the procedure `procedure_prologue` and another one at the very end called *epilogue* using the procedure `procedure_epilogue`, followed by a single `jalr` instruction for returning to the caller of the procedure by unconditionally jumping to the address stored in the return register `ra`. The code in between prologue and epilogue implements the procedure body as generated by repeated invocations of the procedure `compile_statement`. We already know how that works. In the above code, the `jalr` instruction at the very end is the only instruction actually needed for turning the procedure body into a proper procedure that can be called from anywhere else in the code. Both the prologue and the epilogue are generally also needed but are here redundant.
+
+Before we look into the code generated for the `main` procedure, notice the two assertions at the very beginning of the above code and the very end right before the `jalr` instruction. The assertion `link = ra` remembers the value of the return address register `ra` as `link`. The assertion `ra == link` states that after executing the code in between the two assertions the value of `ra` has not changed.
+
+> Procedure body invariant
+
+The assertions help us in reasoning about important invariants. The first such invariant is on the code generated for procedure bodies: the value of the return address register `ra` right before returning to the caller with the `jalr` instruction at the end of the code generated for a procedure body is the same as the value of `ra` upon entering the procedure body when jumping to the beginning of that code. This is important! The value of `ra` upon entering the procedure body is the address of the instruction right after the `jal` instruction generated for procedure calls in the caller that invoke the procedure body, and is thus exactly the address to which the `jalr` instruction at the end of the procedure body is supposed to return to. The invariant trivially holds in the above code because `factorial` does not call any procedure in its procedure body and therefore contains no code that modifies the value of `ra`. However, if a procedure calls procedures, the value of `ra` must be saved and restored accordingly, as demonstrated by the code generated for the `main` procedure in our example:
+
+```asm
+// assert: top = sp, link = ra
+
+// necessary part of main prologue:
+0x198(~13): addi sp,sp,-8 // allocate one machine word on stack
+0x19C(~13): sd ra,0(sp)   // save return address register ra on stack
+
+// assert: sp == top - 8, ra == link
+
+0x1A0(~13) - 0x1A8(~13):  // redundant part of main prologue hidden
+
+// assert: sp == top - 16, ra == link
+
+0x1AC(~13): jal ra,-28[0x13C] // factorial();
+
+// assert: sp == top - 16, ra != link
+
+0x1B0(~15): ld t0,-16(gp)     // return f;
+0x1B4(~15): addi a0,t0,0      // load f into return value register a0
+0x1B8(~15): jal zero,2[0x1C0] // skip resetting a0
+---
+0x1BC(~16): addi a0,zero,0 // reset return value register a0, redundant
+---
+0x1C0(~16) - 0x1C4(~16): // redundant part of main epilogue hidden
+
+// assert: sp == top - 8, ra != link
+
+// necessary part of main epilogue:
+0x1C8(~16): ld ra,0(sp)  // restore return address register ra
+0x1CC(~16): addi sp,sp,8 // deallocate one machine word on stack
+
+// assert: sp == top, ra == link
+
+0x1D0(~16): jalr zero,0(ra) // return from main
+```
+
+The example exposes the first and last two instructions of prologue and epilogue, respectively, which are necessary if the procedure body modifies `ra` through procedure calls such as the call to `factorial`. The first two instructions save the value of `ra` on the call stack while the last two restore that value from the call stack back into `ra`. Since saving and restoring information on the call stack involves memory allocation, the value of the stack pointer `sp` changes. In addition to `ra`, we therefore also keep track of `sp` in assertions. While the value of `sp` is also changed by the here redundant parts of prologue and epilogue, the value of `sp`, in contrast to the value of `ra`, must be the same from before and after executing code generated for procedure calls, as asserted by `sp == top - 16` right before and after the `jal` instruction generated for the call to `factorial` by the procedure `procedure_call` which in turn is invoked by the procedure `compile_call`.
+
+The target address of the `jal` instruction for the procedure call is the first instruction of the prologue of the callee. Unlike unconditional jumps generated for `while` loops as well as for `if` and even `return` statements, as we see below, the `jal` instruction for procedure calls uses `ra` to link `ra` to the address of the instruction that follows the `jal` instruction.
+
+> Procedure call invariant
+
+This brings us to the second invariant we need which is on the code generated for procedure calls: the value of the stack pointer `sp` from right before and after executing the code generated for a procedure call is the same. Again, this is important! The invariant implies that the memory allocated on the call stack for executing a procedure call and the procedure body of the callee is deallocated after the execution of the call is done, not less, and also not more. If actual parameters are involved, guaranteeing that the invariant still holds gets even more complicated, as we see below.
+
+![Call Frame](figures/call-frame.png "Call Frame")
+
+Before we continue, take a look at the above figure which provides an overview of the full memory layout created on the call stack by code generated for procedures. Right in the middle, you can already spot where the value of the return address register `ra` is saved. The rest including all terminology is explained below.
+
+> Fixup chains
+
+Another challenge with code generation for procedure calls is the fixup of forward jumps, similar to code generation for `if` statements with an `else` body. A procedure call may invoke a procedure that has already been declared but not defined yet. In this case, the target address of the `jal` instruction generated for the procedure call is unknown, until the compiler encounters the procedure definition. To make matters worse, there can be multiple procedure calls to the same, still undefined procedure, and thus multiple already generated `jal` instructions with the same but still unknown target address. How do we resolve that problem? The answer is surprisingly simple. We construct a *fixup chain* of `jal` instructions, one per already called but still undefined procedure, and remember the fixup chain in the symbol table entry for the procedure. Once the procedure definition is encountered, the target address is known enabling a fixup of the instructions on the chain with the procedure `fixlink_JFormat`. The interesting twist is that representing a fixup chain does not require constructing a list explicitly. Instead, the target addresses of the `jal` instructions on the chain are used to construct a list implicitly, no additional memory required.
+
+> Return value
+
+Let us now take a look at how the `return f;` statement in the `main` procedure is implemented. As usual, the value of the global variable `f` is first loaded into a temporary register, here `t0`. The `ld` instruction that does this is generated through an invocation of the procedure `compile_expression` by the procedure `compile_return`. The following `addi` instruction copies the value of `t0` into the return value register `a0` where any caller of the currently compiled procedure expects to find return values. We see below how the code generated for procedure calls retrieves return values from `a0`. The `addi` instruction implements the data-flow semantics of `return` statements and is generated by `compile_return` itself, just like the following `jal` instruction which implements the control-flow semantics by unconditionally jumping forward to the epilogue of the currently compiled procedure body.
+
+> Fixup chains, again
+
+In our example, the `jal` instruction only jumps `2` instructions forward, skipping an `addi` instruction that initializes `a0` to `0`. The `addi` instruction is generated by the procedure `compile_procedure` for procedures with non-void return values to guarantee a deterministic return value, in case of an error in the source code of the procedure body where the end of the body is reachable without going through a `return` statement that defines the return value. Detecting reachability involves non-trivial program analysis in the compiler and thus not done here to keep things simple. The issue that does require attention, however, is again the fixup of forward jumps. There may even be multiple `return` statements in a procedure body, requiring a fixup chain, as with procedure calls. Once the end of the procedure body is encountered, the target address is known, again enabling a fixup of the instructions on the chain with the procedure `fixlink_JFormat`.
+
+Let us now take a look at another version of the `factorial` procedure, this time using recursion rather than iteration:
+
+```c
+void factorial() {
+  if (n > 1) {
+    f = f * n;
+
+    n = n - 1;
+
+    factorial();
+  }
+}
+```
+
+The difference to the previous version of `factorial` is that we now us an `if` statement rather than a `while` loop, and a recursive procedure call to `factorial`. The behavior is the same as before, just using different means. The assembly code is as follows:
+
+```asm
+// assert: top = sp, link = ra
+
+0x13C(~5): addi sp,sp,-8 // necessary part of factorial prologue
+0x140(~5): sd ra,0(sp)
+
+// assert: sp == top - 8, ra == link
+
+0x144(~5) - 0x14C(~5):   // redundant part of factorial prologue hidden
+
+// assert: sp == top - 16, ra == link
+
+0x150(~5): ld t0,-24(gp)         // if (n > 1) {
+0x154(~5): addi t1,zero,1
+0x158(~5): sltu t0,t1,t0
+0x15C(~5): beq t0,zero,10[0x184]
+---
+0x160(~6): ld t0,-16(gp)         //   f = f * n;
+0x164(~6): ld t1,-24(gp)
+0x168(~6): mul t0,t0,t1
+0x16C(~6): sd t0,-16(gp)
+---
+0x170(~8): ld t0,-24(gp)         //   n = n - 1;
+0x174(~8): addi t1,zero,1
+0x178(~8): sub t0,t0,t1
+0x17C(~8): sd t0,-24(gp)
+
+// assert: sp == top - 16, ra == link
+
+0x180(~10): jal ra,-17[0x13C]    //   factorial(); }
+
+// assert: sp == top - 16, ra != link or ra == link
+
+0x184(~12) - 0x188(~12): // redundant part of factorial epilogue hidden
+
+// assert: sp == top - 8, ra != link or ra == link
+
+0x18C(~12): ld ra,0(sp)  // necessary part of factorial epilogue
+0x190(~12): addi sp,sp,8
+
+// assert: sp == top, ra == link
+
+0x194(~12): jalr zero,0(ra) // return from factorial
+```
+
+The assembly code is almost identical to the assembly code for the iterative version of `factorial`. The only difference is the `jal` instruction. In the iterative version, the `jal` instruction is an unconditional backwards jump that closes the `while` loop. In the recursive version, the `jal` instruction is also an unconditional backwards jump but this time implementing the procedure call to `factorial` using the return address register `ra` as link. Here, the value of `ra` only changes if the current caller of `factorial` is the `main` procedure. If the current caller is `factorial` itself, then the value of `ra` obviously does not change. Either way, the code for saving and restoring `ra` is now necessary to make sure that `factorial` eventually returns to `main`.
+
+At this point, we are done with the control-flow semantics of procedures, and even the data-flow semantics of `return` statements. Next, our focus is on the data-flow semantics of procedure calls. Consider the following example which implements the same behavior as the previous example only using `n`, not as global variable, but as formal parameter of the `factorial` procedure:
+
+```c
+uint64_t f = 1;
+
+void factorial(uint64_t n) {
+  if (n > 1) {
+    f = f * n;
+
+    factorial(n - 1);
+  }
+}
+
+uint64_t main() {
+  factorial(4);
+
+  return f;
+}
+```
+
+Instead of keeping track of the value of `n` in a global variable, the above version of `factorial` calls itself with the value of `n` decremented by `1` as actual parameter of the caller to the formal parameter `n` of the callee. The assembly code is as follows:
+
+```asm
+// assert: top = sp, frame = s0, link = ra
+
+// factorial prologue:
+0x13C(~4): addi sp,sp,-8 // allocate one machine word on stack
+0x140(~4): sd ra,0(sp)   // save return address register ra on stack
+0x144(~4): addi sp,sp,-8 // allocate one machine word on stack
+0x148(~4): sd s0,0(sp)   // save frame pointer s0 on stack
+0x14C(~4): addi s0,sp,0  // set frame pointer s0 to stack pointer sp
+
+// assert: sp == top - 16, s0 = sp != frame, ra == link
+
+0x150(~4): ld t0,16(s0)          // if (n > 1) {
+0x154(~4): addi t1,zero,1
+0x158(~4): sltu t0,t1,t0
+0x15C(~4): beq t0,zero,11[0x188]
+---
+0x160(~5): ld t0,-16(gp)         //   f = f * n;
+0x164(~5): ld t1,16(s0)
+0x168(~5): mul t0,t0,t1
+0x16C(~5): sd t0,-16(gp)
+
+// assert: sp == top - 16, s0 == sp, ra == link
+
+0x170(~7): ld t0,16(s0)          //   factorial(n - 1);
+0x174(~7): addi t1,zero,1
+0x178(~7): sub t0,t0,t1
+0x17C(~7): addi sp,sp,-8         //   allocate memory on stack
+0x180(~7): sd t0,0(sp)           //   store value of n - 1 on stack
+
+// assert: sp == top - 24, s0 == top - 16, ra == link
+
+0x184(~7): jal ra,-18[0x13C]     // }
+
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
+
+// factorial epilogue:
+0x188(~9): ld s0,0(sp)   // restore frame pointer s0 from stack
+0x18C(~9): addi sp,sp,8  // deallocate one machine word on stack
+0x190(~9): ld ra,0(sp)   // restore return address register ra from stack
+0x194(~9): addi sp,sp,16 // deallocate machine word for ra and for n on stack
+
+// assert: sp == top + 8, s0 == frame, ra == link
+
+0x198(~9): jalr zero,0(ra) // return from factorial
+```
+
+Both the full prologue and epilogue code generated for `factorial` is now necessary because `factorial` not only has a formal parameter but actually accesses it too. The same is true if `factorial` had a local variable and accessed it. In addition to saving and restoring the value of the return address register `ra` on the call stack, as we saw before, the prologue also saves the value of the frame pointer `s0` and then sets the value of `s0` to the value of the stack pointer `sp`. The epilogue matches that behavior by restoring the saved value of `s0` from the call stack accordingly. In addition to the values of `ra` and `sp`, we therefore also keep track of the value of `s0` in assertions from now on. We also strengthen the invariant on procedure bodies: the value of the frame pointer `s0` right before returning to the caller with the `jalr` instruction at the end of the code generated for a procedure body is the same as the value of `s0` upon entering the procedure body when jumping to the beginning of that code. Again, this is important! The value of `s0` upon entering the procedure body through a procedure call is the frame pointer used by the caller which may still need the frame pointer in code that follows the procedure call.
+
+> Procedure mark
+
+The memory for saving the values of `ra` and `s0` on the call stack is called *procedure mark*. The purpose of the frame pointer `s0` is to address the memory allocated for formal parameters and local variables on the call stack. The layout is such that memory for formal parameters has positive offsets relative to `s0` and is located above the procedure mark, and memory for local variables has negative offsets and is located below the procedure mark, as we see below. Here is yet another invariant on procedure bodies: the value of the frame pointer `s0` does not change during execution of the code in between prologue and epilogue. That invariant allows us to address the memory for formal parameters and local variables relative to `s0`. While the value of `s0` does not change, the value of the stack pointer `sp` may change and can thus not be used instead of `s0`, at least not easily. The value of `sp` changes when executing code that prepares the call stack for procedure calls, as we see next.
+
+> Call frame
+
+The memory on the call stack for formal parameters, local variables, and the procedure mark is called a *call frame*. Executing a procedure call essentially results in the allocation of a call frame at runtime which must be deallocated when the callee returns. The question is who deallocates what? Take a look at the code generated for the procedure call `factorial(n - 1);`. The first three instructions are generated by the procedure `compile_expression` for evaluating the value of the expression `n - 1`. The interesting bit is the positive offset `16` relative to `s0` in the `ld` instruction that loads the value of `n` into the temporary register `t0`. The value of `n` is located right above the procedure mark which occupies `16` bytes on the call stack hence the offset `16` relative to `s0` rather than some negative offset relative to the global pointer `gp` if `n` was a global variable. The two instructions right before the `jal` instructions begin constructing the call frame for the callee by allocating memory on the call stack and then saving the value of `n - 1` on the stack. This temporarily violates the invariant on procedure calls by changing the value of `sp`, here from `sp == inv - 16` to `sp == inv - 24`. However, the value of `sp` is back to `sp == inv - 16` right after executing the `jal` instruction. How is that possible? Well, the very last instruction of the epilogue takes care of the problem. That `addi` instruction not only deallocates the memory for `ra` but also for `n` hence the assertion `sp == inv + 8` right before the `jalr` instruction. In other words, the callee deallocates the memory for formal parameters allocated by the caller! We could also have the caller deallocate that memory but that would result in more code because there is only one epilogue per procedure body but possibly many procedure calls to the same procedure.
+
+> Variadic procedures
+
+However, not all memory allocated by the caller can be deallocated by the callee. The issue arises with variadic procedures such as the procedure `printf` where each procedure call can have a different number of actual parameters, only known by the caller, not the callee. This means that when generating code for procedure bodies the number of actual parameters on the call stack upon entering a procedure body is unknown. More precisely, the number of non-variadic actual parameters is known, just not the number of variadic parameters. Fortunately, the latter always appear after the former in a procedure call. The procedure `compile_call` therefore generates code that evaluates the non-variadic parameters first from left to right, followed by the variadic parameters, again from left to right.
+
+> Actual parameters in reverse
+
+However, the parameters are actually stored on the call stack in reverse, that is, the last variadic parameter appears first on the stack, followed by the second last, and so on. Thus the very first parameter appears last on the stack, that is, at the top of the stack! Why is that? Well, the offset of the non-variadic parameters relative to the frame pointer `s0` is only then independent of the number of variadic parameters. Code generation for procedure bodies can thus figure out the offsets of the non-variadic parameters and store them in the local symbol table in order to find them later when those parameters are accessed. That is why! But how do we find the variadic parameters? Well, this is where those mysterious macros `var_start`, `var_arg`, and `var_end` come in. The macro `var_start` generates code that returns a pointer to the first variadic parameter. The macro `var_arg` generates code that returns the value of the variadic parameter to which that pointer refers to but not without advancing the pointer to the next variadic parameter right before returning. Repeated uses of `var_arg` therefore return the values of variadic parameters in the order of appearence in a procedure call. The macro `var_end` is not needed here but still there for compliance with the standard in C.
+
+> Fixup, again
+
+There is one more thing. How do we know the total number of actual parameters in a procedure call at the beginning of parsing a procedure call? We need to know that number to store the parameters in reverse on the call stack. Well, we do not know it then, similar to target addresses of forward branches and jumps, only when we are done parsing a procedure call. The solution is to generate an `addi` instruction at the beginning whose purpose is to allocate the entire memory needed to store all actual parameters by decrementing the stack pointer `sp` accordingly. Once the amount is known, we go back and perform a fixup of that instruction using the procedure `fixup_IFormat`. Now we are done. For completeness, consider the assembly code generated for the `main` procedure that invokes `factorial` with the actual parameter `4`:
+
+```asm
+// assert: top = sp, link = ra
+
+0x19C(~12): addi sp,sp,-8 // necessary part of main prologue
+0x1A0(~12): sd ra,0(sp)
+
+// assert: sp == top - 8, ra == link
+
+0x1A4(~12) - 0x1AC(~12):  // redundant part of main prologue hidden
+
+// assert: sp == top - 16, ra == link
+
+0x1B0(~12): addi t0,zero,4    // factorial(4);
+0x1B4(~12): addi sp,sp,-8     // allocate one machine word on stack
+0x1B8(~12): sd t0,0(sp)       // store value 4 on stack
+
+// assert: sp == top - 24, ra == link
+
+0x1BC(~12): jal ra,-32[0x13C] // call factorial(4)
+
+// assert: sp == top - 16, ra != link
+
+0x1C0(~14): ld t0,-16(gp)     // return f;
+0x1C4(~14): addi a0,t0,0
+0x1C8(~14): jal zero,2[0x1D0]
+---
+0x1CC(~15): addi a0,zero,0 // reset return value register a0, redundant
+---
+0x1D0(~15) - 0x1D4(~15): // redundant part of main epilogue hidden
+
+// assert: sp == top - 8, ra != link
+
+0x1D8(~15): ld ra,0(sp)  // necessary part of main epilogue
+0x1DC(~15): addi sp,sp,8
+
+// assert: sp == top, ra == link
+
+0x1E0(~15): jalr zero,0(ra) // return from main
+```
+
+The code of the prologue and epilogue that saves and restores the frame pointer `s0` is still redundant here because `main` still does not access any formal parameters and local variables. The code generated for the procedure call to `factorial` is in line of what we saw above. By now, we are done with code generation for data-flow semantics, at least on the level of source code. There is, however, an additional issue on the level of machine code. Consider the following version which repeats the recursive implementation of `factorial` without the use of any global variables from the language chapter:
+
+```c
+uint64_t factorial(uint64_t n) {
+  if (n > 1)
+    return n * factorial(n - 1);
+  else
+    return 1;
+}
+
+uint64_t main() {
+  return factorial(4);
+}
+```
+
+The challenge with code generation for this example is the expression `n * factorial(n - 1)` which contains a procedure call to `factorial` whose return value is used right there in the expression but only after the left operand of the multiplication operator, the value of `n` to the left of `*`, has been evaluated. Here is the assembly code for this version of `factorial`:
+
+```asm
+// assert: top = sp, frame = s0, link = ra
+
+0x13C(~2): addi sp,sp,-8 // factorial prologue
+0x140(~2): sd ra,0(sp)
+0x144(~2): addi sp,sp,-8
+0x148(~2): sd s0,0(sp)
+0x14C(~2): addi s0,sp,0
+
+// assert: sp == top - 16, s0 = sp != frame, ra == link
+
+0x150(~2): ld t0,16(s0)          // if (n > 1)
+0x154(~2): addi t1,zero,1
+0x158(~2): sltu t0,t1,t0
+0x15C(~2): beq t0,zero,17[0x1A0]
+---
+0x160(~3): ld t0,16(s0)          //   return n * factorial(n - 1);
+0x164(~3): addi sp,sp,-8         //   allocate one machine word on stack
+0x168(~3): sd t0,0(sp)           //   save value of n left to * on stack
+
+// assert: sp == top - 24, s0 == top - 16, ra == link
+
+0x16C(~3): ld t0,16(s0)
+0x170(~3): addi t1,zero,1
+0x174(~3): sub t0,t0,t1
+0x178(~3): addi sp,sp,-8         //   allocate one machine word on stack
+0x17C(~3): sd t0,0(sp)           //   store value of n - 1 on stack
+
+// assert: sp == top - 32, s0 == top - 16, ra == link
+
+0x180(~3): jal ra,-17[0x13C]     //   call factorial(n - 1)
+
+// assert: sp == top - 24, s0 == top - 16, ra != link or ra == link
+
+0x184(~3): ld t0,0(sp)           //   restore n from stack into register t0
+0x188(~3): addi sp,sp,8          //   deallocate one machine word on stack
+
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
+
+0x18C(~3): addi t1,a0,0          //   retrieve return value of factorial(n - 1)
+0x190(~3): mul t0,t0,t1          //   evaluate n * factorial(n - 1)
+0x194(~3): addi a0,t0,0          //   store result in return value register a0
+0x198(~3): jal zero,6[0x1B0]     //   jump to epilogue
+---
+0x19C(~5): jal zero,4[0x1AC]     // else
+---
+0x1A0(~5): addi t0,zero,1        //   return 1;
+0x1A4(~5): addi a0,t0,0          //   store 1 in return value register a0
+0x1A8(~5): jal zero,2[0x1B0]     //   jump to epilogue
+---
+0x1AC(~6): addi a0,zero,0 // reset return value register a0, redundant
+
+// assert: sp == top - 16, s0 == sp, ra != link or ra == link
+
+0x1B0(~6): ld s0,0(sp)   // factorial epilogue
+0x1B4(~6): addi sp,sp,8
+0x1B8(~6): ld ra,0(sp)
+0x1BC(~6): addi sp,sp,16
+
+// assert: sp == top + 8, s0 == frame, ra == link
+
+0x1C0(~6): jalr zero,0(ra) // return from factorial
+```
+
+The code generated for evaluating the expression `n * factorial(n - 1)` using the procedure `compile_expression` shows that the value of `n` to the left of `*` is loaded into the temporary register `t0` before `factorial(n - 1)` to the right of `*` is evaluated. However, code generation for procedure bodies assumes that all temporary registers are available upon entering the code for a procedure body, just like the invariant on temporary registers before and after executing the code of a statement. A procedure call as statement is therefore not a problem but a procedure call in an expression may be a problem, as in our example. How do we solve the problem? The answer is simple. We generate code that saves the values of all currently used temporary registers on the call stack, using the procedure `save_temporaries`, before generating the code for a procedure call, and then generate code that restores those values, using the procedure `restore_temporaries`, after generating the code for a procedure call. Done! The above code shows the result for our example. This approach may result in inefficient code but doing something smarter is beyond our means here. Again for completeness, here is the assembly code generated for the `main` procedure that invokes `factorial` with the actual parameter `4`, this time as the expression in a `return` statement:
+
+```asm
+// assert: top = sp, link = ra
+
+0x1C4(~9): addi sp,sp,-8 // necessary part of main prologue
+0x1C8(~9): sd ra,0(sp)
+
+// assert: sp == top - 8, ra == link
+
+0x1CC(~9) - 0x1D4(~9):   // redundant part of main prologue hidden
+
+// assert: sp == top - 16, ra == link
+
+0x1D8(~9): addi t0,zero,4    // return factorial(4);
+0x1DC(~9): addi sp,sp,-8     // allocate one machine word on stack
+0x1E0(~9): sd t0,0(sp)       // store value 4 on stack
+
+// assert: sp == top - 24, ra == link
+
+0x1E4(~9): jal ra,-42[0x13C] // call factorial(4)
+
+// assert: sp == top - 16, ra != link
+
+0x1E8(~9): addi t0,a0,0      // retrieve return value of factorial(4)
+0x1EC(~9): addi a0,t0,0      // store result in return value register a0
+0x1F0(~9): jal zero,2[0x1F8] // jump to epilogue
+---
+0x1F4(~10): addi a0,zero,0 // reset return value register a0, redundant
+---
+0x1F8(~10) - 0x1FC(~10): // redundant part of main epilogue hidden
+
+// assert: sp == top - 8, ra != link
+
+0x200(~10): ld ra,0(sp)  // necessary part of main epilogue
+0x204(~10): addi sp,sp,8
+
+// assert: sp == top, ra == link
+
+0x208(~10): jalr zero,0(ra) // return from main
+```
+
+Since `main` still does not access any formal parameters and local variables, only the parts of prologue and epilogue that save and restore the return address register `ra` are needed. We are finally done with code generation for data-flow semantics on all levels. There is only one thing missing, the use of local variables. Consider the following version of a `main` procedure:
+
+```c
+uint64_t main() {
+  uint64_t n;
+
+  n = 4;
+
+  return factorial(n);
+}
+```
+
+Since local variables, and formal parameters, only have local scope, the name `n` here refers to a local variable only accessible in `main` whereas the name `n` in the procedure `factorial` refers to a formal parameter only accessible in `factorial`. Local scope is implemented through local symbol tables, one for each procedure body, created during compilation. The assembly code generated for this version of `main` is as follows:
+
+```asm
+// assert: top = sp, frame = s0, link = ra
+
+// main prologue:
+0x1C4(~11): addi sp,sp,-8
+0x1C8(~11): sd ra,0(sp)
+0x1CC(~11): addi sp,sp,-8
+0x1D0(~11): sd s0,0(sp)
+0x1D4(~11): addi s0,sp,0
+
+// assert: sp == top - 16, s0 = sp != frame, ra == link
+
+// still part of main prologue:
+0x1D8(~11): addi sp,sp,-8 // allocate one machine word for n on stack
+
+// assert: sp == top - 24, s0 == top - 16, ra == link
+
+0x1DC(~11): addi t0,zero,4    // n = 4;
+0x1E0(~11): sd t0,-8(s0)
+---
+0x1E4(~13): ld t0,-8(s0)      // return factorial(n);
+0x1E8(~13): addi sp,sp,-8     // allocate one machine word on stack
+0x1EC(~13): sd t0,0(sp)       // store value of n on stack
+
+// assert: sp == top - 32, s0 == top - 16, ra == link
+
+0x1F0(~13): jal ra,-45[0x13C] // call factorial(n)
+
+// assert: sp == top - 24, s0 == top - 16, ra != link
+
+0x1F4(~13): addi t0,a0,0      // retrieve return value of factorial(n)
+0x1F8(~13): addi a0,t0,0      // store result in return value register a0
+0x1FC(~13): jal zero,2[0x204] // jump to epilogue
+---
+0x200(~14): addi a0,zero,0 // reset return value register a0, redundant
+
+// assert: sp == top - 24, s0 == top - 16, ra != link
+
+// main epilogue:
+0x204(~14): addi sp,s0,0 // deallocate memory for local variables on stack
+
+// assert: sp == top - 16, s0 == sp, ra != link
+
+// still part of main epilogue:
+0x208(~14): ld s0,0(sp)
+0x20C(~14): addi sp,sp,8
+0x210(~14): ld ra,0(sp)
+0x214(~14): addi sp,sp,8
+
+// assert: sp == top, s0 == frame, ra == link
+
+0x218(~14): jalr zero,0(ra) // return from main
+```
+
+Since `main` accesses a local variable, the full prologue and epilogue are necessary. Moreover, the prologue now features an additional `addi` instruction that allocates memory for `n` on the call stack whose address is one machine word below the procedure mark, hence the offset `-8` relative to the frame pointer `s0` when accessing the value of `n`. The epilogue deallocates the memory for all local variables with a single `addi` instruction that sets the stack pointer `sp` back to `s0`. This is interesting. Both allocation and deallocation of memory for local variables only takes one instruction each. It cannot be faster than that and demonstrates the efficiency of stack allocation. However, strictly speaking, the allocated memory should also be initialized which is something we do not do here but only to keep things simple.
+
+> Arrays
+
+We are finally prepared for advanced exercises in the design and implementation of arrays in selfie, and, further below, structs as well. C\* is a *structured programming language* yet structured only as in structured control flow through procedures and statements such as possibly recursive procedure calls and nested `while` loops. However, C\* is not structured as in data flow. There are no structured data types in C\*, on purpose. The following exercises show what it takes to change that with support of arrays and structs. For the first array exercise, use the autograder as follows:
+
+```bash
+./grader/self.py array
+```
+
+In C, an *array* is essentially a pointer to a contiguous block of memory that is evenly partitioned into *array elements* all of the same type that are accessed via an integer value called an *index*. Array declarations and array access both involve the bracket operator `[]` which is, as confusing it might be, used for these two very different purposes. Consider the following example:
+
+```c
+uint64_t a[2];
+
+void initialize_a() {
+  a[0] = 42;
+  a[1] = a[0];
+}
+```
+
+The line `uint64_t a[2]` declares a global variable `a` of type `array` with `2` array elements of type `uint64_t`. The lines `a[0] = 42;` and `a[1] = a[0];` access the `2` array elements `a[0]` and `a[1]` with index `0` and `1` to initialize them both with the value `42`. Here is another example, this time declaring a local variable `b` of type `array`, again with `2` array elements of type `uint64_t`:
+
+```c
+void initialize_b() {
+  uint64_t b[2];
+
+  b[0] = 42;
+  b[1] = b[0];
+}
+```
+
+The only difference between the two examples is that the declaration of `a` results in static memory allocation in the data segment while the declaration of `b` results in dynamic memory allocation on the call stack.
+
+Here is what you need to do. As usual, extend the C\* grammar first. While an index into an array can be any expression, the size of an array can only be an integer literal. Then, extend symbol table entries with type information on arrays, in particular the element type, here `uint64_t`, and the array size, here `2`. In this context, a word of caution is in order: do not forget to increase the amount of memory allocated for a symbol table entry when extending it, see the procedure `allocate_symbol_table_entry`. Next, make sure that sufficient memory is allocated for arrays, here a contiguous block of `2` machine words, statically in the data segment for global variables such as `a`, and dynamically on the call stack for local variables such as `b` through proper code generation. Hint: the latter requires modifying procedure prologues! Finally, generate code for array access which involves computing addresses of array elements in memory. Hint: `a[1]` is equivalent to `*(a + 1)`. However, before doing so, there is one more thing to figure out, which appears to be the key challenge with this exercise and ultimately points to a larger, quite important issue. Consider the following example:
+
+```c
+void initialize_x(uint64_t x[2]) {
+  x[0] = 42;
+  x[1] = x[0];
+}
+
+void initialize_b() {
+  uint64_t b[2];
+
+  initialize_x(b);
+}
+```
+
+The code does essentially the same as the code in the previous example with local variable `b` but using different means. The key challenge is to understand what `b` in the procedure call `initialize_x(b)` actually means. The answer is that `b` evaluates to the address of `b[0]` in memory, that is, `b` evaluates to a pointer that refers to the beginning of the array `b` in memory. In particular, `b` does not evaluate, as some might think, to something that represents the entire array `b` as is. This means that the call `initialize_x(b)` only passes a pointer to the array `b` as actual parameter to the procedure `initialize_x`, and not a copy of the entire array. As a consequence, code generation for accessing elements of arrays provided by formal parameters is similar to code generation for dereferencing pointers, and thus different from code generation for accessing elements of arrays provided by global and local variables. Hint: `a` in `a[1]` and `b` in `b[1]` are the addresses of the beginning of the arrays `a` and `b` in memory, respectively, whereas `x` in `x[1]` is the value of `x`.
+
+> Call-by-value versus call-by-reference
+
+Ultimately, the larger issue is that procedure calls in C, and even in Java, contrary to common belief, are *call-by-value* only. In particular, there is no support of *call-by-reference* in C, and in Java. Call-by-value means that the values of actual parameters are passed in procedure calls as copies. We also say they are *pass-by-value*. Any changes to those copies by the callee have no effect on the originals with the caller. Instead, call-by-reference or, more general, *pass-by-reference* means that the addresses of the variables in memory storing those values are passed, not the values, enabling side effects on values and even on variables beyond the scope of the callee. However, pass-by-reference can be simulated in C but only by passing pointers. In fact, pass-by-value of arrays in C is effectively similar to pass-by-reference in the sense that only a pointer to the beginning of an array in memory is passed by-value simply because there is no way in C to refer to an entire array as is, that is, as value! However, this might be a good thing because arrays can be quite large. It is nevertheless a common mistake by inexperienced developers using languages other than C to pass large data structures unnecessarily by-value often causing massive temporal and spatial overhead. Speaking of which, C also supports multidimensional arrays. The next exercise is about those:
+
+```bash
+./grader/self.py array-multidimensional
+```
+
+Once you figured out support of onedimensional arrays, extending that to multidimensional arrays is actually not so difficult. The calculation of the size of multidimensional arrays is straightforward which leaves us with code generation for multidimensional array access. Consider the following example:
+
+```c
+uint64_t d[2][2];
+
+void initialize_d() {
+  uint64_t* p;
+
+  d[0][0] = 42;
+  d[0][1] = d[0][0];
+  d[1][0] = d[0][1];
+  d[1][1] = d[1][0];
+
+  p = (uint64_t*) d;
+
+  *d[1] = 7;
+}
+```
+
+The code declares a global variable `d` as twodimensional array and provides a procedure that first initializes the array elements of `d`. The procedure also declares a local variable `p` as pointer to unsigned integers, the element type of the array `d`, and initializes `p` to point to the beginning of `d` in memory. The last line `*d[1] = 7;` is the interesting part. Where in the twodimensional array will the value `7` end up? The answer is in `d[1][0]`, of course, because `*d[7]` is equivalent to `*(d[1] + 0)` which in turn is equivalent to `d[1][0]`. However, where exactly is the value of `d[1][0]` and thus `7` in memory? The answer is at address `p + 2`, not `p + 1`, which could be an option too, if it was not for an important design decision in C.
+
+> Row-major versus column-major order
+
+Multidimensional arrays in C are stored in memory in *row-major* order, in contrast to *column-major* order as in Fortran, for example. With row-major order, the consecutive array elements of a row are stored next to each other in memory. For example, the elements of the array `d` are stored in memory in the order `d[0][0]`, `d[0][1]`, `d[1][0]`, and `d[1][1]`, hence the value `7` at `p + 2`. With column-major order, the consecutive array elements of a column are stored next to each other in memory, that is, the elements of `d` would be stored in memory in the order `d[0][0]`, `d[1][0]`, `d[0][1]`, and `d[1][1]`, hence the value `7` potentially at `p + 1`. So, with row-major order in C, it is row-major in C\* as well.
+
+> Structs
+
+The two final exercises in this chapter are on some limited support of structs as they appear in C. The first exercise focuses on parsing struct declarations and constructing proper representations in the symbol table. Invoke the autograder as follows:
+
+```bash
+./grader/self.py struct-declaration
+```
+
+In C, a *struct* essentially represents a contiguous block of memory that is partitioned into *struct fields*, each of a possibly different type and size, that are accessed via a unique *field name*. A struct declaration begins with the keyword `struct` followed by an identifier that provides a unique name for the struct. A new feature that we have not seen before is that struct declarations are *type declarations*, unlike variable or procedure declarations. The name of a struct therefore identifies a type, not a variable or a procedure. Consider the following example:
+
+```c
+struct list_node {
+  struct list_node* next_node;
+  uint64_t payload;
+};
+```
+
+The code declares a new type called `list_node` which is a struct with two fields. The field `next_node` is of type pointer to a `list_node`. The field `payload` is of type `uint64_t`. Yes, this is a type that describes the nodes of a singly-linked list. A proper implementation of symbol table entries in C would use such a struct.
+
+Conversely, parsing a struct declaration only results in a new symbol table entry that represents the struct as type. For this purpose, you need to extend symbol table entries accordingly. In particular, the actual field structure only needs to be represented to facilitate code generation for field access. Hint: you may reuse symbol table entries as representation of fields.
+
+Most importantly, type declarations and hence struct declarations do not result in any code generation, and also not in any memory allocation! This only happens when declaring a variable of type `struct`. However, to keep things simple, the exercise only involves support of fields, variables, formal parameters, and return types of procedures as pointers to structs, and not also structs as is, which are actually supported as such in C! This means that you only need to support pass-by-value of structs through pointers to structs, similar to arrays. The downside is that memory for structs can then only be allocated on the heap, not in the data segment and not on the call stack. Another simplification is that support of fields as arrays is also not necessary in this exercise. Consider the following example:
+
+```c
+struct list_node* my_list;
+```
+
+```c
+struct list_node* allocate_list_node() {
+  return malloc(sizeof(struct list_node));
+}
+```
+
+The code declares a global variable `my_list` of type pointer to `list_node`, and defines a procedure `allocate_list_node` whose return type is pointer to `list_node` as well. Using the properly enhanced `sizeof` operator, the procedure allocates memory on the heap using `malloc` that fits a single `list_node`, or better a single *instance* of a `list_node`, and then returns a pointer to that instance in memory.
+
+The final exercise in this chapter is on generating code for accessing struct fields. Invoke the autograder as follows:
+
+```bash
+./grader/self.py struct-execution
+```
+
+In C, struct fields are accessed by two different operators: the arrow operator `->`, applied to a pointer to a struct, and the dot operator `.`, applied to a struct as is. Since we skipped support of structs as is, you only need to worry about support of the arrow operator. Consider the following example:
+
+```c
+void initialize_list_node(struct list_node* node) {
+  node->next_node = (struct list_node*) 0;
+  node->payload = 42;
+}
+```
+
+The code defines a procedure `initialize_list_node` which, given a pointer to an instance of a `list_node`, initializes the `next_node` field with a null pointer and the `payload` field with the value `42`. Code generation for field access through the `->` operator is simpler than for array access through the `[]` operators. The reason is that the offset of a field in memory relative to the beginning of a struct is determined at compile time, in fact while parsing the declaration of the struct. By convention in C, the offset of a given field is the sum of the sizes of the fields in memory that appear before the given field in the struct. Just keep track of those offsets in the symbol table entries reused for fields.
+
+> Field access versus array access
+
+At runtime, field access is generally faster than array access, unless the index identifying an array element is a constant. In that case, the offset of the array element in memory relative to the beginning of an array is also determined at compile time, similar to the offsets of fields. Modern production compilers utilize constant folding to increase the chances of identifying array indexes as constant.
+
+> Structs versus classes
+
+Students often ask me what the counterparts of structs and struct fields are in programming languages other than C. With Java and Python, for example, a *class* without any *methods* and *static variables* corresponds to a struct in C, and an *instance variable* of such a class corresponds to a struct field in C. Ignoring scoping of methods and variables, there is also an analogy in C for methods and static variables in Java and Python. A method corresponds to a procedure in C, and a static variable corresponds to a global variable in C. Here is the surprise: once I mention those analogies, students which typically have a background in Java or Python but not C often understand, for the first time, what Java and Python classes actually are, confirming my suspicion that programming education, after all these years, still cannot ignore programming language implementation.
+
+> Object-oriented programming
+
+The discussion usually continues with questions about *object-oriented programming*, as in Java or Python, and many other languages. Again, in my experience, students often have only a vague understanding of object-oriented programming, even though or maybe exactly because the first programming language they encountered usually supported object-oriented programming. Even I remember my first encounter with an object-oriented programming language, Smalltalk, and how little I understood what objects really were and how to use them properly, despite my prior experience with C and Pascal and other programming languages which were all not object-oriented.
+
+> Compile-time polymorphism through overloading
+
+Object-oriented programming essentially makes type polymorphism programmable. Recall that type polymorphism already appears in C with arithmetic operators that are overloaded for integer and pointer arithmetic. An arithmetic operator such as the `+` operator has different semantics depending on the type of its operands. The question is how we can do something similar with procedures. Well, we could allow sharing the same procedure name in multiple procedure definitions where each definition features a unique procedure signature. In other words, a procedure name would still be unique but only in combination with a procedure signature. This would allow overloading of procedures which is *compile-time polymorphism* because which procedure definition is used in a procedure call can be determined at compile time through a technique called *static binding*. Alright, done. Object-oriented programming languages support that. However, this is not what object-oriented programming really is.
+
+> Runtime polymorphism through overriding
+
+The principled idea is actually even simpler, but not the implementation. In addition to variables and procedures, object-oriented programming also types *values*, then called *objects*, and then allows *overriding* procedures depending on the type of values, or objects, involved as actual parameters in procedure calls. However, combining value types with variable and procedure types requires some form of *type compatibility*. This is usually done through a programmable *type hierarchy* such as abstract classes and interfaces in Java. Overriding of procedures is *runtime polymorpism* because which procedure definition is used in a procedure call can only be determined at runtime through a technique called *dynamic* or *late binding*.
+
+> Abstraction versus implementation
+
+In the end, the whole thing is about making code more compact, reusable, maintainable, and so on, simply by allowing the same name mean different things depending on a more or less elaborate context. Is it worth it? Well, there are plenty of use cases. But the hype involved in ever more advanced programming languages is considerable. In the old days, all that fuzz about classes and objects and sending messages from one object to another, and more recently about the fanciest features in the latest programming languages points to a much bigger problem. In hindsight, I cannot believe how much time I wasted in the early days of object-oriented programming because I did not understand what it was but felt I had to apply it everywhere I could. Even today, it is difficult to convince students to be more careful in their choice of programming languages. I blame programming language education which usually focuses on the abstractions provided by a programming language and how to use those but not how those abstractions are actually implemented. I understand that going through an actual implementation is tedious and ultimately seems not to scale. However, developing ever more advanced programming language features without figuring out how to teach them properly is like burning fossil fuel. It is cheap and fun now, and expensive and terrible later. Sure, teaching a programming language through an actual implementation or at least some part of an implementation may seem like diminishing the value of its abstractions but I believe, in the long run, the opposite is true. The real challenge is not just to develop better programming languages but also to figure out how to teach those languages properly, including which parts of an implementation should be exposed. Eventually turning programming into a proper engineering discipline may require just that.
+
+### Libraries
+
+A programming language is usually not standalone but part of an ecosystem of libraries and tools for developing code in that language. In this context, a *runtime library* or just a *library* is code, typically developed by experts, which provides functionality that developers often need but are unable or do not want to develop themselves. In fact, the choice of programming language or even programming languages used in a project is often driven by the libraries and tools available for those languages rather than just the features of each individual language.
+
+> To library or not to library
+
+Libraries are great as long as they are designed and implemented properly, and you know how to use them correctly and what the performance implications are. Some basic functionality such as  performing input and output is often only available in libraries as there are typically no language constructs for that. Thus modern code development is typically more about knowing how to use the libraries of a programming language than knowing all the features of the language. With selfie, however, we took the exact opposite approach and decided not to use any libraries at all, even though there is an enormous amount of very popular and well-developed libraries for C. Instead, we wrote the library code needed for selfie ourselves and added it to the beginning of the source code of selfie to make selfie a truly self-contained system. For people familiar with C, this means that there are no `#include` statements in the code and in turn that C\* does not support `#include` statements either. However, the selfie compiler can compile and *link* code in multiple files into a single executable. We explain below how that works and go through some of the library code we wrote as well.
+
+> Builtin procedures versus library procedures
+
+Not using any library code is so unusual that, back in the day, I did not even know that a standard C compiler generates executable code for a C program that can interact with me in a terminal yet without including any library code for performing input and output at all. Instead, I happened to be using, unknowingly, *builtin procedures*, named exactly the same as typical *library procedures* for performing input and output, that were nevertheless sufficient for our purposes. Turns out that C compilers, in the absence of library code, generate code at least for builtin procedures, and then add that code to the code generated for the compiled program. The selfie compiler mimics that behavior with eight builtin procedures featured in C\*. Out of these procedures, the following five builtin procedures are strictly needed for bootstrapping selfie:
+
+1. `exit`: program execution and return an exit code
+2. `read`: a given number of bytes from a file into a buffer in memory
+3. `write`: a given number of bytes from a buffer in memory to a file
+4. `open`: a file for `read` and `write` access
+5. `malloc`: a given number of bytes contiguously on the heap
+
+The `exit` procedure may be called from anywhere in the code of a program to terminate program execution immediately. However, strictly speaking, explicit support of `exit` is not necessary since returning from the `main` procedure terminates program execution implicitly anyway. Yet always returning to `main` for program termination may be quite inconvenient. Moreover, lifting implicit support of program termination, which is needed, to explicit support in `exit` is easy.
+
+The `read` and `write` procedures enable reading from and writing to files, respectively, including reading from *standard input*, that is, the keyboard and writing to *standard output*, that is, the console. Reading from and writing to files requires opening them using the `open` procedure. All three procedures are needed to perform input and output. In standard C, there is also a builtin procedure called `close` for closing files which is nevertheless not strictly needed in selfie since most programs we run with selfie do not open more than a few files and open files are all closed implicitly upon program termination.
+
+The `malloc` procedure allocates contiguous blocks of memory on the heap at runtime. Its counterpart in standard C is a procedure called `free` for freeing memory allocated with `malloc`. Similar to the `close` procedure, the `free` procedure is not strictly needed in selfie since most programs we run with selfie always terminate and do not allocate more than a few megabytes of memory. Also, memory allocated with `malloc` is all freed implicitly upon program termination. However, selfie does support freeing memory implicitly during program executing using a conservative garbage collector. More on that below.
+
+> Nobody needs to free or close anything
+
+We mentioned that before but repeat it here again: nobody needs to `free` any memory and, similarly, `close` any files unless you run out of resources. You can open a lot of files and allocate a lot of memory on modern computers before your code stops working. In our experience, it is only worth paying attention to returning resources if your code is supposed to run for indefinite amounts of time and continuously claims new resources to do so. Otherwise, modern operating systems take care of the problem by reclaiming resources whenever programs terminate.
+
+> Printing
+
+Out of the eight builtin procedures featured in C\*, the remaining three builtin procedures are not strictly necessary for bootstrapping selfie but still quite useful for printing data:
+
+1. `printf`: a formatted string to the console
+2. `sprintf`: a formatted string to a buffer in memory
+3. `dprintf`: a formatted string to a file
+
+All three procedures are variadic, as mentioned before, which helps making the source code of selfie significantly more readable. Earlier versions of the code only supported printing data through non-variadic procedures which was quite a bit more cumbersome. However, support of variadic procedures and `printf` derivatives in particular is non-trivial.
+
+Before going into the details, take a look at the very beginning of the source code right after the long introductory comment section. The first thing you see are procedure declarations of all eight builtin procedures featuring their *signatures* in detail. These eight declarations are the only ones in all of selfie that do not have any matching procedure definitions, at least not by name. In other words, the builtin procedures are declared but not explicitly defined, yet used all over the place.
+
+> Bootstrapping selfie
+
+In order to understand how that works, we need to distinguish the compilers involved in bootstrapping selfie. First of all, there is the *bootstrapping compiler*, typically either `gcc` or `clang`, which is the compiler that compiles the source code of selfie into an executable that runs on your machine. That compiler is invoked the first time you run `make` in a terminal:
+
+```bash
+make
+```
+
+which effectively runs the following command:
+
+```bash
+cc -Wall -Wextra -O3 -D'uint64_t=unsigned long' selfie.c -o selfie
+```
+
+The leading `cc` stands for `c compiler` and is typically an alias for either `gcc` or `clang`. After a number of compiler options, there is the name of the file that contains the source code of selfie, `selfie.c`, followed by `-o selfie`, which together instruct the compiler to compile `selfie.c` into an executable file called `selfie` that runs on your machine as follows:
+
+```bash
+./selfie
+```
+
+That executable contains the *bootstrapped compiler* which is here the selfie compiler in a form that is executable on your machine.
+
+> Self-compilation
+
+At this point, you can use `selfie` to compile any C\* code you like, including the source code of selfie simply because selfie is written in C\*. To see that, ask `selfie` to *self-compile* by running:
+
+```bash
+make self
+```
+
+which effectively runs:
+
+```bash
+./selfie -c selfie.c
+```
+
+The `-c` option instructs `selfie` to compile the file, or in fact, files that follow the `-c` option, here just `selfie.c`. In other words, the `-c` option invokes the selfie compiler, also called `starc`, which is of course part of `selfie` but not the only part, see below.
+
+> Chicken and egg problem
+
+You may wonder if `gcc` can do the same. The answer is yes. Modern production compilers are typically written in the language they compile and therefore self-compiling, and so is `gcc`. In my classes, I encourage my students to self-compile a production compiler like `gcc` just once to see what it takes to do that. Besides taking quite a bit of time because of the enormous complexity of modern production compilers, there is one problem though. How do we obtain an executable of a bootstrapping compiler to bootstrap itself? Today this is easy because executables of compilers such as `gcc` are available for most machine architectures. But how did people do that in the early days of compilers when no executables of compilers existed? Well, they had to implement the compiler at least two times, the bootstrapping compiler in machine code and at least one bootstrapped compiler in source code. The bootstrapped compiler can initially be implemented in a small subset of the compiled language to simplify the bootstrapping compiler in machine code which only needs to compile that subset. If the bootstrapped compiler compiles the entire language we are done. If not, it should at least compile a superset of the subset in which it is written. We can then implement a second bootstrapped compiler in that superset and bootstrap it but now using the first bootstrapped compiler as bootstrapping compiler, and so on, until we obtain an executable of a bootstrapped compiler that compiles the entire language. A fun observation is that the bootstrapping of many compilers used today may go back to the first bootstrapping compilers written in machine code a long time ago. So, who was first, the chicken or the egg? With compilers I would say it was the egg but probably more than one.
+
+> Cross-compilation
+
+The key difference between the bootstrapping compiler, say, `gcc` and the bootstrapped compiler, here `starc` is that by default `gcc` generates code for the machine on which `gcc` runs whereas `starc` generates RISC-U machine code. On my machine, for example, `gcc` generates ARM machine code which means that, in this case, the executable `selfie`, which includes `starc`, is machine code that runs on an ARM processor. Therefore, `starc` is in this case a *cross-compiler*, that is, a compiler that generates code for a machine architecture that is different from the machine architecture on which the compiler runs. In particular, a cross-compiler generates code that does not run on the processor on which the cross-compiler runs. Cross-compilers typically target machines that are not meant for code development such as smartphones and *embedded systems* in general such as computers in cars and planes. The fact that `starc` is a cross-compiler on my machine and probably yours as well is, however, not intended but a mere consequence of `starc` generating RISC-U machine code for simplicity and educational purposes. Generating ARM machine code, for example, would be significantly more involved.
+
+> Emulation
+
+How do we run code generated by a cross-compiler like `starc`? After all, we are unlikely to have access to an actual RISC-V machine that can execute RISC-U machine code. Remember that RISC-U is a strict subset of RISC-V. Well, `selfie` not only implements `starc` but also an *emulator* of a RISC-U machine called `mipster` that can execute any RISC-U machine code such as the code generated by `starc` for `selfie.c`:
+
+```bash
+./selfie -c selfie.c -m 1
+```
+
+The `-m 1` option instructs `selfie` to create an instance of a RISC-U machine with 1MB of memory, then load the RISC-U machine code generated by `starc` for `selfie.c` into that memory, and finally execute the generated code. Note that the code generated for `selfie.c` is only kept in memory but not output into an executable file. However, `selfie` can output an executable file and even a semantically equivalent assembly file as follows:
+
+```bash
+./selfie -c selfie.c -o selfie.m -S selfie.s
+```
+
+The `-o` option instructs `selfie` to output the generated code into an executable file, here `selfie.m`. Similarly, the `-S` option instructs `selfie` to output the generated code in textual form into an assembly file, here `selfie.s`. Instead of `-S`, we could also use `-s` which results in a slightly less verbose version of the assembly file.
+
+> ELF format
+
+Selfie outputs RISC-U machine code in *ELF format*, that is, `selfie.m` is indeed an *ELF file*. ELF stands for *executable and linkable format* which is a common standard for executable files. For example, executables generated by selfie run on actual RISC-V machines with Linux. Moreover, selfie can also load executables generated by `starc` and then execute them:
+
+```bash
+./selfie -l selfie.m -m 1
+```
+
+The `-l` option instructs `selfie` to load an executable file, here `selfie.m` into memory. However, as we saw before, selfie does not need to output generated code into an executable file to execute that code. Instead:
+
+```bash
+./selfie -c selfie.c -m 1
+```
+
+generates code for `selfie.c` in memory and then executes that code right away, similar to:
+
+```bash
+./selfie -c selfie.c -o selfie.m
+./selfie -l selfie.m -m 1
+```
+
+but without writing the generated code into an executable file.
+
+So, can we actually have selfie not only compile itself using the bootstrapped version but also using the RISC-U machine code generated by selfie for itself? Yes, of course:
+
+```bash
+./selfie -c selfie.c -m 2 -c selfie.c
+```
+
+The right occurrence of the `-c` option instructs the RISC-U machine code generated by `starc` for `selfie.c`, as instructed by the left occurrence of the `-c` option, to compile `selfie.c` again!
+
+> Fixed point of self-compilation
+
+Self-compilation raises an important question: is the code generated by `starc` for `selfie.c` the same regardless of whether we run `starc` using our bootstrapped ARM executable or using the RISC-U executable generated by the ARM executable? The answer is yes and we call that the *fixed point of self-compilation*. Simply try:
+
+```bash
+make self-self
+```
+
+which effectively runs:
+
+```bash
+./selfie -c selfie.c -o selfie0.m -s selfie0.s -m 2 -c selfie.c -o selfie1.m -s selfie1.s
+```
+
+We can then check if the code generated by the ARM executable, as machine code in `selfie0.m` and even as assembly in `selfie0.s`, is equivalent to the code generated by the RISC-U executable, as in `selfie1.m` and `selfie1.s`:
+
+```bash
+diff -q selfie0.m selfie1.m
+diff -q selfie0.s selfie1.s
+```
+
+validating that we have indeed reached the fixed point of self-compilation! How awesome is that?
+
+> Boot level
+
+We could actually continue doing this but because of the fixed point nothing changes anymore except that things get very slow. Be prepared to wait for hours to see this finish:
+
+```bash
+./selfie -c selfie.c -m 4 -c selfie.c -m 2 -c selfie.c
+```
+
+However, there is need for a bit more terminology. The leftmost invocation of `starc` runs on *boot level* 0. More generally, we say that the executable compiled from `selfie.c` by the bootstrapping compiler runs on boot level 0, here the ARM executable generated by `gcc`. The middle invocation of `starc` runs on boot level 1, that is, the executable compiled from `selfie.c` by the bootstrapped compiler, here the RISC-U executable generated by `starc`. You guessed right, the rightmost invocation of `starc` runs on boot level 2, and so on.
+
+> Selfie as a system
+
+Before getting back to how builtin procedures work, let us take a birdseye view on how selfie works as a system. Go all the way down to the end of the source code of selfie in `selfie.c` where the `main` procedure is defined. The first thing that selfie does is initialize its program state properly which includes determining the system on which selfie runs such as whether the system is a Linux, Mac, or Windows system and whether it is a 64-bit or 32-bit system. Check out the code if you are interested in the rather tricky details.
+
+After initialization, selfie invokes the procedure `selfie` which implements a simple parser of the console arguments in a finite state machine since the language of console arguments is regular as defined by the synopsis of selfie. For the `-c`, `-o`, `-s`, `-l`, and `-m` options, selfie invokes the procedures `selfie_compile`, `selfie_output`, `selfie_disassemble`, `selfie_load`, and `selfie_run`, respectively. For details on how the other options are implemented, see the source code.
+
+The procedure `selfie_run` ultimately invokes the procedure `mipster` given the `-m` option. What these two procedures do takes center stage in the computing chapter. The procedures `selfie_output` and `selfie_load` complement each other in the sense that the former *encodes* machine code generated by `starc` into an ELF executable file while the latter *decodes* ELF executable files back into machine code that `mipster` can execute. In particular, the former uses the procedure `encode_elf_header` while the latter uses the procedure `decode_elf_header`, at least indirectly through the procedure `validate_elf_header`. The overall structure of the ELF executable files is: first an ELF header that contains meta information such as code and data segment sizes, followed by the code segment, followed by the data segment. Check the source code for the details which are fascinating as both 64-bit and 32-bit ELF executables are supported.
+
+The procedure `selfie_disassemble` corresponds to `selfie_output` except that it outputs the machine code generated by `starc` into an assembly file. To do so, it reuses the RISC-U interpreter in debugging mode to decode and output the machine instructions in assembly format one after the other. Again, the details are in the source code.
+
+> Bootstrapping builtin procedures
+
+Lastly, the procedure `selfie_compile` implements `starc`. We go through the code step by step, finally explaining how bootstrapping selfie and builtin procedures in particular works. Before doing so, consider what the bootstrapping compiler, say, `gcc` does for builtin procedures. When compiling `selfie.c` with `gcc`, the eight builtin procedures declared at the beginning of `selfie.c` but not explicitly defined anywhere make `gcc` generate machine code for them. This works because we use the names of procedures in the declarations that `gcc` considers builtin if no definition is available. Fortunately, `gcc` even tolerates slightly different signatures for builtin procedures, probably as long as they cast into the expected signatures. Note that the declarations are only needed on boot level 0 for `gcc`, not `starc`, to compile `selfie.c` properly without reporting errors. Try for yourself: remove them and run `make`, then put them back and run `make` again, then remove them but then only run `./selfie -c selfie.c`.
+
+So, what does `starc` do? Well, `starc` mimics for boot level 1 and above what `gcc` does for boot level 0 as follows. Even before compiling any source code, the procedure `selfie_compile` first generates placeholder `nop` instructions using the procedure `emit_program_entry`. Those `nop` instructions are eventually overwritten, once the information needed for that is available after compilation, using the procedure `emit_bootstrapping` which generates machine code that initializes the global pointer `gp` and the hidden global variable `_bump` used by `malloc`, finishes setting up the call stack, and finally jumps to the first instruction that implements the `main` procedure in the compiled code. Right after generating the placeholder `nop` instructions, `selfie_compile` generates machine code for the five strictly needed builtin procedures `exit`, `read`, `write`, `open`, and `malloc` by invoking the procedures `emit_exit`, `emit_read`, `emit_write`, `emit_open`, and `emit_malloc`, respectively. There is also a call to the procedure `emit_switch` which is explained in the computing chapter. Thus any executable generated by `starc` contains the code generated by these procedures at the beginning of the executable regardless of the compiled source code. The three builtin procedures for printing data are handled during compilation as explained below. Note that the code for `exit` is generated right after the jump to the `main` procedure in the compiled code before the code for all other builtin procedures. The reason is that `main` may return without `exit` ever being called explicitly. In that case, `main` returns right into the code for `exit` calling `exit` implicitly after all to terminate program execution properly.
+
+> System call wrappers
+
+The five strictly needed builtin procedures work just like the code generated for any procedure that appears in the compiled source code in the sense that they may access actual parameters stored on the call stack and even return a return value. The difference, however, is that they all invoke a *system call* using the `ecall` machine instruction that actually implements their functionality in the operating system that manages program execution. We therefore say that they function as *system call wrappers* which make system calls appear to the caller as procedures. System call wrappers must adhere to the way procedures as well as system calls are managed by the compiler and the operating system in its *application binary interface* (ABI), respectively. Note that system call functionality is implemented in the selfie emulator for simplicity.
+
+Similar to the encoding of machine instructions in the backend of the compiler and their decoding in the frontend of the emulator, we have implemented system call wrapping in the backend of the compiler and system call unwrapping in the frontend of the emulator next to each other. For example, the procedure `emit_exit` generates an `ecall` which is implemented by the procedure `implement_exit` that immediately follows `emit_exit` in the source code of selfie. The other system call wrappers are implemented similarly, see the source code for the details. The code generated by `emit_exit` is explained in the machine chapter. The details of the implementation of system calls are explained in the computing chapter.
+
+> Printing, again
+
+The three builtin procedures `printf`, `sprintf`, and `dprintf` for printing data are implemented, not by emitting code directly, but through compilation of the procedures `non_0_boot_level_printf`, `non_0_boot_level_sprintf`, and `non_0_boot_level_dprintf`, respectively, simply because of the complexity of their implementation. Therefore, unlike the builtin procedures implemented by system call wrappers, they are not available in code compiled from other sources than selfie. Also, they do not eventually invoke system calls for printing but instead either call, on boot level 0, the builtin procedure `printf` as implemented by `gcc`, or else call, on boot level 1 and above, the `write` builtin procedure to do so.
+
+Since `printf`, `sprintf`, and `dprintf` are known to `gcc`, we need to use different names to implement them in selfie preventing `gcc` from reporting syntax errors. However, `starc` still needs to generate code identified as `printf`, `sprintf`, and `dprintf`. Fortunately, this is easy to do by removing the prefix `non_0_boot_level_` from their names before creating entries in the symbol table, see the procedure `bootstrap_non_0_boot_level_procedures`.
+
+> Macros
+
+The actual implementation of `printf` and its derivates is non-trivial, mostly because it involves yet another parser, this time for handling the format string in `printf`, and in particular the fact that there can be a varying number of actual parameters in procedure calls to `printf`. To see what you can do with `printf` check the numerous uses of `printf` in the source code of selfie. For the handling of varying numbers of actual parameters, the selfie compiler mimics the notion of *macros* in C, namely, the `va_start`, `va_arg`, and `va_end` macros to stay close to the original implementation in C. In the source code of selfie, look for the `var_start`, `var_arg`, and `var_end` procedures which are slightly renamed, boot-level-0 dummy versions of the original macros that avoid conflicts during bootstrapping and are ignored on boot level 1 and above. During compilation with `starc`, the procedure `compile_call` looks for these names and then generates specialized code using the procedures `macro_var_start`, `macro_var_arg`, and `macro_var_end` instead. The implementation has originally been done by some of my students who pushed the envelope of what we can do in selfie. Awesome work!
+
+> Header
+
+Let us go back to the source code of selfie in `selfie.c`. After the declarations of the builtin procedures, there are essentially two large sections. The first section which we call the *header* of selfie contains mostly declarations in around 2500 lines of code (LOC) or 2.5KLOC for short. The only procedure definitions in the header involve procedures for initialization and resetting program state, and auxiliary procedures such as getters and setters. The second section is what we call the code section of selfie which is all the remaining code. The code section only contains procedure definitions of all the procedures declared in the header. The purpose of the header is to give you an overview of what selfie actually implements. Also, the procedure declarations in the header solve the problem of forward references in procedures that call procedures that are not yet defined. The two sections are further divided, roughly, into subsections that declare and define, respectively, first the selfie library, called `libcstar`, then `starc`, followed by `mipster` and `hypster`, and finally the code around `main`. If selfie was written in standard C and supported `#include` statements, we would probably move the header in `selfie.c` to a proper *header file* `selfie.h` and then include `selfie.h` in `selfie.c` using an `#include` statement at the beginning of `selfie.c`. The result would be essentially the same as having all code in a single file. So, what is the purpose of a header file anyway?
+
+> Linking separate compilation
+
+Well, strictly speaking there is no need for header files and there are programming languages such as Java, for example, that do without. However, as software projects grow in size and the use of libraries in particular is involved, there is need for *separate* compilation of source code distributed across multiple files. Even if your software project still fits in a single file but you still would like to use library code written by others, then that library code is obviously developed and compiled in files *separately* from your code. Yet, in order to use library code or, more generally, any code distributed across multiple files, all that code must eventually be *linked* into an executable by a *linker* regardless of whether this happens at compile time or runtime. In short, separate compilation is a prerequisite for scalability in software development but then requires some form of coordination called linking.
+
+> Separate versus independent compilation
+
+Separate compilation is compiling code that uses undefined but declared elements such as global variables and procedures defined elsewhere, say, in a library. In C, those elements are declared in header files that are included during separate compilation for checking type compatibility which does not require access to their definitions. If those elements could even be undeclared, we would speak of *independent* compilation, which is a legacy form of compilation that, unlike separate compilation, does not check, for lack of information, type compatibility.
+
+> Incremental compilation
+
+A key advantage of separate and independent compilation is that any changes in source code only require recompiling the files that changed. Incremental compilation is an attempt to reduce the amount of work involved in recompilation further from file level to the minimal context around a change in source code. Thus separate and independent compilation is incremental but only at file level. True incremental compilers can often recompile changes in code virtually instantaneously which significantly helps reducing compilation time in complex software projects.
+
+> Symbolic versus direct references
+
+In general, separate and independent compilation results in machine code that still contains *symbolic references* and not just *direct references*. A symbolic reference is essentially a reference to a variable or procedure by name, as it appears in source code. A direct reference is essentially an address in memory where the value of a variable is stored or the code of a procedure begins. Machine code that still contains symbolic references can obviously only be executed after those references have been resolved into direct references, which is generally done by a linker. Machine instructions that still require fixup are an example which in some cases can already be handled by a compiler, as we saw before.
+
+> Object versus executable files
+
+The information which machine instructions still contain symbolic references is, well, in the symbol table. Separate compilation gives rise to the idea of generating *object* files instead of *executable* files. An object file is machine code that may still contain symbolic references, unlike executable files that do not. In order to be able to resolve symbolic references, object files do, however, carry some form of the symbol table that was created during compilation. The ELF format we mentioned before provides the necessary standard for that and thus supports object files in addition to executable files.
+
+> Static versus dynamic linking
+
+However, the terminology is a bit misleading. An object file may very well be executable as long as no machine instruction with a symbolic reference is reached during execution. Even then, such a machine instruction may, on demand, be *dynamically* linked at runtime, given a proper runtime system that supports *dynamic* linking such as Java runtimes. Note that dynamic linking also involves, before linking any code, *dynamic* loading of code at runtime, namely, the code that was undefined when the object file was compiled. Most code generated for programs written in C and its derivates, however, is *statically* linked at compile time into an executable file prior to execution. Modern production compilers such as `gcc` and `clang` include a linker for this purpose. The advantage of static linking is that there is no runtime overhead for dynamic loading and linking whereas the advantage of dynamic linking is that code may only be loaded and linked if it is actually needed during execution, making the negation of the advantage of each technique the disadvantage of the other.
+
+> Garbage collection
+
+Separate compilation combined with subsequent linking, static or dynamic, has enabled software projects to scale to enormous size and complexity. However, managing large amounts of code during development and later in deployment is not the only challenge. The arguably even bigger challenge is to manage memory used by that code during execution. If large amounts of code have been developed, separately without any knowledge of each other, and then distributed in large libraries and other forms of repositories, then that code eventually comes together when deployed to run in shared memory. Managing memory in code that has been developed separately is already not easy to do yet even more difficult when such code is put to work in a large system. This is where garbage collectors come in, with programming languages such as Java or Python. By providing safe reuse of memory, garbage collectors have become another key component enabling scalability of software projects and in particular the use of vast amounts of increasingly complex libraries. So, on the side of tools and runtimes, it is separate compilation, linking, and garbage collection!
+
+> Selfie as a library
+
+Selfie supports compilation of code in multiple files that resembles separate compilation yet without generating object files. Actually generating object files requires encoding the global symbol table in ELF format which is something we did not do for simplicity and lack of need. The `while` loop in the procedure `selfie_compile` implements selfie's approach to separate compilation, as instructed by the `-c` option, by simply compiling not just one file but any number of files provided as argument to the `-c` option, one after the other, including no file:
+
+```bash
+./selfie -c -m 1
+```
+
+which only generates code for the five strictly needed builtin procedures bootstrapped to code that nevertheless immediately terminates when run using the `-m 1` option. If the `-c` option is actually provided with multiple files, we simply invoke the procedure `compile_cstar` on one file after another while carrying over the global symbol table from one invocation to the next. We did not plan this feature but only noticed at some point that our design enables it without any additional work. Essentially, you obtain the exact same result if you take all the code distributed across multiple files, put it in one file, and then compile that file instead. However, this is also true if you do the same with production compilers. You can always compile code in multiple files into individual object files and then link them statically, resulting in an executable that you can also obtain by first taking all the code, put it in one file, and then compile just that one file. Yet what object files enable is that both compilation and linking can be done truly separately at different times allowing for incremental compilation at least at file level. The selfie compiler in its current form cannot do that.
+
+The intention of separate compilation as done in selfie is to use selfie as a library in other code. For this purpose, we provide a way to rename the `main` procedure in `selfie.c` to enable other code using all of `selfie.c` as library to implement its own `main` procedure:
+
+```bash
+make selfie.h
+```
+
+which generates a file called `selfie.h` which contains all of `selfie.c` with its `main` procedure renamed to `selfie_main`. Then, as mentioned before, compile the file `encoding.c` in the `examples` folder using selfie as a library provided in `selfie.h`:
+
+```bash
+./selfie -c selfie.h examples/encoding.c -m 1
+```
+
+The code in `encoding.c` uses procedures for printing as implemented in selfie. Those procedures are part of the `libcstar` library in selfie. However, the code could use any other procedure, and global variable, defined in `selfie.c` as well. The `libcstar` library in particular offers procedures such as `atoi` and `itoa` and many others that are also provided by standard C libraries such as the widely used `stdlib` library.
+
+Hard to believe but we have indeed reached the point where everything about programming in C\* and the selfie compiler in particular that comes to our mind has been said. It is finally time to reflect again on what we have achieved and then prepare for the final chapter.
 
 ### Apps
 
+Are we finally able to develop apps for smartphones, tablets, and laptops, after going through all that material? Well, by now you should definitely be able to figure out how to develop code for apps in whatever programming languages are available for that. However, besides knowing the involved languages, the remaining and still considerable challenge is to figure out how to use their ecosystems, that is, their libraries and development environments. Those can be quite complex and therefore take time to utilize effectively. In any case, if I was young again I would develop apps all the time for no reason other than having fun. Making dumb machines do smart stuff can be extremely rewarding. Try it!
+
 ### Life
+
+Programming is the most precise known form of expressing your thoughts about a problem and how to solve it using a mindless machine. Even if you do not intend to develop code for a living or just fun, there is something to it that has a profound effect on the way you think once you know what it is and how to do it. Programming a machine that has no concept of the real world forces you to gain a level of understanding of a problem and its possible solutions that can even exceed what is involved in other complex activities in modern science and engineering. Modern cars, planes, smartphones, computers, vaccines, and so on are all incredibly complex human-made artifacts but they are still no match to the complexity of modern software. Only life itself still exceeds that level of complexity.
+
+While computers and software become faster and more capable, and ever more sophisticated programming languages and tools are being developed all the time, learning how to program or even just understanding what programming is must feel like an almost impossible task. We have tried to address the problem by identifying the absolute basics of programming languages and then focusing only on those basics yet in all detail down to the level of machine code. In particular, we introduced, specified, and implemented literals, variables, expressions, assignments, loops, conditionals, and procedures, using the very same concepts in the self-referential spirit of selfie. While doing so we introduced numerous computer science basics such as regular expressions and finite state machines, scanning and parsing, typing and casting, basic algorithms and data structures, static and dynamic memory management, and lots more.
+
+The challenge is to understand and acknowledge that programming languages are formalisms, not  languages as in English or German, with syntax and semantics driven by mathematical rigor and mechanical precision and efficiency. Seeing and understanding what that means enables you to ask the right questions and find proper answers when learning new programming languages and using new development tools. Being able to navigate notation and meaning as well as terminology and abstraction in high-level source code and even all the way down to low-level machine code is a skill that has always been rare but unnecessarily so. Modern programming education often seems to view implementation details as burden rather than virtue and therefore typically avoids those even though knowing the basics well always eventually outscales knowing everything just a bit.
+
+Programming even in the most modern programming languages may nevertheless often feel like a straitjacket on your creativity. However, new languages and tools that can significantly improve your experience are being developed all the time. We are still only at the beginning of that process. Tools in particular have a long way to go. Developing and running something as complex as software requires using tools, ideally the best possible tools available. The key challenge is to establish functional correctness as well as performance which is increasingly difficult with software growing in size and complexity. The challenge is so hard that even the most valuable companies in the world are unable to provide correct software that always performs as expected, for both technical as well as economical reasons. As consequence, we have all become accustomed to software bugs and performance issues that we would not tolerate in other domains. In the final chapter, we take a look at the fundamentals and show what is involved in scaling software complexity to the capabilities of modern hardware.
 
 ### Recommended Readings
 
-Aho et al.: Compilers: Principles, Techniques, and Tools
+> Compilers: Principles, Techniques, and Tools by Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman
 
-## Tools
+This book is seminal work on compilers known as the dragon book. As computer science students, we identified with the knight shown on the book cover fighting a dragon that represents the complexity involved in compilers. We have left countless questions about compilers unanswered here but you are likely to find the answers in the dragon book.
 
-### Compiler
+> Structure and Interpretation of Computer Programs by Harold Abelson and Gerald J. Sussman with Julie Sussman
 
-### Interpreter
+This is also seminal work on computer programming that belongs in any computer science library. The book goes far beyond what we introduced here. However, you should be able to get right into it and enjoy it a lot.
+
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
+
+## Computing
+
+We have seen the basic principles of encoding *information* in bits, running actual code on a simple yet representative *machine*, and *programming* that machine in a simple yet realistic programming language using tools written in the very same language. This is a remarkable achievement that could easily justify to leave it at that, if it was not for the fact that we are incredibly close to seeing and understanding the probably single most important contribution of computer science to humanity so far. Some might say it is the Internet but there is something more fundamental than that. The nature of information is not just about how to communicate. Information and in particular its meaning only comes to life when it is worked on, known to humans as *reasoning* and to machines as *computing*. In the early days of computer science, computing was something rare and expensive available to only a selected few, and it was highly specialized and bound by severe physical constraints. Today, computing is a commodity independent of any particular hardware and available to anyone with a network connection. Virtually all modern technological advancements are either a consequence of that or at least depend on that and yet we are only seeing a glimpse of the impact of that development. The idea that enables *computing as a utility* for everyone is *virtualization*. The goal of this chapter is to understand what virtualization is, how it works, and why it is so important. However, be patient, it really takes all we have learned so far and more to get there.
+
+Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always possible to develop a piece of software that emulates such a machine. Selfie does that in the procedure `mipster`. An emulator creates an instance of the machine in software that is indistinguishable from the machine in hardware. In other words, machine code cannot tell whether it is running on emulated or on real hardware, unless the code has a reference to the world outside of such a system, such as the progress of real time revealing the speed of its own progress during execution. Without optimizations, emulation is slower than hardware. An emulator implements, at least logically and `mipster` even for real, an interpreter of machine code in software. The execution of a single machine instruction on the *emulated machine* therefore takes the *emulating machine* on which the emulator runs many machine instructions. We have already looked at that phenomenon at the end of the machine chapter. Let us take an even closer look now.
+
+assembler-parser
+self-assembler
 
 ### Virtual Machine
 
+processes
+fork-wait
+
 ### Virtual Memory
 
-### Virtual Time
+fork-wait-exit
+lock
 
-### Virtual Machine Monitor
+### Runtime Systems
+
+threads
+threadsafe-malloc
+treiber-stack
 
 ### Computing as Utility
 
