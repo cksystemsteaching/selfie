@@ -36,7 +36,7 @@ ENV CFLAGS="-fstack-protector -fstack-protector-explicit -U_FORTIFY_SOURCE" \
 RUN mkdir -p $RISCV \
   && mkdir -p riscv-pk/build \
   && cd riscv-pk/build \
-  && ../configure --prefix=$RISCV --host=riscv64-linux-gnu \
+  && ../configure --prefix=$RISCV --host=riscv64-linux-gnu --with-arch=rv64gc --with-abi=lp64d \
   && make \
   && make install \
   && mv $RISCV/riscv64-linux-gnu $RISCV/riscv64-unknown-elf
