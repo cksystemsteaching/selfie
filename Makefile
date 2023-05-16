@@ -51,13 +51,15 @@ selfie-gc-nomain.h: selfie-gc.h
 
 # Consider these targets as targets, not files
 .PHONY: self self-self 64-to-32-bit whitespace quine escape debug replay \
-		emu emu-emu emu-vmm os-vmm os self-os self-os-vmm min mob \
+		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu \
+		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
 		sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools and is not too slow
 all: self self-self 64-to-32-bit whitespace quine escape debug replay \
-		emu emu-vmm os-vmm os self-os self-os-vmm min mob \
+		emu emu-emu emu-vmm-emu os-emu os-vmm-emu \
+		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
 		sat brr bzz mon smt beat btor2
 
@@ -101,37 +103,47 @@ debug: selfie
 replay: selfie
 	./selfie -c examples/division-by-zero.c -r 1
 
-# Run emulator on emulator
+# Run selfie on emulator
 emu: selfie selfie.m
+	./selfie -l selfie.m -m 1
+
+# Run selfie on emulator on emulator
+emu-emu: selfie selfie.m
 	./selfie -l selfie.m -m 2 -l selfie.m -m 1
 
-# Run emulator on emulator on emulator, warning: slow!
-emu-emu: selfie selfie.m
+# Run selfie on emulator on emulator on emulator, warning: slow!
+emu-emu-emu: selfie selfie.m
 	./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
 
-# Run emulator on hypervisor on emulator
-emu-vmm: selfie selfie.m
+# Run selfie on emulator on hypervisor on emulator
+emu-vmm-emu: selfie selfie.m
 	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -m 1
 
-# Run os on hypervisor on emulator
-os-vmm: selfie selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
-
-# Run os on emulator
-os: selfie selfie.m
+# Run selfie on os on emulator
+os-emu: selfie selfie.m
 	./selfie -l selfie.m -m 1 -l selfie.m -y 1
 
-# Self-compile on os
-self-os: selfie selfie.m selfie.s
+# Run selfie on os on hypervisor on emulator
+os-vmm-emu: selfie selfie.m
+	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
+
+# Self-compile on emulator
+self-emu: selfie selfie.m selfie.s
+	./selfie -l selfie.m -m 3 -c selfie.c -o selfie-emu.m -s selfie-emu.s
+	diff -q selfie.m selfie-emu.m
+	diff -q selfie.s selfie-emu.s
+
+# Self-compile on os on emulator
+self-os-emu: selfie selfie.m selfie.s
 	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -c selfie.c -o selfie-os.m -s selfie-os.s
 	diff -q selfie.m selfie-os.m
 	diff -q selfie.s selfie-os.s
 
 # Self-compile on os on hypervisor
-self-os-vmm: selfie selfie.m selfie.s
-	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-os-vmm.m -s selfie-os-vmm.s
-	diff -q selfie.m selfie-os-vmm.m
-	diff -q selfie.s selfie-os-vmm.s
+self-os-vmm-emu: selfie selfie.m selfie.s
+	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-vmm.m -s selfie-vmm.s
+	diff -q selfie.m selfie-vmm.m
+	diff -q selfie.s selfie-vmm.s
 
 # Self-compile on os on hypervisor on fully mapped virtual memory
 min: selfie selfie.m selfie.s
