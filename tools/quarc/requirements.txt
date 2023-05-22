@@ -4,7 +4,7 @@ charset-normalizer==2.0.12
 cryptography==39.0.1
 dill==0.3.5.1
 idna==3.3
-mpmath==1.2.1
+mpmath==1.3.0
 ntlm-auth==1.5.0
 numpy==1.22.4
 pbr==5.9.0
