@@ -6341,6 +6341,8 @@ void selfie_compile() {
           source_name);
         exit(EXITCODE_SYNTAXERROR);
       }
+
+      printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
     }
   }
 
@@ -7480,7 +7482,7 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  printf("%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
+  printf("\n%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
   printf("%s: %s exiting with exit code %ld\n", selfie_name,
     get_name(context),
     sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
@@ -10766,8 +10768,6 @@ void print_profile(uint64_t* context) {
       printf(" (coherency invalidations: %lu)", L1_icache_coherency_invalidations);
     println();
   }
-
-  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
 void print_host_os() {
@@ -11809,7 +11809,7 @@ uint64_t selfie_run(uint64_t machine) {
       printf(", and debugger");
   }
 
-  printf("\n%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("\n%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n", selfie_name);
 
   if (machine == MIPSTER)
     exit_code = mipster(current_context);
@@ -11840,6 +11840,8 @@ uint64_t selfie_run(uint64_t machine) {
 
   debug_syscalls = 0;
   debug          = 0;
+
+  printf("%s: ################################################################################\n", selfie_name);
 
   return exit_code;
 }
@@ -11901,12 +11903,14 @@ uint64_t selfie(uint64_t extras) {
   if (number_of_remaining_arguments() == 0)
     return EXITCODE_NOARGUMENTS;
   else {
+    printf("%s: ================================================================================\n", selfie_name);
     printf("%s: this is the selfie system from %s with\n", selfie_name, SELFIE_URL);
     printf("%s: %lu-bit unsigned integers and %lu-bit pointers hosted on ", selfie_name,
       SIZEOFUINT64INBITS,
       SIZEOFUINT64STARINBITS);
     print_host_os();
     println();
+    printf("%s: ================================================================================\n", selfie_name);
 
     init_scanner();
     init_bootstrapping();
@@ -11953,7 +11957,12 @@ uint64_t selfie(uint64_t extras) {
           return EXITCODE_BADARGUMENTS;
       } else
         return EXITCODE_MOREARGUMENTS;
+
+      if (number_of_remaining_arguments() > 0)
+        printf("%s: ********************************************************************************\n", selfie_name);
     }
+
+    printf("%s: ################################################################################\n", selfie_name);
 
     return EXITCODE_NOERROR;
   }
