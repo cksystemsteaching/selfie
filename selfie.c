@@ -2403,15 +2403,16 @@ uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 27;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
-uint64_t MIPSTER = 1;
-uint64_t DIPSTER = 2;
-uint64_t RIPSTER = 3;
+uint64_t MIPSTER = 0;
+uint64_t HYPSTER = 1;
+uint64_t MINSTER = 2;
+uint64_t MOBSTER = 3;
+uint64_t MIXTER  = 4;
 
-uint64_t HYPSTER = 4;
+uint64_t* MACHINES; // named machines
 
-uint64_t MINSTER = 5;
-uint64_t MOBSTER = 6;
-
+uint64_t DIPSTER = 5;
+uint64_t RIPSTER = 6;
 uint64_t CAPSTER = 7;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -2420,6 +2421,18 @@ uint64_t next_page_frame = 0;
 
 uint64_t allocated_page_frame_memory = 0;
 uint64_t free_page_frame_memory      = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_kernel () {
+  MACHINES = smalloc((MIXTER + 1) * sizeof(uint64_t*));
+
+  *(MACHINES + MIPSTER) = (uint64_t) "mipster";
+  *(MACHINES + HYPSTER) = (uint64_t) "hypster";
+  *(MACHINES + MINSTER) = (uint64_t) "minster";
+  *(MACHINES + MOBSTER) = (uint64_t) "mobster";
+  *(MACHINES + MIXTER) = (uint64_t) "mixter";
+}
 
 // -----------------------------------------------------------------
 // ------------------- CONSOLE ARGUMENT SCANNER --------------------
@@ -11507,9 +11520,6 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf("mipster\n");
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
-
   timeout = TIMESLICE;
 
   while (1) {
@@ -11534,9 +11544,6 @@ uint64_t mipster(uint64_t* to_context) {
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
-  printf("hypster\n");
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
-
   while (1) {
     from_context = hypster_switch(to_context, TIMESLICE);
 
@@ -11553,9 +11560,6 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t mslice;
   uint64_t timeout;
   uint64_t* from_context;
-
-  printf("mixter (%lu%% mipster/%lu%% hypster)\n", mix, 100 - mix);
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   mslice = TIMESLICE;
 
@@ -11662,9 +11666,6 @@ void map_unmapped_pages(uint64_t* context) {
 }
 
 uint64_t minster(uint64_t* to_context) {
-  printf("minster\n");
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
-
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
   // CAUTION: consumes memory even when not accessed
@@ -11675,9 +11676,6 @@ uint64_t minster(uint64_t* to_context) {
 }
 
 uint64_t mobster(uint64_t* to_context) {
-  printf("mobster\n");
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
-
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
 }
@@ -11754,9 +11752,19 @@ uint64_t selfie_run(uint64_t machine) {
 
       return EXITCODE_BADARGUMENTS;
     }
-  }
+  } else if (machine == DIPSTER) {
+    debug          = 1;
+    debug_syscalls = 1;
 
-  if (machine == CAPSTER) {
+    machine = MIPSTER;
+  } else if (machine == RIPSTER) {
+    init_replay_engine();
+
+    debug  = 1;
+    record = 1;
+
+    machine = MIPSTER;
+  } else if (machine == CAPSTER) {
     init_all_caches();
 
     L1_CACHE_ENABLED = 1;
@@ -11780,7 +11788,9 @@ uint64_t selfie_run(uint64_t machine) {
 
   run = 1;
 
-  printf("%s: selfie executing %lu-bit RISC-U binary %s with %luMB physical memory", selfie_name,
+  printf("%s: %lu-bit %s executing %lu-bit RISC-U binary %s with %luMB physical memory", selfie_name,
+    SIZEOFUINT64INBITS,
+    (char*) *(MACHINES + machine),
     WORDSIZEINBITS,
     binary_name,
     PHYSICALMEMORYSIZE / MEGABYTE);
@@ -11792,51 +11802,44 @@ uint64_t selfie_run(uint64_t machine) {
     if (GC_REUSE) printf("reusing memory"); else printf("not reusing memory");
   }
 
-  if (machine == DIPSTER) {
-    debug          = 1;
-    debug_syscalls = 1;
-    printf(", debugger");
-    machine = MIPSTER;
-  } else if (machine == RIPSTER) {
-    debug  = 1;
-    record = 1;
-    init_replay_engine();
-    printf(", replay");
-    machine = MIPSTER;
+  if (debug) {
+    if (record)
+      printf(", and replay");
+    else
+      printf(", and debugger");
   }
 
-  printf(" on %lu-bit ", SIZEOFUINT64INBITS);
+  printf("\n%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
   if (machine == MIPSTER)
     exit_code = mipster(current_context);
+  else if (machine == HYPSTER)
+    exit_code = hypster(current_context);
   else if (machine == MINSTER)
     exit_code = minster(current_context);
   else if (machine == MOBSTER)
     exit_code = mobster(current_context);
-  else if (machine == HYPSTER)
-    exit_code = hypster(current_context);
-  else
-    // change 0 to anywhere between 0% to 100% mipster
+  else if (machine == MIXTER)
+    // change 0 to anywhere between 0% to 100% mipster over hypster
     exit_code = mixter(current_context, 0);
+  else
+    exit_code = 0;
+
+  printf("%s: %lu-bit %s terminating %lu-bit RISC-U binary %s with exit code %ld\n", selfie_name,
+    SIZEOFUINT64INBITS,
+    (char*) *(MACHINES + machine),
+    WORDSIZEINBITS,
+    get_name(current_context),
+    sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  print_profile(current_context);
+
+  run = 0;
 
   record = 0;
 
   debug_syscalls = 0;
   debug          = 0;
-
-  printf("%s: selfie terminating %lu-bit RISC-U binary %s with exit code %ld\n", selfie_name,
-    WORDSIZEINBITS,
-    get_name(current_context),
-    sign_extend(exit_code, SYSCALL_BITWIDTH));
-
-  if (machine != HYPSTER)
-    print_profile(current_context);
-  else if (GC_ON) {
-    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-    print_gc_profile(current_context);
-  }
-
-  run = 0;
 
   return exit_code;
 }
@@ -12016,6 +12019,7 @@ int main(int argc, char** argv) {
   init_library();
   init_system();
   init_target();
+  init_kernel();
 
   exit_code = selfie(0);
 

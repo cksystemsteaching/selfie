@@ -423,6 +423,7 @@ int main(int argc, char** argv) {
   init_library();
   init_system();
   init_target();
+  init_kernel();
 
   exit_code = selfie(1);
 
