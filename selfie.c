@@ -862,7 +862,7 @@ uint64_t is_system_register(uint64_t reg);
 uint64_t is_argument_register(uint64_t reg);
 uint64_t is_temporary_register(uint64_t reg);
 
-void read_register_wrap(uint64_t reg, uint64_t wrap);
+void read_register_check_wrap(uint64_t reg, uint64_t check_wrap);
 void read_register(uint64_t reg);
 
 void write_register_wrap(uint64_t reg, uint64_t wrap);
@@ -2495,7 +2495,7 @@ void init_system() {
       IS64BITSYSTEM = 0;
       IS64BITTARGET = 0;
     } else
-      // selfie only supports 32-bit and 64-bit systems
+      // selfie only supports 64-bit and 32-bit systems
       exit(EXITCODE_SYSTEMERROR);
   }
 
@@ -6410,14 +6410,13 @@ uint64_t is_temporary_register(uint64_t reg) {
     return 0;
 }
 
-void read_register_wrap(uint64_t reg, uint64_t wrap) {
+void read_register_check_wrap(uint64_t reg, uint64_t check_wrap) {
   if (*(writes_per_register + reg) > 0) {
     // register has been written to before
     if (*(reads_per_register + reg) < UINT64_MAX)
       *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
 
-    // tolerate unwrapped values in register-to-register transfers
-    if (wrap)
+    if (check_wrap)
       if (*(registers + reg) > UINT_MAX) {
         print_instruction();
         printf(": reading unwrapped value from register ");
@@ -6437,7 +6436,7 @@ void read_register_wrap(uint64_t reg, uint64_t wrap) {
 }
 
 void read_register(uint64_t reg) {
-  read_register_wrap(reg, 1);
+  read_register_check_wrap(reg, 1);
 }
 
 void write_register_wrap(uint64_t reg, uint64_t wrap) {
@@ -9365,7 +9364,8 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
-  read_register_wrap(rs1, imm);
+  // tolerate unwrapped values in register-to-register transfers
+  read_register_check_wrap(rs1, imm);
 
   if (rd != REG_ZR) {
     // semantics of addi
@@ -9634,6 +9634,7 @@ uint64_t do_load() {
         } else
           nopc_load = nopc_load + 1;
 
+        // load values unwrapped
         write_register_wrap(rd, 0);
 
         // keep track of instruction address for profiling loads
@@ -9716,7 +9717,8 @@ uint64_t do_store() {
   if (is_virtual_address_valid(vaddr, WORDSIZE)) {
     if (is_valid_segment_write(vaddr)) {
       if (is_virtual_address_mapped(pt, vaddr)) {
-        read_register_wrap(rs2, 0);
+        // tolerate storing unwrapped values
+        read_register_check_wrap(rs2, 0);
 
         // semantics of store (double) word
         if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
@@ -11956,8 +11958,7 @@ uint64_t selfie(uint64_t extras) {
 
 void experimental_features() {
   if (string_compare(argument, "-m32")) {
-    // TODO: hypster support
-    // involves caching 32-bit pages tables
+    // TODO: hypster support, involves caching 32-bit pages tables
     IS64BITTARGET = 0;
 
     init_target();
