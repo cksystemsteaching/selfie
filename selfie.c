@@ -6444,16 +6444,12 @@ void write_register_wrap(uint64_t reg, uint64_t wrap) {
   if (wrap)
     *(registers + reg) = sign_shrink(*(registers + reg), WORDSIZEINBITS);
 
-  if (reg == REG_SP)
-    if (*(registers + REG_SP) < stack_peak)
-      stack_peak = *(registers + REG_SP);
-
   if (*(writes_per_register + reg) < UINT64_MAX)
     *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
 void write_register(uint64_t reg) {
-  write_register_wrap(reg, 1);
+  write_register_wrap(reg, SIZEOFUINT64INBITS != WORDSIZEINBITS);
 }
 
 // -----------------------------------------------------------------
@@ -11475,7 +11471,14 @@ uint64_t handle_timer(uint64_t* context) {
 }
 
 uint64_t handle_exception(uint64_t* context) {
+  uint64_t sp;
   uint64_t exception;
+
+  sp = *(get_regs(context) + REG_SP);
+
+  if (sp < stack_peak)
+    // keep track of amount of stack allocation
+    stack_peak = sp;
 
   exception = get_exception(context);
 
