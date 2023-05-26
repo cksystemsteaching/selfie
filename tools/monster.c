@@ -1918,7 +1918,11 @@ uint64_t selfie_run_symbolically() {
 
       run = 0;
 
+      printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+
       printf("%s: %lu characters of SMT-LIB formulae written into %s\n", selfie_name, w, smt_name);
+
+      printf("%s: ################################################################################\n", selfie_name);
 
       return EXITCODE_NOERROR;
     } else

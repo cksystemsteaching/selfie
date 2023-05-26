@@ -404,6 +404,8 @@ uint64_t selfie_buzz() {
 
       run = 0;
 
+      printf("%s: ################################################################################\n", selfie_name);
+
       return EXITCODE_NOERROR;
     } else
       return EXITCODE_BADARGUMENTS;

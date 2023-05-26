@@ -2473,6 +2473,8 @@ void turn_on_gc_library(uint64_t period, char* name);
 
 void experimental_features();
 
+uint64_t exit_selfie(uint64_t exit_code, char* extras);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 char* selfie_name = (char*) 0; // name of running selfie executable

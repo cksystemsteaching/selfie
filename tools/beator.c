@@ -3527,7 +3527,7 @@ uint64_t selfie_model() {
       entry_pc = get_pc(current_context);
 
       if (constant_propagation) {
-        printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+        printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
         printf("%s: constant propagation with ", selfie_name);
 
         exited_on_timeout = 0;
@@ -3567,6 +3567,8 @@ uint64_t selfie_model() {
       output_fd   = 1;
 
       printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
+
+      printf("%s: ################################################################################\n", selfie_name);
 
       return EXITCODE_NOERROR;
     } else
@@ -3664,7 +3666,7 @@ uint64_t propr(uint64_t* to_context) {
   uint64_t* from_context;
 
   printf("propr\n");
-  printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 
   timeout = TIMESLICE;
 
