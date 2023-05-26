@@ -2371,6 +2371,9 @@ uint64_t mobster(uint64_t* to_context);
 
 char* replace_extension(char* filename, char* extension);
 
+char* boot_level_prefix(char* s);
+char* increment_boot_level_prefix(char* s, char* t);
+
 void boot_loader(uint64_t* context);
 
 uint64_t selfie_run(uint64_t machine);
@@ -11725,11 +11728,50 @@ char* replace_extension(char* filename, char* extension) {
   return s;
 }
 
+char* boot_level_prefix(char* s) {
+  uint64_t l;
+  char* t;
+  uint64_t i;
+
+  l = string_length(s);
+
+  t = string_alloc(l);
+
+  i = 0;
+
+  while (i < l) {
+    if (load_character(s, i) == '>') {
+      store_character(t, i, '>');
+
+      i = i + 1;
+    } else {
+      store_character(t, i, 0);
+
+      return t;
+    }
+  }
+
+  return t;
+}
+
+char* increment_boot_level_prefix(char* s, char* t) {
+  char* p;
+  char* u;
+
+  p = boot_level_prefix(s);
+
+  u = string_alloc(string_length(p) + 1 + 1 + string_length(t));
+
+  sprintf(u, "%s> %s", p, t);
+
+  return u;
+}
+
 void boot_loader(uint64_t* context) {
   up_load_binary(context);
 
   // pass binary name as first argument by replacing next argument
-  set_argument(binary_name);
+  set_argument(increment_boot_level_prefix(selfie_name, binary_name));
 
   up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
 }
