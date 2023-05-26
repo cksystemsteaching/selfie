@@ -3,7 +3,7 @@ import sys
 
 sys.setrecursionlimit(5000)
 
-STATUSMESSSAGE_START = r'([a-zA-Z]:\\|(./)?selfie)'
+STATUSMESSSAGE_START = r'([a-zA-Z]:\\|(>+ )?(./)?selfie)'
 
 def contains_name(output):
     result = re.match(STATUSMESSSAGE_START + r'[^\n]*This is \S* \S*\'s Selfie![^\n]*\n', output) != None
