@@ -7481,11 +7481,6 @@ void implement_exit(uint64_t* context) {
   signed_int_exit_code = *(get_regs(context) + REG_A0);
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
-
-  printf("\n%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
-  printf("%s: %s exiting with exit code %ld\n", selfie_name,
-    get_name(context),
-    sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
 }
 
 void emit_read() {
@@ -11824,6 +11819,8 @@ uint64_t selfie_run(uint64_t machine) {
     exit_code = mixter(current_context, 0);
   else
     exit_code = 0;
+
+  printf("\n%s: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n", selfie_name);
 
   printf("%s: %lu-bit %s terminating %lu-bit RISC-U binary %s with exit code %ld\n", selfie_name,
     SIZEOFUINT64INBITS,
