@@ -89,7 +89,7 @@ whitespace: selfie
 
 # Compile and run quine and compare its output to itself
 quine: selfie selfie.h
-	./selfie -c selfie.h examples/quine.c -m 1 | sed '/selfie/d' | diff --strip-trailing-cr examples/quine.c -
+	./selfie -c selfie.h examples/quine.c -m 1 | sed '/selfie/d' | diff --ignore-blank-lines examples/quine.c -
 
 # Demonstrate available escape sequences
 escape: selfie
