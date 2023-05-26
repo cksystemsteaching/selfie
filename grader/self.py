@@ -33,7 +33,7 @@ def check_bootstrapping() -> List[Check]:
     return check_bootstrapping_compile_warnigns('bootstrapping works without warnings', mandatory=False)
 
 def check_self_compilation(mandatory=False) -> List[Check]:
-    return check_execution('make self', 'selfie compiles selfie.c', mandatory=mandatory) + \
+    return check_execution('make self-self-check', 'selfie self-compiles selfie.c', mandatory=mandatory) + \
         check_compile_warnings(
             'selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 

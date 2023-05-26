@@ -50,14 +50,16 @@ selfie-gc-nomain.h: selfie-gc.h
 	sed 's/main(/selfie_main(/' selfie-gc.h > selfie-gc-nomain.h
 
 # Consider these targets as targets, not files
-.PHONY: self self-self 64-to-32-bit whitespace quine escape debug replay \
+.PHONY: self self-self self-self-check 64-to-32-bit \
+		whitespace quine escape debug replay \
 		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu \
 		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
 		sat brr bzz mon smt beat btor2 all
 
 # Run everything that only requires standard tools and is not too slow
-all: self self-self 64-to-32-bit whitespace quine escape debug replay \
+all: self self-self self-self-check 64-to-32-bit \
+		whitespace quine escape debug replay \
 		emu emu-emu emu-vmm-emu os-emu os-vmm-emu \
 		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
@@ -67,15 +69,19 @@ all: self self-self 64-to-32-bit whitespace quine escape debug replay \
 self: selfie
 	./selfie -c selfie.c
 
-# Self-self-compile selfie and check fixed point of self-compilation
+# Self-self-compile selfie
 self-self: selfie
-	./selfie -c selfie.c -o selfie0.m -s selfie0.s -m 2 -c selfie.c -o selfie1.m -s selfie1.s
+	./selfie -c selfie.c -m 3 -c selfie.c
+
+# Self-self-compile selfie and check fixed point of self-compilation
+self-self-check: selfie
+	./selfie -c selfie.c -o selfie0.m -s selfie0.s -m 3 -c selfie.c -o selfie1.m -s selfie1.s
 	diff -q selfie0.m selfie1.m
 	diff -q selfie0.s selfie1.s
 
 # Self-self-compile selfie from 64-bit system to 32-bit target and check fixed point of self-compilation
 64-to-32-bit: selfie
-	./selfie -m32 -c selfie.c -o selfie-64-2-32.m -s selfie-64-2-32.s -m 2 -c selfie.c -o selfie-64-2-32-2-32.m -s selfie-64-2-32-2-32.s
+	./selfie -m32 -c selfie.c -o selfie-64-2-32.m -s selfie-64-2-32.s -m 4 -c selfie.c -o selfie-64-2-32-2-32.m -s selfie-64-2-32-2-32.s
 	diff -q selfie-64-2-32.m selfie-64-2-32-2-32.m
 	diff -q selfie-64-2-32.s selfie-64-2-32-2-32.s
 
@@ -109,23 +115,23 @@ emu: selfie selfie.m
 
 # Run selfie on emulator on emulator
 emu-emu: selfie selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -m 1
+	./selfie -l selfie.m -m 3 -l selfie.m -m 1
 
 # Run selfie on emulator on emulator on emulator, warning: slow!
 emu-emu-emu: selfie selfie.m
-	./selfie -l selfie.m -m 4 -l selfie.m -m 2 -l selfie.m -m 1
+	./selfie -l selfie.m -m 5 -l selfie.m -m 3 -l selfie.m -m 1
 
 # Run selfie on emulator on hypervisor on emulator
 emu-vmm-emu: selfie selfie.m
-	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -m 1
+	./selfie -l selfie.m -m 4 -l selfie.m -y 3 -l selfie.m -m 1
 
 # Run selfie on os on emulator
 os-emu: selfie selfie.m
-	./selfie -l selfie.m -m 1 -l selfie.m -y 1
+	./selfie -l selfie.m -m 2 -l selfie.m -y 1
 
 # Run selfie on os on hypervisor on emulator
 os-vmm-emu: selfie selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
+	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1
 
 # Self-compile on emulator
 self-emu: selfie selfie.m selfie.s
@@ -135,19 +141,19 @@ self-emu: selfie selfie.m selfie.s
 
 # Self-compile on os on emulator
 self-os-emu: selfie selfie.m selfie.s
-	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -c selfie.c -o selfie-os.m -s selfie-os.s
+	./selfie -l selfie.m -m 4 -l selfie.m -y 3 -c selfie.c -o selfie-os.m -s selfie-os.s
 	diff -q selfie.m selfie-os.m
 	diff -q selfie.s selfie-os.s
 
 # Self-compile on os on hypervisor
 self-os-vmm-emu: selfie selfie.m selfie.s
-	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-vmm.m -s selfie-vmm.s
+	./selfie -l selfie.m -m 5 -l selfie.m -y 4 -l selfie.m -y 3 -c selfie.c -o selfie-vmm.m -s selfie-vmm.s
 	diff -q selfie.m selfie-vmm.m
 	diff -q selfie.s selfie-vmm.s
 
 # Self-compile on os on hypervisor on fully mapped virtual memory
 min: selfie selfie.m selfie.s
-	./selfie -l selfie.m -min 15 -l selfie.m -y 2 -l selfie.m -y 2 -c selfie.c -o selfie-min.m -s selfie-min.s
+	./selfie -l selfie.m -min 3 -l selfie.m -y 4 -l selfie.m -y 3 -c selfie.c -o selfie-min.m -s selfie-min.s
 	diff -q selfie.m selfie-min.m
 	diff -q selfie.s selfie-min.s
 
