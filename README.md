@@ -1947,7 +1947,7 @@ Here, the relevant part of the output should be similar to this:
 ...
 ```
 
-We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option with parameter `3` (for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.14MB, that is, using only 66.10% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.32MB of (mapped) memory which is 77.60% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.57KB at its peak. That memory is part of the 2.32MB of (mapped) memory.
+We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option (with parameter `3` which stands for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.23MB of main memory but ended up *accessing* only 2.14MB, that is, using only 66.10% of the 3.23MB in storage. Moreover, selfie needed an additional 0.18MB of storage for its code, that is, in sum 2.32MB of (mapped) memory which is 77.60% of the 3MB available storage (physical memory). In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.57KB at its peak. That memory is part of the 2.32MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -3624,7 +3624,31 @@ or, equivalently, just try:
 make emu
 ```
 
-The `-o` option instructs selfie to write the machine code compiled from `selfie.c` to a binary file called `selfie.m`. The `-l` option in the second invocation instructs selfie to *load* the binary `selfie.m` back into memory. The following `-m` option with parameter `1` instructs selfie to create a `mipster` instance with `1MB` of physical memory, load `selfie.m` from memory into the `mipster` instance, and then execute it by emulating a RISC-U machine. Since there are no further console arguments, `mipster` effectively executes selfie without arguments which makes selfie just print its synopsis and then quit. The following command does what the two invocations of selfie do in a single invocation of selfie:
+The `-o` option instructs selfie to write the machine code compiled from `selfie.c` to a binary file called `selfie.m`. The `-l` option in the second invocation instructs selfie to *load* the binary `selfie.m` back into memory. The following `-m` option instructs selfie to create a `mipster` instance with `1MB` of physical memory, load `selfie.m` from memory into the `mipster` instance, and then execute it by emulating a RISC-U machine. Since there are no further console arguments, `mipster` effectively executes selfie without arguments which makes selfie just print its synopsis and then quit. The relevant output is:
+
+```
+...
+./selfie: ================================================================================
+./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+synopsis: > selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 60074 executed instructions [18.52% nops]
+./selfie:          0.39KB peak stack size
+./selfie:          0.00MB allocated in 7 mallocs
+./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
+./selfie:          0.18MB(18.75% of 1MB) mapped memory
+./selfie: --------------------------------------------------------------------------------
+...
+```
+
+Selfie running on `mipster` took around 60k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
 
 ```bash
 ./selfie -c selfie.c -o selfie.m -m 1
@@ -3642,31 +3666,49 @@ or, equivalently, just try:
 make emu-emu
 ```
 
-This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, again just to run selfie on *OS* without console arguments making selfie print its synopsis and quit. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to load its own RISC-U code in `selfie.m` using the left `-l` option and then start *HW* using the `-m` option with parameter `3` to execute `selfie.m`. Next, we have `selfie.m` running on *HW* load itself using the right `-l` option and then start *OS* on *HW* using the `-m` option with parameter `1` to execute itself. Finally, `selfie.m` on *OS* prints the synopsis of selfie. The relevant output is:
+This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, again just to run selfie on *OS* without console arguments making selfie print its synopsis and quit. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to load its own RISC-U code in `selfie.m` using the left `-l` option and then start *HW* using the left `-m` option to execute `selfie.m`. The *HW* instance is provided with `3MB` of physical memory using the parameter `3`. Next, we have `selfie.m` running on *HW* load itself using the right `-l` option and then start *OS* on *HW* using the right `-m` option to execute itself. The *OS* instance is provided with `1MB` of physical memory using the parameter `1`. The *HW* instance needs more memory than the *OS* instance to accommodate the *OS* instance. Finally, `selfie.m` on *OS* prints the synopsis of selfie. The relevant output is:
 
 ```
 ...
-synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+./selfie: ================================================================================
+./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 ...
-selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
+> selfie.m: ================================================================================
+> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+> selfie.m: ********************************************************************************
+> selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
+> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+synopsis: >> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+
+> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+> selfie.m: --------------------------------------------------------------------------------
+> selfie.m: summary: 60438 executed instructions [18.52% nops]
+> selfie.m:          0.39KB peak stack size
+> selfie.m:          0.00MB allocated in 7 mallocs
+> selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
+> selfie.m:          0.19MB(19.14% of 1MB) mapped memory
+> selfie.m: --------------------------------------------------------------------------------
 ...
-selfie.m: summary: 59201 executed instructions [18.54% nops]
-selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 6 mallocs
-selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.19MB(19.14% of 1MB) mapped memory
-...
-./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
-...
-./selfie: summary: 154729156 executed instructions [13.27% nops]
-./selfie:          0.90KB peak stack size
-./selfie:          2.82MB allocated in 27 mallocs
-./selfie:          2.01MB(71.03% of 2.82MB) actually accessed
-./selfie:          2.19MB(109.96% of 2MB) mapped memory
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 153401433 executed instructions [13.46% nops]
+./selfie:          0.68KB peak stack size
+./selfie:          2.83MB allocated in 30 mallocs
+./selfie:          2.01MB(71.07% of 2.83MB) actually accessed
+./selfie:          2.20MB(73.43% of 3MB) mapped memory
+./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Selfie running on `mipster` instance *OS* took 59,201 RISC-U instructions and 0.19MB memory to print its synopsis. We have seen those numbers before. But then check this out. Mipster instance *HW* took 154,729,156 RISC-U instructions and 2.19MB memory to run *OS*. This means that, on average, *HW* executed around 2,614 instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2,614 RISC-U instructions to implement a single RISC-U instruction, and an additional 2MB of memory for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2,614.
+As before, selfie printing its synopsis on `mipster` instance *OS* took around 60k RISC-U instructions and less than 1MB memory. But then check this out. Mipster instance *HW* took around 150 million (!) RISC-U instructions and around 2MB memory to run *OS*. This means that, on average, *HW* executed around 2.5k instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2.5k.
 
 What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *VMM*, assuming that *VMM* runs in between `mipster` instances *HW* and *OS*, and allocating 5MB rather than 3MB of physical memory to *HW*:
 
@@ -3680,7 +3722,7 @@ or, equivalently, just try:
 make emu-emu-emu
 ```
 
-This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu`. In fact, this time, `mipster` instance *HW* executed more than 300 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances, and even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
+This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu-emu`. In fact, this time, `mipster` instance *HW* executed more than 300 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances running on top of each other. Even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
 
 But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-U processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
@@ -3698,31 +3740,68 @@ The relevant output is:
 
 ```
 ...
-synopsis: selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+./selfie: ================================================================================
+./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 4MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+> selfie.m: ================================================================================
+> selfie.m: this is the selfie system from selfie.cs.uni-salzburg.at with
+> selfie.m: 64-bit unsigned integers and 64-bit pointers hosted on selfie
+> selfie.m: ================================================================================
+> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+> selfie.m: ********************************************************************************
+> selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
+> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>> selfie.m: ================================================================================
+>> selfie.m: this is the selfie system from selfie.cs.uni-salzburg.at with
+>> selfie.m: 64-bit unsigned integers and 64-bit pointers hosted on selfie
+>> selfie.m: ================================================================================
+>> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+>> selfie.m: ********************************************************************************
+>> selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
+>> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+synopsis: >>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+
+>> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+>> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+>> selfie.m: --------------------------------------------------------------------------------
+>> selfie.m: summary: 60802 executed instructions [18.52% nops]
+>> selfie.m:          0.39KB peak stack size
+>> selfie.m:          0.00MB allocated in 7 mallocs
+>> selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
+>> selfie.m:          0.19MB(19.14% of 1MB) mapped memory
+>> selfie.m: --------------------------------------------------------------------------------
 ...
-selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
-...
-selfie.m: summary: 59201 executed instructions [18.54% nops]
-selfie.m:          0.46KB peak stack size
-selfie.m:          0.00MB allocated in 6 mallocs
-selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-selfie.m:          0.19MB(19.14% of 1MB) mapped memory
-...
-selfie.m: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
-...
-./selfie: selfie terminating 64-bit RISC-U binary selfie.m with exit code 0
-...
-./selfie: summary: 195104768 executed instructions [13.86% nops]
-./selfie:          0.90KB peak stack size
-./selfie:          4.82MB allocated in 29 mallocs
-./selfie:          2.78MB(57.64% of 4.82MB) actually accessed
-./selfie:          2.98MB(99.61% of 3MB) mapped memory
+
+> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+> selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
+> selfie.m: --------------------------------------------------------------------------------
+> selfie.m: summary: 0 executed instructions [0.00% nops]
+> selfie.m:          0.68KB peak stack size
+> selfie.m:          2.83MB allocated in 30 mallocs
+> selfie.m:          2.01MB(71.07% of 2.83MB) actually accessed
+> selfie.m:          2.21MB(73.83% of 3MB) mapped memory
+> selfie.m: ################################################################################
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 195767580 executed instructions [14.05% nops]
+./selfie:          0.64KB peak stack size
+./selfie:          4.83MB allocated in 32 mallocs
+./selfie:          2.78MB(57.67% of 4.83MB) actually accessed
+./selfie:          2.99MB(74.80% of 4MB) mapped memory
+./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time *HW* took only 195,104,768 RISC-U instructions to run both *VMM* and *OS*, compared to 154,732,339 RISC-U instructions to run just *OS*. This is a factor of around 1.26 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
+Now we are back from billions to millions of instructions. This time *HW* took only around 200 million RISC-U instructions to run both *VMM* and *OS*, compared to the 150 million RISC-U instructions to run just *OS*. This is a factor of around 1.3 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
 
-The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. The factor 1.26 overhead comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
+The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. Note that the `hypster` instance for *VMM* executed `0` instructions of the *OS* instance! The factor 1.3 overhead for the *HW* instance comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
 We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
