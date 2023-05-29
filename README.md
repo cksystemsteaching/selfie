@@ -6201,6 +6201,50 @@ We have seen the basic principles of encoding *information* in bits, running act
 
 Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always possible to develop a piece of software that emulates such a machine. Selfie does that in the procedure `mipster`. An emulator creates an instance of the machine in software that is indistinguishable from the machine in hardware. In other words, machine code cannot tell whether it is running on emulated or on real hardware, unless the code has a reference to the world outside of such a system, such as the progress of real time revealing the speed of its own progress during execution. Without optimizations, emulation is slower than hardware. An emulator implements, at least logically and `mipster` even for real, an interpreter of machine code in software. The execution of a single machine instruction on the *emulated machine* therefore takes the *emulating machine* on which the emulator runs many machine instructions. We have already looked at that phenomenon at the end of the machine chapter. Let us take an even closer look now.
 
+```bash
+make emu
+```
+
+55k
+
+```bash
+make emu-emu
+```
+
+140m 2.5k
+
+```bash
+make os-emu
+```
+
+15m 270
+
+```bash
+make os-vmm-emu
+```
+
+50m 900
+
+```bash
+make self-emu
+```
+
+1b
+
+```bash
+make self-os-emu
+```
+
+1.8b 1.8
+
+```bash
+make self-os-vmm-emu
+```
+
+2.5b 2.5
+
+> Compiler versus interpreter, high level versus low level, source code versus machine code
+
 assembler-parser
 self-assembler
 
