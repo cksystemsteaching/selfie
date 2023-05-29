@@ -3624,7 +3624,7 @@ or, equivalently, just try:
 make emu
 ```
 
-The `-o` option instructs selfie to write the machine code compiled from `selfie.c` to a binary file called `selfie.m`. The `-l` option in the second invocation instructs selfie to *load* the binary `selfie.m` back into memory. The following `-m` option instructs selfie to create a `mipster` instance with `1MB` of physical memory, load `selfie.m` from memory into the `mipster` instance, and then execute it by emulating a RISC-U machine. Since there are no further console arguments, `mipster` effectively executes selfie without arguments which makes selfie just print its synopsis and then quit. The relevant output is:
+The `-o` option instructs selfie to write the machine code compiled from `selfie.c` to a binary file called `selfie.m`. The `-l` option in the second invocation instructs selfie to *load* the binary `selfie.m` back into memory. The following `-m` option instructs selfie to create a `mipster` instance with `1MB` of physical memory, load `selfie.m` from memory into that `mipster` instance, and then execute `selfie.m` by emulating a RISC-U machine. Since there are no further console arguments, `mipster` effectively executes selfie without arguments which makes selfie just print its synopsis and then quit. The relevant output is:
 
 ```
 ...
@@ -3666,7 +3666,7 @@ or, equivalently, just try:
 make emu-emu
 ```
 
-This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, again just to run selfie on *OS* without console arguments making selfie print its synopsis and quit. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to load its own RISC-U code in `selfie.m` using the left `-l` option and then start *HW* using the left `-m` option to execute `selfie.m`. The *HW* instance is provided with `3MB` of physical memory using the parameter `3`. Next, we have `selfie.m` running on *HW* load itself using the right `-l` option and then start *OS* on *HW* using the right `-m` option to execute itself. The *OS* instance is provided with `1MB` of physical memory using the parameter `1`. The *HW* instance needs more memory than the *OS* instance to accommodate the *OS* instance. Finally, `selfie.m` on *OS* prints the synopsis of selfie. The relevant output is:
+This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on another `mipster` instance, say, *HW*, again just to run selfie on *OS* without console arguments making selfie print its synopsis and quit. After self-compilation, *self-execution* is the second type of self-referentiality in selfie. Here, we first instruct selfie to load its own RISC-U code in `selfie.m` using the left `-l` option and then start *HW* using the left `-m` option to execute `selfie.m`. The *HW* instance is provided with `3MB` of physical memory using the parameter `3`. Next, we have `selfie.m` running on *HW* load itself using the right `-l` option and then start *OS* on *HW* using the right `-m` option to execute itself. The *OS* instance is provided with `1MB` of physical memory using the parameter `1`. The *HW* instance needs more memory than the *OS* instance to accommodate the *OS* instance. Finally, selfie running on *OS* again just prints its synopsis and quits. The relevant output is:
 
 ```
 ...
@@ -3708,7 +3708,7 @@ This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on ano
 ...
 ```
 
-As before, selfie printing its synopsis on `mipster` instance *OS* took around 55k RISC-U instructions and less than 1MB memory. In fact, if you pay close attention, you may notice that it took a few hundred more instructions than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
+As before, selfie printing its synopsis on `mipster` instance *OS* took around 55k RISC-U instructions and less than 1MB memory. In fact, if you pay close attention, you may notice that it took a few hundred instructions more than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
 
 > Boot level
 
@@ -3730,7 +3730,7 @@ make emu-emu-emu
 
 This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu-emu`. In fact, this time, `mipster` instance *HW* executed more than 300 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances running on top of each other. Even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
 
-But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-U processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
+But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-V processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
 ```bash
 ./selfie -l selfie.m -m 4 -l selfie.m -y 3 -l selfie.m -m 1
@@ -3805,7 +3805,7 @@ Now we are back from billions to millions of instructions. This time *HW* took o
 
 The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. Note that the `hypster` instance for *VMM* executed `0` instructions of the *OS* instance! The factor 1.3 overhead for the *HW* instance comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
-We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
+We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a virtual machine monitor or *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
 ### Life 2
 
@@ -6209,11 +6209,13 @@ make emu
 
 As mentioned before, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, again say, *HW* and then have *HW* execute that code without any further console arguments. In that case, selfie just prints its synopsis and quits. It takes around 55k instructions to do so.
 
-The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on RISC-V hardware, as represented by the `mipster` instance *HW*.
+The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie on an operating system that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one program at the same time. Before we get closer to that, try the following command:
 
 ```bash
 make emu-emu
 ```
+
+Again, as mentioned before, the command ...
 
 140m 2.5k
 
