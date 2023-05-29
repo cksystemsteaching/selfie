@@ -184,7 +184,7 @@ and finally:
 Selfie responds with what is called its *synopsis*. Just that synopsis is already written in a formal language called a *regular expression* that specifies exactly how you can invoke selfie:
 
 ```bash
-synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 ```
 
 The synopsis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
@@ -1027,7 +1027,7 @@ By now, you should be able to read the EBNF just like sentences in English. Ther
 which responds with:
 
 ```
-synopsis: ./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 ```
 
 Not using the optional part `[ ( -m | -d | -r | -y ) 0-4096 ... ]` simply allows us to invoke selfie as compiler without running any code as we did before. EBNF is a beautiful way of saying just that and lots of other things. Try for yourself to invoke selfie with different options by just following the rules of its synopsis! You may even want to check out the source code in `selfie.c` that implements the finite state machine for recognizing the synopsis. It is in the procedure called `selfie` at the end of the file.
@@ -3629,17 +3629,17 @@ The `-o` option instructs selfie to write the machine code compiled from `selfie
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-synopsis: > selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 60074 executed instructions [18.52% nops]
+./selfie: summary: 55034 executed instructions [18.48% nops]
 ./selfie:          0.39KB peak stack size
 ./selfie:          0.00MB allocated in 7 mallocs
 ./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
@@ -3648,7 +3648,7 @@ synopsis: > selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l bin
 ...
 ```
 
-Selfie running on `mipster` took around 60k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
+Selfie running on `mipster` took around 55k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
 
 ```bash
 ./selfie -c selfie.c -o selfie.m -m 1
@@ -3671,24 +3671,24 @@ This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on ano
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ...
 > selfie.m: ================================================================================
-> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 > selfie.m: ********************************************************************************
 > selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 > selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-synopsis: >> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 60438 executed instructions [18.52% nops]
+> selfie.m: summary: 55398 executed instructions [18.48% nops]
 > selfie.m:          0.39KB peak stack size
 > selfie.m:          0.00MB allocated in 7 mallocs
 > selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
@@ -3699,7 +3699,7 @@ synopsis: >> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l bi
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 153401433 executed instructions [13.46% nops]
+./selfie: summary: 142794192 executed instructions [13.48% nops]
 ./selfie:          0.68KB peak stack size
 ./selfie:          2.83MB allocated in 30 mallocs
 ./selfie:          2.01MB(71.07% of 2.83MB) actually accessed
@@ -3708,7 +3708,13 @@ synopsis: >> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l bi
 ...
 ```
 
-As before, selfie printing its synopsis on `mipster` instance *OS* took around 60k RISC-U instructions and less than 1MB memory. But then check this out. Mipster instance *HW* took around 150 million (!) RISC-U instructions and around 2MB memory to run *OS*. This means that, on average, *HW* executed around 2.5k instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed how slow the synopsis is actually printed on your console? That is because execution is slowed down by a factor of 2.5k.
+As before, selfie printing its synopsis on `mipster` instance *OS* took around 55k RISC-U instructions and less than 1MB memory. In fact, if you pay close attention, you may notice that it took a few hundred more instructions than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
+
+> Boot level
+
+Well, the number of `>` characters indicate the *boot level* on which the code runs. Here, `mipster` instance *HW* runs on boot level 0, `mipster` instance *OS* runs on boot level 1, and selfie printing its synopsis runs on boot level 2. In short, the boot level increases by 1 with each `mipster` instance. Console output generated by boot levels higher than `0` are shown by a sequence of greater-than `>` characters, making it easier to understand the output. Hence console output generated by boot levels `1` and `2` is prefixed by `>` and `>>`, respectively.
+
+Alright, but then check this out. The `mipster` instance *HW* took around 140 million (!) RISC-U instructions and around 2MB memory to run *OS*. This means that, on average, *HW* executed around 2.5k instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed that the synopsis is actually printed a bit slower on your console? That is because execution is slowed down by a factor of 2.5k.
 
 What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *VMM*, assuming that *VMM* runs in between `mipster` instances *HW* and *OS*, and allocating 5MB rather than 3MB of physical memory to *HW*:
 
@@ -3741,35 +3747,31 @@ The relevant output is:
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 4MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+...
 > selfie.m: ================================================================================
-> selfie.m: this is the selfie system from selfie.cs.uni-salzburg.at with
-> selfie.m: 64-bit unsigned integers and 64-bit pointers hosted on selfie
-> selfie.m: ================================================================================
-> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 > selfie.m: ********************************************************************************
 > selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
 > selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+...
 >> selfie.m: ================================================================================
->> selfie.m: this is the selfie system from selfie.cs.uni-salzburg.at with
->> selfie.m: 64-bit unsigned integers and 64-bit pointers hosted on selfie
->> selfie.m: ================================================================================
->> selfie.m: 181272 bytes with 40846 64-bit RISC-U instructions and 13792 bytes of data loaded from selfie.m
+>> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
 >> selfie.m: ********************************************************************************
 >> selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 >> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-synopsis: >>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+>>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 
 >> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 >> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 >> selfie.m: --------------------------------------------------------------------------------
->> selfie.m: summary: 60802 executed instructions [18.52% nops]
+>> selfie.m: summary: 55762 executed instructions [18.48% nops]
 >> selfie.m:          0.39KB peak stack size
 >> selfie.m:          0.00MB allocated in 7 mallocs
 >> selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
@@ -3790,7 +3792,7 @@ synopsis: >>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l b
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 195767580 executed instructions [14.05% nops]
+./selfie: summary: 185138902 executed instructions [14.09% nops]
 ./selfie:          0.64KB peak stack size
 ./selfie:          4.83MB allocated in 32 mallocs
 ./selfie:          2.78MB(57.67% of 4.83MB) actually accessed
@@ -3799,7 +3801,7 @@ synopsis: >>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l b
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time *HW* took only around 200 million RISC-U instructions to run both *VMM* and *OS*, compared to the 150 million RISC-U instructions to run just *OS*. This is a factor of around 1.3 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
+Now we are back from billions to millions of instructions. This time *HW* took only around 185 million RISC-U instructions to run both *VMM* and *OS*, compared to the 140 million RISC-U instructions to run just *OS*. This is a factor of around 1.3 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
 
 The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. Note that the `hypster` instance for *VMM* executed `0` instructions of the *OS* instance! The factor 1.3 overhead for the *HW* instance comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
@@ -6063,7 +6065,7 @@ diff -q selfie0.s selfie1.s
 
 validating that we have indeed reached the fixed point of self-compilation! How awesome is that?
 
-> Boot level
+> Boot level, again
 
 We could actually continue doing this but because of the fixed point nothing changes anymore except that things get very slow. Be prepared to wait for hours to see this finish:
 
@@ -6071,7 +6073,7 @@ We could actually continue doing this but because of the fixed point nothing cha
 ./selfie -c selfie.c -m 6 -c selfie.c -m 3 -c selfie.c
 ```
 
-However, there is need for a bit more terminology. The leftmost invocation of `starc` runs on *boot level* 0. More generally, we say that the executable compiled from `selfie.c` by the bootstrapping compiler runs on boot level 0, here the ARM executable generated by `gcc`. The middle invocation of `starc` runs on boot level 1, that is, the executable compiled from `selfie.c` by the bootstrapped compiler, here the RISC-U executable generated by `starc`. You guessed right, the rightmost invocation of `starc` runs on boot level 2, and so on. Console output generated by boot levels higher than `0` are shown by a sequence of greater-than `>` characters. For example, console output generated by boot levels `1` and `2` appears as `>` and `>>`, respectively.
+In terms of boot levels, a concept we mentioned before, the leftmost invocation of `starc` runs on boot level 0. More generally, we say that the executable compiled from `selfie.c` by the bootstrapping compiler runs on boot level 0, here the ARM executable generated by `gcc`. The middle invocation of `starc` runs on boot level 1, that is, the executable compiled from `selfie.c` by the bootstrapped compiler, here the RISC-U executable generated by `starc`. You guessed right, the rightmost invocation of `starc` runs on boot level 2.
 
 > Selfie as a system
 
