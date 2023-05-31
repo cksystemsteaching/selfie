@@ -6205,33 +6205,33 @@ Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always
 make emu
 ```
 
-As mentioned before, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, again say, *HW* and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 55k instructions to do so.
+As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, again say, *HW* and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 55k instructions to do so.
 
-The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie on an operating system that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one program at the same time. Before we get closer to that, try the following command:
+The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie on an *operating system* that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one program at the same time. Before we get closer to that, try the following command:
 
 ```bash
 make emu-emu
 ```
 
-Again, as mentioned before, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes *OS* around 55k instructions to execute selfie. However, now it takes *HW* around 140 million (!) instructions to execute selfie running on *OS*. This is a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes *OS* around 55k instructions to execute selfie. However, now it takes *HW* around 140 million (!) instructions to execute selfie running on *OS*. This is a factor of around 2.5k slower!
 
 The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, and running on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
-In order to get closer to what an operating system does in terms of performance, we only need to replace the `mipster` instance for *OS* by a `hypster` instance. The difference between `mipster` and `hypster` is that `hypster` does not execute code by interpretation, like `mipster`, but instead asks the machine on which it runs, here *HW*, to execute code on its behalf through *context switching*. However, to do so requires *isolating* code execution from everything else that might be executing on *HW*. Explaining what is involved and how this is done is the essential topic of this chapter. Try the following command to run *OS* as `hypster` instance on *HW*:
+In order to get closer to what an operating system does in terms of performance, we only need to replace the `mipster` instance for *OS* by a `hypster` instance. The difference between `mipster` and `hypster` is that `hypster` does not execute code by interpretation, like `mipster`, but instead asks the machine on which it runs, here *HW*, to execute code *virtually* on its behalf through *context switching*. However, to do so requires *isolating* code execution from everything else that might be executing on *HW*. Explaining what is involved and how this is done is the essential topic of this chapter. Try the following command to run *OS* as `hypster` instance on *HW*:
 
 ```bash
 make os-emu
 ```
 
-Now, it takes *HW* around 15 million instructions to execute selfie running on *OS* while, from the perspective of selfie, there is no difference whatsoever. An improvement by almost a factor of 10 is great but it still leaves us with a factor of around 270 slower than running selfie bare-metal on *HW*.
+Now, it takes *HW* around 15 million instructions to execute selfie running on *OS* while, from the perspective of selfie, there is no difference whatsoever. Even its boot level is the same as before. An improvement by almost a factor of 10 is great but it still leaves us with a factor of around 270 slower than running selfie bare-metal on *HW*.
 
-...
+If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance that we previously called *VMM*, which stands for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
 ```bash
 make os-vmm-emu
 ```
 
-50m 900
+In this case, it takes *HW* around 50 million instructions to execute selfie running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is no difference, except for the increased boot level. Now, the system is by a factor of around 900 slower than running selfie bare-metal on *HW*.
 
 ```bash
 make self-emu
@@ -6275,6 +6275,8 @@ fork-wait-exit
 lock
 
 ### Runtime Systems
+
+garbage collectors
 
 threads
 threadsafe-malloc
