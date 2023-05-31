@@ -6205,7 +6205,7 @@ Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always
 make emu
 ```
 
-As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, again say, *HW* and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 55k instructions to do so.
+As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, say, *HW* for hardware, and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 55k instructions to do so.
 
 The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie on an *operating system* that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one program at the same time. Before we get closer to that, try the following command:
 
@@ -6213,7 +6213,7 @@ The scenario created by this command is to emulate running selfie without any op
 make emu-emu
 ```
 
-Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes *OS* around 55k instructions to execute selfie. However, now it takes *HW* around 140 million (!) instructions to execute selfie running on *OS*. This is a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 55k instructions to do that. However, now it takes *HW* around 140 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
 
 The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, and running on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
@@ -6225,7 +6225,7 @@ make os-emu
 
 Now, it takes *HW* around 15 million instructions to execute selfie running on *OS* while, from the perspective of selfie, there is no difference whatsoever. Even its boot level is the same as before. An improvement by almost a factor of 10 is great but it still leaves us with a factor of around 270 slower than running selfie bare-metal on *HW*.
 
-If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance that we previously called *VMM*, which stands for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
+If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance previously called *VMM* for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
 ```bash
 make os-vmm-emu
@@ -6233,23 +6233,27 @@ make os-vmm-emu
 
 In this case, it takes *HW* around 50 million instructions to execute selfie running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is no difference, except for the increased boot level. Now, the system is by a factor of around 900 slower than running selfie bare-metal on *HW*.
 
+However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so common. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. The reason why we do not see negligible overhead is because selfie just printing its synopsis is not enough work to amortize the overhead of context switching. To see that, try the following command:
+
 ```bash
 make self-emu
 ```
 
-1b
+The command invokes selfie to self-compile bare-metal on *HW*. It takes *HW* around 1 billion instructions to do that. What if we do the same but on *OS* as `hypster` instance running on *HW*? The following command shows that:
 
 ```bash
 make self-os-emu
 ```
 
-1.8b 1.8
+In this case, it takes *HW* around 1.8 billion instructions! The overhead of *OS* has reduced to a factor of around 1.8 which is much closer to where we want to be. If we increased the amount of work that selfie does when running on *OS*, the overhead would come down even more. Even if we again insert *VMM* in between *HW* and *OS*, the situation does not get much worse. Try the following command.
 
 ```bash
 make self-os-vmm-emu
 ```
 
-2.5b 2.5
+Now, it takes *HW* around 2.5 billion instructions. The overhead by a factor of around 2.5 is worse than 1.8 but still much less than before.
+
+overhead formula
 
 > Isolation
 
