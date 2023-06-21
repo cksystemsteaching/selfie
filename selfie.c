@@ -11505,13 +11505,13 @@ uint64_t handle_system_call(uint64_t* context) {
 uint64_t handle_page_fault(uint64_t* context) {
   uint64_t page;
 
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
   set_ec_page_fault(context, get_ec_page_fault(context) + 1);
 
   page = get_fault(context);
 
   if (pavailable()) {
-    set_exception(context, EXCEPTION_NOEXCEPTION);
-
     // TODO: reuse frames
     map_page(context, page, (uint64_t) palloc());
 

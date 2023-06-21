@@ -228,6 +228,8 @@ uint64_t handle_buzzed_system_call(uint64_t* context) {
 
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  set_ec_syscall(context, get_ec_syscall(context) + 1);
+
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
@@ -262,25 +264,29 @@ uint64_t handle_buzzed_page_fault(uint64_t* context) {
 
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  set_ec_page_fault(context, get_ec_page_fault(context) + 1);
+
   page = get_fault(context);
 
   // TODO: reuse frames
-  if (pavailable())
+  if (pavailable()) {
     map_page(context, page, (uint64_t) palloc());
-  else {
+
+    if (is_heap_address(context, get_virtual_address_of_page_start(page)))
+      set_mc_mapped_heap(context, get_mc_mapped_heap(context) + PAGESIZE);
+
+    return DONOTEXIT;
+  } else {
     set_exit_code(context, sign_shrink(EXITCODE_OUTOFPHYSICALMEMORY, SYSCALL_BITWIDTH));
 
     return EXIT;
   }
-
-  if (is_heap_address(context, get_virtual_address_of_page_start(page)))
-    mc_mapped_heap = mc_mapped_heap + PAGESIZE;
-
-  return DONOTEXIT;
 }
 
 uint64_t handle_buzzed_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  set_ec_timer(context, get_ec_timer(context) + 1);
 
   set_exit_code(context, sign_shrink(EXITCODE_OUTOFTIME, SYSCALL_BITWIDTH));
 
