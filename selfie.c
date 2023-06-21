@@ -7772,7 +7772,7 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         if (is_virtual_address_mapped(get_pt(context), vaddr))
           store_word((uint64_t*) s, i, 1, load_virtual_memory(get_pt(context), vaddr));
         else {
-          printf("%s: opening file failed because the file name address 0x%08lX is unmapped\n", selfie_name, (uint64_t) vaddr);
+          printf("%s: string address 0x%08lX is unmapped\n", selfie_name, (uint64_t) vaddr);
 
           return 0;
         }
@@ -7794,18 +7794,18 @@ uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
         // advance to the corresponding word in our memory
         i = i + WORDSIZE;
       } else {
-        printf("%s: opening file failed because the file name address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
+        printf("%s: string address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
 
         return 0;
       }
     else {
-      printf("%s: opening file failed because the file name address 0x%08lX is invalid\n", selfie_name, (uint64_t) vaddr);
+      printf("%s: string address 0x%08lX is invalid\n", selfie_name, (uint64_t) vaddr);
 
       return 0;
     }
   }
 
-  printf("%s: opening file failed because the file name is too long at address 0x%08lX\n", selfie_name, (uint64_t) vaddr);
+  printf("%s: string is too long at address 0x%08lX\n", selfie_name, (uint64_t) vaddr);
 
   return 0;
 }
@@ -10818,6 +10818,8 @@ uint64_t* new_context() {
 }
 
 void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
+  char* context_name;
+
   // some fields are set in boot loader or when context switching
 
   // allocate zeroed memory for general-purpose registers
@@ -10853,8 +10855,11 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_data_seg_size(context, load_virtual_memory(get_pt(parent), data_seg_size(vctxt)));
     set_heap_seg_start(context, load_virtual_memory(get_pt(parent), heap_seg_start(vctxt)));
 
-    // TODO: cache name
-    set_name(context, (char*) 0);
+    context_name = string_alloc(MAX_FILENAME_LENGTH);
+
+    down_load_string(parent, load_virtual_memory(get_pt(parent), name(vctxt)), context_name);
+
+    set_name(context, context_name);
   } else {
     set_exception(context, EXCEPTION_NOEXCEPTION);
     set_fault(context, 0);
@@ -11311,8 +11316,6 @@ void up_load_binary(uint64_t* context) {
 
     baddr = baddr + WORDSIZE;
   }
-
-  set_name(context, binary_name);
 }
 
 uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
@@ -11772,8 +11775,10 @@ char* increment_boot_level_prefix(char* s, char* t) {
 void boot_loader(uint64_t* context) {
   up_load_binary(context);
 
+  set_name(context, increment_boot_level_prefix(selfie_name, binary_name));
+
   // pass binary name as first argument by replacing next argument
-  set_argument(increment_boot_level_prefix(selfie_name, binary_name));
+  set_argument(get_name(context));
 
   up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
 }
@@ -11870,7 +11875,7 @@ uint64_t selfie_run(uint64_t machine) {
     SIZEOFUINT64INBITS,
     (char*) *(MACHINES + machine),
     WORDSIZEINBITS,
-    get_name(current_context),
+    binary_name,
     sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   print_profile(current_context);

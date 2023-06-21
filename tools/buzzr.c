@@ -381,7 +381,7 @@ uint64_t selfie_buzz() {
         if (number_of_buzzed_inputs == 0) {
           printf("%s: unbuzzed %lu-bit RISC-U binary %s terminating with exit code %ld\n", selfie_name,
             WORDSIZEINBITS,
-            get_name(current_context),
+            binary_name,
             sign_extend(exit_code, SYSCALL_BITWIDTH));
 
           keep_buzzing = 0;
@@ -390,7 +390,7 @@ uint64_t selfie_buzz() {
             if (exit_code != EXITCODE_OUTOFTIME)
               printf("%s: %lu-bit RISC-U binary %s buzzed with %ld terminating with exit code %ld\n", selfie_name,
                 WORDSIZEINBITS,
-                get_name(current_context),
+                binary_name,
                 buzzed_input,
                 sign_extend(exit_code, SYSCALL_BITWIDTH));
 
