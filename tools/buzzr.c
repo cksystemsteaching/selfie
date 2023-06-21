@@ -371,6 +371,8 @@ uint64_t selfie_buzz() {
         PHYSICALMEMORYSIZE / MEGABYTE);
       printf("%s: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", selfie_name);
 
+      TIMESLICE = 10000000;
+
       keep_buzzing = 1;
 
       while (keep_buzzing) {

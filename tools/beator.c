@@ -3533,6 +3533,8 @@ uint64_t selfie_model() {
         exited_on_timeout = 0;
         exited_on_read    = 0;
 
+        TIMESLICE = 10000000;
+
         run = 1;
 
         propr(current_context);
@@ -3592,6 +3594,8 @@ uint64_t handle_propr_system_call(uint64_t* context) {
 
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  set_ec_syscall(context, get_ec_syscall(context) + 1);
+
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
@@ -3627,6 +3631,8 @@ uint64_t handle_propr_system_call(uint64_t* context) {
 
 uint64_t handle_propr_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  set_ec_timer(context, get_ec_timer(context) + 1);
 
   exited_on_timeout = 1;
 

@@ -1949,9 +1949,9 @@ uint64_t symbolic = 0; // flag for symbolically executing code
 uint64_t model    = 0; // flag for modeling code
 
 // number of instructions from context switch to timer interrupt
-// CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
+// CAUTION: interrupting kernel code may cause race conditions
 // TODO: implement proper interrupt controller to turn interrupts on and off
-uint64_t TIMESLICE = 10000000;
+uint64_t TIMESLICE = 100000;
 
 uint64_t TIMEROFF = 0; // must be 0 to turn off timer interrupt
 
