@@ -1912,9 +1912,9 @@ uint64_t selfie_run_symbolically() {
 
       use_stdout();
 
-      printf("%s: monster terminating %s\n", selfie_name, get_name(current_context));
+      printf("%s: monster terminating %s\n", selfie_name, binary_name);
 
-      print_profile(current_context);
+      print_profile();
 
       run = 0;
 

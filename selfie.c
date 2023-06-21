@@ -1286,10 +1286,6 @@ uint64_t SYSCALL_BRK    = 214;
 
 uint64_t DIRFD_AT_FDCWD = -100;
 
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t sc_brk = 0; // syscall counter
-
 // -----------------------------------------------------------------
 // ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
@@ -1461,8 +1457,6 @@ uint64_t L1_icache_coherency_invalidations = 0;
 
 void init_memory(uint64_t megabytes);
 
-void reset_memory_counters();
-
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
@@ -1517,12 +1511,6 @@ uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - W
 // host-dependent, see init_memory()
 uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / sizeof(uint64_t*)
 
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t mc_brk = 0; // memory counter for brk syscall
-
-uint64_t mc_mapped_heap = 0; // memory counter for mapped heap
-
 // ------------------------- INITIALIZATION ------------------------
 
 void init_memory(uint64_t megabytes) {
@@ -1535,13 +1523,6 @@ void init_memory(uint64_t megabytes) {
 
   // host-dependent: reinitialize in case sizeof(uint64_t*) is not 8
   NUMBEROFLEAFPTES = PAGESIZE / sizeof(uint64_t*);
-}
-
-void reset_memory_counters() {
-  mc_brk = 0;
-  sc_brk = 0;
-
-  mc_mapped_heap = 0;
 }
 
 // -----------------------------------------------------------------
@@ -1603,6 +1584,8 @@ void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
 void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
 void set_gc_enabled_gc(uint64_t* context);
 
+uint64_t is_gc_enabled(uint64_t* context);
+
 void gc_init_selfie(uint64_t* context);
 
 // interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
@@ -1650,7 +1633,7 @@ void sweep_selfie(uint64_t* context);
 
 void gc_collect(uint64_t* context);
 
-void print_gc_profile(uint64_t* context);
+void print_gc_profile(uint64_t is_gc_kernel);
 
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 
@@ -1925,7 +1908,7 @@ void print_per_register_profile(uint64_t reg);
 
 void print_register_memory_profile();
 
-void print_profile(uint64_t* context);
+void print_profile();
 
 void print_host_os();
 
@@ -2022,8 +2005,6 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 uint64_t* reads_per_register  = (uint64_t*) 0;
 uint64_t* writes_per_register = (uint64_t*) 0;
 
-uint64_t stack_peak = 0;
-
 uint64_t stack_register_reads  = 0;
 uint64_t stack_register_writes = 0;
 
@@ -2116,8 +2097,6 @@ void reset_registers_profile() {
   // a6 register is written to by the kernel
   *(writes_per_register + REG_A6) = 1;
 
-  stack_peak = HIGHESTVIRTUALADDRESS;
-
   stack_register_reads      = 0;
   stack_register_writes     = 0;
   argument_register_reads   = 0;
@@ -2137,7 +2116,6 @@ void reset_segments_profile() {
 
 void reset_profiler() {
   reset_instruction_counters();
-  reset_memory_counters();
   reset_nop_counters();
   reset_source_profile();
   reset_registers_profile();
@@ -2188,15 +2166,24 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 19 | virtual context | virtual context address
 // | 20 | name            | binary name loaded into context
 // +----+-----------------+
-// | 21 | used-list head  | pointer to head of used list
-// | 22 | free-list head  | pointer to head of free list
-// | 23 | gcs counter     | number of gc runs in gc period
-// | 24 | gc enabled      | flag indicating whether to use gc or not
+// | 21 | instr. counter  | number of executed instructions
+// | 22 | malloc counter  | number of executed mallocs
+// | 23 | syscall counter | number of handled syscalls
+// | 24 | page fault ctr  | number of handled page faults
+// | 25 | timer interrupt | number of handled timer interrupts
+// | 26 | peak stack size | peak stack size
+// | 27 | mapped heap     | size of mapped heap memory
+// +----+-----------------+
+// | 28 | used-list head  | pointer to head of used list
+// | 29 | free-list head  | pointer to head of free list
+// | 30 | gcs counter     | number of gc runs in gc period
+// | 31 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
-// number of entries of a machine context: 9 uint64_t plus 16 uint64_t* entries
+// number of entries of a machine context:
+// 14 uint64_t + 6 uint64_t* + 1 char* + 7 uint64_t + 2 uint64_t* + 2 uint64_t entries
 // extended in the symbolic execution engine and the Boehm garbage collector
-uint64_t CONTEXTENTRIES = 25;
+uint64_t CONTEXTENTRIES = 32;
 
 uint64_t* allocate_context(); // declaration avoids warning in the Boehm garbage collector
 
@@ -2227,10 +2214,15 @@ uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 18); 
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 19); }
 uint64_t name(uint64_t* context)            { return (uint64_t) (context + 20); }
 
-uint64_t used_list_head(uint64_t* context)   { return (uint64_t) (context + 21); }
-uint64_t free_list_head(uint64_t* context)   { return (uint64_t) (context + 22); }
-uint64_t gcs_in_period(uint64_t* context)    { return (uint64_t) (context + 23); }
-uint64_t use_gc_kernel(uint64_t* context)    { return (uint64_t) (context + 24); }
+// only profile data of malloc and heap is cached
+
+uint64_t lc_malloc(uint64_t* context)       { return (uint64_t) (context + 22); }
+uint64_t mc_mapped_heap(uint64_t* context)  { return (uint64_t) (context + 27); }
+
+uint64_t used_list_head(uint64_t* context) { return (uint64_t) (context + 28); }
+uint64_t free_list_head(uint64_t* context) { return (uint64_t) (context + 29); }
+uint64_t gcs_in_period(uint64_t* context)  { return (uint64_t) (context + 30); }
+uint64_t use_gc_kernel(uint64_t* context)  { return (uint64_t) (context + 31); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -2254,37 +2246,53 @@ uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context 
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 19); }
 char*     get_name(uint64_t* context)            { return (char*)     *(context + 20); }
 
-uint64_t* get_used_list_head(uint64_t* context)   { return (uint64_t*) *(context + 21); }
-uint64_t* get_free_list_head(uint64_t* context)   { return (uint64_t*) *(context + 22); }
-uint64_t  get_gcs_in_period(uint64_t* context)    { return             *(context + 23); }
-uint64_t  get_use_gc_kernel(uint64_t* context)    { return             *(context + 24); }
+uint64_t  get_ic_all(uint64_t* context)         { return *(context + 21); }
+uint64_t  get_lc_malloc(uint64_t* context)      { return *(context + 22); }
+uint64_t  get_ec_syscall(uint64_t* context)     { return *(context + 23); }
+uint64_t  get_ec_page_fault(uint64_t* context)  { return *(context + 24); }
+uint64_t  get_ec_timer(uint64_t* context)       { return *(context + 25); }
+uint64_t  get_mc_stack_peak(uint64_t* context)  { return *(context + 26); }
+uint64_t  get_mc_mapped_heap(uint64_t* context) { return *(context + 27); }
 
-void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
-void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
-void set_pc(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
-void set_regs(uint64_t* context, uint64_t* regs)              { *(context + 3)  = (uint64_t) regs; }
-void set_pt(uint64_t* context, uint64_t* pt)                  { *(context + 4)  = (uint64_t) pt; }
-void set_lowest_lo_page(uint64_t* context, uint64_t page)     { *(context + 5)  = page; }
-void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  = page; }
-void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
-void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
-void set_code_seg_start(uint64_t* context, uint64_t start)    { *(context + 9)  = start; }
-void set_code_seg_size(uint64_t* context, uint64_t size)      { *(context + 10) = size; }
-void set_data_seg_start(uint64_t* context, uint64_t start)    { *(context + 11) = start; }
-void set_data_seg_size(uint64_t* context, uint64_t size)      { *(context + 12) = size; }
-void set_heap_seg_start(uint64_t* context, uint64_t start)    { *(context + 13) = start; }
-void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 14) = brk; }
-void set_exception(uint64_t* context, uint64_t exception)     { *(context + 15) = exception; }
-void set_fault(uint64_t* context, uint64_t page)              { *(context + 16) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 17) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 18) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 19) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 20) = (uint64_t) name; }
+uint64_t* get_used_list_head(uint64_t* context) { return (uint64_t*) *(context + 28); }
+uint64_t* get_free_list_head(uint64_t* context) { return (uint64_t*) *(context + 29); }
+uint64_t  get_gcs_in_period(uint64_t* context)  { return             *(context + 30); }
+uint64_t  get_use_gc_kernel(uint64_t* context)  { return             *(context + 31); }
 
-void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 21) = (uint64_t) used_list_head; }
-void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 22) = (uint64_t) free_list_head; }
-void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 23) = gcs; }
-void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 24) = use; }
+void set_next_context(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
+void set_prev_context(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
+void set_pc(uint64_t* context, uint64_t pc)                  { *(context + 2)  = pc; }
+void set_regs(uint64_t* context, uint64_t* regs)             { *(context + 3)  = (uint64_t) regs; }
+void set_pt(uint64_t* context, uint64_t* pt)                 { *(context + 4)  = (uint64_t) pt; }
+void set_lowest_lo_page(uint64_t* context, uint64_t page)    { *(context + 5)  = page; }
+void set_highest_lo_page(uint64_t* context, uint64_t page)   { *(context + 6)  = page; }
+void set_lowest_hi_page(uint64_t* context, uint64_t page)    { *(context + 7)  = page; }
+void set_highest_hi_page(uint64_t* context, uint64_t page)   { *(context + 8)  = page; }
+void set_code_seg_start(uint64_t* context, uint64_t start)   { *(context + 9)  = start; }
+void set_code_seg_size(uint64_t* context, uint64_t size)     { *(context + 10) = size; }
+void set_data_seg_start(uint64_t* context, uint64_t start)   { *(context + 11) = start; }
+void set_data_seg_size(uint64_t* context, uint64_t size)     { *(context + 12) = size; }
+void set_heap_seg_start(uint64_t* context, uint64_t start)   { *(context + 13) = start; }
+void set_program_break(uint64_t* context, uint64_t brk)      { *(context + 14) = brk; }
+void set_exception(uint64_t* context, uint64_t exception)    { *(context + 15) = exception; }
+void set_fault(uint64_t* context, uint64_t page)             { *(context + 16) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)         { *(context + 17) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)         { *(context + 18) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt) { *(context + 19) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                 { *(context + 20) = (uint64_t) name; }
+
+void set_ic_all(uint64_t* context, uint64_t ic)         { *(context + 21) = ic; }
+void set_lc_malloc(uint64_t* context, uint64_t ic)      { *(context + 22) = ic; }
+void set_ec_syscall(uint64_t* context, uint64_t ec)     { *(context + 23) = ec; }
+void set_ec_page_fault(uint64_t* context, uint64_t ec)  { *(context + 24) = ec; }
+void set_ec_timer(uint64_t* context, uint64_t ec)       { *(context + 25) = ec; }
+void set_mc_stack_peak(uint64_t* context, uint64_t mc)  { *(context + 26) = mc; }
+void set_mc_mapped_heap(uint64_t* context, uint64_t mc) { *(context + 27) = mc; }
+
+void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 28) = (uint64_t) used_list_head; }
+void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 29) = (uint64_t) free_list_head; }
+void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 30) = gcs; }
+void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 31) = use; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -7951,9 +7959,6 @@ uint64_t try_brk(uint64_t* context, uint64_t new_program_break) {
 
       set_program_break(context, new_program_break);
 
-      // account for memory allocated by brk
-      mc_brk = mc_brk + (new_program_break - current_program_break);
-
       return new_program_break;
     }
 
@@ -7990,8 +7995,9 @@ void implement_brk(uint64_t* context) {
   if (new_program_break == *(get_regs(context) + REG_A0)) {
     // attempt to update program break succeeded
     if (*(get_regs(context) + REG_A0) != previous_program_break)
-      // account for brk syscall if program break actually changed
-      sc_brk = sc_brk + 1;
+      // assert: brk syscall invoked by malloc
+      // account for malloc if program break actually changed
+      set_lc_malloc(context, get_lc_malloc(context) + 1);
   } else
     // attempt to update program break failed
     *(get_regs(context) + REG_A0) = previous_program_break;
@@ -8710,7 +8716,7 @@ void implement_gc_brk(uint64_t* context) {
 
   program_break = *(get_regs(context) + REG_A0);
 
-  // check if malloc actually asks for more memory
+  // check if brk is actually asked for more memory
   // if not, fall back to the default brk syscall
   if (program_break > get_program_break(context)) {
     if (debug_syscalls) {
@@ -8726,7 +8732,7 @@ void implement_gc_brk(uint64_t* context) {
       print_register_hexadecimal(REG_A0);
     }
 
-    // yields the pointer to the newly/reused memory (or 0 if failed)
+    // yields pointer to new/reused memory (or 0 if failed)
     *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
 
     if (debug_syscalls) {
@@ -8740,9 +8746,9 @@ void implement_gc_brk(uint64_t* context) {
     // updating the _bump pointer of the program (for consistency)
     store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - WORDSIZE, get_program_break(context));
 
-    sc_brk = sc_brk + 1;
-
     // assert: gc_brk syscall is invoked by selfie's malloc
+
+    set_lc_malloc(context, get_lc_malloc(context) + 1);
 
     // skip next seven instructions of selfie's malloc
     // to avoid using its bump pointer allocator
@@ -8869,12 +8875,15 @@ void set_gc_enabled_gc(uint64_t* context) {
     set_use_gc_kernel(context, GC_ENABLED);
 }
 
+uint64_t is_gc_enabled(uint64_t* context) {
+  return get_gc_enabled_gc(context) == GC_ENABLED;
+}
+
 void gc_init(uint64_t* context) {
   gc_init_selfie(context);
 }
 
 void gc_init_selfie(uint64_t* context) {
-  reset_memory_counters();
   reset_gc_counters();
 
   // calculate metadata size using actual size of pointers and integers
@@ -9224,7 +9233,7 @@ void gc_collect(uint64_t* context) {
   gc_num_collects = gc_num_collects + 1;
 }
 
-void print_gc_profile(uint64_t* context) {
+void print_gc_profile(uint64_t is_gc_kernel) {
   printf("%s: gc:      %lu.%.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
     ratio_format_integral_2(gc_mem_mallocated, MEGABYTE),
     ratio_format_fractional_2(gc_mem_mallocated, MEGABYTE),
@@ -9261,7 +9270,7 @@ void print_gc_profile(uint64_t* context) {
     percentage_format_integral_2(gc_mem_mallocated, gc_mem_metadata),
     percentage_format_fractional_2(gc_mem_mallocated, gc_mem_metadata),
     gc_num_ungced_mallocs);
-  if (is_gc_library(context) == 0)
+  if (is_gc_kernel)
     printf(" (external)");
   println();
 }
@@ -10708,56 +10717,85 @@ void print_register_memory_profile() {
   print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
-void print_profile(uint64_t* context) {
+void print_profile() {
+  uint64_t* context;
+
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: summary: %lu executed instructions [%lu.%.2lu%% nops]\n", selfie_name,
-    get_total_number_of_instructions(),
-    percentage_format_integral_2(get_total_number_of_instructions(), get_total_number_of_nops()),
-    percentage_format_fractional_2(get_total_number_of_instructions(), get_total_number_of_nops()));
-  printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
-    ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - stack_peak, KILOBYTE),
-    ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - stack_peak, KILOBYTE));
-  printf("%s:          %lu.%.2luMB allocated in %lu mallocs\n", selfie_name,
-    ratio_format_integral_2(mc_brk, MEGABYTE),
-    ratio_format_fractional_2(mc_brk, MEGABYTE),
-    sc_brk);
-  printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %lu.%.2luMB) actually accessed\n", selfie_name,
-    ratio_format_integral_2(mc_mapped_heap, MEGABYTE),
-    ratio_format_fractional_2(mc_mapped_heap, MEGABYTE),
-    percentage_format_integral_2(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
-    percentage_format_fractional_2(round_up(mc_brk, PAGESIZE), mc_mapped_heap),
-    ratio_format_integral_2(mc_brk, MEGABYTE),
-    ratio_format_fractional_2(mc_brk, MEGABYTE));
-  printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %luMB) mapped memory\n", selfie_name,
+  printf("%s: summary: ", selfie_name);
+  if (get_total_number_of_instructions() > 0) {
+    printf("%lu executed instructions [%lu.%.2lu%% nops]\n",
+      get_total_number_of_instructions(),
+      percentage_format_integral_2(get_total_number_of_instructions(), get_total_number_of_nops()),
+      percentage_format_fractional_2(get_total_number_of_instructions(), get_total_number_of_nops()));
+    printf("%s:          ", selfie_name);
+  }
+  printf("%lu.%.2luMB(%lu.%.2lu%% of %luMB) mapped memory\n",
     ratio_format_integral_2(pused(), MEGABYTE),
     ratio_format_fractional_2(pused(), MEGABYTE),
     percentage_format_integral_2(PHYSICALMEMORYSIZE, pused()),
     percentage_format_fractional_2(PHYSICALMEMORYSIZE, pused()),
     PHYSICALMEMORYSIZE / MEGABYTE);
 
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
+    printf("%s: context: %s\n", selfie_name, get_name(context));
+    if (get_ic_all(context) > 0) {
+      printf("%s:          %lu executed instructions\n", selfie_name, get_ic_all(context));
+      printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
+        ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE),
+        ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE));
+      printf("%s:          %lu.%.2luMB allocated in %lu mallocs\n", selfie_name,
+        ratio_format_integral_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
+        ratio_format_fractional_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
+        get_lc_malloc(context));
+      printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %lu.%.2luMB) actually accessed\n", selfie_name,
+        ratio_format_integral_2(get_mc_mapped_heap(context), MEGABYTE),
+        ratio_format_fractional_2(get_mc_mapped_heap(context), MEGABYTE),
+        percentage_format_integral_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
+          get_mc_mapped_heap(context)),
+        percentage_format_fractional_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
+            get_mc_mapped_heap(context)),
+        ratio_format_integral_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
+        ratio_format_fractional_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE));
+    }
+    if (get_parent(context) == MY_CONTEXT)
+      printf("%s:          %lu handled exceptions (%lu syscalls, %lu page faults, %lu timer interrupts)\n", selfie_name,
+        get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context),
+        get_ec_syscall(context),
+        get_ec_page_fault(context),
+        get_ec_timer(context));
+
+    context = get_next_context(context);
+  }
+
   if (GC_ON) {
-    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-    print_gc_profile(context);
+    printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
+    print_gc_profile(1);
   }
 
   if (get_total_number_of_instructions() > 0) {
     printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+    printf("%s: profile: instruction: total(ratio%%)[nops%%]\n", selfie_name);
     print_instruction_counters();
 
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     if (code_line_number != (uint64_t*) 0)
       printf("%s: profile: total,max(ratio%%)@address(line#),2ndmax,3rdmax\n", selfie_name);
     else
       printf("%s: profile: total,max(ratio%%)@address,2ndmax,3rdmax\n", selfie_name);
-
     print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
     print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
     print_per_instruction_profile("loads:   ", ic_load, loads_per_instruction);
     print_per_instruction_profile("stores:  ", ic_store, stores_per_instruction);
 
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     print_register_memory_profile();
   }
 
   if (L1_CACHE_ENABLED) {
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     printf("%s: L1 caches:     accesses,hits,misses\n", selfie_name);
 
     print_cache_profile(get_cache_hits(L1_DCACHE), get_cache_misses(L1_DCACHE), "data:          ");
@@ -10869,6 +10907,15 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
+
+  // profile
+  set_ic_all(context, 0);
+  set_lc_malloc(context, 0);
+  set_ec_syscall(context, 0);
+  set_ec_page_fault(context, 0);
+  set_ec_timer(context, 0);
+  set_mc_stack_peak(context, HIGHESTVIRTUALADDRESS);
+  set_mc_mapped_heap(context, 0);
 
   // garbage collector
   set_used_list_head(context, (uint64_t*) 0);
@@ -10988,6 +11035,12 @@ void save_context(uint64_t* context) {
     store_virtual_memory(parent_table, gcs_in_period(vctxt), get_gcs_in_period(context));
     store_virtual_memory(parent_table, use_gc_kernel(vctxt), get_use_gc_kernel(context));
   }
+
+  set_ic_all(context, get_total_number_of_instructions() - get_ic_all(context));
+
+  if (*(get_regs(context) + REG_SP) < get_mc_stack_peak(context))
+    // keep track of peak amount of stack allocation
+    set_mc_stack_peak(context, *(get_regs(context) + REG_SP));
 }
 
 uint64_t lowest_page(uint64_t page, uint64_t lo) {
@@ -11098,6 +11151,11 @@ void restore_context(uint64_t* context) {
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
 
+    // only retrieve profile data of malloc and heap
+
+    set_lc_malloc(context, load_virtual_memory(parent_table, lc_malloc(vctxt)));
+    set_mc_mapped_heap(context, load_virtual_memory(parent_table, mc_mapped_heap(vctxt)));
+
     // garbage collector state (only necessary if context is gced by different gcs)
 
     set_used_list_head(context, (uint64_t*) load_virtual_memory(parent_table, used_list_head(vctxt)));
@@ -11112,6 +11170,8 @@ void restore_context(uint64_t* context) {
   pt        = get_pt(context);
 
   flush_all_caches();
+
+  set_ic_all(context, get_total_number_of_instructions() - get_ic_all(context));
 }
 
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
@@ -11411,10 +11471,12 @@ uint64_t handle_system_call(uint64_t* context) {
 
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  set_ec_syscall(context, get_ec_syscall(context) + 1);
+
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
-    if (get_gc_enabled_gc(context))
+    if (is_gc_enabled(context))
       implement_gc_brk(context);
     else
       implement_brk(context);
@@ -11443,6 +11505,8 @@ uint64_t handle_system_call(uint64_t* context) {
 uint64_t handle_page_fault(uint64_t* context) {
   uint64_t page;
 
+  set_ec_page_fault(context, get_ec_page_fault(context) + 1);
+
   page = get_fault(context);
 
   if (pavailable()) {
@@ -11452,7 +11516,7 @@ uint64_t handle_page_fault(uint64_t* context) {
     map_page(context, page, (uint64_t) palloc());
 
     if (is_heap_address(context, get_virtual_address_of_page_start(page)))
-      mc_mapped_heap = mc_mapped_heap + PAGESIZE;
+      set_mc_mapped_heap(context, get_mc_mapped_heap(context) + PAGESIZE);
 
     return DONOTEXIT;
   } else {
@@ -11485,18 +11549,13 @@ uint64_t handle_division_by_zero(uint64_t* context) {
 uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  set_ec_timer(context, get_ec_timer(context) + 1);
+
   return DONOTEXIT;
 }
 
 uint64_t handle_exception(uint64_t* context) {
-  uint64_t sp;
   uint64_t exception;
-
-  sp = *(get_regs(context) + REG_SP);
-
-  if (sp < stack_peak)
-    // keep track of amount of stack allocation
-    stack_peak = sp;
 
   exception = get_exception(context);
 
@@ -11878,7 +11937,7 @@ uint64_t selfie_run(uint64_t machine) {
     binary_name,
     sign_extend(exit_code, SYSCALL_BITWIDTH));
 
-  print_profile(current_context);
+  print_profile();
 
   run = 0;
 

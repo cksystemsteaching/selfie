@@ -231,7 +231,7 @@ uint64_t handle_buzzed_system_call(uint64_t* context) {
   a7 = *(get_regs(context) + REG_A7);
 
   if (a7 == SYSCALL_BRK) {
-    if (get_gc_enabled_gc(context))
+    if (is_gc_enabled(context))
       implement_gc_brk(context);
     else
       implement_brk(context);
