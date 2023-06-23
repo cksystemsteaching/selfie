@@ -6402,12 +6402,14 @@ void selfie_compile() {
   print_instruction_counters();
 
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-  printf("%s: profile: data(bytes)\n", selfie_name);
-  printf("%s: %lu(%lu) global variables, %lu(%lu) unique string literals, %lu(%lu) big integers\n", selfie_name,
+  printf("%s: profile: data: total(bytes)\n", selfie_name);
+  printf("%s: global variables:       %lu(%lu)\n", selfie_name,
     dc_global_variable,
-    dc_global_variable * WORDSIZE,
+    dc_global_variable * WORDSIZE);
+  printf("%s: unique string literals: %lu(%lu)\n", selfie_name,
     dc_string,
-    dc_string_bytes,
+    dc_string_bytes);
+  printf("%s: unique big integers:    %lu(%lu)\n", selfie_name,
     dc_big_integer,
     dc_big_integer * WORDSIZE);
 }
