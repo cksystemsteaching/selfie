@@ -1038,7 +1038,7 @@ uint64_t funct7 = 0;
 // -----------------------------------------------------------------
 
 void reset_binary();
-void reset_instruction_counters();
+void reset_binary_counters();
 
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_number_of_nops();
@@ -1199,6 +1199,13 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
+// data counters
+
+uint64_t dc_global_variable = 0;
+uint64_t dc_string          = 0;
+uint64_t dc_string_bytes    = 0;
+uint64_t dc_big_integer     = 0;
+
 char* binary_name = (char*) 0; // file name of binary
 
 uint64_t* code_binary = (uint64_t*) 0; // code binary
@@ -1227,7 +1234,7 @@ void reset_binary() {
   data_line_number = (uint64_t*) 0;
 }
 
-void reset_instruction_counters() {
+void reset_binary_counters() {
   ic_lui   = 0;
   ic_addi  = 0;
   ic_add   = 0;
@@ -1242,6 +1249,11 @@ void reset_instruction_counters() {
   ic_jal   = 0;
   ic_jalr  = 0;
   ic_ecall = 0;
+
+  dc_global_variable = 0;
+  dc_string          = 0;
+  dc_string_bytes    = 0;
+  dc_big_integer     = 0;
 }
 
 // -----------------------------------------------------------------
@@ -2115,7 +2127,7 @@ void reset_segments_profile() {
 }
 
 void reset_profiler() {
-  reset_instruction_counters();
+  reset_binary_counters();
   reset_nop_counters();
   reset_source_profile();
   reset_registers_profile();
@@ -4430,6 +4442,8 @@ void compile_cstar() {
 
           emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
 
+          dc_global_variable = dc_global_variable + 1;
+
           get_expected_symbol(SYM_SEMICOLON);
         } else
           // type identifier "(" ...
@@ -5231,6 +5245,8 @@ void load_big_integer(uint64_t value) {
       line_number, BIGINT, UINT64_T, value, -data_size);
 
     emit_data_word(value, -data_size, line_number);
+
+    dc_big_integer = dc_big_integer + 1;
   }
 
   load_value(entry);
@@ -5279,14 +5295,13 @@ void load_string() {
       line_number, STRING, UINT64STAR_T, 0, -data_size);
 
     emit_string_data(entry);
-
-    // only accounting for unique string literals
-    number_of_string_literals = number_of_string_literals + 1;
   }
 
   load_address(entry);
 
   // assert: allocated_temporaries == n + 1
+
+  number_of_string_literals = number_of_string_literals + 1;
 }
 
 uint64_t compile_literal() {
@@ -6261,7 +6276,7 @@ void selfie_compile() {
   data_line_number = zmalloc(MAX_DATA_SIZE / WORDSIZE * sizeof(uint64_t));
 
   reset_symbol_tables();
-  reset_instruction_counters();
+  reset_binary_counters();
 
   emit_program_entry();
 
@@ -6306,6 +6321,9 @@ void selfie_compile() {
 
       number_of_source_files = number_of_source_files + 1;
 
+      if (number_of_source_files > 1)
+        printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
+
       printf("%s: selfie compiling %s to %lu-bit RISC-U with %lu-bit starc\n", selfie_name,
         source_name, WORDSIZEINBITS, SIZEOFUINT64INBITS);
 
@@ -6324,6 +6342,7 @@ void selfie_compile() {
 
       compile_cstar();
 
+      printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
       printf("%s: %lu characters read in %lu lines and %lu comments\n", selfie_name,
         number_of_read_characters,
         line_number,
@@ -6354,8 +6373,6 @@ void selfie_compile() {
           source_name);
         exit(EXITCODE_SYNTAXERROR);
       }
-
-      printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
     }
   }
 
@@ -6369,17 +6386,30 @@ void selfie_compile() {
   if (GC_ON)
     emit_fetch_data_segment_size_implementation(fetch_dss_code_location);
 
-  if (number_of_symbol_lookups > 0)
+  if (number_of_symbol_lookups > 0) {
+    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
     printf("%s: %lu symbol table lookups in %lu iterations on average\n", selfie_name,
       number_of_symbol_lookups,
       number_of_list_iterations / number_of_symbol_lookups);
+  }
 
+  printf("%s: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n", selfie_name);
   printf("%s: %lu bytes generated with %lu instructions and %lu bytes of data\n", selfie_name,
     code_size + data_size,
     code_size / INSTRUCTIONSIZE,
     data_size);
 
   print_instruction_counters();
+
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf("%s: profile: data(bytes)\n", selfie_name);
+  printf("%s: %lu(%lu) global variables, %lu(%lu) unique string literals, %lu(%lu) big integers\n", selfie_name,
+    dc_global_variable,
+    dc_global_variable * WORDSIZE,
+    dc_string,
+    dc_string_bytes,
+    dc_big_integer,
+    dc_big_integer * WORDSIZE);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6807,6 +6837,11 @@ void print_instruction_counter_with_nops(uint64_t counter, uint64_t nops, uint64
 }
 
 void print_instruction_counters() {
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
+  printf("%s: profile: instruction: total(ratio%%)", selfie_name);
+  if (run) printf("[nops%%]");
+  println();
+
   printf("%s: init:    ", selfie_name);
   print_instruction_counter_with_nops(ic_lui, nopc_lui, LUI);
   printf(", ");
@@ -7112,6 +7147,9 @@ void emit_string_data(uint64_t* entry) {
 
     i = i + WORDSIZE;
   }
+
+  dc_string       = dc_string + 1;
+  dc_string_bytes = dc_string_bytes + l;
 }
 
 void finalize_data_segment() {
@@ -7898,6 +7936,8 @@ void emit_malloc() {
     1, VARIABLE, UINT64_T, 0, -data_size);
 
   emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
+
+  dc_global_variable = dc_global_variable + 1;
 
   // allocate register for size parameter
   talloc();
@@ -10776,8 +10816,6 @@ void print_profile() {
   }
 
   if (get_total_number_of_instructions() > 0) {
-    printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
-    printf("%s: profile: instruction: total(ratio%%)[nops%%]\n", selfie_name);
     print_instruction_counters();
 
     printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
