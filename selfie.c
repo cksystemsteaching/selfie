@@ -1263,12 +1263,12 @@ void reset_binary_counters() {
 void emit_exit();
 void implement_exit(uint64_t* context);
 
-void emit_read();
-void implement_read(uint64_t* context);
+void     emit_read();
+uint64_t copy_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size, uint64_t upload);
+void     implement_read(uint64_t* context);
 
-void     emit_write();
-uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size);
-void     implement_write(uint64_t* context);
+void emit_write();
+void implement_write(uint64_t* context);
 
 void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
@@ -7516,7 +7516,7 @@ void emit_exit() {
 }
 
 void implement_exit(uint64_t* context) {
-  // parameter;
+  // parameter
   uint64_t signed_int_exit_code;
 
   if (debug_syscalls) {
@@ -7551,131 +7551,7 @@ void emit_read() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void implement_read(uint64_t* context) {
-  // parameters
-  uint64_t fd;
-  uint64_t vbuffer;
-  uint64_t size;
-
-  // local variables
-  uint64_t read_total;
-  uint64_t bytes_to_read;
-  uint64_t failed;
-  uint64_t* buffer;
-  uint64_t actually_read;
-
-  if (debug_syscalls) {
-    printf("(read): ");
-    print_register_value(REG_A0);
-    printf(",");
-    print_register_hexadecimal(REG_A1);
-    printf(",");
-    print_register_value(REG_A2);
-    printf(" |- ");
-    print_register_value(REG_A0);
-  }
-
-  fd      = *(get_regs(context) + REG_A0);
-  vbuffer = *(get_regs(context) + REG_A1);
-  size    = *(get_regs(context) + REG_A2);
-
-  if (debug_read)
-    printf("%s: trying to read %lu bytes from file with descriptor %lu into buffer at virtual address 0x%08lX\n", selfie_name,
-      size,
-      fd,
-      (uint64_t) vbuffer);
-
-  read_total = 0;
-
-  bytes_to_read = WORDSIZE;
-
-  failed = 0;
-
-  while (size > 0) {
-    if (size < bytes_to_read)
-      bytes_to_read = size;
-
-    if (is_virtual_address_valid(vbuffer, WORDSIZE))
-      if (is_data_stack_heap_address(context, vbuffer))
-        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          buffer = tlb(get_pt(context), vbuffer);
-
-          actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
-          if (actually_read == bytes_to_read) {
-            read_total = read_total + actually_read;
-
-            size = size - actually_read;
-
-            if (size > 0)
-              vbuffer = vbuffer + WORDSIZE;
-          } else {
-            if (signed_less_than(0, actually_read))
-              read_total = read_total + actually_read;
-
-            size = 0;
-          }
-        } else {
-          failed = 1;
-
-          size = 0;
-
-          printf("%s: reading into virtual address 0x%08lX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
-        }
-      else {
-        failed = 1;
-
-        size = 0;
-
-        printf("%s: reading into virtual address 0x%08lX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
-      }
-    else {
-      failed = 1;
-
-      size = 0;
-
-      printf("%s: reading into virtual address 0x%08lX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
-    }
-  }
-
-  if (failed)
-    *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-  else
-    *(get_regs(context) + REG_A0) = read_total;
-
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-
-  if (debug_read)
-    printf("%s: actually read %lu bytes from file with descriptor %lu\n", selfie_name, read_total, fd);
-
-  if (debug_syscalls) {
-    printf(" -> ");
-    print_register_value(REG_A0);
-    println();
-  }
-}
-
-void emit_write() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("write"),
-    0, PROCEDURE, UINT64_T, 3, code_size);
-
-  emit_load(REG_A0, REG_SP, 0); // fd
-  emit_addi(REG_SP, REG_SP, WORDSIZE);
-
-  emit_load(REG_A1, REG_SP, 0); // *buffer
-  emit_addi(REG_SP, REG_SP, WORDSIZE);
-
-  emit_load(REG_A2, REG_SP, 0); // size
-  emit_addi(REG_SP, REG_SP, WORDSIZE);
-
-  emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
-
-  emit_ecall();
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size) {
+uint64_t copy_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size, uint64_t upload) {
   uint64_t is_string;
   uint64_t vaddr;
   uint64_t i;
@@ -7692,9 +7568,12 @@ uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer,
   while (vaddr < vbuffer + size) {
     if (is_virtual_address_valid(vaddr, WORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
-        if (is_virtual_address_mapped(get_pt(context), vaddr))
-          store_word(buffer, vaddr - vbuffer, 1, load_virtual_memory(get_pt(context), vaddr));
-        else {
+        if (is_virtual_address_mapped(get_pt(context), vaddr)) {
+          if (upload)
+            store_virtual_memory(get_pt(context), vaddr, load_word(buffer, vaddr - vbuffer, 1));
+          else
+            store_word(buffer, vaddr - vbuffer, 1, load_virtual_memory(get_pt(context), vaddr));
+        } else {
           printf("%s: virtual address 0x%08lX is unmapped\n", selfie_name, vaddr);
 
           return 0;
@@ -7736,6 +7615,76 @@ uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer,
   return 1;
 }
 
+void implement_read(uint64_t* context) {
+  // parameters
+  uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  if (debug_syscalls) {
+    printf("(read): ");
+    print_register_value(REG_A0);
+    printf(",");
+    print_register_hexadecimal(REG_A1);
+    printf(",");
+    print_register_value(REG_A2);
+    printf(" |- ");
+    print_register_value(REG_A0);
+  }
+
+  fd      = *(get_regs(context) + REG_A0);
+  vbuffer = *(get_regs(context) + REG_A1);
+  size    = *(get_regs(context) + REG_A2);
+
+  if (debug_read)
+    printf("%s: trying to read %lu bytes from file with descriptor %lu into buffer at virtual address 0x%08lX\n", selfie_name,
+      size, fd, vbuffer);
+
+  if (size > IO_buffer_size) {
+    IO_buffer_size = size;
+
+    IO_buffer = smalloc(IO_buffer_size);
+  }
+
+  *(get_regs(context) + REG_A0) = read(fd, IO_buffer, size);
+
+  if (signed_less_than(0, sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH)))
+    if (copy_buffer(context, vbuffer, IO_buffer, size, 1) == 0)
+      *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+
+  if (debug_read)
+    printf("%s: actually read %lu bytes from file with descriptor %lu\n", selfie_name,
+      sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH), fd);
+
+  if (debug_syscalls) {
+    printf(" -> ");
+    print_register_value(REG_A0);
+    println();
+  }
+}
+
+void emit_write() {
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("write"),
+    0, PROCEDURE, UINT64_T, 3, code_size);
+
+  emit_load(REG_A0, REG_SP, 0); // fd
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
+
+  emit_load(REG_A1, REG_SP, 0); // *buffer
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
+
+  emit_load(REG_A2, REG_SP, 0); // size
+  emit_addi(REG_SP, REG_SP, WORDSIZE);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_WRITE);
+
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
 void implement_write(uint64_t* context) {
   // parameters
   uint64_t fd;
@@ -7759,7 +7708,7 @@ void implement_write(uint64_t* context) {
 
   if (debug_write)
     printf("%s: trying to write %lu bytes from buffer at virtual address 0x%08lX into file with descriptor %lu\n", selfie_name,
-      size, (uint64_t) vbuffer, fd);
+      size, vbuffer, fd);
 
   if (size > IO_buffer_size) {
     IO_buffer_size = size;
@@ -7767,7 +7716,7 @@ void implement_write(uint64_t* context) {
     IO_buffer = smalloc(IO_buffer_size);
   }
 
-  if (down_load_buffer(context, vbuffer, IO_buffer, size))
+  if (copy_buffer(context, vbuffer, IO_buffer, size, 0))
     *(get_regs(context) + REG_A0) = write_to_printf(fd, IO_buffer, size);
   else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
@@ -7776,7 +7725,7 @@ void implement_write(uint64_t* context) {
 
   if (debug_write)
     printf("%s: actually wrote %lu bytes into file with descriptor %lu\n", selfie_name,
-      *(get_regs(context) + REG_A0), fd);
+      sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH), fd);
 
   if (debug_syscalls) {
     printf(" -> ");
@@ -7809,7 +7758,7 @@ void emit_open() {
 }
 
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s) {
-  return down_load_buffer(context, vstring, (uint64_t*) s, 0);
+  return copy_buffer(context, vstring, (uint64_t*) s, 0, 0);
 }
 
 void implement_openat(uint64_t* context) {
@@ -7817,9 +7766,6 @@ void implement_openat(uint64_t* context) {
   uint64_t vfilename;
   uint64_t flags;
   uint64_t mode;
-
-  // return value
-  uint64_t fd;
 
   if (debug_syscalls) {
     printf("(openat): ");
@@ -7849,20 +7795,15 @@ void implement_openat(uint64_t* context) {
       // use correct flags for host operating system
       flags = O_CREAT_TRUNC_WRONLY;
 
-    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
-
-    *(get_regs(context) + REG_A0) = fd;
-
-    if (debug_open)
-      printf("%s: opened file %s with flags 0x%lX and mode 0o%lo returning file descriptor %lu\n", selfie_name,
-        filename_buffer,
-        flags,
-        mode,
-        fd);
+    *(get_regs(context) + REG_A0) = open(filename_buffer, flags, mode);
   } else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+
+  if (debug_open)
+    printf("%s: opened file %s with flags 0x%lX and mode 0o%lo returning file descriptor %lu\n", selfie_name,
+      filename_buffer, flags, mode, sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   if (debug_syscalls) {
     printf(" -> ");
@@ -7998,13 +7939,13 @@ void implement_brk(uint64_t* context) {
     // attempt to update program break failed
     *(get_regs(context) + REG_A0) = previous_program_break;
 
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+
   if (debug_syscalls) {
     printf(" -> ");
     print_register_hexadecimal(REG_A0);
     println();
   }
-
-  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
 uint64_t is_boot_level_zero() {
