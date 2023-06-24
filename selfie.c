@@ -1051,8 +1051,8 @@ void print_instruction_counters();
 uint64_t get_low_word(uint64_t word);
 uint64_t get_high_word(uint64_t word);
 
-uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word);
-void     store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint64_t word);
+uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t may_be_double_word);
+void     store_word(uint64_t* memory, uint64_t waddr, uint64_t may_be_double_word, uint64_t word);
 
 uint64_t load_instruction(uint64_t caddr);
 void     store_instruction(uint64_t caddr, uint64_t instruction);
@@ -6895,10 +6895,10 @@ uint64_t get_high_word(uint64_t word) {
   return get_bits(word, SINGLEWORDSIZEINBITS, SINGLEWORDSIZEINBITS);
 }
 
-uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word) {
+uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t may_be_double_word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
-      if (is_double_word)
+      if (may_be_double_word)
         return *(memory + waddr / sizeof(uint64_t));
 
     if (waddr % sizeof(uint64_t) == 0)
@@ -6909,10 +6909,10 @@ uint64_t load_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word) {
     return *(memory + waddr / sizeof(uint64_t));
 }
 
-void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint64_t word) {
+void store_word(uint64_t* memory, uint64_t waddr, uint64_t may_be_double_word, uint64_t word) {
   if (IS64BITSYSTEM) {
     if (IS64BITTARGET)
-      if (is_double_word) {
+      if (may_be_double_word) {
         *(memory + waddr / sizeof(uint64_t)) = word;
 
         return;
@@ -6921,13 +6921,13 @@ void store_word(uint64_t* memory, uint64_t waddr, uint64_t is_double_word, uint6
     if (waddr % sizeof(uint64_t) == 0)
       // replace low word
       *(memory + waddr / sizeof(uint64_t)) =
-        left_shift(load_word(memory, waddr + SINGLEWORDSIZE, is_double_word), SINGLEWORDSIZEINBITS)
+        left_shift(load_word(memory, waddr + SINGLEWORDSIZE, may_be_double_word), SINGLEWORDSIZEINBITS)
           + sign_shrink(word, SINGLEWORDSIZEINBITS);
     else
       // replace high word
       *(memory + waddr / sizeof(uint64_t)) =
         left_shift(word, SINGLEWORDSIZEINBITS)
-          + load_word(memory, waddr - SINGLEWORDSIZE, is_double_word);
+          + load_word(memory, waddr - SINGLEWORDSIZE, may_be_double_word);
   } else
     *(memory + waddr / sizeof(uint64_t)) = word;
 }
