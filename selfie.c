@@ -7643,7 +7643,8 @@ void implement_read(uint64_t* context) {
   if (size > IO_buffer_size) {
     IO_buffer_size = size;
 
-    IO_buffer = smalloc(IO_buffer_size);
+    // buffer must be fully mapped for subsequent read syscalls with greater sizes
+    IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
   }
 
   *(get_regs(context) + REG_A0) = read(fd, IO_buffer, size);
@@ -7713,7 +7714,8 @@ void implement_write(uint64_t* context) {
   if (size > IO_buffer_size) {
     IO_buffer_size = size;
 
-    IO_buffer = smalloc(IO_buffer_size);
+    // buffer must be fully mapped for subsequent read syscalls with greater sizes
+    IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
   }
 
   if (copy_buffer(context, vbuffer, IO_buffer, size, 0))
