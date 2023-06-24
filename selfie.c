@@ -1266,8 +1266,9 @@ void implement_exit(uint64_t* context);
 void emit_read();
 void implement_read(uint64_t* context);
 
-void emit_write();
-void implement_write(uint64_t* context);
+void     emit_write();
+uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size);
+void     implement_write(uint64_t* context);
 
 void     emit_open();
 uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
@@ -1297,6 +1298,11 @@ uint64_t SYSCALL_BRK    = 214;
    emulating the (in Linux) deprecated open system call. */
 
 uint64_t DIRFD_AT_FDCWD = -100;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* IO_buffer      = (uint64_t*) 0;
+uint64_t  IO_buffer_size = 0;
 
 // -----------------------------------------------------------------
 // ------------------------ HYPSTER SYSCALL ------------------------
@@ -3081,26 +3087,14 @@ uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b) {
 }
 
 uint64_t write_to_printf(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
-  uint64_t bytes_written;
-
-  if (fd == 1) {
+  if (fd == 1)
     // writing to console
-    if (OS != SELFIE) {
+    if (OS != SELFIE)
       // on boot level 0 use printf to write to console
       // keeping output synchronized with other printf output
-      bytes_written = 0;
 
-      while (bytes_written < bytes_to_write) {
-        if (printf("%c", load_character((char*) buffer, bytes_written)) != 1)
-          // output failed
-          return bytes_written;
-
-        bytes_written = bytes_written + 1;
-      }
-
-      return bytes_written;
-    }
-  }
+      // assert: buffer is null-terminated
+      return printf("%s", (char*) buffer);
 
   return write(fd, buffer, bytes_to_write);
 }
@@ -7681,18 +7675,72 @@ void emit_write() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+uint64_t down_load_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint64_t size) {
+  uint64_t is_string;
+  uint64_t vaddr;
+  uint64_t i;
+
+  if (size == 0) {
+    size = MAX_STRING_LENGTH;
+
+    is_string = 1;
+  } else
+    is_string = 0;
+
+  vaddr = vbuffer;
+
+  while (vaddr < vbuffer + size) {
+    if (is_virtual_address_valid(vaddr, WORDSIZE))
+      if (is_data_stack_heap_address(context, vaddr)) {
+        if (is_virtual_address_mapped(get_pt(context), vaddr))
+          store_word(buffer, vaddr - vbuffer, 1, load_virtual_memory(get_pt(context), vaddr));
+        else {
+          printf("%s: virtual address 0x%08lX is unmapped\n", selfie_name, vaddr);
+
+          return 0;
+        }
+
+        if (is_string) {
+          i = 0;
+
+          // check if string ends in the current word
+          // WORDSIZE may be less than sizeof(uint64_t)
+          while (i < WORDSIZE) {
+            if (load_character((char*) buffer, vaddr - vbuffer + i) == 0)
+              return 1;
+
+            i = i + 1;
+          }
+        }
+
+        // advance to the next word in virtual memory
+        vaddr = vaddr + WORDSIZE;
+      } else {
+        printf("%s: virtual address 0x%08lX is in an invalid segment\n", selfie_name, vaddr);
+
+        return 0;
+      }
+    else {
+      printf("%s: virtual address 0x%08lX is invalid\n", selfie_name, vaddr);
+
+      return 0;
+    }
+  }
+
+  if (is_string) {
+    printf("%s: string is too long at virtual address 0x%08lX\n", selfie_name, vaddr);
+
+    return 0;
+  }
+
+  return 1;
+}
+
 void implement_write(uint64_t* context) {
   // parameters
   uint64_t fd;
   uint64_t vbuffer;
   uint64_t size;
-
-  // local variables
-  uint64_t written_total;
-  uint64_t bytes_to_write;
-  uint64_t failed;
-  uint64_t* buffer;
-  uint64_t actually_written;
 
   if (debug_syscalls) {
     printf("(write): ");
@@ -7711,72 +7759,24 @@ void implement_write(uint64_t* context) {
 
   if (debug_write)
     printf("%s: trying to write %lu bytes from buffer at virtual address 0x%08lX into file with descriptor %lu\n", selfie_name,
-      size,
-      (uint64_t) vbuffer,
-      fd);
+      size, (uint64_t) vbuffer, fd);
 
-  written_total = 0;
+  if (size > IO_buffer_size) {
+    IO_buffer_size = size;
 
-  bytes_to_write = WORDSIZE;
-
-  failed = 0;
-
-  while (size > 0) {
-    if (size < bytes_to_write)
-      bytes_to_write = size;
-
-    if (is_virtual_address_valid(vbuffer, WORDSIZE))
-      if (is_data_stack_heap_address(context, vbuffer))
-        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          buffer = tlb(get_pt(context), vbuffer);
-
-          actually_written = sign_extend(write_to_printf(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
-
-          if (actually_written == bytes_to_write) {
-            written_total = written_total + actually_written;
-
-            size = size - actually_written;
-
-            if (size > 0)
-              vbuffer = vbuffer + WORDSIZE;
-          } else {
-            if (signed_less_than(0, actually_written))
-              written_total = written_total + actually_written;
-
-            size = 0;
-          }
-        } else {
-          failed = 1;
-
-          size = 0;
-
-          printf("%s: writing from virtual address 0x%08lX failed because the address is unmapped\n", selfie_name, (uint64_t) vbuffer);
-        }
-      else {
-        failed = 1;
-
-        size = 0;
-
-        printf("%s: writing from virtual address 0x%08lX failed because the address is in an invalid segment\n", selfie_name, (uint64_t) vbuffer);
-      }
-    else {
-      failed = 1;
-
-      size = 0;
-
-      printf("%s: writing from virtual address 0x%08lX failed because the address is invalid\n", selfie_name, (uint64_t) vbuffer);
-    }
+    IO_buffer = smalloc(IO_buffer_size);
   }
 
-  if (failed)
-    *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
+  if (down_load_buffer(context, vbuffer, IO_buffer, size))
+    *(get_regs(context) + REG_A0) = write_to_printf(fd, IO_buffer, size);
   else
-    *(get_regs(context) + REG_A0) = written_total;
+    *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf("%s: actually wrote %lu bytes into file with descriptor %lu\n", selfie_name, written_total, fd);
+    printf("%s: actually wrote %lu bytes into file with descriptor %lu\n", selfie_name,
+      *(get_regs(context) + REG_A0), fd);
 
   if (debug_syscalls) {
     printf(" -> ");
@@ -7808,54 +7808,8 @@ void emit_open() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
-  uint64_t i;
-  uint64_t j;
-
-  i = 0;
-
-  while (i < MAX_FILENAME_LENGTH) {
-    if (is_virtual_address_valid(vaddr, WORDSIZE))
-      if (is_data_stack_heap_address(context, vaddr)) {
-        if (is_virtual_address_mapped(get_pt(context), vaddr))
-          store_word((uint64_t*) s, i, 1, load_virtual_memory(get_pt(context), vaddr));
-        else {
-          printf("%s: string address 0x%08lX is unmapped\n", selfie_name, (uint64_t) vaddr);
-
-          return 0;
-        }
-
-        j = i;
-
-        // check if string ends in the current word
-        // WORDSIZE may be less than sizeof(uint64_t)
-        while (j < i + WORDSIZE) {
-          if (load_character(s, j) == 0)
-            return 1;
-
-          j = j + 1;
-        }
-
-        // advance to the next word in virtual memory
-        vaddr = vaddr + WORDSIZE;
-
-        // advance to the corresponding word in our memory
-        i = i + WORDSIZE;
-      } else {
-        printf("%s: string address 0x%08lX is in an invalid segment\n", selfie_name, (uint64_t) vaddr);
-
-        return 0;
-      }
-    else {
-      printf("%s: string address 0x%08lX is invalid\n", selfie_name, (uint64_t) vaddr);
-
-      return 0;
-    }
-  }
-
-  printf("%s: string is too long at address 0x%08lX\n", selfie_name, (uint64_t) vaddr);
-
-  return 0;
+uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s) {
+  return down_load_buffer(context, vstring, (uint64_t*) s, 0);
 }
 
 void implement_openat(uint64_t* context) {
