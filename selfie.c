@@ -348,7 +348,7 @@ void init_library() {
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
-  // allocate and touch to make sure memory is mapped for read calls
+  // allocate and touch to make sure memory is mapped for one-word read calls
   binary_buffer  = smalloc(sizeof(uint64_t));
   *binary_buffer = 0;
 }
@@ -3393,6 +3393,7 @@ uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...) {
 
 uint64_t printf_or_write(uint64_t length) {
   if (output_fd == 1)
+    // use printf to write to console to stay in sync with other printf output
     return printf("%s", string_buffer);
   else
     // write appears to be in sync with dprintf but is more efficient
@@ -7557,7 +7558,7 @@ uint64_t copy_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint
   uint64_t i;
 
   if (size == 0) {
-    size = MAX_STRING_LENGTH;
+    size = MAX_FILENAME_LENGTH;
 
     is_string = 1;
   } else
@@ -7640,16 +7641,23 @@ void implement_read(uint64_t* context) {
     printf("%s: trying to read %lu bytes from file with descriptor %lu into buffer at virtual address 0x%08lX\n", selfie_name,
       size, fd, vbuffer);
 
-  if (size > IO_buffer_size) {
-    IO_buffer_size = size;
+  if (round_up(size, sizeof(uint64_t)) > IO_buffer_size) {
+    // accommodate integer-aligned buffer
+    IO_buffer_size = round_up(size, sizeof(uint64_t));
 
     // buffer must be fully mapped for subsequent read syscalls with greater sizes
     IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
   }
 
+  // read syscal may read less than size bytes
+  // zero buffer up to integer-aligned size
+  zero_memory(IO_buffer, round_up(size, sizeof(uint64_t)));
+
   *(get_regs(context) + REG_A0) = read(fd, IO_buffer, size);
 
-  if (signed_less_than(0, sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH)))
+  size = sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH);
+
+  if (signed_less_than(0, size))
     if (copy_buffer(context, vbuffer, IO_buffer, size, 1) == 0)
       *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
@@ -7657,7 +7665,7 @@ void implement_read(uint64_t* context) {
 
   if (debug_read)
     printf("%s: actually read %lu bytes from file with descriptor %lu\n", selfie_name,
-      sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH), fd);
+      size, fd);
 
   if (debug_syscalls) {
     printf(" -> ");
@@ -7711,12 +7719,16 @@ void implement_write(uint64_t* context) {
     printf("%s: trying to write %lu bytes from buffer at virtual address 0x%08lX into file with descriptor %lu\n", selfie_name,
       size, vbuffer, fd);
 
-  if (size > IO_buffer_size) {
-    IO_buffer_size = size;
+  if (size >= IO_buffer_size) {
+    // integer-align and accommodate potentially needed null terminator
+    IO_buffer_size = round_up(size + 1, sizeof(uint64_t));
 
     // buffer must be fully mapped for subsequent read syscalls with greater sizes
     IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
   }
+
+  // null-terminate buffer
+  *(IO_buffer + ((size + 1) / sizeof(uint64_t))) = 0;
 
   if (copy_buffer(context, vbuffer, IO_buffer, size, 0))
     *(get_regs(context) + REG_A0) = write_to_printf(fd, IO_buffer, size);
