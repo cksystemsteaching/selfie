@@ -249,7 +249,8 @@ uint64_t MAX_FILENAME_LENGTH = 128;
 
 char* filename_buffer; // buffer for opening files
 
-uint64_t* binary_buffer; // buffer for binary I/O
+char*     console_buffer; // buffer for console output
+uint64_t* binary_buffer;  // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -285,7 +286,6 @@ uint64_t S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH = 493;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
-uint64_t number_of_put_characters     = 0;
 
 char*    output_name = (char*) 0;
 uint64_t output_fd   = 1; // 1 is file descriptor of standard output
@@ -347,6 +347,9 @@ void init_library() {
 
   // does not need to be mapped
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
+
+  // buffer for output of printf derivatives, does not need to be mapped
+  console_buffer = string_alloc(128);
 
   // allocate and touch to make sure memory is mapped for one-word read calls
   binary_buffer  = smalloc(sizeof(uint64_t));
@@ -3125,8 +3128,6 @@ void put_character(char c) {
   } else
     // character_buffer has not been successfully allocated yet
     exit(EXITCODE_IOERROR);
-
-  number_of_put_characters = number_of_put_characters + 1;
 }
 
 void print(char* s) {
@@ -3300,22 +3301,21 @@ uint64_t print_format(char* s, uint64_t i, char* a) {
 }
 
 uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
-  uint64_t save_fd;
+  uint64_t number_of_put_characters;
   uint64_t i;
-
-  save_fd = output_fd;
-
-  if (buffer) {
-    output_buffer = buffer;
-    output_cursor = 0;
-  } else
-    output_fd = fd;
 
   number_of_put_characters = 0;
 
-  i = 0;
-
   if (s != (char*) 0) {
+    if (buffer)
+      output_buffer = buffer;
+    else
+      output_buffer = console_buffer;
+
+    output_cursor = 0;
+
+    i = 0;
+
     while (load_character(s, i) != 0) {
       if (load_character(s, i) == '%') {
         i = i + 1;
@@ -3337,17 +3337,21 @@ uint64_t vdsprintf(uint64_t fd, char* buffer, char* s, uint64_t* args) {
       }
     }
 
-    // sprintf always null-terminates the buffer
+    // null-terminate output buffer
+    store_character(output_buffer, output_cursor, 0);
+
+    number_of_put_characters = output_cursor;
+    output_cursor            = 0;
+
     if (buffer)
-      store_character(buffer, output_cursor, 0);
-  }
+      output_buffer = (char*) 0;
+    else {
+      buffer        = output_buffer;
+      output_buffer = (char*) 0;
 
-  if (buffer) {
-    output_buffer = (char*) 0;
-    output_cursor = 0;
+      return write_to_printf(fd, (uint64_t*) buffer, number_of_put_characters);
+    }
   }
-
-  output_fd = save_fd;
 
   return number_of_put_characters;
 }
