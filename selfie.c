@@ -1905,6 +1905,8 @@ void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
 void print_register_value(uint64_t reg);
 
+uint64_t is_uncaught_exception(uint64_t exception);
+
 void print_exception(uint64_t exception, uint64_t fault);
 void throw_exception(uint64_t exception, uint64_t fault);
 
@@ -8025,9 +8027,8 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   timer = timeout;
 
   if (debug_switch) {
-    printf("%s: switched from context 0x%08lX to context 0x%08lX", selfie_name,
-      (uint64_t) from_context,
-      (uint64_t) to_context);
+    printf("%s: switched from context %s to context %s", selfie_name,
+      get_name(from_context), get_name(to_context));
     if (timer != TIMEROFF)
       printf(" to execute %lu instructions", timer);
     println();
@@ -10189,6 +10190,19 @@ void print_register_value(uint64_t reg) {
     printf("%s==%ld(0x%lX)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
+uint64_t is_uncaught_exception(uint64_t exception) {
+  if (exception == EXCEPTION_SEGMENTATIONFAULT)
+    return 1;
+  else if (exception == EXCEPTION_INVALIDADDRESS)
+    return 1;
+  else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
+    return 1;
+  else if (exception == EXCEPTION_UNINITIALIZEDREGISTER)
+    return 1;
+  else
+    return 0;
+}
+
 void print_exception(uint64_t exception, uint64_t fault) {
   printf("%s", (char*) *(EXCEPTIONS + exception));
 
@@ -10212,7 +10226,7 @@ void print_exception(uint64_t exception, uint64_t fault) {
 void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf("%s: context 0x%08lX throws exception: ", selfie_name, (uint64_t) current_context);
+      printf("%s: context %s throws exception: ", selfie_name, get_name(current_context));
       print_exception(exception, fault);
       printf(" in presence of existing exception: ");
       print_exception(get_exception(current_context), get_fault(current_context));
@@ -10226,9 +10240,11 @@ void throw_exception(uint64_t exception, uint64_t fault) {
 
   trap = 1;
 
-  if (debug_exception) {
-    printf("%s: context 0x%08lX throws exception: ", selfie_name, (uint64_t) current_context);
+  if (is_uncaught_exception(exception)) {
+    printf("%s: context %s throws uncaught exception: ", selfie_name, get_name(current_context));
     print_exception(exception, fault);
+    printf("\n%s: uncaught exception triggered by instruction in binary ", selfie_name);
+    print_instruction();
     println();
   }
 }
@@ -10926,9 +10942,8 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   init_context(context, parent, vctxt);
 
   if (debug_create)
-    printf("%s: parent context 0x%08lX created child context 0x%08lX\n", selfie_name,
-      (uint64_t) parent,
-      (uint64_t) used_contexts);
+    printf("%s: parent context %s created child context %s\n", selfie_name,
+      get_name(parent), get_name(used_contexts));
 
   return context;
 }
@@ -11032,8 +11047,8 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 
   if (debug_map)
-    printf("%s: page 0x%04lX mapped to frame 0x%08lX in context 0x%08lX\n", selfie_name,
-      page, (uint64_t) frame, (uint64_t) context);
+    printf("%s: page 0x%04lX mapped to frame 0x%08lX in context %s\n", selfie_name,
+      page, (uint64_t) frame, get_name(context));
 }
 
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
