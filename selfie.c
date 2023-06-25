@@ -349,7 +349,7 @@ void init_library() {
   filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // buffer for output of printf derivatives, does not need to be mapped
-  console_buffer = string_alloc(128);
+  console_buffer = string_alloc(255);
 
   // allocate and touch to make sure memory is mapped for one-word read calls
   binary_buffer  = smalloc(sizeof(uint64_t));
@@ -7732,7 +7732,7 @@ void implement_write(uint64_t* context) {
   }
 
   // null-terminate buffer
-  *(IO_buffer + ((size + 1) / sizeof(uint64_t))) = 0;
+  *(IO_buffer + size / sizeof(uint64_t)) = 0;
 
   if (copy_buffer(context, vbuffer, IO_buffer, size, 0))
     *(get_regs(context) + REG_A0) = write_to_printf(fd, IO_buffer, size);
