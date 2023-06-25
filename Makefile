@@ -153,7 +153,7 @@ self-os-vmm-emu: selfie selfie.m selfie.s
 
 # Self-compile on os on hypervisor on fully mapped virtual memory
 min: selfie selfie.m selfie.s
-	./selfie -l selfie.m -min 3 -l selfie.m -y 4 -l selfie.m -y 3 -c selfie.c -o selfie-min.m -s selfie-min.s
+	./selfie -l selfie.m -min 4 -l selfie.m -y 4 -l selfie.m -y 3 -c selfie.c -o selfie-min.m -s selfie-min.s
 	diff -q selfie.m selfie-min.m
 	diff -q selfie.s selfie-min.s
 
