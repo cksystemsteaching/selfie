@@ -252,6 +252,8 @@ char* filename_buffer; // buffer for opening files
 char*     console_buffer; // buffer for console output
 uint64_t* binary_buffer;  // buffer for binary I/O
 
+uint64_t STDOUT_FD = 1; // standard output has file descriptor 1
+
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
 // MAC:         0 = 0x0000 = O_RDONLY (0x0000)
@@ -288,7 +290,7 @@ uint64_t S_IRUSR_IWUSR_IXUSR_IRGRP_IXGRP_IROTH_IXOTH = 493;
 uint64_t number_of_written_characters = 0;
 
 char*    output_name = (char*) 0;
-uint64_t output_fd   = 1; // 1 is file descriptor of standard output
+uint64_t output_fd   = 1; // standard output file descriptor
 
 char*    output_buffer = (char*) 0;
 uint64_t output_cursor = 0; // cursor for output buffer
@@ -3117,10 +3119,9 @@ void put_character(char c) {
 
     if (write_to_printf(output_fd, (uint64_t*) character_buffer, 1) != 1) {
       // output failed
-      if (output_fd != 1) {
-        // failed output was not to console which has file descriptor 1
-        // to report the error we may thus still print to the console
-        output_fd = 1;
+      if (output_fd != STDOUT_FD) {
+        // not printing to standard output, we may thus still print error message
+        output_fd = STDOUT_FD;
 
         printf("%s: could not write character into output file %s\n", selfie_name, output_name);
       }
@@ -3398,7 +3399,7 @@ uint64_t non_0_boot_level_dprintf(uint64_t fd, char* format, ...) {
 }
 
 uint64_t printf_or_write(uint64_t length) {
-  if (output_fd == 1)
+  if (output_fd == STDOUT_FD)
     // use printf to write to console to stay in sync with other printf output
     return printf("%s", string_buffer);
   else
@@ -10106,7 +10107,7 @@ void selfie_disassemble(uint64_t verbose) {
   disassemble_verbose = 0;
 
   output_name = (char*) 0;
-  output_fd   = 1;
+  output_fd   = STDOUT_FD;
 
   printf("%s: %lu characters of assembly with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
     number_of_written_characters,
@@ -10347,12 +10348,10 @@ void decode() {
       throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, pc);
     else {
       //report the error on the console
-      output_fd = 1;
+      output_fd = STDOUT_FD;
 
       printf("%s: at address 0x%08lX unknown instruction 0x%lX with opcode 0x%lX detected\n", selfie_name,
-        pc,
-        ir,
-        opcode);
+        pc, ir, opcode);
 
       exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
