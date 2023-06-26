@@ -7564,7 +7564,8 @@ uint64_t copy_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint
   uint64_t i;
 
   if (size == 0) {
-    size = MAX_FILENAME_LENGTH;
+    // include null terminator
+    size = MAX_FILENAME_LENGTH + 1;
 
     is_string = 1;
   } else
@@ -7572,7 +7573,8 @@ uint64_t copy_buffer(uint64_t* context, uint64_t vbuffer, uint64_t* buffer, uint
 
   vaddr = vbuffer;
 
-  while (vaddr < vbuffer + size) {
+  // avoid integer overflow with vbuffer + size
+  while (vaddr - vbuffer < size) {
     if (is_virtual_address_valid(vaddr, WORDSIZE))
       if (is_data_stack_heap_address(context, vaddr)) {
         if (is_virtual_address_mapped(get_pt(context), vaddr)) {
