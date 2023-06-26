@@ -10242,10 +10242,10 @@ void throw_exception(uint64_t exception, uint64_t fault) {
 
   trap = 1;
 
-  if (is_uncaught_exception(exception)) {
-    printf("%s: context %s throws uncaught exception: ", selfie_name, get_name(current_context));
+  if (debug_exception) {
+    printf("%s: context %s throws exception: ", selfie_name, get_name(current_context));
     print_exception(exception, fault);
-    printf("\n%s: uncaught exception triggered by instruction in binary ", selfie_name);
+    printf("\n%s: exception triggered by instruction in binary ", selfie_name);
     print_instruction();
     println();
   }

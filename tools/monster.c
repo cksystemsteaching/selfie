@@ -1041,6 +1041,15 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_virtual_context(context, get_virtual_context(original));
   set_name(context, get_name(original));
 
+  // profile
+  set_ic_all(context, 0);
+  set_lc_malloc(context, 0);
+  set_ec_syscall(context, 0);
+  set_ec_page_fault(context, 0);
+  set_ec_timer(context, 0);
+  set_mc_stack_peak(context, HIGHESTVIRTUALADDRESS);
+  set_mc_mapped_heap(context, 0);
+
   set_execution_depth(context, get_execution_depth(original));
   set_path_condition(context, condition);
   set_beq_counter(context, get_beq_counter(original));
