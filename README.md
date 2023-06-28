@@ -6205,15 +6205,15 @@ Given a particular piece of hardware, say, a 64-bit RISC-V machine, it is always
 make emu
 ```
 
-As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, say, *HW* for hardware, and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 55k instructions to do so.
+As mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into a `mipster` instance, say, *HW* for hardware, and then have *HW* execute that code, that is, selfie without any further console arguments. In that case, selfie runs on boot level 1 and just prints its synopsis and quits. It takes *HW* around 81k instructions to do so.
 
-The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie on an *operating system* that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one program at the same time. Before we get closer to that, try the following command:
+The scenario created by this command is to emulate running selfie without any operating system *bare-metal* directly on 64-bit RISC-V hardware, as represented by the `mipster` instance *HW*. However, a more realistic scenario is to run selfie more like an *app* on an *operating system* that *isolates* code execution from the underlying hardware, enabling a user experience that we are all used to, such as running more than one app at the same time. Before we get closer to that, try the following command:
 
 ```bash
 make emu-emu
 ```
 
-Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 55k instructions to do that. However, now it takes *HW* around 140 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 81k instructions to do that. However, now it takes *HW* around 200 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
 
 The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, or running on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
@@ -6223,7 +6223,7 @@ In order to get closer to what an operating system does in terms of performance,
 make os-emu
 ```
 
-Now, it takes *HW* around 15 million instructions to execute selfie running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by almost a factor of 10 is great but it still leaves us with a factor of around 270 slower than running selfie bare-metal on *HW*.
+Now, it takes *HW* around 15 million instructions to execute selfie as an *app* running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 13 is great but it still leaves us with a factor of around 185 slower than running selfie bare-metal on *HW*.
 
 If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance, previously called *VMM* for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
@@ -6231,31 +6231,41 @@ If we insert another layer of virtualization in between *HW* and *OS* using a `h
 make os-vmm-emu
 ```
 
-In this case, it takes *HW* around 50 million instructions to execute selfie running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 900 slower than running selfie bare-metal on *HW*.
+In this case, it takes *HW* around 53 million instructions to execute selfie as an *app* running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 650 slower than running selfie bare-metal on *HW*.
 
-However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. The reason why we do not see negligible overhead is because selfie just printing its synopsis is not enough work to amortize the overhead of context switching. To see that, try the following command:
+However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. There are two reasons why we do not see negligible overhead. Firstly, selfie just printing its synopsis is not enough work to amortize the overhead of context switching between app, *OS*, and *VMM*. To see that, try the following command:
 
 ```bash
 make self-emu
 ```
 
-The command invokes selfie to self-compile bare-metal on *HW*. It takes *HW* around 1 billion instructions to do that. What if we do the same but on *OS* as `hypster` instance running on *HW*? The following command shows that:
+The command invokes selfie to self-compile bare-metal on *HW*. It takes *HW* around 1.1 billion instructions to do that. What if we do the same but on *OS* as `hypster` instance running on *HW*? The following command shows that:
 
 ```bash
 make self-os-emu
 ```
 
-In this case, it takes *HW* around 1.8 billion instructions! The overhead of *OS* has reduced to a factor of around 1.8 which is much closer to where we want to be. If we increased the amount of work that selfie does when running on *OS*, the overhead would come down even more. Even if we again insert *VMM* in between *HW* and *OS*, the situation does not get much worse. Try the following command.
+In this case, it takes *HW* around 1.9 billion instructions! The overhead of *OS* has reduced to a factor of around 1.7 which is much closer to where we want to be. If we increased the amount of work that selfie does when running as an *app* on *OS*, the overhead would come down even more. Even if we again insert *VMM* in between *HW* and *OS*, the situation does not get much worse. Try the following command.
 
 ```bash
 make self-os-vmm-emu
 ```
 
-Now, it takes *HW* around 2.5 billion instructions. The overhead by a factor of around 2.5 is worse than 1.8 but still much less than before.
+Now, it takes *HW* around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.9 but still much less than before. The second reason why we are still seeing overhead that is, or in fact seems to be, not negligible is surprising. In short, we underestimate the cost of executing code bare-metal. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
 
-overhead formula
+> Performance and Overhead
+
+The key observation is that the number of executed instructions does not necessarily reflect the full cost of executing code in terms of the time it takes to do that. So far, we have implicitly assumed that executing a single instruction incurs the same cost, that is, takes the same amount of time, regardless of the type of instruction and the machine context in which it executes. However, this assumption is false. Even if we ignore the context in which an instruction executes, which is something we do here to keep things simple, the type of instruction still matters. In particular, there is a large difference in execution time between an `ecall` instruction and all other instructions.
+
+The reason is simple. Executing an `ecall` instruction essentially corresponds to executing an entire procedure that in turn may be implemented by any number of instructions. Those instructions are typically part of operating system or virtual machine monitor code that implements system functionality such as reading from and writing to files, for example. Selfie exposes the cost of executing those instructions but only on boot levels higher than 0. On boot level 0, all system functionality is implemented by the system on which selfie runs. Measuring its cost requires stepping out of the selfie system, which is possible but still something we avoid, again for keeping things simple.
+
+Let us go back to our last three examples and analyze the situation with that information in mind. Compiling selfie on *HW* takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when compiling selfie on *OS* and in turn *OS* on *HW*. Then, the output of selfie shows that it took around 0.8 billion instructions to execute *OS*, which is exactly the overhead over just compiling selfie on *HW*. Similarly, compiling selfie on *OS* with *VMM* running in between *OS* and *HW* shows that it takes another 0.8 billion instructions to execute *VMM*.
+
+While it is fair to say that most of the 0.8 billion instructions for executing *OS*, and *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided, if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. In particular, we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, which includes the code for context switching. However, isolation including context switching can be implemented efficiently, also in selfie.
 
 > Isolation
+
+> State
 
 > Concurrency
 
