@@ -1326,6 +1326,16 @@ uint64_t SYSCALL_SWITCH = 401;
 
 uint64_t debug_switch = 0;
 
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t cs_count = 0; // context switch counter
+
+// ------------------------- INITIALIZATION ------------------------
+
+void reset_switch_counter() {
+  cs_count = 0;
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -----------------    A R C H I T E C T U R E    -----------------
@@ -2141,6 +2151,7 @@ void reset_segments_profile() {
 
 void reset_profiler() {
   reset_binary_counters();
+  reset_switch_counter();
   reset_nop_counters();
   reset_source_profile();
   reset_registers_profile();
@@ -7992,7 +8003,7 @@ uint64_t is_boot_level_zero() {
 }
 
 // -----------------------------------------------------------------
-// ----------------------- HYPSTER SYSCALLS ------------------------
+// ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
 void emit_switch() {
@@ -8080,6 +8091,8 @@ uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
   run_until_exception();
 
   save_context(current_context);
+
+  cs_count = cs_count + 1;
 
   return current_context;
 }
@@ -10701,12 +10714,16 @@ void print_profile() {
       percentage_format_fractional_2(get_total_number_of_instructions(), get_total_number_of_nops()));
     printf("%s:          ", selfie_name);
   }
-  printf("%lu.%.2luMB(%lu.%.2lu%% of %luMB) mapped memory\n",
+  printf("%lu.%.2luMB mapped memory [%lu.%.2lu%% of %luMB physical memory]\n",
     ratio_format_integral_2(pused(), MEGABYTE),
     ratio_format_fractional_2(pused(), MEGABYTE),
     percentage_format_integral_2(PHYSICALMEMORYSIZE, pused()),
     percentage_format_fractional_2(PHYSICALMEMORYSIZE, pused()),
     PHYSICALMEMORYSIZE / MEGABYTE);
+  if (cs_count > 0)
+    printf("%s:          %lu context switches [%lu instructions per switch]\n", selfie_name,
+      cs_count,
+      ratio_format_integral_2(get_total_number_of_instructions(), cs_count));
 
   context = used_contexts;
 
@@ -10718,19 +10735,16 @@ void print_profile() {
       printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
         ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE),
         ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE));
-      printf("%s:          %lu.%.2luMB allocated in %lu mallocs\n", selfie_name,
+      printf("%s:          %lu.%.2luMB allocated in %lu mallocs (%lu.%.2luMB or %lu.%.2lu%% actually accessed)\n", selfie_name,
         ratio_format_integral_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
         ratio_format_fractional_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
-        get_lc_malloc(context));
-      printf("%s:          %lu.%.2luMB(%lu.%.2lu%% of %lu.%.2luMB) actually accessed\n", selfie_name,
+        get_lc_malloc(context),
         ratio_format_integral_2(get_mc_mapped_heap(context), MEGABYTE),
         ratio_format_fractional_2(get_mc_mapped_heap(context), MEGABYTE),
         percentage_format_integral_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
           get_mc_mapped_heap(context)),
         percentage_format_fractional_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
-            get_mc_mapped_heap(context)),
-        ratio_format_integral_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
-        ratio_format_fractional_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE));
+            get_mc_mapped_heap(context)));
     }
     if (get_parent(context) == MY_CONTEXT)
       printf("%s:          %lu handled exceptions (%lu syscalls, %lu page faults, %lu timer interrupts)\n", selfie_name,
