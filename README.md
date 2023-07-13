@@ -3631,7 +3631,7 @@ The `-o` option instructs selfie to write the machine code compiled from `selfie
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+./selfie: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -3641,16 +3641,20 @@ The `-o` option instructs selfie to write the machine code compiled from `selfie
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 55034 executed instructions [18.48% nops]
-./selfie:          0.39KB peak stack size
-./selfie:          0.00MB allocated in 7 mallocs
-./selfie:          0.00MB(100.00% of 0.00MB) actually accessed
-./selfie:          0.18MB(18.75% of 1MB) mapped memory
+./selfie: summary: 81437 executed instructions [15.49% nops]
+./selfie:          0.19MB mapped memory [19.53% of 1MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          81437 executed instructions
+./selfie:          0.28KB peak stack size
+./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
+./selfie:          15 exceptions handled by ./selfie, one every 5429 executed instructions
+./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Selfie running on `mipster` took around 55k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
+Selfie running on `mipster` took around 81k RISC-U instructions and less than 1MB memory to print its synopsis. We have seen those numbers before. The following command does what the above two invocations of selfie do in a single invocation of selfie:
 
 ```bash
 ./selfie -c selfie.c -o selfie.m -m 1
@@ -3673,14 +3677,14 @@ This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on ano
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+./selfie: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ...
 > selfie.m: ================================================================================
-> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+> selfie.m: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 > selfie.m: ********************************************************************************
 > selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 > selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -3690,33 +3694,41 @@ This *self-executes* `mipster` by running a `mipster` instance, say, *OS* on ano
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 55398 executed instructions [18.48% nops]
-> selfie.m:          0.39KB peak stack size
-> selfie.m:          0.00MB allocated in 7 mallocs
-> selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
-> selfie.m:          0.19MB(19.14% of 1MB) mapped memory
+> selfie.m: summary: 82031 executed instructions [15.48% nops]
+> selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
+> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> selfie.m: context: >> selfie.m
+> selfie.m:          82031 executed instructions
+> selfie.m:          0.28KB peak stack size
+> selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
+> selfie.m:          15 exceptions handled by > selfie.m, one every 5468 executed instructions
+> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 > selfie.m: --------------------------------------------------------------------------------
 ...
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 142794192 executed instructions [13.48% nops]
-./selfie:          0.68KB peak stack size
-./selfie:          2.83MB allocated in 30 mallocs
-./selfie:          2.01MB(71.07% of 2.83MB) actually accessed
-./selfie:          2.20MB(73.43% of 3MB) mapped memory
+./selfie: summary: 200804852 executed instructions [13.39% nops]
+./selfie:          2.26MB mapped memory [75.39% of 3MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          200804852 executed instructions
+./selfie:          0.69KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
+./selfie:          2598 exceptions handled by ./selfie, one every 77292 executed instructions
+./selfie:          167 syscalls, 529 page faults, 1902 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-As before, selfie printing its synopsis on `mipster` instance *OS* took around 55k RISC-U instructions and less than 1MB memory. In fact, if you pay close attention, you may notice that it took a few hundred instructions more than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
+Similar to before, selfie printing its synopsis on `mipster` instance *OS* took around 82k RISC-U instructions and less than 1MB memory. In fact, it took a few hundred instructions more than before. The reason is that the synopsis printed by selfie contains one more `>` character than before, that is, `>> selfie.m ...` rather than `> selfie.m ...`. It takes a few hundred instructions to print that additional character. But why is there one more `>` character?
 
 > Boot level
 
 Well, the number of `>` characters indicate the *boot level* on which the code runs. Here, `mipster` instance *HW* runs on boot level 0, `mipster` instance *OS* runs on boot level 1, and selfie printing its synopsis runs on boot level 2. In short, the boot level increases by 1 with each `mipster` instance. Console output generated by boot levels higher than `0` are shown by a sequence of greater-than `>` characters, making it easier to understand the output. Hence console output generated by boot levels `1` and `2` is prefixed by `>` and `>>`, respectively.
 
-Alright, but then check this out. The `mipster` instance *HW* took around 140 million (!) RISC-U instructions and around 2MB memory to run *OS*. This means that, on average, *HW* executed around 2.5k instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed that the synopsis is actually printed a bit slower on your console? That is because execution is slowed down by a factor of 2.5k.
+Alright, but then check this out. The `mipster` instance *HW* took around 200 million (!) RISC-U instructions and around 2MB memory to run *OS*. This means that, on average, *HW* executed around 2.5k instructions just so that *OS* executes a single instruction. In other words, `mipster` takes, at least on this workload, on average around 2.5k RISC-U instructions to implement a single RISC-U instruction, and around 2MB of memory in addition for the whole run. Have you noticed that the synopsis is actually printed a bit slower on your console? That is because execution is slowed down by a factor of 2.5k.
 
 What if we stack even more `mipster` instances onto each other just to see what happens? On my laptop, I ran three `mipster` instances, calling the third `mipster` instance *VMM*, assuming that *VMM* runs in between `mipster` instances *HW* and *OS*, and allocating 5MB rather than 3MB of physical memory to *HW*:
 
@@ -3749,21 +3761,21 @@ The relevant output is:
 ```
 ...
 ./selfie: ================================================================================
-./selfie: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+./selfie: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 ./selfie: ********************************************************************************
 ./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 4MB physical memory
 ./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ...
 > selfie.m: ================================================================================
-> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+> selfie.m: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 > selfie.m: ********************************************************************************
 > selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
 > selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ...
 >> selfie.m: ================================================================================
->> selfie.m: 181256 bytes with 40846 64-bit RISC-U instructions and 13776 bytes of data loaded from selfie.m
+>> selfie.m: 186416 bytes with 42146 64-bit RISC-U instructions and 13736 bytes of data loaded from selfie.m
 >> selfie.m: ********************************************************************************
 >> selfie.m: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
 >> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -3773,39 +3785,54 @@ The relevant output is:
 >> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 >> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 >> selfie.m: --------------------------------------------------------------------------------
->> selfie.m: summary: 55762 executed instructions [18.48% nops]
->> selfie.m:          0.39KB peak stack size
->> selfie.m:          0.00MB allocated in 7 mallocs
->> selfie.m:          0.00MB(100.00% of 0.00MB) actually accessed
->> selfie.m:          0.19MB(19.14% of 1MB) mapped memory
+>> selfie.m: summary: 82625 executed instructions [15.49% nops]
+>> selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
+>> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> selfie.m: context: >>> selfie.m
+>> selfie.m:          82625 executed instructions
+>> selfie.m:          0.28KB peak stack size
+>> selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
+>> selfie.m:          15 exceptions handled by >> selfie.m, one every 5508 executed instructions
+>> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 >> selfie.m: --------------------------------------------------------------------------------
 ...
 
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 0 executed instructions [0.00% nops]
-> selfie.m:          0.68KB peak stack size
-> selfie.m:          2.83MB allocated in 30 mallocs
-> selfie.m:          2.01MB(71.07% of 2.83MB) actually accessed
-> selfie.m:          2.21MB(73.83% of 3MB) mapped memory
+> selfie.m: summary: 2.27MB mapped memory [75.78% of 3MB physical memory]
+> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> selfie.m: context: >> selfie.m
+> selfie.m:          2612 exceptions handled by > selfie.m
+> selfie.m:          167 syscalls, 529 page faults, 1916 timer interrupts
 > selfie.m: ################################################################################
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 185138902 executed instructions [14.09% nops]
-./selfie:          0.64KB peak stack size
-./selfie:          4.83MB allocated in 32 mallocs
-./selfie:          2.78MB(57.67% of 4.83MB) actually accessed
-./selfie:          2.99MB(74.80% of 4MB) mapped memory
+./selfie: summary: 241506386 executed instructions [13.84% nops]
+./selfie:          3.23MB mapped memory [80.76% of 4MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >> selfie.m
+./selfie:          202091292 executed instructions
+./selfie:          0.66KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
+./selfie:          2612 exceptions handled by > selfie.m, one every 77370 executed instructions
+./selfie:          167 syscalls, 529 page faults, 1916 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          39415094 executed instructions, handling 2612 exceptions, 15090 per exception
+./selfie:          0.73KB peak stack size
+./selfie:          5.04MB allocated in 36 mallocs (3.01MB or 59.83% actually accessed)
+./selfie:          1321 exceptions handled by ./selfie, one every 29837 executed instructions
+./selfie:          198 syscalls, 773 page faults, 350 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Now we are back from billions to millions of instructions. This time *HW* took only around 185 million RISC-U instructions to run both *VMM* and *OS*, compared to the 140 million RISC-U instructions to run just *OS*. This is a factor of around 1.3 instructions for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
+Now we are back from billions to millions of instructions. This time *HW* took around 241 million RISC-U instructions to run both *VMM* and *OS*, compared to the 200 million RISC-U instructions to run just *OS*. This is a factor of around 1.2 instructions more for each instruction of *OS*, even though *VMM* runs in between *HW* and *OS*. How is this possible?
 
-The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. Note that the `hypster` instance for *VMM* executed `0` instructions of the *OS* instance! The factor 1.3 overhead for the *HW* instance comes from context switching and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
+The key observation is that *VMM* is RISC-U code that executes RISC-U code, that is, the RISC-U code of *OS* in this case. But if *HW* can execute the RISC-U code of *VMM*, it can also execute the RISC-U code of *OS*, effectively bypassing *VMM*. The option `-y` with parameter `3` in the above invocation of selfie does exactly that. Instead of launching a `mipster` instance, it creates a `hypster` instance for *VMM* which, similar to a `mipster` instance, executes *OS*, yet not by interpretation but by instructing *HW* to execute *OS* on its behalf, through something called a *context switch*. Note that the `hypster` instance for *VMM* executed `0` instructions of the *OS* instance! Instead, the `mipster` instance *HW* executed the *OS* instance. The factor 1.2 overhead for the *HW* instance comes from context switching and other systems-related work and may become even less if *OS* were to run longer amortizing bootstrapping cost even more.
 
 We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a virtual machine monitor or *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
@@ -6267,7 +6294,7 @@ The reason is simple. Executing an `ecall` instruction essentially corresponds t
 
 Let us go back to our last three examples and analyze the situation with that information in mind. Compiling selfie on *HW* takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when compiling selfie on *OS* and in turn *OS* on *HW*. Then, the output of selfie shows that it took around 0.8 billion instructions to execute *OS*, which is exactly the overhead over just compiling selfie on *HW*. Similarly, compiling selfie on *OS* with *VMM* running in between *OS* and *HW* shows that it takes another 0.8 billion instructions to execute *VMM*.
 
-While it is fair to say that most of the 0.8 billion instructions for executing *OS*, and *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided, if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. In particular, we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, which includes the code for context switching. However, isolation including context switching can be implemented efficiently, also in selfie, and is therefore worth doing.
+While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching and memory management. However, that code can be implemented efficiently, also in selfie, and is therefore worth doing. While measuring its overhead is tricky, we can at least approximate it by
 
 > Isolation
 
