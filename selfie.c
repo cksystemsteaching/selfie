@@ -1326,16 +1326,6 @@ uint64_t SYSCALL_SWITCH = 401;
 
 uint64_t debug_switch = 0;
 
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t cs_count = 0; // context switch counter
-
-// ------------------------- INITIALIZATION ------------------------
-
-void reset_switch_counter() {
-  cs_count = 0;
-}
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -----------------    A R C H I T E C T U R E    -----------------
@@ -1943,6 +1933,9 @@ void print_per_register_profile(uint64_t reg);
 
 void print_register_memory_profile();
 
+void down_load_profiles();
+void print_instruction_versus_exception_profile(uint64_t* parent_context);
+
 void print_profile();
 
 void print_host_os();
@@ -2151,7 +2144,6 @@ void reset_segments_profile() {
 
 void reset_profiler() {
   reset_binary_counters();
-  reset_switch_counter();
   reset_nop_counters();
   reset_source_profile();
   reset_registers_profile();
@@ -2250,9 +2242,12 @@ uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 18); 
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 19); }
 uint64_t name(uint64_t* context)            { return (uint64_t) (context + 20); }
 
-// only profile data of malloc and heap is cached
+// only profile data of malloc, exceptions, and heap is cached
 
 uint64_t lc_malloc(uint64_t* context)       { return (uint64_t) (context + 22); }
+uint64_t ec_syscall(uint64_t* context)      { return (uint64_t) (context + 23); }
+uint64_t ec_page_fault(uint64_t* context)   { return (uint64_t) (context + 24); }
+uint64_t ec_timer(uint64_t* context)        { return (uint64_t) (context + 25); }
 uint64_t mc_mapped_heap(uint64_t* context)  { return (uint64_t) (context + 27); }
 
 uint64_t used_list_head(uint64_t* context) { return (uint64_t) (context + 28); }
@@ -8092,8 +8087,6 @@ uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
 
   save_context(current_context);
 
-  cs_count = cs_count + 1;
-
   return current_context;
 }
 
@@ -10702,6 +10695,56 @@ void print_register_memory_profile() {
   print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
+void down_load_profiles() {
+  uint64_t* context;
+  uint64_t* parent_table;
+  uint64_t* vctxt;
+
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    if (get_parent(context) != MY_CONTEXT) {
+      parent_table = get_pt(get_parent(context));
+      vctxt        = get_virtual_context(context);
+
+      set_lc_malloc(context, load_virtual_memory(parent_table, lc_malloc(vctxt)));
+      set_mc_mapped_heap(context, load_virtual_memory(parent_table, mc_mapped_heap(vctxt)));
+      set_ec_syscall(context, load_virtual_memory(parent_table, ec_syscall(vctxt)));
+      set_ec_page_fault(context, load_virtual_memory(parent_table, ec_page_fault(vctxt)));
+      set_ec_timer(context, load_virtual_memory(parent_table, ec_timer(vctxt)));
+    }
+
+    context = get_next_context(context);
+  }
+}
+
+void print_instruction_versus_exception_profile(uint64_t* parent_context) {
+  uint64_t ec_count;
+  uint64_t* context;
+
+  printf("%s:          %lu executed instructions", selfie_name,
+    get_ic_all(parent_context));
+
+  ec_count = 0;
+
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    if (get_parent(context) == parent_context)
+      ec_count = ec_count +
+        get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context);
+
+    context = get_next_context(context);
+  }
+
+  if (ec_count > 0)
+    printf(", handling %lu exceptions, %lu per exception",
+      ec_count,
+      ratio_format_integral_2(get_ic_all(parent_context), ec_count));
+
+  println();
+}
+
 void print_profile() {
   uint64_t* context;
 
@@ -10720,10 +10763,8 @@ void print_profile() {
     percentage_format_integral_2(PHYSICALMEMORYSIZE, pused()),
     percentage_format_fractional_2(PHYSICALMEMORYSIZE, pused()),
     PHYSICALMEMORYSIZE / MEGABYTE);
-  if (cs_count > 0)
-    printf("%s:          %lu context switches [%lu instructions per switch]\n", selfie_name,
-      cs_count,
-      ratio_format_integral_2(get_total_number_of_instructions(), cs_count));
+
+  down_load_profiles();
 
   context = used_contexts;
 
@@ -10731,7 +10772,7 @@ void print_profile() {
     printf("%s: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n", selfie_name);
     printf("%s: context: %s\n", selfie_name, get_name(context));
     if (get_ic_all(context) > 0) {
-      printf("%s:          %lu executed instructions\n", selfie_name, get_ic_all(context));
+      print_instruction_versus_exception_profile(context);
       printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
         ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE),
         ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE));
@@ -10746,12 +10787,21 @@ void print_profile() {
         percentage_format_fractional_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
             get_mc_mapped_heap(context)));
     }
+    printf("%s:          %lu exceptions handled by ", selfie_name,
+      get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context));
     if (get_parent(context) == MY_CONTEXT)
-      printf("%s:          %lu handled exceptions (%lu syscalls, %lu page faults, %lu timer interrupts)\n", selfie_name,
-        get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context),
-        get_ec_syscall(context),
-        get_ec_page_fault(context),
-        get_ec_timer(context));
+      printf("%s", selfie_name);
+    else
+      printf("%s", get_name(get_parent(context)));
+    if (get_ic_all(context) > 0)
+      printf(", one every %lu executed instructions",
+        ratio_format_integral_2(get_ic_all(context),
+          get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context)));
+    println();
+    printf("%s:          %lu syscalls, %lu page faults, %lu timer interrupts\n", selfie_name,
+      get_ec_syscall(context),
+      get_ec_page_fault(context),
+      get_ec_timer(context));
 
     context = get_next_context(context);
   }
@@ -11133,11 +11183,6 @@ void restore_context(uint64_t* context) {
     restore_region(context, table, parent_table, lo, hi);
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
-
-    // only retrieve profile data of malloc and heap
-
-    set_lc_malloc(context, load_virtual_memory(parent_table, lc_malloc(vctxt)));
-    set_mc_mapped_heap(context, load_virtual_memory(parent_table, mc_mapped_heap(vctxt)));
 
     // garbage collector state (only necessary if context is gced by different gcs)
 
