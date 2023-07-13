@@ -3742,7 +3742,7 @@ or, equivalently, just try:
 make emu-emu-emu
 ```
 
-This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu-emu`. In fact, this time, `mipster` instance *HW* executed more than 300 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances running on top of each other. Even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
+This took a few hours to complete, as opposed to a few seconds for just the two `mipster` instances with `make emu-emu`. In fact, this time, `mipster` instance *HW* executed more than 400 billion (!) RISC-U instructions to run both *VMM* and *OS*. Looks like with each `mipster` instance the number of executed instructions increases by three orders of magnitude, here from thousands to millions to billions of instructions. This is a beautiful example of exponential growth, in this case in the number of `mipster` instances running on top of each other. Even if we optimized `mipster` such that executing a single instruction would take only two instructions there would be exponential growth.
 
 But how is this relevant in practice? Well, there is a reason why we called the three `mipster` instances *HW*, *VMM*, and *OS*. Suppose *HW* represents *hardware*, an actual RISC-V processor, and *OS* represents an *operating system*. Yet we do not want *OS* running directly on hardware but need a *virtual machine monitor* *VMM* in between *HW* and *OS* so that we can eventually run more operating systems than just *OS* simultaneously, all sharing the same *HW*. However, we certainly do not want the execution of a user program to slow down by three orders of magnitude. Turns out it is possible to push the overhead even below a factor of two! Just try the following:
 
@@ -6244,7 +6244,7 @@ The scenario created by this command is to emulate running selfie without any op
 make emu-emu
 ```
 
-Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 81k instructions to do that. However, now it takes *HW* around 200 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 82k instructions to do that. However, now it takes *HW* around 200 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
 
 The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, or running on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
@@ -6256,7 +6256,7 @@ In order to get closer to what an operating system does in terms of performance,
 make os-emu
 ```
 
-Now, it takes *HW* around 15 million instructions to execute selfie as an *app* running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 13 is great but it still leaves us with a factor of around 185 slower than running selfie bare-metal on *HW*.
+Now, it takes *HW* around 16 million instructions to execute selfie as an *app* running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 13 is great but it still leaves us with a factor of around 200 slower than running selfie bare-metal on *HW*.
 
 If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance, previously called *VMM* for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
@@ -6264,7 +6264,7 @@ If we insert another layer of virtualization in between *HW* and *OS* using a `h
 make os-vmm-emu
 ```
 
-In this case, it takes *HW* around 53 million instructions to execute selfie as an *app* running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 650 slower than running selfie bare-metal on *HW*.
+In this case, it takes *HW* around 54 million instructions to execute selfie as an *app* running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 660 slower than running selfie bare-metal on *HW*.
 
 However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. There are two reasons why we do not see negligible overhead. Firstly, selfie just printing its synopsis is not enough work to amortize the overhead of context switching between app, *OS*, and *VMM*. To see that, try the following command:
 
@@ -6284,7 +6284,7 @@ In this case, it takes *HW* around 1.9 billion instructions! The overhead of *OS
 make self-os-vmm-emu
 ```
 
-Now, it takes *HW* around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.9 but still much less than before. The second reason why we are still seeing overhead that is, or in fact seems to be, not negligible is surprising. In short, we underestimate the cost of executing code bare-metal. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
+Now, it takes *HW* around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.9 but still much less than before. The second reason why we are still seeing overhead that is, or in fact seems to be, not negligible is surprising. In short, we are already where we would like to be but just underestimate the cost of executing code bare-metal and thus overestimate the overhead of virtualizing code execution. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
 
 > Performance and Overhead
 
