@@ -10799,10 +10799,8 @@ void print_profile() {
     if (get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context) > 0) {
       printf("%s:          %lu exceptions handled by ", selfie_name,
         get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context));
-      if (get_parent(context) == MY_CONTEXT)
-        printf("%s", selfie_name);
-      else
-        printf("%s", get_name(get_parent(context)));
+      if (get_parent(context) == MY_CONTEXT) printf("%s", selfie_name);
+      else printf("%s", get_name(get_parent(context)));
       if (get_ic_all(context) > 0)
         printf(", one every %lu executed instructions",
           ratio_format_integral_2(get_ic_all(context),

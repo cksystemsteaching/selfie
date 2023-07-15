@@ -1923,7 +1923,7 @@ uint64_t selfie_run_symbolically() {
 
       printf("%s: monster terminating %s\n", selfie_name, binary_name);
 
-      //print_profile();
+      print_profile();
 
       run = 0;
 
