@@ -155,7 +155,7 @@ uint64_t atoi(char* s);
 char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
-uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
+uint64_t fixed_point_percentage(uint64_t a, uint64_t b, uint64_t f);
 
 uint64_t fixed_point_integral(uint64_t a, uint64_t f);
 uint64_t fixed_point_fractional(uint64_t a, uint64_t f);
@@ -3061,10 +3061,14 @@ uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f) {
   return a / b * ten_to_the_power_of(f) + a % b * ten_to_the_power_of(f) / b;
 }
 
-uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
-  if (r != 0)
-    // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
-    return ten_to_the_power_of(4 + f) / r;
+uint64_t fixed_point_percentage(uint64_t a, uint64_t b, uint64_t f) {
+  if (b == 0)
+    return 0;
+  // 10^(f+2) (for at least 2 fractional digits), 10^4 (for 100.00%)
+  else if (a > b)
+    return ten_to_the_power_of(f + 2 + 4) / fixed_point_ratio(a, b, f + 2);
+  else if (a != 0)
+    return ten_to_the_power_of(4) * fixed_point_ratio(b, a, f + 2) / ten_to_the_power_of(f + 2);
   else
     return 0;
 }
@@ -3086,17 +3090,11 @@ uint64_t ratio_format_fractional_2(uint64_t a, uint64_t b) {
 }
 
 uint64_t percentage_format_integral_2(uint64_t a, uint64_t b) {
-  if (b != 0)
-    return fixed_point_integral(fixed_point_percentage(fixed_point_ratio(a, b, 4), 4), 2);
-  else
-    return 0;
+  return fixed_point_integral(fixed_point_percentage(a, b, 2), 2);
 }
 
 uint64_t percentage_format_fractional_2(uint64_t a, uint64_t b) {
-  if (b != 0)
-    return fixed_point_fractional(fixed_point_percentage(fixed_point_ratio(a, b, 4), 4), 2);
-  else
-    return 0;
+  return fixed_point_fractional(fixed_point_percentage(a, b, 2), 2);
 }
 
 uint64_t write_to_printf(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write) {
