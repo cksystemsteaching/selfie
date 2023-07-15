@@ -10796,21 +10796,23 @@ void print_profile() {
         percentage_format_fractional_2(round_up(get_program_break(context) - get_heap_seg_start(context), PAGESIZE),
             get_mc_mapped_heap(context)));
     }
-    printf("%s:          %lu exceptions handled by ", selfie_name,
-      get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context));
-    if (get_parent(context) == MY_CONTEXT)
-      printf("%s", selfie_name);
-    else
-      printf("%s", get_name(get_parent(context)));
-    if (get_ic_all(context) > 0)
-      printf(", one every %lu executed instructions",
-        ratio_format_integral_2(get_ic_all(context),
-          get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context)));
-    println();
-    printf("%s:          %lu syscalls, %lu page faults, %lu timer interrupts\n", selfie_name,
-      get_ec_syscall(context),
-      get_ec_page_fault(context),
-      get_ec_timer(context));
+    if (get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context) > 0) {
+      printf("%s:          %lu exceptions handled by ", selfie_name,
+        get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context));
+      if (get_parent(context) == MY_CONTEXT)
+        printf("%s", selfie_name);
+      else
+        printf("%s", get_name(get_parent(context)));
+      if (get_ic_all(context) > 0)
+        printf(", one every %lu executed instructions",
+          ratio_format_integral_2(get_ic_all(context),
+            get_ec_syscall(context) + get_ec_page_fault(context) + get_ec_timer(context)));
+      println();
+      printf("%s:          %lu syscalls, %lu page faults, %lu timer interrupts\n", selfie_name,
+        get_ec_syscall(context),
+        get_ec_page_fault(context),
+        get_ec_timer(context));
+    }
 
     context = get_next_context(context);
   }
