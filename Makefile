@@ -52,7 +52,7 @@ selfie-gc-nomain.h: selfie-gc.h
 # Consider these targets as targets, not files
 .PHONY: self self-self self-self-check 64-to-32-bit \
 		whitespace quine escape debug replay \
-		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu \
+		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu overhead \
 		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
 		sat brr bzz mon smt beat btor2 all
@@ -132,6 +132,10 @@ os-emu: selfie selfie.m
 # Run selfie on os on hypervisor on emulator
 os-vmm-emu: selfie selfie.m
 	./selfie -l selfie.m -m 3 -l selfie.m -y 2 -l selfie.m -y 1
+
+# Determine overhead of timer interrupts and context switching
+overhead: selfie selfie.m
+	./selfie -l selfie.m -m 2 -l selfie.m -c examples/overhead.c -y 1
 
 # Self-compile on emulator
 self-emu: selfie selfie.m selfie.s
