@@ -6245,12 +6245,133 @@ In order to get closer to what an operating system does in terms of performance,
 make os-emu
 ```
 
-Now, it takes *HW* around 16 million instructions to execute selfie as an *app* running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 13 is great but it still leaves us with a factor of around 200 slower than running selfie bare-metal on *HW*.
+The relevant output is:
+
+```
+...
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 2MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+...
+> selfie.m: ********************************************************************************
+> selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
+> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+
+> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+> selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
+> selfie.m: --------------------------------------------------------------------------------
+> selfie.m: summary: 0.19MB mapped memory [19.92% of 1MB physical memory]
+> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> selfie.m: context: >> selfie.m
+> selfie.m:          15 exceptions handled by > selfie.m
+> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
+> selfie.m: ################################################################################
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 16094187 executed instructions in total [15.10% nops]
+./selfie:          0.98MB mapped memory [49.21% of 2MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >> selfie.m
+./selfie:          82031 executed instructions [0.50% share, factor 196.19]
+./selfie:          0.28KB peak stack size
+./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
+./selfie:          15 exceptions handled by > selfie.m, one every 5468 executed instructions
+./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          16012156 executed instructions [99.49% share, factor 1.00]
+./selfie:          15 exceptions handled by 1067477 instructions each [19519.64% overhead, factor 196.19]
+./selfie:          0.57KB peak stack size
+./selfie:          2.88MB allocated in 32 mallocs (0.78MB or 27.10% actually accessed)
+./selfie:          399 exceptions handled by ./selfie, one every 40130 executed instructions
+./selfie:          65 syscalls, 200 page faults, 134 timer interrupts
+./selfie: --------------------------------------------------------------------------------
+...
+```
+
+Now, it takes *HW* around 16 million instructions to execute selfie as an *app* running on *OS* while, from the perspective of selfie, there is no difference whatsoever, well, other than speed of execution. Even its boot level is the same as before. An improvement by a factor of around 12 is great but it still leaves us with an overhead of almost 20000% (!), that is, a factor of around 200 slowdown compared to running selfie bare-metal on *HW*.
 
 If we insert another layer of virtualization in between *HW* and *OS* using a `hypster` instance, previously called *VMM* for *virtual machine monitor*, the situation gets worse again. To see that, try the following command:
 
 ```bash
 make os-vmm-emu
+```
+
+The relevant output is:
+
+```
+...
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.m with 3MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+...
+> selfie.m: ********************************************************************************
+> selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 2MB physical memory
+> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+...
+>> selfie.m: ********************************************************************************
+>> selfie.m: 64-bit hypster executing 64-bit RISC-U binary selfie.m with 1MB physical memory
+>> selfie.m: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> selfie.m { -c { source } | -o binary | ( -s | -S ) assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
+
+>> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+>> selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
+>> selfie.m: --------------------------------------------------------------------------------
+>> selfie.m: summary: 0.19MB mapped memory [19.92% of 1MB physical memory]
+>> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>> selfie.m: context: >>> selfie.m
+>> selfie.m:          15 exceptions handled by >> selfie.m
+>> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
+>> selfie.m: ################################################################################
+
+> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+> selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
+> selfie.m: --------------------------------------------------------------------------------
+> selfie.m: summary: 0.98MB mapped memory [49.02% of 2MB physical memory]
+> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> selfie.m: context: >> selfie.m
+> selfie.m:          400 exceptions handled by > selfie.m
+> selfie.m:          65 syscalls, 200 page faults, 135 timer interrupts
+> selfie.m: ################################################################################
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 54516352 executed instructions in total [15.79% nops]
+./selfie:          1.94MB mapped memory [64.84% of 3MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >>> selfie.m
+./selfie:          82625 executed instructions [0.15% share, factor 659.80]
+./selfie:          0.28KB peak stack size
+./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
+./selfie:          15 exceptions handled by >> selfie.m, one every 5508 executed instructions
+./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >> selfie.m
+./selfie:          16024913 executed instructions [29.39% share, factor 3.40]
+./selfie:          15 exceptions handled by 1068327 instructions each [19394.75% overhead, factor 194.94]
+./selfie:          0.57KB peak stack size
+./selfie:          2.88MB allocated in 32 mallocs (0.78MB or 27.10% actually accessed)
+./selfie:          400 exceptions handled by > selfie.m, one every 40062 executed instructions
+./selfie:          65 syscalls, 200 page faults, 135 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          38408814 executed instructions [70.45% share, factor 1.41]
+./selfie:          400 exceptions handled by 96022 instructions each [239.68% overhead, factor 3.39]
+./selfie:          0.73KB peak stack size
+./selfie:          3.04MB allocated in 34 mallocs (1.73MB or 56.72% actually accessed)
+./selfie:          888 exceptions handled by ./selfie, one every 43253 executed instructions
+./selfie:          94 syscalls, 443 page faults, 351 timer interrupts
+./selfie: --------------------------------------------------------------------------------
+...
 ```
 
 In this case, it takes *HW* around 54 million instructions to execute selfie as an *app* running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 660 slower than running selfie bare-metal on *HW*.
@@ -6273,7 +6394,7 @@ In this case, it takes *HW* around 1.9 billion instructions! The overhead of *OS
 make self-os-vmm-emu
 ```
 
-Now, it takes *HW* around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.9 but still much less than before. The second reason why we are still seeing overhead that is, or in fact seems to be, not negligible is surprising. In short, we are already where we would like to be but just underestimate the cost of executing code bare-metal and thus overestimate the overhead of virtualizing code execution. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
+Now, it takes *HW* around 2.7 billion instructions. The overhead by a factor of around 2.4 is worse than 1.7 but still much less than before. The second reason why we are still seeing overhead that is or in fact seems to be not negligible is surprising. In short, we are already where we would like to be but just underestimate the cost of executing code bare-metal and thus overestimate the overhead of virtualizing code execution. We need to take a closer look to understand that. It is an interesting lesson in how to measure performance and interpret the results properly.
 
 > Performance and Overhead
 
@@ -6283,7 +6404,47 @@ The reason is simple. Executing an `ecall` instruction essentially corresponds t
 
 Let us go back to our last three examples and analyze the situation with that information in mind. Compiling selfie on *HW* takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when compiling selfie on *OS* and in turn *OS* on *HW*. Then, the output of selfie shows that it took around 0.8 billion instructions to execute *OS*, which is exactly the overhead over just compiling selfie on *HW*. Similarly, compiling selfie on *OS* with *VMM* running in between *OS* and *HW* shows that it takes another 0.8 billion instructions to execute *VMM*.
 
-While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching and memory management. However, that code can be implemented efficiently, also in selfie, and is therefore worth doing. While measuring its overhead is tricky, we can at least approximate it by
+While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching and memory management. However, that code can be implemented efficiently, also in selfie, and is therefore worth doing.
+
+> Exception
+
+While measuring its overhead is tricky, we can at least take another look at the output of selfie to see what is going on. In particular, look for the data on *exceptions* when running:
+
+```bash
+make self-os-emu
+```
+
+The relevant output is:
+
+```
+...
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 1952472112 executed instructions in total [17.20% nops]
+./selfie:          3.37MB mapped memory [84.47% of 4MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >> selfie.m
+./selfie:          1132270240 executed instructions [57.99% share, factor 1.72]
+./selfie:          2.35KB peak stack size
+./selfie:          3.28MB allocated in 24691 mallocs (2.21MB or 67.34% actually accessed)
+./selfie:          472825 exceptions handled by > selfie.m, one every 2394 executed instructions
+./selfie:          472250 syscalls, 567 page faults, 8 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          820201872 executed instructions [42.00% share, factor 2.38]
+./selfie:          472825 exceptions handled by 1734 instructions each [72.44% overhead, factor 1.72]
+./selfie:          0.80KB peak stack size
+./selfie:          5.04MB allocated in 36 mallocs (3.16MB or 62.72% actually accessed)
+./selfie:          448766 exceptions handled by ./selfie, one every 1827 executed instructions
+./selfie:          447622 syscalls, 811 page faults, 333 timer interrupts
+./selfie: --------------------------------------------------------------------------------
+...
+```
+
+Just self-compiling selfie without the overhead for *OS* takes *HW* executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 472k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *syscalls* which are in fact invoked by executing `ecall` instructions. In short, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. An exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, *OS* handles all exceptions thrown while self-compiling selfie (see context `> selfie.m`), which takes executing around 0.8 billion instructions and thus around 1.7k instructions per exception.
+
+72% overhead
 
 > Isolation
 
