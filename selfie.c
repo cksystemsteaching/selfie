@@ -10749,7 +10749,7 @@ void print_instruction_versus_exception_profile(uint64_t* parent_context) {
       ratio_format_integral_2(get_ic_all(parent_context), ic_count) + 1,
       ratio_format_fractional_2(get_ic_all(parent_context), ic_count));
     printf("%s:          %lu instructions per exception, handling %lu exceptions in total", selfie_name,
-      ec_count, ratio_format_integral_2(get_ic_all(parent_context), ec_count));
+      ratio_format_integral_2(get_ic_all(parent_context), ec_count), ec_count);
   }
   println();
 }
