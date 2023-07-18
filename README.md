@@ -6233,9 +6233,9 @@ The scenario created by this command is to emulate running selfie without any op
 make emu-emu
 ```
 
-Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 82k instructions to do that. However, now it takes *HW* around 200 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
+Again, as mentioned before in the machine chapter, the command invokes selfie to load its own RISC-U machine code into two `mipster` instances *HW*, as before, and *OS*, for operating system, and then have *HW* execute *OS* and in turn have *OS* execute selfie like an *app* without any further arguments. Now, selfie runs on boot level 2 and, again, just prints its synopsis and quits. Similar to *HW* before, it takes selfie on *OS* around 82k instructions to do that. However, now it takes *HW* around 200 million (!) instructions to execute selfie running on *OS*. This is by a factor of around 2.5k slower!
 
-The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, or running on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
+The reason is that *OS* runs as `mipster` instance which interprets code and is thus slow. Yet logically, `mipster` already does in principle what an operating system does. It *isolates* the code *OS* executes from everything else that might be executing on *HW*. Selfie cannot tell the difference between running bare-metal on *HW*, as before, or running as an *app* on *OS*, except for the increased boot level, and that is only because we chose to tell selfie about its boot level.
 
 > Virtualization
 
@@ -6376,7 +6376,7 @@ The relevant output is:
 
 In this case, it takes *HW* around 54 million instructions to execute selfie as an *app* running on *OS* and in turn *OS* running on *VMM* while, from the perspective of selfie, there is again no difference, except for speed of execution and the increased boot level. Now, the system is by a factor of around 660 slower than running selfie bare-metal on *HW*.
 
-However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. There are two reasons why we do not see negligible overhead. Firstly, selfie just printing its synopsis is not enough work to amortize the overhead of context switching between app, *OS*, and *VMM*. To see that, try the following command:
+However, production operating systems and virtual machine monitors typically slow down code execution by a factor close to 1 which is the reason why they are so useful. In short, their benefits come with almost no performance penalty. Is `hypster` just a poor design? Well, no. There are two reasons why we do not see negligible overhead. Firstly, selfie just printing its synopsis is not enough work to amortize the overhead of context switching between *app*, *OS*, and *VMM*. To see that, try the following command:
 
 ```bash
 make self-emu
@@ -6402,13 +6402,13 @@ The key observation is that the number of executed instructions does not necessa
 
 The reason is simple. Executing an `ecall` instruction essentially corresponds to executing an entire procedure that in turn may be implemented by any number of instructions. Those instructions are typically part of operating system or virtual machine monitor code that implements system functionality such as reading from and writing to files, for example. Selfie exposes the cost of executing those instructions but only on boot levels higher than 0. On boot level 0, all system functionality is implemented by the system on which selfie runs. Measuring its cost requires stepping out of the selfie system, which is possible but still something we avoid, again for keeping things simple.
 
-Let us go back to our last three examples and analyze the situation with that information in mind. Compiling selfie on *HW* takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when compiling selfie on *OS* and in turn *OS* on *HW*. Then, the output of selfie shows that it took around 0.8 billion instructions to execute *OS*, which is exactly the overhead over just compiling selfie on *HW*. Similarly, compiling selfie on *OS* with *VMM* running in between *OS* and *HW* shows that it takes another 0.8 billion instructions to execute *VMM*.
+Let us go back to our last three examples and analyze the situation with that information in mind. Self-compiling selfie on *HW* takes around 1.1 billion instructions including `ecall` instructions, but without counting the number of instructions that are executed as consequence of executing those `ecall` instructions. That number is exposed when self-compiling selfie as an *app* on *OS* and in turn *OS* on *HW*. Then, the output of selfie shows that it took around 0.8 billion instructions to execute *OS*, which is exactly the overhead over just self-compiling selfie on *HW*. Similarly, self-compiling selfie as an *app* on *OS* with *VMM* running in between *OS* and *HW* shows that it takes another 0.8 billion instructions to execute *VMM*.
 
-While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching and memory management. However, that code can be implemented efficiently, also in selfie, and is therefore worth doing.
+While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files as well as memory management, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for self-compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching. However, that code can be implemented efficiently, to some extent even in selfie, and is therefore worth doing.
 
 > Exception
 
-While measuring its overhead is tricky, we can at least take another look at the output of selfie to see what is going on. In particular, look for the data on *exceptions* when running:
+While measuring the precise overhead of context switching is tricky, we can at least take another look at the output of selfie to see what is going on. In particular, look for the data on *exceptions* when running:
 
 ```bash
 make self-os-emu
@@ -6442,9 +6442,56 @@ The relevant output is:
 ...
 ```
 
-Just self-compiling selfie without the overhead for *OS* takes *HW* executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 472k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *syscalls* which are in fact invoked by executing `ecall` instructions. In short, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. An exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, *OS* handles all exceptions thrown while self-compiling selfie (see context `> selfie.m`), which takes executing around 0.8 billion instructions and thus around 1.7k instructions per exception.
+Just self-compiling selfie without the overhead for *OS* takes *HW* executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 472k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *syscalls* which are in fact invoked by executing `ecall` instructions. In short, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. An exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, *OS* handles all exceptions thrown while self-compiling selfie as an *app* on *OS* (see context `> selfie.m`), which takes executing around 0.8 billion instructions for *OS* and thus around 1.7k instructions per exception. This results in an overhead of around 72% over just self-compiling selfie on *HW*, that is, a slowdown by a factor of around 1.7 in this case.
 
-72% overhead
+However, most of what *OS* does is something that needs to be done anyway such as reading input, writing output, and managing memory. Only a fraction of the 1.7k instructions executed per exception is done for context switching. How much exactly is difficult to measure. But what we can say is that self-compiling selfie as an *app* throws on average one exception every 2.4k instructions executed. If we would like to stay below, say, 10% overhead for context switching, we have around 240 instructions to do that. Not bad. Modern operating systems and virtual machine monitors can do that. How about selfie? Let us do an experiment. Consider the following program called `overhead.c` located in the `examples` folder of the selfie repository:
+
+```c
+uint64_t main() {
+  uint64_t i;
+
+  i = 0;
+
+  while (i < 1000000000)
+    i = i + 1;
+}
+```
+
+The program loops 1 billion times and then exits. If we execute that program on *OS* and in turn *OS* on *HW*, the program throws around 100k exceptions that are mostly caused by timer interrupts which incur very little work in *OS*. Do so, by running:
+
+```bash
+make overhead
+```
+
+It takes a while for the experiment to finish, so just wait for it. The relevant output is:
+
+```
+...
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 10022679575 executed instructions in total [19.99% nops]
+./selfie:          0.83MB mapped memory [41.60% of 2MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: >> examples/overhead.c
+./selfie:          10000000045 executed instructions [99.78% share, factor 1.00]
+./selfie:          0.08KB peak stack size
+./selfie:          0.00MB allocated in 0 mallocs (0.00MB or 0.00% actually accessed)
+./selfie:          100004 exceptions handled by > selfie.m, one every 99996 executed instructions
+./selfie:          3 syscalls, 0 page faults, 100001 timer interrupts
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+./selfie: context: > selfie.m
+./selfie:          22679530 executed instructions [0.22% share, factor 441.92]
+./selfie:          100004 exceptions handled by 226 instructions each [0.22% overhead, factor 1.00]
+./selfie:          0.76KB peak stack size
+./selfie:          3.22MB allocated in 70 mallocs (0.62MB or 19.49% actually accessed)
+./selfie:          509 exceptions handled by ./selfie, one every 44557 executed instructions
+./selfie:          347 syscalls, 161 page faults, 1 timer interrupts
+./selfie: --------------------------------------------------------------------------------
+...
+```
+
+Handling around 100k exceptions took *OS* around 226 instructions each, mostly for exceptions caused by timer interrupts, so there you go. Context switching is part of handling any exception. Selfie can therefore perform context switching in no more than 226 instructions.
 
 > Isolation
 
