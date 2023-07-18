@@ -10721,10 +10721,12 @@ void print_instruction_versus_exception_profile(uint64_t* parent_context) {
   uint64_t ec_count;
   uint64_t* context;
 
-  printf("%s:          %lu(%lu.%.2lu%%) executed instructions", selfie_name,
+  printf("%s:          %lu executed instructions [%lu.%.2lu%% share, factor %lu.%.2lu]\n", selfie_name,
     get_ic_all(parent_context),
     percentage_format_integral_2(get_total_number_of_instructions(), get_ic_all(parent_context)),
-    percentage_format_fractional_2(get_total_number_of_instructions(), get_ic_all(parent_context)));
+    percentage_format_fractional_2(get_total_number_of_instructions(), get_ic_all(parent_context)),
+    ratio_format_integral_2(get_total_number_of_instructions(), get_ic_all(parent_context)),
+    ratio_format_fractional_2(get_total_number_of_instructions(), get_ic_all(parent_context)));
 
   ic_count = 0;
   ec_count = 0;
@@ -10741,17 +10743,15 @@ void print_instruction_versus_exception_profile(uint64_t* parent_context) {
     context = get_next_context(context);
   }
 
-  if (ec_count > 0) {
+  if (ec_count > 0)
     // assert: get_ic_all(parent_context) > 0
-    printf(" [%lu.%.2lu%% overhead, factor %lu.%.2lu]\n",
+    printf("%s:          %lu exceptions handled by %lu instructions each [%lu.%.2lu%% overhead, factor %lu.%.2lu]\n", selfie_name,
+      ec_count,
+      ratio_format_integral_2(get_ic_all(parent_context), ec_count),
       percentage_format_integral_2(ic_count, get_ic_all(parent_context)),
       percentage_format_fractional_2(ic_count, get_ic_all(parent_context)),
       ratio_format_integral_2(get_ic_all(parent_context), ic_count) + 1,
       ratio_format_fractional_2(get_ic_all(parent_context), ic_count));
-    printf("%s:          %lu instructions per exception, handling %lu exceptions in total", selfie_name,
-      ratio_format_integral_2(get_ic_all(parent_context), ec_count), ec_count);
-  }
-  println();
 }
 
 void print_profile() {
