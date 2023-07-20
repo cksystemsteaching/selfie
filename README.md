@@ -6406,7 +6406,7 @@ Let us go back to our last three examples and analyze the situation with that in
 
 While it is fair to say that most of the 0.8 billion instructions for executing *OS*, as well as *VMM*, implement system functionality such as reading from and writing to files as well as memory management, and are thus *not* overhead, some of those instructions could be avoided if we were to combine the code for self-compiling selfie with the *OS* code, for example, and then run that combined code directly on *HW*. This way we would avoid the code for isolating the execution of selfie as an *app* on *OS* from the execution of *OS*, in particular the code for context switching. However, that code can be implemented efficiently, to some extent even in selfie, and is therefore worth doing.
 
-> Exception
+> Exceptions
 
 While measuring the precise overhead of context switching is tricky, we can at least take another look at the output of selfie to see what is going on. In particular, look for the data on *exceptions* when running:
 
@@ -6463,7 +6463,7 @@ The program loops 1 billion times and then exits. If we execute that program on 
 make overhead
 ```
 
-It takes a while for the experiment to finish, so just wait for it. The relevant output is:
+It takes a few minutes for the experiment to finish, so just wait for it. The relevant output is:
 
 ```
 ...
@@ -6491,11 +6491,19 @@ It takes a while for the experiment to finish, so just wait for it. The relevant
 ...
 ```
 
-Handling around 100k exceptions took *OS* around 226 instructions each, mostly for exceptions caused by timer interrupts, so there you go. Context switching is part of handling any exception. Selfie can therefore perform context switching in no more than 226 instructions.
+Handling around 100k exceptions took *OS* around 226 instructions each, mostly for exceptions caused by timer interrupts, so there you go. Context switching is part of handling any exception. Selfie can apparently perform context switching, at least on average, in no more than 226 instructions.
 
-> Isolation
+> Again, from composability to compositionality
+
+Constructing a complex system from components requires the components to be *composable*. We have already seen that at the level of programming language elements such as expressions and statements. Moreover, reasoning about system correctness at scale requires deriving system correctness from component correctness. However, this only works if the composition of individual components is *compositional*, at least to some degree. In other words, at least the relevant behavior of individual components is not supposed to change when composed into a system.
+
+> Process versus thread
+
+Operating systems provide compositionality of program execution at various degrees of isolation, from software *processes* down to program *threads* within a process. Intuitively, a process provides an execution environment for a program that isolates program execution from any other process running on the same system yet while still sharing some system resources such as the file system among all processes. A thread is an execution environment within a process that isolates program execution from any other thread running within the process yet while sharing all process resources except the CPU and the stack segment in memory.
 
 > Virtual Machine
+
+Virtual machine monitors increase isolation from process to machine level through the notion of a *virtual machine* that behaves like a *physical machine*. In other words, virtual machine monitors provide compositionality of program execution at the level of physical machines. Intuitively, a virtual machine provides an execution environment for a program that isolates program execution from any other virtual machine running on the same system without sharing any system resources, at least virtually. In principle, a program cannot determine whether it is running on a virtual machine or a physical machine.
 
 > Virtual Memory
 
