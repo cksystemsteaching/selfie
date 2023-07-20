@@ -6503,9 +6503,11 @@ Operating systems provide compositionality of program execution at various degre
 
 > Virtual Machine
 
-Virtual machine monitors increase isolation from process to machine level through the notion of a *virtual machine* that behaves like a *physical machine*. In other words, virtual machine monitors provide compositionality of program execution at the level of physical machines. Intuitively, a virtual machine provides an execution environment for a program that isolates program execution from any other virtual machine running on the same system without sharing any system resources, at least virtually. In principle, a program cannot determine whether it is running on a virtual machine or a physical machine.
+Virtual machine monitors increase isolation from process to machine level through the notion of a *virtual machine* that behaves like a *physical machine*. In other words, virtual machine monitors provide compositionality of program execution at the level of physical machines. Intuitively, a virtual machine provides an execution environment for a program that isolates program execution from any other virtual machine running on the same system without sharing any system resources, at least virtually. In principle, a program cannot determine whether it is running on a virtual machine or a physical machine. This level of isolation can be implemented efficiently and comes with many benefits which we discuss further below. Selfie implements virtual machines that are indistinguishable from the RISC-U machines that selfie emulates. Processes and threads are a refinement of virtual machines that we also explain further below.
 
 > Virtual Memory
+
+A key concept in virtual machines is *virtual memory*. Imagine that a virtual machine provides just as much memory or even more, though just virtually, as the physical machine on which it runs. Yet multiple virtual machines can run simultaneously on a single physical machine. How does that work? The key idea is to distinguish the address space of memory from the storage that memory provides, which we explained before. Address spaces do essentially not cost anything in terms of physical resources, or very little, only storage does. Virtual memory is just an address space without storage as long as no access to virtual memory happens. Only when virtual memory is accessed, storage needs to be allocated, but even then only for the addresses that are accessed. How this works in detail is explained below.
 
 > Concurrency
 
