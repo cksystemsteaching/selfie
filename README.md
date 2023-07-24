@@ -6499,7 +6499,7 @@ Constructing a complex system from components requires the components to be *com
 
 > Process versus thread
 
-Operating systems provide compositionality of program execution at various degrees of isolation, from software *processes* down to program *threads* within a process. Intuitively, a process provides an execution environment for a program that isolates program execution from any other process running on the same system yet while still sharing some system resources such as the file system among all processes. A thread is an execution environment within a process that isolates program execution from any other thread running within the process yet while sharing all process resources except the CPU and the stack segment in memory.
+Operating systems provide compositionality of program execution at various degrees of isolation, from software *processes* down to *threads* within a process. Intuitively, a process provides an execution environment for a program that isolates program execution from any other process running on the same system yet while still sharing some system resources such as the file system among all processes. A thread is an execution environment within a process that isolates program execution from any other thread running within the process yet while sharing all process resources except the CPU and the stack segment in memory. In general, less isolation, as with threads rather than processes, makes communication among threads easier but therefore also provides less compositionality because of the potential for undesired interaction. Thus, if little communication is needed, processes might be a more robust choice than threads.
 
 > Virtual Machine
 
