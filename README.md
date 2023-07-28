@@ -6517,7 +6517,9 @@ Virtual memory enables co-existence of multiple virtual machines on the same phy
 
 Suppose we are given two virtual machines `VM1` and `VM2` and a physical machine `PM` with a single CPU that only has one core. Furthermore, suppose that both `VM1` and `VM2` host throughput-oriented code that works on CPU-bound but otherwise independent workloads. In other words, the code is supposed to do as much work per unit of time as possible, involving the CPU and not much else, in particular no communication. In this case, `VM1` and `VM2` are fully concurrent, that is, the order in which `VM1` and `VM2` run on the CPU of `PM` is irrelevant. Just switching between `VM1` and `VM2` should not happen too often because every switch costs overhead and therefore reduces throughput. But what if `PM` had a CPU with two cores, or two CPUs with a single core each, all sharing main memory? In short, what if `PM` offered shared-memory CPU parallelism? In this case, `VM1` and `VM2` could run in *parallel*, each on one of the CPUs or cores, essentially doubling their throughput, modulo the remaining overhead for virtualization, in particular for maintaining spatial isolation in shared memory. Awesome! Alright, but how can we utilize concurrency even on the original single-core uniprocessor `PM`? Well, as soon as latency rather than just throughput is important, concurrency does make a difference. Suppose that at least, say, `VM1` hosts latency-oriented code. In this case, `VM1` can always run on `PM` when needed, suspending `VM2` until `VM1` is done. In short, concurrency is beneficial, even in the absence of parallelism, as long as latency is an issue. However, balancing *temporal* needs, or more generally establishing *temporal* isolation of many virtual machines, and similarly of processes and threads, can be quite involved yet often with beautiful analogies to the real world. We only focus on the most basic approaches below.
 
-> Security and mobility
+> Standardization, safety, security, mobility
+
+Virtual machines, processes, and threads all provide execution environments for code at various degrees of isolation. The impact of spatial and temporal isolation in computing is immense and has lead to tremendous innovation. Goal number one is *standardization*, that is, providing a common platform that we all agree on and can then target in code development. No app stores without standardization! Goal number two is *safety*, and this is something we all take for granted by now. Here, safety is that, no matter what code we run on a machine, doing so cannot take down the machine. As students, we used to have a competition about the longest stretch of time working with our machines without rebooting. Think of computers without case and cover, just boards, power supplies, harddrives, and cables, sitting on the floor of a student apartment, running for more than a year without ever being shut down or rebooted. It felt awesome! And it took years, if not decades, for operating systems and virtual machine monitors to become so stable that no matter what sequence of bits you run as code on them, they will not crash, or at least are very unlikely to crash. I lost so many hours of work just because of operating systems crashing on me in the middle of my work. Those times are over. Goal number three, or rather necessity by now, is *security*. There is a lot of room between safety, as in not crashing, and security, as in not doing bad stuff...
 
 > Utility
 
@@ -6539,6 +6541,8 @@ lock
 ### Runtime Systems
 
 garbage collectors
+
+language virtual machines
 
 threads
 threadsafe-malloc
