@@ -6207,12 +6207,6 @@ This book is seminal work on compilers known as the dragon book. As computer sci
 
 This is also seminal work on computer programming that belongs in any computer science library. The book goes far beyond what we introduced here. However, you should be able to get right into it and enjoy it a lot.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 ## Computing
 
 We have seen the basic principles of encoding *information* in bits, running actual code on a simple yet representative *machine*, and *programming* that machine in a simple yet realistic programming language using tools written in the very same language. This is a remarkable achievement that could easily justify to leave it at that, if it was not for the fact that we are incredibly close to seeing and understanding the probably single most important contribution of computer science to humanity so far. Some might say it is the Internet but there is something more fundamental than that. The nature of information is not just about how to communicate. Information and in particular its meaning only comes to life when it is worked on, known to humans as *reasoning* and to machines as *computing*. In the early days of computer science, computing was something rare and expensive available to only a selected few, and it was highly specialized and bound by severe physical constraints. Today, computing is a commodity virtually independent of any particular hardware and available to anyone with a network connection. All modern technological advancements seem to be either a consequence of that or at least depend on that. In short, everything new involves computing and yet we have only seen a glimpse of the impact of that development. The idea that enables *computing as utility* for everything and everyone is (networked) *virtualization*. The goal of this chapter is to understand what virtualization is, how it works, and why it is so important. However, be patient, it really takes all we have learned so far and more to get there.
@@ -6523,12 +6517,29 @@ Virtual machines, processes, and threads all provide execution environments for 
 
 > Computing as utility
 
-Networked virtualization is the key enabling technology for turning computing into a utility through an *economy of scale* and a *network effect*, that is, a cost advantage when operating many physical machines and a value advantage when attracting increasingly many users. Imagine you own a computer and use it just to run your own applications. However, there might be periods of time when you are not using the machine yet turning it off and later on again to save energy and thus money is not only inconvenient but may take too much time, keyword latency, and on top of it takes energy too. Also, just owning or renting the machine costs money as well. In short, you want to keep the machine busy at all times and virtualization enables you to do just that efficiently. Many virtual machines time-sharing a single physical machine increase the chances that the physical machine has always something to do. More physical machines and even more virtual machines, located and migrating around the globe, decrease cost and increase value. Virtually all modern software platforms and services including the latest AI technology are based on networked virtualization. Separating and isolating computation from hardware is the cornerstone of modern computing. It took several decades for the technology to evolve and become sufficiently robust. The other important technological breakthrough is the Internet, of course, which we have so far ignored. Networking is nevertheless orthogonal to our goals here, see the recommended readings for follow-up material.
+Networked virtualization is the key enabling technology for turning computing into a utility through an *economy of scale* and a *network effect*, that is, a cost advantage when operating many physical machines and a value advantage when attracting increasingly many users. Imagine you own a computer and use it just to run your own applications. However, there might be periods of time when you are not using the machine yet turning it off and later on again to save energy and thus money is not only inconvenient but may take too much time, keyword latency, and on top of it takes energy too. Also, just owning or renting the machine costs money as well. In short, you want to keep the machine busy at all times and virtualization enables you to do just that efficiently. Many virtual machines time-sharing a single physical machine increase the chances that the physical machine has always something to do. More physical machines and even more virtual machines, located and migrating around the globe, decrease cost and increase value. Virtually all modern software platforms and services including the latest AI technology are based on networked virtualization. Separating and isolating computation from hardware is the cornerstone of modern computing. It took several decades for the technology to evolve and become sufficiently robust. The other important technological breakthrough is the Internet, of course. Networking is an important subject that we nevertheless ignore to stay focused. There is, however, excellent follow-up material, see the recommended readings for more on that.
 
-> Compiler versus interpreter, high level versus low level, source code versus machine code
+> Assembler
 
-assembler-parser
-self-assembler
+Next, we go deep into virtual machines to figure out how they work. How do we prepare for that? We really need to know and understand, at least logically, the physical machine that we are about to virtualize. Turns out that taking a loop back to machine model via a bit of compiler design yet ignoring high-level source code is a good reminder of how the machine works. All this is done in two exercises on designing and implementing an *assembler* from RISC-U assembly to RISC-U machine code. An assembler takes as input assembly, which is a human-readable textual representation of machine code, and then *assembles* that into actual machine code in binary form as its output. The formal language or syntax of RISC-U assembly is regular which means that not just the scanner but also the parser of an assembler for RISC-U can be implemented by finite state machines. Hence there is no need to implement a pushdown automaton! The following command grades your implementation in selfie:
+
+```bash
+./grader/self.py assembler-parser
+```
+
+Extend selfie with option `-a` as console argument that is followed by the filename of a RISC-U assembly file and instructs selfie to generate RISC-U machine code for that assembly file. In this exercise, just scanning and parsing RISC-U assembly is enough yet take your time and design a regular EBNF grammar for RISC-U assembly before implementing anything! Once you are done with the first exercise move on to the second exercise by implementing the actual generation of machine code. Hint: reuse the code for encoding RISC-U instructions in selfie. When done properly, selfie using the `-a` option on its own assembly should be able to *self-assemble*! The following command checks exactly that and then grades your solution:
+
+```bash
+./grader/self.py self-assembler
+```
+
+Look at the output of the grader to see what exactly your solution is tested on. Designing and implementing your own *self-assembling assembler* provides another round of training in dealing with finite state machines as well as machine code. Both concepts are critically important next.
+
+-------------------------------------------------------------------------------
+
+work in progress
+
+-------------------------------------------------------------------------------
 
 ### Virtual Machine
 
