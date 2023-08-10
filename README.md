@@ -1,4 +1,4 @@
-# Elementary Computer Science: From Bits and Bytes to the Big Picture
+# Elementary Computer Science: From Bits and Bytes to the Universality of Computing
 
 ### by Christoph Kirsch
 
