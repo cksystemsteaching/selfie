@@ -6566,6 +6566,8 @@ garbage collectors
 
 language virtual machines
 
+symbolic execution
+
 threads
 threadsafe-malloc
 treiber-stack
@@ -6576,6 +6578,26 @@ treiber-stack
 
 ### Universality of Computing
 
+This is probably the most exciting part of the book for me to write up which is a bit strange since it is not my area of research. In fact, it has always been the most elusive to me especially in my early career as a computer science student. The way I was taught computer science was upside down compared to this book. The curriculum essentially started with this part, and a lot of mathematics, and almost no motivation. Some professors considered motivation not just as unnecessary but as a sign of being not academic and thus evil. I only understood that point of view much later and can now appreciate it. The idea is to open up yourself to pure reasoning out of immense curiosity, like a child but equipped with deep technical knowledge. The only thing that matters is to come up with interesting questions and then explore ways to answer them. Unfortunately, no one really told us. We had to find out ourselves which was quite painful but in the end worth it. Science is all about asking the right question, and not just finding answers, but no one knows what those questions really are until much later. Science, and art, requires people who enjoy being lost but free rather than always knowing what to do. My role as a professor is to get you to the point of being comfortable when lost using your technical knowledge as the only source of certainty and thus real confidence. Let me use the universality of computing as an example.
+
+The question that we ask here is: what can in principle be computed and what not? There is also a related question: how long does it take in principle to compute something that can be computed and how much memory does it take to do so? However, we only focus on the first question which we split into two separate questions, namely what is computable, and what is not. The reason why this is interesting is because there is no clear line between computable and not computable. There is a gray area where no one knows what is going on and which has therefore received and still does receive a lot of attention in computer science. As PhD student I worked on a problem in that grey area and finally managed with my advisor and another colleague to show that there is a solution to the problem that can be computed. While working on the problem we never knew if it can be done or not, and there was no one we could have asked, anywhere. That work is still among the intellectually most challenging things I have ever done. Alright, let us first focus on what is computable, as this is much easier to explain and understand than the opposite, yet with an interesting twist.
+
+> Turing Machine
+
+before von Neumann
+
+> Universal Turing Machine
+
+virtual machine
+
+> The Halting Problem
+
+you can program what you want but you cannot compute what you want
+
+> Cantor
+
+even older than Turing
+
 ### Life 4
 
 ### Recommended Readings 6
@@ -6583,3 +6605,12 @@ treiber-stack
 Internet!
 
 ## Glossary
+
+
+
+
+
+
+
+
+
