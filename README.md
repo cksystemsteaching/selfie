@@ -442,7 +442,7 @@ int count(int n) {
 
 So, what is the difference between the two versions of `count`? Well, in terms of functionality there is no difference as long as we ignore negative values of `n`. However, there is a significant difference in *algorithmic complexity* and thus *performance*, that is, the time it takes `count` to finish.
 
-> Algorithmic complexity: how fast runs a program in principle for all inputs?
+> Algorithmic complexity: how fast runs a program on increasingly larger input?
 >
 > Performance: how fast runs a program on a given machine for a given input?
 
