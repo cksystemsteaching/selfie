@@ -6594,9 +6594,11 @@ Imagine, everything you see that is done by computers today, including generativ
 
 There is an interesting twist with machine models such as Turing machines. True, there are no arithmetic operators and no indirect addressing of memory that in turn calls for support of at least subtraction to calculate addresses. However, the lack theirof only results in a performance penalty. The critically important ingredient is the principled infinity of memory to avoid a-priori bounds on memory when studying computability, and complexity. In fact, any formalism that does not support infinite memory can strictly speaking not be Turing-complete which includes virtually all machine languages, and many programming languages. How do we deal with that? Well, as computer scientists call it, we solve the problem by turning a bug into a feature. Again, strictly speaking, all digital computing devices are in fact just finite state machines, and not even pushdown automata whose stack is assumed to be unbounded in size. However, the state space is usually so large that we simply assume that it is infinite. So, if a given language is claimed to be Turing-complete, then this is usually done under the implicit assumption that there is infinite memory.
 
-Turing machines are nevertheless quite different from real computers.
+> Random-Access Machine
 
-RAM machines, multiplication, division, performance, anekdotes
+Turing machines are nevertheless quite different from real computers. That is not a problem when studying computability but for studying asymptotic complexity it can make a difference, especially when studying algorithms with low polynomial complexity because of the polynomial overhead of Turing machines compared to machines that feature arithmetic operators and memory with indirect addressing. Computer scientists have therefore developed Turing-complete machine models that are closer in nature to real machines such as the *Random-Access Machine* (RAM) model. A RAM consists of two components: a finite state machine that encodes a program and an infinite number of registers where each register can hold an infinite number of bits. There are machine instructions...
+
+multiplication, division, performance
 
 > Universal Turing Machine
 
