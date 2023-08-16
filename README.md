@@ -6624,7 +6624,17 @@ Before moving on to what is not computable, let us put emulation and virtualizat
 
 Let us now focus on what is not computable. First up, we say that whatever cannot be computed by a Turing machine is *not computable* or *undecidable*, in contrast to something that is computable or *decidable* meaning there is a Turing machine that computes that. Making that definition more precise involves defining the notion of a *computational problem*. See the recommended literature for more details. Also, there are models of computation in which problems can be solved that no Turing machine can solve. However, such models typically involve infinitely large computational state and are not known to be feasible in practice. The first time I was confronted with undecidability, as young student, I could not imagine what an example of an undecidable problem could be, let alone how to formalize that. Fortunately, there is a famous, easy-to-understand undecidable problem called the *Halting Problem*.
 
+Intuitively, the Halting problem is to determine if a given program $P$ terminates or *halts* on a given input $I$. We can of course just run $P$ on $I$ and then see what $P$ does. If $P$ halts on $I$, we are done. However, while $P$ has not yet halted on $I$, we do not know if $P$ will eventually halt on $I$. In fact, if $P$ does not halt on $I$, our method of running $P$ on $I$ will not solve the problem. Are there any other methods such as some form of program analysis, for example, that would work? Well, there are such methods but the issue is that there is no method that works for *all* programs and inputs, and that is the key to understanding the Halting problem. We are looking for a program $H$ that can determine for *any* given program $P$ and input $I$ if $P$ halts on $I$ or not. If we look carefully, we notice self-reference in that statement since $P$ could be $H$. However, excluding $H$, even as part of another program, does not make any difference. Self-reference is a key ingredient though but in a different, more fundamental way, as we see below. The fact that the Halting problem is undecidable, that is, not computable by a Turing machine, or any Turing-equivalent formalism, essentially involves showing that any program $F$ with two parameters and a return value, like $H$, that always terminates on any input, like $H$ is supposed to, returns values that are inconsistent with the values returned by $H$.
+
+...
+
+In order to explain the proof idea on a higher level of abstraction, we model programs and inputs as well as computation using natural numbers, sets of natural numbers, and, yes, even sets of sets of natural numbers.
+
+two key observations: subprograms and syntactic self-reference
+
 you can program what you want but you cannot compute what you want
+
+Turing degree
 
 > Cantor
 
@@ -6633,6 +6643,8 @@ even older than Turing
 ### Life 4
 
 ### Recommended Readings 6
+
+Sipser
 
 Internet!
 
