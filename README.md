@@ -6648,19 +6648,21 @@ The first set is an example of a *recursive set* where the term recursive means 
 
 > Recursively enumerable set, or semi-decidability
 
-The second set is already more difficult to understand than the first set, as it is an example of a *recursively enumerable set* that is not recursive!
+The second set is already more difficult to understand than the first set, as it is an example of a *recursively enumerable* or *semi-decidable set* that is not recursive! A set is recursively enumerable if membership in the set can be decided or better *semi-decided* by a Turing machine for all elements of the set, that is, there is a Turing machine that can compute if its input is an element of the set but may not terminate if its input is not an element of the set. Thus a recursive set is also recursively enumerable but not necessarily vice versa. However, if the complement of a recursively enumerable set is also recursively enumerable then the set is recursive. Semi-deciding if a Turing machine halts on a given input is easy by just running it and seeing if it halts but how would a Turing machine enumerate the second set, that is, all Turing machines that halt on a given input? That is also surprisingly easy once we drop any concerns for performance on the floor, which is hard to do for some but anyway a good exercise in developing advanced reasoning skills.
 
 ...
 
 > Not recursively enumerable set, or undecidability
 
-The third set is the most difficult to understand among the three sets since it is not even recursively enumerable, as a result of the undecidability of the Halting problem.
+The third set is the most difficult to understand among the three sets since it is not even recursively enumerable or undecidable, as a result of the undecidability of the Halting problem.
 
 ...
 
-you can program what you want but you cannot compute what you want
-
 > Cantor
+
+...amount of work performed by non-halting machines is larger than the number of machines...
+
+you can program what you want but you cannot compute what you want
 
 even older than Turing
 
