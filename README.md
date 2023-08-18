@@ -6626,21 +6626,45 @@ Let us now focus on what is not computable. First up, we say that whatever canno
 
 Intuitively, the Halting problem is to determine, with a *single* algorithm, if a given program $P$ terminates or *halts* on a given input $I$. We can of course just run $P$ on $I$ and then see what $P$ does. If $P$ halts on $I$, we are done. However, while $P$ has not yet halted on $I$, we do not know if $P$ will eventually halt on $I$. In fact, if $P$ does not halt on $I$, our method of running $P$ on $I$ will not solve the problem. Are there any other algorithmic methods such as some form of program analysis, for example, that could work? Well, there are methods to determine program termination but the issue is that there is no method that works for *all* programs and inputs, and that is the key to understanding the Halting problem. Ultimately, we are looking for a program $H$ that can determine for *any* given program $P$ and input $I$ if $P$ halts on $I$ or not. If we look carefully, we notice self-reference in that statement since $P$ could be $H$. However, excluding $H$, even as part of another program, does not make any difference. Self-reference is a key ingredient though but in a different, more fundamental way, as we see below.
 
+> Proof idea of the Halting problem
+
 The standard proof of the undecidability of the Halting problem shows that any program $P$ written in a Turing-complete language with two unbounded parameters and a Boolean return value, like $H$, that always terminates on any input, like $H$ is supposed to, always returns values that are inconsistent with the values returned by $H$, implying that no such $H$ exists. In particular, for any such $P$ with the above signature, there is always a value $S$ for which $H$ returns true, if $P$ returns false, and false, if $P$ returns true, with $S$ being used as input to both parameters of $H$ and $P$. Invoking $H$ on $S$ in this way is asking $H$ if $S$ halts on $S$ or not, thus interpreting $S$ as both a program and an input to a program at the same time. The dual use of $S$ as code and as data is the self-reference that is relevant here. Remember selfie executing selfie? Same thing. The mystery is of course how to construct $S$. However, that is surprisingly easy. Just write, for each $P$, a program $S$ with one parameter and a Boolean return value that returns false, if $P$ returns false, and does not terminate, if $P$ returns true, with the parameter of $S$ being used as input to both parameters of $P$. The construction of $S$ implies that $S$ halts on $S$, if $P$ returns false, as opposed to $H$ returning true, and does not halt on $S$, if $P$ returns true, again as opposed to $H$ returning false. Done!
+
+> Diagonalization
 
 What can we learn from that proof? There are essentially four easy-to-understand ingredients that are hidden assumptions, and one significantly deeper insight known as *diagonalization*. The return values of any $P$ in the proof can always be represented by a two-dimensional, possibly infinitely large table with a unique row and column for each input value of the two parameters of $P$. The return values on the *diagonal* through that table, where both input values of $P$ are the same, are obtained by $S$, say, with an invocation of $P$, which always terminates, and then either returned, if the value is false, or else never returned by not terminating, say, by looping forever. The diagonalization of $P$ by $S$ is constructed such that no row or column in the table contains it. Diagonalization was first described by Georg Cantor in 1891, long before Turing invented Turing machines and digital computers became available, see below for more. The hidden assumptions we make in the proof are as follows. Firstly, we need to be able to invoke $P$ from within $S$ on the input of $S$ (procedure call). Secondly, we need to be able to choose what to do next based on a value (conditional). Thirdly, we need to be able to loop forever (loop). Finally, we need to be able to return a value (return). Those assumptions obviously hold in one form or another in Turing-complete formalisms including C\*, for example.
 
+> Impact of the Halting problem
+
+Interpreting the undecidability of the Halting problem in practice is interesting.
+
+...more on runtime systems...
+
+To do so, let us go up in level of abstraction using *sets* of programs and their input, with Turing machines as our programming paradigm, which can, of course, easily be replaced by any other Turing-complete formalism. We define three, infinite sets: the set of all Turing machines with some input on their tape, the set of all Turing machines that halt for the input on their tape, and the set of all Turing machines that do not halt for the input on their tape. The latter two sets are obviously complements of each other while their union is equivalent to the first set.
+
+> Recursive set or decidability
+
+The first set is an example of a *recursive set* where the term recursive means computable or *decidable* by a Turing machine. More precisely, a set is recursive if membership in the set can be decided by a Turing machine, that is, there is a Turing machine that can compute if its input is an element of the set or not. Where have we seen such a Turing machine in practice? The parser of the selfie compiler, of course! Given a sequence of characters, as a means to encode any C\* program, the parser decides if the sequence is a syntactically valid C\* program or not. Could we turn the parser into a program that enumerates all syntactically valid C\* programs (with or without input)? Yes, of course. That program would never terminate, but nevertheless output all such programs eventually, including itself. The complement of a recursive set is also recursive, so we could turn around the program and output all syntactically invalid sequences of characters as well.
+
+> Recursively enumerable set, or semi-decidability
+
+The second set is already more difficult to understand than the first set, as it is an example of a *recursively enumerable set* that is not recursive!
+
 ...
 
-In order to explain the proof idea on a higher level of abstraction, we model programs and inputs as well as computation using natural numbers, sets of natural numbers, and, yes, even sets of sets of natural numbers.
+> Not recursively enumerable set, or undecidability
+
+The third set is the most difficult to understand among the three sets since it is not even recursively enumerable, as a result of the undecidability of the Halting problem.
+
+...
 
 you can program what you want but you cannot compute what you want
-
-Turing degree
 
 > Cantor
 
 even older than Turing
+
+Turing degree
 
 ### Life 4
 
