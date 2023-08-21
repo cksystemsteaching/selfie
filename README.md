@@ -6636,11 +6636,9 @@ What can we learn from that proof? There are essentially four easy-to-understand
 
 > Impact of the Halting problem
 
-Interpreting the undecidability of the Halting problem in practice is interesting.
+Interpreting the undecidability of the Halting problem in practice is interesting. For example, compilers, operating systems, and virtual machine monitors obviously cannot determine whether some arbitrary program terminates or not. That does not mean, however, that they cannot do that for some programs. Nevertheless the effort in doing that for realistic programs is considerable, and thus expensive. We are all used to those apps that do not respond anymore, seemingly requiring intervention by manually terminating them. Your laptop or smartphone not doing that for you is an immediate consequence of the undecidability of the Halting problem. But even you can generally not know if an unresponsive app would have again responded if you had waited just a bit more before terminating it, at least not without looking at the code of the app and the circumstances in which the code executes. The undecidability of the Halting problem appears as a negative result and is often presented as such. However, we provide a much more optimistic perspective on that at the end of this chapter, and even conclude the book with that. This is important since the Halting problem implies that many other interesting and economically relevant questions about programs are undecidable too.
 
-...more on runtime systems...
-
-To do so, let us go up in level of abstraction using *sets* of programs and their input, with Turing machines as our programming paradigm, which can, of course, easily be replaced by any other Turing-complete formalism. We define three, infinite sets: the set of all Turing machines with some input on their tape, the set of all Turing machines that halt for the input on their tape, and the set of all Turing machines that do not halt for the input on their tape. The latter two sets are obviously complements of each other while their union is equivalent to the first set.
+In order to deepen our understanding of undecidability, let us go up in level of abstraction using *sets* of programs and their input, with Turing machines as our programming paradigm, which can, of course, easily be replaced by any other Turing-complete formalism. We define three, infinite sets: the set of all Turing machines with some input on their tape, the set of all Turing machines that halt for the input on their tape, and the set of all Turing machines that do not halt for the input on their tape. The latter two sets are obviously complements of each other while their union is equivalent to the first set.
 
 > Recursive set or decidability
 
@@ -6667,6 +6665,8 @@ even older than Turing
 Turing degree
 
 ### Life 4
+
+Optimistic outlook on undecidability, and hardness
 
 ### Recommended Readings 6
 
