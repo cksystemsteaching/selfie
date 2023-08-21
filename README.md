@@ -6650,7 +6650,9 @@ The second set is already more difficult to understand than the first set, as it
 
 > Not recursively enumerable set, or undecidability
 
-The third set is the most difficult to understand among the three sets since it is not even recursively enumerable or undecidable, as a result of the undecidability of the Halting problem.
+The third set is the most difficult to understand among the three sets since it is not even recursively enumerable, as a result of the undecidability of the Halting problem. In other words, there is no Turing machine that can determine for *any* given Turing machine if the machine is in the set, let alone enumerate the set. However, we need to take a closer look since the complement of the third set is obviously the second set which is recursively enumerable. If the complement of a set is recursively enumerable, we say that the set is at least *co-recursively enumerable* or *co-semi-decidable*. This means that there is a Turing machine that can determine if its input is *not* in the set. The immediate next question is if there are sets that are neither semi-decidable nor co-semi-decidable, hence called *undecidable*. The answer is yes, lots of them, in fact more than any other sets. However, semi-decidable and co-semi-decidable sets are often called undecidable which may lead to confusion. We are guilty of that too. Using precise terminology takes effort but is important. Nevertheless we focus here on our three sets. See the recommended readings for more details on undecidable sets.
+
+> Countable versus uncountable
 
 ...
 
