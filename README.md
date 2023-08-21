@@ -82,7 +82,7 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    3. [Runtime Systems](#runtime-systems)
    4. [Computing as Utility](#computing-as-utility)
    5. [Cloud Computing](#cloud-computing)
-   6. [Universality of Computing](#universality)
+   6. [Universality of Computing](#universality-of-computing)
    7. [Life](#life-4)
    8. [Recommended Readings](#recommended-readings-6)
 
@@ -6658,9 +6658,15 @@ The proof of the undecidability or better co-semi-decidability of the Halting pr
 
 > Gödel
 
-Well, our three sets of Turing machines with input are all countably infinite sets. This can be shown by encoding every Turing machine and its input into a unique natural number, known as *Gödelisierung* or *Gödel Numbering*, due to Kurt Gödel who invented the method in 1931.
+Well, our three sets of Turing machines with input are all countably infinite sets. This can be shown by encoding every Turing machine and its input into a unique natural number, known as *Gödelisierung* or *Gödel Numbering*, due to Kurt Gödel who invented the method in 1931. Gödel is even more famous for his *incompleteness theorems* but those are a story for another day. Intuitively, Gödelisierung works in two steps. First, a Turing machine and its input is encoded in a unique natural number. The same can be done with any program written in some programming or machine language. Second, those unique natural numbers are then mapped back to increasingly larger natural numbers starting with, say, zero. Thus we can count Turing machines, or, say, C\* programs, since there are as many as there are natural numbers, or finite sequences of bits, if natural numbers are encoded in binary.
+
+> Countable versus recursively enumerable
+
+There is, however, an important difference between the set of all Turing machines with input and the set of all Turing machines that halt on their input versus the set of all Turing machines that do not halt on their input. All three sets are countable but only the first two sets are *effectively* countable by some Turing machine, that is, either recursive, or at least recursively enumerable, as we already explained above. The third set is also countable, as a subset of the first set, but not by a Turing machine, as it is only co-recursively enumerable. Yet the proof of the undecidability of the Halting problem uses diagonalization showing that there is something uncountable involved in deciding whether Turing machines halt or not. What is that?
 
 > Cantor
+
+infinite sequences of bits...
 
 ...there is more work than machines...
 
