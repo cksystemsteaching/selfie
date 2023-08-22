@@ -6672,6 +6672,14 @@ The set of infinitely long sequences of bits, or the powerset of the set of natu
 
 ### Life 4
 
+Hard to believe but we made it to the very end of this book. Understanding the universality of computing, its challenges and limits, and what it takes to make universal computing available to everyone was our high-level goal. Compilers, emulators, operating systems, and virtual machine monitors received most of our attention, as fundamental building blocks of modern computing. We kept Turing machines out of sight until the very end, so that we can appreciate their value in deciphering what digital computing really is. Self-referentiality, as manifested in our selfie system, has been our guiding principle in all of that. Let us summarize what we have seen as follows:
+
+1. Information: everything is information, and all information can be encoded in bits. While many people know that somehow, it still makes a big difference to see how this works for important everyday artifacts such as numbers, characters, text, files, images, video, and, of course, code. Seeing that everything stored and processed by a computer is encoded in bits, and nothing else, and in particular understanding that those bits can mean whatever we want them to mean is the most important lesson here. The state of a computer is essentially a giant number that the machine manipulates into a seemingly endless sequence of numbers as the machine executes code. The numbers we see during computation can mean whatever we want. From now on, keep that in the back of your head whenever you look at a screen.
+
+2. Formalisms:
+
+3. Computing:
+
 ...there is more work than machines...
 
 you can program what you want but you cannot compute what you want
