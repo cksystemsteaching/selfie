@@ -6666,17 +6666,15 @@ There is, however, an important difference between the set of all Turing machine
 
 > Cantor counting computation
 
-After showing that there are uncountably many real numbers using diagonalization, Cantor came up with a simple proof of the uncountability of the set of infinitely long sequences of bits. The idea is to show that any list of infinitely long sequences of bits, written down in a table with one row for each sequence in the list, and then construct another infinitely long sequence of bits from the *flipped* bits on the diagonal through that table. By construction, that sequence cannot occur in the list of sequences of bits. Done! Cantor pushes the idea even further and shows that the power set, that is, the set of all subsets, of any infinite set is uncountable. The proof is even simpler. Any list of subsets of an infinite set can be diagonalized into a subset that contains, for each subset in the list, an element that is not in that subset in the list. Again, by construction, the subset obtained in this way cannot occur in that list.
+After showing that there are uncountably many real numbers using diagonalization, Cantor came up with a simple proof of the uncountability of the set of infinitely long sequences of bits. The idea is to show that any list of infinitely long sequences of bits, written down in a table with one row for each sequence in the list, and then construct another infinitely long sequence of bits from the *flipped* bits on the diagonal through that table. By construction, that sequence cannot occur in the list of sequences of bits. Done! Cantor pushes the idea even further and shows that the power set, that is, the set of all subsets, of any infinite set such as the set of natural numbers, for example, is uncountable. The proof is even simpler. Any list of subsets of an infinite set can be diagonalized into a subset that contains, for each subset in the list, an element that is not in that subset in the list. Again, by construction, the subset obtained in this way cannot occur in that list.
+
+The set of infinitely long sequences of bits, or the powerset of the set of natural numbers, include every computation that Turing machines can perform, and obviously a lot more. With the notion of uncountability through diagonalization, Cantor created the foundation for establishing the limits of computation, decades before digital computers appeared. However, Cantor like so many other influential scientists faced considerable skeptisism and even hostility. If you are interested, check the literature on that. It is an important lesson for everyone. For me personally, Cantor is one of those few scientific idols that I have, and I am someone who does not believe in idols.
+
+### Life 4
 
 ...there is more work than machines...
 
 you can program what you want but you cannot compute what you want
-
-even older than Turing
-
-Turing degree
-
-### Life 4
 
 Optimistic outlook on undecidability, and hardness
 
