@@ -6684,8 +6684,16 @@ We conclude the book with a brief outlook. On software side, artificial intellig
 
 ### Recommended Readings 6
 
-Sipser
+> Operating Systems: Principles and Practice by Thomas Anderson and Michael Dahlin
 
-Internet!
+This is a standard textbook on operating systems that provides in-depth treatment of kernels and processes, concurrency, memory, and file systems. If you are interested in considerably more detail of what we provide on the subject, this book is a good starting point.
+
+> Computer Networking: A Top-Down Approach by James Kurose
+
+We have not provided any details on computer networking. However, if you are curious about how the technology behind the Internet works, this book is for you.
+
+> Introduction to the Theory of Computation by Michael Sipser
+
+This book is my favorite introduction to theoretical computer science, by far. The first time I read it, as student, I found answers to so many questions I had. With this book, there is no need to feel intimidated by the subject. I would even say that this is one of the best books in computer science.
 
 ## Glossary
