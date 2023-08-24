@@ -6552,6 +6552,14 @@ work in progress
 
 ### Virtual Machine
 
+A *virtual machine* is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical machine emulated by mipster in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed.
+
+an efficient mechanism to switch states.
+
+> Machine state
+
+> Traffic light model
+
 processes
 fork-wait
 
