@@ -6552,9 +6552,15 @@ work in progress
 
 ### Virtual Machine
 
-A *virtual machine* is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical machine emulated by mipster in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed.
+A *virtual machine* (VM) is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical machine emulated by mipster in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed. In selfie, a virtual machine is represented by a data structure called *machine context* or just *context* for short. A context essentially contains the values of the registers, including the program counter, and information about virtual memory, as explained in the next section, plus some bookkeeping and profiling information. The initial size of a context is in the order of a few kilobytes, not more! That also means that virtual machines can be created, and destroyed, very fast. Check the source code of selfie for the details on the information stored in machine contexts.
 
-an efficient mechanism to switch states.
+Virtual machines are handled by a *virtual machine monitor* (VMM) which is software that needs to solve three fundamental problems, including the fact that the virtual machine monitor runs in a virtual machine created by itself:
+
+1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. This problem is solved by an efficient implementation of virtual memory and context switching. We explain context switching here and get to virtual memory in the next section.
+
+2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie does the latter.
+
+3. Self-reference:
 
 > Machine state
 
