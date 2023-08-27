@@ -78,13 +78,12 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 7. [Computing](#computing)
 
    1. [Virtual Machine](#virtual-machine)
-   2. [Virtual Memory](#virtual-memory)
-   3. [Runtime Systems](#runtime-systems)
-   4. [Computing as Utility](#computing-as-utility)
-   5. [Cloud Computing](#cloud-computing)
-   6. [Universality of Computing](#universality-of-computing)
-   7. [Life](#life-4)
-   8. [Recommended Readings](#recommended-readings-6)
+   2. [Runtime Systems](#runtime-systems)
+   3. [Computing as Utility](#computing-as-utility)
+   4. [Cloud Computing](#cloud-computing)
+   5. [Universality of Computing](#universality-of-computing)
+   6. [Life](#life-4)
+   7. [Recommended Readings](#recommended-readings-6)
 
 8. [Glossary](#glossary)
 
@@ -6552,39 +6551,69 @@ work in progress
 
 ### Virtual Machine
 
-A *virtual machine* (VM) is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical machine emulated by mipster in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed. In selfie, a virtual machine is represented by a data structure called *machine context* or just *context* for short. A context essentially contains the values of the registers, including the program counter, and information about virtual memory, as explained in the next section, plus some bookkeeping and profiling information. The initial size of a context is in the order of a few kilobytes, not more! That also means that virtual machines can be created, and destroyed, very fast. Check the source code of selfie for the details on the information stored in machine contexts.
+A *virtual machine* (VM) is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical machine emulated by `mipster` in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed. In selfie, a virtual machine is represented by a data structure called *machine context* or just *context* for short. A context essentially contains the values of the registers, including the program counter, and information about virtual memory, as explained in the next section, plus some bookkeeping and profiling information. The initial size of a context is in the order of a few kilobytes, not more! That also means that virtual machines can be created, and destroyed, very fast. Check the source code of selfie for the details on the information stored in machine contexts.
 
 > Isolation and self-reference
 
 Virtual machines are handled by a *virtual machine monitor* (VMM) which is software that needs to solve three fundamental problems, including the fact that the virtual machine monitor runs in a virtual machine created by itself:
 
-1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by context switching which we explain in this section. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements the latter. We explain that in the next section after we are done with the remaining two problems.
+1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values when context switching. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging.
 
-2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie implements *round-robin scheduling*. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as the standard in most modern systems.
+2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems.
 
-3. Self-reference: virtual machine monitors, and in fact other forms of runtime systems, in particular operating systems, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else.
+3. Self-reference: virtual machine monitors, and in fact other forms of runtime systems, in particular operating systems, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching.
 
 > Equivalence of emulation and virtualization
 
-For simplicity, the implementation of microkernel functionality in selfie is part of the mipster emulator, which is as if microkernel functionality is part of hardware. Admittedly, this is unrealistic but helps to isolate the minimal bootstrapping requirements. Lifting microkernel functionality into software is an advanced topic beyond the scope of this book. Either way, ...
+For simplicity, the implementation of microkernel functionality in selfie is part of the `mipster` emulator, which is as if microkernel functionality is part of hardware. Admittedly, this is unrealistic but helps to isolate the minimal bootstrapping requirements. Lifting microkernel functionality into software is an advanced topic beyond the scope of this book. Either way, the following insight dwarfs the relevance of being realistic in this aspect when trying to explain what virtualization really does and how it works: emulation and virtualization are functionally equivalent, that is, there is no difference in executing code on an emulated machine or a virtual machine! In selfie, `hypster` virtualizes the machine emulated by `mipster` down to every single bit. Code running on `mipster` or `hypster` cannot tell the difference, other than by looking at real time. Selfie can even execute code on `mipster` for a while, then switch to `hypster` for a while, then back to `mipster`, and so on, without any noticable functional difference to the executed code. This is implemented as an experimental feature of selfie in a procedure called `mixter`. At this point, students usually laugh about the name. I hope you do too. We heard that before, humor is the only way.
+
+> Emulation as executable specification of virtualization
+
+Emulation, at least through interpretation of code as with `mipster` in selfie, is a lot simpler than virtualization, which ultimately relies on interpretation too but through context switching. Emulation can therefore serve as *executable specification* of what an implementation of virtualization should do. Here is an example. Operating systems and modern runtime systems in general are enormously complex software systems. However, by ignoring performance altogether, we could reimplement them, one by one, by replacing virtualization with emulation through interpretation. Every virtual machine, process, or thread would be executed by interpreting their code. The reimplementation would be vastly simpler than the original. In fact, all complexity involved in bootstrapping self-reference would disappear, which is arguably the most difficult to understand and, in my experience, often preventing students from ever truly understanding how operating systems work. With self-reference gone, only spatial and temporal isolation would remain as challenges. Unsurprisingly, computer scientists have applied the idea for testing and even proving the correctness of at least key parts of operating systems. Here, we use the idea as an educational tool by isolating and removing self-reference from the problem, only to bring it back into the picture, when everything else is clear.
+
+> Emulation equals isolation while virtualization equals isolation plus self-reference
+
+```bash
+make emu
+```
+
+```bash
+make os-emu
+```
+
+```bash
+make os-vmm-emu
+```
+
+#### Spatial Isolation
+
+> Segmentation
+
+> Paging
 
 #### Temporal Isolation
 
-The simplest scenario where temporal isolation becomes an issue is when two virtual machines are hosted by a single physical machine. Since a virtual machine monitor is hosted by a virtual machine, we only need the monitor to manage one other virtual machine, say, to host some app. As before, the machine instances that represent the physical machine, the virtual machine monitor, and the app are referred to as `HW`, `VMM`, and `APP`, respectively.
-
 > Traffic light model
+
+processes
+
+...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
 #### Self-Reference
 
 > Bootstrapping
 
-processes
 fork-wait
 
-### Virtual Memory
+...from VMs to processes: system calls!
 
 fork-wait-exit
+
+...inside and outside of an address space
+
 lock
+
+...losing and gaining determinism
 
 ### Runtime Systems
 
@@ -6644,7 +6673,7 @@ There is a beautiful *duality* between Turing and random-access machines. What t
 
 > Emulation and virtualization
 
-Before moving on to what is not computable, let us put emulation and virtualization into context. The Universal Turing Machine, and even more closely the RASP machine, is an abstract, unbounded-memory model of a processor and thus also a machine emulator such as the mipster RISC-U emulator of selfie. Assuming unbounded memory, mipster is Turing-complete. What about virtualization and the hypster RISC-U virtual machine monitor of selfie in particular? Well, just like mipster, a virtual machine monitor such as hypster can also be seen as a bounded-memory instance of the UTM, only by different means. The mipster emulator interprets code itself whereas the hypster virtual machine monitor context switches to the machine it runs on to interpret code on its behalf. Can the UTM be virtualized? Yes, of course. However, while machine virtualization should maintain computational universality of the virtualized machine, the focus of virtualization on performance and security, for example, is quite different from the intended purpose of the UTM to study computability and complexity. Thus we rather focus on what the UTM can tell us about the limitations of digital computers as well as the software that emulates and virtualizes them.
+Before moving on to what is not computable, let us put emulation and virtualization into context. The Universal Turing Machine, and even more closely the RASP machine, is an abstract, unbounded-memory model of a processor and thus also a machine emulator such as the `mipster` RISC-U emulator of selfie. Assuming unbounded memory, `mipster` is Turing-complete. What about virtualization and the `hypster` RISC-U virtual machine monitor of selfie in particular? Well, just like `mipster`, a virtual machine monitor such as `hypster` can also be seen as a bounded-memory instance of the UTM, only by different means. The `mipster` emulator interprets code itself whereas the `hypster` virtual machine monitor context switches to the machine it runs on to interpret code on its behalf. Can the UTM be virtualized? Yes, of course. However, while machine virtualization should maintain computational universality of the virtualized machine, the focus of virtualization on performance and security, for example, is quite different from the intended purpose of the UTM to study computability and complexity. Thus we rather focus on what the UTM can tell us about the limitations of digital computers as well as the software that emulates and virtualizes them.
 
 > The Halting Problem
 
