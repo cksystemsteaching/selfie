@@ -6555,7 +6555,7 @@ A *virtual machine* (VM) is essentially a representation of an abstract state of
 
 > Isolation and self-reference
 
-Virtual machines are handled by a *virtual machine monitor* (VMM) which is software that needs to solve three fundamental problems, including the fact that the virtual machine monitor runs in a virtual machine created by itself:
+Virtual machines are implemented by a *virtual machine monitor* (VMM) which is software that needs to solve three fundamental problems, including the fact that the virtual machine monitor runs in a virtual machine created by itself:
 
 1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values when context switching. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging.
 
@@ -6563,19 +6563,23 @@ Virtual machines are handled by a *virtual machine monitor* (VMM) which is softw
 
 3. Self-reference: virtual machine monitors, and in fact other forms of runtime systems, in particular operating systems, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching.
 
-> Equivalence of emulation and virtualization
+> Functional equivalence of emulation and virtualization
 
 For simplicity, the implementation of microkernel functionality in selfie is part of the `mipster` emulator, which is as if microkernel functionality is part of hardware. Admittedly, this is unrealistic but helps to isolate the minimal bootstrapping requirements. Lifting microkernel functionality into software is an advanced topic beyond the scope of this book. Either way, the following insight dwarfs the relevance of being realistic in this aspect when trying to explain what virtualization really does and how it works: emulation and virtualization are functionally equivalent, that is, there is no difference in executing code on an emulated machine or a virtual machine! In selfie, `hypster` virtualizes the machine emulated by `mipster` down to every single bit. Code running on `mipster` or `hypster` cannot tell the difference, other than by looking at real time. Selfie can even execute code on `mipster` for a while, then switch to `hypster` for a while, then back to `mipster`, and so on, without any noticable functional difference to the executed code. This is implemented as an experimental feature of selfie in a procedure called `mixter`. At this point, students usually laugh about the name. I hope you do too. We heard that before, humor is the only way.
 
 > Emulation as executable specification of virtualization
 
-Emulation, at least through interpretation of code as with `mipster` in selfie, is a lot simpler than virtualization, which ultimately relies on interpretation too but through context switching. Emulation can therefore serve as *executable specification* of what an implementation of virtualization should do. Here is an example. Operating systems and modern runtime systems in general are enormously complex software systems. However, by ignoring performance altogether, we could reimplement them, one by one, by replacing virtualization with emulation through interpretation. Every virtual machine, process, or thread would be executed by interpreting their code. The reimplementation would be vastly simpler than the original. In fact, all complexity involved in bootstrapping self-reference would disappear, which is arguably the most difficult to understand and, in my experience, often preventing students from ever truly understanding how operating systems work. With self-reference gone, only spatial and temporal isolation would remain as challenges. Unsurprisingly, computer scientists have applied the idea for testing and even proving the correctness of at least key parts of operating systems. Here, we use the idea as an educational tool by isolating and removing self-reference from the problem, only to bring it back into the picture, when everything else is clear.
+Emulation, at least through interpretation of code as with `mipster` in selfie, is a lot simpler than virtualization, which ultimately relies on interpretation too but through context switching. Emulation can therefore serve as *executable specification* of what an implementation of virtualization should do. Here is an example. Operating systems and modern runtime systems in general are enormously complex software systems. However, by ignoring performance altogether, we could reimplement such a system by replacing virtualization with emulation through interpretation. Every virtual machine, process, or thread would be executed by interpreting the hosted code. The reimplementation would be vastly simpler than the original. In fact, all complexity involved in bootstrapping self-reference would disappear, which is arguably the most difficult to understand and, in our experience, often preventing students from truly understanding how operating systems work. With self-reference gone, only spatial and temporal isolation would remain as challenges. Unsurprisingly, computer scientists have applied the idea for testing and even proving the correctness of at least key parts of operating systems. Here, we use the idea as an educational tool by isolating and removing self-reference from the problem, only to bring it back into the picture, when everything else is clear.
 
 > Emulation equals isolation while virtualization equals isolation plus self-reference
+
+A single emulated machine is the simplest scenario that allows us to explain how spatial and temporal isolation is implemented. The following invocation of selfie, as mentioned before, demonstrates an example of the scenario:
 
 ```bash
 make emu
 ```
+
+where selfie creates and emulates a `mipster` machine instance, here again referred to as `HW`, that loads and executes a RISC-U binary of selfie without console arguments.
 
 ```bash
 make os-emu
@@ -6594,6 +6598,8 @@ make os-vmm-emu
 #### Temporal Isolation
 
 > Traffic light model
+
+...from VMM to operating system kernel...
 
 processes
 
