@@ -6551,21 +6551,29 @@ work in progress
 
 ### Virtual Machine
 
-A *virtual machine* (VM) is essentially a representation of an abstract state of a physical machine, or more generally any form of execution environment. For example, a virtual machine in selfie contains storage for the same registers as the physical RISC-U machine emulated by `mipster` in selfie. Moreover, a virtual machine in selfie also features the same 4GB main memory as the physical machine but only in terms of address space, not storage! The main memory of a virtual machine is therefore called *virtual memory*. As long as the virtual memory of a virtual machine requires less storage than what is actually available on the physical machine, the virtual machine can be hosted by the physical machine and actually be executed. A virtual machine is implemented by a *virtual machine monitor* (VMM) which is software that creates, runs, and destroys virtual machines on demand. A VMM runs a VM by context switching the VM to the machine that executes the VMM. We later see that virtual machines can be specialized to software processes that are implemented by an *operating system kernel* which is the counterpart to a VMM but for processes rather than virtual machines, using context switching as well. An *emulated machine* (EM) is just like a virtual machine, except that it is implemented by an *emulator* that interprets the code hosted by an EM rather than having the machine on which the emulator runs execute the code.
+In order to understand virtualization, we need to understand what is actually virtualized. For the purpose of our discussion, a *physical machine* (PM) is a 64-bit RISC-U machine with 4GB of memory address space over a given, possibly smaller amount of memory storage that is assumed to be a multiple of 1MB with a total of at least 1MB up to a maximum of 4GB. The memory storage is called *physical memory*. In contrast, the 4GB memory address space is called *virtual memory* as it does not provide actual storage. Virtual memory requires mapping virtual addresses to physical addresses to provide storage for virtual memory. When booting a physical machine, virtual memory is initially turned off and only turned on by software that computes the mapping. Thus code running on a physical machine initially accesses physical memory directly. Only when virtual memory is turned on, memory access involves translating virtual addresses to physical addresses which is done in hardware for performance reasons.
+
+> Emulated machine
+
+An *emulated machine* (EM) is an implementation of a physical machine in software by an *emulator* that executes the code hosted by an EM through interpretation, similar to what a physical machine does but in hardware. Modern emulators may internally use virtualization techniques for performance instead of interpretation but we ignore those here for simplicity. An EM is essentially a representation of an abstract state of a physical machine. For example, an EM as implemented by the `mipster` emulator in selfie provides storage for the same registers as the PM and features the same 4GB memory address space. However, there is no explicit physical memory in an EM which is what makes an EM an abstraction of a PM. The 4GB virtual memory of an EM is simply assumed to be like 4GB of physical memory. Mapping and translation of virtual to physical addresses is done by the emulator transparently on demand upon memory access. This works as long as the physical machine hosting the emulator has enough physical memory.
+
+> Virtual machine
+
+A *virtual machine* (VM) is essentially like an emulated machine, providing the same abstraction of a physical machine as an EM, except that the execution of code hosted by a VM is not done by an emulator but a *virtual machine monitor* (VMM) that runs a VM by *context switching* the VM to run on the machine that executes the VMM. We later see that virtual machines can be specialized to software processes that are implemented by an *operating system kernel* which is the counterpart to a VMM but for processes rather than virtual machines, using context switching as well. In short, emulated machines and virtual machines are identical, except for the mechanism of code execution. This is important to keep in mind.
 
 > Machine context
 
-In selfie, both emulated machines and virtual machines are represented by a data structure called *machine context* or just *context* for short, one for each machine. A context essentially contains the values of the registers, including the program counter, and information about virtual memory plus some bookkeeping and profiling information. The initial size of a context is in the order of a few kilobytes, not more! That also means that emulated machines and virtual machines can be created, and destroyed, very fast. Check the source code of selfie for the details on the information stored in machine contexts.
+In selfie, both emulated machines and virtual machines are represented by a data structure called *machine context* or just *context* for short, with one context per machine. A context essentially contains the values of the registers, including the program counter, and information about virtual memory plus some bookkeeping and profiling information. The initial size of a context is in the order of a few kilobytes, not more! That also means that emulated machines and virtual machines can be created, and destroyed, very fast. Check the source code of selfie for the details on the information stored in machine contexts.
 
 > Isolation and self-reference
 
-Hosting virtual machines, or software processes, requires solving three fundamental problems, including the fact that a virtual machine monitor, or operating system kernel, runs in a virtual machine, or software process, created by itself:
+Hosting virtual machines, or software processes for that matter, requires solving three fundamental problems, including the self-reference involved in the fact that a virtual machine monitor, or operating system kernel, runs in a virtual machine, or software process, as well:
 
-1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values when context switching. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging.
+1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging. Spatial isolation is an issue that also applies to emulated machines.
 
-2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems.
+2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems. Again, temporal isolation is an issue that also applies to emulated machines.
 
-3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, in particular operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching.
+3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators.
 
 > Functional equivalence of emulation and virtualization
 
@@ -6573,9 +6581,13 @@ For simplicity, the implementation of microkernel functionality in selfie is par
 
 > Emulation as executable specification of virtualization
 
-Emulation, at least through interpretation of code as with `mipster` in selfie, is a lot simpler than virtualization, which ultimately relies on interpretation too but through context switching. Emulation can therefore serve as *executable specification* of what an implementation of virtualization should do. Here is an example. Operating systems and modern runtime systems in general are enormously complex software systems. However, by ignoring performance altogether, we could reimplement such a system by replacing virtualization with emulation through interpretation. Every virtual machine, process, or thread would be executed by interpreting the hosted code. The reimplementation would be vastly simpler than the original. In fact, all complexity involved in bootstrapping self-reference would disappear, which is arguably the most difficult to understand and, in our experience, often preventing students from truly understanding how operating systems work. With self-reference gone, only spatial and temporal isolation would remain as challenges. Unsurprisingly, computer scientists have applied the idea for testing and even proving the correctness of at least key parts of operating systems. Here, we use the idea as an educational tool by isolating and removing self-reference from the problem, only to bring it back into the picture, when everything else is clear.
+Emulation, at least through interpretation of code as with `mipster` in selfie, is a lot simpler than virtualization, which ultimately relies on interpretation too but through context switching. Emulation can therefore serve as *executable specification* of what an implementation of virtualization should do in terms of functional behavior. Here is an example. Operating systems and modern runtime systems in general are enormously complex software systems. However, by ignoring performance altogether, we could reimplement such a system by replacing virtualization with emulation through interpretation. Every virtual machine, process, or thread would be executed by interpreting the hosted code. The reimplementation would be vastly simpler than the original. In fact, all complexity involved in bootstrapping self-reference would disappear, which is arguably the most difficult to understand and, in our experience, often preventing students from truly understanding how operating systems work. With self-reference gone, only spatial and temporal isolation would remain as challenges. Unsurprisingly, computer scientists have applied the idea for testing and even proving the correctness of at least key parts of operating systems. Here, we use the idea as an educational tool by isolating and removing self-reference from the problem, only to bring it back into the picture, when everything else is clear.
 
 > Emulation equals isolation while virtualization equals isolation plus self-reference
+
+Modern computers
+
+#### Spatial Isolation
 
 An emulated machine, representing a single physical machine, is the simplest scenario that allows us to explain how spatial and temporal isolation is implemented. The following invocation of selfie, as mentioned before, demonstrates an example of the scenario:
 
@@ -6583,23 +6595,7 @@ An emulated machine, representing a single physical machine, is the simplest sce
 make emu
 ```
 
-where selfie creates and emulates a `mipster` machine instance, here again referred to as `HW`, that represents a single physical machine which loads and executes a RISC-U binary of selfie without console arguments. Once we are done with spatial and temporal isolation, we move on to a scenario with an emulated machine, representing a single physical machine, that hosts another emulated machine, representing an operating system or virtual machine monitor, as demonstrated by the following invocation of selfie which we also mentioned before:
-
-```bash
-make emu-emu
-```
-
-where selfie again creates and emulates a `mipster` machine instance, also referred to as `HW`, that represents a single physical machine. However, in this case, `HW` loads and executes a RISC-U binary of selfie with console arguments that instruct the binary to create and emulate another `mipster` machine instance, called `OS` as before, that loads and executes a RISC-U binary of selfie without console arguments.
-
-```bash
-make os-emu
-```
-
-```bash
-make os-vmm-emu
-```
-
-#### Spatial Isolation
+where selfie creates and emulates a `mipster` machine instance, here again referred to as `HW`, that represents a single physical machine which loads and executes a RISC-U binary of selfie without console arguments.
 
 > Segmentation
 
@@ -6616,6 +6612,22 @@ processes
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
 #### Self-Reference
+
+An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
+
+```bash
+make emu-emu
+```
+
+where selfie again creates and emulates a `mipster` machine instance, also referred to as `HW`, that represents a single physical machine. However, in this case, `HW` loads and executes a RISC-U binary of selfie with console arguments that instruct the binary to create and emulate another `mipster` machine instance, called `OS` as before, that loads and executes a RISC-U binary of selfie without console arguments.
+
+```bash
+make os-emu
+```
+
+```bash
+make os-vmm-emu
+```
 
 > Bootstrapping
 
