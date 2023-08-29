@@ -3830,6 +3830,26 @@ The key observation is that `VMM` is RISC-U code that executes RISC-U code, that
 
 We say that `hypster` *hosts* the execution of RISC-U code in a *virtual machine* which is, for the executed code, indistinguishable from the real machine except for performance. Hypster is inspired by the notion of a virtual machine monitor or *hypervisor* hence the name. Virtualization makes hardware *soft* while maintaining most of its performance. Suddenly, we can have as many virtual machines as there is time, space, and energy, even if we only have one real machine. Virtualization is a fascinating concept but it takes time and effort to understand it. We come back to it in the last chapter.
 
+> Symbolic execution
+
+Emulation and virtualization are both about executing code. However, there is another idea worth mentioning that scales to consuming virtually any amount of time, space, and energy. So far, we have assumed that code is executed on some given input, also called *concrete execution* of code. But what if we could execute code for all possible inputs at the same time? This is called *symbolic execution*. The goal is to find inputs on which the code runs into errors such as division by zero or unsafe memory access, for example. Think of symbolic execution as systematic testing of code. Like testing, however, symbolic execution is in general not exhaustive because the executed code may not terminate or the *symbolic execution engine* simply runs out of time or space. Symbolic execution is computationally expensive but able to utilize virtually any amount of computational resources.
+
+```bash
+make monster
+```
+
+```bash
+make smt
+```
+
+```bash
+make beator
+```
+
+```bash
+make btor2
+```
+
 ### Life 2
 
 The machine and its code is a concept that has amazed me for a long time. In principle, a computer and its machine language are simple artifacts. It only took us one chapter to introduce them even in quite some detail using a realistic yet representative model. While the model is simple it is still as expressive as any other machine model. RISC-U is *universal* or *Turing-complete*, it can do anything any other computer can do. We only need instructions for initializing and accessing registers and memory, for performing elementary arithmetic, and for controlling program flow. Everything a computer does can be expressed in such terms. Extending RISC-U with other RISC-V instructions for better performance is not difficult and the subject of exercises in the next chapter.
