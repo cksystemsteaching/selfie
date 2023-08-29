@@ -123,9 +123,9 @@ The recent advent of chat bots and other tools based on generative AI is often s
 
 This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
 
-> History of computing
+> History and future of computing
 
-...
+Computer science is a young field, around one hundred years old. The theoretical foundations were developed first, in the 1930s, long before digital computers became available. Some work that also influenced mathematics was done even earlier, all the way back in the 1870s. Digital computers and networks, programming languages, operating systems, and software development tools all started showing up, first in very early form in the 1950s, and then in increasingly advanced variations in the following decades. The latest technology, in particular the Internet, smartphones, and cloud computing have only been around in widely accessible form since the turn of the century. In this book, we focus on modern versions of machine architecture, programming language, operating systems and software development technology that has originally been developed in the 1960s and 1970s. The basic principles behind that technology have not changed since then. Moreover, the technology we focus on here is still widely used. At the end of the book, we take all we learned and go back in time to the 1930s and even the 1870s, closing the loop from modern computer science to the origins of computing, and from there to the future.
 
 > To boldly go where no one has gone before!
 
