@@ -77,13 +77,14 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 7. [Computing](#computing)
 
-   1. [Virtual Machine](#virtual-machine)
-   2. [Runtime Systems](#runtime-systems)
-   3. [Computing as Utility](#computing-as-utility)
-   4. [Cloud Computing](#cloud-computing)
-   5. [Universality of Computing](#universality-of-computing)
-   6. [Life](#life-4)
-   7. [Recommended Readings](#recommended-readings-6)
+   1. [Virtual Machines](#virtual-machines)
+   2. [Virtual Memory](#virtual-memory)
+   3. [Concurrency](#concurrency)
+   4. [Self-Reference](#self-reference)
+   5. [Runtime Systems](#runtime-systems)
+   6. [Universality of Computing](#universality-of-computing)
+   7. [Life](#life-4)
+   8. [Recommended Readings](#recommended-readings-6)
 
 8. [Glossary](#glossary)
 
@@ -6553,7 +6554,7 @@ work in progress
 
 -------------------------------------------------------------------------------
 
-### Virtual Machine
+### Virtual Machines
 
 In order to understand virtualization, we need to understand what is actually virtualized. For the purpose of our discussion, a *physical machine* (PM) is a 64-bit RISC-U machine with 4GB of memory address space over a given, possibly smaller amount of memory storage that is assumed to be a multiple of 1MB with a total of at least 1MB up to a maximum of 4GB. The memory storage is called *physical memory*. In contrast, the 4GB memory address space is called *virtual memory* as it does not provide actual storage. Virtual memory requires mapping virtual addresses to physical addresses to provide storage for virtual memory. When booting a physical machine, virtual memory is initially turned off and only turned on by software that computes the mapping. Thus code running on a physical machine initially accesses physical memory directly. Only when virtual memory is turned on, memory access involves translating virtual addresses to physical addresses which is done in hardware for performance reasons.
 
@@ -6591,21 +6592,15 @@ Emulation, at least through interpretation of code as with `mipster` in selfie, 
 
 Emulation completely isolates execution of code in an *emulated machine* from execution of code on the *emulating machine* that runs the emulator, avoiding self-reference altogether. Virtualization is the same as emulation, except that execution of code in a *virtual* or more precisely *virtualized machine* is done on the same *virtualizing machine* that also runs the virtual machine monitor in, well, a virtualized machine. In short, virtualization virtualizes the virtualizing machine, and that is the self-reference in virtualization!
 
-#### Spatial Isolation
+### Virtual Memory
 
-An emulated machine, representing a single physical machine, is the simplest scenario that allows us to explain how spatial and temporal isolation is implemented. The following invocation of selfie, as mentioned before, demonstrates an example of the scenario:
-
-```bash
-make emu
-```
-
-where selfie creates and emulates a `mipster` machine instance, here again referred to as `HW`, that represents a single physical machine which loads and executes a RISC-U binary of selfie without console arguments.
+An emulated machine is the simplest scenario that allows us to explain how spatial isolation is implemented.
 
 > Segmentation
 
 > Paging
 
-#### Temporal Isolation
+### Concurrency
 
 > Traffic light model
 
@@ -6615,7 +6610,7 @@ processes
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
-#### Self-Reference
+### Self-Reference
 
 An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
 
@@ -6649,19 +6644,13 @@ lock
 
 ### Runtime Systems
 
-garbage collectors
-
 language virtual machines
 
-symbolic execution
+garbage collectors
 
 threads
 threadsafe-malloc
 treiber-stack
-
-### Computing as Utility
-
-### Cloud Computing
 
 ### Universality of Computing
 
