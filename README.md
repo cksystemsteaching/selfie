@@ -6626,7 +6626,21 @@ Emulation completely isolates execution of code in an *emulated machine* from ex
 
 ### Virtual Memory
 
-An emulated machine is the simplest scenario that allows us to explain how spatial isolation is implemented.
+An emulated machine is the simplest scenario that allows us to explain how spatial isolation is implemented with virtual memory.
+
+...define virtual memory...
+
+Let us go back to how the `mipster` emulator in selfie works. There are three components that affect virtual memory: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler which deals with exceptions raised during code execution. The bootloader, interpreter, and exception handler are implemented in the procedures `boot_loader`, `run_until_exception`, and `handle_exception`, respectively. The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular system calls and page faults. In total, the emulator may trigger virtual memory access in four distinct cases:
+
+1. Loading code and data into memory (bootloader)
+
+2. Fetching instructions from memory (interpreter)
+
+3. Executing `load` and `store` instructions (interpreter, exception handler)
+
+4. Executing `ecall` instructions (exception handler)
+
+All other activities of the emulator do not affect virtual memory.
 
 > Segmentation
 
