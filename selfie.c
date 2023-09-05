@@ -1508,14 +1508,6 @@ void     store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t d
 
 uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr);
 
-uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_data_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_stack_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
-
-uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
-uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_tlb = 0;
@@ -2332,6 +2324,18 @@ void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context
 void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 29) = (uint64_t) free_list_head; }
 void set_gcs_in_period(uint64_t* context, uint64_t gcs)              { *(context + 30) = gcs; }
 void set_use_gc_kernel(uint64_t* context, uint64_t use)              { *(context + 31) = use; }
+
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
+
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -8611,684 +8615,6 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
     return load_virtual_memory(table, vaddr);
 }
 
-uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
-  // is address in code segment?
-  if (vaddr >= get_code_seg_start(context))
-    if (vaddr < get_code_seg_start(context) + get_code_seg_size(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
-  // is address in data segment?
-  if (vaddr >= get_data_seg_start(context))
-    if (vaddr < get_data_seg_start(context) + get_data_seg_size(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
-  // is address in stack segment?
-  if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= HIGHESTVIRTUALADDRESS)
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_heap_address(uint64_t* context, uint64_t vaddr) {
-  // is address in heap segment?
-  if (vaddr >= get_heap_seg_start(context))
-    if (vaddr < get_program_break(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr) {
-  // is address between heap and stack segments?
-  if (vaddr >= get_program_break(context))
-    if (vaddr < *(get_regs(context) + REG_SP))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
-  if (is_data_address(context, vaddr))
-    return 1;
-  else if (is_stack_address(context, vaddr))
-    return 1;
-  else if (is_heap_address(context, vaddr))
-    return 1;
-  else
-    return 0;
-}
-
-// -----------------------------------------------------------------
-// ---------------------- GARBAGE COLLECTOR ------------------------
-// -----------------------------------------------------------------
-
-void emit_fetch_stack_pointer() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_stack_pointer"),
-    0, PROCEDURE, UINT64_T, 0, code_size);
-
-  emit_add(REG_A0, REG_ZR, REG_SP);
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void emit_fetch_global_pointer() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_global_pointer"),
-    0, PROCEDURE, UINT64_T, 0, code_size);
-
-  emit_add(REG_A0, REG_ZR, REG_GP);
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void emit_fetch_data_segment_size_interface() {
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_data_segment_size"),
-    0, PROCEDURE, UINT64_T, 0, code_size);
-
-  // up to three instructions needed to load data segment size but is not yet known
-
-  emit_nop();
-  emit_nop();
-  emit_nop();
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-}
-
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
-  uint64_t saved_code_size;
-
-  // set code emission to fetch_data_segment_size
-  saved_code_size = code_size;
-  code_size       = fetch_dss_code_location;
-
-  // assert: emitting no more than 3 instructions
-
-  // load data segment size into A0 (size is independent of entry point)
-  load_small_and_medium_integer(REG_A0, data_size);
-
-  // discount NOPs in profile that were generated for fetch_data_segment_size
-  ic_addi = ic_addi - (code_size - fetch_dss_code_location) / INSTRUCTIONSIZE;
-
-  // restore original code size
-  code_size = saved_code_size;
-}
-
-void implement_gc_brk(uint64_t* context) {
-  // parameter
-  uint64_t program_break;
-
-  // local variable
-  uint64_t size;
-
-  program_break = *(get_regs(context) + REG_A0);
-
-  // check if brk is actually asked for more memory
-  // if not, fall back to the default brk syscall
-  if (program_break > get_program_break(context)) {
-    if (debug_syscalls) {
-      printf("(gc_brk): ");
-      print_register_hexadecimal(REG_A0);
-    }
-
-    // calculate size by subtracting the current from the new program break
-    size = program_break - get_program_break(context);
-
-    if (debug_syscalls) {
-      printf(" |- ");
-      print_register_hexadecimal(REG_A0);
-    }
-
-    // yields pointer to new/reused memory (or 0 if failed)
-    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
-
-    if (debug_syscalls) {
-      printf(" -> ");
-      print_register_hexadecimal(REG_A0);
-      println();
-    }
-
-    // assert: _bump pointer is last entry in data segment
-
-    // updating the _bump pointer of the program (for consistency)
-    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - WORDSIZE, get_program_break(context));
-
-    // assert: gc_brk syscall is invoked by selfie's malloc
-
-    set_lc_malloc(context, get_lc_malloc(context) + 1);
-
-    // skip next seven instructions of selfie's malloc
-    // to avoid using its bump pointer allocator
-    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
-  } else
-    implement_brk(context);
-}
-
-uint64_t is_gc_library(uint64_t* context) {
-  if (context == (uint64_t*) 0)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t* allocate_metadata(uint64_t* context) {
-  if (is_gc_library(context))
-    return allocate_new_memory(context, GC_METADATA_SIZE);
-  else
-    return smalloc(GC_METADATA_SIZE);
-}
-
-uint64_t get_stack_seg_start_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return fetch_stack_pointer();
-  else
-    return *(get_regs(context) + REG_SP);
-}
-
-uint64_t get_data_seg_start_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_data_seg_start;
-  else
-    return get_data_seg_start(context);
-}
-
-uint64_t get_data_seg_end_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_data_seg_end;
-  else
-    return get_data_seg_start(context) + get_data_seg_size(context);
-}
-
-uint64_t get_heap_seg_start_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_seg_start;
-  else
-    return get_heap_seg_start(context);
-}
-
-uint64_t get_heap_seg_end_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_heap_seg_end;
-  else
-    return get_program_break(context);
-}
-
-uint64_t* get_used_list_head_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_used_list;
-  else
-    return get_used_list_head(context);
-}
-
-uint64_t* get_free_list_head_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_free_list;
-  else
-    return get_free_list_head(context);
-}
-
-uint64_t get_gcs_in_period_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return gc_num_gcs_in_period;
-  else
-    return get_gcs_in_period(context);
-}
-
-uint64_t get_gc_enabled_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    return USE_GC_LIBRARY;
-  else
-    return get_use_gc_kernel(context);
-}
-
-void set_data_and_heap_segments_gc(uint64_t* context) {
-  if (is_gc_library(context)) {
-    // we use fetch_global_pointer rather than smalloc_system(0)
-    // to be accurate even if smalloc has been called before
-    gc_data_seg_end   = fetch_global_pointer();
-    gc_data_seg_start = gc_data_seg_end - fetch_data_segment_size();
-
-    // assert: smalloc_system(0) returns program break
-    gc_heap_seg_start = (uint64_t) smalloc_system(0);
-    gc_heap_seg_end   = gc_heap_seg_start;
-  }
-}
-
-void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head){
-  if (is_gc_library(context))
-    gc_used_list = used_list_head;
-  else
-    set_used_list_head(context, used_list_head);
-}
-
-void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
-  if (is_gc_library(context))
-    gc_free_list = free_list_head;
-  else
-    set_free_list_head(context, free_list_head);
-}
-
-void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs) {
-  if (is_gc_library(context))
-    gc_num_gcs_in_period = gcs;
-  else
-    set_gcs_in_period(context, gcs);
-}
-
-void set_gc_enabled_gc(uint64_t* context) {
-  if (is_gc_library(context))
-    USE_GC_LIBRARY = GC_ENABLED;
-  else
-    set_use_gc_kernel(context, GC_ENABLED);
-}
-
-uint64_t is_gc_enabled(uint64_t* context) {
-  return get_gc_enabled_gc(context) == GC_ENABLED;
-}
-
-void gc_init(uint64_t* context) {
-  gc_init_selfie(context);
-}
-
-void gc_init_selfie(uint64_t* context) {
-  reset_gc_counters();
-
-  // calculate metadata size using actual size of pointers and integers
-  GC_METADATA_SIZE = 2 * sizeof(uint64_t*) + 2 * sizeof(uint64_t);
-
-  if (is_gc_library(context))
-    GC_WORDSIZE = sizeof(uint64_t);
-  else
-    GC_WORDSIZE = WORDSIZE;
-
-  set_data_and_heap_segments_gc(context);
-
-  set_used_list_head_gc(context, (uint64_t*) 0);
-  set_free_list_head_gc(context, (uint64_t*) 0);
-  set_gcs_in_period_gc(context, 0);
-  set_gc_enabled_gc(context);
-}
-
-uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size) {
-  uint64_t* prev_node;
-  uint64_t* node;
-
-  prev_node = (uint64_t*) 0;
-
-  node = get_free_list_head_gc(context);
-
-  while (node != (uint64_t*) 0) {
-    if (get_metadata_size(node) == size) {
-      if (prev_node == (uint64_t*) 0)
-        set_free_list_head_gc(context, get_metadata_next(node));
-      else
-        set_metadata_next(prev_node, get_metadata_next(node));
-
-      set_metadata_next(node, get_used_list_head_gc(context));
-
-      set_used_list_head_gc(context, node);
-
-      return node;
-    }
-
-    prev_node = node;
-
-    node = get_metadata_next(node);
-  }
-
-  return (uint64_t*) 0;
-}
-
-uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
-  if (is_gc_library(context))
-    return *((uint64_t*) address);
-  else
-    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
-    if (is_virtual_address_mapped(get_pt(context), address))
-      return load_virtual_memory(get_pt(context), address);
-    else
-      return 0;
-}
-
-void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
-  if (is_gc_library(context))
-    *((uint64_t*) address) = value;
-  else
-    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
-    if (is_virtual_address_mapped(get_pt(context), address))
-      store_virtual_memory(get_pt(context), address, value);
-}
-
-void zero_object(uint64_t* context, uint64_t* metadata) {
-  uint64_t object_start;
-  uint64_t object_end;
-
-  // zero object memory
-  object_start = (uint64_t) get_metadata_memory(metadata);
-  object_end   = object_start + get_metadata_size(metadata);
-
-  while (object_start < object_end) {
-    gc_store_memory(context, object_start, 0);
-
-    object_start = object_start + GC_WORDSIZE;
-  }
-}
-
-uint64_t* allocate_new_memory(uint64_t* context, uint64_t size) {
-  uint64_t object;
-  uint64_t new_program_break;
-
-  if (is_gc_library(context)) {
-    object = (uint64_t) smalloc_system(size);
-
-    // assert: smalloc_system is a bump pointer allocator that may reuse memory
-
-    if (object + size > gc_heap_seg_end)
-      gc_heap_seg_end = object + size;
-
-    return (uint64_t*) object;
-  } else {
-    object = get_program_break(context);
-
-    // attempt to update program break
-
-    new_program_break = try_brk(context, object + size);
-
-    if (new_program_break == object + size)
-      // attempt to update program break succeeded
-      return (uint64_t*) object;
-  }
-
-  return (uint64_t*) 0;
-}
-
-uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
-  uint64_t* metadata;
-
-  // check if reusable memory is available in free list
-  metadata = retrieve_from_free_list(context, size);
-
-  if (metadata != (uint64_t*) 0) {
-    // zeroing reused memory is optional!
-    zero_object(context, metadata);
-
-    return get_metadata_memory(metadata);
-  }
-
-  return (uint64_t*) 0;
-}
-
-uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
-  return allocate_memory_selfie(context, size);
-}
-
-uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
-  uint64_t* object;
-  uint64_t* metadata;
-
-  gc_num_mallocated = gc_num_mallocated + 1;
-  gc_mem_mallocated = gc_mem_mallocated + size;
-
-  // try reusing memory first
-  object = reuse_memory(context, size);
-
-  if (object != (uint64_t*) 0) {
-    gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
-    gc_mem_reused         = gc_mem_reused + size;
-
-    return object;
-  }
-
-  // allocate new object memory if there is no reusable memory
-  object = allocate_new_memory(context, size);
-
-  if (object != (uint64_t*) 0) {
-    // allocate metadata for managing object
-    metadata = allocate_metadata(context);
-
-    if (metadata != (uint64_t*) 0) {
-      set_metadata_next(metadata, get_used_list_head_gc(context));
-      set_used_list_head_gc(context, metadata);
-
-      set_metadata_memory(metadata, object);
-      set_metadata_size(metadata, size);
-      set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
-
-      gc_num_gced_mallocs   = gc_num_gced_mallocs + 1;
-      gc_num_ungced_mallocs = gc_num_ungced_mallocs + 1;
-
-      gc_mem_objects  = gc_mem_objects + size;
-      gc_mem_metadata = gc_mem_metadata + GC_METADATA_SIZE;
-    } else
-      return (uint64_t*) 0;
-  } else
-    // if object allocation failed discount memory from mallocated total
-    gc_mem_mallocated = gc_mem_mallocated - size;
-
-  return object;
-}
-
-uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
-  // first, garbage collect
-  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
-    gc_collect(context);
-
-    set_gcs_in_period_gc(context, 0);
-  } else
-    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
-
-  // then, allocate memory
-
-  size = round_up(size, GC_WORDSIZE);
-
-  return allocate_memory(context, size);
-}
-
-uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
-  uint64_t* node;
-  uint64_t  object;
-
-  // pointer below gced heap
-  if (address < get_heap_seg_start_gc(context))
-    return (uint64_t*) 0;
-
-  // pointer above gced heap
-  if (address >= get_heap_seg_end_gc(context))
-    return (uint64_t*) 0;
-
-  node = get_used_list_head_gc(context);
-
-  while (node != (uint64_t*) 0) {
-    if (is_gc_library(context))
-      if (address >= (uint64_t) node)
-        if (address < ((uint64_t) node + GC_METADATA_SIZE))
-          // address points to metadata (redundant check but possibly faster)
-          return (uint64_t*) 0;
-
-    object = (uint64_t) get_metadata_memory(node);
-
-    if (address >= object)
-      if (address < object + get_metadata_size(node))
-        // address points into a gced object
-        return node;
-
-    node = get_metadata_next(node);
-  }
-
-  return (uint64_t*) 0;
-}
-
-void mark_object(uint64_t* context, uint64_t address) {
-  uint64_t gc_address;
-
-  gc_address = gc_load_memory(context, address);
-
-  mark_object_selfie(context, gc_address);
-}
-
-void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
-  uint64_t* metadata;
-  uint64_t object_start;
-  uint64_t object_end;
-
-  if (is_gc_library(context) == 0)
-    if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
-      return;
-
-  metadata = get_metadata_if_address_is_valid(context, gc_address);
-
-  if (metadata == (uint64_t*) 0)
-    // address is not a pointer to a gced object
-    return;
-  else if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
-    set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
-  else
-    // object has already been marked as reachable
-    return;
-
-  object_start = (uint64_t) get_metadata_memory(metadata);
-  object_end   = object_start + get_metadata_size(metadata);
-
-  while (object_start < object_end) {
-    mark_object(context, object_start);
-
-    object_start = object_start + GC_WORDSIZE;
-  }
-}
-
-void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  // assert: segment is not heap
-
-  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
-  segment_start = segment_start - GC_WORDSIZE;
-
-  while (segment_start < segment_end - GC_WORDSIZE) {
-    // undo GC_WORDSIZE index offset before marking address
-    mark_object(context, segment_start + GC_WORDSIZE);
-
-    segment_start = segment_start + GC_WORDSIZE;
-  }
-}
-
-void mark(uint64_t* context) {
-  if (get_used_list_head_gc(context) == (uint64_t*) 0)
-    return; // if there is no used memory skip collection
-
-  // not traversing registers
-
-  // assert: temporary registers do not contain any reference to gc_heap memory
-  // selfie saves all relevant temporary registers on stack, see procedure_prologue().
-
-  // root segments: call stack and data segment
-
-  // traverse call stack
-  mark_segment(context, get_stack_seg_start_gc(context), VIRTUALMEMORYSIZE * GIGABYTE);
-
-  // traverse data segment
-  mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
-}
-
-void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
-  if (prev_metadata == (uint64_t*) 0)
-    set_used_list_head_gc(context, get_metadata_next(metadata));
-  else
-    set_metadata_next(prev_metadata, get_metadata_next(metadata));
-
-  if (GC_REUSE) {
-    set_metadata_next(metadata, get_free_list_head_gc(context));
-
-    set_free_list_head_gc(context, metadata);
-  }
-
-  gc_mem_collected = gc_mem_collected + get_metadata_size(metadata);
-}
-
-void sweep(uint64_t* context) {
-  sweep_selfie(context);
-}
-
-void sweep_selfie(uint64_t* context) {
-  uint64_t* prev_node;
-  uint64_t* node;
-  uint64_t* next_node;
-
-  prev_node = (uint64_t*) 0;
-
-  node = get_used_list_head_gc(context);
-
-  while (node != (uint64_t*) 0) {
-    // next node changes when object is reused
-    next_node = get_metadata_next(node);
-
-    if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
-      free_object(context, node, prev_node);
-    else {
-      // clear mark bit for next marking
-      set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
-
-      prev_node = node;
-    }
-
-    node = next_node;
-  }
-}
-
-void gc_collect(uint64_t* context) {
-  mark(context);
-  sweep(context);
-
-  gc_num_collects = gc_num_collects + 1;
-}
-
-void print_gc_profile(uint64_t is_gc_kernel) {
-  printf("%s: gc:      %lu.%.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
-    ratio_format_integral_2(gc_mem_mallocated, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_mallocated, MEGABYTE),
-    gc_num_mallocated,
-    gc_num_gced_mallocs,
-    gc_num_reused_mallocs);
-  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) reused in %lu reused mallocs\n", selfie_name,
-    ratio_format_integral_2(gc_mem_reused, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_reused, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_reused),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_reused),
-    gc_num_reused_mallocs);
-  printf("%s: gc:      %lu.%.2luMB collected in %lu gc runs\n", selfie_name,
-    ratio_format_integral_2(gc_mem_collected, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_collected, MEGABYTE),
-    gc_num_collects);
-  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
-    ratio_format_integral_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
-    gc_num_gced_mallocs + gc_num_ungced_mallocs,
-    gc_num_gced_mallocs,
-    gc_num_ungced_mallocs);
-  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu gced mallocs\n", selfie_name,
-    ratio_format_integral_2(gc_mem_objects, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_objects, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects),
-    gc_num_gced_mallocs);
-  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu ungced mallocs", selfie_name,
-    ratio_format_integral_2(gc_mem_metadata, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_metadata, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_metadata),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_metadata),
-    gc_num_ungced_mallocs);
-  if (is_gc_kernel)
-    printf(" (external)");
-  println();
-}
-
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
@@ -11074,6 +10400,688 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from) {
   free_context(context);
 
   return from;
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
+  // is address in code segment?
+  if (vaddr >= get_code_seg_start(context))
+    if (vaddr < get_code_seg_start(context) + get_code_seg_size(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
+  // is address in data segment?
+  if (vaddr >= get_data_seg_start(context))
+    if (vaddr < get_data_seg_start(context) + get_data_seg_size(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
+  // is address in stack segment?
+  if (vaddr >= *(get_regs(context) + REG_SP))
+    if (vaddr <= HIGHESTVIRTUALADDRESS)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr) {
+  // is address in heap segment?
+  if (vaddr >= get_heap_seg_start(context))
+    if (vaddr < get_program_break(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr) {
+  // is address between heap and stack segments?
+  if (vaddr >= get_program_break(context))
+    if (vaddr < *(get_regs(context) + REG_SP))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
+  if (is_data_address(context, vaddr))
+    return 1;
+  else if (is_stack_address(context, vaddr))
+    return 1;
+  else if (is_heap_address(context, vaddr))
+    return 1;
+  else
+    return 0;
+}
+
+// -----------------------------------------------------------------
+// ---------------------- GARBAGE COLLECTOR ------------------------
+// -----------------------------------------------------------------
+
+void emit_fetch_stack_pointer() {
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_stack_pointer"),
+    0, PROCEDURE, UINT64_T, 0, code_size);
+
+  emit_add(REG_A0, REG_ZR, REG_SP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_global_pointer() {
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_global_pointer"),
+    0, PROCEDURE, UINT64_T, 0, code_size);
+
+  emit_add(REG_A0, REG_ZR, REG_GP);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_interface() {
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("fetch_data_segment_size"),
+    0, PROCEDURE, UINT64_T, 0, code_size);
+
+  // up to three instructions needed to load data segment size but is not yet known
+
+  emit_nop();
+  emit_nop();
+  emit_nop();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location) {
+  uint64_t saved_code_size;
+
+  // set code emission to fetch_data_segment_size
+  saved_code_size = code_size;
+  code_size       = fetch_dss_code_location;
+
+  // assert: emitting no more than 3 instructions
+
+  // load data segment size into A0 (size is independent of entry point)
+  load_small_and_medium_integer(REG_A0, data_size);
+
+  // discount NOPs in profile that were generated for fetch_data_segment_size
+  ic_addi = ic_addi - (code_size - fetch_dss_code_location) / INSTRUCTIONSIZE;
+
+  // restore original code size
+  code_size = saved_code_size;
+}
+
+void implement_gc_brk(uint64_t* context) {
+  // parameter
+  uint64_t program_break;
+
+  // local variable
+  uint64_t size;
+
+  program_break = *(get_regs(context) + REG_A0);
+
+  // check if brk is actually asked for more memory
+  // if not, fall back to the default brk syscall
+  if (program_break > get_program_break(context)) {
+    if (debug_syscalls) {
+      printf("(gc_brk): ");
+      print_register_hexadecimal(REG_A0);
+    }
+
+    // calculate size by subtracting the current from the new program break
+    size = program_break - get_program_break(context);
+
+    if (debug_syscalls) {
+      printf(" |- ");
+      print_register_hexadecimal(REG_A0);
+    }
+
+    // yields pointer to new/reused memory (or 0 if failed)
+    *(get_regs(context) + REG_A0) = (uint64_t) gc_malloc_implementation(context, size);
+
+    if (debug_syscalls) {
+      printf(" -> ");
+      print_register_hexadecimal(REG_A0);
+      println();
+    }
+
+    // assert: _bump pointer is last entry in data segment
+
+    // updating the _bump pointer of the program (for consistency)
+    store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - WORDSIZE, get_program_break(context));
+
+    // assert: gc_brk syscall is invoked by selfie's malloc
+
+    set_lc_malloc(context, get_lc_malloc(context) + 1);
+
+    // skip next seven instructions of selfie's malloc
+    // to avoid using its bump pointer allocator
+    set_pc(context, get_pc(context) + 8 * INSTRUCTIONSIZE);
+  } else
+    implement_brk(context);
+}
+
+uint64_t is_gc_library(uint64_t* context) {
+  if (context == (uint64_t*) 0)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t* allocate_metadata(uint64_t* context) {
+  if (is_gc_library(context))
+    return allocate_new_memory(context, GC_METADATA_SIZE);
+  else
+    return smalloc(GC_METADATA_SIZE);
+}
+
+uint64_t get_stack_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return fetch_stack_pointer();
+  else
+    return *(get_regs(context) + REG_SP);
+}
+
+uint64_t get_data_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_data_seg_start;
+  else
+    return get_data_seg_start(context);
+}
+
+uint64_t get_data_seg_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_data_seg_end;
+  else
+    return get_data_seg_start(context) + get_data_seg_size(context);
+}
+
+uint64_t get_heap_seg_start_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_seg_start;
+  else
+    return get_heap_seg_start(context);
+}
+
+uint64_t get_heap_seg_end_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_heap_seg_end;
+  else
+    return get_program_break(context);
+}
+
+uint64_t* get_used_list_head_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_used_list;
+  else
+    return get_used_list_head(context);
+}
+
+uint64_t* get_free_list_head_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_free_list;
+  else
+    return get_free_list_head(context);
+}
+
+uint64_t get_gcs_in_period_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return gc_num_gcs_in_period;
+  else
+    return get_gcs_in_period(context);
+}
+
+uint64_t get_gc_enabled_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    return USE_GC_LIBRARY;
+  else
+    return get_use_gc_kernel(context);
+}
+
+void set_data_and_heap_segments_gc(uint64_t* context) {
+  if (is_gc_library(context)) {
+    // we use fetch_global_pointer rather than smalloc_system(0)
+    // to be accurate even if smalloc has been called before
+    gc_data_seg_end   = fetch_global_pointer();
+    gc_data_seg_start = gc_data_seg_end - fetch_data_segment_size();
+
+    // assert: smalloc_system(0) returns program break
+    gc_heap_seg_start = (uint64_t) smalloc_system(0);
+    gc_heap_seg_end   = gc_heap_seg_start;
+  }
+}
+
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head){
+  if (is_gc_library(context))
+    gc_used_list = used_list_head;
+  else
+    set_used_list_head(context, used_list_head);
+}
+
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
+  if (is_gc_library(context))
+    gc_free_list = free_list_head;
+  else
+    set_free_list_head(context, free_list_head);
+}
+
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs) {
+  if (is_gc_library(context))
+    gc_num_gcs_in_period = gcs;
+  else
+    set_gcs_in_period(context, gcs);
+}
+
+void set_gc_enabled_gc(uint64_t* context) {
+  if (is_gc_library(context))
+    USE_GC_LIBRARY = GC_ENABLED;
+  else
+    set_use_gc_kernel(context, GC_ENABLED);
+}
+
+uint64_t is_gc_enabled(uint64_t* context) {
+  return get_gc_enabled_gc(context) == GC_ENABLED;
+}
+
+void gc_init(uint64_t* context) {
+  gc_init_selfie(context);
+}
+
+void gc_init_selfie(uint64_t* context) {
+  reset_gc_counters();
+
+  // calculate metadata size using actual size of pointers and integers
+  GC_METADATA_SIZE = 2 * sizeof(uint64_t*) + 2 * sizeof(uint64_t);
+
+  if (is_gc_library(context))
+    GC_WORDSIZE = sizeof(uint64_t);
+  else
+    GC_WORDSIZE = WORDSIZE;
+
+  set_data_and_heap_segments_gc(context);
+
+  set_used_list_head_gc(context, (uint64_t*) 0);
+  set_free_list_head_gc(context, (uint64_t*) 0);
+  set_gcs_in_period_gc(context, 0);
+  set_gc_enabled_gc(context);
+}
+
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size) {
+  uint64_t* prev_node;
+  uint64_t* node;
+
+  prev_node = (uint64_t*) 0;
+
+  node = get_free_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    if (get_metadata_size(node) == size) {
+      if (prev_node == (uint64_t*) 0)
+        set_free_list_head_gc(context, get_metadata_next(node));
+      else
+        set_metadata_next(prev_node, get_metadata_next(node));
+
+      set_metadata_next(node, get_used_list_head_gc(context));
+
+      set_used_list_head_gc(context, node);
+
+      return node;
+    }
+
+    prev_node = node;
+
+    node = get_metadata_next(node);
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t gc_load_memory(uint64_t* context, uint64_t address) {
+  if (is_gc_library(context))
+    return *((uint64_t*) address);
+  else
+    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      return load_virtual_memory(get_pt(context), address);
+    else
+      return 0;
+}
+
+void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
+  if (is_gc_library(context))
+    *((uint64_t*) address) = value;
+  else
+    // assert: is_virtual_address_valid(address, WORDSIZE) == 1
+    if (is_virtual_address_mapped(get_pt(context), address))
+      store_virtual_memory(get_pt(context), address, value);
+}
+
+void zero_object(uint64_t* context, uint64_t* metadata) {
+  uint64_t object_start;
+  uint64_t object_end;
+
+  // zero object memory
+  object_start = (uint64_t) get_metadata_memory(metadata);
+  object_end   = object_start + get_metadata_size(metadata);
+
+  while (object_start < object_end) {
+    gc_store_memory(context, object_start, 0);
+
+    object_start = object_start + GC_WORDSIZE;
+  }
+}
+
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size) {
+  uint64_t object;
+  uint64_t new_program_break;
+
+  if (is_gc_library(context)) {
+    object = (uint64_t) smalloc_system(size);
+
+    // assert: smalloc_system is a bump pointer allocator that may reuse memory
+
+    if (object + size > gc_heap_seg_end)
+      gc_heap_seg_end = object + size;
+
+    return (uint64_t*) object;
+  } else {
+    object = get_program_break(context);
+
+    // attempt to update program break
+
+    new_program_break = try_brk(context, object + size);
+
+    if (new_program_break == object + size)
+      // attempt to update program break succeeded
+      return (uint64_t*) object;
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
+  uint64_t* metadata;
+
+  // check if reusable memory is available in free list
+  metadata = retrieve_from_free_list(context, size);
+
+  if (metadata != (uint64_t*) 0) {
+    // zeroing reused memory is optional!
+    zero_object(context, metadata);
+
+    return get_metadata_memory(metadata);
+  }
+
+  return (uint64_t*) 0;
+}
+
+uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
+  return allocate_memory_selfie(context, size);
+}
+
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
+  uint64_t* object;
+  uint64_t* metadata;
+
+  gc_num_mallocated = gc_num_mallocated + 1;
+  gc_mem_mallocated = gc_mem_mallocated + size;
+
+  // try reusing memory first
+  object = reuse_memory(context, size);
+
+  if (object != (uint64_t*) 0) {
+    gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
+    gc_mem_reused         = gc_mem_reused + size;
+
+    return object;
+  }
+
+  // allocate new object memory if there is no reusable memory
+  object = allocate_new_memory(context, size);
+
+  if (object != (uint64_t*) 0) {
+    // allocate metadata for managing object
+    metadata = allocate_metadata(context);
+
+    if (metadata != (uint64_t*) 0) {
+      set_metadata_next(metadata, get_used_list_head_gc(context));
+      set_used_list_head_gc(context, metadata);
+
+      set_metadata_memory(metadata, object);
+      set_metadata_size(metadata, size);
+      set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
+
+      gc_num_gced_mallocs   = gc_num_gced_mallocs + 1;
+      gc_num_ungced_mallocs = gc_num_ungced_mallocs + 1;
+
+      gc_mem_objects  = gc_mem_objects + size;
+      gc_mem_metadata = gc_mem_metadata + GC_METADATA_SIZE;
+    } else
+      return (uint64_t*) 0;
+  } else
+    // if object allocation failed discount memory from mallocated total
+    gc_mem_mallocated = gc_mem_mallocated - size;
+
+  return object;
+}
+
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
+  // first, garbage collect
+  if (get_gcs_in_period_gc(context) >= GC_PERIOD) {
+    gc_collect(context);
+
+    set_gcs_in_period_gc(context, 0);
+  } else
+    set_gcs_in_period_gc(context, get_gcs_in_period_gc(context) + 1);
+
+  // then, allocate memory
+
+  size = round_up(size, GC_WORDSIZE);
+
+  return allocate_memory(context, size);
+}
+
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
+  uint64_t* node;
+  uint64_t  object;
+
+  // pointer below gced heap
+  if (address < get_heap_seg_start_gc(context))
+    return (uint64_t*) 0;
+
+  // pointer above gced heap
+  if (address >= get_heap_seg_end_gc(context))
+    return (uint64_t*) 0;
+
+  node = get_used_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    if (is_gc_library(context))
+      if (address >= (uint64_t) node)
+        if (address < ((uint64_t) node + GC_METADATA_SIZE))
+          // address points to metadata (redundant check but possibly faster)
+          return (uint64_t*) 0;
+
+    object = (uint64_t) get_metadata_memory(node);
+
+    if (address >= object)
+      if (address < object + get_metadata_size(node))
+        // address points into a gced object
+        return node;
+
+    node = get_metadata_next(node);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void mark_object(uint64_t* context, uint64_t address) {
+  uint64_t gc_address;
+
+  gc_address = gc_load_memory(context, address);
+
+  mark_object_selfie(context, gc_address);
+}
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
+  uint64_t* metadata;
+  uint64_t object_start;
+  uint64_t object_end;
+
+  if (is_gc_library(context) == 0)
+    if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
+      return;
+
+  metadata = get_metadata_if_address_is_valid(context, gc_address);
+
+  if (metadata == (uint64_t*) 0)
+    // address is not a pointer to a gced object
+    return;
+  else if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
+    set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
+  else
+    // object has already been marked as reachable
+    return;
+
+  object_start = (uint64_t) get_metadata_memory(metadata);
+  object_end   = object_start + get_metadata_size(metadata);
+
+  while (object_start < object_end) {
+    mark_object(context, object_start);
+
+    object_start = object_start + GC_WORDSIZE;
+  }
+}
+
+void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
+  // assert: segment is not heap
+
+  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
+  segment_start = segment_start - GC_WORDSIZE;
+
+  while (segment_start < segment_end - GC_WORDSIZE) {
+    // undo GC_WORDSIZE index offset before marking address
+    mark_object(context, segment_start + GC_WORDSIZE);
+
+    segment_start = segment_start + GC_WORDSIZE;
+  }
+}
+
+void mark(uint64_t* context) {
+  if (get_used_list_head_gc(context) == (uint64_t*) 0)
+    return; // if there is no used memory skip collection
+
+  // not traversing registers
+
+  // assert: temporary registers do not contain any reference to gc_heap memory
+  // selfie saves all relevant temporary registers on stack, see procedure_prologue().
+
+  // root segments: call stack and data segment
+
+  // traverse call stack
+  mark_segment(context, get_stack_seg_start_gc(context), VIRTUALMEMORYSIZE * GIGABYTE);
+
+  // traverse data segment
+  mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
+}
+
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
+  if (prev_metadata == (uint64_t*) 0)
+    set_used_list_head_gc(context, get_metadata_next(metadata));
+  else
+    set_metadata_next(prev_metadata, get_metadata_next(metadata));
+
+  if (GC_REUSE) {
+    set_metadata_next(metadata, get_free_list_head_gc(context));
+
+    set_free_list_head_gc(context, metadata);
+  }
+
+  gc_mem_collected = gc_mem_collected + get_metadata_size(metadata);
+}
+
+void sweep(uint64_t* context) {
+  sweep_selfie(context);
+}
+
+void sweep_selfie(uint64_t* context) {
+  uint64_t* prev_node;
+  uint64_t* node;
+  uint64_t* next_node;
+
+  prev_node = (uint64_t*) 0;
+
+  node = get_used_list_head_gc(context);
+
+  while (node != (uint64_t*) 0) {
+    // next node changes when object is reused
+    next_node = get_metadata_next(node);
+
+    if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
+      free_object(context, node, prev_node);
+    else {
+      // clear mark bit for next marking
+      set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
+
+      prev_node = node;
+    }
+
+    node = next_node;
+  }
+}
+
+void gc_collect(uint64_t* context) {
+  mark(context);
+  sweep(context);
+
+  gc_num_collects = gc_num_collects + 1;
+}
+
+void print_gc_profile(uint64_t is_gc_kernel) {
+  printf("%s: gc:      %lu.%.2luMB requested in %lu mallocs (%lu gced, %lu reuses)\n", selfie_name,
+    ratio_format_integral_2(gc_mem_mallocated, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_mallocated, MEGABYTE),
+    gc_num_mallocated,
+    gc_num_gced_mallocs,
+    gc_num_reused_mallocs);
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) reused in %lu reused mallocs\n", selfie_name,
+    ratio_format_integral_2(gc_mem_reused, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_reused, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_reused),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_reused),
+    gc_num_reused_mallocs);
+  printf("%s: gc:      %lu.%.2luMB collected in %lu gc runs\n", selfie_name,
+    ratio_format_integral_2(gc_mem_collected, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_collected, MEGABYTE),
+    gc_num_collects);
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
+    ratio_format_integral_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
+    gc_num_gced_mallocs + gc_num_ungced_mallocs,
+    gc_num_gced_mallocs,
+    gc_num_ungced_mallocs);
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu gced mallocs\n", selfie_name,
+    ratio_format_integral_2(gc_mem_objects, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_objects, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects),
+    gc_num_gced_mallocs);
+  printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu ungced mallocs", selfie_name,
+    ratio_format_integral_2(gc_mem_metadata, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_metadata, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_metadata),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_metadata),
+    gc_num_ungced_mallocs);
+  if (is_gc_kernel)
+    printf(" (external)");
+  println();
 }
 
 // -----------------------------------------------------------------
