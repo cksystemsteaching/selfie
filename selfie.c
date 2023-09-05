@@ -2339,7 +2339,8 @@ uint64_t lowest_page(uint64_t page, uint64_t lo);
 uint64_t highest_page(uint64_t page, uint64_t hi);
 void     map_page(uint64_t* context, uint64_t page, uint64_t frame);
 
-void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
+void cache_page_table(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
+
 void restore_context(uint64_t* context);
 
 uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
@@ -11099,21 +11100,19 @@ uint64_t highest_page(uint64_t page, uint64_t hi) {
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
 
-  if (frame != 0) {
-    table = get_pt(context);
+  table = get_pt(context);
 
-    if (get_page_frame(table, page) == 0) {
-      set_page_frame(table, page, frame);
+  // assert: page is unmapped
 
-      // exploit spatial locality in page table caching
-      if (page <= page_of_virtual_address(get_program_break(context) - WORDSIZE)) {
-        set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
-        set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
-      } else {
-        set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
-        set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
-      }
-    } // else assert: frame == get_page_frame(table, page)
+  set_page_frame(table, page, frame);
+
+  // exploit spatial locality in page table caching
+  if (page <= page_of_virtual_address(get_program_break(context) - WORDSIZE)) {
+    set_lowest_lo_page(context, lowest_page(page, get_lowest_lo_page(context)));
+    set_highest_lo_page(context, highest_page(page, get_highest_lo_page(context)));
+  } else {
+    set_lowest_hi_page(context, lowest_page(page, get_lowest_hi_page(context)));
+    set_highest_hi_page(context, highest_page(page, get_highest_hi_page(context)));
   }
 
   if (debug_map)
@@ -11121,14 +11120,26 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
       page, (uint64_t) frame, get_name(context));
 }
 
-void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
+void cache_page_table(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
+  uint64_t PTE_address;
   uint64_t frame;
 
   while (lo < hi) {
-    if (is_virtual_address_mapped(parent_table, (uint64_t) get_PTE_address(parent_table, table, lo))) {
-      frame = load_virtual_memory(parent_table, (uint64_t) get_PTE_address(parent_table, table, lo));
+    // PTE address of lo page in page table in parent address space
+    PTE_address = (uint64_t) get_PTE_address(parent_table, table, lo);
 
-      map_page(context, lo, get_page_frame(parent_table, page_of_virtual_address(frame)));
+    // PTEs in page table in parent address space may be unmapped
+    if (is_virtual_address_mapped(parent_table, PTE_address)) {
+      // page frame of lo page in parent address space
+      frame = load_virtual_memory(parent_table, PTE_address);
+
+      // page may be unmapped even if PTE of page is mapped
+      if (frame != 0) {
+        // assert: page frame in parent address space is mapped
+        frame = get_page_frame(parent_table, page_of_virtual_address(frame));
+
+        map_page(context, lo, frame);
+      }
     }
 
     lo = lo + 1;
@@ -11178,14 +11189,14 @@ void restore_context(uint64_t* context) {
     lo = load_virtual_memory(parent_table, lowest_lo_page(vctxt));
     hi = load_virtual_memory(parent_table, highest_lo_page(vctxt));
 
-    restore_region(context, table, parent_table, lo, hi);
+    cache_page_table(context, table, parent_table, lo, hi);
 
     store_virtual_memory(parent_table, lowest_lo_page(vctxt), hi);
 
     lo = load_virtual_memory(parent_table, lowest_hi_page(vctxt));
     hi = load_virtual_memory(parent_table, highest_hi_page(vctxt));
 
-    restore_region(context, table, parent_table, lo, hi);
+    cache_page_table(context, table, parent_table, lo, hi);
 
     store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
 
