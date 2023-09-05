@@ -1548,180 +1548,6 @@ void init_memory(uint64_t megabytes) {
 }
 
 // -----------------------------------------------------------------
-// ---------------------- GARBAGE COLLECTOR ------------------------
-// -----------------------------------------------------------------
-
-void reset_gc_counters();
-
-// bootstrapped to actual functions during compilation ...
-uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
-uint64_t fetch_global_pointer()    { return 0; }
-uint64_t fetch_data_segment_size() { return 0; }
-
-// ... here, not available on boot level 0 - only for compilation
-void emit_fetch_stack_pointer();
-void emit_fetch_global_pointer();
-void emit_fetch_data_segment_size_interface();
-void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
-
-void implement_gc_brk(uint64_t* context);
-
-uint64_t is_gc_library(uint64_t* context);
-
-// gc metadata entry
-// +----+---------+
-// |  0 | next    | pointer to next entry
-// |  1 | memory  | pointer to allocated memory
-// |  2 | size    | size of allocated memory (in bytes!)
-// |  3 | markbit | markbit indicating reachability of allocated memory
-// +----+---------+
-
-uint64_t* allocate_metadata(uint64_t* context);
-
-uint64_t* get_metadata_next(uint64_t* entry)    { return (uint64_t*) *entry; }
-uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 1); }
-uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 2); }
-uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 3); }
-
-void set_metadata_next(uint64_t* entry, uint64_t* next)      { *entry       = (uint64_t) next; }
-void set_metadata_memory(uint64_t* entry, uint64_t* memory)  { *(entry + 1) = (uint64_t) memory; }
-void set_metadata_size(uint64_t* entry, uint64_t size)       { *(entry + 2) = size; }
-void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = markbit; }
-
-// getters and setters with different access in library/kernel
-
-uint64_t  get_stack_seg_start_gc(uint64_t* context);
-uint64_t  get_data_seg_start_gc(uint64_t* context);
-uint64_t  get_data_seg_end_gc(uint64_t* context);
-uint64_t  get_heap_seg_start_gc(uint64_t* context);
-uint64_t  get_heap_seg_end_gc(uint64_t* context);
-uint64_t* get_used_list_head_gc(uint64_t* context);
-uint64_t* get_free_list_head_gc(uint64_t* context);
-uint64_t  get_gcs_in_period_gc(uint64_t* context);
-uint64_t  get_gc_enabled_gc(uint64_t* context);
-
-void set_data_and_heap_segments_gc(uint64_t* context);
-void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
-void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
-void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
-void set_gc_enabled_gc(uint64_t* context);
-
-uint64_t is_gc_enabled(uint64_t* context);
-
-void gc_init_selfie(uint64_t* context);
-
-// interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
-void gc_init(uint64_t* context);
-
-// this function performs first-fit retrieval of free memory in O(n) where n is memory size
-// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact-fit
-// see https://github.com/cksystemsgroup/compact-fit
-uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
-
-uint64_t gc_load_memory(uint64_t* context, uint64_t address);
-void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
-
-void zero_object(uint64_t* context, uint64_t* metadata);
-
-uint64_t* allocate_new_memory(uint64_t* context, uint64_t size);
-uint64_t* reuse_memory(uint64_t* context, uint64_t size);
-uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
-uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
-
-// interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
-uint64_t* allocate_memory(uint64_t* context, uint64_t size);
-
-// this function performs an O(n) list search where n is memory size
-// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator
-uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address);
-
-// interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
-void mark_object(uint64_t* context, uint64_t address);
-
-void mark_object_selfie(uint64_t* context, uint64_t gc_address);
-void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
-
-// this function scans the heap from two roots (data segment and stack) in O(n^2)
-// where n is memory size; checking if a value is a pointer takes O(n), see above
-// improvement: push O(n^2) down to O(n)
-void mark(uint64_t* context);
-
-void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
-
-// interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
-void sweep(uint64_t* context);
-
-void sweep_selfie(uint64_t* context);
-
-void gc_collect(uint64_t* context);
-
-void print_gc_profile(uint64_t is_gc_kernel);
-
-// ----------------------- LIBRARY FUNCTIONS -----------------------
-
-uint64_t* gc_malloc(uint64_t size) {
-  return gc_malloc_implementation((uint64_t*) 0, size);
-}
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t GC_DISABLED = 0;
-uint64_t GC_ENABLED  = 1;
-
-uint64_t GC_ON = 0; // turn on kernel variant of gc, generate gc library code
-
-uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
-
-uint64_t GC_PERIOD = 1000; // gc every so often
-
-uint64_t GC_REUSE = 1; // reuse memory with freelist by default
-
-uint64_t GC_METADATA_SIZE = 32; // 2 * sizeof(uint64_t) + 2 * sizeof(uint64_t*)
-
-uint64_t GC_WORDSIZE = 8; // sizeof(uint64_t) for library variant, otherwise WORDSIZE
-
-uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
-uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t gc_data_seg_start = 0;
-uint64_t gc_data_seg_end   = 0;
-uint64_t gc_heap_seg_start = 0;
-uint64_t gc_heap_seg_end   = 0;
-
-uint64_t* gc_used_list = (uint64_t*) 0; // pointer to used-list head
-uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
-
-uint64_t gc_num_gcs_in_period = 0;
-
-uint64_t gc_num_mallocated     = 0;
-uint64_t gc_num_gced_mallocs   = 0;
-uint64_t gc_num_ungced_mallocs = 0;
-uint64_t gc_num_reused_mallocs = 0;
-uint64_t gc_num_collects       = 0;
-uint64_t gc_mem_mallocated     = 0;
-uint64_t gc_mem_objects        = 0;
-uint64_t gc_mem_metadata       = 0;
-uint64_t gc_mem_reused         = 0;
-uint64_t gc_mem_collected      = 0;
-
-// ------------------------- INITIALIZATION ------------------------
-
-void reset_gc_counters() {
-  gc_num_mallocated     = 0;
-  gc_num_gced_mallocs   = 0;
-  gc_num_ungced_mallocs = 0;
-  gc_num_reused_mallocs = 0;
-  gc_num_collects       = 0;
-  gc_mem_mallocated     = 0;
-  gc_mem_objects        = 0;
-  gc_mem_metadata       = 0;
-  gc_mem_reused         = 0;
-  gc_mem_collected      = 0;
-}
-
-// -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
@@ -2336,6 +2162,180 @@ uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
 
 uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
 uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
+
+// -----------------------------------------------------------------
+// ---------------------- GARBAGE COLLECTOR ------------------------
+// -----------------------------------------------------------------
+
+void reset_gc_counters();
+
+// bootstrapped to actual functions during compilation ...
+uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
+uint64_t fetch_global_pointer()    { return 0; }
+uint64_t fetch_data_segment_size() { return 0; }
+
+// ... here, not available on boot level 0 - only for compilation
+void emit_fetch_stack_pointer();
+void emit_fetch_global_pointer();
+void emit_fetch_data_segment_size_interface();
+void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_location);
+
+void implement_gc_brk(uint64_t* context);
+
+uint64_t is_gc_library(uint64_t* context);
+
+// gc metadata entry
+// +----+---------+
+// |  0 | next    | pointer to next entry
+// |  1 | memory  | pointer to allocated memory
+// |  2 | size    | size of allocated memory (in bytes!)
+// |  3 | markbit | markbit indicating reachability of allocated memory
+// +----+---------+
+
+uint64_t* allocate_metadata(uint64_t* context);
+
+uint64_t* get_metadata_next(uint64_t* entry)    { return (uint64_t*) *entry; }
+uint64_t* get_metadata_memory(uint64_t* entry)  { return (uint64_t*) *(entry + 1); }
+uint64_t  get_metadata_size(uint64_t* entry)    { return             *(entry + 2); }
+uint64_t  get_metadata_markbit(uint64_t* entry) { return             *(entry + 3); }
+
+void set_metadata_next(uint64_t* entry, uint64_t* next)      { *entry       = (uint64_t) next; }
+void set_metadata_memory(uint64_t* entry, uint64_t* memory)  { *(entry + 1) = (uint64_t) memory; }
+void set_metadata_size(uint64_t* entry, uint64_t size)       { *(entry + 2) = size; }
+void set_metadata_markbit(uint64_t* entry, uint64_t markbit) { *(entry + 3) = markbit; }
+
+// getters and setters with different access in library/kernel
+
+uint64_t  get_stack_seg_start_gc(uint64_t* context);
+uint64_t  get_data_seg_start_gc(uint64_t* context);
+uint64_t  get_data_seg_end_gc(uint64_t* context);
+uint64_t  get_heap_seg_start_gc(uint64_t* context);
+uint64_t  get_heap_seg_end_gc(uint64_t* context);
+uint64_t* get_used_list_head_gc(uint64_t* context);
+uint64_t* get_free_list_head_gc(uint64_t* context);
+uint64_t  get_gcs_in_period_gc(uint64_t* context);
+uint64_t  get_gc_enabled_gc(uint64_t* context);
+
+void set_data_and_heap_segments_gc(uint64_t* context);
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
+void set_gcs_in_period_gc(uint64_t* context, uint64_t gcs);
+void set_gc_enabled_gc(uint64_t* context);
+
+uint64_t is_gc_enabled(uint64_t* context);
+
+void gc_init_selfie(uint64_t* context);
+
+// interface to initialize an external garbage collector (e.g. tools/boehm-gc.c)
+void gc_init(uint64_t* context);
+
+// this function performs first-fit retrieval of free memory in O(n) where n is memory size
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact-fit
+// see https://github.com/cksystemsgroup/compact-fit
+uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
+
+uint64_t gc_load_memory(uint64_t* context, uint64_t address);
+void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
+
+void zero_object(uint64_t* context, uint64_t* metadata);
+
+uint64_t* allocate_new_memory(uint64_t* context, uint64_t size);
+uint64_t* reuse_memory(uint64_t* context, uint64_t size);
+uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
+uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
+
+// interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
+uint64_t* allocate_memory(uint64_t* context, uint64_t size);
+
+// this function performs an O(n) list search where n is memory size
+// improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator
+uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address);
+
+// interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
+void mark_object(uint64_t* context, uint64_t address);
+
+void mark_object_selfie(uint64_t* context, uint64_t gc_address);
+void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
+
+// this function scans the heap from two roots (data segment and stack) in O(n^2)
+// where n is memory size; checking if a value is a pointer takes O(n), see above
+// improvement: push O(n^2) down to O(n)
+void mark(uint64_t* context);
+
+void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
+
+// interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
+void sweep(uint64_t* context);
+
+void sweep_selfie(uint64_t* context);
+
+void gc_collect(uint64_t* context);
+
+void print_gc_profile(uint64_t is_gc_kernel);
+
+// ----------------------- LIBRARY FUNCTIONS -----------------------
+
+uint64_t* gc_malloc(uint64_t size) {
+  return gc_malloc_implementation((uint64_t*) 0, size);
+}
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t GC_DISABLED = 0;
+uint64_t GC_ENABLED  = 1;
+
+uint64_t GC_ON = 0; // turn on kernel variant of gc, generate gc library code
+
+uint64_t USE_GC_LIBRARY = 0; // use library variant of gc or not
+
+uint64_t GC_PERIOD = 1000; // gc every so often
+
+uint64_t GC_REUSE = 1; // reuse memory with freelist by default
+
+uint64_t GC_METADATA_SIZE = 32; // 2 * sizeof(uint64_t) + 2 * sizeof(uint64_t*)
+
+uint64_t GC_WORDSIZE = 8; // sizeof(uint64_t) for library variant, otherwise WORDSIZE
+
+uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
+uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t gc_data_seg_start = 0;
+uint64_t gc_data_seg_end   = 0;
+uint64_t gc_heap_seg_start = 0;
+uint64_t gc_heap_seg_end   = 0;
+
+uint64_t* gc_used_list = (uint64_t*) 0; // pointer to used-list head
+uint64_t* gc_free_list = (uint64_t*) 0; // pointer to free-list head
+
+uint64_t gc_num_gcs_in_period = 0;
+
+uint64_t gc_num_mallocated     = 0;
+uint64_t gc_num_gced_mallocs   = 0;
+uint64_t gc_num_ungced_mallocs = 0;
+uint64_t gc_num_reused_mallocs = 0;
+uint64_t gc_num_collects       = 0;
+uint64_t gc_mem_mallocated     = 0;
+uint64_t gc_mem_objects        = 0;
+uint64_t gc_mem_metadata       = 0;
+uint64_t gc_mem_reused         = 0;
+uint64_t gc_mem_collected      = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void reset_gc_counters() {
+  gc_num_mallocated     = 0;
+  gc_num_gced_mallocs   = 0;
+  gc_num_ungced_mallocs = 0;
+  gc_num_reused_mallocs = 0;
+  gc_num_collects       = 0;
+  gc_mem_mallocated     = 0;
+  gc_mem_objects        = 0;
+  gc_mem_metadata       = 0;
+  gc_mem_reused         = 0;
+  gc_mem_collected      = 0;
+}
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
