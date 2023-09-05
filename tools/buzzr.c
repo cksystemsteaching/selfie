@@ -272,7 +272,7 @@ uint64_t handle_buzzed_page_fault(uint64_t* context) {
   if (pavailable()) {
     map_page(context, page, (uint64_t) palloc());
 
-    if (is_heap_address(context, get_virtual_address_of_page_start(page)))
+    if (is_heap_address(context, virtual_address_of_page(page)))
       set_mc_mapped_heap(context, get_mc_mapped_heap(context) + PAGESIZE);
 
     return DONOTEXIT;

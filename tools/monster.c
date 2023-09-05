@@ -794,7 +794,7 @@ void constrain_load() {
         // and individually
         *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
       } else
-        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+        throw_exception(EXCEPTION_PAGEFAULT, page_of_virtual_address(vaddr));
     } else
       throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
@@ -844,7 +844,7 @@ void constrain_store() {
         // and individually
         *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
       }  else
-        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+        throw_exception(EXCEPTION_PAGEFAULT, page_of_virtual_address(vaddr));
     } else
       throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else

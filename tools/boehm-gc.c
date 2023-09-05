@@ -353,7 +353,7 @@ void init_chunk(uint64_t* context, uint64_t* chunk_list_entry) {
   // mapping the page of a chunk is required before being able to write to it (only required for syscall)
   if (is_gc_library(context) == 0)
     if (is_virtual_address_mapped(get_pt(context), chunk_vaddr) == 0)
-      map_page(context, get_page_of_virtual_address(chunk_vaddr), (uint64_t) palloc());
+      map_page(context, page_of_virtual_address(chunk_vaddr), (uint64_t) palloc());
 }
 
 uint64_t get_chunk_object_markbit(uint64_t* entry, uint64_t object_index) {
