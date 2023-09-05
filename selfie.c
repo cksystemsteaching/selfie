@@ -1508,6 +1508,14 @@ void     store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t d
 
 uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr);
 
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
+
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_tlb = 0;
@@ -1906,7 +1914,8 @@ void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
 void print_register_value(uint64_t reg);
 
-uint64_t is_uncaught_exception(uint64_t exception);
+uint64_t is_valid_segment_read(uint64_t vaddr);
+uint64_t is_valid_segment_write(uint64_t vaddr);
 
 void print_exception(uint64_t exception, uint64_t fault);
 void throw_exception(uint64_t exception, uint64_t fault);
@@ -2342,17 +2351,6 @@ void     map_page(uint64_t* context, uint64_t page, uint64_t frame);
 void cache_page_table(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 
 void restore_context(uint64_t* context);
-
-uint64_t is_code_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_data_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_stack_address(uint64_t* context, uint64_t vaddr);
-uint64_t is_heap_address(uint64_t* context, uint64_t vaddr);
-
-uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr);
-uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
-
-uint64_t is_valid_segment_read(uint64_t vaddr);
-uint64_t is_valid_segment_write(uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -8613,6 +8611,62 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
     return load_virtual_memory(table, vaddr);
 }
 
+uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
+  // is address in code segment?
+  if (vaddr >= get_code_seg_start(context))
+    if (vaddr < get_code_seg_start(context) + get_code_seg_size(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
+  // is address in data segment?
+  if (vaddr >= get_data_seg_start(context))
+    if (vaddr < get_data_seg_start(context) + get_data_seg_size(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
+  // is address in stack segment?
+  if (vaddr >= *(get_regs(context) + REG_SP))
+    if (vaddr <= HIGHESTVIRTUALADDRESS)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_heap_address(uint64_t* context, uint64_t vaddr) {
+  // is address in heap segment?
+  if (vaddr >= get_heap_seg_start(context))
+    if (vaddr < get_program_break(context))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr) {
+  // is address between heap and stack segments?
+  if (vaddr >= get_program_break(context))
+    if (vaddr < *(get_regs(context) + REG_SP))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
+  if (is_data_address(context, vaddr))
+    return 1;
+  else if (is_stack_address(context, vaddr))
+    return 1;
+  else if (is_heap_address(context, vaddr))
+    return 1;
+  else
+    return 0;
+}
+
 // -----------------------------------------------------------------
 // ---------------------- GARBAGE COLLECTOR ------------------------
 // -----------------------------------------------------------------
@@ -10194,16 +10248,37 @@ void print_register_value(uint64_t reg) {
     printf("%s==%ld(0x%lX)", get_register_name(reg), *(registers + reg), *(registers + reg));
 }
 
-uint64_t is_uncaught_exception(uint64_t exception) {
-  if (exception == EXCEPTION_SEGMENTATIONFAULT)
+uint64_t is_valid_segment_read(uint64_t vaddr) {
+  if (is_data_address(current_context, vaddr)) {
+    data_reads = data_reads + 1;
+
     return 1;
-  else if (exception == EXCEPTION_INVALIDADDRESS)
+  } else if (is_stack_address(current_context, vaddr)) {
+    stack_reads = stack_reads + 1;
+
     return 1;
-  else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
+  } else if (is_heap_address(current_context, vaddr)) {
+    heap_reads = heap_reads + 1;
+
     return 1;
-  else if (exception == EXCEPTION_UNINITIALIZEDREGISTER)
+  } else
+    return 0;
+}
+
+uint64_t is_valid_segment_write(uint64_t vaddr) {
+  if (is_data_address(current_context, vaddr)) {
+    data_writes = data_writes + 1;
+
     return 1;
-  else
+  } else if (is_stack_address(current_context, vaddr)) {
+    stack_writes = stack_writes + 1;
+
+    return 1;
+  } else if (is_heap_address(current_context, vaddr)) {
+    heap_writes = heap_writes + 1;
+
+    return 1;
+  } else
     return 0;
 }
 
@@ -11216,96 +11291,6 @@ void restore_context(uint64_t* context) {
   flush_all_caches();
 
   set_ic_all(context, get_total_number_of_instructions() - get_ic_all(context));
-}
-
-uint64_t is_code_address(uint64_t* context, uint64_t vaddr) {
-  // is address in code segment?
-  if (vaddr >= get_code_seg_start(context))
-    if (vaddr < get_code_seg_start(context) + get_code_seg_size(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_data_address(uint64_t* context, uint64_t vaddr) {
-  // is address in data segment?
-  if (vaddr >= get_data_seg_start(context))
-    if (vaddr < get_data_seg_start(context) + get_data_seg_size(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_stack_address(uint64_t* context, uint64_t vaddr) {
-  // is address in stack segment?
-  if (vaddr >= *(get_regs(context) + REG_SP))
-    if (vaddr <= HIGHESTVIRTUALADDRESS)
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_heap_address(uint64_t* context, uint64_t vaddr) {
-  // is address in heap segment?
-  if (vaddr >= get_heap_seg_start(context))
-    if (vaddr < get_program_break(context))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_address_between_stack_and_heap(uint64_t* context, uint64_t vaddr) {
-  // is address between heap and stack segments?
-  if (vaddr >= get_program_break(context))
-    if (vaddr < *(get_regs(context) + REG_SP))
-      return 1;
-
-  return 0;
-}
-
-uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
-  if (is_data_address(context, vaddr))
-    return 1;
-  else if (is_stack_address(context, vaddr))
-    return 1;
-  else if (is_heap_address(context, vaddr))
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_valid_segment_read(uint64_t vaddr) {
-  if (is_data_address(current_context, vaddr)) {
-    data_reads = data_reads + 1;
-
-    return 1;
-  } else if (is_stack_address(current_context, vaddr)) {
-    stack_reads = stack_reads + 1;
-
-    return 1;
-  } else if (is_heap_address(current_context, vaddr)) {
-    heap_reads = heap_reads + 1;
-
-    return 1;
-  } else
-    return 0;
-}
-
-uint64_t is_valid_segment_write(uint64_t vaddr) {
-  if (is_data_address(current_context, vaddr)) {
-    data_writes = data_writes + 1;
-
-    return 1;
-  } else if (is_stack_address(current_context, vaddr)) {
-    stack_writes = stack_writes + 1;
-
-    return 1;
-  } else if (is_heap_address(current_context, vaddr)) {
-    heap_writes = heap_writes + 1;
-
-    return 1;
-  } else
-    return 0;
 }
 
 // -----------------------------------------------------------------
