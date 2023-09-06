@@ -1527,8 +1527,7 @@ uint64_t PAGETABLETREE = 1; // two-level page table is default
 uint64_t PHYSICALMEMORYSIZE   = 0; // total amount of physical memory available for frames
 uint64_t PHYSICALMEMORYEXCESS = 2; // tolerate more allocation than physically available
 
-// target-dependent, see init_target()
-uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+uint64_t HIGHESTVIRTUALADDRESS = 4294967295; // VIRTUALMEMORYSIZE * GIGABYTE - 1 (avoiding 32-bit overflow)
 
 // host-dependent, see init_memory()
 uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / sizeof(uint64_t*)
@@ -2642,8 +2641,6 @@ void init_target() {
     e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
     e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
   }
-
-  HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -8533,8 +8530,8 @@ uint64_t virtual_address_of_page(uint64_t page) {
 }
 
 uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
-  // is address virtual?
-  if (vaddr <= HIGHESTVIRTUALADDRESS + (WORDSIZE - alignment))
+  // is address in range?
+  if (vaddr <= HIGHESTVIRTUALADDRESS)
     // is address aligned?
     if (vaddr % alignment == 0)
       return 1;
@@ -10181,8 +10178,8 @@ void print_profile() {
     if (get_ic_all(context) > 0) {
       print_instruction_versus_exception_profile(context);
       printf("%s:          %lu.%.2luKB peak stack size\n", selfie_name,
-        ratio_format_integral_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE),
-        ratio_format_fractional_2(VIRTUALMEMORYSIZE * GIGABYTE - get_mc_stack_peak(context), KILOBYTE));
+        ratio_format_integral_2(get_mc_stack_peak(context), KILOBYTE),
+        ratio_format_fractional_2(get_mc_stack_peak(context), KILOBYTE));
       printf("%s:          %lu.%.2luMB allocated in %lu mallocs (%lu.%.2luMB or %lu.%.2lu%% actually accessed)\n", selfie_name,
         ratio_format_integral_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
         ratio_format_fractional_2(get_program_break(context) - get_heap_seg_start(context), MEGABYTE),
@@ -10355,7 +10352,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_ec_syscall(context, 0);
   set_ec_page_fault(context, 0);
   set_ec_timer(context, 0);
-  set_mc_stack_peak(context, HIGHESTVIRTUALADDRESS);
+  set_mc_stack_peak(context, 0);
   set_mc_mapped_heap(context, 0);
 
   // garbage collector
@@ -10959,12 +10956,13 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
 }
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  // assert: segment is not heap
+  // assert: segment is not heap, segment_start >= GC_WORDSIZE
 
-  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
+  // prevent 32-bit overflow by subtracting GC_WORDSIZE
   segment_start = segment_start - GC_WORDSIZE;
+  segment_end   = segment_end - GC_WORDSIZE;
 
-  while (segment_start < segment_end - GC_WORDSIZE) {
+  while (segment_start < segment_end) {
     // undo GC_WORDSIZE index offset before marking address
     mark_object(context, segment_start + GC_WORDSIZE);
 
@@ -11160,9 +11158,12 @@ void save_context(uint64_t* context) {
 
   set_ic_all(context, get_total_number_of_instructions() - get_ic_all(context));
 
-  if (*(get_regs(context) + REG_SP) < get_mc_stack_peak(context))
+  // number of bytes currently allocated on stack
+  r = VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(context) + REG_SP);
+
+  if (r > get_mc_stack_peak(context))
     // keep track of peak amount of stack allocation
-    set_mc_stack_peak(context, *(get_regs(context) + REG_SP));
+    set_mc_stack_peak(context, r);
 }
 
 uint64_t lowest_page(uint64_t page, uint64_t lo) {
