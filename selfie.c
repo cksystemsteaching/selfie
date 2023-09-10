@@ -10956,13 +10956,12 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
 }
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  // assert: segment is not heap, segment_start >= GC_WORDSIZE
+  // assert: segment is not heap
 
-  // prevent 32-bit overflow by subtracting GC_WORDSIZE
+  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
   segment_start = segment_start - GC_WORDSIZE;
-  segment_end   = segment_end - GC_WORDSIZE;
 
-  while (segment_start < segment_end) {
+  while (segment_start < segment_end - GC_WORDSIZE) {
     // undo GC_WORDSIZE index offset before marking address
     mark_object(context, segment_start + GC_WORDSIZE);
 
