@@ -6642,9 +6642,13 @@ An implementation of virtual memory requires *mapping* and *translating* virtual
 
 > Mapping versus translation
 
-Mapping and unmapping is rare, as it only happens upon creating and deleting machine instances, and is usually done in software. Translation, however, happens very often, upon every single memory access, in particular loading and storing data, but also fetching code, and is therefore done in hardware by a device called *memory management unit* (MMU) which requires the mapping data stored in a *segmentation table*. Thus the format of that table is hardware-dependent and defines the interface between the software that computes the mapping and the hardware that uses the mapping for translation.
+Mapping and unmapping is rare, as it only happens upon creating and deleting machine instances, and is usually done in software. Translation, however, happens very often, upon every single memory access, in particular loading and storing data, but also fetching code, and is therefore done in hardware by a device called *memory management unit* (MMU). The MMU requires the mapping data stored in a *segmentation table* in physical memory with one table entry per segment, and a special register that identifies which table entry is currently used for translation. Thus the format of that table is hardware-dependent and defines the interface between the software that computes the mapping and the hardware that uses the mapping for translation.
 
-Multiple instances of virtual memory can be mapped as long as there is sufficient physical address space.
+> Multiple virtual machines
+
+Mapping virtual memory is a memory allocation and deallocation problem. As long as there is sufficient non-fragmented physical address space, multiple instances of virtual machines can be hosted by mapping their virtual memory to different segments of physical memory. Switching from executing one machine to another just requires reprogramming the special register of the MMU to refer to the correct segment. Then, virtual address translation by the MMU ensures spatial isolation of those machines.
+
+> Logic versus implementation of segmentation
 
 > Paging
 
