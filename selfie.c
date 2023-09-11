@@ -1527,8 +1527,7 @@ uint64_t PAGETABLETREE = 1; // two-level page table is default
 uint64_t PHYSICALMEMORYSIZE   = 0; // total amount of physical memory available for frames
 uint64_t PHYSICALMEMORYEXCESS = 2; // tolerate more allocation than physically available
 
-// target-dependent, see init_target()
-uint64_t HIGHESTVIRTUALADDRESS = 4294967288; // VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE
+uint64_t HIGHESTVIRTUALADDRESS = 4294967295; // VIRTUALMEMORYSIZE * GIGABYTE - 1 (avoiding 32-bit overflow)
 
 // host-dependent, see init_memory()
 uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / sizeof(uint64_t*)
@@ -2642,8 +2641,6 @@ void init_target() {
     e_ehsize    = 52; // elf header size 52 bytes (ELFCLASS32)
     e_phentsize = 32; // size of program header entry 32 bytes (ELFCLASS32)
   }
-
-  HIGHESTVIRTUALADDRESS = VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE;
 }
 
 void turn_on_gc_library(uint64_t period, char* name) {
@@ -8533,8 +8530,8 @@ uint64_t virtual_address_of_page(uint64_t page) {
 }
 
 uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment) {
-  // is address virtual?
-  if (vaddr <= HIGHESTVIRTUALADDRESS + (WORDSIZE - alignment))
+  // is address in range?
+  if (vaddr <= HIGHESTVIRTUALADDRESS)
     // is address aligned?
     if (vaddr % alignment == 0)
       return 1;
@@ -10961,10 +10958,11 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
   // assert: segment is not heap, segment_start >= GC_WORDSIZE
 
-  // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
+  // prevent 32-bit overflow by subtracting GC_WORDSIZE
   segment_start = segment_start - GC_WORDSIZE;
+  segment_end   = segment_end - GC_WORDSIZE;
 
-  while (segment_start < segment_end - GC_WORDSIZE) {
+  while (segment_start < segment_end) {
     // undo GC_WORDSIZE index offset before marking address
     mark_object(context, segment_start + GC_WORDSIZE);
 

@@ -2913,7 +2913,7 @@ void beator(uint64_t entry_pc) {
 
   // assert: data segment is not empty
 
-  while (pc <= HIGHESTVIRTUALADDRESS) {
+  while (pc <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
     if (pc == data_start + data_size) {
       pc = heap_start;
 
@@ -3026,8 +3026,8 @@ void beator(uint64_t entry_pc) {
     }
 
     if (pc + WORDSIZE == 0)
-      // check overflow to terminate loop
-      pc = UINT64_MAX;
+      // check 32-bit overflow to terminate loop
+      pc = HIGHESTVIRTUALADDRESS;
     else
       pc = pc + WORDSIZE;
   }
