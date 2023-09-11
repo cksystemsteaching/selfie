@@ -10956,7 +10956,7 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
 }
 
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end) {
-  // assert: segment is not heap
+  // assert: segment is not heap, segment_start >= GC_WORDSIZE
 
   // prevent (32-bit) overflow by subtracting GC_WORDSIZE from index
   segment_start = segment_start - GC_WORDSIZE;
@@ -10973,10 +10973,9 @@ void mark(uint64_t* context) {
   if (get_used_list_head_gc(context) == (uint64_t*) 0)
     return; // if there is no used memory skip collection
 
-  // not traversing registers
+  // assert: all used temporary registers are saved on stack, see save_temporaries()
 
-  // assert: temporary registers do not contain any reference to gc_heap memory
-  // selfie saves all relevant temporary registers on stack, see procedure_prologue().
+  // not traversing registers
 
   // root segments: call stack and data segment
 
