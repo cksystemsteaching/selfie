@@ -6634,7 +6634,19 @@ Selfie implements virtual memory with a 32-bit virtual address space that refers
 
 > 64-bit and 32-bit systems
 
-Selfie is designed to run on 64-bit systems and model a 64-bit system itself which means that the size of all CPU registers and memory words is 64 bits. While 64-bit systems may in principle support 64-bit virtual memory, even modern 64-bit hardware usually supports less than that but more than 32-bit virtual memory. Our choice of supporting only 32-bit virtual memory in selfie has the advantage that 32-bit systems can still handle that. Even when running on a 64-bit system, selfie can also model a 32-bit system where even loading and storing data, like fetching code, is done in chunks of 4-byte-aligned 32-bit single words. Selfie also runs on 32-bit systems in which case selfie can only model a 32-bit system. By default selfie generates code that runs on 64-bit or 32-bit systems, depending on whether selfie runs on a 64-bit or 32-bit system, respectively. However, if selfie runs on a 64-bit system, selfie can be configured to generate code that runs on a 32-bit system, using the experimental console argument `-m32`. While supporting both 64-bit and 32-bit systems increases selfie's reach at a surprisingly small amount of cost in code complexity, the original reason to implement 32-bit support, which was done late into development, is pure curiosity for identifying the parts of the code where word size matters. Turns out that removing all 32-bit integer overflows from the code was enough and even resulted in higher code quality.
+Selfie is designed to run on 64-bit systems and model a 64-bit system itself which means that the size of all CPU registers and memory words is 64 bits. While 64-bit systems may in principle support 64-bit virtual memory, even modern 64-bit hardware usually supports less than that but more than 32-bit virtual memory. Our choice of supporting only 32-bit virtual memory in selfie has the advantage that 32-bit systems can still handle that. Even when running on a 64-bit system, selfie can also model a 32-bit system where even loading and storing data, like fetching code, is done in chunks of 4-byte-aligned 32-bit single words. Selfie also runs on 32-bit systems in which case selfie can only model a 32-bit system. By default selfie generates code that runs on 64-bit or 32-bit systems, depending on whether selfie runs on a 64-bit or 32-bit system, respectively. However, if selfie runs on a 64-bit system, selfie can be configured to generate code that runs on a 32-bit system, using the experimental console argument `-m32`. While supporting both 64-bit and 32-bit systems increases selfie's reach at a surprisingly small amount of cost in code complexity, the original reason to implement 32-bit support, which was done late into development, is pure curiosity for identifying the parts of the code where word size matters. Turns out that removing all 32-bit integer overflows from the code was enough and even resulted in higher code quality. In short, all calculations done by selfie require no more than 32 bits, even when running as 64-bit system!
+
+> Segmentation
+
+An implementation of virtual memory requires *mapping* and *translating* virtual addresses to physical addresses. The simplest approach to do that is *segmentation* which nevertheless has its shortcomings. Suppose for a moment that there are more physical than virtual addresses, in fact way more. In that case, we can view virtual memory as a contiguous *segment* of physical memory, and then only need to know the physical address or *offset* where virtual memory as segment starts in physical memory, assuming the entire segment fits, that is, ends before the end of physical memory. This is the *mapping*, encoded by a single physical address for the offset. Then, every virtual memory access requires adding the offset to the involved virtual address to obtain the physical address where memory access actually happens. This is the *translation*, performed by a single integer addition of virtual address and offset, possibly following a prior range check on the virtual address for safety.
+
+> Mapping versus translation
+
+Mapping and unmapping is rare, as it only happens upon creating and deleting machine instances, and is usually done in software. Translation, however, happens very often, upon every single memory access, in particular loading and storing data, but also fetching code, and is therefore done in hardware by a device called *memory management unit* (MMU) which requires the mapping data stored in a *segmentation table*. Thus the format of that table is hardware-dependent and defines the interface between the software that computes the mapping and the hardware that uses the mapping for translation.
+
+Multiple instances of virtual memory can be mapped as long as there is sufficient physical address space.
+
+> Paging
 
 ...
 
@@ -6649,10 +6661,6 @@ An emulated machine is the simplest scenario that allows us to explain how spati
 4. Executing `ecall` instructions (exception handler)
 
 All other activities of the emulator do not affect virtual memory.
-
-> Segmentation
-
-> Paging
 
 ### Concurrency
 
