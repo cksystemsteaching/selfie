@@ -6658,9 +6658,15 @@ Virtual memory in most modern systems, and even selfie, is implemented with *pag
 
 > Pages are virtual addresses, page frames are physical storage
 
-Next, we also partition the address space of physical memory into *page frames* of the same size as pages to use them as storage for the content of pages in virtual memory. Finally, we create a mapping from pages to page frames, in essence similar to mapping segments to physical memory. However, now we can map pages to page frames in physical memory in any order we like. Moreover, there is no fragmentation among page frames since they are all the same size. But there are a million pages for just one virtual address space. Mapping all of them requires a data structure that can hold up to a million physical addresses or *offsets* of page frames in physical memory. The number of bits needed for each offset depends on how many page frames are made available for paging. In general, not all page frames can be used because we need some physical memory for other purposes such as the data structure for mapping. However, for simplicity in selfie, we dedicate 64 or 32 bits to each offset, depending on whether selfie runs on a 64-bit or 32-bit system, respectively. So, how many bytes are needed for a data structure that can map a million pages? Easy. There are `2^20` 4KB-pages, each mapped by a 64-bit or 8-byte offset on a 64-bit system, requiring `2^23` or 8MB bytes in total since 8 bytes is `2^3` bytes. On a 32-bit system, it is 4MB in total. Not so bad, but still quite a bit.
+Next, we also partition the address space of physical memory into *page frames* of the same size as pages to use them as storage for the content of pages in virtual memory. Finally, we need to create a mapping from pages to page frames, in essence similar to mapping segments to physical memory. However, now we can map individual pages to page frames anywhere in physical memory. The order in which page frames appear in physical memory is irrelevant. Moreover, there is no fragmentation among page frames since they are all the same size. Thus any choice of page frames is as good as any other. In selfie, the procedure that allocates page frames is called `palloc` which implements a simple bump pointer allocator over the available physical memory. There is also a procedure called `pfree` which we nevertheless left empty to leave room for a future exercise. So, for now allocated page frames are never deallocated.
+
+> Page table
+
+Well, but there are a million pages for just one virtual address space. Mapping all of them requires a data structure called a *page table* that can hold up to a million physical addresses or *offsets* of page frames in physical memory. The number of bits needed for each offset depends on how many page frames are made available for paging. However, for simplicity in selfie, we dedicate 64 or 32 bits to each offset, depending on whether selfie runs on a 64-bit or 32-bit system, respectively. So, how many bytes are needed for a page table that can map a million pages? Easy. There are `2^20` 4KB-pages, each mapped by a 64-bit or 8-byte offset on a 64-bit system, requiring `2^23` or 8MB bytes in total since 8 bytes is `2^3` bytes. On a 32-bit system, it is 4MB in total. Not so bad, but still quite a bit.
 
 > On-demand paging
+
+The most naive implementation
 
 ...
 
