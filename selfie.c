@@ -1516,34 +1516,36 @@ uint64_t KILOBYTE = 1024;       // 1KB (KiB: 2^10B)
 uint64_t MEGABYTE = 1048576;    // 1MB (MiB: 2^20B)
 uint64_t GIGABYTE = 1073741824; // 1GB (GiB: 2^30B)
 
-uint64_t VIRTUALMEMORYSIZE = 4; // 4GB of virtual memory (avoiding 32-bit overflow)
+uint64_t VIRTUALMEMORYSIZE     = 4; // 4GB of virtual memory (avoiding 32-bit overflow)
+uint64_t HIGHESTVIRTUALADDRESS = 4294967295; // VIRTUALMEMORYSIZE * GIGABYTE - 1 (avoiding 32-bit overflow)
 
-uint64_t PAGESIZE = 4096; // 4KB virtual pages
+uint64_t PAGESIZE      = 4096; // 4KB-virtual pages
+uint64_t PAGEFRAMESIZE = 4096; // 4KB-physical page frames: target-dependent, see init_memory()
 
-uint64_t NUMBEROFPAGES = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
+uint64_t NUMBEROFPAGES    = 1048576; // VIRTUALMEMORYSIZE * GIGABYTE / PAGESIZE
+uint64_t NUMBEROFLEAFPTES = 512;     // PAGESIZE / sizeof(uint64_t*): host-dependent, see init_memory()
 
 uint64_t PAGETABLETREE = 1; // two-level page table is default
 
-uint64_t PHYSICALMEMORYSIZE   = 0; // total amount of physical memory available for frames
+uint64_t PHYSICALMEMORYSIZE   = 0; // total amount of physical memory available for page frames
 uint64_t PHYSICALMEMORYEXCESS = 2; // tolerate more allocation than physically available
-
-uint64_t HIGHESTVIRTUALADDRESS = 4294967295; // VIRTUALMEMORYSIZE * GIGABYTE - 1 (avoiding 32-bit overflow)
-
-// host-dependent, see init_memory()
-uint64_t NUMBEROFLEAFPTES = 512; // number of leaf page table entries == PAGESIZE / sizeof(uint64_t*)
 
 // ------------------------- INITIALIZATION ------------------------
 
 void init_memory(uint64_t megabytes) {
+  // target-dependent: reinitialize in case sizeof(uint64_t) is not WORDSIZE
+  PAGEFRAMESIZE = PAGESIZE * (sizeof(uint64_t) / WORDSIZE);
+
+  // host-dependent: reinitialize in case sizeof(uint64_t*) is SINGLEWORDSIZE
+  NUMBEROFLEAFPTES = PAGESIZE / sizeof(uint64_t*);
+
   if (megabytes < 1)
     megabytes = 1;
   else if (megabytes > 4096)
     megabytes = 4096;
 
-  PHYSICALMEMORYSIZE = megabytes * MEGABYTE;
-
-  // host-dependent: reinitialize in case sizeof(uint64_t*) is not 8
-  NUMBEROFLEAFPTES = PAGESIZE / sizeof(uint64_t*);
+  PHYSICALMEMORYSIZE   = megabytes * MEGABYTE;
+  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS * (PAGEFRAMESIZE / PAGESIZE);
 }
 
 // -----------------------------------------------------------------
@@ -8553,13 +8555,14 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
+  // assert: page is PAGESIZE-aligned in virtual memory
   page = page_of_virtual_address(vaddr);
 
+  // assert: frame is PAGEFRAMESIZE-aligned in physical memory
   frame = get_page_frame(table, page);
 
-  // map virtual address to physical address
-  // (single word on 32-bit target occupies double word on 64-bit system)
-  paddr = (vaddr - page * PAGESIZE) * (sizeof(uint64_t) / WORDSIZE) + frame;
+  // translate virtual address to physical address
+  paddr = (vaddr - page * PAGESIZE) * (PAGEFRAMESIZE / PAGESIZE) + frame;
 
   if (debug_tlb)
     printf("%s: tlb access:\n vaddr: 0x%08lX\n page: 0x%04lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
@@ -11308,9 +11311,7 @@ void restore_context(uint64_t* context) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <=
-            PHYSICALMEMORYEXCESS * PHYSICALMEMORYSIZE * sizeof(uint64_t) / WORDSIZE)
-    // single word on 32-bit target occupies double word on 64-bit system
+  else if (allocated_page_frame_memory + MEGABYTE <= PHYSICALMEMORYSIZE * PHYSICALMEMORYEXCESS)
     return 1;
   else
     return 0;
@@ -11321,31 +11322,28 @@ uint64_t pused() {
 }
 
 uint64_t* palloc() {
-  uint64_t double_for_single_word;
   uint64_t block;
   uint64_t frame;
 
-  // single word on 32-bit target occupies double word on 64-bit system
-  double_for_single_word = sizeof(uint64_t) / WORDSIZE;
-
   // assert: PHYSICALMEMORYSIZE is equal to or a multiple of MEGABYTE
-  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
+  // assert: PAGEFRAMESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
     if (pavailable()) {
-      free_page_frame_memory = MEGABYTE * double_for_single_word;
+      // single word on 32-bit target occupies double word on 64-bit system
+      free_page_frame_memory = MEGABYTE * (PAGEFRAMESIZE / PAGESIZE);
 
       // on boot level 0 allocate zeroed memory
       block = (uint64_t) zmalloc(free_page_frame_memory);
 
       allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
 
-      // page frames must be page-aligned to work as page table index
-      next_page_frame = round_up(block, PAGESIZE * double_for_single_word);
+      // page frames must be PAGEFRAMESIZE-aligned in memory
+      next_page_frame = round_up(block, PAGEFRAMESIZE);
 
       if (next_page_frame > block)
-        // losing one page frame to fragmentation
-        free_page_frame_memory = free_page_frame_memory - PAGESIZE * double_for_single_word;
+        // losing one page frame to alignment
+        free_page_frame_memory = free_page_frame_memory - PAGEFRAMESIZE;
     } else {
       printf("%s: palloc out of physical memory\n", selfie_name);
 
@@ -11355,12 +11353,12 @@ uint64_t* palloc() {
 
   frame = next_page_frame;
 
-  next_page_frame = next_page_frame + PAGESIZE * double_for_single_word;
+  next_page_frame = next_page_frame + PAGEFRAMESIZE;
 
-  free_page_frame_memory = free_page_frame_memory - PAGESIZE * double_for_single_word;
+  free_page_frame_memory = free_page_frame_memory - PAGEFRAMESIZE;
 
   // strictly, touching is only necessary on boot levels higher than 0
-  return touch((uint64_t*) frame, PAGESIZE * double_for_single_word);
+  return touch((uint64_t*) frame, PAGEFRAMESIZE);
 }
 
 void pfree(uint64_t* frame) {
@@ -11761,7 +11759,7 @@ void map_unmapped_pages(uint64_t* context) {
   }
 
   // allowing more palloc for caching tree page tables
-  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS + 1;
+  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS + PAGEFRAMESIZE / PAGESIZE;
 }
 
 uint64_t minster(uint64_t* to_context) {
