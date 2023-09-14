@@ -1498,7 +1498,7 @@ uint64_t virtual_address_of_page(uint64_t page);
 uint64_t is_virtual_address_valid(uint64_t vaddr, uint64_t alignment);
 uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr);
 
-uint64_t* tlb(uint64_t* table, uint64_t vaddr);
+uint64_t* translate_virtual_to_physical(uint64_t* table, uint64_t vaddr);
 
 uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr);
 void     store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data);
@@ -1510,7 +1510,7 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_tlb = 0;
+uint64_t debug_translation = 0;
 
 uint64_t KILOBYTE = 1024;       // 1KB (KiB: 2^10B)
 uint64_t MEGABYTE = 1048576;    // 1MB (MiB: 2^20B)
@@ -8488,6 +8488,8 @@ uint64_t* get_PTE_address(uint64_t* parent_table, uint64_t* table, uint64_t page
 uint64_t get_page_frame(uint64_t* table, uint64_t page) {
   uint64_t* PTE_address;
 
+  // TODO: translation lookaside buffer (TLB)
+
   PTE_address = get_PTE_address(0, table, page);
 
   if (PTE_address == (uint64_t*) 0)
@@ -8547,7 +8549,7 @@ uint64_t is_virtual_address_mapped(uint64_t* table, uint64_t vaddr) {
   return is_page_mapped(table, page_of_virtual_address(vaddr));
 }
 
-uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
+uint64_t* translate_virtual_to_physical(uint64_t* table, uint64_t vaddr) {
   uint64_t page;
   uint64_t frame;
   uint64_t paddr;
@@ -8564,8 +8566,8 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   // translate virtual address to physical address
   paddr = (vaddr - page * PAGESIZE) * (PAGEFRAMESIZE / PAGESIZE) + frame;
 
-  if (debug_tlb)
-    printf("%s: tlb access:\n vaddr: 0x%08lX\n page: 0x%04lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
+  if (debug_translation)
+    printf("%s: translating:\n vaddr: 0x%08lX\n page: 0x%04lX\n frame: 0x%08lX\n paddr: 0x%08lX\n", selfie_name,
       vaddr,
       page,
       frame,
@@ -8578,21 +8580,21 @@ uint64_t load_virtual_memory(uint64_t* table, uint64_t vaddr) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  return load_physical_memory(tlb(table, vaddr));
+  return load_physical_memory(translate_virtual_to_physical(table, vaddr));
 }
 
 void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
   // assert: is_virtual_address_mapped(table, vaddr) == 1
 
-  store_physical_memory(tlb(table, vaddr), data);
+  store_physical_memory(translate_virtual_to_physical(table, vaddr), data);
 }
 
 uint64_t load_cached_virtual_memory(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
     // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
-    return load_data_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
+    return load_data_from_cache(vaddr, (uint64_t) translate_virtual_to_physical(table, vaddr));
   else
     return load_virtual_memory(table, vaddr);
 }
@@ -8601,7 +8603,7 @@ void store_cached_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data)
   if (L1_CACHE_ENABLED)
     // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
-    store_data_in_cache(vaddr, (uint64_t) tlb(table, vaddr), data);
+    store_data_in_cache(vaddr, (uint64_t) translate_virtual_to_physical(table, vaddr), data);
   else
     store_virtual_memory(table, vaddr, data);
 }
@@ -8610,7 +8612,7 @@ uint64_t load_cached_instruction_word(uint64_t* table, uint64_t vaddr) {
   if (L1_CACHE_ENABLED)
     // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
     // assert: is_virtual_address_mapped(table, vaddr) == 1
-    return load_instruction_from_cache(vaddr, (uint64_t) tlb(table, vaddr));
+    return load_instruction_from_cache(vaddr, (uint64_t) translate_virtual_to_physical(table, vaddr));
   else
     return load_virtual_memory(table, vaddr);
 }

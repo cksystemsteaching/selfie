@@ -591,7 +591,7 @@ uint64_t* allocate_object(uint64_t* context, uint64_t size) {
   object_index = calculate_chunk_small_object_index(context, ret);
 
   if (is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t) chunk);
+    chunk = translate_virtual_to_physical(get_pt(context), (uint64_t) chunk);
 
   set_chunk_object_allocbit(chunk, object_index, 1);
 
@@ -610,7 +610,7 @@ void free_chunk_object(uint64_t* context, uint64_t* object) {
   object_index = calculate_chunk_small_object_index(context, object);
 
   if (is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t) chunk);
+    chunk = translate_virtual_to_physical(get_pt(context), (uint64_t) chunk);
 
   set_chunk_object_allocbit(chunk, object_index, 0);
 
@@ -632,7 +632,7 @@ uint64_t calculate_chunk_small_object_index(uint64_t* context, uint64_t* object)
   object_index = (uint64_t) object - (uint64_t) chunk; // offset in chunk
 
   if (is_gc_library(context) == 0)
-    chunk = tlb(get_pt(context), (uint64_t) chunk);
+    chunk = translate_virtual_to_physical(get_pt(context), (uint64_t) chunk);
 
   object_index = object_index - calculate_chunk_payload_offset_bytes(get_chunk_object_size(chunk)); // offset in chunk payload
   object_index = object_index / get_chunk_object_size(chunk);
@@ -651,7 +651,7 @@ uint64_t* get_chunk_list_entry_memory(uint64_t* context, uint64_t* entry) {
   if (is_gc_library(context))
     return get_coso_list_entry_memory(entry);
   else
-    return tlb(get_pt(context), (uint64_t) get_coso_list_entry_memory(entry));
+    return translate_virtual_to_physical(get_pt(context), (uint64_t) get_coso_list_entry_memory(entry));
 }
 
 // Hook Overrides
@@ -697,7 +697,7 @@ uint64_t* allocate_memory_boehm(uint64_t* context, uint64_t size) {
   object = allocate_object(context, size);
 
   if (is_gc_library(context) == 0)
-    zero_memory(tlb(get_pt(context), (uint64_t) object), size);
+    zero_memory(translate_virtual_to_physical(get_pt(context), (uint64_t) object), size);
   else
     zero_memory(object, size);
 
@@ -727,7 +727,7 @@ uint64_t mark_object_boehm(uint64_t* context, uint64_t gc_address) {
   chunk = left_shift(right_shift(gc_address, GC_CHUNK_SIZE_LOG2), GC_CHUNK_SIZE_LOG2);
 
   if (is_gc_library(context) == 0)
-    chunk_paddr = tlb(get_pt(context), chunk);
+    chunk_paddr = translate_virtual_to_physical(get_pt(context), chunk);
   else
     chunk_paddr = (uint64_t*) chunk;
 

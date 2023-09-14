@@ -156,7 +156,7 @@ void implement_buzzed_read(uint64_t* context) {
     if (is_virtual_address_valid(vbuffer, WORDSIZE))
       if (is_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-          buffer = tlb(get_pt(context), vbuffer);
+          buffer = translate_virtual_to_physical(get_pt(context), vbuffer);
 
           actually_read = buzz_read(buffer, bytes_to_read);
 
