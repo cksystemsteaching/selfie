@@ -6690,9 +6690,13 @@ Let us do a few more simple calculations. How many 4KB-pages are needed to repre
 
 > Address translation, again
 
-With a two-level tree-based page table, as implemented in selfie, the 11 MSBs of the 20-bit page number in a 32-bit virtual address determine the *page directory entry* (PDE) in the 16KB-root page directory that contains the frame number of the leaf page table that contains the actual *page table entry* (PTE) we are looking for, as identified by the remaining 9 LSBs of the 20-bit page number.
+With a two-level tree-based page table, as implemented in selfie, the 11 MSBs of the 20-bit page number in a 32-bit virtual address determine the *page directory entry* (PDE) in the 16KB-root page directory that contains the frame number of the leaf page table that contains the actual *page table entry* (PTE) we are looking for, as identified by the remaining 9 LSBs of the 20-bit page number. Thus a page table lookup involves retrieving the root PDE first and only then retrieving the leaf PTE. Everything else remains the same. Selfie hides the distinction of array-based and tree-based implementations in the code to the extent possible demonstrating how to provide the same logic with different implementations.
 
-Bigger trees...
+> On-demand paging tree-based page tables
+
+The key advantage of tree-based page tables is that they are amenable to on-demand paging. Leaf page tables and even root page directories only need to be allocated on demand. When doing so, physical memory for tree-based page tables is only allocated for the branches that are needed to map virtual memory that is accessed. Moreover, a single 4KB-leaf page table can map `2^9` or 512 pages, that is, 2MB of contiguous 32-bit virtual memory in selfie on a 64-bit system, and even `2^10` or 1024 pages, that is, 4MB of memory, on a 32-bit system. This means that in practice, the amount of physical memory allocated for tree-based page tables is often much less than for array-based page tables. For example, mapping 32-bit virtual memory used by a program that allocates and accesses a 2MB page-aligned heap segment requires a single 4KB-leaf page table plus the 16KB-root page directory. Let us throw in three more 4-KB leaf page tables for mapping the code, data, and stack segments, and the total amount needed for a tree-based page table is 32KB, instead of 8MB for an array-based page table. Suddenly, virtual memory appears to cost almost nothing. With fast address translation done in hardware, virtual memory is nothing but a breakthrough technology in modern systems.
+
+Modern systems all implement tree-based page tables but usually with more levels than two...
 
 ...
 
