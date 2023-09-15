@@ -80,7 +80,7 @@ The programming language C\* in which selfie is written is a tiny subset of the 
    1. [Virtual Machines](#virtual-machines)
    2. [Virtual Memory](#virtual-memory)
    3. [Concurrency](#concurrency)
-   4. [Self-Reference](#self-reference)
+   4. [Bootstrapping](#bootstrapping)
    5. [Runtime Systems](#runtime-systems)
    6. [Universality of Computing](#universality-of-computing)
    7. [Life](#life-4)
@@ -6678,9 +6678,9 @@ The most naive implementation of a page table is an array of frame numbers index
 
 Modern systems may implement on-demand paging for all segments of virtual memory. This is incredible as creating virtual machine instances is near instantaneous since no memory storage is allocated, not even for page tables. Only when code starts executing paging happens on demand, literally upon fetching the first instruction from virtual memory. Since there is no mapping yet, a *page fault* occurs which is a type of *exception* the CPU responds to by executing systems code, called an *exception handler*, that attempts to create a proper mapping, at least for the page where the fault occurred, and then has the CPU try again to fetch the instruction. In case of page faults in pages that contain code or data, the content is loaded into the frame to which the faulting page is mapped. All this happens transparently to the code executing on a virtual machine. While selfie does not page code, data, and initial stack segments on demand, selfie still handles page faults on demand that happen in heap and non-initial stack segments. This is simpler because the involved frames only need to be zeroed. In selfie, page faults are handled by the procedure `page_fault_handler`.
 
-> Locality
+> Spatial locality
 
-Many programs exhibit locality in the sense that they tend to focus on accessing memory only in specific areas before moving on to focus on accessing memory in other areas. In particular, code tends to focus on executing instructions that are located close to each other in the code segment. Moreover, code tends to focus on accessing data that is located close to each other, at least in the heap and stack segments. The choice of 4KB-pages turns out to be a sweet spot in size that keeps the number of page faults occurring in fast succession low. A translation lookaside buffer leverages locality by caching page table entries for faster address translation, combined with instruction and data caches that leverage locality by caching actual memory content for overall faster memory access. Larger page sizes may improve performance even more but may also introduce more internal fragmentation.
+Many programs exhibit spatial locality in the sense that they tend to focus on accessing memory only in specific areas before moving on to focus on accessing memory in other areas. In particular, code tends to focus on executing instructions that are located close to each other in the code segment. Moreover, code tends to focus on accessing data that is located close to each other, at least in the heap and stack segments. The choice of 4KB-pages turns out to be a sweet spot in size that keeps the number of page faults occurring in fast succession low. A translation lookaside buffer leverages spatial locality by caching page table entries for faster address translation, combined with instruction and data caches that leverage locality by caching actual memory content for overall faster memory access. Larger page sizes may improve performance even more but may also introduce more internal fragmentation.
 
 > Paging page tables
 
@@ -6692,13 +6692,15 @@ Let us do a few more simple calculations. How many 4KB-pages are needed to repre
 
 With a two-level tree-based page table, as implemented in selfie, the 11 MSBs of the 20-bit page number in a 32-bit virtual address determine the *page directory entry* (PDE) in the 16KB-root page directory that contains the frame number of the leaf page table that contains the actual *page table entry* (PTE) we are looking for, as identified by the remaining 9 LSBs of the 20-bit page number. Thus a page table lookup involves retrieving the root PDE first and only then retrieving the leaf PTE. Everything else remains the same. Selfie hides the distinction of array-based and tree-based implementations in the code to the extent possible demonstrating how to provide the same logic with different implementations.
 
-> On-demand paging tree-based page tables
+> On-demand paging page tables
 
-The key advantage of tree-based page tables is that they are amenable to on-demand paging. Leaf page tables and even root page directories only need to be allocated on demand. When doing so, physical memory for tree-based page tables is only allocated for the branches that are needed to map virtual memory that is accessed. Moreover, a single 4KB-leaf page table can map `2^9` or 512 pages, that is, 2MB of contiguous 32-bit virtual memory in selfie on a 64-bit system, and even `2^10` or 1024 pages, that is, 4MB of memory, on a 32-bit system. This means that in practice, the amount of physical memory allocated for tree-based page tables is often much less than for array-based page tables. For example, mapping 32-bit virtual memory used by a program that allocates and accesses a 2MB page-aligned heap segment requires a single 4KB-leaf page table plus the 16KB-root page directory. Let us throw in three more 4-KB leaf page tables for mapping the code, data, and stack segments, and the total amount needed for a tree-based page table is 32KB, instead of 8MB for an array-based page table. Suddenly, virtual memory appears to cost almost nothing. With fast address translation done in hardware, virtual memory is nothing but a breakthrough technology in modern systems.
+The key advantage of tree-based page tables is that they are amenable to on-demand paging. Leaf page tables and even root page directories only need to be allocated on demand. When doing so, physical memory for tree-based page tables is only allocated for the branches that are needed to map virtual memory that is accessed. Moreover, a single 4KB-leaf page table can map `2^9` or 512 pages, that is, 2MB of contiguous 32-bit virtual memory in selfie on a 64-bit system, and even `2^10` or 1024 pages, that is, 4MB of memory, on a 32-bit system. This means that in the presence of spatial locality, the amount of physical memory allocated for tree-based page tables is often much less than for array-based page tables. For example, mapping 32-bit virtual memory used by a program that allocates and accesses a 2MB page-aligned heap segment requires a single 4KB-leaf page table plus the 16KB-root page directory. Let us throw in three more 4-KB leaf page tables for mapping the code, data, and stack segments, and the total amount needed for a tree-based page table is 32KB, instead of 8MB for an array-based page table. Suddenly, virtual memory appears to cost almost nothing in terms of spatial overhead. With fast address translation done in hardware, virtual memory is nothing but a breakthrough technology in modern systems. Modern systems all implement tree-based page tables but usually with trees that have more levels than just two in order to accommodate larger virtual address spaces and more physical memory. However, the principled idea of on-demand paging page tables remains the same.
 
-Modern systems all implement tree-based page tables but usually with more levels than two...
+> Spatial isolation
 
 ...
+
+> Emulation
 
 An emulated machine is the simplest scenario that allows us to explain how spatial isolation is implemented with virtual memory. Let us go back to how the `mipster` emulator in selfie works. There are three components that affect virtual memory: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler which deals with exceptions raised during code execution. The bootloader, interpreter, and exception handler are implemented in the procedures `boot_loader`, `run_until_exception`, and `handle_exception`, respectively. The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular system calls and page faults. In total, the emulator may trigger virtual memory access in four distinct cases:
 
@@ -6718,11 +6720,13 @@ All other activities of the emulator do not affect virtual memory.
 
 ...from VMM to operating system kernel...
 
+> Temporal isolation
+
 processes
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
-### Self-Reference
+### Bootstrapping
 
 An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
 
@@ -6740,7 +6744,7 @@ make os-emu
 make os-vmm-emu
 ```
 
-> Bootstrapping
+> Self-reference
 
 fork-wait
 
