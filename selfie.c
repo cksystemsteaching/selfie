@@ -1988,15 +1988,6 @@ void reset_profiler() {
 // ------------------------ MACHINE CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
-uint64_t* new_context();
-
-void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
-
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
-
-void      free_context(uint64_t* context);
-uint64_t* delete_context(uint64_t* context, uint64_t* from);
-
 // machine context
 // +----+-----------------+
 // |  0 | next context    | pointer to next context
@@ -2344,7 +2335,14 @@ void reset_gc_counters() {
 
 void reset_microkernel();
 
+uint64_t* new_context();
+void      free_context(uint64_t* context);
+uint64_t* delete_context(uint64_t* context, uint64_t* from);
+
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
+
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t* cache_context(uint64_t* vctxt);
 
 void save_context(uint64_t* context);
@@ -2357,6 +2355,16 @@ void cache_page_table(uint64_t* context, uint64_t* table, uint64_t* parent_table
 
 void restore_context(uint64_t* context);
 
+uint64_t pavailable();
+uint64_t pused();
+
+uint64_t* palloc();
+void      pfree(uint64_t* frame);
+
+void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data);
+
+void map_unmapped_pages(uint64_t* context);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_create = 0;
@@ -2368,6 +2376,11 @@ uint64_t* current_context = (uint64_t*) 0; // context currently running
 
 uint64_t* used_contexts = (uint64_t*) 0; // doubly-linked list of used contexts
 uint64_t* free_contexts = (uint64_t*) 0; // singly-linked list of free contexts
+
+uint64_t allocated_page_frame_memory = 0;
+uint64_t free_page_frame_memory      = 0;
+
+uint64_t next_page_frame = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2382,18 +2395,17 @@ void reset_microkernel() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-uint64_t pavailable();
-uint64_t pused();
-
-uint64_t* palloc();
-void      pfree(uint64_t* frame);
-
-void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data);
-
 void up_load_binary(uint64_t* context);
 
 uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP);
 void     up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv);
+
+char* replace_extension(char* filename, char* extension);
+
+char* boot_level_prefix(char* s);
+char* increment_boot_level_prefix(char* s, char* t);
+
+void boot_loader(uint64_t* context);
 
 uint64_t handle_system_call(uint64_t* context);
 uint64_t handle_page_fault(uint64_t* context);
@@ -2407,16 +2419,8 @@ uint64_t hypster(uint64_t* to_context);
 uint64_t mixter(uint64_t* to_context, uint64_t mix);
 
 uint64_t minmob(uint64_t* to_context);
-void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
-
-char* replace_extension(char* filename, char* extension);
-
-char* boot_level_prefix(char* s);
-char* increment_boot_level_prefix(char* s, char* t);
-
-void boot_loader(uint64_t* context);
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -2459,13 +2463,6 @@ uint64_t* MACHINES; // named machines
 uint64_t DIPSTER = 5;
 uint64_t RIPSTER = 6;
 uint64_t CAPSTER = 7;
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t next_page_frame = 0;
-
-uint64_t allocated_page_frame_memory = 0;
-uint64_t free_page_frame_memory      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -10273,138 +10270,6 @@ void print_host_os() {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
-// ------------------------ MACHINE CONTEXTS -----------------------
-// -----------------------------------------------------------------
-
-uint64_t* new_context() {
-  uint64_t* context;
-
-  if (free_contexts == (uint64_t*) 0)
-    context = allocate_context();
-  else {
-    context = free_contexts;
-
-    free_contexts = get_next_context(free_contexts);
-  }
-
-  set_next_context(context, used_contexts);
-  set_prev_context(context, (uint64_t*) 0);
-
-  if (used_contexts != (uint64_t*) 0)
-    set_prev_context(used_contexts, context);
-
-  used_contexts = context;
-
-  return context;
-}
-
-void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
-  char* context_name;
-
-  // some fields are set in boot loader or when context switching
-
-  // allocate zeroed memory for general-purpose registers
-  // TODO: reuse memory
-  set_regs(context, zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t)));
-
-  // allocate zeroed memory for page table
-  // TODO: save and reuse memory for page table
-  if (PAGETABLETREE == 0)
-    // for a 4GB-virtual-memory page table with
-    // 4KB pages and 64-bit pointers, allocate
-    // 8MB = 2^23 ((2^32 / 2^12) * 2^3) bytes to
-    // accommodate 2^20 (2^32 / 2^12) PTEs
-    set_pt(context, zmalloc(NUMBEROFPAGES * sizeof(uint64_t*)));
-  else
-    // for the root node (page directory), allocate
-    // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
-    // accommodate 2^11 ((2^32 / 2^12) / 2^9) root PDEs
-    // pointing to 4KB leaf nodes (page tables) that
-    // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
-    set_pt(context, zmalloc(NUMBEROFPAGES / NUMBEROFLEAFPTES * sizeof(uint64_t*)));
-
-  // reset page table cache
-  set_lowest_lo_page(context, 0);
-  set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_lowest_hi_page(context, page_of_virtual_address(HIGHESTVIRTUALADDRESS));
-  set_highest_hi_page(context, get_lowest_hi_page(context));
-
-  if (parent != MY_CONTEXT) {
-    set_code_seg_start(context, load_virtual_memory(get_pt(parent), code_seg_start(vctxt)));
-    set_code_seg_size(context, load_virtual_memory(get_pt(parent), code_seg_size(vctxt)));
-    set_data_seg_start(context, load_virtual_memory(get_pt(parent), data_seg_start(vctxt)));
-    set_data_seg_size(context, load_virtual_memory(get_pt(parent), data_seg_size(vctxt)));
-    set_heap_seg_start(context, load_virtual_memory(get_pt(parent), heap_seg_start(vctxt)));
-
-    context_name = string_alloc(MAX_FILENAME_LENGTH);
-
-    down_load_string(parent, load_virtual_memory(get_pt(parent), name(vctxt)), context_name);
-
-    set_name(context, context_name);
-  } else {
-    set_exception(context, EXCEPTION_NOEXCEPTION);
-    set_fault(context, 0);
-
-    set_exit_code(context, EXITCODE_NOERROR);
-  }
-
-  set_parent(context, parent);
-  set_virtual_context(context, vctxt);
-
-  // profile
-  set_ic_all(context, 0);
-  set_lc_malloc(context, 0);
-  set_ec_syscall(context, 0);
-  set_ec_page_fault(context, 0);
-  set_ec_timer(context, 0);
-  set_mc_stack_peak(context, 0);
-  set_mc_mapped_heap(context, 0);
-
-  // garbage collector
-  set_used_list_head(context, (uint64_t*) 0);
-  set_free_list_head(context, (uint64_t*) 0);
-  set_gcs_in_period(context, 0);
-  set_use_gc_kernel(context, GC_DISABLED);
-}
-
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
-  uint64_t* context;
-
-  context = used_contexts;
-
-  while (context != (uint64_t*) 0) {
-    if (get_parent(context) == parent)
-      if (get_virtual_context(context) == vctxt)
-        return context;
-
-    context = get_next_context(context);
-  }
-
-  return (uint64_t*) 0;
-}
-
-void free_context(uint64_t* context) {
-  set_next_context(context, free_contexts);
-
-  free_contexts = context;
-}
-
-uint64_t* delete_context(uint64_t* context, uint64_t* from) {
-  if (get_next_context(context) != (uint64_t*) 0)
-    set_prev_context(get_next_context(context), get_prev_context(context));
-
-  if (get_prev_context(context) != (uint64_t*) 0) {
-    set_next_context(get_prev_context(context), get_next_context(context));
-    set_prev_context(context, (uint64_t*) 0);
-  } else
-    from = get_next_context(context);
-
-  free_context(context);
-
-  return from;
-}
-
-// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -11090,6 +10955,118 @@ void print_gc_profile(uint64_t is_gc_kernel) {
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
 
+uint64_t* new_context() {
+  uint64_t* context;
+
+  if (free_contexts == (uint64_t*) 0)
+    context = allocate_context();
+  else {
+    context = free_contexts;
+
+    free_contexts = get_next_context(free_contexts);
+  }
+
+  set_next_context(context, used_contexts);
+  set_prev_context(context, (uint64_t*) 0);
+
+  if (used_contexts != (uint64_t*) 0)
+    set_prev_context(used_contexts, context);
+
+  used_contexts = context;
+
+  return context;
+}
+
+void free_context(uint64_t* context) {
+  set_next_context(context, free_contexts);
+
+  free_contexts = context;
+}
+
+uint64_t* delete_context(uint64_t* context, uint64_t* from) {
+  if (get_next_context(context) != (uint64_t*) 0)
+    set_prev_context(get_next_context(context), get_prev_context(context));
+
+  if (get_prev_context(context) != (uint64_t*) 0) {
+    set_next_context(get_prev_context(context), get_next_context(context));
+    set_prev_context(context, (uint64_t*) 0);
+  } else
+    from = get_next_context(context);
+
+  free_context(context);
+
+  return from;
+}
+
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
+  char* context_name;
+
+  // some fields are set in boot loader or when context switching
+
+  // allocate zeroed memory for general-purpose registers
+  // TODO: reuse memory
+  set_regs(context, zmalloc(NUMBEROFREGISTERS * sizeof(uint64_t)));
+
+  // allocate zeroed memory for page table
+  // TODO: save and reuse memory for page table
+  if (PAGETABLETREE == 0)
+    // for a 4GB-virtual-memory page table with
+    // 4KB pages and 64-bit pointers, allocate
+    // 8MB = 2^23 ((2^32 / 2^12) * 2^3) bytes to
+    // accommodate 2^20 (2^32 / 2^12) PTEs
+    set_pt(context, zmalloc(NUMBEROFPAGES * sizeof(uint64_t*)));
+  else
+    // for the root node (page directory), allocate
+    // 16KB = 2^14 (2^32 / 2^12 / 2^9 * 2^3) bytes to
+    // accommodate 2^11 ((2^32 / 2^12) / 2^9) root PDEs
+    // pointing to 4KB leaf nodes (page tables) that
+    // each accommodate 2^9 (2^12 / 2^3) leaf PTEs
+    set_pt(context, zmalloc(NUMBEROFPAGES / NUMBEROFLEAFPTES * sizeof(uint64_t*)));
+
+  // reset page table cache
+  set_lowest_lo_page(context, 0);
+  set_highest_lo_page(context, get_lowest_lo_page(context));
+  set_lowest_hi_page(context, page_of_virtual_address(HIGHESTVIRTUALADDRESS));
+  set_highest_hi_page(context, get_lowest_hi_page(context));
+
+  if (parent != MY_CONTEXT) {
+    set_code_seg_start(context, load_virtual_memory(get_pt(parent), code_seg_start(vctxt)));
+    set_code_seg_size(context, load_virtual_memory(get_pt(parent), code_seg_size(vctxt)));
+    set_data_seg_start(context, load_virtual_memory(get_pt(parent), data_seg_start(vctxt)));
+    set_data_seg_size(context, load_virtual_memory(get_pt(parent), data_seg_size(vctxt)));
+    set_heap_seg_start(context, load_virtual_memory(get_pt(parent), heap_seg_start(vctxt)));
+
+    context_name = string_alloc(MAX_FILENAME_LENGTH);
+
+    down_load_string(parent, load_virtual_memory(get_pt(parent), name(vctxt)), context_name);
+
+    set_name(context, context_name);
+  } else {
+    set_exception(context, EXCEPTION_NOEXCEPTION);
+    set_fault(context, 0);
+
+    set_exit_code(context, EXITCODE_NOERROR);
+  }
+
+  set_parent(context, parent);
+  set_virtual_context(context, vctxt);
+
+  // profile
+  set_ic_all(context, 0);
+  set_lc_malloc(context, 0);
+  set_ec_syscall(context, 0);
+  set_ec_page_fault(context, 0);
+  set_ec_timer(context, 0);
+  set_mc_stack_peak(context, 0);
+  set_mc_mapped_heap(context, 0);
+
+  // garbage collector
+  set_used_list_head(context, (uint64_t*) 0);
+  set_free_list_head(context, (uint64_t*) 0);
+  set_gcs_in_period(context, 0);
+  set_use_gc_kernel(context, GC_DISABLED);
+}
+
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   uint64_t* context;
 
@@ -11102,6 +11079,22 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
       get_name(parent), get_name(used_contexts));
 
   return context;
+}
+
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    if (get_parent(context) == parent)
+      if (get_virtual_context(context) == vctxt)
+        return context;
+
+    context = get_next_context(context);
+  }
+
+  return (uint64_t*) 0;
 }
 
 uint64_t* cache_context(uint64_t* vctxt) {
@@ -11306,10 +11299,6 @@ void restore_context(uint64_t* context) {
   set_ic_all(context, get_total_number_of_instructions() - get_ic_all(context));
 }
 
-// -----------------------------------------------------------------
-// ---------------------------- KERNEL -----------------------------
-// -----------------------------------------------------------------
-
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
@@ -11376,6 +11365,30 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
 
   store_virtual_memory(get_pt(context), vaddr, data);
 }
+
+void map_unmapped_pages(uint64_t* context) {
+  uint64_t page;
+
+  // assert: page table is only mapped from beginning up and end down
+
+  page = get_lowest_lo_page(context);
+
+  while (is_page_mapped(get_pt(context), page))
+    page = page + 1;
+
+  while (pavailable()) {
+    map_page(context, page, (uint64_t) palloc());
+
+    page = page + 1;
+  }
+
+  // allowing more palloc for caching tree page tables
+  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS + PAGEFRAMESIZE / PAGESIZE;
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- KERNEL -----------------------------
+// -----------------------------------------------------------------
 
 void up_load_binary(uint64_t* context) {
   uint64_t baddr;
@@ -11501,6 +11514,106 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // initialize frame pointer register for completeness (redundant)
   *(get_regs(context) + REG_S0) = 0;
+}
+
+char* replace_extension(char* filename, char* extension) {
+  char* s;
+  uint64_t i;
+  uint64_t c;
+  char* filename_without_extension;
+
+  // assert: string_length(filename) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
+
+  s = string_alloc(string_length(filename) + 1 + string_length(extension));
+
+  // start reading at end of filename
+  i = string_length(filename);
+
+  c = 0;
+
+  // look for extension
+  while (c != '.') {
+    if (c == '/')
+      i = 0;
+
+    if (i > 0) {
+      i = i - 1;
+
+      c = load_character(filename, i);
+    } else
+      c = '.';
+  }
+
+  if (i == 0)
+    // filename has no extension
+    filename_without_extension = filename;
+  else {
+    filename_without_extension = string_alloc(i);
+
+    // assert: filename_without_extension is zeroed and thus null-terminated
+
+    // copy filename without extension and null-terminator into filename_without_extension
+    while (i > 0) {
+      i = i - 1;
+
+      store_character(filename_without_extension, i, load_character(filename, i));
+    }
+  }
+
+  // writing filename_without_extension plus extension into s
+  sprintf(s, "%s.%s", filename_without_extension, extension);
+
+  return s;
+}
+
+char* boot_level_prefix(char* s) {
+  uint64_t l;
+  char* t;
+  uint64_t i;
+
+  l = string_length(s);
+
+  t = string_alloc(l);
+
+  i = 0;
+
+  while (i < l) {
+    if (load_character(s, i) == '>') {
+      store_character(t, i, '>');
+
+      i = i + 1;
+    } else {
+      store_character(t, i, 0);
+
+      return t;
+    }
+  }
+
+  return t;
+}
+
+char* increment_boot_level_prefix(char* s, char* t) {
+  char* p;
+  char* u;
+
+  p = boot_level_prefix(s);
+
+  u = string_alloc(string_length(p) + 1 + 1 + string_length(t));
+
+  sprintf(u, "%s> %s", p, t);
+
+  return u;
+}
+
+void boot_loader(uint64_t* context) {
+  up_load_binary(context);
+
+  set_name(context, increment_boot_level_prefix(selfie_name, binary_name));
+
+  // pass binary name as first argument by replacing next argument
+  set_argument(get_name(context));
+
+  up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
 }
 
 uint64_t handle_system_call(uint64_t* context) {
@@ -11744,26 +11857,6 @@ uint64_t minmob(uint64_t* to_context) {
   }
 }
 
-void map_unmapped_pages(uint64_t* context) {
-  uint64_t page;
-
-  // assert: page table is only mapped from beginning up and end down
-
-  page = get_lowest_lo_page(context);
-
-  while (is_page_mapped(get_pt(context), page))
-    page = page + 1;
-
-  while (pavailable()) {
-    map_page(context, page, (uint64_t) palloc());
-
-    page = page + 1;
-  }
-
-  // allowing more palloc for caching tree page tables
-  PHYSICALMEMORYEXCESS = PHYSICALMEMORYEXCESS + PAGEFRAMESIZE / PAGESIZE;
-}
-
 uint64_t minster(uint64_t* to_context) {
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -11777,106 +11870,6 @@ uint64_t minster(uint64_t* to_context) {
 uint64_t mobster(uint64_t* to_context) {
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
-}
-
-char* replace_extension(char* filename, char* extension) {
-  char* s;
-  uint64_t i;
-  uint64_t c;
-  char* filename_without_extension;
-
-  // assert: string_length(filename) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
-
-  s = string_alloc(string_length(filename) + 1 + string_length(extension));
-
-  // start reading at end of filename
-  i = string_length(filename);
-
-  c = 0;
-
-  // look for extension
-  while (c != '.') {
-    if (c == '/')
-      i = 0;
-
-    if (i > 0) {
-      i = i - 1;
-
-      c = load_character(filename, i);
-    } else
-      c = '.';
-  }
-
-  if (i == 0)
-    // filename has no extension
-    filename_without_extension = filename;
-  else {
-    filename_without_extension = string_alloc(i);
-
-    // assert: filename_without_extension is zeroed and thus null-terminated
-
-    // copy filename without extension and null-terminator into filename_without_extension
-    while (i > 0) {
-      i = i - 1;
-
-      store_character(filename_without_extension, i, load_character(filename, i));
-    }
-  }
-
-  // writing filename_without_extension plus extension into s
-  sprintf(s, "%s.%s", filename_without_extension, extension);
-
-  return s;
-}
-
-char* boot_level_prefix(char* s) {
-  uint64_t l;
-  char* t;
-  uint64_t i;
-
-  l = string_length(s);
-
-  t = string_alloc(l);
-
-  i = 0;
-
-  while (i < l) {
-    if (load_character(s, i) == '>') {
-      store_character(t, i, '>');
-
-      i = i + 1;
-    } else {
-      store_character(t, i, 0);
-
-      return t;
-    }
-  }
-
-  return t;
-}
-
-char* increment_boot_level_prefix(char* s, char* t) {
-  char* p;
-  char* u;
-
-  p = boot_level_prefix(s);
-
-  u = string_alloc(string_length(p) + 1 + 1 + string_length(t));
-
-  sprintf(u, "%s> %s", p, t);
-
-  return u;
-}
-
-void boot_loader(uint64_t* context) {
-  up_load_binary(context);
-
-  set_name(context, increment_boot_level_prefix(selfie_name, binary_name));
-
-  // pass binary name as first argument by replacing next argument
-  set_argument(get_name(context));
-
-  up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
 }
 
 uint64_t selfie_run(uint64_t machine) {
