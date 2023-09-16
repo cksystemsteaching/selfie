@@ -115,9 +115,6 @@ int dprintf(int fd, const char* format, ...);
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void init_library();
-void reset_library();
-
 uint64_t two_to_the_power_of(uint64_t p);
 uint64_t log_two(uint64_t n);
 
@@ -272,7 +269,7 @@ uint64_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
 uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
-// default is LINUX, re-initialized in init_system
+// default is LINUX, re-initialized in init_system()
 uint64_t O_CREAT_TRUNC_WRONLY = 577; // write-only flags for host operating system
 
 // flags for rw-r--r-- (text) file permissions
@@ -371,9 +368,6 @@ void reset_library() {
 // -----------------------------------------------------------------
 // ---------------------------- SCANNER ----------------------------
 // -----------------------------------------------------------------
-
-void init_scanner();
-void reset_scanner();
 
 void print_symbol(uint64_t symbol);
 void print_line_number(char* message, uint64_t line);
@@ -565,21 +559,6 @@ void reset_scanner() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void reset_symbol_tables();
-
-uint64_t hash(uint64_t* key);
-
-uint64_t* create_symbol_table_entry(uint64_t table, char* string,
-  uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
-
-uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
-uint64_t* search_global_symbol_table(char* string, uint64_t class);
-uint64_t* search_local_symbol_table(char* string);
-uint64_t* get_scoped_symbol_table_entry(char* string);
-
-uint64_t is_undefined_procedure(uint64_t* entry);
-uint64_t report_undefined_procedures();
-
 // symbol table entry
 // +---+---------+
 // | 0 | next    | pointer to next entry
@@ -613,6 +592,19 @@ void set_type(uint64_t* entry, uint64_t type)        { *(entry + 4) = type; }
 void set_value(uint64_t* entry, uint64_t value)      { *(entry + 5) = value; }
 void set_address(uint64_t* entry, uint64_t address)  { *(entry + 6) = address; }
 void set_scope(uint64_t* entry, uint64_t scope)      { *(entry + 7) = scope; }
+
+uint64_t hash(uint64_t* key);
+
+uint64_t* create_symbol_table_entry(uint64_t table, char* string,
+  uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+
+uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
+uint64_t* search_global_symbol_table(char* string, uint64_t class);
+uint64_t* search_local_symbol_table(char* string);
+uint64_t* get_scoped_symbol_table_entry(char* string);
+
+uint64_t is_undefined_procedure(uint64_t* entry);
+uint64_t report_undefined_procedures();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -669,8 +661,6 @@ void     tfree(uint64_t number_of_temporaries);
 // -----------------------------------------------------------------
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
-
-void reset_parser();
 
 uint64_t is_type();
 uint64_t is_value();
@@ -816,8 +806,6 @@ void macro_var_end();
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
-void init_bootstrapping();
-
 void emit_round_up(uint64_t reg, uint64_t m);
 void emit_multiply_by(uint64_t reg, uint64_t m);
 
@@ -856,8 +844,6 @@ void selfie_compile();
 // -----------------------------------------------------------------
 // ---------------------------- REGISTER ---------------------------
 // -----------------------------------------------------------------
-
-void init_register();
 
 char* get_register_name(uint64_t reg);
 void  print_register_name(uint64_t reg);
@@ -1041,9 +1027,6 @@ uint64_t funct7 = 0;
 // -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
-
-void reset_binary();
-void reset_binary_counters();
 
 uint64_t get_total_number_of_instructions();
 uint64_t get_total_number_of_nops();
@@ -1478,8 +1461,6 @@ uint64_t L1_icache_coherency_invalidations = 0;
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void init_memory(uint64_t megabytes);
-
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
@@ -1640,9 +1621,6 @@ uint64_t* MNEMONICS; // assembly mnemonics of instructions
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
-void init_disassembler();
-void reset_disassembler();
-
 char* get_mnemonic(uint64_t ins);
 
 uint64_t print_instruction();
@@ -1655,6 +1633,16 @@ char*    assembly_name = (char*) 0; // name of assembly file
 uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 
 // ------------------------- INITIALIZATION ------------------------
+
+void reset_disassembler() {
+  if (IS64BITTARGET) {
+    *(MNEMONICS + LOAD)  = (uint64_t) "ld";
+    *(MNEMONICS + STORE) = (uint64_t) "sd";
+  } else {
+    *(MNEMONICS + LOAD)  = (uint64_t) "lw";
+    *(MNEMONICS + STORE) = (uint64_t) "sw";
+  }
+}
 
 void init_disassembler() {
   MNEMONICS = smalloc((ECALL + 1) * sizeof(uint64_t*));
@@ -1676,21 +1664,9 @@ void init_disassembler() {
   *(MNEMONICS + ECALL) = (uint64_t) "ecall";
 }
 
-void reset_disassembler() {
-  if (IS64BITTARGET) {
-    *(MNEMONICS + LOAD)  = (uint64_t) "ld";
-    *(MNEMONICS + STORE) = (uint64_t) "sd";
-  } else {
-    *(MNEMONICS + LOAD)  = (uint64_t) "lw";
-    *(MNEMONICS + STORE) = (uint64_t) "sw";
-  }
-}
-
 // -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
-
-void init_replay_engine();
 
 void record_state(uint64_t value);
 
@@ -1717,17 +1693,6 @@ void init_replay_engine() {
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
-
-void init_interpreter();
-void reset_interpreter();
-
-void reset_nop_counters();
-
-void reset_source_profile();
-void reset_registers_profile();
-void reset_segments_profile();
-
-void reset_profiler();
 
 void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
@@ -2159,8 +2124,6 @@ uint64_t is_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
 // ---------------------- GARBAGE COLLECTOR ------------------------
 // -----------------------------------------------------------------
 
-void reset_gc_counters();
-
 // bootstrapped to actual functions during compilation ...
 uint64_t fetch_stack_pointer()     { return 0; } // indicate that gc is unavailable
 uint64_t fetch_global_pointer()    { return 0; }
@@ -2333,8 +2296,6 @@ void reset_gc_counters() {
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
 
-void reset_microkernel();
-
 uint64_t* new_context();
 void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
@@ -2503,13 +2464,6 @@ char* argument = (char*) 0;
 // ----------------------------- SELFIE ----------------------------
 // -----------------------------------------------------------------
 
-void init_selfie(uint64_t argc, uint64_t* argv);
-
-void init_system();
-void init_target();
-
-void turn_on_gc_library(uint64_t period, char* name);
-
 void experimental_features();
 
 uint64_t exit_selfie(uint64_t exit_code, char* extras);
@@ -2525,8 +2479,6 @@ uint64_t LINUX     = 1;
 uint64_t MACOS     = 2;
 uint64_t WINDOWS   = 3;
 uint64_t BAREMETAL = 4;
-
-// ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t OS = 0; // default host operating system is selfie
 
