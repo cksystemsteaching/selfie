@@ -11625,7 +11625,7 @@ uint64_t mipster(uint64_t* to_context) {
     from_context = mipster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
+      // dispatch exception handling to parent
       to_context = get_parent(from_context);
 
       timeout = TIMEROFF;
@@ -11686,7 +11686,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
       from_context = hypster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
+      // dispatch exception handling to parent
       to_context = get_parent(from_context);
 
       timeout = TIMEROFF;
@@ -11721,7 +11721,7 @@ uint64_t minmob(uint64_t* to_context) {
     from_context = mipster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
+      // dispatch exception handling to parent
       to_context = get_parent(from_context);
 
       timeout = TIMEROFF;
