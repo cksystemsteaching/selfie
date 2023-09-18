@@ -1914,9 +1914,6 @@ void reset_registers_profile() {
   *(writes_per_register + REG_SP) = 1;
   *(writes_per_register + REG_S0) = 1;
 
-  // a6 register is written to by the kernel
-  *(writes_per_register + REG_A6) = 1;
-
   stack_register_reads      = 0;
   stack_register_writes     = 0;
   argument_register_reads   = 0;
