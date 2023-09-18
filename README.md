@@ -6606,11 +6606,11 @@ In selfie, both emulated machines and virtual machines are represented by a data
 
 Hosting virtual machines, or software processes for that matter, requires solving three fundamental problems, including the self-reference involved in the fact that a virtual machine monitor, or operating system kernel, runs in a virtual machine, or software process, as well:
 
-1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging. Spatial isolation is an issue that also applies to emulated machines.
+1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values when context switching. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging. Spatial isolation is an issue that also applies to emulated machines.
 
 2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems. Again, temporal isolation is an issue that also applies to emulated machines.
 
-3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators.
+3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators that use interpretation for executing code.
 
 > Functional equivalence of emulation and virtualization
 
@@ -6698,11 +6698,31 @@ The key advantage of tree-based page tables is that they are amenable to on-dema
 
 > Spatial isolation
 
-...
+An emulated machine is the simplest scenario that allows us to explain how virtual memory and context switching is integrated to provide spatial isolation. Let us take a look at the code of the procedure `mipster` that implements the `mipster` emulator in selfie. The two occurrences of an ellipsis `...` stand for code that is not relevant here and therefore not shown:
+
+```c
+uint64_t mipster(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    ... // exception dispatching
+
+    if (handle_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+
+    ... // context scheduling
+  }
+}
+```
 
 > Emulation
 
-An emulated machine is the simplest scenario that allows us to explain how spatial isolation is implemented with virtual memory. Let us go back to how the `mipster` emulator in selfie works. There are three components that affect virtual memory: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler which deals with exceptions raised during code execution. The bootloader, interpreter, and exception handler are implemented in the procedures `boot_loader`, `run_until_exception`, and `handle_exception`, respectively. The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular system calls and page faults. In total, the emulator may trigger virtual memory access in four distinct cases:
+There are three components that affect virtual memory: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler which deals with exceptions raised during code execution. The bootloader, interpreter, and exception handler are implemented in the procedures `boot_loader`, `run_until_exception`, and `handle_exception`, respectively. The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular system calls and page faults. In total, the emulator may trigger virtual memory access in four distinct cases:
 
 1. Loading code and data into memory (bootloader)
 
