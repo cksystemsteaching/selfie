@@ -548,7 +548,9 @@ uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
   reg_sym         = get_symbolic_regs(to_context);
   symbolic_memory = get_symbolic_memory(to_context);
 
-  current_context = do_switch(current_context, to_context, timeout);
+  restore_context(to_context);
+
+  do_switch(to_context, timeout);
 
   execution_depth = get_total_number_of_instructions();
 

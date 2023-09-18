@@ -3550,7 +3550,9 @@ uint64_t selfie_model() {
         }
       }
 
-      do_switch(current_context, current_context, TIMEROFF);
+      restore_context(current_context);
+
+      do_switch(current_context, TIMEROFF);
 
       static_dead_code_elimination(entry_pc, get_pc(current_context));
 

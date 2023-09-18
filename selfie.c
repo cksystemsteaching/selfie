@@ -1296,9 +1296,10 @@ uint64_t  IO_buffer_size = 0;
 // ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
-void      emit_switch();
-uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout);
-void      implement_switch();
+void emit_switch();
+void do_switch(uint64_t* to_context, uint64_t timeout);
+void implement_switch();
+
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout);
 uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout);
 
@@ -7960,35 +7961,32 @@ void emit_switch() {
 
   emit_ecall();
 
-  // save context from which we are switching here in return register
+  // find context from which we are switching back in REG_A6 and save in return register
   emit_addi(REG_A0, REG_A6, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
-  restore_context(to_context);
-
-  // use REG_A6 instead of REG_A0 for returning from_context
-  // to avoid overwriting REG_A0 in to_context
-  if (get_parent(from_context) != MY_CONTEXT)
-    *(registers + REG_A6) = (uint64_t) get_virtual_context(from_context);
+void do_switch(uint64_t* to_context, uint64_t timeout) {
+  // provide context from which we are switching in REG_A6 to avoid overwriting REG_A0
+  if (get_parent(current_context) != MY_CONTEXT)
+    *(registers + REG_A6) = (uint64_t) get_virtual_context(current_context);
   else
-    *(registers + REG_A6) = (uint64_t) from_context;
+    *(registers + REG_A6) = (uint64_t) current_context;
 
   write_register(REG_A6);
 
-  timer = timeout;
-
   if (debug_switch) {
-    printf("%s: switched from context %s to context %s", selfie_name,
-      get_name(from_context), get_name(to_context));
-    if (timer != TIMEROFF)
-      printf(" to execute %lu instructions", timer);
+    printf("%s: switching from context %s to context %s", selfie_name,
+      get_name(current_context), get_name(to_context));
+    if (timeout != TIMEROFF)
+      printf(" to execute %lu instructions", timeout);
     println();
   }
 
-  return to_context;
+  current_context = to_context;
+
+  timer = timeout;
 }
 
 void implement_switch() {
@@ -8016,7 +8014,9 @@ void implement_switch() {
   // cache context on my boot level before switching
   to_context = cache_context(to_context);
 
-  current_context = do_switch(current_context, to_context, timeout);
+  restore_context(to_context);
+
+  do_switch(to_context, timeout);
 
   if (debug_syscalls) {
     printf(" -> ");
@@ -8026,7 +8026,9 @@ void implement_switch() {
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
-  current_context = do_switch(current_context, to_context, timeout);
+  restore_context(to_context);
+
+  do_switch(to_context, timeout);
 
   run_until_exception();
 
