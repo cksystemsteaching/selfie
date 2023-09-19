@@ -6736,7 +6736,7 @@ uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
 }
 ```
 
-Think of the procedure `mipster_switch` as ...
+Think of the procedure `mipster_switch` as a way to switch machine contexts to `to_context` but only until an exception is thrown. In particular, the procedure `restore_context` prepares the machine, that is, the RISC-U interpreter to execute code within `to_context`, and the procedure `do_switch` finally performs the switch, by setting a global variable called `current_context` to `to_context`. After executing the code until an exception is thrown, the procedure `save_context` saves `current_context` to be able to resume code execution later. For now, we assume there is only one machine context in the system. Thus not only `current_context` but also `from_context` and `to_context` in the procedure `mipster` all refer to just that context, and no other. The procedure `handle_exception` identifies the type of exception and invokes the appropriate exception handler:
 
 ```c
 uint64_t handle_exception(uint64_t* context) {
