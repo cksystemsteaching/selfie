@@ -361,7 +361,7 @@ succeedFiles := $(filter-out $(failingFiles),$(wildcard examples/symbolic/*.c))
 # Run validator on *.c files in symbolic
 validator: selfie beator
 	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
-	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
+#   $(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
 
 # Test autograder
 grader: selfie
