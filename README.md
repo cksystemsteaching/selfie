@@ -6698,7 +6698,7 @@ The key advantage of tree-based page tables is that they are amenable to on-dema
 
 > Spatial isolation
 
-An emulated machine is the simplest scenario that allows us to explain how virtual memory and context switching is integrated to provide spatial isolation. Let us take a look at the code of the procedure `mipster` that implements the `mipster` emulator in selfie. The two occurrences of an ellipsis `...` stand for code that is not relevant here and therefore not shown:
+An emulated machine is the simplest scenario that allows us to explain how virtual memory and context switching is integrated to provide spatial isolation. Let us take a look at the code of the procedure `mipster` that implements the `mipster` emulator in selfie. Occurrences of an ellipsis `...` stand for code that is not relevant here and therefore not shown:
 
 ```c
 uint64_t mipster(uint64_t* to_context) {
@@ -6720,7 +6720,49 @@ uint64_t mipster(uint64_t* to_context) {
 }
 ```
 
-> Emulation
+The procedure `mipster` is invoked by the procedure `selfie_run` on an initialized machine context, passed as `to_context`, that the procedure `boot_loader` has loaded with code, data, and console arguments of a given program. The purpose of `mipster` is to execute the loaded code within `to_context` until code execution throws an exception that `mipster` cannot handle, or causes `mipster` to exit, such as the code calling the builtin `exit` procedure. The body of the unbounded `while` loop alternates between executing code with the procedure `mipster_switch` and handling exceptions with the procedure `handle_exception`. In particular, code is only executed, by interpretation in `mipster_switch`, until an exception occurs, including a *timer interrupt* when `timeout` many instructions have been executed:
+
+```c
+uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
+  restore_context(to_context);
+
+  do_switch(to_context, timeout);
+
+  run_until_exception();
+
+  save_context(current_context);
+
+  return current_context;
+}
+```
+
+Think of the procedure `mipster_switch` as ...
+
+```c
+uint64_t handle_exception(uint64_t* context) {
+  uint64_t exception;
+
+  exception = get_exception(context);
+
+  if (exception == EXCEPTION_SYSCALL)
+    return handle_system_call(context);
+  else if (exception == EXCEPTION_PAGEFAULT)
+    return handle_page_fault(context);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    return handle_division_by_zero(context);
+  else if (exception == EXCEPTION_TIMER)
+    return handle_timer(context);
+  else {
+    ... // printing error message
+
+    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+}
+```
+
+> Page fault handling
 
 There are three components that affect virtual memory: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler which deals with exceptions raised during code execution. The bootloader, interpreter, and exception handler are implemented in the procedures `boot_loader`, `run_until_exception`, and `handle_exception`, respectively. The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular system calls and page faults. In total, the emulator may trigger virtual memory access in four distinct cases:
 
@@ -6734,7 +6776,36 @@ There are three components that affect virtual memory: the bootloader which load
 
 All other activities of the emulator do not affect virtual memory.
 
+```c
+uint64_t handle_page_fault(uint64_t* context) {
+  uint64_t page;
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  ... // profiling
+
+  page = get_fault(context);
+
+  if (pavailable()) {
+    // TODO: reuse frames
+    map_page(context, page, (uint64_t) palloc());
+
+    ... // profiling
+
+    return DONOTEXIT;
+  } else {
+    ... // printing error message
+
+    set_exit_code(context, EXITCODE_OUTOFPHYSICALMEMORY);
+
+    return EXIT;
+  }
+}
+```
+
 ### Concurrency
+
+preemptive system: `mipster_switch` always eventually returns
 
 > Traffic light model
 
