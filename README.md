@@ -6764,11 +6764,9 @@ uint64_t handle_exception(uint64_t* context) {
 
 In `mipster`, division-by-zero exceptions are caused by executing `divu` or `remu` instructions, and lead to program termination. Timer interrupts are implemented by a countdown of a global variable `timer` that is decremented for each executed instruction until its value is zero. For details on how division-by-zero exceptions and timer interrupts are handled in `mipster`, refer to the source code of selfie.
 
-> Page fault handling
+> Virtual memory access
 
-There are three components in `mipster` that access virtual memory and may therefore cause or handle page faults: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler when dealing with page faults and syscall exceptions caused by executing `ecall` instructions.
-
-The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. The exception handler deals with exceptions raised during code execution with the interpreter, in particular page faults and system calls. In total, the emulator may trigger virtual memory access in four distinct cases:
+There are three components in `mipster` that access virtual memory and may therefore cause page faults which either need to be prevented or handled: the bootloader which loads code and data into memory, the interpreter which executes code that is stored in memory and accesses memory during execution, and the exception handler when dealing with system calls invoked by `ecall` instructions. In total, `mipster` accesses virtual memory in four distinct cases:
 
 1. Loading code and data into memory (bootloader)
 
@@ -6778,7 +6776,20 @@ The bootloader stores code and data in the code and data segments of virtual mem
 
 4. Executing `ecall` instructions (exception handler)
 
-All other activities of the emulator do not affect virtual memory.
+All other activities of `mipster` do not affect virtual memory.
+
+> Bootloader
+
+The bootloader stores code and data in the code and data segments of virtual memory, and prepares the stack segment in virtual memory with console arguments, before the interpreter is launched. Storing information in virtual memory requires the memory to be mapped. Thus the bootloader first maps individual pages of virtual memory and then stores information there using the procedure `map_and_store`, preventing page faults from occurring during bootloading.
+
+> Interpreter
+
+The interpreter fetches exactly 32 bits from memory where the program counter points to, decodes the 32 bits to determine the instruction and its parameters and arguments encoded by the 32 bits, then executes the instruction, which affects up to 128 bits in the machine state including the value of the program counter, and finally goes back to fetching the next 32 bits, and so on. Fetching instructions could in principle cause page faults but not in `mipster` as all code is loaded into virtual memory prior to any code execution. However, upon executing `load` and `store` instructions, the interpreter checks with the procedure `is_virtual_address_mapped` if the virtual memory that is about to be accessed is mapped. Only if it is mapped, memory access proceeds. If it is not mapped, a page-fault exception is thrown instead. After the exception handler has dealt with the page fault, code execution eventually resumes with the interpreter trying to execute the faulting instruction again. Thus, from the perspective of `load` and `store` instructions, memory access is transparent, virtual and physical.
+
+> Exception handler
+
+The exception handler deals with exceptions raised during code execution with the interpreter. However, only page faults and system calls may affect virtual memory. Handling of page faults is straightforward and
+implemented in the procedure `handle_page_fault`:
 
 ```c
 uint64_t handle_page_fault(uint64_t* context) {
@@ -6806,6 +6817,12 @@ uint64_t handle_page_fault(uint64_t* context) {
   }
 }
 ```
+
+The interpreter communicates the number of the faulting page to the page-fault handler through an entry in the machine context in which the page fault occurred. The page-fault handler then maps the faulting page to a newly allocated page frame using the procedure `map_page`, as long as there are page frames available.
+
+> Touching memory
+
+Finally, `ecall` instructions invoke system calls that may access virtual memory and thus cause page faults. In particular, the `openat`, `read`, and `write` system calls may do so. However, `ecall` instructions are executed through syscall exceptions. In other words, handling a syscall exception may, at least in principle, cause a page-fault exception. However, `mipster` does not support handling page faults while executing system calls. Fortunately, page faults caused by system calls can be avoided by invoking system calls on virtual memory that has been accessed before and therefore mapped. We actually do that in selfie by *touching* memory, that is, accessing memory just for the purpose of having memory mapped, using either variable assignment or the procedure `touch`.
 
 ### Concurrency
 
