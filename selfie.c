@@ -7972,6 +7972,7 @@ void do_switch(uint64_t* to_context, uint64_t timeout) {
   if (get_parent(current_context) != MY_CONTEXT)
     *(registers + REG_A6) = (uint64_t) get_virtual_context(current_context);
   else
+    // TODO: support global machine-context identifiers
     *(registers + REG_A6) = (uint64_t) current_context;
 
   write_register(REG_A6);
