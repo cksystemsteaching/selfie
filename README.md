@@ -6820,9 +6820,13 @@ uint64_t handle_page_fault(uint64_t* context) {
 
 The interpreter communicates the number of the faulting page to the page-fault handler through an entry in the machine context in which the page fault occurred. The page-fault handler then maps the faulting page to a newly allocated page frame using the procedure `map_page`, as long as there are page frames available.
 
-> Touching memory
+> Touching virtual memory
 
-Finally, `ecall` instructions invoke system calls that may access virtual memory and thus cause page faults. In particular, the `openat`, `read`, and `write` system calls may do so. However, `ecall` instructions are executed through syscall exceptions. In other words, handling a syscall exception may, at least in principle, cause a page-fault exception. However, `mipster` does not support handling page faults while executing system calls. Fortunately, page faults caused by system calls can be avoided by invoking system calls on virtual memory that has been accessed before and therefore mapped. We actually do that in selfie by *touching* memory, that is, accessing memory just for the purpose of having memory mapped, using either variable assignment or the procedure `touch`.
+Finally, `ecall` instructions invoke system calls that may access virtual memory and may thus cause page faults. In particular, the `openat`, `read`, and `write` system calls in selfie may do so. An `ecall` instruction is executed by throwing a syscall exception which is then handled by a syscall-exception handler, as implemented in the procedure `handle_system_call`. In other words, executing an `ecall` instruction involves handling a syscall exception which in turn involves executing a system call which may then require handling page faults. However, for simplicity, `mipster` does not support handling page faults while executing system calls. Fortunately, page faults caused by system calls can be avoided by invoking system calls on virtual memory that has been accessed before and therefore mapped. We actually do that in selfie by *touching* memory, that is, accessing memory just for the purpose of having memory mapped, using either variable assignment or the procedure `touch`.
+
+> Swapping, compressing, encrypting physical memory
+
+...
 
 ### Concurrency
 
