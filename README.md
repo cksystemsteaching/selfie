@@ -6884,9 +6884,15 @@ lock
 
 ### Runtime Systems
 
-Modern computer systems draw essentially two lines between human and machine. There is hardware versus software, and within software, there is systems software versus application software, and only the latter is meant to be visible to humans, at least humans not interested in the inner workings of hardware and systems software. The introduction of modern smartphones and app stores in particular have made it incredibly easy to run and interact with software, at least on application level. However, to make that happen, there is more than just programming languages, interpreters, compilers, and virtualization. Modern programming languages require entire ecosystems of development tools, libraries, and *runtime systems* for running code. For example, running Java code or Python scripts requires runtime systems that may be as complex as or even more complex than the operating system they run on.
+Modern computer systems draw essentially two lines between human and machine. There is hardware versus software, and within software, there is systems software versus application software, and only the latter is meant to be visible to humans, at least humans not interested in the inner workings of hardware and systems software. The introduction of modern smartphones and app stores in particular have made it incredibly easy to run and interact with software, at least on application level. However, to make that happen, there is more than just programming languages, interpreters, compilers, and virtualization. Modern programming languages require entire ecosystems of development tools, libraries, and *runtime systems* for running code. For example, running Java code or Python scripts requires runtime systems that may be as complex as or even more complex than the operating system they run on. The same applies to modern web browsers which are essentially complex runtime systems as well, for Java script, for example. Their complexity is an immediate consequence of the advanced features of the programming languages they implement. Virtualization is an important part of those runtime systems, typically in the form of a *language virtual machine* that virtualizes an abstract machine, in contrast to a *systems virtual machine* that virtualizes a physical machine, as done in virtual machine monitors, and operating system kernels in the form of software processes.
 
-language virtual machines
+> Scalability
+
+abstraction in language and libraries
+
+combination of compilers and interpreters and automatic memory managment
+
+just-in-time compilers
 
 garbage collectors
 
