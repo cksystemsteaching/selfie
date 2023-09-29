@@ -6824,7 +6824,13 @@ The interpreter communicates the number of the faulting page to the page-fault h
 
 Finally, `ecall` instructions invoke system calls that may access virtual memory and may thus cause page faults. In particular, the `openat`, `read`, and `write` system calls in selfie may do so. An `ecall` instruction is executed by throwing a syscall exception which is then handled by a syscall-exception handler, as implemented in the procedure `handle_system_call`. In other words, executing an `ecall` instruction involves handling a syscall exception which in turn involves executing a system call which may then require handling page faults. However, for simplicity, `mipster` does not support handling page faults while executing system calls. Fortunately, page faults caused by system calls can be avoided by invoking system calls on virtual memory that has been accessed before and therefore mapped. We actually do that in selfie by *touching* memory, that is, accessing memory just for the purpose of having memory mapped, using either variable assignment or the procedure `touch`.
 
-> Swapping, compressing, encrypting physical memory
+> Protecting, swapping, compressing, pinning, encrypting memory
+
+The decoupling of address space and memory storage in implementations of virtual memory enables a variety of capabilities for managing safety and capacity, and even security and privacy of memory. Selfie does not feature such capabilities but we mention them anyway for completeness. As all virtual memory access is monitored by hardware to perform address translation, individual pages can typically be *protected* against unauthorized access such as read-only access, for example. Moreover, virtual memory access is usually also profiled at least with some form of time stamp which allows software to keep track of *hotspots* where most access happens. This is useful if the system is running low on physical memory. In that case, pages outside of hotspots may be unmapped making their page frames available for mapping other pages. Before doing so, the content of these page frames may be *swapped out* to other storage media, and later be *swapped in* to restore the original content of the unmapped pages. Alternatively, their content may also be kept in memory but *compressed*. In order to avoid certain pages to be unmapped, programs may *pin* pages to stay mapped regardless of their access profile. On top of all that, the content of some or all page frames may also be *encrypted*, and only decrypted upon access. Most importantly, whatever a system does remains transparent to programs accessing virtual memory.
+
+> Seeing the future from the past
+
+The key challenge in managing physical memory is to predict where virtual memory access happens next.
 
 ...
 
