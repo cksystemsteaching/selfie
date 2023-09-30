@@ -6898,15 +6898,21 @@ Dynamic programming languages, while resulting in a considerable shift of comple
 
 > Managed programming languages
 
-Programming languages that feature dynamic memory management with a *garbage collector* as part of their runtime system are called *managed programming languages*. Most dynamic languages are also managed such as Java and Python, for example. While selfie does not support dynamic code management, selfie does implement a basic garbage collector for educational purposes. However, garbage collection is not the only automatic memory management technology but probably the easiest to use as a programmer, as long as you understand what garbage collection can do and how, and what it cannot do. The goal of automatic memory management is to reuse memory safely, that is, make memory available for allocation that is guaranteed to be free, in particular if that memory has been used before. Let us recall the problem and only then go into the details of how to solve it.
+Programming languages that feature dynamic memory management with a *garbage collector* as part of their runtime system are called *managed programming languages*. Most dynamic languages are also managed such as Java and Python, for example. While selfie does not support dynamic code management, selfie does implement a basic garbage collector for educational purposes. However, garbage collection is not the only *automatic memory management* technology but probably the easiest to use as a programmer, as long as you understand what garbage collection can do and how, and what it cannot do. The goal of automatic memory management is to reuse memory safely, that is, make memory available for allocation that is guaranteed to be free, in particular if that memory has been used before. Memory safety is critically important for handling large amounts of data, especially if data is handled by large amounts of code from different sources such as complex libraries. In fact, the proliferation of libraries in modern programming languages and their extensive use in modern software would not be possible without automatic memory management.
 
 > Live versus dead memory
+
+Let us first recall the problem of reusing memory and only then go into the details of how to solve it.
 
 ...
 
 > Reachable versus unreachable memory
 
 ...
+
+programmer intervention required: make data unreachable
+
+deciding what is still needed cannot be automated
 
 > Memory leaks versus dangling pointers
 
@@ -6915,6 +6921,8 @@ Programming languages that feature dynamic memory management with a *garbage col
 free list
 
 > Conservative garbage collection
+
+no types
 
 > Tracing
 
