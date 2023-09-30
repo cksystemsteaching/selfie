@@ -6892,23 +6892,41 @@ The fundamental problem addressed by modern runtime systems is scalability of co
 
 > Compiled versus dynamic programming languages
 
-In order to scale code and data, code and thus static memory needs to become dynamic, and data and thus dynamic memory needs to be managed efficiently and safely, all happening *automatically* without user intervention at runtime. In other words, there is a considerable shift in complexity needed from compile time, or better development time, to runtime. Moreover, there is also a need for programming language innovation that enables developers to leverage dynamic code and memory management. With languages like Java, Python, and many others computer scientists have done exactly that and are continuing to do so. The result is known as *dynamic programming languages*, as opposed to *compiled* or *static programming languages* such as C and many of its derivatives. This does not mean, however, that dynamic languages are not compiled. Programs written in dynamic languages are usually interpreted but also at least partially compiled for better performance. The decision which parts of the code to compile and when is made by an interpreter dynamically at runtime based on observations which parts could benefit from compilation. Similar to hotspots in memory, spatial locality creates hotspots in code, here as obvious candidates for compilation such as code occurring in a loop that is executed many times. As compilation happens on demand at runtime the involved compilers are called *just-in-time* (JIT) compilers, as opposed to *ahead-of-time* (AOT) compilers such as C compilers, for example. On top of dynamic compilation, there are other dynamic features such as *dynamic loading*, *dynamic linking*, and *dynamic binding* which we mentioned before. The latter is a technique needed for supporting *object-oriented programming* that enables taking runtime information into consideration when deciding which code ultimately implements a given procedure. There are even more techniques for dynamic code management such as *dynamic typing* and *reflection*, for example.
+In order to scale code and data, code and thus static memory needs to become dynamic, and data and thus dynamic memory needs to be managed efficiently and safely, all happening *automatically* without user intervention at runtime. In other words, there is a need for a considerable shift in complexity from compile time, or better development time, to runtime. Moreover, there is also a need for programming language innovation that enables developers to leverage dynamic code and memory management. With languages like Java, Python, and many others computer scientists have done exactly that and are continuing to do so. The result is known as *dynamic programming languages*, as opposed to *compiled* or *static programming languages* such as C and many of its derivatives. This does not mean, however, that dynamic languages are not compiled. Programs written in dynamic languages are usually interpreted but also at least partially compiled for better performance. The decision which parts of the code to compile and when is made by an interpreter dynamically at runtime based on observations which parts could benefit from compilation. Similar to hotspots in memory, spatial locality creates hotspots in code, here as obvious candidates for compilation such as code occurring in a loop that is executed many times. As compilation happens on demand at runtime the involved compilers are called *just-in-time* (JIT) compilers, as opposed to *ahead-of-time* (AOT) compilers such as C compilers, for example. On top of dynamic compilation, there are other dynamic techniques such as *dynamic loading*, *dynamic linking*, and *dynamic binding* which we mentioned before. The latter is a technique needed for supporting *object-oriented programming* that enables taking runtime information into consideration when deciding which code ultimately implements a given procedure. There are even more techniques for dynamic code management such as *dynamic typing* and *reflection*, for example.
 
-Dynamic programming languages, while resulting in a tremendous shift of complexity into runtime systems, have enabled programming large-scale software systems that would be impossible without those languages. However, there is also an enormous increase in complexity in those languages as well as the libraries that come with them, compared to older programming languages such as C. Learning how to program has become even more difficult with state-of-the-art dynamic programming languages, not easier as some might suggest. Programming education has always lagged behind programming language innovation. One attempt to address the issue is this book by providing a foundation of basic principles that apply to all programming languages, old and new. However, learning how to program in a modern dynamic programming language is still something that is on you, which is hopefully easier after reading this book.
+Dynamic programming languages, while resulting in a considerable shift of complexity into runtime systems, have enabled programming large-scale software systems that would be impossible without those languages. However, there is also an enormous increase in complexity in those languages as well as the libraries that come with them, compared to older programming languages such as C. Learning how to program has become even more difficult with state-of-the-art dynamic programming languages, and not easier as some might suggest. Programming education has always lagged behind programming language innovation. One attempt to address the issue is this book providing a foundation of basic principles that apply to all programming languages, old and new. However, learning how to program in a modern dynamic programming language is still something that is on you, which is hopefully easier after reading this book.
 
 > Managed programming languages
 
-While selfie does not support dynamic code management, selfie does implement a simple form of automatic memory management for educational purposes which is what we focus on next.
+Programming languages that feature dynamic memory management with a *garbage collector* as part of their runtime system are called *managed programming languages*. Most dynamic languages are also managed such as Java and Python, for example. While selfie does not support dynamic code management, selfie does implement a basic garbage collector for educational purposes. However, garbage collection is not the only automatic memory management technology but probably the easiest to use as a programmer, as long as you understand what garbage collection can do and how, and what it cannot do. The goal of automatic memory management is to reuse memory safely, that is, make memory available for allocation that is guaranteed to be free, in particular if that memory has been used before. Let us recall the problem and only then go into the details of how to solve it.
+
+> Live versus dead memory
 
 ...
 
-garbage collectors
+> Reachable versus unreachable memory
 
-combination of compilers and interpreters and automatic memory managment
+...
 
-just-in-time compilers
+> Memory leaks versus dangling pointers
 
-garbage collectors
+> Memory allocator
+
+free list
+
+> Conservative garbage collection
+
+> Tracing
+
+mark and sweep
+
+> Reference counting
+
+> Concurrent, parallel, incremental garbage collection
+
+> Concurrency in runtime systems
+
+imagine, modern runtime systems feature interpreters, compilers, garbage collectors, schedulers...
 
 threads
 threadsafe-malloc
