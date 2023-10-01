@@ -6906,9 +6906,9 @@ Memory safety is critically important for handling large amounts of data, especi
 
 > Live versus dead memory
 
-We first recall the problem of reusing memory and only then go into the details of how to solve the problem.
+We first recall the problem of reusing memory and only then go into the details of how to solve the problem. The issue is to distinguish live from dead memory and then make dead memory available for reuse. At a given time instant, memory is dead if its content is not accessed anymore in the future whereas memory is live if its content may be accessed some time in the future. Computing which memory is live and which memory is dead is impossible in general. See the end of this chapter for more on that. Intuitively, distinguishing live and dead memory is similar to deciding whether you still need something or not. If you would like to use space occupied by something you have, you need to determine whether you need that something or not. However, in general you may never know. So, a common approach is to avoid the issue and just fill up space, only to come back to the issue later when you run out of space. In the end, there is no way around the issue if you only have finite space but keep getting new stuff.
 
-...
+Stack allocation...
 
 > Reachable versus unreachable memory
 
