@@ -6920,17 +6920,33 @@ In memory management, there is a fundamental tradeoff between *memory safety* an
 
 > Memory allocator
 
+The foundation of any automatic memory management system is a memory allocator that provides memory allocation and deallocation service such as the procedures `malloc` and `free`, respectively, in C. In managed programming languages, `free` is usually not explicitly available but its service is there. In selfie, we use the same approach, so there is an implemention of `free`, just not a procedure called `free`.
+
+brk system call
+
 free list
+
+first-fit, best-fit
+
+buddy allocator, slab allocator
+
+coalescing, compacting
 
 > Conservative garbage collection
 
 no types
+
+Boehm garbage collector
 
 > Tracing
 
 mark and sweep
 
 > Reference counting
+
+hybrids
+
+> Self-collecting garbage collector
 
 > Concurrent, parallel, incremental garbage collection
 
