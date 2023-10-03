@@ -6932,15 +6932,21 @@ If we were never to free any memory, we would be done by now, and yet many progr
 
 > Free-list!
 
-In most systems, this is done by constructing a list of free memory blocks called a *free-list*.
+In most systems, memory blocks are marked as free by constructing a list of those blocks called a *free-list*. As the storage provided by free memory blocks is unused, free-lists are usually constructed by storing the pointers that represent the list structure in that very storage, thus avoiding any additional memory usage. Unsorted list insertion is constant time, so that is good. However, while deallocation is then fast, allocation become asymptotically slower. In general, the game we play when designing memory allocators is to shift complexity back and forth between allocation and deallocation while also juggling memory fragmentation and even memory access time. In the presence of a free-list, a bump pointer allocator needs to make a choice: use the bump pointer to allocate memory that has never been used before, or search the free-list for a memory block that fits the request. As the free-list may be asymptotically as large as the address space the allocator manages, allocation time is now linear in the size of that address space. That is bad.
+
+> First-fit versus best-fit
+
+In selfie, we ignore the problem and use *first-fit* when searching for a suitable memory block in the free-list which means that the allocator takes the first block it finds, removes it from the free-list, and returns the address that refers to the block. Only if the allocator cannot find a suitable block, it falls back to the bump pointer. Another popular option is to use *best-fit* when searching the free-list which means that we would look for the smallest free memory block that still fits the request. While *best-fit* may obviously take longer than *first-fit*, chances are higher that *best-fit* reduces internal fragmentation in the sense that less space inside memory blocks is wasted. There are many other combinations of sorting and searching strategies which nevertheless all have their advantages and disadvantages.
+
+> Buddy versus slab allocators
+
+Modern systems typically exploit memory layout for more advanced representations of free-lists in order to balance allocation and deallocation time, memory fragmentation, and memory access time. The latter is important with modern hardware as reusing memory that has recently been used may be accessed faster as its content may still be cached. The arguably most prominent techniques for controlling memory fragmentation are *buddy* and *slab* allocators. A buddy allocator splits free memory blocks that are usually aligned and sized by powers of two, in half, again and again, until the request fits with the least amount of internal fragmentation. Upon deallocation, whenever two memory blocks of the same size that happen to be located next to each other, hence called *buddies*, become free, both are merged to form a memory block exactly twice as large as the individual blocks. That process may continue across the entire memory. Merging memory blocks is called *coalescing* as it does not involve moving blocks around. The result is that both allocation and deallocation can be done in logarithmic time in the size of allocated memory, all while internal fragmentation is reasonable, at least in practice. This is very good! Buddy allocation is an old idea but still used in many systems today. A slab allocator...
 
 ...
 
-first-fit, best-fit
+compacting
 
-buddy allocator, slab allocator
-
-coalescing, compacting
+mutator against allocator
 
 > Conservative garbage collection
 
