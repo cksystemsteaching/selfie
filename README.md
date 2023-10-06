@@ -7002,9 +7002,11 @@ With the `-nr` option in the invocation of selfie, the `libcstar` garbage collec
 
 What is the purpose of doing all that? Well, other than showing off the power of resolving self-reference properly, there is educational value because supporting self-collection forces us to isolate code for accessing address spaces from actual garbage collection code, which is the majority of the overall code, similar to `mipster` and `hypster` sharing most of their virtualization code as well. The getters and setters used by the garbage collector essentially provide the necessary abstractions from accessing different address spaces. See the source code for more details.
 
+> Time and space
+
+Garbage collection demonstrates a wonderful tradeoff between time and space in computing. Ideally, we want dead memory identify as such and then reuse it as soon as the memory dies. However, to do that we need to garbage collect on every single attempt to allocate memory resulting in the lowest possible total memory consumption. In short, the more time spent on garbage collection the less memory is needed to run a given program. But that also means that if we tolerate higher memory consumption by reusing memory later, then less time may be spent on garbage collection. So, more space means more time for other stuff.
+
 > Concurrent, parallel, incremental garbage collection
-
-
 
 > Concurrency in runtime systems
 
