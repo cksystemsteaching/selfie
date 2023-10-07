@@ -7020,9 +7020,7 @@ Modern garbage collectors are often instances of what is known as *generational*
 
 > Stop-the-world
 
-...
-
-The asymptotic complexity of tracing is linear time in the size of the heap.
+A common problem of garbage collection is the interaction of mutator and garbage collector through the heap. While a mutator allocates and references memory, a garbage collector tries to keep up and deallocate enough memory for the mutator to keep going, with the least amount of total memory consumption and memory fragmentation at any point in time. One solution is to pause the mutator while running the garbage collector which is then referred to as *stop-the-world* garbage collector as, from the perspective of the mutator, no mutator progress can be made during garbage collection. While this solution maximizes garbage collector throughput, it also maximizes mutator latency, meaning the amount of time a mutator may not make any progress because of garbage collection is maximized. Since the asymptotic complexity of garbage collection is linear time in the size of the heap, maximum latency grows with the heap. Exposing mutators to that maximum latency can be avoided at the expense of lower garbage collector throughput by making garbage collection *incremental*. Upon each invocation of an incremental garbage collector, only some part of the heap is garbage-collected. For example, a generational garbage collector is incremental but there are also other ways to support incremental garbage collection. In general, there is a tradeoff between garbage collector incrementality and throughput. The shorter incremental garbage collectors run per invocation, the less memory they can deallocate over time making it more and more difficult to keep up with mutators. Also, incremental garbage collection significantly increases code complexity. The selfie garbage collector is obviously a stop-the-world garbage collector for simplicity.
 
 > Reference counting
 
