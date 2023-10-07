@@ -6942,7 +6942,7 @@ In most systems, memory blocks are marked as free by constructing one or more li
 
 > First-fit versus best-fit
 
-In the memory allocator underlying the garbage collector in selfie, we ignore the problem of possibly slow allocation and apply *first-fit* over a single singly-linked unsorted list as free-list when searching for a suitable memory block in the free-list which means that the allocator takes the first block it can find that fits, removes it from the free-list, and returns the address that refers to the block. Only if the allocator cannot find a suitable block, it falls back to the bump pointer. Another popular option is to apply *best-fit* when searching the free-list which means that we would look for the smallest free memory block that still fits the request. While *best-fit* may obviously take longer than *first-fit*, chances are higher that *best-fit* reduces internal memory fragmentation in the sense that less space inside memory blocks is wasted. There are many other combinations of sort and search strategies for lists which nevertheless all have their advantages and disadvantages.
+In the memory allocator underlying the selfie garbage collector, we ignore the problem of possibly slow allocation and apply *first-fit* over a single singly-linked unsorted list as free-list when searching for a suitable memory block in the free-list which means that the allocator takes the first block it can find that fits, removes it from the free-list, and returns the address that refers to the block. Only if the allocator cannot find a suitable block, it falls back to the bump pointer. Another popular option is to apply *best-fit* when searching the free-list which means that we would look for the smallest free memory block that still fits the request. While *best-fit* may obviously take longer than *first-fit*, chances are higher that *best-fit* reduces internal memory fragmentation in the sense that less space inside memory blocks is wasted. There are many other combinations of sort and search strategies for lists which nevertheless all have their advantages and disadvantages.
 
 > Buddy allocator
 
@@ -6962,7 +6962,7 @@ Memory allocation is a hard problem that does not have a solution that is optima
 
 > Used-list?
 
-So far, we have only mentioned free-lists but what about used-lists? Do we have to maintain information about used memory? The answer is yes and no. If there is no automatic memory management, just `malloc` and `free`, then there is no need to maintain used-lists in a memory allocator, simply because the program using the allocator needs to do that already somehow to be able to invoke `free` properly. However, if memory is freed by automatic memory management, then there is obviously a need for maintaining information about used memory to be able to free it! The memory allocator underlying the garbage collector in selfie does that by maintaining a single singly-linked unsorted list of all used memory blocks as used-list. Thus memory allocation and deallocation with the garbage collector in selfie involves moving memory blocks from the free-list to the used-list and back, respectively. Since list elements of both lists are only removed after traversing the involved list anyway, singly-linked rather than doubly-linked lists are fine. More details of how the used-list is traversed upon deallocation are given below.
+So far, we have only mentioned free-lists but what about used-lists? Do we have to maintain information about used memory? The answer is yes and no. If there is no automatic memory management, just `malloc` and `free`, then there is no need to maintain used-lists in a memory allocator, simply because the program using the allocator needs to do that already somehow to be able to invoke `free` properly. However, if memory is freed by automatic memory management, then there is obviously a need for maintaining information about used memory to be able to free it! The memory allocator underlying the selfie garbage collector does that by maintaining a single singly-linked unsorted list of all used memory blocks as used-list. Thus memory allocation and deallocation with the selfie garbage collector involves moving memory blocks from the free-list to the used-list and back, respectively. Since list elements of both lists are only removed after traversing the involved list anyway, singly-linked rather than doubly-linked lists are fine. More details of how the used-list is traversed upon deallocation are given below.
 
 > Pointers versus references
 
@@ -6972,13 +6972,35 @@ In order to determine which memory blocks are unreachable and can therefore be d
 
 Contrary to common belief among many students, garbage collection for C and its derivates is anyway possible yet only with a *conservative garbage collector*. The idea is to perform garbage collection with the conservative assumption that everything can be a pointer. The assumption is conservative in terms of safety but not leakage, that is, reachable memory does not become unreachable but unreachable memory may become reachable under that assumption. The challenge is to identify as much content as possible as what it really is, value or pointer. Surprisingly, this can be done well for many programs, both efficiently and effectively. Identifying a value as pointer is safe but may leak memory. Nevertheless, that happening appears to be rare in practice. Identifying a pointer as value is obviously unsafe but can be avoided. However, programs written in C can always disguise pointers as values, intentionally or not, and by doing so prevent detection. In other words, conservative garbage collection does not make C programs safe! But it can still significantly help with memory management and even debugging code for memory safety and leaks.
 
+> Selfie garbage collector: value or pointer?
+
+How does selfie determine whether something is a value or a pointer? The idea is to check if a given value, interpreted as pointer, refers to an address in a used memory block, as we are only interested in pointers to used memory. The check is done in two stages. Firstly, a simple constant-time range check tests if the potential pointer refers to an address in the heap segment. In practice, most values fail the first stage, simply because heap addresses are usually rather high values that only occur rarely as values in calculations. Secondly, only after passing the first stage, the used-list is traversed to check if the potential pointer refers to an address in any memory block on that list. Only if such a memory block is found, the potential pointer is assumed to be an actual pointer. The problem is that traversing the used-list takes linear time in the size of used memory. We ignore the problem in selfie for simplicity.
+
+> Selfie garbage collector: action!
+
+To get a first glimpse of the selfie garbage collector in action, try:
+
+```bash
+make gib
+```
+
+The `-gc` option right before the `-m 1` option instructs the `mipster` emulator to garbage collect the selfie compiler while compiling selfie. In this case, the selfie garbage collector manages to reuse more than 1MB of memory, cutting the total memory consumption of the selfie compilter essentially in half from a bit more than 2MB down to around 1MB. Check the profile provided by the garbage collector to see for yourself. What is fascinating is that garbage collection is transparent to the garbage-collected code. The selfie garbage collector simply hooks into the implementation of the `brk` system call for reusing memory, essentially making the unmodified `malloc` implementation of selfie reuse memory. Another consequence of that transparency is that the selfie garbage collector can also garbage collect `hypster` without any modifications and yet similar savings in memory consumption, just try:
+
+```bash
+make hyb
+```
+
 > Boehm garbage collector
 
-How does selfie determine whether something is a value or a pointer? The idea is to check if a given value, interpreted as pointer, refers to an address in a used memory block, as we are only interested in pointers to used memory. The check is done in two stages. Firstly, a simple constant-time range check tests if the potential pointer refers to an address in the heap segment. In practice, most values fail the first stage, simply because heap addresses are usually rather high values that only occur rarely as values in calculations. Secondly, only after passing the first stage, the used-list is traversed to check if the potential pointer refers to an address in any memory block on that list. Only if such a memory block is found, the potential pointer is assumed to be an actual pointer. The problem is that traversing the used-list takes linear time in the size of used memory. We ignore the problem in selfie for simplicity. However, we have also implemented a rather famous conservative garbage collector called *Boehm collector*, named after Hans Boehm, that not only inspired the conservative garbage collector in selfie but also pushes the time complexity of that check down to constant time. The trick is to use essentially a slab allocator and exploit the memory layout of slabs, here called *chunks*, to avoid traversing the used-list.
+In addition to the selfie garbage collector, we have also implemented a simple version of a famous conservative garbage collector called the *Boehm collector*, named after Hans Boehm, that has actually inspired the conservative garbage collector in selfie. The Boehm collector is more advanced in many ways. One particularly interesting feature that motivated our implementation is that the Boehm collector pushes the asymptotic complexity of checking if a value could be a pointer from linear time down to constant time. The trick is to use essentially a slab allocator and exploit the memory layout of slabs, here called *chunks*, to avoid traversing the used-list. To see the Boehm collector in action, try:
+
+```bash
+make boehmgc
+```
 
 > Reachable or unreachable?
 
-Before seeing both garbage collectors in action, let us take a look at how garbage collection works in principle. There are only two fundamentally different techniques that are duals of each other. In order to determine dead memory, we may either compute unreachability directly, or indirectly by first computing reachability and then deriving unreachability from reachability. The latter is done by *tracing* roots into the heap and traversing the heap for all reachable memory and mark that memory as such. When done, all unmarked memory is considered unreachable and may be deallocated. The former is done by *reference counting* of all memory in the heap. Memory with a reference count of zero is considered unreachable and may be deallocated. All garbage collectors implement tracing or reference counting or a combination of both.
+Let us finally take a look at how garbage collection at its core works in principle. There are only two fundamentally different techniques that are duals of each other. In order to determine dead memory, we may either compute unreachability directly, or indirectly by first computing reachability and then deriving unreachability from reachability. The latter is done by *tracing* roots into the heap and traversing the heap for all reachable memory and mark that memory as such. When done, all unmarked memory is considered unreachable and may be deallocated. The former is done by *reference counting* of all memory in the heap. Memory with a reference count of zero is considered unreachable and may be deallocated. All garbage collectors implement tracing or reference counting or a combination of both.
 
 > Metadata: mutator versus garbage collector
 
@@ -7000,23 +7022,17 @@ generational
 
 hybrids
 
-> Garbage collecting with selfie and Boehm
+> Self-collecting garbage collector
 
-```bash
-make gib
-```
-
-```bash
-make hyb
-```
+A garbage collector in selfie would not be complete if it was not *self-collecting*. What exactly does that mean? Well, garbage collectors may either run outside of the address space they collect, as part of a runtime system for managed programming languages, for example, or in the same address space they collect, as part of a runtime library. The garbage collector in selfie can do both, even at the same time.
 
 ```bash
 make gclib
 ```
 
-> Self-collecting garbage collector
+> Self-collecting self-compiling selfie
 
-A garbage collector in selfie would not be complete if it was not *self-collecting*. What exactly does that mean? Well, garbage collectors may either run outside of the address space they collect, as part of a runtime system for managed programming languages, for example, or in the same address space they collect, as part of a runtime library. The garbage collector in selfie can do both, even at the same time, and thus collect, as part of the `mipster` emulator, the virtual address space of emulated code that may include the garbage collector, as part of the `libcstar` library of selfie. So, the garbage collector in `mipster` may collect the memory used by the emulated code including the `libcstar` garbage collector which in turn just collects the memory of the emulated code that it is linked to as library. To see for yourself, try:
+...thus collect, as part of the `mipster` emulator, the virtual address space of emulated code that may include the garbage collector, as part of the `libcstar` library of selfie. So, the garbage collector in `mipster` may collect the memory used by the emulated code including the `libcstar` garbage collector which in turn just collects the memory of the emulated code that it is linked to as library. To see for yourself, try:
 
 ```bash
 make giblib
