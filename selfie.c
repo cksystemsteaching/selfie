@@ -10337,23 +10337,23 @@ void emit_fetch_data_segment_size_implementation(uint64_t fetch_dss_code_locatio
 
 void implement_gc_brk(uint64_t* context) {
   // parameter
-  uint64_t program_break;
+  uint64_t new_program_break;
 
   // local variable
   uint64_t size;
 
-  program_break = *(get_regs(context) + REG_A0);
+  new_program_break = *(get_regs(context) + REG_A0);
 
   // check if brk is actually asked for more memory
   // if not, fall back to the default brk syscall
-  if (program_break > get_program_break(context)) {
+  if (new_program_break > get_program_break(context)) {
     if (debug_syscalls) {
       printf("(gc_brk): ");
       print_register_hexadecimal(REG_A0);
     }
 
     // calculate size by subtracting the current from the new program break
-    size = program_break - get_program_break(context);
+    size = new_program_break - get_program_break(context);
 
     if (debug_syscalls) {
       printf(" |- ");
@@ -10371,7 +10371,7 @@ void implement_gc_brk(uint64_t* context) {
 
     // assert: _bump pointer is last entry in data segment
 
-    // updating the _bump pointer of the program (for consistency)
+    // tracking the program break with the _bump pointer of the program
     store_virtual_memory(get_pt(context), get_data_seg_end_gc(context) - WORDSIZE, get_program_break(context));
 
     // assert: gc_brk syscall is invoked by selfie's malloc
