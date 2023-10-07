@@ -7024,13 +7024,17 @@ hybrids
 
 > Self-collecting garbage collector
 
-A garbage collector in selfie would not be complete if it was not *self-collecting*. What exactly does that mean? Well, garbage collectors may either run outside of the address space they collect, as part of a runtime system for managed programming languages, for example, or in the same address space they collect, as part of a runtime library. The garbage collector in selfie can do both, even at the same time.
+A garbage collector in selfie would not be complete if it was not *self-collecting*. What exactly does that mean? Well, garbage collectors may either run outside of the address space they collect, as part of a runtime system for managed programming languages, for example, or in the same address space they collect, as part of a runtime library. The selfie garbage collector can do both, even at the same time. We have already seen the selfie garbage collector in action as part of the `mipster` emulator. In order to provide the selfie garbage collector as part of the `libcstar` library of selfie, we need to instruct the selfie compiler to generate additional code that links the garbage collector to the compiled code. Once this is done, executing the compiled code also runs the garbage collector in the same address space, just try:
 
 ```bash
 make gclib
 ```
 
+Here, the `-gc` option right before the `-c` option instructs the selfie compiler to link the selfie garbage collector to the compiled code. Executing the compiled code runs the garbage collector as well, this time without any modifications to the `mipster` emulator. However, while there is some memory reuse, total memory consumption goes up, as the metadata of the garbage collector now shows up in profiling. More importantly, the `libcstar` version of the garbage collector executes through interpretation by the `mipster` emulator and therefore runs much slower than the `mipster` version of the garbage collector. Therefore, the `libcstar` garbage collector is configured to run less often and thus less effectively.
+
 > Self-collecting self-compiling selfie
+
+So, how about combining garbage collection in the `mipster` emulator and as `libcstar` library?
 
 ...thus collect, as part of the `mipster` emulator, the virtual address space of emulated code that may include the garbage collector, as part of the `libcstar` library of selfie. So, the garbage collector in `mipster` may collect the memory used by the emulated code including the `libcstar` garbage collector which in turn just collects the memory of the emulated code that it is linked to as library. To see for yourself, try:
 
