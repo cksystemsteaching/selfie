@@ -15,7 +15,7 @@ uint64_t validation_address_3 = 0;
 uint64_t validation_address_4 = 0;
 uint64_t validation_address_5 = 0;
 
-// global variables (pointers to gc created objects)
+// global variables (pointers to gc created memory blocks)
 uint64_t* x = (uint64_t*) 0;
 uint64_t* y = (uint64_t*) 0;
 
@@ -23,17 +23,17 @@ uint64_t* y = (uint64_t*) 0;
 void do_stuff() {
   uint64_t* z;
 
-  z = gc_malloc(8); // object 5
+  z = gc_malloc(8); // memory block 5
   if (((uint64_t) z) != validation_address_4 - check_offset) {
     printf("test 4 failed (local variable inside function)!\n");
     exit(1);
   }
 
-  // return -> free(object 5)
+  // return -> free(memory block 5)
 }
 
 int main(int argc, char** argv) {
-  // local variables (pointers to gc created objects)
+  // local variables (pointers to gc created memory blocks)
   uint64_t* z;
   uint64_t* w;
 
@@ -53,13 +53,13 @@ int main(int argc, char** argv) {
   // assert: gc_malloc(0) fetches the current program break
   heap_start = (uint64_t) gc_malloc(0) + check_offset;
 
-  // note: the gc library stores metadata and object in the same heap (order: metadata -> object)
-  // therefore, we need to consider both object and metadata size when calculating the expected addresses
+  // note: the gc library stores block and metadata in the same heap (order: metadata -> block)
+  // therefore, we need to consider both block and metadata size when calculating the expected addresses
 
-  // test case 1: allocate object and assign ptr to global variable (-> data segment)
+  // test case 1: allocate block and assign ptr to global variable (-> data segment)
   validation_address_1 = heap_start + GC_METADATA_SIZE;
 
-  // test case 2: allocate object and assign ptr to the first object (-> heap)
+  // test case 2: allocate block and assign ptr to the first block (-> heap)
   validation_address_2 = validation_address_1 + 8 + GC_METADATA_SIZE;
 
   // test case 3: reuse (i.e. alloc -> unassign -> alloc)
@@ -78,23 +78,23 @@ int main(int argc, char** argv) {
   // validation addresses of test case 1 and 2 are used
 
   // heap layout (not considering metadata and check offsets):
-  // +-----------+
-  // |           |
-  // | object 7  |
-  // +-----------+    +-----------+  = validation_address_5
-  // | object 5  | -> | object 6  |
-  // +-----------+    +-----------+  = validation_address_4
-  // | object 3  | -> | object 4  |
-  // +-----------+    +-----------+  = validation_address_3
-  // | object 2  | -> | object 9  |
-  // +-----------+    +-----------+  = validation_address_2
-  // | object 1  | -> | object 8  |
-  // +-----------+    +-----------+  = validation_address_1
+  // +---------+
+  // |         |
+  // | block 7 |
+  // +---------+    +---------+  = validation_address_5
+  // | block 5 | -> | block 6 |
+  // +---------+    +---------+  = validation_address_4
+  // | block 3 | -> | block 4 |
+  // +---------+    +---------+  = validation_address_3
+  // | block 2 | -> | block 9 |
+  // +---------+    +---------+  = validation_address_2
+  // | block 1 | -> | block 8 |
+  // +---------+    +---------+  = validation_address_1
 
   // test cases
 
   // --- test 1 ---
-  x = gc_malloc(8); // object 1
+  x = gc_malloc(8); // block 1
   if (((uint64_t) x) != validation_address_1 - check_offset) {
     printf("0x%08lX - 0x%lX\n", (uint64_t) x, validation_address_1 - check_offset);
     printf("test 1 failed!\n");
@@ -102,55 +102,55 @@ int main(int argc, char** argv) {
   }
 
   // --- test 2 ---
-  *x = (uint64_t) gc_malloc(8); // object 2
+  *x = (uint64_t) gc_malloc(8); // block 2
   if (*x != validation_address_2 - check_offset) {
     printf("test 2 failed!\n");
     exit(1);
   }
 
   // --- test 3 ---
-  y = gc_malloc(8); // object 3
+  y = gc_malloc(8); // block 3
   if (((uint64_t) y) != validation_address_3 - check_offset) {
     printf("test 3 failed (first allocation)!\n");
     exit(1);
   }
 
-  y = (uint64_t*) 0; // = free(object 3)
+  y = (uint64_t*) 0; // = free(block 3)
 
-  y = gc_malloc(8); // object 4
+  y = gc_malloc(8); // block 4
   if (((uint64_t) y) != validation_address_3 - check_offset) {
     printf("test 3 failed (reuse)! make sure gc period is set to 0!\n");
     exit(1);
   }
 
   // --- test 4 ---
-  do_stuff(); // object 5 (inside function)
+  do_stuff(); // block 5 (inside function)
 
-  z = gc_malloc(8); // object 6
+  z = gc_malloc(8); // block 6
   if (((uint64_t) z) != validation_address_4 - check_offset) {
     printf("test 4 failed (local variable)! make sure gc period is set to 0!\n");
     exit(1);
   }
 
   // --- test 5 ---
-  z = (uint64_t*) 0; // = free(object 6)
+  z = (uint64_t*) 0; // = free(block 6)
 
-  z = gc_malloc(16); // object 7
+  z = gc_malloc(16); // block 7
   if (((uint64_t) z) != validation_address_5 - check_offset) {
     printf("test 5 failed!\n");
     exit(1);
   }
 
   // --- test 6 ---
-  x = (uint64_t*) 0; // = free(object 1), free(object 2)
+  x = (uint64_t*) 0; // = free(block 1), free(block 2)
 
-  w = gc_malloc(8); // object 8
+  w = gc_malloc(8); // block 8
   if (((uint64_t) w) != validation_address_1 - check_offset) {
     printf("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);
   }
 
-  x = gc_malloc(8); // object 9
+  x = gc_malloc(8); // block 9
   if (((uint64_t) x) != validation_address_2 - check_offset) {
     printf("test 6 failed! make sure gc period is set to 0!\n");
     exit(1);

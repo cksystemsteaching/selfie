@@ -2190,24 +2190,24 @@ uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 uint64_t gc_load_memory(uint64_t* context, uint64_t address);
 void     gc_store_memory(uint64_t* context, uint64_t address, uint64_t value);
 
-void zero_object(uint64_t* context, uint64_t* metadata);
+void zero_block(uint64_t* context, uint64_t* metadata);
 
 uint64_t* allocate_new_memory(uint64_t* context, uint64_t size);
 uint64_t* reuse_memory(uint64_t* context, uint64_t size);
 uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size);
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size);
 
-// interface to allocate an object using an external collector (e.g. tools/boehm-gc.c)
+// interface to allocate a memory block using an external collector (e.g. tools/boehm-gc.c)
 uint64_t* allocate_memory(uint64_t* context, uint64_t size);
 
 // this function performs an O(n) list search where n is memory size
 // improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator
 uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address);
 
-// interface to marking an object using an external collector (e.g. tools/boehm-gc.c)
-void mark_object(uint64_t* context, uint64_t address);
+// interface to marking a memory block using an external collector (e.g. tools/boehm-gc.c)
+void mark_block(uint64_t* context, uint64_t address);
 
-void mark_object_selfie(uint64_t* context, uint64_t gc_address);
+void mark_block_selfie(uint64_t* context, uint64_t gc_address);
 void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_end);
 
 // this function scans the heap from two roots (data segment and stack) in O(n^2)
@@ -2215,9 +2215,9 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 // improvement: push O(n^2) down to O(n)
 void mark(uint64_t* context);
 
-void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
+void free_block(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata);
 
-// interface to sweep marked objects using an external collector (e.g. tools/boehm-gc.c)
+// interface to sweep marked memory blocks using an external collector (e.g. tools/boehm-gc.c)
 void sweep(uint64_t* context);
 
 void sweep_selfie(uint64_t* context);
@@ -2249,8 +2249,8 @@ uint64_t GC_METADATA_SIZE = 32; // 2 * sizeof(uint64_t) + 2 * sizeof(uint64_t*)
 
 uint64_t GC_WORDSIZE = 8; // sizeof(uint64_t) for library variant, otherwise WORDSIZE
 
-uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that an object is not reachable
-uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that an object is reachable by root or other reachable object
+uint64_t GC_MARKBIT_UNREACHABLE = 0; // indicating that a memory block is not reachable
+uint64_t GC_MARKBIT_REACHABLE   = 1; // indicating that a memory block is reachable, by root or other reachable block
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2270,7 +2270,7 @@ uint64_t gc_num_ungced_mallocs = 0;
 uint64_t gc_num_reused_mallocs = 0;
 uint64_t gc_num_collects       = 0;
 uint64_t gc_mem_mallocated     = 0;
-uint64_t gc_mem_objects        = 0;
+uint64_t gc_mem_blocks         = 0;
 uint64_t gc_mem_metadata       = 0;
 uint64_t gc_mem_reused         = 0;
 uint64_t gc_mem_collected      = 0;
@@ -2284,7 +2284,7 @@ void reset_gc_counters() {
   gc_num_reused_mallocs = 0;
   gc_num_collects       = 0;
   gc_mem_mallocated     = 0;
-  gc_mem_objects        = 0;
+  gc_mem_blocks         = 0;
   gc_mem_metadata       = 0;
   gc_mem_reused         = 0;
   gc_mem_collected      = 0;
@@ -10580,44 +10580,44 @@ void gc_store_memory(uint64_t* context, uint64_t address, uint64_t value) {
       store_virtual_memory(get_pt(context), address, value);
 }
 
-void zero_object(uint64_t* context, uint64_t* metadata) {
-  uint64_t object_start;
-  uint64_t object_end;
+void zero_block(uint64_t* context, uint64_t* metadata) {
+  uint64_t block_start;
+  uint64_t block_end;
 
-  // zero object memory
-  object_start = (uint64_t) get_metadata_memory(metadata);
-  object_end   = object_start + get_metadata_size(metadata);
+  // zero block memory
+  block_start = (uint64_t) get_metadata_memory(metadata);
+  block_end   = block_start + get_metadata_size(metadata);
 
-  while (object_start < object_end) {
-    gc_store_memory(context, object_start, 0);
+  while (block_start < block_end) {
+    gc_store_memory(context, block_start, 0);
 
-    object_start = object_start + GC_WORDSIZE;
+    block_start = block_start + GC_WORDSIZE;
   }
 }
 
 uint64_t* allocate_new_memory(uint64_t* context, uint64_t size) {
-  uint64_t object;
+  uint64_t block_start;
   uint64_t new_program_break;
 
   if (is_gc_library(context)) {
-    object = (uint64_t) smalloc_system(size);
+    block_start = (uint64_t) smalloc_system(size);
 
     // assert: smalloc_system is a bump pointer allocator that may reuse memory
 
-    if (object + size > gc_heap_seg_end)
-      gc_heap_seg_end = object + size;
+    if (block_start + size > gc_heap_seg_end)
+      gc_heap_seg_end = block_start + size;
 
-    return (uint64_t*) object;
+    return (uint64_t*) block_start;
   } else {
-    object = get_program_break(context);
+    block_start = get_program_break(context);
 
     // attempt to update program break
 
-    new_program_break = try_brk(context, object + size);
+    new_program_break = try_brk(context, block_start + size);
 
-    if (new_program_break == object + size)
+    if (new_program_break == block_start + size)
       // attempt to update program break succeeded
-      return (uint64_t*) object;
+      return (uint64_t*) block_start;
   }
 
   return (uint64_t*) 0;
@@ -10631,7 +10631,7 @@ uint64_t* reuse_memory(uint64_t* context, uint64_t size) {
 
   if (metadata != (uint64_t*) 0) {
     // zeroing reused memory is optional!
-    zero_object(context, metadata);
+    zero_block(context, metadata);
 
     return get_metadata_memory(metadata);
   }
@@ -10644,49 +10644,49 @@ uint64_t* allocate_memory(uint64_t* context, uint64_t size) {
 }
 
 uint64_t* allocate_memory_selfie(uint64_t* context, uint64_t size) {
-  uint64_t* object;
+  uint64_t* block;
   uint64_t* metadata;
 
   gc_num_mallocated = gc_num_mallocated + 1;
   gc_mem_mallocated = gc_mem_mallocated + size;
 
   // try reusing memory first
-  object = reuse_memory(context, size);
+  block = reuse_memory(context, size);
 
-  if (object != (uint64_t*) 0) {
+  if (block != (uint64_t*) 0) {
     gc_num_reused_mallocs = gc_num_reused_mallocs + 1;
     gc_mem_reused         = gc_mem_reused + size;
 
-    return object;
+    return block;
   }
 
-  // allocate new object memory if there is no reusable memory
-  object = allocate_new_memory(context, size);
+  // allocate new memory block if there is no reusable memory
+  block = allocate_new_memory(context, size);
 
-  if (object != (uint64_t*) 0) {
-    // allocate metadata for managing object
+  if (block != (uint64_t*) 0) {
+    // allocate metadata for managing memory block
     metadata = allocate_metadata(context);
 
     if (metadata != (uint64_t*) 0) {
       set_metadata_next(metadata, get_used_list_head_gc(context));
       set_used_list_head_gc(context, metadata);
 
-      set_metadata_memory(metadata, object);
+      set_metadata_memory(metadata, block);
       set_metadata_size(metadata, size);
       set_metadata_markbit(metadata, GC_MARKBIT_UNREACHABLE);
 
       gc_num_gced_mallocs   = gc_num_gced_mallocs + 1;
       gc_num_ungced_mallocs = gc_num_ungced_mallocs + 1;
 
-      gc_mem_objects  = gc_mem_objects + size;
+      gc_mem_blocks   = gc_mem_blocks + size;
       gc_mem_metadata = gc_mem_metadata + GC_METADATA_SIZE;
     } else
       return (uint64_t*) 0;
   } else
-    // if object allocation failed discount memory from mallocated total
+    // if memory block allocation failed discount memory from mallocated total
     gc_mem_mallocated = gc_mem_mallocated - size;
 
-  return object;
+  return block;
 }
 
 uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
@@ -10707,7 +10707,7 @@ uint64_t* gc_malloc_implementation(uint64_t* context, uint64_t size) {
 
 uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) {
   uint64_t* node;
-  uint64_t  object;
+  uint64_t  block;
 
   // pointer below gced heap
   if (address < get_heap_seg_start_gc(context))
@@ -10726,11 +10726,11 @@ uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) 
           // address points to metadata (redundant check but possibly faster)
           return (uint64_t*) 0;
 
-    object = (uint64_t) get_metadata_memory(node);
+    block = (uint64_t) get_metadata_memory(node);
 
-    if (address >= object)
-      if (address < object + get_metadata_size(node))
-        // address points into a gced object
+    if (address >= block)
+      if (address < block + get_metadata_size(node))
+        // address points into a gced block
         return node;
 
     node = get_metadata_next(node);
@@ -10739,18 +10739,18 @@ uint64_t* get_metadata_if_address_is_valid(uint64_t* context, uint64_t address) 
   return (uint64_t*) 0;
 }
 
-void mark_object(uint64_t* context, uint64_t address) {
+void mark_block(uint64_t* context, uint64_t address) {
   uint64_t gc_address;
 
   gc_address = gc_load_memory(context, address);
 
-  mark_object_selfie(context, gc_address);
+  mark_block_selfie(context, gc_address);
 }
 
-void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
+void mark_block_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t* metadata;
-  uint64_t object_start;
-  uint64_t object_end;
+  uint64_t block_start;
+  uint64_t block_end;
 
   if (is_gc_library(context) == 0)
     if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
@@ -10759,21 +10759,21 @@ void mark_object_selfie(uint64_t* context, uint64_t gc_address) {
   metadata = get_metadata_if_address_is_valid(context, gc_address);
 
   if (metadata == (uint64_t*) 0)
-    // address is not a pointer to a gced object
+    // address is not a pointer to a gced block
     return;
   else if (get_metadata_markbit(metadata) == GC_MARKBIT_UNREACHABLE)
     set_metadata_markbit(metadata, GC_MARKBIT_REACHABLE);
   else
-    // object has already been marked as reachable
+    // memory block has already been marked as reachable
     return;
 
-  object_start = (uint64_t) get_metadata_memory(metadata);
-  object_end   = object_start + get_metadata_size(metadata);
+  block_start = (uint64_t) get_metadata_memory(metadata);
+  block_end   = block_start + get_metadata_size(metadata);
 
-  while (object_start < object_end) {
-    mark_object(context, object_start);
+  while (block_start < block_end) {
+    mark_block(context, block_start);
 
-    object_start = object_start + GC_WORDSIZE;
+    block_start = block_start + GC_WORDSIZE;
   }
 }
 
@@ -10786,7 +10786,7 @@ void mark_segment(uint64_t* context, uint64_t segment_start, uint64_t segment_en
 
   while (segment_start < segment_end) {
     // undo GC_WORDSIZE index offset before marking address
-    mark_object(context, segment_start + GC_WORDSIZE);
+    mark_block(context, segment_start + GC_WORDSIZE);
 
     segment_start = segment_start + GC_WORDSIZE;
   }
@@ -10809,7 +10809,7 @@ void mark(uint64_t* context) {
   mark_segment(context, get_data_seg_start_gc(context), get_data_seg_end_gc(context));
 }
 
-void free_object(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
+void free_block(uint64_t* context, uint64_t* metadata, uint64_t* prev_metadata) {
   if (prev_metadata == (uint64_t*) 0)
     set_used_list_head_gc(context, get_metadata_next(metadata));
   else
@@ -10838,11 +10838,11 @@ void sweep_selfie(uint64_t* context) {
   node = get_used_list_head_gc(context);
 
   while (node != (uint64_t*) 0) {
-    // next node changes when object is reused
+    // next node changes when memory block is reused
     next_node = get_metadata_next(node);
 
     if (get_metadata_markbit(node) == GC_MARKBIT_UNREACHABLE)
-      free_object(context, node, prev_node);
+      free_block(context, node, prev_node);
     else {
       // clear mark bit for next marking
       set_metadata_markbit(node, GC_MARKBIT_UNREACHABLE);
@@ -10879,18 +10879,18 @@ void print_gc_profile(uint64_t is_gc_kernel) {
     ratio_format_fractional_2(gc_mem_collected, MEGABYTE),
     gc_num_collects);
   printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu mallocs (%lu gced, %lu ungced)\n", selfie_name,
-    ratio_format_integral_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_objects + gc_mem_metadata, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects + gc_mem_metadata),
+    ratio_format_integral_2(gc_mem_blocks + gc_mem_metadata, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_blocks + gc_mem_metadata, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_blocks + gc_mem_metadata),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_blocks + gc_mem_metadata),
     gc_num_gced_mallocs + gc_num_ungced_mallocs,
     gc_num_gced_mallocs,
     gc_num_ungced_mallocs);
   printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu gced mallocs\n", selfie_name,
-    ratio_format_integral_2(gc_mem_objects, MEGABYTE),
-    ratio_format_fractional_2(gc_mem_objects, MEGABYTE),
-    percentage_format_integral_2(gc_mem_mallocated, gc_mem_objects),
-    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_objects),
+    ratio_format_integral_2(gc_mem_blocks, MEGABYTE),
+    ratio_format_fractional_2(gc_mem_blocks, MEGABYTE),
+    percentage_format_integral_2(gc_mem_mallocated, gc_mem_blocks),
+    percentage_format_fractional_2(gc_mem_mallocated, gc_mem_blocks),
     gc_num_gced_mallocs);
   printf("%s: gc:      %lu.%.2luMB(%lu.%.2lu%%) allocated in %lu ungced mallocs", selfie_name,
     ratio_format_integral_2(gc_mem_metadata, MEGABYTE),
