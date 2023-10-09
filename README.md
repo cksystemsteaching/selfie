@@ -7054,15 +7054,25 @@ Garbage collection demonstrates a wonderful tradeoff between time and space in c
 
 > Generational, incremental, concurrent, parallel, real-time garbage collection
 
-The importance of garbage collection has motivated computer scientists to develop ever more advanced versions to improve performance. Generational garbage collection makes stop-the-world garbage collection more incremental. But incrementality can be increased further enabling even *concurrent* garbage collection where mutator and garbage collector can run concurrently in different threads sharing the same address space. Thus mutator and concurrent garbage collector can even run in parallel, at least to some extent, if more than one processor or core is available. However, *parallel* garbage collection actually refers to garbage collectors that distribute work across multiple threads which can then run in parallel to improve garbage collector throughput, again if more than one processor or core is available. Whenever your mutator does not fully utilize your machine, a modern concurrent and parallel garbage collector may very well do, given your mutator turns over enough memory for the garbage collector to collect. Lastly, there are also *real-time* garbage collectors that are essentially incremental garbage collectors with a constant subsecond or even submillisecond bound on incrementality that makes garbage collection almost disappear into a per-invocation near-instantaneous activity yet at considerable loss in throughput.
+The importance of garbage collection has motivated computer scientists to develop ever more advanced garbage collection technology to improve performance. Generational garbage collection makes stop-the-world garbage collection more incremental. But incrementality can be increased further enabling even *concurrent* garbage collection where mutator and garbage collector can run concurrently in different threads sharing the same address space. Thus mutator and concurrent garbage collector can even run in parallel, at least to some extent, if more than one processor or core is available. However, *parallel* garbage collection actually refers to garbage collectors that distribute work across multiple threads which can then run in parallel to improve garbage collector throughput, again if more than one processor or core is available. Whenever your mutator does not fully utilize your machine, a modern concurrent and parallel garbage collector may very well do, given your mutator turns over enough memory for the garbage collector to collect. Lastly, there are also *real-time* garbage collectors that are essentially incremental garbage collectors with a constant subsecond or even submillisecond bound on garbage collection time that makes mutator latency due to garbage collection almost disappear yet at considerable loss in garbage collection throughput.
 
 > Concurrency in runtime systems
 
-imagine, modern runtime systems feature interpreters, compilers, garbage collectors, schedulers...
+Before taking a look at the final three exercises, let us reflect on modern runtime systems and their enormous complexity. Production execution environments for modern dynamic and managed programming languages such as Java, Python, or Javascript, for example, typically integrate fast interpreters, optimizing compilers, and garbage collectors, and include significant amounts of library code. On top of that, some systems may leverage concurrency for better systems performance and even provide concurrency for better application performance as well. Java, for example, supports multi-threaded programming.
 
-threads
-threadsafe-malloc
-treiber-stack
+...
+
+```bash
+./grader/self.py threads
+```
+
+```bash
+./grader/self.py threadsafe-malloc
+```
+
+```bash
+./grader/self.py treiber-stack
+```
 
 ### Universality of Computing
 
