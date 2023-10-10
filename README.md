@@ -7084,9 +7084,9 @@ There are different levels where threads can be implemented, in particular at *k
 
 > Hardware versus software thread
 
-mapping problem
+Let us take a moment and provide a more abstract point of view of the problem of supporting threads. In general, modern hardware provides a fixed number of *hardware threads* mostly in the form of processors and cores while modern software demands a typically much higher and dynamic number of *software threads* executing code concurrently and ideally in parallel through some mapping of software to hardware threads. In the end, virtual machine monitors, operating systems kernels, and runtime systems have to solve that mapping problem somehow, in isolation and in particular when combined. The key challenge is to minimize per-software-thread latency while maximize total software-thread execution throughput.
 
-...
+> Pthreads
 
 ```bash
 ./grader/self.py threads
