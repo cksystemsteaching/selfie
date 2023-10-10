@@ -2274,7 +2274,9 @@ In addition to the program counter, some instructions make the processor change 
 
 Let us take a step back and reflect on what we have here. The *state* of a processor are the bits stored in its registers and program counter. How many do we have in a RISC-U processor? Easy. 32\*64+1\*64=2112 bits. The *state space* of the processor is therefore 2^2112^ different states. How many is that? Well, there are around 2^267^ particles in the known universe. In other words, our little RISC-U processor, which, in a similar flavor, likely powers your smartphone, can already be in a lot more states than that. And we are not even counting memory. So, all a RISC-U processor does is exploring its state space from one state to another by executing one instruction after another where each instruction makes the processor flip up to 128 bits in what is called a *state transition*. The number of bits involved in a state transition might be different for other types of processors but the principle is always the same. From the perspective of a processor, *computation* is a (possibly unbounded) sequence of state transitions where each transition is triggered by the execution of one machine instruction which usually affects a very small number of bits. Turns out your smartphone is not so smart after all. But the people who program it probably are.
 
-Before we move on to explaining memory, we should briefly mention what a *multicore* machine is, which is probably something you have heard of and is in your pocket right now. Our RISC-U processor is a single core machine. However, making it, say, a dual core machine is simple. Just duplicate registers and program counter but not memory. In other words, each core has its own registers and program counter but shares memory with all other cores. Why is this cool? Because a multicore machine can execute the same or different code as many times in parallel as there are cores, at least in principle. Remember the von Neumann bottleneck? Since memory and in particular the memory bus is shared among all cores, the bottleneck becomes even more of an issue and may slow down all cores. Modern machines address the issue in fascinating and sophisticated ways but the fundamental problem is here to stay.
+> Single-core, dual-core, multi-core
+
+Before we move on to explaining memory, we should briefly mention what a *multi-core* machine is, which is probably something you have heard of and is in your pocket right now. Our RISC-U processor represents a *single-core* machine. However, turning it into, say, a *dual-core* machine is simple. Just duplicate registers and program counter but not memory. In other words, each core has its own registers and program counter but shares memory with all other cores. Why is this cool? Because a multi-core machine can execute the same or different code as many times in parallel as there are cores, at least in principle. Remember the von Neumann bottleneck? Since memory and in particular the memory bus is shared among all cores, the bottleneck becomes even more of an issue and may slow down all cores. Modern machines address the issue in fascinating and sophisticated ways but the fundamental problem is here to stay.
 
 ### Memory
 
@@ -3431,7 +3433,7 @@ void run_until_exception() {
 }
 ```
 
-This procedure represents the *core* of a RISC-U processor. It does exactly what a real processor core does. It *fetches* an instruction from memory, *decodes* the instruction into opcode and arguments, and then *executes* the instruction, before fetching the next instruction, and so on, never mind the *interrupt* here. The only way to leave the `while` loop is when an *exception* occurs, as the name of the procedure suggests. Whenever this happens, `mipster` takes over and handles the situation, either to return here eventually, or else terminate.
+This procedure represents the *core* of a RISC-U processor. It models what a real processor core does. In particular, it *fetches* an instruction from memory, *decodes* the instruction into opcode and arguments, and then *executes* the instruction, before fetching the next instruction, and so on, never mind the *interrupt* here. The only way to leave the `while` loop is when an *exception* occurs, as the name of the procedure suggests. Whenever this happens, `mipster` takes over and handles the situation, either to return here eventually, or else terminate.
 
 > Exceptions!
 
@@ -6552,7 +6554,7 @@ Virtual memory enables co-existence of multiple virtual machines on the same phy
 
 > Throughput versus latency
 
-Suppose we are given two virtual machines `VM1` and `VM2` and a physical machine `PM` with a single CPU that only has one core. Furthermore, suppose that both `VM1` and `VM2` host throughput-oriented code that works on CPU-bound but otherwise independent workloads. In other words, the code is supposed to do as much work per unit of time as possible, involving the CPU and not much else, in particular no communication. In this case, `VM1` and `VM2` are fully concurrent, that is, the order in which `VM1` and `VM2` run on the CPU of `PM` is irrelevant. Just switching between `VM1` and `VM2` should not happen too often because every switch costs overhead and therefore reduces throughput. But what if `PM` had a CPU with two cores, or two CPUs with a single core each, all sharing main memory? In short, what if `PM` offered shared-memory CPU parallelism? In this case, `VM1` and `VM2` could run in *parallel*, each on one of the CPUs or cores, essentially doubling their throughput, modulo the remaining overhead for virtualization, in particular for maintaining spatial isolation in shared memory. Awesome! Alright, but how can we utilize concurrency even on the original single-core uniprocessor `PM`? Well, as soon as latency rather than just throughput is important, concurrency does make a difference. Suppose that at least, say, `VM1` hosts latency-oriented code. In this case, `VM1` can always run on `PM` when needed, suspending `VM2` until `VM1` is done. In short, concurrency is beneficial, even in the absence of parallelism, as long as latency is an issue. However, balancing *temporal* needs, or more generally establishing *temporal* isolation of many virtual machines, and similarly of processes and threads, can be quite involved yet often with beautiful analogies to the real world. We only focus on the most basic approaches below.
+Suppose we are given two virtual machines `VM1` and `VM2` and a physical machine `PM` with a single CPU that only has one core. Furthermore, suppose that both `VM1` and `VM2` host throughput-oriented code that works on CPU-bound but otherwise independent workloads. In other words, the code is supposed to do as much work per unit of time as possible, involving the CPU and not much else, in particular no communication. In this case, `VM1` and `VM2` are fully concurrent, that is, the order in which `VM1` and `VM2` run on the CPU of `PM` is irrelevant. Just switching between `VM1` and `VM2` should not happen too often because every switch costs overhead and therefore reduces throughput. But what if `PM` had a CPU with two cores, or two CPUs with a single core each, all sharing main memory? In short, what if `PM` offered shared-memory CPU parallelism? In this case, `VM1` and `VM2` could run in *parallel*, each on one of the CPUs or cores, essentially doubling their throughput, modulo the remaining overhead for virtualization, in particular for maintaining spatial isolation in shared memory. Awesome! Alright, but how can we utilize concurrency even on the original single-core single-processor `PM`? Well, as soon as latency rather than just throughput is important, concurrency does make a difference. Suppose that at least, say, `VM1` hosts latency-oriented code. In this case, `VM1` can always run on `PM` when needed, suspending `VM2` until `VM1` is done. In short, concurrency is beneficial, even in the absence of parallelism, as long as latency is an issue. However, balancing *temporal* needs, or more generally establishing *temporal* isolation of many virtual machines, and similarly of processes and threads, can be quite involved yet often with beautiful analogies to the real world. We only focus on the most basic approaches below.
 
 > Standardization, safety, security, mobility
 
@@ -6850,6 +6852,10 @@ preemptive system: `mipster_switch` always eventually returns
 
 > Temporal isolation
 
+> Mapping and scheduling
+
+multi-processor, uni-processor, single-core, multi-core, multi-process
+
 processes
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
@@ -7064,7 +7070,15 @@ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 > Concurrency in runtime systems
 
-Before taking a look at the final three exercises, let us reflect on modern runtime systems and their enormous complexity. Production execution environments for modern dynamic and managed programming languages such as Java, Python, or Javascript, for example, typically integrate fast interpreters, optimizing compilers, and garbage collectors, and include significant amounts of library code. On top of that, some systems may leverage concurrency for better systems performance and even provide concurrency for better application performance as well. Java, for example, supports multi-threaded programming.
+Before taking a look at the final three exercises, let us reflect on modern runtime systems and their enormous complexity. Production execution environments for modern dynamic and managed programming languages such as Java, Python, or Javascript, for example, typically integrate fast interpreters, optimizing compilers, and garbage collectors, and include significant amounts of library code. On top of that, some systems may leverage concurrency for better systems performance and even provide concurrency for better application performance as well. Java, for example, leverages multi-threaded code in many implementations of its language virtual machine and supports multi-threaded application programming as well. While some runtime systems may also leverage and provide process-like concurrency, our focus here is on threads rather than processes.
+
+> Single-threaded versus multi-threaded process
+
+The default model of a software process, as introduced earlier, is *single-threaded* in the sense that its code executes in a single *thread* of execution, one machine instruction at a time. However, a process may also be *multi-threaded* in such a way that its code may actually execute in multiple threads of execution concurrently, one machine instruction per thread at a time. While multiple processes only share resources other than memory, at least as default, multiple threads do share everything including memory except what is needed to run code in multiple threads of execution: program counter, CPU registers, and call stack are not shared, everything else is, in particular the code, data, and heap segments.
+
+> Kernel versus user thread
+
+> Hardware versus software thread
 
 ...
 
