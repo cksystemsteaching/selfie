@@ -6888,6 +6888,8 @@ fork-wait-exit
 
 ...inside and outside of an address space
 
+> Race conditions in I/O
+
 lock
 
 ...losing and gaining determinism
@@ -7074,11 +7076,15 @@ Before taking a look at the final three exercises, let us reflect on modern runt
 
 > Single-threaded versus multi-threaded process
 
-The default model of a software process, as introduced earlier, is *single-threaded* in the sense that its code executes in a single *thread* of execution, one machine instruction at a time. However, a process may also be *multi-threaded* in such a way that its code may actually execute in multiple threads of execution concurrently, one machine instruction per thread at a time. While multiple processes only share resources other than memory, at least as default, multiple threads do share everything including memory except what is needed to run code in multiple threads of execution: program counter, CPU registers, and call stack are not shared, everything else is, in particular the code, data, and heap segments.
+The default model of a software process, as introduced earlier, is *single-threaded* in the sense that its code executes in a single *thread* of execution, one machine instruction at a time. However, a process may also be *multi-threaded* in such a way that its code may actually execute in multiple threads of execution concurrently, one machine instruction per thread at a time. While multiple processes only share resources other than memory, at least as default, multiple threads do share everything including memory except what is needed to run code in multiple threads of execution: program counter, CPU registers, and call stack are not shared, everything else is, in particular the code, data, and heap segments. In other words, each thread has its own program counter, CPU registers, and call stack, which is exactly what is needed to execute the same code concurrently without any modifications to the code, well, as long as we ignore communication among threads. We get back to thread communication after the first exercise on threads.
 
 > Kernel versus user thread
 
+There are different levels where threads can be implemented, in particular at *kernel level*, as part of an operating system kernel, or at *user level*, as part of a runtime system or *thread library*. Multi-threaded programming in C, for example, is usually done with a thread library. There are also standardized interfaces for thread libraries such as the *POSIX* standard for threads, also called *phtreads*. We use the programming interface provided by pthreads in the first exercise on threads but actually ask to implement the interface at kernel level for simplicity.
+
 > Hardware versus software thread
+
+mapping problem
 
 ...
 
@@ -7086,9 +7092,17 @@ The default model of a software process, as introduced earlier, is *single-threa
 ./grader/self.py threads
 ```
 
+how to: split page table, pthread_ like fork_ etc.
+
+> Race conditions in shared memory
+
+> Atomic instructions
+
 ```bash
 ./grader/self.py threadsafe-malloc
 ```
+
+> Lock-free data structures
 
 ```bash
 ./grader/self.py treiber-stack
