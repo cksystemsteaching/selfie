@@ -6586,12 +6586,6 @@ Extend selfie with option `-a` as console argument that is followed by the filen
 
 Look at the output of the grader to see what exactly your solution is tested on. Designing and implementing your own *self-assembling assembler* provides another round of training in dealing with finite state machines as well as machine code. Both concepts are critically important next.
 
--------------------------------------------------------------------------------
-
-work in progress
-
--------------------------------------------------------------------------------
-
 ### Virtual Machines
 
 In order to understand virtualization, we need to understand what is actually virtualized. For the purpose of our discussion, a *physical machine* (PM) is a 64-bit RISC-U machine with 4GB of memory address space over a given, possibly smaller amount of memory storage that is assumed to be a multiple of 1MB with a total of at least 1MB up to a maximum of 4GB. The memory storage is called *physical memory*. In contrast, the 4GB memory address space is called *virtual memory* as it does not provide actual storage. Virtual memory requires mapping virtual addresses to physical addresses to provide storage for virtual memory. When booting a physical machine, virtual memory is initially turned off and only turned on by software that computes the mapping. Thus code running on a physical machine initially accesses physical memory directly. Only when virtual memory is turned on, memory access involves translating virtual addresses to physical addresses which is done in hardware for performance reasons.
@@ -6842,6 +6836,10 @@ The key challenge in managing physical memory is to predict where virtual memory
 
 There is a good chance that your computer or smartphone is sometimes slower than usual or even unresponsive, at least temporarily, because of thrashing, and not just because of a slow network connection or a slow CPU, for example. Interestingly, faster networking, of course, but also more main memory, and more storage in general, make computers run faster, usually more so than a faster CPU. People often ask me if they should buy a machine with a faster CPU, and I usually respond that they should buy faster networking hardware and more memory instead, simply because most real-world applications are network- and memory-bound rather than CPU-bound. Why faster networking helps is obvious but understanding why more memory helps requires knowing what virtual memory is and how it works. The latter also helps diagnosing the cause of a slowdown if you have access to real-time profiling data such as a systems monitor which I run on all my machines at all times. One glance at the data and you know what to do to fix the problem. I would not be surprised if some sort of artificial intelligence will eventually diagnose and hopefully also fix such performance issues, instead of us turning wifi on and off and terminating apps etc. Regardless of innovation, however, there will always be scenarios that evade even the most advanced software. It is a cat and mouse game that never ends. We get back to the issue of memory management in the context of runtime systems where the story of memory and its impact on computing continues.
 
+===============================================================================
+                            below is work in progress
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 ### Concurrency
 
 preemptive system: `mipster_switch` always eventually returns
@@ -6887,6 +6885,10 @@ fork-wait-exit
 lock
 
 ...losing and gaining determinism
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                            above is work in progress
+===============================================================================
 
 ### Runtime Systems
 
@@ -7056,6 +7058,10 @@ Garbage collection demonstrates a wonderful tradeoff between time and space in c
 
 The importance of garbage collection has motivated computer scientists to develop ever more advanced garbage collection technology to improve performance. Generational garbage collection makes stop-the-world garbage collection more incremental. But incrementality can be increased further enabling even *concurrent* garbage collection where mutator and garbage collector can run concurrently in different threads sharing the same address space. Thus mutator and concurrent garbage collector can even run in parallel, at least to some extent, if more than one processor or core is available. However, *parallel* garbage collection actually refers to garbage collectors that distribute work across multiple threads which can then run in parallel to improve garbage collector throughput, again if more than one processor or core is available. Whenever your mutator does not fully utilize your machine, a modern concurrent and parallel garbage collector may very well do, given your mutator turns over enough memory for the garbage collector to collect. Lastly, there are also *real-time* garbage collectors that are essentially incremental garbage collectors with a constant subsecond or even submillisecond bound on garbage collection time that makes mutator latency due to garbage collection almost disappear yet at considerable loss in garbage collection throughput.
 
+===============================================================================
+                            below is work in progress
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
 > Concurrency in runtime systems
 
 Before taking a look at the final three exercises, let us reflect on modern runtime systems and their enormous complexity. Production execution environments for modern dynamic and managed programming languages such as Java, Python, or Javascript, for example, typically integrate fast interpreters, optimizing compilers, and garbage collectors, and include significant amounts of library code. On top of that, some systems may leverage concurrency for better systems performance and even provide concurrency for better application performance as well. Java, for example, supports multi-threaded programming.
@@ -7073,6 +7079,10 @@ Before taking a look at the final three exercises, let us reflect on modern runt
 ```bash
 ./grader/self.py treiber-stack
 ```
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                            above is work in progress
+===============================================================================
 
 ### Universality of Computing
 
