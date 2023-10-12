@@ -959,7 +959,7 @@ int fancy(int n) {
 }
 ```
 
-The subexpression `(n + 1)` in `n * (n + 1) - n / 2 + 42` may in fact be any arithmetic expression which is only possible because of recursion in the EBNF of expressions. Without recursion we can only say something like `n * n + 1 - n / 2 + 42`, for example, which is *semantically* equivalent to `(n * n) + 1 - (n / 2) + 42` since multiplication and division operators have precedence over addition and subtraction operators. This is even more apparent when looking at the *structure* of `n * n + 1 - n / 2 + 42` in its *derivation tree*, here using a text-based form of pictures called ASCII art, showing the tree up-side-down as it is commonly done in computer science:
+The subexpression `(n + 1)` in `n * (n + 1) - n / 2 + 42` may in fact be any arithmetic expression which is only possible because of recursion in the EBNF of expressions. Without recursion we can only say something like `n * n + 1 - n / 2 + 42`, for example, which is *semantically* equivalent to `(n * n) + 1 - (n / 2) + 42` since multiplication and division operators have precedence over addition and subtraction operators. This is even more apparent when looking at the *structure* of `n * n + 1 - n / 2 + 42` in its *derivation tree*, here using a text-based form of pictures called ASCII art, showing the tree up-side-down with the root at the top and the leaves at the bottom, as it is commonly done in computer science:
 
 ```
              _____________
@@ -971,7 +971,7 @@ term:     "*"  \     "/"   \
 factor:  n   n   1  n   2    42
 ```
 
-The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. By the way, trees in computer science are generally shown upside down with the root at the top and the leaves at the bottom. With the derivation tree it is easy to calculate the value of the expression. Given a value for `n`, say, `4`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. The result is `57`.
+The derivation tree shows how `n * n + 1 - n / 2 + 42` relates to the grammar. In particular, with a derivation tree, it is easy to calculate the value of an expression. Given a value for `n`, say, `4`, start at the leaves by replacing `n` by `4` and then propagate the values of the subexpressions upwards to the root. The result is `57`.
 
 > Grammars define syntax but may also have an effect on semantics
 
