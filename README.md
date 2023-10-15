@@ -7092,11 +7092,28 @@ However, similar to virtual machines and processes, the memory model provided by
 ./grader/self.py threads
 ```
 
-The exercise involves implementing basic support of the POSIX procedures `pthread_create`, `pthread_join`, and `pthread_exit` which are essentially counterparts of `fork`, `wait`, and `exit`, respectively, for threads rather than processes. The only difference that is relevant here is that the threads of a given process share the virtual memory of the process, that is, its page table, except for the stack segment. In other words, the challenge is to share the page table of the process among all threads, except for the stack segment, and instead provide an individual per-thread stack segment while sharing all other segments with all threads. Extending your implementation of the process exercise accordingly is not difficult.
+The exercise involves implementing basic support of the POSIX procedures `pthread_create`, `pthread_join`, and `pthread_exit` which are essentially counterparts of `fork`, `wait`, and `exit`, respectively, for threads rather than processes. The only difference that is relevant here is that the threads of a given process share the virtual memory of the process, that is, its page table, except for the stack segment. In other words, the challenge is to share the page table of the process among all threads, except for the stack segment. In particular, provide an individual per-thread stack segment while sharing all other segments with all threads. Extending your implementation of the process exercise accordingly is not difficult. One idea is to generalize the notion of a stack segment to a multi-stack segment and then switch from one stack to another by saving and restoring the per-thread stack pointer accordingly.
 
 > Race conditions in shared memory
 
-global variables are shared...
+The idea of threads is to make communication among threads easy by sharing all code and data other than the call stack, that is, by sharing the content of all global variables and the entire heap. However, global variable and heap access is subject to race conditions, way beyond I/O. A simple example is an assignment of a global variable `x` that increments the value of `x`:
+
+```c
+x = x + 1;
+```
+
+Suppose `x` is initialized to `0`. After two threads executed that assignment, you probably expect the value of `x` to be `2`. However, it turns out the value of `x` could also be just `1`. In order to understand why we need to take a look at the machine code that implements the assignment.
+
+...
+
+```asm
+ld   t0,-16(gp)
+addi t1,zero,1
+add  t0,t0,t1
+sd   t0,-16(gp)
+```
+
+...
 
 > Atomic instructions
 
