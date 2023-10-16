@@ -6892,7 +6892,15 @@ fork-wait-exit
 
 lock
 
+...critical section
+
 ...losing and gaining determinism
+
+...mutual exclusion
+
+...turning off interrupts
+
+...deadlock
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
@@ -7076,15 +7084,15 @@ Before taking a look at the final three exercises, let us reflect on modern runt
 
 > Single-threaded versus multi-threaded process
 
-The default model of a software process, as introduced earlier, is *single-threaded* in the sense that its code executes in a single *thread* of execution, one machine instruction at a time. However, a process may also be *multi-threaded* in such a way that its code may actually execute in multiple threads of execution concurrently, one machine instruction per thread at a time. While multiple processes only share resources other than memory, at least as default, multiple threads do share everything including main memory, except what is really needed to run code in multiple threads of execution. In particular, program counter, CPU registers, and call stack are not shared, but everything else is, in particular the code, data, and heap segments. In other words, each thread has its own program counter, CPU registers, and call stack, which is exactly what is needed to execute the same code concurrently without any modifications to the code, as long as we ignore communication among threads. We get back to thread communication after introducing the first exercise on threads.
+The default model of a software process, as introduced earlier, is *single-threaded* in the sense that its code executes in a single *thread* of execution, one machine instruction at a time. However, a process may also be *multi-threaded* in such a way that its code may actually execute in multiple threads of execution concurrently, one machine instruction per thread at a time. While multiple processes only share resources other than memory, at least as default, multiple threads do share everything including main memory, except what is really needed to run code in multiple threads of execution. In particular, program counter, CPU registers, and call stack are not shared, but everything else is, so the code, data, and heap segments are shared. In other words, each thread has its own program counter, CPU registers, and call stack, which is exactly what is needed to execute the same code concurrently without any modifications to the code, as long as we ignore communication among threads. We get back to thread communication after introducing the first exercise on threads.
 
 > Kernel versus user thread
 
-There are different levels where threads can be implemented in a system, in particular at *kernel level*, as part of an operating system kernel, or at *user level*, as part of a runtime system or *thread library*. Multi-threaded programming in C, for example, is usually done with a thread library. There are also standardized interfaces for thread libraries such as the *POSIX* standard for threads, also called *phtreads*. We use the programming interface provided by pthreads in the first exercise on threads but actually ask to implement the interface at kernel level for simplicity.
+There are different levels where threads can be implemented in a system, in particular at *kernel level*, as part of an operating system kernel, or at *user level*, as part of a runtime system or *thread library*. Multi-threaded programming in C, for example, is usually done with a thread library. There are also standardized interfaces for thread libraries such as the *POSIX* standard for threads, also called *pthreads*. We use the programming interface provided by pthreads in the first exercise on threads but actually ask to implement the interface at kernel level for simplicity.
 
 > Hardware versus software thread
 
-Let us take a moment and provide a more abstract point of view of the problem of supporting threads. In general, modern hardware provides a fixed number of parallel *hardware threads*, mostly in the form of processors and cores, while modern software demands a typically much higher and dynamic number of concurrent *software threads*, for executing code concurrently and ideally in parallel through some mapping of software to hardware threads. In the end, virtual machine monitors, operating systems kernels, and runtime systems have to solve that mapping problem somehow, in isolation and in particular when combined. The key challenge is to minimize per-software-thread latency while maximize total software-thread execution throughput. Modern systems address the challenge with complex mapping and scheduling algorithms for effectively utilizing hardware capabilities and efficiently trading off software requirements in terms of all CPU, memory, and I/O resources.
+Let us take a moment and provide a more abstract point of view of the problem of supporting threads. In general, modern hardware provides a fixed number of parallel *hardware threads*, mostly in the form of processors and cores, while modern software demands a typically much higher, dynamic number of concurrent *software threads*, for executing code concurrently and ideally in parallel through some mapping of software to hardware threads. In the end, virtual machine monitors, operating systems kernels, and runtime systems have to solve that mapping problem somehow, in isolation and in particular when combined. The key challenge is to minimize per-software-thread latency while maximize total software-thread execution throughput. Modern systems address the challenge with complex mapping and scheduling algorithms for effectively utilizing hardware capabilities and efficiently trading off software requirements in terms of all CPU, memory, and I/O resources.
 
 However, similar to virtual machines and processes, the memory model provided by threads is not complex and its implementation in selfie relatively easy, when ignoring performance. The corresponding exercise is graded by invoking the autograder as follows:
 
@@ -7102,7 +7110,7 @@ Communication among threads is easy by sharing all code and data other than the 
 x = x + 1;
 ```
 
-Suppose `x` is initialized to `0`. After two threads executed that assignment, you probably expect the value of `x` to be `2`. However, it turns out the value of `x` could then also be just `1`. In order to understand why we need to take a look at the machine code that implements the assignment:
+Suppose `x` is initialized to `0`. After two threads executed that assignment, you probably expect the value of `x` to be `2`. However, it turns out the value of `x` could then also be just `1`. In order to understand why, we need to take a look at the machine code that implements the assignment:
 
 ```asm
 ld   t0,-16(gp) // load value at gp-16 into t0
@@ -7111,19 +7119,23 @@ add  t0,t0,t1   // increment t0
 sd   t0,-16(gp) // store t0 at gp-16
 ```
 
-We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done. We say that the above code creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads.
+We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done. We say that the above code is a critical section that creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads.
 
 > Non-determinim in program semantics
 
-The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as well. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces. However, the complexity of establishing correctness remains the same, and no better models are known.
+The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as well. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
 
 > Atomicity
 
-The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption, there would be no race and no non-determinism.
-
-...
+The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption by special instructions, there would be no race and no non-determinism. You might say that locks, as introduced earlier for avoiding race conditions with I/O, could solve the problem, and they do, but only at considerable cost in performance. Locks establish atomicity through mutual exclusion. However, locking and unlocking is slow, in absolute terms but also relative to the execution time of short critical sections, and even worse, only the process or thread holding the locks necessary for achieving something can actually make progress while all others are subject to potential deadlock.
 
 > Atomic instructions
+
+RISC-V, like many other architectures, features *atomic instructions* that enable fine-grained *lock-free* code, especially in short critical sections, as an alternative to coarse-grained locking, which still has its place with long critical sections. Interestingly, however, atomic instructions are needed to implement even locks on parallel multi-processor and multi-core hardware, regardless of performance. The simplest atomic instruction for implementing locks is called *test-and-set* (TS) which saves or tests the value of a bit in shared memory for eventually returning that value after setting the value of the bit to 1, all in one atomic operation. Only one TS instruction, out of possibly many executing in parallel, may return 0, indicating that it successfully flipped the bit from 0 to 1 while all others failed and returned 1.
+
+> Load-reserve and store-conditional
+
+...
 
 `lr.d rd,(rs1)`: `rd = memory[rs1]; reserve (rs1); pc = pc + 4`
 
@@ -7138,6 +7150,10 @@ sc.d t0,t0,(a0) // store t0 conditionally at a0 indicating success or failure in
 sltu t0,t0,t1   // negate success or failure code in t0
 beq  t0,zero,-5 // try again if store failed
 ```
+
+lock-freedom does not mean free of locks...
+
+livelock...
 
 ```bash
 ./grader/self.py threadsafe-malloc
