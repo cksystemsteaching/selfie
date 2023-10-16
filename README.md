@@ -7107,15 +7107,29 @@ Suppose `x` is initialized to `0`. After two threads executed that assignment, y
 ...
 
 ```asm
-ld   t0,-16(gp)
-addi t1,zero,1
-add  t0,t0,t1
-sd   t0,-16(gp)
+ld   t0,-16(gp) // load value at gp-16 into t0
+addi t1,zero,1  // initialize t1 with 1
+add  t0,t0,t1   // increment t0
+sd   t0,-16(gp) // store t0 at gp-16
 ```
 
 ...
 
 > Atomic instructions
+
+`lr.d rd,(rs1)`: `rd = memory[rs1]; reserve (rs1); pc = pc + 4`
+
+`sc.d rd,rs2,(rs1)`: `if ((rs1) is reserved) { memory[rs1] = rs2; rd = 0 } else { rd = 1 } unreserve (rs1); pc = pc + 4`
+
+```asm
+addi a0,gp,-16  // load gp-16 into a0
+lr.d t0,(a0)    // load value at a0 into t0 and reserve value at a0
+addi t1,zero,1  // initialize t1 with 1
+add  t0,t0,t1   // increment t0
+sc.d t0,t0,(a0) // store t0 conditionally at a0 indicating success or failure in t0
+sltu t0,t0,t1   // negate success or failure code in t0
+beq  t0,zero,-5 // try again if store failed
+```
 
 ```bash
 ./grader/self.py threadsafe-malloc
