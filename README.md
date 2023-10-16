@@ -7096,7 +7096,7 @@ The exercise involves implementing basic support of the POSIX procedures `pthrea
 
 > Race conditions in shared memory
 
-The motivation of threads is to make communication among threads easy by sharing all code and data other than the call stack, that is, by sharing the content of all global variables and the entire heap. However, global variable and heap access is subject to race conditions in shared memory. A simple example is an assignment of a global variable `x` that increments the value of `x`:
+Communication among threads is easy by sharing all code and data other than the call stack, that is, by sharing the content of all global variables and the entire heap. However, global variable and heap access is subject to *race conditions* in shared memory. A simple example is an assignment of a global variable `x` that increments the value of `x`:
 
 ```c
 x = x + 1;
@@ -7111,13 +7111,15 @@ add  t0,t0,t1   // increment t0
 sd   t0,-16(gp) // store t0 at gp-16
 ```
 
-We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done.
+We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done. We say that the above code creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads.
 
 > Non-determinim in program semantics
 
-We say that the above code creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads. The result is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input.
+The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as well. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces. However, the complexity of establishing correctness remains the same, and no better models are known.
 
-The root cause is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption, there would be no race and no non-determinism.
+> Atomicity
+
+The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption, there would be no race and no non-determinism.
 
 ...
 
