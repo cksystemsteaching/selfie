@@ -7131,7 +7131,23 @@ The root cause of race conditions in shared memory is that values are copied fro
 
 > Atomic instructions
 
-RISC-V, like many other architectures, features *atomic instructions* that enable fine-grained *lock-free* code, especially in short critical sections, as an alternative to coarse-grained locking, which still has its place with long critical sections. Interestingly, however, atomic instructions are needed to implement even locks on parallel multi-processor and multi-core hardware, regardless of performance. The simplest atomic instruction for implementing locks is called *test-and-set* (TS) which saves or tests the value of a bit in shared memory for eventually returning that value after setting the value of the bit to 1, all in one atomic operation. Only one TS instruction, out of possibly many executing in parallel, may return 0, indicating that it successfully flipped the bit from 0 to 1 while all others failed and returned 1.
+RISC-V, like many other architectures, features *atomic instructions* that enable fine-grained *lock-free* code, especially in short critical sections, as an alternative to coarse-grained locking, which still has its place with long critical sections. Interestingly, however, atomic instructions are needed to implement even locks on parallel multi-processor and multi-core hardware, regardless of performance.
+
+> Test and set
+
+The simplest atomic instruction for implementing locks is called *test-and-set* (TS) which saves or tests the value of a bit in shared memory for eventually returning that value after setting the value of the bit to 1, all in one atomic operation. Only one TS instruction at a time, out of possibly many executing in parallel, may return 0, indicating that it successfully flipped the bit from 0 to 1 while all others failed and returned 1, observing the effect of the successful instruction.
+
+> Compare and swap
+
+Modern hardware typically features a variety of atomic instructions, often with richer semantics than TS for better performance. An atomic instruction that is widely supported is *compare-and-swap* (CAS) which compares a word-sized value in shared memory with a given old value and then, if those values match, swaps the value in shared memory for a given new value, returning with a success or failure code, all in a single atomic operation. CAS has been used in the design of many *concurrent* data structures and algorithms, as pointers, and not just values, can be modified atomically in shared memory with CAS.
+
+> ABA problem
+
+Hard to believe but it took a while for people to realize that CAS is subject to the *ABA problem*. If the correctness of your concurrent algorithm relies on knowing if shared memory has been modified since last time you looked, then CAS might not be the right choice for you. CAS can provide that information but only with some probability strictly below 1. The reason is strikingly simple. Swapping some value A for some different value B shows that shared memory has been modified. But some time later, swapping B back for A makes shared memory look like it has not been modified ever since A was there. However, what if A changed its role in the meantime? For example, if A and B are pointers, and memory is reused, then A may refer to some memory block that is deallocated after A is swapped for B. Some time later, the deallocated memory block might be reused, and thus still referred to by A. If B is then swapped for A, shared memory looks like that memory deallocation and reuse never happened. Many memory allocator do reuse memory fast, so the ABA problem does indeed occur in practice unless some countermeasures are taken! We provide an example below. There are essentially three ways to deal with the ABA problem:
+
+1. Do not use CAS. RISC-V takes that option, as we see below.
+2. Version pointers.
+3. Garbage-collect pointers.
 
 > Load-reserve and store-conditional
 
@@ -7164,6 +7180,8 @@ livelock...
 ```bash
 ./grader/self.py treiber-stack
 ```
+
+...ABA problem
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
