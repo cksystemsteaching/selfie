@@ -7187,15 +7187,21 @@ The four instructions from the `lr.d` to the `sc.d` instructions correspond to t
 
 > Non-blocking and lock-freedom versus wait-freedom
 
-The above code makes the assignment `x = x + 1` thread-safe without using locks through a *non-blocking* and even *lock-free* implementation. Non-blocking means that no suspended or even terminated thread can prevent or block running threads from making progress, unlike a thread holding a lock, for example, which cannot release the lock if suspended, preventing all other threads from acquiring the lock. However, the term lock-freedom is misleading as it does not mean free of locks. Lock-freedom is a progress guarantee. Lock-free code guarantees that at least one running thread makes progress regardless of the progress of all other threads. In short, non-blocking guarantees the absence of something bad and lock-freedom guarantees the presence of something good. Convince yourself that the above code is indeed non-blocking and lock-free. The argument for lock-freedom is that if threads fail then there must be at least one thread that made the other threads fail by succeeding. There is an even stronger notion than lock-freedom called *wait-freedom* which guarantees that all running threads make progress. However, wait-freedom is considerably more complex to implement and usually comes at significant cost in performance and scalability. Wait-freedom is nevertheless important in safety-critical and real-time applications.
+The above code makes the assignment `x = x + 1` thread-safe without using locks through a *non-blocking* and even *lock-free* implementation. Non-blocking means that no suspended or even terminated thread can prevent or block running threads from making progress, unlike a thread holding a lock, for example, which cannot release the lock if suspended, preventing all other threads from acquiring the lock. However, the term lock-freedom is misleading as it does not mean free of locks. Lock-freedom is a progress guarantee. Lock-free code guarantees that at least one running thread makes progress regardless of the progress of all other threads. In short, non-blocking guarantees the absence of something bad and lock-freedom guarantees the presence of something good. Convince yourself that the above code is indeed non-blocking and lock-free. The argument for lock-freedom is that if threads fail then there must be at least one thread that made the other threads fail by succeeding. There is an even stronger notion than lock-freedom called *wait-freedom* which guarantees that all running threads make progress. However, wait-freedom is considerably more complex to implement, requiring all threads to help each other in making progress that usually comes at significant cost in performance and scalability. Wait-freedom is nevertheless important in safety-critical and real-time applications.
 
 > Deadlock versus livelock
 
-livelock...
+Blocking algorithms are subject to deadlock whereas non-blocking algorithms are not! However, non-blocking algorithms are still subject to *livelock* which is essentially a generalized form of deadlock. Livelock occurs when threads are able to execute but never really achieve actual progress anyway. For example, there could be two threads executing a loop they never terminate because the loop condition depends on the other thread to terminate the loop. Livelock is typically even harder to identify and remove than deadlock.
+
+> Thread-safe malloc
+
+The next exercise is about making the `malloc` implementation in selfie thread-safe using `lr.d` and `sc.d` instructions:
 
 ```bash
 ./grader/self.py threadsafe-malloc
 ```
+
+In selfie, `malloc` is implemented by a bump pointer allocator that is actually written in machine code emitted by the procedure `emit_malloc`. The implementation is not thread-safe because the bump pointer stored in a hidden global variable called `_bump` is read, modified, and written non-atomically creating a race condition on `_bump`. The exercise involves implementing support of the `lr.d` and `sc.d` instructions in the `mipster` emulator, and then using the instructions in the machine code implementation of `malloc`. Hint: the above code that implements `x = x + 1` with `lr.d` and `sc.d` instructions is very close to what a thread-safe bump pointer allocator does.
 
 > Lock-free data structures
 
