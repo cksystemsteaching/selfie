@@ -7123,7 +7123,7 @@ We assume that the value of `x` is stored at `gp-16` in memory. If that code is 
 
 > Non-determinim in program semantics
 
-The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as well. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
+The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as it involves recognizing all race conditions and then removing them while maintaining overall performance and scalability. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
 
 > Atomicity
 
@@ -7135,27 +7135,31 @@ RISC-V, like many other architectures, features *atomic instructions* that enabl
 
 > Test and set
 
-The simplest atomic instruction for implementing locks is called *test-and-set* (TS) which saves or tests the value of a bit in shared memory for eventually returning that value after setting the value of the bit to 1, all in one atomic operation. Only one TS instruction at a time, out of possibly many executing in parallel, may return 0, indicating that it successfully flipped the bit from 0 to 1 while all others failed and returned 1, observing the effect of the successful instruction.
+The simplest atomic instruction for implementing locks is called *test-and-set* (TS) which saves or tests the value of a bit in shared memory for eventually returning that value after setting the value of the bit to 1, all in one atomic operation. Only one TS instruction at a time, out of possibly many executing in parallel, may return 0, indicating that it successfully flipped the bit from 0 to 1 while all others fail and return 1, observing the effect of the successful instruction.
 
 > Compare and swap
 
-Modern hardware typically features a variety of atomic instructions, often with richer semantics than TS for better performance. An atomic instruction that is widely supported is *compare-and-swap* (CAS) which compares a word-sized value in shared memory with a given old value and then, if those values match, swaps the value in shared memory for a given new value, returning with a success or failure code, all in a single atomic operation. CAS has been used in the design of many *concurrent* data structures and algorithms, as pointers, and not just values, can be modified atomically in shared memory with CAS.
+Modern hardware typically features a variety of atomic instructions, often with richer semantics than TS for better performance. An atomic instruction that is widely supported is *compare-and-swap* (CAS) which compares a word-sized value in shared memory with a given old value and then, if those values match, swaps the value in shared memory for a given new value, returning with a success or failure code, all in a single atomic operation. Similar to TS, only one CAS instruction at a time, out of possibly many executing in parallel, may succeed while all others fail. CAS has been used in the design of many *concurrent* data structures and algorithms, as pointers, and not just values, can be modified atomically in shared memory with CAS.
 
 > ABA problem
 
-Hard to believe but it took a while for people to realize that CAS is subject to the *ABA problem*. If the correctness of your concurrent algorithm relies on knowing if shared memory has been modified since last time you looked, then CAS might not be the right choice for you. CAS can provide that information but only with some probability strictly below 1. The reason is strikingly simple. Swapping some value A for some different value B shows that shared memory has been modified. But some time later, swapping B back for A makes shared memory look like it has not been modified ever since A was there. However, what if A changed its role in the meantime? For example, if A and B are pointers, and memory is reused, then A may refer to some memory block that is deallocated after A is swapped for B. Some time later, the deallocated memory block might be reused, and thus still referred to by A. If B is then swapped for A, shared memory looks like that memory deallocation and reuse never happened. Many memory allocator do reuse memory fast, so the ABA problem does indeed occur in practice unless some countermeasures are taken! We provide an example below. There are essentially three ways to deal with the ABA problem:
+Hard to believe but it took a while for people to realize that CAS is subject to the *ABA problem*. If the correctness of your concurrent algorithm relies on knowing if shared memory has been modified since last time you looked, then CAS might not be the right choice for you. CAS can provide that information but only with some probability strictly below 1. The reason is strikingly simple. Swapping some value A for some different value B shows that shared memory has been modified. But some time later, swapping B back for A makes shared memory look like it has not been modified ever since A was there. However, what if A changed its role in the meantime? For example, if A and B are pointers, and memory is reused, then A may refer to some memory block that is deallocated after A is swapped for B. Some time later, the deallocated memory block might be reused, and thus still referred to by A. If B is then swapped for A, shared memory looks like that memory deallocation and reuse never happened. Many memory allocator do reuse memory fast, so the ABA problem does indeed occur in practice unless some countermeasures are taken! There are essentially three ways to deal with the ABA problem:
 
-1. Do not use CAS. RISC-V takes that option, as we see below.
-2. Version pointers.
-3. Garbage-collect pointers.
+1. Version pointers. In most systems, not all bits of a machine word are used with pointers. Those bits may be used for versioning pointers. For example, A might have version 1, and then get version 2 upon reuse, effectively making A become C but still point to the same address in memory by ignoring the version bits. However, there are only finitely many bits available, so versioning is subject to integer overflows, meaning that eventually versions will be reused as well. Sure, using more bits for versioning decreases the probability of the ABA problem occurring in practice but that does not remove the problem entirely. In fact, on large servers with many processors and cores, say, 8 bits may not be enough. Imagine that!
+
+2. Garbage-collect pointers. The ABA problem is just a symptom of a principled problem with memory management that we already know. The memory referred to by A should simply not be deallocated after A was swapped for B, as that memory was still live in some thread. Hence using a garbage collector solves the ABA problem. However, garbage collectors may be an overkill in some performance-oriented multi-threaded applications. Consequently, computer scientists came up with different ways of tracking the shared use of pointers in multi-threaded programs. One example are *hazard pointers*. This is an advanced topic left for another day.
+
+3. Do not use CAS. RISC-V takes that option!
 
 > Load-reserve and store-conditional
 
-...
+Instead of CAS, RISC-V features a pair of instructions called *load-reserve* (LR) and *store-conditional* (SC), analogous to the standard RISC-V load and store instructions we have seen before. Both LR and SC together are more general than CAS and can be used to simulate CAS. Syntax and semantics are as follows:
 
-`lr.d rd,(rs1)`: `rd = memory[rs1]; reserve (rs1); pc = pc + 4`
+`lr rd,(rs1)`: `rd = memory[rs1]; reserve (rs1); pc = pc + 4`
 
-`sc.d rd,rs2,(rs1)`: `if ((rs1) is reserved) { memory[rs1] = rs2; rd = 0 } else { rd = 1 } unreserve (rs1); pc = pc + 4`
+`sc rd,rs2,(rs1)`: `if ((rs1) is reserved) { memory[rs1] = rs2; rd = 0 } else { rd = 1 } unreserve (rs1); pc = pc + 4`
+
+There are single-word and double-word versions of `lr` and `sc`, denoted by `lr.w` and `sc.w`, and `lr.d` and `sc.d`, respectively. Similar to the `ld` instruction but without an immediate argument, `lr.d` instructs the CPU to load the double word from memory at the address referred to by register `rs1` into register `rd`. Yet, unlike `ld`, `lr.d` also instructs the CPU to reserve the memory that it just accessed for a subsequent `sc.d` instruction to succeed. Again, similar to the `sd` instruction but without an immediate argument, `sc.d` instructs the CPU to store the double word in `rs2` in memory at the address referred to by register `rs1`, but only, unlike `sd`, if that memory is reserved. Success or failure is indicated by setting register `rd` to `0` or a non-zero value such as `1`, respectively. Also, `sc.d` instructs the CPU to unreserve the accessed memory. Similar to TS and CAS, only one SC instruction at a time, out of possibly many executing in parallel, may succeed while all others fail. In RISC-V systems, LR and SC semantics may be configured further but those details are not relevant here. With `lr.d` and `sc.d`, the race condition in the above example of an assignment `x = x + 1` can be removed without locking as follows:
 
 ```asm
 addi a0,gp,-16  // load gp-16 into a0
@@ -7181,7 +7185,9 @@ livelock...
 ./grader/self.py treiber-stack
 ```
 
-...ABA problem
+...ABA problem if we were to use CAS
+
+...multi-core scalability
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
