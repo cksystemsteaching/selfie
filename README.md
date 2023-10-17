@@ -6850,6 +6850,8 @@ preemptive system: `mipster_switch` always eventually returns
 
 ...from VMM to operating system kernel...
 
+...release, schedule, run, suspend, block, resume
+
 > Temporal isolation
 
 > Mapping and scheduling
@@ -6890,17 +6892,19 @@ fork-wait-exit
 
 > Race conditions in I/O
 
-lock
+...non-determinism
 
 ...critical section
 
-...losing and gaining determinism
-
 ...mutual exclusion
+
+...blocking
 
 ...turning off interrupts
 
 ...deadlock
+
+lock
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
@@ -7119,15 +7123,23 @@ add  t0,t0,t1   // increment t0
 sd   t0,-16(gp) // store t0 at gp-16
 ```
 
-We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done. We say that the above code is a critical section that creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads.
+We assume that the value of `x` is stored at `gp-16` in memory. If that code is executed by two threads but each thread executes all four instructions without being preempted, the value of `x` is indeed `2` when both threads are done. However, if the first thread that runs gets preempted by the other thread after executing the `ld` instruction but before executing the `sd` instruction, the other thread also loads the initial value of `x` from shared memory into its unshared register `t0`, ignoring the value eventually incremented by the first thread. Thus, in this case, the value of `x` is `1` when both threads are done. We say that the above code is a *critical section* that creates the *conditions* for a *race* of threads where the outcome depends on the relative execution speed of the involved threads.
 
 > Non-determinim in program semantics
 
-The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions. *Multi-threaded programming* is therefore considered hard as it involves recognizing all race conditions and then removing them while maintaining overall performance and scalability. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
+The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions and thus very difficult to fix. However, non-determinism is not always bad as some non-determinism may not have an impact on relevant output and tolerating some non-determinism may in fact help improving performance and scalability in multi-threaded applications with many threads.
+
+> Mutual exclusion through blocking with locks
+
+Race conditions in critical sections such as the above code can easily be removed by using locks around those sections, similar to the locks we used around I/O. Each thread could attempt to acquire a common lock right before the assignment and only release that lock right after the assignment. This method establishes *mutual exlusion* on a critical section by requiring all threads to acquire that lock, effectively allowing at most one thread to enter the critical section at a time while *blocking* all other threads during that time from entering the critical section. However, blocking, as mentioned before, is subject to deadlocks and has disadvantages in performance and scalability.
+
+> Multi-threaded programming and thread safety
+
+*Multi-threaded programming* is considered hard as it involves recognizing all race conditions and then removing them while maintaining overall performance and scalability. Multi-threaded code without race conditions is called *thread-safe*. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
 
 > Atomicity
 
-The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption by special instructions, there would be no race and no non-determinism. You might say that locks, as introduced earlier for avoiding race conditions with I/O, could solve the problem, and they do, but only at considerable cost in performance. Locks establish atomicity through mutual exclusion. However, locking and unlocking is slow, in absolute terms but also relative to the execution time of short critical sections, and even worse, only the process or thread holding the locks necessary for achieving something can actually make progress while all others are subject to potential deadlock.
+The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption by special instructions, there would be no race and no non-determinism. Locks solve the problem but only at considerable cost in performance. Locks establish atomicity through mutual exclusion. However, locking and unlocking is slow, in absolute terms but also relative to the execution time of short critical sections, and even worse, only the process or thread holding the locks necessary for achieving something can actually make progress while all others are subject to potential deadlock.
 
 > Atomic instructions
 
@@ -7171,7 +7183,13 @@ sltu t0,t0,t1   // negate success or failure code in t0
 beq  t0,zero,-5 // try again if store failed
 ```
 
-lock-freedom does not mean free of locks...
+The four instructions from the `lr.d` to the `sc.d` instructions correspond to the original code. The first `addi` instruction is only necessary to compensate for the lack of an immediate argument in the `lr.d` and `sc.d` instructions. The interesting part is at the end. The `beq` instruction branches back to the `lr.d` instruction if the `sc.d` instruction failed. The `sltu` instruction is only there to negate the success or failure code provided by the `sc.d` instruction which could in general be zero but also any non-zero value. With full RISC-V, we could avoid the `sltu` instruction by using a `bne` instruction where `bne` stands for *branch-on-not-equal*. More important is to convince yourself that this code does indeed remove the race condition. In reference to our previous discussion, if two threads execute this code, the value of `x` can only be `2` when both threads are done. The same is true for any number of threads in which case the value of `x` can only be `n` when `n` threads are done.
+
+> Non-blocking and lock-freedom versus wait-freedom
+
+The above code makes the assignment `x = x + 1` thread-safe without using locks through a *non-blocking* and even *lock-free* implementation. Non-blocking means that no suspended or even terminated thread can prevent or block running threads from making progress, unlike a thread holding a lock, for example, which cannot release the lock if suspended, preventing all other threads from acquiring the lock. However, the term lock-freedom is misleading as it does not mean free of locks. Lock-freedom is a progress guarantee. Lock-free code guarantees that at least one running thread makes progress regardless of the progress of all other threads. In short, non-blocking guarantees the absence of something bad and lock-freedom guarantees the presence of something good. Convince yourself that the above code is indeed non-blocking and lock-free. The argument for lock-freedom is that if threads fail then there must be at least one thread that made the other threads fail by succeeding. There is an even stronger notion than lock-freedom called *wait-freedom* which guarantees that all running threads make progress. However, wait-freedom is considerably more complex to implement and usually comes at significant cost in performance and scalability. Wait-freedom is nevertheless important in safety-critical and real-time applications.
+
+> Deadlock versus livelock
 
 livelock...
 
@@ -7186,6 +7204,8 @@ livelock...
 ```
 
 ...ABA problem if we were to use CAS
+
+...linearizability
 
 ...multi-core scalability
 
