@@ -6844,7 +6844,45 @@ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 ### Concurrency
 
+Our next topic is temporal isolation. How do we isolate virtual machines in time? Temporal isolation means that each virtual machine makes progress independently of the presence and progress of any other virtual machines running on the same physical machine. Each virtual machine may not run as fast as the physical machine but that is fine. Together with spatial isolation, it is as if a virtual machine is almost like a physical machine, just slower, so that there is time for other virtual machines as well. However, temporal isolation is an idealization that can only be approximated to various degrees. Systems that provide the strongest forms of temporal isolation are called *real-time systems* which are typically used in control applications where computers interact with the physical world in real time.
+
+Most general-purpose operating systems and virtual machine monitors only provide weaker forms of temporal isolation that involve less overhead. Arguably, the weakest form of temporal isolation is *temporal fairness* where each virtual machine is only guaranteed to make as much progress as any other virtual machine running on the same physical machine. That means in particular that the more virtual machines run the slower each virtual machine gets. The next exercise is about implementing support of just that. Besides speed as in throughput, there is also the issue of latency as certain activities may need to be done as soon as possible without waiting for everyone else out of fairness. We ignore that issue here for simplicity.
+
+> Time-sharing
+
+A system that runs multiple virtual machines on a physical machine is said to *time-share* the physical machine. Time-sharing leverages the *concurrency* of virtual machines provided by spatial isolation to run virtual machines in any order without affecting the state of each virtual machine, at least as long as the virtual machines do not communicate with each other.
+
+> Cooperating versus preempting
+
+> Scheduling
+
+> Mapping
+
+multi-processor, uni-processor, single-core, multi-core, multi-process
+
 preemptive system: `mipster_switch` always eventually returns
+
+```c
+uint64_t mipster(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    ... // exception dispatching
+
+    ... // exception handling
+
+    // TODO: scheduler should go here
+    to_context = from_context;
+
+    timeout = TIMESLICE;
+  }
+}
+```
 
 > Traffic light model
 
@@ -6852,17 +6890,37 @@ preemptive system: `mipster_switch` always eventually returns
 
 ...release, schedule, run, suspend, block, resume
 
-> Temporal isolation
-
-> Mapping and scheduling
-
-multi-processor, uni-processor, single-core, multi-core, multi-process
+> Fairness
 
 processes
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
 ### Bootstrapping
+
+```c
+uint64_t mipster(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // dispatch exception handling to parent
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    }
+
+    ... // exception handling
+
+    ... // context scheduling
+  }
+}
+```
 
 An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
 
