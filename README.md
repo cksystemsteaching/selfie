@@ -7129,21 +7129,25 @@ We assume that the value of `x` is stored at `gp-16` in memory. If that code is 
 
 The result of race conditions in shared memory is *non-determinism* in program semantics in the sense that, when running the same code repeatedly, the code may compute different output for the same input. Non-determinim in program semantics is generally considered a problem that makes establishing program correctness even harder. For example, software bugs may be very difficult to reproduce in the presence of race conditions and thus very difficult to fix. However, non-determinism is not always bad as some non-determinism may not have an impact on relevant output and tolerating some non-determinism may in fact help improving performance and scalability in multi-threaded applications with many threads.
 
-> Mutual exclusion through blocking with locks
-
-Race conditions in critical sections such as the above code can easily be removed by using locks around those sections, similar to the locks we used around I/O. Each thread could attempt to acquire a common lock right before the assignment and only release that lock right after the assignment. This method establishes *mutual exlusion* on a critical section by requiring all threads to acquire that lock, effectively allowing at most one thread to enter the critical section at a time while *blocking* all other threads during that time from entering the critical section. However, blocking, as mentioned before, is subject to deadlocks and has disadvantages in performance and scalability.
-
 > Multi-threaded programming and thread safety
 
 *Multi-threaded programming* is considered hard as it involves recognizing all race conditions and then removing them while maintaining overall performance and scalability. Multi-threaded code without race conditions is called *thread-safe*. There is an alternative programming model dual to multi-threaded programming called *event-driven programming* that is popular in graphical user interfaces, for example. However, the complexity of establishing correctness remains the same, and no better models are known.
 
+> Linearizability
+
+Computer scientists have developed a criterion for correctness of concurrent code called *linearizability* that helps avoiding race conditions in shared memory. Intuitively, concurrent code is linearizable if any concurrent execution of the code by any number of threads can be reordered to a non-concurrent execution of the code to completion by one thread after another that results in the same machine state. Most importantly, linearizability is compositional meaning that a multi-threaded program is linearizable if all its components that involve concurrent code are linearizable individually.
+
+> Mutual exclusion through blocking with locks
+
+Race conditions in critical sections such as the above code can easily be removed by using locks around those sections, similar to the locks we used around I/O. Each thread could attempt to acquire a common lock right before the assignment and only release that lock right after the assignment. This method establishes linearizability through *mutual exlusion* on a critical section by requiring all threads to acquire that lock, effectively allowing at most one thread to enter the critical section at a time while *blocking* all other threads during that time from entering the critical section. However, blocking, as mentioned before, is subject to deadlocks and has disadvantages in performance and scalability.
+
 > Atomicity
 
-The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. In particular, if values in shared memory could be read, modified, and written *atomically* without preemption by special instructions, there would be no race and no non-determinism. Locks solve the problem but only at considerable cost in performance. Locks establish atomicity through mutual exclusion. However, locking and unlocking is slow, in absolute terms but also relative to the execution time of short critical sections, and even worse, only the process or thread holding the locks necessary for achieving something can actually make progress while all others are subject to potential deadlock.
+The root cause of race conditions in shared memory is that values are copied from shared memory to unshared registers and back involving multiple instructions where preemption can happen between any two instructions. Locks establish atomicity through mutual exclusion. However, locking and unlocking is slow, in absolute terms but also relative to the execution time of short critical sections, and even worse, only the process or thread holding the locks necessary for achieving something can actually make progress while all others are subject to potential deadlock. What if values in shared memory could be read, modified, and written *atomically* without preemption by special instructions? If used properly, there would be no race and no non-determinism without using locks.
 
 > Atomic instructions
 
-RISC-V, like many other architectures, features *atomic instructions* that enable fine-grained *lock-free* code, especially in short critical sections, as an alternative to coarse-grained locking, which still has its place with long critical sections. Interestingly, however, atomic instructions are needed to implement even locks on parallel multi-processor and multi-core hardware, regardless of performance.
+RISC-V, like many other architectures, features *atomic instructions* that enable *fine-grained* concurrent code, especially in short critical sections, as an alternative to *coarse-grained* locking, which still has its place around long critical sections. Interestingly, atomic instructions are needed, regardless of performance, to implement locks on parallel multi-processor and multi-core hardware.
 
 > Test and set
 
@@ -7151,7 +7155,7 @@ The simplest atomic instruction for implementing locks is called *test-and-set* 
 
 > Compare and swap
 
-Modern hardware typically features a variety of atomic instructions, often with richer semantics than TS for better performance. An atomic instruction that is widely supported is *compare-and-swap* (CAS) which compares a word-sized value in shared memory with a given old value and then, if those values match, swaps the value in shared memory for a given new value, returning with a success or failure code, all in a single atomic operation. Similar to TS, only one CAS instruction at a time, out of possibly many executing in parallel, may succeed while all others fail. CAS has been used in the design of many *concurrent* data structures and algorithms, as pointers, and not just values, can be modified atomically in shared memory with CAS.
+Modern hardware typically features a variety of atomic instructions, often with richer semantics than TS for better performance. An atomic instruction that is widely supported is *compare-and-swap* (CAS) which compares a word-sized value in shared memory with a given old value and then, if those values match, swaps the value in shared memory for a given new value, returning with a success or failure code, all in one atomic operation. Similar to TS, only one CAS instruction at a time, out of possibly many executing in parallel, may succeed while all others fail. CAS has been used in the design of many *concurrent* data structures and algorithms, as CAS instructions can modify entire pointers, and not just individual bits, atomically in shared memory.
 
 > ABA problem
 
@@ -7159,13 +7163,13 @@ Hard to believe but it took a while for people to realize that CAS is subject to
 
 1. Version pointers. In most systems, not all bits of a machine word are used with pointers. Those bits may be used for versioning pointers. For example, A might have version 1, and then get version 2 upon reuse, effectively making A become C but still point to the same address in memory by ignoring the version bits. However, there are only finitely many bits available, so versioning is subject to integer overflows, meaning that eventually versions will be reused as well. Sure, using more bits for versioning decreases the probability of the ABA problem occurring in practice but that does not remove the problem entirely. In fact, on large servers with many processors and cores, say, 8 bits may not be enough. Imagine that!
 
-2. Garbage-collect pointers. The ABA problem is just a symptom of a principled problem with memory management that we already know. The memory referred to by A should simply not be deallocated after A was swapped for B, as that memory was still live in some thread. Hence using a garbage collector solves the ABA problem. However, garbage collectors may be an overkill in some performance-oriented multi-threaded applications. Consequently, computer scientists came up with different ways of tracking the shared use of pointers in multi-threaded programs. One example are *hazard pointers*. This is an advanced topic left for another day.
+2. Garbage-collect pointers. The ABA problem is just a symptom of a principled problem with memory management that we already know. The memory referred to by A should simply not be deallocated after A was swapped for B, as that memory was still live in some thread. Hence using a garbage collector solves the ABA problem. However, garbage collectors may be an overkill in some performance-oriented multi-threaded applications. Consequently, computer scientists came up with different ways of tracking the shared use of pointers in multi-threaded programs such as *hazard pointers*, for example. This is an advanced topic left for another day.
 
 3. Do not use CAS. RISC-V takes that option!
 
 > Load-reserve and store-conditional
 
-Instead of CAS, RISC-V features a pair of instructions called *load-reserve* (LR) and *store-conditional* (SC), analogous to the standard RISC-V load and store instructions we have seen before. Both LR and SC together are more general than CAS and can be used to simulate CAS. Syntax and semantics are as follows:
+Instead of CAS, RISC-V features a pair of instructions called *load-reserve* (LR) and *store-conditional* (SC), analogous to the standard RISC-V load and store instructions we have seen before. There are even more atomic instructions in RISC-V which we nevertheless ignore here to keep things managable. Both LR and SC together are more general than CAS and can be used to simulate CAS. Syntax and semantics are as follows:
 
 `lr rd,(rs1)`: `rd = memory[rs1]; reserve (rs1); pc = pc + 4`
 
@@ -7201,17 +7205,21 @@ The next exercise is about making the `malloc` implementation in selfie thread-s
 ./grader/self.py threadsafe-malloc
 ```
 
-In selfie, `malloc` is implemented by a bump pointer allocator that is actually written in machine code emitted by the procedure `emit_malloc`. The implementation is not thread-safe because the bump pointer stored in a hidden global variable called `_bump` is read, modified, and written non-atomically creating a race condition on `_bump`. The exercise involves implementing support of the `lr.d` and `sc.d` instructions in the `mipster` emulator, and then using the instructions in the machine code implementation of `malloc`. Hint: the above code that implements `x = x + 1` with `lr.d` and `sc.d` instructions is very close to what a thread-safe bump pointer allocator does.
+In selfie, `malloc` is implemented by a bump pointer allocator that is actually written in machine code emitted by the procedure `emit_malloc`. The implementation is not thread-safe because the bump pointer stored in a hidden global variable called `_bump` is read, modified, and written non-atomically creating a race condition on `_bump`. This means that multiple threads invoking `malloc` could in fact receive the same memory block rather than separate memory blocks for each invocation of `malloc`. The exercise involves implementing support of the `lr.d` and `sc.d` instructions in the `mipster` emulator, and then using the instructions in the machine code implementation of `malloc` to remove the race condition. Hint: the above code that implements `x = x + 1` with `lr.d` and `sc.d` instructions is very close to what a thread-safe bump pointer allocator does.
+
+> Concurrent data structures
+
+Numerical calculations involving a single integer such as the value of the shared variable `x` in the assignment `x = x + 1` only require coordinating access of a single machine word in memory to avoid any race conditions. However, operations on composite data structures in shared memory may create race conditions that are considerably more complex. For example, imagine a list in shared memory where list elements can be added and removed at either end of the list, concurrently by multiple threads. This is called a *concurrent queue*. In this case, there are two shared pointers involved called the *head* and the *tail* pointer. Coordinating access to both pointers can easily be done by using a lock around any insertion and removal code. However, we may also use atomic instructions instead.
 
 > Lock-free data structures
+
+The first algorithm to do so is known as the *Michael-Scott (MS) Queue* named after computer scientists Maged Michael and Michael Scott. The MS Queue is a prominent example of a *lock-free data structure*. The algorithm is considerably more complex than a lock-based implementation but usually performs better. In the meantime, many other lock-free data structures have been developed, often involving even more, sometimes mindblowing complexity. For simplicity, we focus in the final exercise on a concurrent data structure that is a special case of the MS Queue without a tail pointer called *Treiber* stack:
 
 ```bash
 ./grader/self.py treiber-stack
 ```
 
 ...ABA problem if we were to use CAS
-
-...linearizability
 
 ...multi-core scalability
 
