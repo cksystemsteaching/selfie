@@ -7209,19 +7209,21 @@ In selfie, `malloc` is implemented by a bump pointer allocator that is actually 
 
 > Concurrent data structures
 
-Numerical calculations involving a single integer such as the value of the shared variable `x` in the assignment `x = x + 1` only require coordinating access of a single machine word in memory to avoid any race conditions. However, operations on composite data structures in shared memory may create race conditions that are considerably more complex. For example, imagine a list in shared memory where list elements can be added and removed at either end of the list, concurrently by multiple threads. This is called a *concurrent queue*. In this case, there are two shared pointers involved called the *head* and the *tail* pointer. Coordinating access to both pointers can easily be done by using a lock around any insertion and removal code. However, we may also use atomic instructions instead.
+Numerical calculations involving a single integer such as the value of the shared variable `x` in the assignment `x = x + 1` only require coordinating access of a single machine word in memory to avoid any race conditions. However, operations on composite data structures in shared memory may create race conditions that are considerably more complex. For example, imagine a singly-linked list in shared memory where list elements can be added and removed at either end of the list, concurrently by multiple threads. This is called a *concurrent queue*. In this case, there are two shared pointers involved called the *head* and the *tail* pointer. Coordinating access to both pointers can easily be done by using a lock around any enqueueing and dequeueing code. However, we may also use atomic instructions instead to enable concurrent enqueueing and dequeueing at either end. The key challenge is to determine when the queue is empty, and update *head* and *tail* properly, in particular when the queue only contains a single element.
 
 > Lock-free data structures
 
-The first algorithm to do so is known as the *Michael-Scott (MS) Queue* named after computer scientists Maged Michael and Michael Scott. The MS Queue is a prominent example of a *lock-free data structure*. The algorithm is considerably more complex than a lock-based implementation but usually performs better. In the meantime, many other lock-free data structures have been developed, often involving even more, sometimes mindblowing complexity. For simplicity, we focus in the final exercise on a concurrent data structure that is a special case of the MS Queue without a tail pointer called *Treiber* stack:
+The first algorithm to do so is known as the *Michael-Scott (MS) Queue* named after computer scientists Maged Michael and Michael Scott. The MS Queue is a prominent example of a *lock-free data structure*. The algorithm is considerably more complex than a lock-based implementation but usually performs better. In the meantime, many other lock-free data structures have been developed, often involving even more, sometimes mindblowing complexity. For simplicity, we focus in the final exercise on a concurrent lock-free data structure that is a special case of the MS Queue without a tail pointer called *Treiber Stack*:
 
 ```bash
 ./grader/self.py treiber-stack
 ```
 
-...ABA problem if we were to use CAS
+The goal of the exercise is to implement a Treiber Stack in selfie using `lr.d` and `sc.d` instructions. A Treiber Stack is a concurrent stack implemented by a singly-linked list with just a single shared pointer called *top*. Standard implementations are done with CAS and therefore subject to the ABA problem, so your challenge is to modify those to use LR and SC instead. Also, use your thread-safe version of `malloc` for allocating memory for stack elements.
 
-...multi-core scalability
+> Multi-core scalability
+
+...
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
