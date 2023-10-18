@@ -7078,10 +7078,6 @@ Garbage collection demonstrates a wonderful tradeoff between time and space in c
 
 The importance of garbage collection has motivated computer scientists to develop ever more advanced garbage collection technology to improve performance. Generational garbage collection makes stop-the-world garbage collection more incremental. But incrementality can be increased further enabling even *concurrent* garbage collection where mutator and garbage collector can run concurrently in different threads sharing the same address space. Thus mutator and concurrent garbage collector can even run in parallel, at least to some extent, if more than one processor or core is available. However, *parallel* garbage collection actually refers to garbage collectors that distribute work across multiple threads which can then run in parallel to improve garbage collector throughput, again if more than one processor or core is available. Whenever your mutator does not fully utilize your machine, a modern concurrent and parallel garbage collector may very well do, given your mutator turns over enough memory for the garbage collector to collect. Lastly, there are also *real-time* garbage collectors that are essentially incremental garbage collectors with a constant subsecond or even submillisecond bound on garbage collection time that makes mutator latency due to garbage collection almost disappear yet at considerable loss in garbage collection throughput.
 
-===============================================================================
-                            below is work in progress
-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 > Concurrency in runtime systems
 
 Before taking a look at the final three exercises, let us reflect on modern runtime systems and their enormous complexity. Production execution environments for modern dynamic and managed programming languages such as Java, Python, or Javascript, for example, typically integrate fast interpreters, optimizing compilers, and garbage collectors, and include significant amounts of library code. On top of that, most modern systems leverage concurrency for better systems performance and often even provide concurrency for better application performance as well. Java, for example, leverages multi-threaded code in many implementations of its language virtual machine but also supports multi-threaded application programming as well. While some runtime systems may also leverage and provide multi-process concurrency, our focus here is on threads rather than processes.
@@ -7221,13 +7217,11 @@ The first algorithm to do so is known as the *Michael-Scott (MS) Queue* named af
 
 The goal of the exercise is to implement a Treiber Stack in selfie using `lr.d` and `sc.d` instructions. A Treiber Stack is a concurrent stack implemented by a singly-linked list with just a single shared pointer called *top*. Standard implementations are done with CAS and therefore subject to the ABA problem, so your challenge is to modify those to use LR and SC instead. Also, use your thread-safe version of `malloc` for allocating memory for stack elements.
 
-> Multi-core scalability
+> Performance and scalability
 
-...
+Using atomic instructions for fine-grained concurrency in non-blocking and typically lock-free code has enabled significant improvements in performance and scalability of modern multi-threaded systems. This is an important development as modern hardware tends to get faster only by adding more parallelism in the form of more processors with more cores while individual processing elements seem to have gotten close to the maximum of what is physically possible. However, even parallelism will eventually reach its limits as the limiting factor is the speed of accessing shared memory, that is, the von Neumann bottleneck. The only way out appears to be special-purpose hardware based on models other than the von Neumann architecture. Examples are *graphics processing units* (GPUs) and even quantum computers.
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                            above is work in progress
-===============================================================================
+We have reached the end of the engineering side of the computing chapter before going into a more fundamental discussion on the universality of computing. By now, the considerable complexity of modern computing systems should have become apparent. Virtualization as well as concurrency and memory management received most of our attention. There is, of course, also considerable complexity in modern I/O management which we nevertheless ignored. The important message is that new hardware is always going to drive innovation in software, so there is always something exciting to do. But before concluding there is one more thing!
 
 ### Universality of Computing
 
