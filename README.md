@@ -4144,7 +4144,7 @@ It is time for your first exercise. Design and implement support of integer lite
 ./grader/self.py hex-literal
 ```
 
-When you are done with the exercise, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
+The autograder uses test files written in C\* that you can actually examine. For each exercise there is a folder with the same name as the exercise, located in the `assignments` subfolder of the `grader` folder in the selfie repository. When you are done with the exercise, we are ready to look into scanning character and string literals. Doing that provides an opportunity to look even closer at how to manage memory. This is important.
 
 #### Memory Management
 
