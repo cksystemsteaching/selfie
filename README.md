@@ -6850,13 +6850,13 @@ Most general-purpose operating systems and virtual machine monitors only provide
 
 > Time-sharing
 
-A system that runs multiple virtual machines on a physical machine is said to *time-share* the physical machine. Time-sharing leverages the *concurrency* of virtual machines provided by spatial isolation to run virtual machines in any order without affecting the state of each virtual machine, at least as long as the virtual machines do not communicate with each other.
+A system that runs multiple virtual machines on a physical machine is said to *time-share* the physical machine. Time-sharing leverages the *concurrency* of virtual machines provided by spatial isolation to run virtual machines in any order without affecting the state of each virtual machine. For now, we assume that virtual machines are indeed spatially isolated. However, eventually we need to give up on some spatial isolation and allow virtual machines to communicate with each other and with the environment through I/O. That affects concurrency and makes things considerably more complicated, so more on that later. There are at least two, if not three problems to solve for time-sharing a physical machine:
 
-> Cooperating versus preempting
+1. Cooperating versus preempting: once a virtual machine runs, we need to be able to stop it and get back control of the physical machine.
 
-> Scheduling
+2. Scheduling:
 
-> Mapping
+3. Mapping:
 
 multi-processor, uni-processor, single-core, multi-core, multi-process
 
