@@ -6613,11 +6613,11 @@ Hosting virtual machines, or software processes for that matter, requires solvin
 
 2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we also make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems. Again, temporal isolation is an issue that also applies to emulated machines.
 
-3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators that use interpretation for executing code.
+3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM, and similarly operating system kernel, is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. A key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators that use interpretation for executing code.
 
 > Functional equivalence of emulation and virtualization
 
-For simplicity, the implementation of microkernel functionality in selfie is part of the `mipster` emulator, which is as if microkernel functionality is part of hardware. Admittedly, this is unrealistic but helps to isolate the minimal bootstrapping requirements. Lifting microkernel functionality into software is an advanced topic beyond the scope of this book. Either way, the following insight dwarfs the relevance of being realistic in this aspect when trying to explain what virtualization really does and how it works: emulation and virtualization are functionally equivalent, that is, there is no difference in executing code on an emulated machine or a virtual machine! In selfie, `hypster` virtualizes the machine emulated by `mipster` down to every single bit. Code running on `mipster` or `hypster` cannot tell the difference, other than by looking at real time. Selfie can even execute code on `mipster` for a while, then switch to `hypster` for a while, then back to `mipster`, and so on, without any noticable functional difference to the executed code. This is implemented as an experimental feature of selfie in a procedure called `mixter`. At this point, students usually laugh about the name. I hope you do too. We heard that before, humor is the only way.
+For simplicity, the implementation of microkernel functionality in selfie is part of the `mipster` emulator, which is as if microkernel functionality is part of hardware. Admittedly, this is unrealistic but helps to isolate the minimal bootstrapping requirements. Lifting microkernel functionality into software is an advanced topic beyond the scope of this book. Either way, the following insight dwarfs the relevance of being realistic in this aspect when trying to explain what virtualization really does and how it works: emulation and virtualization are logically equivalent, that is, there is no observable difference in executing code on an emulated machine or a virtual machine other than performance! In selfie, `hypster` virtualizes the machine emulated by `mipster` down to every single bit. Code running on `mipster` or `hypster` cannot tell the difference, other than by looking at the progress of time. Selfie can even execute code on `mipster` for a while, then switch to `hypster` for a while, then back to `mipster`, and so on, without any noticable functional difference to the executed code. This is implemented as an experimental feature of selfie in a procedure called `mixter`. At this point, students usually laugh about the name. I hope you do too. We heard that before, humor is the only way.
 
 > Emulation as executable specification of virtualization
 
@@ -6917,7 +6917,15 @@ There are two important items to highlight before looking into self-reference. I
 
 ### Self-Reference
 
-...bootstrapping problem
+The intrinsic self-reference in virtualization of physical machines manifests in a *bootstrapping problem*. A virtual machine monitor, and similarly operating system kernel, is in charge of handling exceptions thrown by code hosted by the virtual machines that the VMM manages. But who is in charge of the exceptions thrown by the code that implements the VMM? In real systems, the answer is that the VMM code is carefully designed not to throw any exceptions. However, that requires the VMM to do all the work that exception handlers do before any reason for throwing exceptions arises. For example, the VMM should not cause any page faults. This can be done by turning off the MMU while running VMM code and instead have the VMM code run in the physical address space of the machine. Also, all I/O functionality available in virtual machines needs to be implemented in the VMM and connected to real hardware. Last but not least, a VMM needs to be able to context switch itself to the virtual machines it hosts and back, which typically involves carefully crafted machine code.
+
+In selfie, we decided to cut corners here and solve the bootstrapping problem by essentially making hardware smarter than it really is, which is easy to do as hardware in selfie is emulated hardware. As a result, VMM code in selfie, that is, `hypster` may throw exceptions like any other code.
+
+...two problems to solve:
+
+...handling exceptions thrown by VMM code in `mipster` and dispatch the rest
+
+...handling switch system call in `mipster` without going through exceptions
 
 > Dispatching exceptions
 
@@ -6944,6 +6952,10 @@ uint64_t mipster(uint64_t* to_context) {
   }
 }
 ```
+
+> Context switching
+
+...switch system call does not throw exception...
 
 > Caching machine contexts
 
