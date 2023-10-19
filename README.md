@@ -6895,13 +6895,23 @@ At this point, there is a great opportunity to show how to manage complexity wit
 
 2. Running: a virtual machine is running if the code hosted by the virtual machine is currently running on the physical machine. There can be no more running virtual machines than processing elements. A running virtual machine can transition from the running state to the ready state or the blocked state. The latter occurs if the hosted code has no desire to continue executing and terminate, or is only able to continue executing under conditions controlled by the system or other virtual machines. In a cooperative system, only the hosted code can transition the virtual machine to the ready or blocked state. In a preemptive system, the virtual machine can also be transitioned to the ready state by a timer interrupt.
 
-3. Blocked: a virtual machine is blocked if the code hosted by the virtual machine is unable to continue executing and should therefore not be considered by the scheduler to run. Only the system can transition a blocked virtual machine to the ready state if conditions for the code hosted by the virtual machine have changed such that the code is able to continue executing. Transitioning from the blocked to the run state is possible, effectively bypassing the scheduler, but not considered here for simplicity. The blocked state is typically partitioned further into substates. We get back to the blocked state below.
+3. Blocked: a virtual machine is blocked if the code hosted by the virtual machine is unable to continue executing and should therefore not be considered by the scheduler to run. Only the system can transition a blocked virtual machine to the ready state if conditions for the code hosted by the virtual machine have changed such that the code is able to continue executing. Transitioning from the blocked to the run state is possible, effectively bypassing the scheduler, but not considered here for simplicity. The blocked state is typically partitioned further into substates for virtual machines pending termination or waiting for conditions enabling execution again.
+
+Blocked and ready virtual machines are typically organized in blocked and ready sets implemented by lists or more advanced data structures depending on performance needs. In the following exercises, keep the traffic light model in mind, in particular the various transitions. Modeling complex systems properly is important and helps in considering all possible scenarios. Sometimes I wish developers would do that more often to avoid bugs that bother us every day. We focus on the ready state next and get back to the blocked state further below.
+
+The goal of the next exercise is to implement support of scheduling multiple virtual machines to run in selfie. The relevant code location in `mipster` that needs work is shown in the above code. Use the autograder as follows:
+
+```bash
+./grader/self.py processes
+```
+
+The name `processes` refers to our eventual goal of turning virtual machines into software processes in subsequent exercises. For now, processes are just virtual machines. The exercise involves implementing support of two new options as console arguments: `-x` and `-z`, each followed by a positive number that specifies the number of virtual machines to be created. The option `-x 1` corresponds to the option `-m 1`, and the option `-z 1` corresponds to the option `-y 1`. For example, `-x 10` or `-z 10` instructs selfie to create `10` identical virtual machines and then use `mipster` or `hypster`, respectively, to execute them. Focus on support of the `-x` option first. When done, implement support of `-z` and apply your changes to the procedure `mipster` analogously to the procedure `hypster`.
 
 > Round-robin scheduling
 
-...fairness
+There are two challenges involved in this exercise. Firstly, figure out how to create identical copies of virtual machines and then store them in a list that represents the ready set. Secondly, implement a *round-robin scheduler* over that list. Round-robin is arguably the simplest *fair* scheduling algorithm. It works by running each ready virtual machine for the same amount of time in some order, for example, by going through the list of ready virtual machines from beginning to end, and then repeat again from the beginning, and so on. Whenever code hosted by a running virtual machine terminates, through an `exit` system call, remove the virtual machine from the list. When the list is empty, terminate the system.
 
-processes
+> From emulation to virtualization
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
@@ -6959,11 +6969,15 @@ make os-vmm-emu
 
 ...system isolation
 
-fork-wait
+```bash
+./grader/self.py fork-wait
+```
 
 ...from VMs to processes: system calls!
 
-fork-wait-exit
+```bash
+./grader/self.py fork-wait-exit
+```
 
 ...inside and outside of an address space
 
@@ -6981,7 +6995,9 @@ fork-wait-exit
 
 ...deadlock
 
-lock
+```bash
+./grader/self.py lock
+```
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
