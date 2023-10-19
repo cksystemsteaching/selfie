@@ -6858,7 +6858,7 @@ A system that runs multiple virtual machines on a physical machine is said to *t
 
 3. Mapping: given a physical machine beyond *single-core uni-processor* hardware with multiple processing elements such as *multi-processor* and *multi-core* hardware, the system may schedule as many virtual machines to run next as there are processing elements, and *map* scheduled virtual machines to processing elements. With more than one processing element available, the system may even decide to keep running on some processing elements to perform system tasks in parallel and only use the remaining processing elements for running virtual machines. Doing so requires the system to be concurrent itself, increasing system complexity even further. Most modern operating systems and virtual machine monitors are indeed concurrent for fully utilizing hardware parallelism. This is an advanced topic that we have to skip over.
 
-...
+Here is the code of the `mipster` emulator again but this time with a focus on preemption and scheduling rather than exception handling:
 
 ```c
 uint64_t mipster(uint64_t* to_context) {
@@ -6882,13 +6882,23 @@ uint64_t mipster(uint64_t* to_context) {
 }
 ```
 
-preemptive system: `mipster_switch` always eventually returns
+Most importantly, the procedure `mipster_switch` always eventually returns after a finite amount of time, properly emulating preemption of the running virtual machine and context switching back to `mipster`. The only reason for `mipster_switch` to return is when an exception is thrown while executing the code hosted by the running virtual machine. This includes executing an `ecall` instruction.
+
+> Timer interrupt
+
+But what if executing the hosted code never causes an exception to be thrown? Well, in order to guarantee eventual preemption, without any cooperation of the hosted code, real systems require actual hardware to make it happen. Before giving up control of the physical machine, a *timer*, which is real hardware, is programmed to go off after a given time has elapsed and *interrupt* the processor by setting the program counter to a given address that refers to system code. Which address that is must be programmed as well. Remember, the only control we have over what a processor executes is the program counter, nothing else. In `mipster`, we simulate a real timer interrupt by counting the number of executed instructions and throw a timer exception when `timeout` many instructions have been executed. The procedure `handle_timer` handles the timer exception. While this sounds easy, and it is, the actual consequences of preemption at any time increase complexity significantly, as soon as virtual machines start communicating. Preemptive systems are nevertheless worth the effort. The fact that you can kill apps on your phone or laptops as you please, even or especially when those apps are unresponsive, is only possible because of preemption. Your system is always eventually in charge, provided of course that the system itself is not buggy. In other words, preemption is a key component in isolating the system from whatever code it hosts and executes.
 
 > Traffic light model
 
 ...from VMM to operating system kernel...
 
 ...release, schedule, run, suspend, block, resume
+
+1. Ready:
+
+2. Running:
+
+3. Blocked:
 
 > Fairness
 
@@ -6922,6 +6932,8 @@ uint64_t mipster(uint64_t* to_context) {
 }
 ```
 
+> Caching machine contexts
+
 An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
 
 ```bash
@@ -6939,6 +6951,8 @@ make os-vmm-emu
 ```
 
 > Self-reference
+
+...system isolation
 
 fork-wait
 
