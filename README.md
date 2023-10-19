@@ -6899,7 +6899,7 @@ At this point, there is a great opportunity to show how to manage complexity wit
 
 Blocked and ready virtual machines are typically organized in blocked and ready sets implemented by lists or more advanced data structures depending on performance needs. In the following exercises, keep the traffic light model in mind, in particular the various transitions. Modeling complex systems properly is important and helps in considering all possible scenarios. Sometimes I wish developers would do that more often to avoid bugs that bother us every day. We focus on the ready state next and get back to the blocked state further below.
 
-The goal of the next exercise is to implement support of scheduling multiple virtual machines to run in selfie. The relevant code location in `mipster` that needs work is shown in the above code. Use the autograder as follows:
+The goal of the next exercise is to implement support of concurrent execution of multiple virtual machines in selfie. The relevant code location in `mipster` that needs work is shown in the above code. Use the autograder as follows:
 
 ```bash
 ./grader/self.py processes
@@ -6913,7 +6913,7 @@ There are two challenges involved in this exercise. Firstly, figure out how to c
 
 > From emulation to virtualization
 
-...if your solution works on `mipster`, it should work on `hypster` out of the box.
+There are two important items to highlight before looking into self-reference. Implementing support of concurrent execution in selfie can likely not be made much easier. Doing the same in real systems software would probably be significantly more difficult. Selfie makes that exercise relatively easy by also using emulation rather than just virtualization for executing virtual machines. That takes us to the second item to highlight, which is even more relevant. Selfie makes emulation and virtualization interchangeable, as it logically is. Thus, if your solution works in `mipster`, it is likely to work in `hypster` as well, out of the box. That should also apply to your solutions of the remaining exercises. The reason here is that scheduling is independent of the difference between emulation and virtualization. Being able to show that with selfie is something special and reason to be proud of.
 
 ### Self-Reference
 
@@ -6967,7 +6967,7 @@ make os-vmm-emu
 
 > System calls
 
-...system isolation
+...system isolation through protection
 
 ```bash
 ./grader/self.py fork-wait
