@@ -6854,13 +6854,11 @@ A system that runs multiple virtual machines on a physical machine is said to *t
 
 1. Cooperating versus preempting: once a virtual machine runs, we need to be able to stop it and get back control of the physical machine. There are essentially two choices: a *cooperative* system relies on the, well, cooperation of a running virtual machine to give up control of the physical machine and context switch back to the system software after a finite amount of time, or a *preemptive* system which may preempt a running virtual machine to get control of the physical machine and context switch back at any time. Cooperative systems are simpler because context switching only happens at known hosted code locations whereas preemptive systems require all hosted code to be prepared for preemption at any time. Despite more complexity, most modern systems are preemptive, including selfie, for their tolerance of hosted code that does not cooperate because of bugs or even intentionally. For example, a single application running on a cooperative system may prevent any other application and even the system to run, requiring a reboot to recover. You might be surpised but this happened to me countless times when writing my masters thesis on a cooperative system and the editor stopped cooperating because of some bug in the editor, losing all work since the last time I saved my changes. Then you might wonder why cooperative systems were ever used. Well, developing preemptive systems properly was expensive and took a long time because of the complexity involved in possible preemption at any time.
 
-2. Scheduling:
+2. Scheduling: given multiple virtual machines *ready* to run on a single physical machine, the system needs to decide which virtual machine actually gets to *run* next. The decision is made by a *scheduling algorithm* of which many variants exist. Scheduling algorithms may consider various parameters in their decision while typically maintaining temporal fairness. Important is that scheduling decisions are made fast, ideally in constant time, independent of the number of virtual machines that are ready to run.
 
-3. Mapping:
+3. Mapping: given a physical machine beyond *single-core uni-processor* hardware with multiple processing elements such as *multi-processor* and *multi-core* hardware, the system may schedule as many virtual machines to run next as there are processing elements, and *map* scheduled virtual machines to processing elements. With more than one processing element available, the system may even decide to keep running on some processing elements to perform system tasks in parallel and only use the remaining processing elements for running virtual machines. Doing so requires the system to be concurrent itself, increasing system complexity even further. Most modern operating systems and virtual machine monitors are indeed concurrent for fully utilizing hardware parallelism. This is an advanced topic that we have to skip over.
 
-multi-processor, uni-processor, single-core, multi-core, multi-process
-
-preemptive system: `mipster_switch` always eventually returns
+...
 
 ```c
 uint64_t mipster(uint64_t* to_context) {
@@ -6883,6 +6881,8 @@ uint64_t mipster(uint64_t* to_context) {
   }
 }
 ```
+
+preemptive system: `mipster_switch` always eventually returns
 
 > Traffic light model
 
