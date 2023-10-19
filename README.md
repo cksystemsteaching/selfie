@@ -79,12 +79,13 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
    1. [Virtual Machines](#virtual-machines)
    2. [Virtual Memory](#virtual-memory)
-   3. [Concurrency](#concurrency)
-   4. [Bootstrapping](#bootstrapping)
-   5. [Runtime Systems](#runtime-systems)
-   6. [Universality of Computing](#universality-of-computing)
-   7. [Life](#life-4)
-   8. [Recommended Readings](#recommended-readings-6)
+   3. [Time-Sharing](#time-sharing)
+   4. [Self-Reference](#self-reference)
+   5. [Concurrency](#concurrency)
+   6. [Runtime Systems](#runtime-systems)
+   7. [Universality of Computing](#universality-of-computing)
+   8. [Life](#life-4)
+   9. [Recommended Readings](#recommended-readings-6)
 
 8. [Glossary](#glossary)
 
@@ -6610,7 +6611,7 @@ Hosting virtual machines, or software processes for that matter, requires solvin
 
 1. Spatial isolation: virtual machines need to be isolated from each other in space, that is, in main memory and even in the CPU registers of the physical machine hosting the virtual machines. The problem involves efficiently sharing limited storage and making that transparent to the code hosted by virtual machines. Sharing CPU registers is solved by saving and restoring register values when context switching. Sharing the storage provided by main memory is more complicated and essentially involves answering two questions: how is shared memory allocated and deallocated without fragmenting physical memory, and how is memory access efficiently decoupled from memory management? There are two common solutions: *segmentation* and an efficient generalization of segmentation called *paging*. Selfie, as most modern systems, implements paging. Spatial isolation is an issue that also applies to emulated machines.
 
-2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems. Again, temporal isolation is an issue that also applies to emulated machines.
+2. Temporal isolation: virtual machines also need to be isolated from each other in time, at least to a degree that establishes *fairness*, that is, each virtual machine gets to execute after a finite amount of time. This problem involves answering two questions from the perspective of the VMM: which virtual machine runs next on the physical machine, but only for a finite amount of time, that is, how do we also make sure the physical machine eventually switches back to the virtual machine hosting the VMM? The first question is an instance of a *scheduling problem* which is typically solved by a *scheduling algorithm* of which many variants exist. Selfie does not implement a *scheduler* leaving that as a simple exercise. The second question is an instance of a *control problem* which can essentially be solved through *cooperation* or *preemption*. Selfie features preemption as it is standard in most modern systems. Again, temporal isolation is an issue that also applies to emulated machines.
 
 3. Self-reference: virtual machine monitors, and in fact most forms of virtualizing runtime systems, including operating system kernels, need to deal with self-reference which is the principled source of their intrinsic complexity. A VMM is software that runs on a physical machine but can only do so in isolation from the virtual machines it manages. The solution is to host a VMM in a virtual machine as well, thus getting isolation for free. However, the self-reference involved in that, which is still there even if we were to host a VMM directly on a physical machine, creates a *bootstrapping problem*. Who manages the virtual machine that hosts a VMM? This is done by a smaller piece of software called a *microkernel* that does indeed run directly on a physical machine without virtual memory yet carefully isolated from everything else. The key functionality provided by the microkernel is context switching. However, context switching with emulated machines is trivial as there is no self-reference in emulators that use interpretation for executing code.
 
@@ -6842,13 +6843,11 @@ There is a good chance that your computer or smartphone is sometimes slower than
                             below is work in progress
 vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-### Concurrency
+### Time-Sharing
 
 Our next topic is temporal isolation. How do we isolate virtual machines in time? Temporal isolation means that each virtual machine makes progress independently of the presence and progress of any other virtual machines running on the same physical machine. Each virtual machine may not run as fast as the physical machine but that is fine. Together with spatial isolation, it is as if a virtual machine is almost like a physical machine, just slower, so that there is time for other virtual machines as well. However, temporal isolation is an idealization that can only be approximated to various degrees. Systems that provide the strongest forms of temporal isolation are called *real-time systems* which are typically used in control applications where computers interact with the physical world in real time.
 
 Most general-purpose operating systems and virtual machine monitors only provide weaker forms of temporal isolation that involve less overhead. Arguably, the weakest form of temporal isolation is *temporal fairness* where each virtual machine is only guaranteed to make as much progress as any other virtual machine running on the same physical machine. That means in particular that the more virtual machines run the slower each virtual machine gets. The next exercise is about implementing support of just that. Besides speed as in throughput, there is also the issue of latency as certain activities may need to be done as soon as possible without waiting for everyone else out of fairness. We ignore that issue here for simplicity.
-
-> Time-sharing
 
 A system that runs multiple virtual machines on a physical machine is said to *time-share* the physical machine. Time-sharing leverages the *concurrency* of virtual machines provided by spatial isolation to run virtual machines in any order without affecting the state of each virtual machine. For now, we assume that virtual machines are indeed spatially isolated. However, eventually we need to give up on some spatial isolation and allow virtual machines to communicate with each other and with the environment through I/O. That affects concurrency and makes things considerably more complicated, so more on that later. There are at least two, if not three problems to solve for time-sharing a physical machine:
 
@@ -6890,23 +6889,27 @@ But what if executing the hosted code never causes an exception to be thrown? We
 
 > Traffic light model
 
-...from VMM to operating system kernel...
+At this point, there is a great opportunity to show how to manage complexity with abstraction and only then move on to even more complex scenarios. Virtual machines, and later processes and threads, with a desire to run on a physical machine, can be partitioned into three distinct sets that represent their execution state: *blocked*, *ready*, and *running* virtual machines, color-coded *red*, *yellow*, and *green*, respectively, like a *traffic light*. Initially, all virtual machines are in the ready state:
 
-...release, schedule, run, suspend, block, resume
+1. Ready: a virtual machine is ready if the code hosted by the virtual machine is ready to run on the physical machine but has not yet been scheduled to run. Schedulers only consider ready virtual machines to run and only schedulers transition virtual machines from the ready to the running state yet no more than there are available processing elements. The system may also transition virtual machines from the ready to the blocked state in order to terminate machines, for example.
 
-1. Ready:
+2. Running: a virtual machine is running if the code hosted by the virtual machine is currently running on the physical machine. There can be no more running virtual machines than processing elements. A running virtual machine can transition from the running state to the ready state or the blocked state. The latter occurs if the hosted code has no desire to continue executing and terminate, or is only able to continue executing under conditions controlled by the system or other virtual machines. In a cooperative system, only the hosted code can transition the virtual machine to the ready or blocked state. In a preemptive system, the virtual machine can also be transitioned to the ready state by a timer interrupt.
 
-2. Running:
+3. Blocked: a virtual machine is blocked if the code hosted by the virtual machine is unable to continue executing and should therefore not be considered by the scheduler to run. Only the system can transition a blocked virtual machine to the ready state if conditions for the code hosted by the virtual machine have changed such that the code is able to continue executing. Transitioning from the blocked to the run state is possible, effectively bypassing the scheduler, but not considered here for simplicity. The blocked state is typically partitioned further into substates. We get back to the blocked state below.
 
-3. Blocked:
+> Round-robin scheduling
 
-> Fairness
+...fairness
 
 processes
 
 ...if your solution works on `mipster`, it should work on `hypster` out of the box.
 
-### Bootstrapping
+### Self-Reference
+
+...bootstrapping problem
+
+> Dispatching exceptions
 
 ```c
 uint64_t mipster(uint64_t* to_context) {
@@ -6950,7 +6953,9 @@ make os-emu
 make os-vmm-emu
 ```
 
-> Self-reference
+### Concurrency
+
+> System calls
 
 ...system isolation
 
