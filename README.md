@@ -6917,9 +6917,15 @@ There are two important items to highlight before looking into self-reference. I
 
 ### Self-Reference
 
-The intrinsic self-reference in virtualization of physical machines manifests in a *bootstrapping problem*. A virtual machine monitor, and similarly operating system kernel, is in charge of handling exceptions thrown by code hosted by the virtual machines that the VMM manages. But who is in charge of the exceptions thrown by the code that implements the VMM? In real systems, the answer is that the VMM code is carefully designed not to throw any exceptions. However, that requires the VMM to do all the work that exception handlers do before any reason for throwing exceptions arises. For example, the VMM should not cause any page faults. This can be done by turning off the MMU while running VMM code and instead have the VMM code run in the physical address space of the machine. Also, all I/O functionality available in virtual machines needs to be implemented in the VMM and connected to real hardware. Last but not least, a VMM needs to be able to context switch itself to the virtual machines it hosts and back, which typically involves carefully crafted machine code.
+The intrinsic self-reference in virtualization of physical machines manifests in a *bootstrapping problem*. A virtual machine monitor, and similarly operating system kernel, creates the ability to run multiple virtual machines on a single physical machine spatially and temporally isolated from each other. However, a VMM also needs to be isolated from the virtual machines it manages by essentially running the VMM in a virtual machine itself. That self-reference and the difficulty of bootstrapping it explains why virtualization and ultimately all universal computing systems are hard to understand.
 
-In selfie, we decided to cut corners here and solve the bootstrapping problem by essentially making hardware smarter than it really is, which is easy to do as hardware in selfie is emulated hardware. As a result, VMM code in selfie, that is, `hypster` may throw exceptions like any other code.
+Hosting code in virtual machines essentially requires handling exceptions thrown by the hosted code during execution and a VMM is in charge of exactly that. But who is in charge of the exceptions thrown by the code that implements the VMM? In real systems, the answer is that the VMM code is carefully designed not to throw any exceptions, meaning that the VMM code logically runs in a virtual machine but avoids using the abstractions provided by that virtual machine. In essence, that requires the VMM to do all the work that exception handlers do before any reason for throwing exceptions arises. For example, the VMM should not cause any page faults but still be spatially isolated. This can be done by turning off the MMU while running VMM code and instead have the VMM code run in the physical address space of the machine but only by carefully maintaining spatial isolation. Also, all I/O functionality available in virtual machines needs to be implemented in the VMM and connected to real hardware. The VMM may use I/O functionality but not by going through exceptions. Last but not least, a VMM needs to be able to context switch itself to the virtual machines it hosts and back, which typically involves carefully crafted machine code.
+
+> Trusted code base and microkernels
+
+Therefore, the code that bootstraps self-reference in virtualization is called *trusted code base*. System correctness relies on the correctness of the trusted code base. Computer scientists have tried to minimize the trusted code base resulting in concepts such as *microkernels*. The challenge is to determine the minimum needed to bootstrap self-reference in virtualization while maintaining performance. Eventually, computer scientists were even able to verify the correctness of microkernels which marked a significant step towards providing correct and thus safe and secure systems.
+
+In selfie, we decided to cut corners here and solve the bootstrapping problem by essentially making hardware smarter than it really is, which is easy to do as hardware in selfie is emulated hardware. As a result, VMM code in selfie, that is, `hypster` may assume running in a virtual machine like any other code and in particular throw exceptions at will. However, for educational purposes, we distinguish in comments the code in selfie that corresponds to kernel code from code that logically belongs to a microkernel, that is, the code for programming page tables as well as context switching that only implements the mechanical non-algorithmic portion of spatial and temporal isolation, respectively.
 
 ...two problems to solve:
 
@@ -6955,9 +6961,13 @@ uint64_t mipster(uint64_t* to_context) {
 
 > Context switching
 
+...`hypster_switch` bootstrapping in selfie compiler
+
 ...switch system call does not throw exception...
 
 > Caching machine contexts
+
+...page table caching
 
 An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
 
