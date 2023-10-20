@@ -6895,7 +6895,7 @@ At this point, there is a great opportunity to show how to manage complexity wit
 
 2. Running: a virtual machine is running if the code hosted by the virtual machine is currently running on the physical machine. There can be no more running virtual machines than processing elements. A running virtual machine can transition from the running state to the ready state or the blocked state. The latter occurs if the hosted code has no desire to continue executing and terminate, or is only able to continue executing under conditions controlled by the system or other virtual machines. In a cooperative system, only the hosted code can transition the virtual machine to the ready or blocked state. In a preemptive system, the virtual machine can also be transitioned to the ready state by a timer interrupt.
 
-3. Blocked: a virtual machine is blocked if the code hosted by the virtual machine is unable to continue executing and should therefore not be considered by the scheduler to run. Only the system can transition a blocked virtual machine to the ready state if conditions for the code hosted by the virtual machine have changed such that the code is able to continue executing. Transitioning from the blocked to the run state is possible, effectively bypassing the scheduler, but not considered here for simplicity. The blocked state is typically partitioned further into substates for virtual machines pending termination or waiting for conditions enabling execution again.
+3. Blocked: a virtual machine is blocked if the code hosted by the virtual machine is unable to continue executing and should therefore not be considered by the scheduler to run. Only the system can transition a blocked virtual machine to the ready state if conditions for the code hosted by the virtual machine have changed such that the code is able to continue executing. Transitioning from the blocked to the run state is possible, effectively bypassing the scheduler, and models activities that cannot wait such as exception handling, for example. The blocked state is typically partitioned further into substates for virtual machines pending termination or waiting for conditions enabling execution again.
 
 Blocked and ready virtual machines are typically organized in blocked and ready sets implemented by lists or more advanced data structures depending on performance needs. In the following exercises, keep the traffic light model in mind, in particular the various transitions. Modeling complex systems properly is important and helps in considering all possible scenarios. Sometimes I wish developers would do that more often to avoid bugs that bother us every day. We focus on the ready state next and get back to the blocked state further below.
 
@@ -6925,15 +6925,11 @@ Hosting code in virtual machines essentially requires handling exceptions thrown
 
 Therefore, the code that bootstraps self-reference in virtualization is called *trusted code base*. System correctness relies on the correctness of the trusted code base. Computer scientists have tried to minimize the trusted code base resulting in concepts such as *microkernels*. The challenge is to determine the minimum needed to bootstrap self-reference in virtualization while maintaining performance. Eventually, computer scientists were even able to verify the correctness of microkernels which marked a significant step towards providing correct and thus safe and secure systems.
 
-In selfie, we decided to cut corners here and solve the bootstrapping problem by essentially making hardware smarter than it really is, which is easy to do as hardware in selfie is emulated hardware. As a result, VMM code in selfie, that is, `hypster` may assume running in a virtual machine like any other code and in particular throw exceptions at will. However, for educational purposes, we distinguish in comments the code in selfie that corresponds to kernel code from code that logically belongs to a microkernel, that is, the code for programming page tables as well as context switching that only implements the mechanical non-algorithmic portion of spatial and temporal isolation, respectively.
-
-...two problems to solve:
-
-...handling exceptions thrown by VMM code in `mipster` and dispatch the rest
-
-...handling switch system call in `mipster` without going through exceptions
+In selfie, we decided to cut corners here and solve the bootstrapping problem by essentially making hardware smarter than it really is, which is easy to do as hardware in selfie is emulated hardware. As a result, VMM code in selfie, that is, `hypster` may assume running in a virtual machine like any other code and in particular throw exceptions at will. However, for educational purposes, we distinguish in comments the code in selfie that corresponds to kernel code from code that logically belongs to a microkernel, that is, the code for programming page tables as well as context switching that only implements the mechanical non-algorithmic portion of spatial and temporal isolation, respectively. For example, bootloading and scheduling is not part of a microkernel because scheduling is not involved in bootstrapping self-reference.
 
 > Dispatching exceptions
+
+Bootstrapping `hypster` requires distinguishing exceptions thrown by `hypster` code from exceptions thrown by code hosted by `hypster`. The former are handled by `mipster` whereas the latter are handled by `hypster` and are therefore needed to be dispatched by `mipster` to `hypster`. The relevant code in the procedure `mipster` is as follows:
 
 ```c
 uint64_t mipster(uint64_t* to_context) {
@@ -6950,14 +6946,20 @@ uint64_t mipster(uint64_t* to_context) {
       to_context = get_parent(from_context);
 
       timeout = TIMEROFF;
+    } else {
+      ... // exception handling
+
+      ... // context scheduling
     }
-
-    ... // exception handling
-
-    ... // context scheduling
   }
 }
 ```
+
+We use a standard relationship model in systems in which a virtual machine `P` is called the *parent* of another virtual machine `C` called *child* if `P` created `C`. For example, if a `mipster` instance `M` creates a virtual machine `H` to host a `hypster` instance, then `M` is the parent of `H`. Then, if the `hypster` instance `H` creates a virtual machine `U` to host some code, then `H` is the parent of `U`, even though the code hosted by `H` and `U` is actually executed by the `mipster` instance `M`. In this case, `M` handles the exceptions thrown by the `hypster` instance `H` which in turn handles the exceptions thrown by the code hosted by the virtual machine `U`. Exception dispatching corresponds to transitioning `H` from the blocked to the running state, effectively bypassing the scheduler, so that `H` can handle exceptions immediately. Exception dispatching in selfie is related to interrupt handling in real systems.
+
+> Hierarchy
+
+...
 
 > Context switching
 
