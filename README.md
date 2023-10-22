@@ -6963,13 +6963,21 @@ We use a standard relationship model in systems in which a virtual machine `P` i
 
 > Hierarchy
 
-...
+A parent-child relationship obviously creates a *hierarchy* of virtual machines beyond just one parent and possibly many children if children can also become parents. In selfie, any number of `mipster` and `hypster` instances can run on top of each other in any order. The only restriction, other than time, and space as in memory, is that any hierarchy needs to start with a `mipster` instance, or more fundamentally, a RISC-U machine instance that supports context switching for `hypster`. Standard RISC-V hardware and systems software does not do that, so `hypster` only runs on `mipster` for now.
 
 > Context switching
+
+Let us take a closer look at the procedure `hypster_switch` to see how context switching with `hypster` works, in particular in contrast to the procedure `mipster_switch`.
 
 ...`hypster_switch` bootstrapping in selfie compiler
 
 ...switch system call does not throw exception...
+
+> Recursive virtual machines
+
+An unrestricted hierarchy of virtual machines includes hosting virtual machines on virtual machines, also called *recursive* virtual machines. Unlike most production virtual machine monitors, selfie supports recursive virtual machines, that is, selfie supports running a `hypster` instance on another `hypster` instance, and so on. The reason to do so is the educational value of seeing what it takes to do that. Also, implementing support of recursive virtual machines was not easy but eventually lead to a better, cleaner and more logical design.
+
+...
 
 > Caching machine contexts
 
