@@ -6967,11 +6967,25 @@ A parent-child relationship obviously creates a *hierarchy* of virtual machines 
 
 > Context switching
 
-Let us take a closer look at the procedure `hypster_switch` to see how context switching with `hypster` works, in particular in contrast to the procedure `mipster_switch`.
+Let us take a closer look at the procedure `hypster_switch` to see how context switching with `hypster` works, in particular in contrast to the procedure `mipster_switch`. Similar to `mipster` instances invoking the procedure `mipster_switch` for context switching, `hypster` instances invoke `hypster_switch` for context switching:
 
-...`hypster_switch` bootstrapping in selfie compiler
+```c
+uint64_t hypster(uint64_t* to_context) {
+  uint64_t* from_context;
 
-...switch system call does not throw exception...
+  while (1) {
+    from_context = hypster_switch(to_context, TIMESLICE);
+
+    if (handle_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+    else
+      // TODO: scheduler should go here
+      to_context = from_context;
+  }
+}
+```
+
+There is no exception dispatching in `hypster` since exceptions can only be thrown during code execution by `mipster`. Moreover, `hypster_switch` cannot perform context switching itself since, again, only the `mipster` instance that executes the `hypster` instance that invokes `hypster_switch` can do that. Thus `hypster_switch` needs to ask the `mipster` instance on which the `hypster` instance runs to invoke `mipster_switch`. We use a system call called `switch` as mechanism to do that where `hypster_switch` is merely a system call wrapper of `switch`. Only on boot level 0 where `hypster` is forced to be `mipster`, `hypster_switch` is equivalent to `mipster_switch`. Similar to other system call code in selfie, `hypster_switch` is implemented in machine code and emitted by the procedure `emit_switch` while the `switch` system call is implemented by the procedure `implement_switch`. There is, however, a difference to all other system calls. The `switch` system call is not handled through exceptions but executed directly by `mipster` in the procedure `do_ecall` to prevent dispatching `switch` back to `hypster`.
 
 > Recursive virtual machines
 
