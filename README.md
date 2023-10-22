@@ -6985,15 +6985,15 @@ uint64_t hypster(uint64_t* to_context) {
 }
 ```
 
-There is no exception dispatching in `hypster` since exceptions can only be thrown during code execution by `mipster`. Moreover, `hypster_switch` cannot perform context switching itself since, again, only the `mipster` instance that executes the `hypster` instance that invokes `hypster_switch` can do that. Thus `hypster_switch` needs to ask the `mipster` instance on which the `hypster` instance runs to invoke `mipster_switch`. We use a system call called `switch` as mechanism to do that where `hypster_switch` is merely a system call wrapper of `switch`. Only on boot level 0 where `hypster` is forced to be `mipster`, `hypster_switch` is equivalent to `mipster_switch`. Similar to other system call code in selfie, `hypster_switch` is implemented in machine code and emitted by the procedure `emit_switch` while the `switch` system call is implemented by the procedure `implement_switch`. There is, however, a difference to all other system calls. The `switch` system call is not handled through exceptions but executed directly by `mipster` in the procedure `do_ecall` to prevent dispatching `switch` back to `hypster`.
+There is no exception dispatching in `hypster` since exceptions can only be thrown during code execution by `mipster`. Moreover, `hypster_switch` cannot perform context switching itself since, again, only the `mipster` instance that executes the `hypster` instance that invokes `hypster_switch` can do that. Thus `hypster_switch` needs to ask the `mipster` instance on which the `hypster` instance runs to invoke `mipster_switch`. We use a system call called `switch` as mechanism to do that where `hypster_switch` is merely a system call wrapper of `switch`. Only on boot level 0 where `hypster` is forced to be `mipster`, `hypster_switch` is equivalent to `mipster_switch`. Similar to other system call code in selfie, `hypster_switch` is implemented in machine code and emitted by the procedure `emit_switch` while the `switch` system call is implemented by the procedure `implement_switch`. There is, however, a difference to all other system calls. The `switch` system call is not handled through exceptions in the procedure `handle_system_call` but executed directly by `mipster` in the procedure `do_ecall` to prevent dispatching `switch` back to `hypster`.
 
 > Recursive virtual machines
 
-An unrestricted hierarchy of virtual machines includes hosting virtual machines on virtual machines, also called *recursive* virtual machines. Unlike most production virtual machine monitors, selfie supports recursive virtual machines, that is, selfie supports running a `hypster` instance on another `hypster` instance, and so on. The reason to do so is the educational value of seeing what it takes to do that. Also, implementing support of recursive virtual machines was not easy but eventually lead to a better, cleaner and more logical design.
-
-...
+An unrestricted hierarchy of virtual machines includes hosting virtual machines on virtual machines, also called *recursive* virtual machines. Unlike most production virtual machine monitors, selfie supports recursive virtual machines, that is, selfie supports running a `hypster` instance on another `hypster` instance, and so on. The reason to do so is the educational value of seeing what it takes to do that. Also, implementing support of recursive virtual machines was not easy but eventually lead to a better, cleaner and more logical design. The key challenge is to overcome a problem that is already present when running a single `hypster` instance on `mipster`. Managing virtual memory of the `hypster` instance in `mipster` works as previously described. However, what about the virtual memory of virtual machines hosted by the `hypster` instance? The problem is that the `hypster` instance maintains the page tables and frames of the virtual machines that it hosts while the `mipster` instance that executes the code hosted by these virtual machines needs access to their page tables and frames for address translation and memory access, respectively. In more principled terms, the problem is that virtual address spaces may be maintained in other virtual address spaces that are different from the physical address space in which code is executed.
 
 > Caching machine contexts
+
+In real systems, the problem is resolved with interfaces, possibly provided by microkernels, that allow virtual machine monitors to program page tables in the physical address space rather than their virtual address spaces. In selfie, we decided to avoid implementing that and instead chose to cache machine contexts hosted by `hypster` instances in their machine contexts such that page frames and tables of cached machine contexts are in the physical address space of the `mipster` instance on which the `hypster` instances and their hosted machine contexts run. Thus `mipster` can execute cached machine contexts as if `mipster` created those contexts, and not some `hypster` instance executed by `mipster`. The advantage is that this approach works for recursive virtual machines out of the box.
 
 ...page table caching
 
@@ -7018,6 +7018,10 @@ make os-vmm-emu
 > System calls
 
 ...system isolation through protection
+
+`handle_system_call`
+
+...ABI
 
 ```bash
 ./grader/self.py fork-wait
