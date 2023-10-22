@@ -6915,10 +6915,6 @@ At this point, you have created a concurrent system that can run multiple identi
 
 There is something important to highlight here before looking into resolving the self-reference of virtualization. Implementing support of concurrent execution in selfie can likely not be made much easier. Doing the same in real systems software is significantly more difficult. Even more important, however, is that the implementation of selfie makes emulation and virtualization interchangeable, as they logically are. Thus, if your solution works in `mipster`, it is likely to work in `hypster` as well, out of the box. That also applies to your solutions of the remaining exercises. Scheduling and many other system tasks are independent of the difference between emulation and virtualization. Being able to show that with selfie is something special and reason to be proud of.
 
-===============================================================================
-                            below is work in progress
-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 ### Self-Reference
 
 The intrinsic self-reference in virtualization of physical machines manifests in a *bootstrapping problem*. A virtual machine monitor, and similarly operating system kernel, creates the ability to run multiple virtual machines on a single physical machine spatially and temporally isolated from each other. However, a VMM also needs to be isolated from the virtual machines it manages by essentially running the VMM in a virtual machine itself. That self-reference and the difficulty of bootstrapping it explains why virtualization and ultimately all universal computing systems are hard to understand.
@@ -6993,25 +6989,33 @@ An unrestricted hierarchy of virtual machines includes hosting virtual machines 
 
 > Caching machine contexts
 
-In real systems, the problem is resolved with interfaces, possibly provided by microkernels, that allow virtual machine monitors to program page tables in the physical address space rather than their virtual address spaces. In selfie, we decided to avoid implementing that and instead chose to cache machine contexts hosted by `hypster` instances in their machine contexts such that page frames and tables of cached machine contexts are in the physical address space of the `mipster` instance on which the `hypster` instances and their hosted machine contexts run. Thus `mipster` can execute cached machine contexts as if `mipster` created those contexts, and not some `hypster` instance executed by `mipster`. The advantage is that this approach works for recursive virtual machines out of the box. Caching machine contexts essentially requires maintaining consistency between page tables and their cached counterparts. In particular, any changes in page tables need to be tracked and then cached upon context switching. Our implementation exploits the fact that only heap and stack segments grow, and only do so in opposite direction. See the procedure `restore_context` for more details.
+In real systems, the problem is resolved with interfaces, possibly provided by microkernels, that allow virtual machine monitors to program page tables in the physical address space rather than the virtual address spaces in which they run. In selfie, we decided to avoid implementing that and instead chose to cache machine contexts hosted by `hypster` instances such that page frames and tables of *cached* machine contexts are in the physical address space of the `mipster` instance on which the `hypster` instances and their *hosted* machine contexts run. Thus `mipster` can execute cached machine contexts as if `mipster` created those contexts, and not some `hypster` instance executed by `mipster`. The advantage is that this approach works for recursive virtual machines without involving recursion in caching machine contexts by only working with the cached contexts of hosted `hypster` instances, and not the hosted contexts of hosted `hypster instances. Caching machine contexts essentially requires maintaining consistency between page tables and their cached counterparts. In particular, any changes in page tables need to be tracked and then cached upon context switching. In order to speed up tracking changes, our implementation exploits the fact that only heap and stack segments grow, and only do so in opposite direction. See the procedure `restore_context` for more details.
 
-> From emulation to recursive virtualization
+> From recursive emulation to recursive virtualization
 
-An emulated machine, representing a single physical machine, that hosts another emulated machine, representing a virtual machine monitor or operating system kernel, as demonstrated by the following invocation of selfie which we also mentioned before:
+Let us go back to three scenarios of invoking selfie we mentioned before that take us from emulation to virtualization and even further to recursive virtualization. The first scenario is a machine emulated by `mipster`, representing a single physical machine called `HW`, that hosts another machine emulated by `mipster`, representing a virtual machine monitor or operating system kernel called `OS` which uses emulation through interpretation, not virtualization, to run selfie without console arguments:
 
 ```bash
 make emu-emu
 ```
 
-where selfie again creates and emulates a `mipster` machine instance, also referred to as `HW`, that represents a single physical machine. However, in this case, `HW` loads and executes a RISC-U binary of selfie with console arguments that instruct the binary to create and emulate another `mipster` machine instance, called `OS` as before, that loads and executes a RISC-U binary of selfie without console arguments.
+In this scenario, there are two machine contexts, one for running `OS` on `HW`, and one for running selfie without console arguments on `OS`. In the selfie output, the former context is referred to as `> selfie.m` and the latter as `>> selfie.m`. There is no self-reference in this scenario which means that no exception dispatching and no machine context caching is necessary, even with what could be called *recursive* emulation, as long as there is no virtualization involved. The second scenario is similar to the first scenario except that `OS` is implemented by `hypster`:
 
 ```bash
 make os-emu
 ```
 
+In this scenario, there are three machine contexts, again one for running `OS` on `HW` and one for hosting selfie without console arguments on `OS`, and a third context that caches the context hosting selfie, for running on `HW`. In the selfie output, the contexts are referred to as in the first scenario. The cached context appears in the output of `mipster`, also referred to as `>> selfie.m`, whereas the hosted context appears in the output of `hypster`. Exceptions thrown by the cached context are dispatched to `hypster` for handling the exceptions in the hosted context. The third scenario is similar to the second scenario except that there is another `hypster` instance called `VMM` running in between `OS` and `HW` for demonstrating recursive virtualization:
+
 ```bash
 make os-vmm-emu
 ```
+
+In this scenario, there are five machine contexts, one for running `VMM` on `HW`, one for hosting `OS` on `VMM`, and again one for hosting selfie without console arguments on `OS`, and two contexts that cache the contexts hosting `OS` on `VMM` and selfie, for running both on `HW`. In the selfie output, the contexts are referred to as in the second scenario. Both cached contexts again appear in the output of `mipster` whereas the hosted contexts appear in the output of their hosting `hypster` instances. Exceptions thrown by the cached contexts are dispatched directly to their hosting `hypster` instances for handling the exceptions in the hosted contexts. By now, you should finally be able understand all selfie output we have seen so far.
+
+===============================================================================
+                            below is work in progress
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 ### Concurrency
 
