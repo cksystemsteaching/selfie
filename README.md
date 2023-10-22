@@ -7019,11 +7019,49 @@ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 ### Concurrency
 
+We have finally reached the point where spatial and temporal isolation as well as self-reference in virtualization have come together to allow us hosting and running virtual machines concurrently. However, we also need virtual machines to be able to communicate with the system on which and the environment in which they run.
+
 > System calls
 
-...system isolation through protection
+```c
+uint64_t handle_system_call(uint64_t* context) {
+  uint64_t a7;
 
-`handle_system_call`
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  ... // profiling
+
+  a7 = *(get_regs(context) + REG_A7);
+
+  if (a7 == SYSCALL_BRK) {
+    if (is_gc_enabled(context))
+      implement_gc_brk(context);
+    else
+      implement_brk(context);
+  } else if (a7 == SYSCALL_READ)
+    implement_read(context);
+  else if (a7 == SYSCALL_WRITE)
+    implement_write(context);
+  else if (a7 == SYSCALL_OPENAT)
+    implement_openat(context);
+  else if (a7 == SYSCALL_EXIT) {
+    implement_exit(context);
+
+    // TODO: exit only if all contexts have exited
+    return EXIT;
+  } else {
+    ... // printing error message
+
+    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+```
+
+...system isolation through protection
 
 ...ABI
 
