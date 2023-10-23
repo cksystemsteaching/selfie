@@ -347,7 +347,7 @@ Selfie responds with quite a bit of text but just look for `double.c exiting wit
 
 > Procedures may have formal parameters and be called with actual parameters
 
-There are a number of important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. Formal parameters and return type as in `int double(int n)` form what is called the *procedure signature*. The actual code of the procedure is in between curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`.
+There are a number of important concepts here. There are *procedure definitions* such as `int double(int n) { ... }` introducing a procedure called `double` with a formal parameter `n` of type `int` and a so-called *return type* `int` to the left of `double` which specifies the type of values the procedure returns. Formal parameters and return type as in `int double(int n)` form what is called the *procedure signature*. The actual code of the procedure is in between curly braces and is called *procedure body*. Similarly, there is a procedure definition for `main` as well. And there are *procedure calls* such as `double(42)` in the `main` procedure invoking the procedure `double` on an *actual parameter* `42`. Note that we may also refer to formal parameters just as *parameters* and to actual parameters as *arguments*.
 
 > Procedures are defined exactly once but may be used in procedure calls many times
 
@@ -3261,9 +3261,9 @@ Now, here is the interesting part. The system call handler checks the integer va
 
 > Application Binary Interface (ABI)
 
-Relevant for us here is that system calls are logically like procedure calls, possibly with actual parameters and return value, but in particular with a specific purpose that often requires special hardware support. Selfie implements five system calls which we mention below. Similar to a procedure call, the return value of a system call is stored in register `a0`. However, actual parameters of a system call are not pushed onto the stack but stored in registers `a0` to `a3`. In other words, there cannot be more than four actual parameters. Here is a summary of the *system call convention* or *application binary interface* (ABI) that is a subset of the RISC-V standard and used in selfie:
+Relevant for us here is that system calls are logically like procedure calls, possibly with arguments as actual parameters and a return value, but in particular with a specific purpose that often requires special hardware support. Selfie implements five system calls which we mention below. Similar to a procedure call, the return value of a system call is stored in register `a0`. However, the arguments of a system call are not pushed onto the stack but stored in registers `a0` to `a3`. In other words, there cannot be more than four arguments. Here is a summary of the *system call convention* or *application binary interface* (ABI) that is a subset of the RISC-V standard and used in selfie:
 
-`ecall`: system call number is in `a7`, actual parameters are in `a0-a3`, return value is in `a0`.
+`ecall`: system call number is in `a7`, arguments are in `a0-a3`, return value is in `a0`.
 
 Let us have a look at the code from our running example that terminates execution of the program using the `exit` system call which happens to be identified by system call number `93`:
 
@@ -7025,9 +7025,9 @@ We have finally reached the point where spatial and temporal isolation as well a
 
 Communication in virtual machines is essentially done through *virtualized* I/O, that is, through virtualization of I/O hardware. To keep things simple, we ignore that here and move our discussion towards software processes implemented by operating system kernels. A *software process*, or *process* for short, is an abstraction of a virtual machine where additional services are available that are not offered by physical machines. The apps running on your smartphone or laptop are essentially software processes.
 
-> System calls
+> From procedures and procedure calls to system call handlers and system calls
 
-The key difference of virtual machines and software processes is that code running in a process may communicate with other processes and the system it runs on through a mechanism called a *system call*. Logically, a system call is like a procedure call that invokes system code rather than process code. The term system call is synonymous for both a procedure and a procedure call and thus may have *parameters*, similar to the formal parameters of procedures, and *arguments*, similar to the actual parameters of procedure calls. System calls may also have a return value. Invoking a system call is logically like invoking a procedure call where the arguments are passed to kernel code that implements the system call. Like a procedure, the kernel code eventually returns, possibly with some return value.
+The key difference of virtual machines and software processes is that code running in a process may communicate with other processes and the system it runs on through a mechanism called a *system call*. Logically, a system call is like a procedure call that invokes system code rather than process code. The system code that implements a system call is called a *system call handler*. Hence a system call handler is like a procedure which may have *parameters*, similar to the formal parameters of procedures, and a system call is like a procedure call which may have *arguments*, similar to the actual parameters of procedure calls. System calls may also have a return value. Invoking a system call is logically like invoking a procedure call where the arguments are passed to the system call handler that implements the system call. Like a procedure, the system call handler eventually returns, possibly with some return value.
 
 > System isolation
 
