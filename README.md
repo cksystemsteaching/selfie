@@ -7119,7 +7119,7 @@ if (fork() > 0) {
 }
 ```
 
-The `fork` system call introduces concurrency into the system in the sense that after returning the above code is executed concurrently by two distinct processes with the parent process entering the true case of the `if` statement, and the child process entering the false case. However, there is no communication between the two processes other than information provided by the `wait` system call to the parent process about the status of the child process, that is, if the child process invokes the `exit` system call. The argument `0` of the `wait` system call makes the call fail in real systems. More on that below. For more involved examples, see the test files of the autograder.
+The `fork` system call introduces concurrency into the system in the sense that after returning the above code is executed concurrently by two distinct processes with the parent process entering the true case of the `if` statement, and the child process entering the false case. However, there is no communication between the two processes other than information provided by the `wait` system call to the parent process about the status of the child process, that is, if the child process has invoked the `exit` system call. The argument `0` of the `wait` system call makes the call fail in real systems. More on that below. For more involved examples, see the test files of the autograder.
 
 > `init` process
 
@@ -7127,7 +7127,11 @@ The complexity introduced by concurrent processes is significant. First of all, 
 
 > Orphan versus zombie
 
-Then, let us go through all possible non-trivial scenarios of `fork`, `wait`, and `exit` invocations to demonstrate that. What if the parent process invokes `exit` but there are still some of its child processes that have not yet invoked `exit`? In that case, the child processes are said to be *orphan processes*. In some systems, the `init` process adopts orphan processes. However, what if child processes invoke `exit` before their parent process invokes `wait`? In that case, the child processes are said be *zombie processes*. No kidding. The terminology is bizarre. As long as the parent process has not terminated yet by invoking `exit` but also not invoked `wait` on all its child processes, any zombie processes that used to be its child processes cannot entirely be removed from the system and their PIDs be reused, as we see in the next exercise.
+Then, let us go through all possible non-trivial scenarios of `fork`, `wait`, and `exit` invocations to demonstrate that. What if the parent process invokes `wait` but all its child processes have not yet invoked `exit`? In that case, the parent process needs to be blocked from executing and only be unblocked when any of its child processes does invoke `exit`. What if the parent process invokes `exit` but there are still some of its child processes that have not yet invoked `exit`? In that case, the child processes are said to be *orphan processes*. In some systems, the `init` process adopts orphan processes. However, what if child processes invoke `exit` before their parent process invokes `wait`? In that case, the child processes are said to be *zombie processes*. No kidding. The terminology is bizarre. As long as the parent process has not terminated yet by invoking `exit` but also not invoked `wait` on all its child processes, any zombie processes that used to be its child processes cannot entirely be removed from the system and their PIDs be reused, as we see in the next exercise.
+
+> Traffic light model
+
+Parent processes waiting for child processes to terminate fit the blocked state of the traffic light model, or better a substate of the blocked state called *waiting*. Zombie processes may be modeled by a new state called *zombie* that does not have any outgoing transitions as zombie processes remain zombies until they can be removed from the system.
 
 > Communication of software processes
 
@@ -7158,6 +7162,8 @@ Then, let us go through all possible non-trivial scenarios of `fork`, `wait`, an
 ```bash
 ./grader/self.py lock
 ```
+
+...traffic light model
 
 ...shared memory
 
