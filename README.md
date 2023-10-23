@@ -6599,7 +6599,7 @@ An *emulated machine* (EM) is an implementation of a physical machine in softwar
 
 > Virtual machine
 
-A *virtual machine* (VM) is essentially like an emulated machine, providing the same abstraction of a physical machine as an EM, except that the execution of code hosted by a VM is not done by an emulator but a *virtual machine monitor* (VMM) that runs a VM by *context switching* the VM to run on the machine that executes the VMM. We later see that virtual machines can be specialized to software processes that are implemented by an *operating system kernel* which is the counterpart to a VMM but for processes rather than virtual machines, using context switching as well. In short, emulated machines and virtual machines are identical, except for the mechanism of code execution. This is important to keep in mind.
+A *virtual machine* (VM) is essentially like an emulated machine, providing the same abstraction of a physical machine as an EM, except that the execution of code hosted by a VM is not done by an emulator but a *virtual machine monitor* (VMM) that runs a VM by *context switching* the VM to run on the machine that executes the VMM. We later see that virtual machines can be abstracted to *software processes* that are implemented by an *operating system kernel* which is the counterpart to a VMM but for processes rather than virtual machines, using context switching as well. In short, emulated machines and virtual machines are identical, except for the mechanism of code execution. This is important to keep in mind.
 
 > Machine context
 
@@ -6901,7 +6901,7 @@ The goal of the next exercise is to implement support of concurrent execution of
 ./grader/self.py processes
 ```
 
-The name `processes` refers to our eventual goal of turning virtual machines into software processes in subsequent exercises. For now, processes are just virtual machines. The exercise involves implementing support of two new options as console arguments: `-x` and `-z`, each followed by a positive number that specifies the number of virtual machines to be created. The option `-x 1` corresponds to the option `-m 1`, and the option `-z 1` corresponds to the option `-y 1`. For example, `-x 10` or `-z 10` instructs selfie to create `10` identical virtual machines and then use `mipster` or `hypster`, respectively, to execute them. Focus on support of the `-x` option first. When done, implement support of `-z` and apply your changes to the procedure `mipster` analogously to the procedure `hypster`.
+The name `processes` refers to our eventual goal of abstracting virtual machines into software processes in subsequent exercises. For now, processes are just virtual machines. The exercise involves implementing support of two new options as console arguments: `-x` and `-z`, each followed by a positive number that specifies the number of virtual machines to be created. The option `-x 1` corresponds to the option `-m 1`, and the option `-z 1` corresponds to the option `-y 1`. For example, `-x 10` or `-z 10` instructs selfie to create `10` identical virtual machines and then use `mipster` or `hypster`, respectively, to execute them. Focus on support of the `-x` option first. When done, implement support of `-z` and apply your changes to the procedure `mipster` analogously to the procedure `hypster`.
 
 > Round-robin scheduling
 
@@ -7019,9 +7019,21 @@ vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 ### Concurrency
 
-We have finally reached the point where spatial and temporal isolation as well as self-reference in virtualization have come together to allow us hosting and running virtual machines concurrently. However, we also need virtual machines to be able to communicate with the system on which and the environment in which they run.
+We have finally reached the point where spatial and temporal isolation as well as self-reference in virtualization have come together to allow us hosting and running virtual machines concurrently. However, we also need virtual machines to be able to communicate with each other and the system on which they run. Only then the full potential but also the intrinsic complexity of concurrency comes to light.
+
+> From virtual machine to software process
+
+Communication in virtual machines is essentially done through *virtualized* I/O, that is, through virtualization of I/O hardware. To keep things simple, we ignore that here and move our discussion towards software processes implemented by operating system kernels. A *software process*, or *process* for short, is an abstraction of a virtual machine where additional services are available that are not offered by physical machines. The apps running on your smartphone or laptop are essentially software processes.
 
 > System calls
+
+The key difference of virtual machines and software processes is that code running in a process may communicate with other processes and the system it runs on through a mechanism called a *system call*. Logically, a system call is like a procedure call that invokes system code rather than process code. The term system call is synonymous for both a procedure and a procedure call and thus may have *parameters*, similar to the formal parameters of procedures, and *arguments*, similar to the actual parameters of procedure calls. System calls may also have a return value. Invoking a system call is logically like invoking a procedure call where the arguments are passed to kernel code that implements the system call. Like a procedure, the kernel code eventually returns, possibly with some return value.
+
+> System isolation
+
+The key difference of system calls and procedure calls is *system isolation*.
+
+...
 
 ```c
 uint64_t handle_system_call(uint64_t* context) {
@@ -7094,6 +7106,8 @@ uint64_t handle_system_call(uint64_t* context) {
 ```bash
 ./grader/self.py lock
 ```
+
+...shared memory
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             above is work in progress
