@@ -7095,14 +7095,35 @@ Before we get to the next exercise, let us mention an important point not covere
 
 > Concurrency of software processes
 
-...
+The previous exercise is about support of concurrent execution of multiple but identical virtual machines on `mipster` and `hypster`. At this point, we are ready to look into the next exercise which is about support of concurrent execution of multiple software processes, hosted by virtual machines, that still contain the same code but may execute differently anyway. For this purpose, you are asked to implement in selfie two new systems calls named `fork` and `wait` plus adequate system call wrappers with the same names that are standard in most real systems. Check your solution by invoking the autograder as follows:
 
 ```bash
 ./grader/self.py fork-wait
 ```
-...brk
+
+While `fork` only has a return value but no parameters, `wait` has one parameter and a return value. In terms of signature, the `wait` system call is similar to the `brk` system call whose implementation in selfie may therefore serve as template, at least when it comes to accessing arguments and preparing return values. Either way, in this exercise you may actually ignore the parameter of `wait` which is only relevant in the next exercise.
+
+> Fork versus wait versus exit
+
+Support of `fork` and `wait` also requires enhancing the existing `exit` system call in selfie since all three system calls interact with each other. The intuitive semantics is that a process invoking `fork`, also called *parent process* instructs the system to create a *child process* that is a *fork*, that is, an exact copy of the parent process including its full machine state. In particular, this means that `fork` eventually returns two times rather than one time, namely to the parent process and the child process. The only difference between parent and child process is in the return value of `fork`. While `fork` returns `0` to the child process, `fork` returns a positive integer to the parent process called a *process identifier* (PID) which uniquely identifies the child process created by the parent process. If it was not for the return value, parent and child process would be indistinguishable. Since all processes can invoke `fork`, even repeatedly, `fork` allows creating any parent-child hierarchy of processes. The `wait` system call invoked by a parent process returns if any child process of the parent process invokes the `exit` system call. The PID of any such child process is provided as return value of `wait`. If all child processes of the parent process have not yet invoked the `exit` system call, `wait` does not return but instead blocks the parent process from executing until any child process invokes the `exit` system call. If the parent process has no child processes, `wait` returns with a negative integer as return value, indicating an error. Here is a small example of using `fork`, `wait`, and `exit`, ignoring the return value of `wait`:
+
+```c
+if (fork() > 0) {
+  // parenting
+  ...
+  wait(0);
+} else {
+  // playing
+  ...
+  exit(0);
+}
+```
+
+For more involved examples, see the test files of the autograder.
 
 > Orphan versus zombie
+
+...
 
 > Communication of software processes
 
