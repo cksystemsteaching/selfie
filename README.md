@@ -7031,7 +7031,25 @@ The key difference of virtual machines and software processes is that code runni
 
 > System isolation
 
-The key difference of system calls and procedure calls is *system isolation*.
+The key difference of system calls and procedure calls is *system isolation*. Yes, that general notion of isolation shows up once again as a means to make things compositional in the sense that we can derive system properties from the properties of its components. Recall that we need a system to be able to run anything without ever crashing the system. We can only achieve that by isolating the system in time and space from anything the system runs but cannot trust. At the same time, we need to allow any code that runs in a virtual machine or software process to communicate. The differences in implementation of system calls versus procedure calls are an immediate consequence of isolating the system from anything going on outside of the system.
+
+> System call number
+
+A system call invokes kernel code that runs in the address space of the kernel, that is, the callee, not the address space of the caller. Moreover, the callee generally needs to be able to access and possibly even modify information in the address space of the caller. Conversely, the caller must not be able to access and modify any information in the address space of the callee, other than what the system call provides as part of its service. Most importantly, a system call must therefore not be able to invoke any kernel code by referring to kernel code by memory address. Instead, a system call identifies kernel code, that is, the system call handler by a *system call number* which is just a positive integer provided as an argument. In RISC-V, the system call number is by convention stored in register `a7` by the caller. The kernel is then free to invoke the correct system call handler based on the value of `a7` in the machine context of the caller!
+
+> Jump-and-link versus environment call
+
+...
+
+> Application binary interface
+
+...
+
+> System call wrapper
+
+...
+
+> System protection
 
 ...
 
@@ -7073,21 +7091,18 @@ uint64_t handle_system_call(uint64_t* context) {
 }
 ```
 
-...system isolation through protection
-
-...ABI
+...brk, openat, read, write
 
 ```bash
 ./grader/self.py fork-wait
 ```
 
-...from VMs to processes: system calls!
+...inside and outside of an address space
+
 
 ```bash
 ./grader/self.py fork-wait-exit
 ```
-
-...inside and outside of an address space
 
 > Race conditions in I/O
 
