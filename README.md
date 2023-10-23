@@ -7089,25 +7089,32 @@ System calls are typically invoked by code written in high-level programming lan
 
 System call wrappers interface the *calling convention* of procedures, as implemented by a compiler, with the *application binary interface* (ABI), as implemented by an operating system on a given hardware architecture. The calling convention of procedures essentially specifies the use of call stack and registers for coordinating caller and callee during procedure calls. Similarly, the ABI of an operating system and hardware architecture essentially specifies the use of registers for coordinating caller and callee during system calls. In short, system call wrappers are therefore where compilers and operating system kernels connect.
 
-> System protection
+> Kernel mode versus user mode
 
-Before we get to the next exercise, let us mention an important point not covered by selfie.
+Before we get to the next exercise, let us mention an important point not covered by selfie. Virtual machines and software processes may host and execute any code, including code that contains *priviledged* machine instructions which are actually meant to be used exclusively by kernel code. In real systems, priviledged instructions are necessary to perform typical system tasks such as context switching and programming page tables. In order to prevent untrusted non-kernel code from executing priviledged instructions successfully, real hardware typically features at least two, if not more, *modes* of execution such as a *kernel mode* and a *user mode*, for example. A CPU or core is in exactly one of those modes at any time. In particular, a context switch to kernel code also switches the mode of the executing CPU or core to kernel mode, and back to user mode when switching back to user code hosted by a virtual machine or software process. The key property of user mode is that any attempt of executing a priviledged instruction throws an exception forcing a context switch into kernel code which can then handle the situation, by terminating the violating virtual machine or software process, for example. Selfie does not support modes of execution as there are no priviledged instructions in RISC-U. However, the concept is important and necessary to isolate systems from untrusted code.
+
+> Concurrency of software processes
 
 ...
 
-...brk
-
 ```bash
 ./grader/self.py fork-wait
+```
+...brk
+
+> Orphan versus zombie
+
+> Communication of software processes
+
+```bash
+./grader/self.py fork-wait-exit
 ```
 
 ...inside and outside of an address space
 
 ...openat, read, write
 
-```bash
-./grader/self.py fork-wait-exit
-```
+...optional: check arguments for safety
 
 > Race conditions in I/O
 
