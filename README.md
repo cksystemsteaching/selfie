@@ -4111,7 +4111,7 @@ So, the decimal number `13624` encodes the string `"85"`. Who would have thought
 
 > Error handling: printing errors, sure, but then to exit or not to exit?
 
-Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits. If yes, we need to deal with the situation. First up, we should report the error. This is done using the procedure `syntax_error_message` which in turn uses a procedure that is *builtin* into C and its dialects called `printf` which stands for *print formatted*. We explain that procedure as needed but leave it at that for now. There is another global variable here called `integer_is_signed` that we have ignored so far. It indicates whether a dash `-` has been scanned right before the integer literal. After reporting the error we do something rather lazy. We simply give up and exit, terminating compilation altogether, so not just the scanner but also the parser, and in fact the whole compiler around it. The `exit` procedure is another builtin procedure that you can call anywhere you like to exit *explicitly* with its sole parameter being returned as the *exit code* that we mentioned before, instead of tediously returning to the `main` procedure and exiting there *implicitly* without calling `exit`. In fact, the `exit` procedure provides a convenient way to prototype code whenever you do not want to deal with a problem but rather focus on something else first and only later come back and code a solution. In scanning and parsing, this is possible with virtually no limit to your imagination on what can be done. However, in the interest of simplicity we decided not to do that here. We do, however, continue parsing in other circumstances performing proper *error handling*, as shown later.
+Let us go back to the nested `if` statements that check if we have reached the limit of 20 digits. If yes, we need to deal with the situation. First up, we should report the error. This is done using the procedure `syntax_error_message` which in turn uses a procedure that is *builtin* into C and its dialects called `printf` which stands for *print formatted*. We explain that procedure as needed but leave it at that for now. There is another global variable here called `integer_is_signed` that we have ignored so far. It indicates whether a dash `-` has been scanned right before the integer literal. After reporting the error we do something rather lazy. We simply give up and exit, terminating compilation altogether, so not just the scanner but also the parser, and in fact the whole compiler around it. The `exit` procedure is another builtin procedure that you can call anywhere you like to exit *explicitly* with its sole parameter being returned as the *exit code* that we mentioned before, instead of tediously returning to the `main` procedure and exiting there *implicitly* without calling `exit`. The exit code is typically interpreted, even on 64-bit systems, as 32-bit signed integer where negative values indicate that an error occurred. The `exit` procedure provides a convenient way to prototype code whenever you do not want to deal with a problem but rather focus on something else first and only later come back and code a solution. In scanning and parsing, this is possible with virtually no limit to your imagination on what can be done. However, in the interest of simplicity we decided not to do that here. We do, however, continue parsing in other circumstances performing proper *error handling*, as shown later.
 
 > Corner cases are hard
 
@@ -7027,7 +7027,7 @@ Communication in virtual machines is essentially done through *virtualized* I/O,
 
 > From procedures and procedure calls to system call handlers and system calls
 
-The key difference of virtual machines and software processes is that code running in a process may communicate with other processes and the system it runs on through a mechanism called a *system call*. Logically, a system call is like a procedure call that invokes system or kernel code rather than process code. The kernel code that implements a system call is called a *system call handler*. Hence a system call handler is like a procedure which may have *parameters*, similar to the formal parameters of procedures, and a system call is like a procedure call which may have *arguments*, similar to the actual parameters of procedure calls. System calls may also have a return value. Invoking a system call is logically like invoking a procedure call where the arguments are passed to the system call handler that implements the system call. Like a procedure, the system call handler may eventually return, possibly with some return value.
+The key difference of virtual machines and software processes is that code running in a process may communicate with other processes and the system it runs on through a mechanism called a *system call*. Logically, a system call is like a procedure call that invokes system or kernel code rather than process code. The kernel code that implements a system call is called a *system call handler*. Hence a system call handler is like a procedure which may have *parameters*, similar to the formal parameters of procedures, and a system call is like a procedure call which may have *arguments*, similar to the actual parameters of procedure calls. System calls may also have return values which are typically interpreted as signed integers where negative values indicate that an error happened. Invoking a system call is logically like invoking a procedure call where the arguments are passed to the system call handler that implements the system call. Like a procedure, the system call handler may eventually return, possibly with some return value.
 
 > System isolation
 
@@ -7101,21 +7101,30 @@ The previous exercise is about support of concurrent execution of multiple but i
 ./grader/self.py fork-wait
 ```
 
-While `fork` only has a return value but no parameters, `wait` has one parameter and a return value. In terms of signature, the `wait` system call is similar to the `brk` system call whose implementation in selfie may therefore serve as template, at least when it comes to accessing arguments and preparing return values. Either way, in this exercise you may actually ignore the parameter of `wait` which is only relevant in the next exercise.
+While `fork` only has a return value but no parameters, `wait` has one parameter and a return value. The return values are interpreted as signed integers where negative values indicate than an error occurred. In terms of signature, the `wait` system call is similar to the `brk` system call whose implementation in selfie may therefore serve as template, at least when it comes to accessing arguments and preparing return values. Either way, in this exercise you may actually ignore the parameter of `wait` which is only relevant in the next exercise.
 
 > Fork versus wait versus exit
 
-Support of `fork` and `wait` also requires enhancing the existing `exit` system call in selfie since all three system calls interact with each other. The intuitive semantics is that a process invoking `fork`, also called *parent process* instructs the system to create a *child process* that is a *fork*, that is, an exact copy of the parent process including its full machine state. In particular, this means that `fork` eventually returns two times rather than one time, namely to the parent process and the child process. The only difference between parent and child process is in the return value of `fork`. While `fork` returns `0` to the child process, `fork` returns a positive integer to the parent process called a *process identifier* (PID) which uniquely identifies the child process created by the parent process. If it was not for the return value, parent and child process would be indistinguishable. Since all processes can invoke `fork`, even repeatedly, `fork` allows creating any parent-child hierarchy of processes. The `wait` system call invoked by a parent process returns if any child process of the parent process invokes the `exit` system call. The PID of any such child process is provided as return value of `wait`. If all child processes of the parent process have not yet invoked the `exit` system call, `wait` does not return but instead blocks the parent process from executing until any child process invokes the `exit` system call. If the parent process has no child processes, `wait` returns with a negative integer as return value, indicating an error. Here is a small example of using `fork`, `wait`, and `exit`, ignoring the return value of `wait`:
+Support of `fork` and `wait` also requires enhancing the existing `exit` system call in selfie since all three system calls interact with each other. The intuitive semantics is that a process invoking `fork`, also called *parent process* instructs the system to create a *child process* that is a *fork*, that is, an exact copy of the parent process including its full machine state. In particular, this means that `fork` eventually returns two times rather than one time, namely to the parent process and the child process. The only difference between parent and child process is in the return value of `fork`. While `fork` returns `0` to the child process, `fork` returns a positive integer to the parent process called a *process identifier* (PID) which uniquely identifies the child process created by the parent process. If it was not for the return value, parent and child process would be indistinguishable. The `fork` system call may also return a negative value in which case an error occurred and no child process was forked. Since all processes can invoke `fork`, even repeatedly, `fork` allows creating any parent-child hierarchy of processes.
+
+The `wait` system call invoked by a parent process returns if any child process of the parent process invokes the `exit` system call. The PID of any such child process is provided as return value of `wait`. If all child processes of the parent process have not yet invoked the `exit` system call, `wait` does not return but instead blocks the parent process from executing until any child process invokes the `exit` system call. If the parent process has no child processes, `wait` returns a negative value indicating that an error occurred. Here is an example of using `fork`, `wait`, and `exit` with a parent and a child process where the parent process exits with exit code `0` but only after the child process exits with exit code `42` and the PIDs returned by `fork` and `wait` match. If they do not match, the parent process exits with exit code `7`. Last but not least, for simplicity, we ignore the case when `fork` fails to fork the parent process and returns an error instead:
 
 ```c
-if (fork() > 0) {
+uint64_t pid;
+
+pid = fork();
+
+if (pid > 0) {
   // parenting
   ...
-  wait(0);
+  if (wait(0) == pid)
+    exit(0);
+  else
+    exit(7);
 } else {
   // playing
   ...
-  exit(0);
+  exit(42);
 }
 ```
 
@@ -7135,8 +7144,35 @@ Parent processes waiting for child processes to terminate fit the blocked state 
 
 > Communication of software processes
 
+The next exercise is about implementing the parameter of the `wait` system call which allows communicating the exit code of the `exit` system call invoked by a child process back to its parent process. True, this kind of communcation is rather limited but its implementation still helps exposing an important aspect of communication across system and process boundaries. Invoke the autograder on your solution as follows:
+
 ```bash
 ./grader/self.py fork-wait-exit
+```
+
+The parameter of the `wait` system call is interpreted as a pointer to a 32-bit signed integer in memory that matches the type of the exit code of the `exit` system call which is also interpreted as 32-bit signed integer. The intuitive semantics of a `wait` system call that returns because of an `exit` system call is that the exit code provided to `exit` is copied from the child process that invoked `exit` to the parent process that invoked `wait` and then stored in memory where the pointer provided to `wait` refers to in the address space of the parent. Here is an extended version of the previous example, this time using the parameter of `wait` where the parent process exits with the exit code `42` of the child process after the child process exits and if the PIDs returned by `fork` and `wait` match. If they do not match, the parent process again exits with exit code `7`:
+
+```c
+uint64_t pid;
+uint64_t* exit_code;
+
+pid = fork();
+
+if (pid > 0) {
+  // parenting
+  ...
+
+  exit_code = malloc(sizeof(uint64_t));
+
+  if (wait(exit_code) == pid);
+    exit(*exit_code);
+  else
+    exit(7);
+} else {
+  // playing
+  ...
+  exit(42);
+}
 ```
 
 ...inside and outside of an address space
