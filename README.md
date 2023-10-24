@@ -7194,6 +7194,18 @@ Before moving on to the next exercise, there is one more thing about the impleme
 
 > Race conditions in I/O
 
+By now we have gotten at least a glimpse of the complexity involved in concurrency. But things are getting a lot more complex as soon as concurrent processes start communicating beyond simple exit codes. The next exercise is about demonstrating what happens when concurrent processes perform I/O and how to get at least some control over that:
+
+```bash
+./grader/self.py lock
+```
+
+The exercise involves a modified version of the *Hello World!* program in C\* that we previously mentioned. The original program outputs `Hello World!` onto the console. More precisely, the program actually outputs the string "`Hello World!    `" with four trailing spaces. The modified version does the same but many times by forking a number of processes that each output the string onto the console. In this case, the console represents a single resource shared by multiple concurrent processes. Moreover, the string is output not by one but two invocations of the `write` system call, the first writing the first half of the string "`Hello Wo`" and the second writing the second half "`rld!    `".
+
+> Interleavings
+
+The output on the console is a rather chaotic *interleaving* of both halfs of the string that corresponds to the order or *interleaving* in which the code of the concurrent processes is executed, in particular the `write` system calls...
+
 ...non-determinism
 
 ...critical section
@@ -7205,10 +7217,6 @@ Before moving on to the next exercise, there is one more thing about the impleme
 ...turning off interrupts
 
 ...deadlock
-
-```bash
-./grader/self.py lock
-```
 
 ...traffic light model
 
