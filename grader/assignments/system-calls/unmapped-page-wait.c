@@ -13,7 +13,7 @@ int main() {
   // It must be page-wide to move the last element across potential already
   // mapped page boundaries
   // wait uses the last element, then
-  exit_code = malloc(8 * 4096);
+  exit_code = malloc(sizeof(uint64_t) * 4096);
 
   pid = fork();
   if (pid == 0)

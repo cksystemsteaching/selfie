@@ -15,7 +15,7 @@ int main() {
   uint64_t fork_pid;
   uint64_t* heap_top;
 
-  heap_top = malloc(8);
+  heap_top = malloc(sizeof(uint64_t));
   sum = 40;
 
   fork_pid = fork();

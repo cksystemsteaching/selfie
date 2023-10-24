@@ -1,7 +1,7 @@
 uint64_t main() {
   uint64_t* x;
 
-  x = malloc(16);
+  x = malloc(2 * sizeof(uint64_t));
 
   *x = 0;
 

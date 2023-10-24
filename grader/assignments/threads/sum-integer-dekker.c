@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
   uint64_t  my_turn_id;
   uint64_t  other_turn_id;
 
-  status = malloc(8);
-  wants_to_enter = malloc(16);
+  status = malloc(sizeof(uint64_t));
+  wants_to_enter = malloc(2 * sizeof(uint64_t));
 
   tid = pthread_create();
 

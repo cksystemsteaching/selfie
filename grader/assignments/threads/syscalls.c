@@ -25,7 +25,7 @@ uint64_t get_unique_offset(uint64_t pid1, uint64_t pid2, uint64_t pid3) {
   bit2 = pid1 != 0;
 
   return (bit2 * 2 + bit1) * 2 + bit0;
-} 
+}
 
 int main(int argc, char** argv) {
   uint64_t offset;
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   uint64_t pid3;
   uint64_t result;
 
-  status = malloc(8 * 8);
+  status = malloc(8 * sizeof(uint64_t));
 
   // 2^3 processes
   pid1 = pthread_create();

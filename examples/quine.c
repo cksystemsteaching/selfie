@@ -8,7 +8,7 @@ uint64_t main() {
   uint64_t* source;
   uint64_t i;
   init_library();
-  source = malloc(41*8);
+  source = malloc(41*sizeof(uint64_t));
   *(source + 0) = (uint64_t) "// This C* code outputs its own source code: quine.c in C*";
   *(source + 1) = (uint64_t) "void init_library();";
   *(source + 2) = (uint64_t) "void print(uint64_t* s);";
@@ -19,7 +19,7 @@ uint64_t main() {
   *(source + 7) = (uint64_t) "  uint64_t* source;";
   *(source + 8) = (uint64_t) "  uint64_t i;";
   *(source + 9) = (uint64_t) "  init_library();";
-  *(source + 10) = (uint64_t) "  source = malloc(41*8);";
+  *(source + 10) = (uint64_t) "  source = malloc(41*sizeof(uint64_t));";
   *(source + 11) = (uint64_t) "  // printing source code before stored code";
   *(source + 12) = (uint64_t) "  i = 0;";
   *(source + 13) = (uint64_t) "  while (i < 11) {";

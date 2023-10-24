@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
 
     // context switch should happen in here by timeout
     // after lr but before sc
-    p2 = malloc(16);
+    p2 = malloc(2 * sizeof(uint64_t));
 
     // ------------------------------ 9th ------------------------------
 
@@ -111,8 +111,8 @@ int main(int argc, char** argv) {
 
     // ------------------------------ 8th ------------------------------
 
-    p1 = malloc(16);
-    p2 = malloc(8);
+    p1 = malloc(2 * sizeof(uint64_t));
+    p2 = malloc(sizeof(uint64_t));
 
     pthread_join(p2); // switch
 

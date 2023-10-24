@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
   uint64_t  tid;
   uint64_t* status;
 
-  status = malloc(8);
+  status = malloc(sizeof(uint64_t));
 
   tid = pthread_create();
 

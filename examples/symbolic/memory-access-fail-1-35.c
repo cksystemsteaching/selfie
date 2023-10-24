@@ -2,7 +2,7 @@ uint64_t main() {
   uint64_t* x;
   uint64_t* v;
 
-  x = malloc(8);
+  x = malloc(sizeof(uint64_t));
 
   *x = 0; // touch memory
 
