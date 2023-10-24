@@ -7164,6 +7164,9 @@ if (pid > 0) {
 
   exit_code = malloc(sizeof(uint64_t));
 
+  // touch to force mapping virtual memory
+  *exit_code = 0;
+
   if (wait(exit_code) == pid);
     exit(*exit_code);
   else
@@ -7175,11 +7178,19 @@ if (pid > 0) {
 }
 ```
 
-...inside and outside of an address space
+Communicating the exit code `42` of the child process back to the parent process requires accessing the address space of the parent process from within the system. Luckily, the `openat`, `read`, and `write` system calls have to do the same, motivating us to take a look at their implementation. The procedure `implement_read` that implements the system call handler of `read` is particularly relevant as `read` actually writes the data read from a file to memory in the address space of the caller of `read`. The `openat` system call only reads from memory the name of the file to be opened and the `write` system call only reads from memory the data to be written to a file.
 
-...openat, read, write
+> Touching virtual memory
 
-...optional: check arguments for safety
+The implementation of the respective system call handlers assumes that the virtual memory the handlers access is mapped. In the above code, the assignment of `0` to the memory word where `exit_code` points to ensures that. If the memory word is in an unmapped page, the assignment triggers a page fault that results in the unmapped page being mapped. The purpose of the assignment is only to *touch* memory by writing to memory. The value written to memory is irrelevant. Selfie also provides a procedure called `touch` for touching entire memory blocks, in particular for `read` and `write` calls that involve more bytes than a single memory word occupies.
+
+> Validating arguments
+
+The implementation of system call handlers still has an important obligation. All arguments need to be *validated* before using them to prevent untrusted code from making the system violate system isolation. In particular, pointers passed as arguments to system calls need to be validated, that is, checked if they are indeed valid memory addresses referring to memory segments in which access is permitted. Make sure your implementation of `wait` does that, similar to what `implement_read` does for validating pointers in the procedure `copy_buffer`.
+
+> Self-reference in I/O
+
+Before moving on to the next exercise, there is one more thing about the implementation of the `openat`, `read`, and `write` system calls in selfie. It involves self-reference but only because of the unique design of selfie! How do we implement opening files as well as reading from and writing to files, especially if we would like to avoid implementing our own file system? Well, we use the builtin procedures `open`, read`, and `write` to do that, check the source code to see for yourself. How does this work? The bootstrapping compiler provides the implementation of the builtin procedures that connects to the file system of the operating system outside of selfie. The selfie compiler also provides an implementation with the procedures `emit_open`, `emit_read`, and `emit_write` that invokes the `openat`, `read`, and `write` system calls, respectively, which in turn are implemented in the selfie emulator by the procedures `implement_openat`, `implement_read`, and `implement_write`, respectively, which in turn invoke the builtin procedures `open`, `read, and `write`, respectively. Regardless of how many `mipster` and `hypster` instances we run on top of each other, all calls to `open`, `read`, and `write` calls eventually end up calling the builtin procedures implemented by the bootstrapping compiler. How awesome is that?
 
 > Race conditions in I/O
 
