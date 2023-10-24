@@ -7013,10 +7013,6 @@ make os-vmm-emu
 
 In this scenario, there are five machine contexts, one for running `VMM` on `HW`, one for hosting `OS` on `VMM`, and again one for hosting selfie without console arguments on `OS`, and two contexts that cache the contexts hosting `OS` on `VMM` and selfie, for running both on `HW`. In the selfie output, the contexts are referred to as in the second scenario. Both cached contexts again appear in the output of `mipster` whereas the hosted contexts appear in the output of their hosting `hypster` instances. Exceptions thrown by the cached contexts are dispatched directly to their hosting `hypster` instances for handling the exceptions in the hosted contexts. By now, you should finally be able understand all selfie output we have seen so far.
 
-===============================================================================
-                            below is work in progress
-vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
 ### Concurrency
 
 We have finally reached the point where spatial and temporal isolation as well as self-reference in virtualization have come together to allow us hosting and running virtual machines concurrently. However, we also need virtual machines to be able to communicate with each other and the system on which they run. Only then the full potential but also the intrinsic complexity of concurrency comes to light.
@@ -7200,31 +7196,31 @@ By now we have gotten at least a glimpse of the complexity involved in concurren
 ./grader/self.py lock
 ```
 
-The exercise involves a modified version of the *Hello World!* program in C\* that we previously mentioned. The original program outputs `Hello World!` onto the console. More precisely, the program actually outputs the string "`Hello World!    `" with four trailing spaces. The modified version does the same but many times by forking a number of processes that each output the string onto the console. In this case, the console represents a single resource shared by multiple concurrent processes. Moreover, the string is output not by one but two invocations of the `write` system call, the first writing the first half of the string "`Hello Wo`" and the second writing the second half "`rld!    `".
+The exercise involves a modified version of the *Hello World!* program in C\* that we previously mentioned. The original program outputs `Hello World!` onto the console. More precisely, the program actually outputs the string "`Hello World!    `" with four trailing spaces. The modified version does the same but many times by forking a number of processes that each output the string onto the console. In this case, the console represents a single resource shared by multiple concurrent processes. Moreover, the string is output not by one but two invocations of the `write` system call in a `while` loop, the first writing the first half of the string "`Hello Wo`" and the second writing the second half "`rld!    `".
 
-> Interleavings
+> Interleavings and non-determinism
 
-The output on the console is a rather chaotic *interleaving* of both halfs of the string that corresponds to the order or *interleaving* in which the code of the concurrent processes is executed, in particular the `write` system calls...
+The output on the console is a rather chaotic *interleaving* of both halfs of the string that corresponds to the order or *interleaving* in which the code of the concurrent processes is executed, in particular the `write` system calls. The problem is that many interleavings are possible of which only few may actually be desirable. Morever, which interleaving is chosen in the end is not determined by the concurrent program and its input. Instead, the code, here the `while` loop around the `write` system calls, creates the *conditions* of a *race* among concurrent processes in which their relative speed of execution determines which interleaving is chosen. Race conditions result in what computer scientists call *non-determinism* in program behavior which is generally to be avoided. For example, we may at least want the output to show only those interleavings in which the string "`Hello World!    `" appears as a whole.
 
-...non-determinism
+> Critical section and mutual exclusion
 
-...critical section
+Code that suffers from a race condition is called a *critical section*. In our example, the critical section is the `while` loop and its loop body that contains the `write` system call. If we could avoid the critical section to be preempted during execution by other processes also executing the critical section, also called *mutual exclusion*, the race condition would disappear and the output would be as desired even though there would still be quite a few but at least only desired interleavings to choose from.
 
-...mutual exclusion
+> Locking and unlocking
 
-...blocking
+A widely used technique that provides mutual exclusion is a *lock* that only a single process can obtain and hold at any time while all other processes interested in the lock have to wait for the lock to be released by the lock holder. For the exercise, you need to implement two system calls called `lock` and `unlock`. The intuitive semantics is that an invocation of `lock` by a process immediately returns to the caller if the lock is not held by any other process, thereby making the caller the lock holder. However, if the lock is already held by another process, the caller is blocked until the process holding the lock invokes `unlock` which unblocks the caller and all other blocked processes waiting for the lock to be released. The unblocked processes are still executing their invocation of `lock` which tries obtaining the lock again. Only one process may succeed while all others are blocked again, and so on. The blocked state in the traffic light model is the correct state to model locking. Mutual exclusion of critical sections is ensured by invoking `lock` right before a critical section and `unlock` right after a critical section.
 
-...turning off interrupts
+> Thundering herd
 
-...deadlock
+Logically, `unlock` may unblock all blocked processes waiting for the lock to be released, creating what is known as *thundering herd*. While all unblocked processes are ready to run, only the first process scheduled to run is going to succeed and become the lock holder. All other processes are eventually scheduled to run as well but fail to obtain the lock and are blocked again, thus wasting computational resources on getting the thundering herd under control. In order to avoid that, only one process may be unblocked. However, the choice of process to unblock must be fair to avoid processes never be able to obtain and hold the lock. For example, unblocking the process that was blocked first is a fair choice.
 
-...traffic light model
+> Blocking and deadlocks
 
-...shared memory
+Locking is based on the idea of *blocking* processes from making progress until conditions are safe to continue making progress. The idea is simple and relatively easy to implement with locks. Real systems typically allow creating more than one lock on demand and using them for different purposes. However, blocking is subject to *deadlocks* where all processes are blocked from making progress. Demonstrating deadlock with locking requires at least two locks. If a process needs to hold both locks before entering a critical section, a deadlock may occur if the process manages to obtain and hold the first lock but then fails to obtain the second lock because another process already holds the second lock but then fails to obtain the first lock. Avoiding deadlock may appear to be easy here but is generally very difficult in real systems which typically use a large number of locks.
 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                            above is work in progress
-===============================================================================
+> Interrupts and preemption
+
+There are alternatives to locking but all methods have advantages and disadvantages. Turning off interrupts before entering critical sections and back on when leaving does provide mutual exclusion by essentially disabling preemption temporarily. However, that only works on single-core single-processor machines showing that parallelism, not preemption, is ultimately the root cause of race conditions when sharing resources. Also, disabling preemption prevents processes not interested in a shared resource from making progress, and, even worse, introduces the problem of cooperation or better the lack thereof back into the system. We get back to more alternatives to locking in the context of race conditions in shared memory where even more complexity of concurrency is present.
 
 ### Runtime Systems
 
