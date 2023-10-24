@@ -7610,7 +7610,7 @@ void implement_read(uint64_t* context) {
     IO_buffer = touch(smalloc(IO_buffer_size), IO_buffer_size);
   }
 
-  // read syscal may read less than size bytes
+  // read syscall may read less than size bytes
   // zero buffer up to integer-aligned size
   zero_memory(IO_buffer, round_up(size, sizeof(uint64_t)));
 

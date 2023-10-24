@@ -75,9 +75,9 @@ void parallel_print(uint64_t depth) {
 int main(int argc, char** argv) {
   uint64_t i;
 
-  pids = malloc(sizeof(uint64) * number_of_forks);
+  pids = malloc(sizeof(uint64_t) * number_of_forks);
 
-  sorted_numbers = malloc(sizeof(uint64) * number_of_processes);
+  sorted_numbers = malloc(sizeof(uint64_t) * number_of_processes);
 
   // prepare data to be printed
   i = 0;
