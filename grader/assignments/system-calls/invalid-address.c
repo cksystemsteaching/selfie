@@ -16,6 +16,10 @@ int main() {
   uint64_t* heap_top;
 
   heap_top = malloc(sizeof(uint64_t));
+
+  // touch to force mapping virtual memory
+  *heap_top = 0;
+
   sum = 40;
 
   fork_pid = fork();
