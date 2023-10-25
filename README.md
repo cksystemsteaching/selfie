@@ -4982,17 +4982,17 @@ make self-self
 The relevant output is at the very end:
 
 ```
-./selfie: t0 register:   492470109,246325982,246144127[1.00]
-./selfie: t1 register:   208273821,104161060,104112761[1.00]
-./selfie: t2 register:   48859158,24429579,24429579[1.00]
-./selfie: t3 register:   2077494,1038747,1038747[1.00]
-./selfie: t4 register:   132660,66330,66330[1.00]
-./selfie: t5 register:   106128,53064,53064[1.00]
-./selfie: t6 register:   26532,13266,13266[1.00]
-./selfie: temps total:   751945902,376088028,375857874[1.00]
+./selfie: t0 register:   170535378,85280151,85255227[1.00]
+./selfie: t1 register:   71512534,35780990,35731544[1.00]
+./selfie: t2 register:   15595462,7797731,7797731[1.00]
+./selfie: t3 register:   572688,286344,286344[1.00]
+./selfie: t4 register:   136870,68435,68435[1.00]
+./selfie: t5 register:   109496,54748,54748[1.00]
+./selfie: t6 register:   27374,13687,13687[1.00]
+./selfie: temps total:   258489802,129282086,129207716[1.00]
 ```
 
-For example, register `t0` is accessed around 500 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
+For example, register `t0` is accessed around 170 million times, roughly half by reading its value and the other half by writing its value, that is, by a ratio of reads and writes by around 1. Register `t1` is already accessed a lot less, and so on. However, the ratio of reads and writes is about the same for all. Stack allocation for register allocation is clearly visible in these numbers. However, the actual problem is the ratio of reads and writes. It would be better if there were more reads than writes per register because that would mean that registers would be used as actual memory, preventing unnecessary slower main memory access. We could achieve that by using a more involved algorithm for register allocation.
 
 > Constant folding
 
@@ -5385,7 +5385,7 @@ The `main` procedure invokes the procedure `factorial` which in turn computes th
 The relevant line in the output is:
 
 ```
-./selfie: factorial.c exiting with exit code 24
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary factorial.c with exit code 24
 ```
 
 The example features all three elements of procedures: a procedure call, a return statement, and a procedure body, for `factorial` and in fact another one for `main`. However, the example makes very limited use of procedures. There are neither any local variables nor parameters, and the procedure `factorial` does not invoke any procedure with a procedure call and only returns implicitly without any explicit return statement. In fact, we could replace the procedure call `factorial();` with a copy of the procedure body of `factorial` and remove the procedure `factorial` entirely from the code, and still obtain the exact same behavior. Therefore, most of the code specifically generated for procedure bodies is here not necessary, that is, *redundant*, which allows us to focus on the generated code that is necessary.
