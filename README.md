@@ -1963,12 +1963,6 @@ Here, the relevant output should be similar to this:
 
 ```
 ...
-./selfie: ********************************************************************************
-./selfie: 64-bit mipster executing 64-bit RISC-U binary selfie.c with 3MB physical memory
-./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-...
-./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.c with exit code 0
 ./selfie: --------------------------------------------------------------------------------
 ./selfie: summary: 363556041 executed instructions in total [17.29% nops]
 ./selfie:          2.39MB mapped memory [79.68% of 3MB physical memory]
@@ -1983,7 +1977,7 @@ Here, the relevant output should be similar to this:
 ...
 ```
 
-We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option (with argument `3` which stands for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.27MB of main memory but ended up *accessing* only 2.19MB, that is, using only 66.98% of the 3.27MB in memory storage. Moreover, selfie needed an additional 0.20MB of memory storage for its code, that is, in sum 2.39MB of (mapped) memory which is 79.68% of the 3MB available memory storage. In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.28KB at its peak. That memory is part of the 2.39MB of (mapped) memory.
+We configured selfie with 3MB of main memory storage (physical memory) using the `-m` option (with argument `3` which stands for `3MB`) and then self-compiled selfie. In total, selfie *allocated* addresses for 3.27MB of main memory but ended up *accessing* only 2.19MB, that is, using only 66.98% of the 3.27MB in memory storage. Moreover, selfie needed an additional 0.20MB of memory storage for its code, that is, in sum 2.39MB of (mapped) memory which is 79.68% of the 3MB available physical memory. In order to run, selfie also allocates memory for a stack that grows and shrinks during execution. Nevertheless, the stack usually requires relatively little memory in the range of a few kilobytes, not megabytes, in this case no more than 2.28KB at its peak. That memory is part of the 2.39MB of (mapped) memory.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -2393,17 +2387,26 @@ The relevant output should be similar to this:
 
 ```
 ...
-./selfie: 176200 bytes generated with 40666 instructions and 13536 bytes of data
-./selfie: init:    lui: 2607(6.41%), addi: 11747(28.88%)
-./selfie: memory:  ld: 7597(18.68%), sd: 7265(17.86%)
-./selfie: compute: add: 3561(8.75%), sub: 718(1.76%), mul: 494(1.21%)
-./selfie: compute: divu: 89(0.21%), remu: 29(0.07%)
-./selfie: compare: sltu: 702(1.72%)
-./selfie: control: beq: 997(2.45%), jal: 4216(10.36%), jalr: 636(1.56%)
+./selfie: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+./selfie: 182752 bytes generated with 42224 instructions and 13856 bytes of data
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: instruction: total(ratio%)
+./selfie: init:    lui: 2665(6.31%), addi: 12332(29.20%)
+./selfie: memory:  ld: 7847(18.58%), sd: 7579(17.94%)
+./selfie: compute: add: 3665(8.67%), sub: 726(1.71%), mul: 520(1.23%)
+./selfie: compute: divu: 93(0.22%), remu: 29(0.06%)
+./selfie: compare: sltu: 710(1.68%)
+./selfie: control: beq: 1000(2.36%), jal: 4389(10.39%), jalr: 661(1.56%)
 ./selfie: system:  ecall: 8(0.01%)
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: data: total(bytes)
+./selfie: global variables:       485(3880)
+./selfie: unique string literals: 377(9976)
+./selfie: unique big integers:    0(0)
+./selfie: ################################################################################
 ```
 
-Selfie reports that it generated 40,666 RISC-U machine instructions as well as 13,536 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 28.88% the most common instruction while the `ecall` instruction is with 0.01% the least common.
+Selfie reports that it generated 42,224 RISC-U machine instructions as well as 13,856 bytes of data needed to run the code. Moreover, as mentioned before, selfie outputs how many instructions of each type it generated. The `addi` instruction is with 29.20% the most common instruction while the `ecall` instruction is with 0.01% the least common.
 
 In order to explain all RISC-U machine instructions we use as running example the assembly code generated for the procedure `count` introduced in the language chapter. Here is the source code again, this time with a `main` procedure that invokes `count` to count from `0` to `10000` and then return `10000`:
 
@@ -2433,15 +2436,22 @@ You can find the source code in a text file called `count.c` in the `examples` f
 where selfie stores the assembly code in a text file called `count.s` and responds with the following profile of the compiled source code and the generated instructions:
 
 ```
+./selfie: ================================================================================
 ./selfie: this is the selfie system from selfie.cs.uni-salzburg.at with
 ./selfie: 64-bit unsigned integers and 64-bit pointers hosted on macOS
+./selfie: ================================================================================
 ./selfie: selfie compiling examples/count.c to 64-bit RISC-U with 64-bit starc
+./selfie: --------------------------------------------------------------------------------
 ./selfie: 123 characters read in 14 lines and 0 comments
 ./selfie: with 79(64.23%) characters in 42 actual symbols
 ./selfie: 0 global variables, 2 procedures, 0 string literals
 ./selfie: 2 assignments, 1 while, 0 if, 1 calls, 2 return
+./selfie: --------------------------------------------------------------------------------
 ./selfie: 12 symbol table lookups in 1 iterations on average
+./selfie: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 ./selfie: 512 bytes generated with 126 instructions and 8 bytes of data
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: instruction: total(ratio%)
 ./selfie: init:    lui: 2(1.58%), addi: 57(45.23%)
 ./selfie: memory:  ld: 23(18.25%), sd: 12(9.52%)
 ./selfie: compute: add: 2(1.58%), sub: 2(1.58%), mul: 0(0.00%)
@@ -2449,7 +2459,14 @@ where selfie stores the assembly code in a text file called `count.s` and respon
 ./selfie: compare: sltu: 1(0.79%)
 ./selfie: control: beq: 5(3.96%), jal: 5(3.96%), jalr: 7(5.55%)
 ./selfie: system:  ecall: 8(6.34%)
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: data: total(bytes)
+./selfie: global variables:       1(8)
+./selfie: unique string literals: 0(0)
+./selfie: unique big integers:    0(0)
+./selfie: ********************************************************************************
 ./selfie: 4576 characters of assembly with 126 64-bit RISC-U instructions and 8 bytes of data written into count.s
+./selfie: ################################################################################
 ```
 
 The only instructions missing are the `mul` and `divu` instructions. However, they are similar to the `add` and `sub` instructions, and the `remu` instruction, respectively. We explain the details below.
@@ -2534,7 +2551,7 @@ The very last instruction of `main`:
 makes the processor return to the instruction that follows the `jal ra,88[0x1A8]` instruction. The `r` in `jalr` stands for return! Similarly, the `jal` instruction in the code for `main`:
 
 ```asm
-0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] // call count procedure
+0x1CC(~13): 0xF71FF0EF: jal ra,-36[0x13C] //   call count procedure
 ```
 
 calls the code for `count` at address `0x13C` which is right here:
@@ -2598,13 +2615,20 @@ Here is the relevant output:
 
 ```
 ...
-./selfie: selfie executing 64-bit RISC-U binary examples/count.c with 1MB physical memory on 64-bit mipster
+./selfie: ********************************************************************************
+./selfie: 64-bit mipster executing 64-bit RISC-U binary examples/count.c with 1MB physical memory
+./selfie: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+./selfie: 64-bit mipster terminating 64-bit RISC-U binary examples/count.c with exit code 10000
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 90064 executed instructions in total [22.21% nops]
+./selfie:          0.01MB mapped memory [1.95% of 1MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ...
-./selfie: examples/count.c exiting with exit code 10000
-./selfie: selfie terminating 64-bit RISC-U binary examples/count.c with exit code 10000
-...
-./selfie: summary: 90064 executed instructions [22.21% nops]
-...
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: instruction: total(ratio%)[nops%]
 ./selfie: init:    lui: 2(0.00%)[0.00%], addi: 10030(11.13%)[0.03%]
 ./selfie: memory:  ld: 30009(33.32%)[33.33%], sd: 10010(11.11%)[0.01%]
 ./selfie: compute: add: 10000(11.10%)[0.00%], sub: 1(0.00%)[0.00%], mul: 0(0.00%)[0.00%]
@@ -2612,11 +2636,13 @@ Here is the relevant output:
 ./selfie: compare: sltu: 10001(11.10%)[0.00%]
 ./selfie: control: beq: 10001(11.10%)[99.99%], jal: 10004(11.10%)[0.00%], jalr: 2(0.00%)[0.00%]
 ./selfie: system:  ecall: 3(0.00%)
+./selfie: --------------------------------------------------------------------------------
 ./selfie: profile: total,max(ratio%)@address(line#),2ndmax,3rdmax
 ./selfie: calls:   2,1(50.00%)@0x13C(~4),1(50.00%)@0x1A8(~13),0(0.00%)
 ./selfie: loops:   10000,10000(100.00%)@0x15C(~6),0(0.00%),0(0.00%)
 ./selfie: loads:   30009,10001(33.32%)@0x15C(~6),10001(33.32%)@0x160(~6),10000(33.32%)@0x16C(~7)
 ./selfie: stores:  10010,10000(99.90%)@0x178(~7),1(0.00%)@0x30(~1),1(0.00%)@0x3C(~1)
+./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
@@ -2957,15 +2983,21 @@ The relevant output should be similar to this:
 
 ```
 ...
-./selfie: summary: 353831956 executed instructions [17.32% nops]
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 363556041 executed instructions in total [17.29% nops]
+./selfie:          2.39MB mapped memory [79.68% of 3MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ...
-./selfie: init:    lui: 786028(0.22%)[0.00%], addi: 135928217(38.41%)[15.10%]
-./selfie: memory:  ld: 80899343(22.86%)[13.92%], sd: 55070088(15.56%)[27.56%]
-./selfie: compute: add: 8881449(2.51%)[26.41%], sub: 4205537(1.18%)[9.49%], mul: 8813865(2.49%)[37.72%]
-./selfie: compute: divu: 3506467(0.99%)[40.87%], remu: 3584847(1.01%)[53.74%]
-./selfie: compare: sltu: 5611254(1.58%)[2.44%]
-./selfie: control: beq: 7955343(2.24%)[59.52%], jal: 25631889(7.24%)[0.00%], jalr: 12583618(3.55%)[0.00%]
-./selfie: system:  ecall: 374011(0.10%)
+./selfie: --------------------------------------------------------------------------------
+./selfie: profile: instruction: total(ratio%)[nops%]
+./selfie: init:    lui: 815641(0.22%)[0.00%], addi: 139654242(38.41%)[15.08%]
+./selfie: memory:  ld: 83132286(22.86%)[13.90%], sd: 56594058(15.56%)[27.55%]
+./selfie: compute: add: 9141065(2.51%)[26.30%], sub: 4314604(1.18%)[9.49%], mul: 9066351(2.49%)[37.58%]
+./selfie: compute: divu: 3601572(0.99%)[40.76%], remu: 3682679(1.01%)[53.64%]
+./selfie: compare: sltu: 5755232(1.58%)[2.41%]
+./selfie: control: beq: 8156026(2.24%)[59.51%], jal: 26331739(7.24%)[0.00%], jalr: 12929333(3.55%)[0.00%]
+./selfie: system:  ecall: 381213(0.10%)
+./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
@@ -3342,19 +3374,18 @@ There are a two points that we should mention here before focusing on code execu
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
-As mentioned before, selfie reports how much physical memory was actually needed in the last line of the execution profile under mapped memory:
+As mentioned before, selfie reports how much physical memory was actually needed in the summary of the execution profile under mapped memory:
 
 ```
 ...
-./selfie: summary: 353831956 executed instructions [17.32% nops]
-./selfie:          2.57KB peak stack size
-./selfie:          3.23MB allocated in 23993 mallocs
-./selfie:          2.14MB(66.10% of 3.23MB) actually accessed
-./selfie:          2.32MB(116.41% of 2MB) mapped memory
+./selfie: --------------------------------------------------------------------------------
+./selfie: summary: 363556041 executed instructions in total [17.29% nops]
+./selfie:          2.39MB mapped memory [119.53% of 2MB physical memory]
+./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ...
 ```
 
-In this case, 2.32MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 116.41% above the threshold of 2MB.
+In this case, 2.39MB of the available 2MB of physical memory were needed, that is, `mipster` tolerated memory usage of 119.53% above the threshold of 2MB.
 
 > Console arguments of selfie
 
@@ -3478,8 +3509,6 @@ void do_lui() {
 
   uint64_t next_rd_value;
 
-  update_register_counters();
-
   if (rd != REG_ZR) {
     // semantics of lui
     next_rd_value = left_shift(imm, 12);
@@ -3491,13 +3520,15 @@ void do_lui() {
   } else
     nopc_lui = nopc_lui + 1;
 
+  write_register(rd);
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_lui = ic_lui + 1;
 }
 ```
 
-Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The global variables `ic_lui` and `nopc_lui` count the number of times a `lui` instruction has been executed with and without effect, respectively. There are similar variables prefixed `ic_` and `nopc_` for the other instructions as well. Note that the selfie compiler also uses the variables prefixed `ic_` to count how many instructions of each type it generated.
+Most of the code is actually for profiling. Only the lines involving the local variable `next_rd_value` and the global variable `pc` are relevant for the semantics of the instruction. Remember, the `lui` instruction loads the sign-extended immediate value `imm` shifted by 12 bits to the left into register `rd`. The sign extension already happened during decoding. The program counter is represented by `pc` which is incremented by 4 (bytes) to prepare the machine for executing the instruction that follows the `lui` instruction. The global variables `ic_lui` and `nopc_lui` count the number of times a `lui` instruction has been executed with and without effect, respectively. There are similar variables prefixed `ic_` and `nopc_` for the other instructions as well. Note that the selfie compiler also uses the variables prefixed `ic_` to count how many instructions of each type it generated.
 
 For all instructions, there are also procedures prefixed `print_` which are used by the selfie debugger and disassembler for printing instructions. Moreover, the selfie debugger also uses procedures postfixed `_before` and `_after` to print the machine state before and after executing an instruction, respectively. Studying those procedures is recommended to deepen your understanding of the semantics of each instruction. There is also an easy way to invoke the debugger on a simple example, just try:
 
@@ -3584,9 +3615,11 @@ Check out the first appearance of L1 cache profiling data in the output:
 
 ```
 ...
+./selfie: --------------------------------------------------------------------------------
 ./selfie: L1 caches:     accesses,hits,misses
-./selfie: data:          414773558,399182665(96.24%),15590893(3.75%)
-./selfie: instruction:   1059907252,1002146845(94.55%),57760407(5.44%)
+./selfie: data:          442192764,426977522(96.56%),15215242(3.44%)
+./selfie: instruction:   1129138332,1071038499(94.85%),58099833(5.14%)
+./selfie: ################################################################################
 ...
 ```
 
@@ -3675,14 +3708,14 @@ The `-o` option instructs selfie to write the machine code compiled from `selfie
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 81437 executed instructions in total [15.49% nops]
+./selfie: summary: 81425 executed instructions in total [15.50% nops]
 ./selfie:          0.19MB mapped memory [19.53% of 1MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          81437 executed instructions [100.00% share, factor 1.00]
+./selfie:          81425 executed instructions [100.00% share, factor 1.00]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by ./selfie, one every 5429 executed instructions
+./selfie:          15 exceptions handled by ./selfie, one every 5428 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
@@ -3724,14 +3757,14 @@ This *self-executes* `mipster` by running a `mipster` instance, say, `OS` on ano
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 82031 executed instructions in total [15.48% nops]
+> selfie.m: summary: 82019 executed instructions in total [15.48% nops]
 > selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          82031 executed instructions [100.00% share, factor 1.00]
+> selfie.m:          82019 executed instructions [100.00% share, factor 1.00]
 > selfie.m:          0.28KB peak stack size
 > selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-> selfie.m:          15 exceptions handled by > selfie.m, one every 5468 executed instructions
+> selfie.m:          15 exceptions handled by > selfie.m, one every 5467 executed instructions
 > selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 > selfie.m: --------------------------------------------------------------------------------
 ...
@@ -3739,15 +3772,15 @@ This *self-executes* `mipster` by running a `mipster` instance, say, `OS` on ano
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 200953156 executed instructions in total [13.39% nops]
-./selfie:          2.26MB mapped memory [75.52% of 3MB physical memory]
+./selfie: summary: 200980764 executed instructions in total [13.34% nops]
+./selfie:          2.26MB mapped memory [75.39% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          200953156 executed instructions [100.00% share, factor 1.00]
-./selfie:          0.61KB peak stack size
-./selfie:          2.88MB allocated in 32 mallocs (2.07MB or 71.81% actually accessed)
-./selfie:          2596 exceptions handled by ./selfie, one every 77408 executed instructions
-./selfie:          166 syscalls, 530 page faults, 1900 timer interrupts
+./selfie:          200980764 executed instructions [100.00% share, factor 1.00]
+./selfie:          0.67KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
+./selfie:          2593 exceptions handled by ./selfie, one every 77508 executed instructions
+./selfie:          166 syscalls, 529 page faults, 1898 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
@@ -3809,14 +3842,14 @@ The relevant output is:
 >> selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 >> selfie.m: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 >> selfie.m: --------------------------------------------------------------------------------
->> selfie.m: summary: 82625 executed instructions in total [15.49% nops]
+>> selfie.m: summary: 82613 executed instructions in total [15.49% nops]
 >> selfie.m:          0.19MB mapped memory [19.92% of 1MB physical memory]
 >> selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 >> selfie.m: context: >>> selfie.m
->> selfie.m:          82625 executed instructions [100.00% share, factor 1.00]
+>> selfie.m:          82613 executed instructions [100.00% share, factor 1.00]
 >> selfie.m:          0.28KB peak stack size
 >> selfie.m:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
->> selfie.m:          15 exceptions handled by >> selfie.m, one every 5508 executed instructions
+>> selfie.m:          15 exceptions handled by >> selfie.m, one every 5507 executed instructions
 >> selfie.m:          14 syscalls, 1 page faults, 0 timer interrupts
 >> selfie.m: --------------------------------------------------------------------------------
 ...
@@ -3824,33 +3857,33 @@ The relevant output is:
 > selfie.m: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 > selfie.m: 64-bit hypster terminating 64-bit RISC-U binary selfie.m with exit code 0
 > selfie.m: --------------------------------------------------------------------------------
-> selfie.m: summary: 2.27MB mapped memory [75.91% of 3MB physical memory]
+> selfie.m: summary: 2.27MB mapped memory [75.78% of 3MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          2610 exceptions handled by > selfie.m
-> selfie.m:          166 syscalls, 530 page faults, 1914 timer interrupts
+> selfie.m:          2607 exceptions handled by > selfie.m
+> selfie.m:          166 syscalls, 529 page faults, 1912 timer interrupts
 > selfie.m: ################################################################################
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 241737345 executed instructions in total [13.84% nops]
-./selfie:          3.23MB mapped memory [80.76% of 4MB physical memory]
+./selfie: summary: 241719900 executed instructions in total [13.75% nops]
+./selfie:          3.22MB mapped memory [80.66% of 4MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          202239596 executed instructions [83.66% share, factor 1.19]
-./selfie:          0.59KB peak stack size
-./selfie:          2.88MB allocated in 32 mallocs (2.07MB or 71.81% actually accessed)
-./selfie:          2610 exceptions handled by > selfie.m, one every 77486 executed instructions
-./selfie:          166 syscalls, 530 page faults, 1914 timer interrupts
+./selfie:          202267404 executed instructions [83.68% share, factor 1.19]
+./selfie:          0.70KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (2.06MB or 71.78% actually accessed)
+./selfie:          2607 exceptions handled by > selfie.m, one every 77586 executed instructions
+./selfie:          166 syscalls, 529 page faults, 1912 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          39497749 executed instructions [16.33% share, factor 6.12]
-./selfie:          2610 exceptions handled by 15133 instructions each [19.53% overhead, factor 1.19]
+./selfie:          39452496 executed instructions [16.32% share, factor 6.12]
+./selfie:          2607 exceptions handled by 15133 instructions each [19.50% overhead, factor 1.19]
 ./selfie:          0.73KB peak stack size
-./selfie:          5.04MB allocated in 36 mallocs (3.01MB or 59.78% actually accessed)
-./selfie:          1321 exceptions handled by ./selfie, one every 29899 executed instructions
-./selfie:          197 syscalls, 773 page faults, 351 timer interrupts
+./selfie:          5.04MB allocated in 36 mallocs (3.01MB or 59.75% actually accessed)
+./selfie:          1319 exceptions handled by ./selfie, one every 29910 executed instructions
+./selfie:          197 syscalls, 772 page faults, 350 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
