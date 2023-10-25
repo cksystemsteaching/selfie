@@ -6374,23 +6374,23 @@ The relevant output is:
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 16094187 executed instructions in total [15.10% nops]
+./selfie: summary: 16144075 executed instructions in total [14.87% nops]
 ./selfie:          0.98MB mapped memory [49.21% of 2MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          82031 executed instructions [0.50% share, factor 196.19]
+./selfie:          82019 executed instructions [0.50% share, factor 196.83]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by > selfie.m, one every 5468 executed instructions
+./selfie:          15 exceptions handled by > selfie.m, one every 5467 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          16012156 executed instructions [99.49% share, factor 1.00]
-./selfie:          15 exceptions handled by 1067477 instructions each [19519.64% overhead, factor 196.19]
-./selfie:          0.57KB peak stack size
-./selfie:          2.88MB allocated in 32 mallocs (0.78MB or 27.10% actually accessed)
-./selfie:          399 exceptions handled by ./selfie, one every 40130 executed instructions
-./selfie:          65 syscalls, 200 page faults, 134 timer interrupts
+./selfie:          16062056 executed instructions [99.49% share, factor 1.00]
+./selfie:          15 exceptions handled by 1070803 instructions each [19583.33% overhead, factor 196.83]
+./selfie:          0.55KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (0.78MB or 27.13% actually accessed)
+./selfie:          398 exceptions handled by ./selfie, one every 40356 executed instructions
+./selfie:          65 syscalls, 200 page faults, 133 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
@@ -6439,38 +6439,38 @@ The relevant output is:
 > selfie.m: summary: 0.98MB mapped memory [49.02% of 2MB physical memory]
 > selfie.m: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 > selfie.m: context: >> selfie.m
-> selfie.m:          400 exceptions handled by > selfie.m
-> selfie.m:          65 syscalls, 200 page faults, 135 timer interrupts
+> selfie.m:          399 exceptions handled by > selfie.m
+> selfie.m:          65 syscalls, 200 page faults, 134 timer interrupts
 > selfie.m: ################################################################################
 
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 54516352 executed instructions in total [15.79% nops]
+./selfie: summary: 54581784 executed instructions in total [15.52% nops]
 ./selfie:          1.94MB mapped memory [64.84% of 3MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >>> selfie.m
-./selfie:          82625 executed instructions [0.15% share, factor 659.80]
+./selfie:          82613 executed instructions [0.15% share, factor 660.69]
 ./selfie:          0.28KB peak stack size
 ./selfie:          0.00MB allocated in 8 mallocs (0.00MB or 100.00% actually accessed)
-./selfie:          15 exceptions handled by >> selfie.m, one every 5508 executed instructions
+./selfie:          15 exceptions handled by >> selfie.m, one every 5507 executed instructions
 ./selfie:          14 syscalls, 1 page faults, 0 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          16024913 executed instructions [29.39% share, factor 3.40]
-./selfie:          15 exceptions handled by 1068327 instructions each [19394.75% overhead, factor 194.94]
-./selfie:          0.57KB peak stack size
-./selfie:          2.88MB allocated in 32 mallocs (0.78MB or 27.10% actually accessed)
-./selfie:          400 exceptions handled by > selfie.m, one every 40062 executed instructions
-./selfie:          65 syscalls, 200 page faults, 135 timer interrupts
+./selfie:          16074813 executed instructions [29.45% share, factor 3.39]
+./selfie:          15 exceptions handled by 1071654 instructions each [19457.97% overhead, factor 195.57]
+./selfie:          0.55KB peak stack size
+./selfie:          2.87MB allocated in 32 mallocs (0.78MB or 27.13% actually accessed)
+./selfie:          399 exceptions handled by > selfie.m, one every 40287 executed instructions
+./selfie:          65 syscalls, 200 page faults, 134 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          38408814 executed instructions [70.45% share, factor 1.41]
-./selfie:          400 exceptions handled by 96022 instructions each [239.68% overhead, factor 3.39]
+./selfie:          38424358 executed instructions [70.40% share, factor 1.42]
+./selfie:          399 exceptions handled by 96301 instructions each [239.03% overhead, factor 3.39]
 ./selfie:          0.73KB peak stack size
-./selfie:          3.04MB allocated in 34 mallocs (1.73MB or 56.72% actually accessed)
-./selfie:          888 exceptions handled by ./selfie, one every 43253 executed instructions
-./selfie:          94 syscalls, 443 page faults, 351 timer interrupts
+./selfie:          3.04MB allocated in 34 mallocs (1.73MB or 56.79% actually accessed)
+./selfie:          887 exceptions handled by ./selfie, one every 43319 executed instructions
+./selfie:          94 syscalls, 443 page faults, 350 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
@@ -6522,28 +6522,28 @@ The relevant output is:
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 1952472112 executed instructions in total [17.20% nops]
-./selfie:          3.37MB mapped memory [84.47% of 4MB physical memory]
+./selfie: summary: 1946980891 executed instructions in total [17.11% nops]
+./selfie:          3.36MB mapped memory [84.18% of 4MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> selfie.m
-./selfie:          1132270240 executed instructions [57.99% share, factor 1.72]
+./selfie:          1129157370 executed instructions [57.99% share, factor 1.72]
 ./selfie:          2.35KB peak stack size
-./selfie:          3.28MB allocated in 24691 mallocs (2.21MB or 67.34% actually accessed)
-./selfie:          472825 exceptions handled by > selfie.m, one every 2394 executed instructions
-./selfie:          472250 syscalls, 567 page faults, 8 timer interrupts
+./selfie:          3.27MB allocated in 24562 mallocs (2.20MB or 67.14% actually accessed)
+./selfie:          471439 exceptions handled by > selfie.m, one every 2395 executed instructions
+./selfie:          470867 syscalls, 564 page faults, 8 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          820201872 executed instructions [42.00% share, factor 2.38]
-./selfie:          472825 exceptions handled by 1734 instructions each [72.44% overhead, factor 1.72]
+./selfie:          817823521 executed instructions [42.00% share, factor 2.38]
+./selfie:          471439 exceptions handled by 1734 instructions each [72.43% overhead, factor 1.72]
 ./selfie:          0.80KB peak stack size
-./selfie:          5.04MB allocated in 36 mallocs (3.16MB or 62.72% actually accessed)
-./selfie:          448766 exceptions handled by ./selfie, one every 1827 executed instructions
-./selfie:          447622 syscalls, 811 page faults, 333 timer interrupts
+./selfie:          5.04MB allocated in 36 mallocs (3.15MB or 62.53% actually accessed)
+./selfie:          447508 exceptions handled by ./selfie, one every 1827 executed instructions
+./selfie:          446368 syscalls, 808 page faults, 332 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
 ```
 
-Just self-compiling selfie without the overhead for `OS` takes `HW` executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 472k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *system calls*, or *syscalls* for short, which are invoked when executing `ecall` instructions. Therefore, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. Here, an exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, `OS` handles all exceptions thrown while self-compiling selfie on `OS` (see context `> selfie.m`), which takes executing around 0.8 billion instructions for `OS` and thus around 1.7k instructions per exception. This results in an overhead of around 72% over just self-compiling selfie on `HW`, that is, a slowdown by a factor of around 1.7 in this case.
+Just self-compiling selfie without the overhead for `OS` takes `HW` executing around 1.1 billion instructions (see context `>> selfie.m`). However, doing so *throws* around 471k *exceptions*, on average one every 2.4k executed instructions, of which the majority is caused by *system calls*, or *syscalls* for short, which are invoked when executing `ecall` instructions. Therefore, after executing around 2.4k instructions on average that are not `ecall` instructions, an `ecall` instruction is executed. Here, an exception is essentially a mechanism to divert control of the processor to operating system code for handling the situation, such as executing the code invoked by an `ecall` instruction. The details are not important here. In our case, `OS` handles all exceptions thrown while self-compiling selfie on `OS` (see context `> selfie.m`), which takes executing around 0.8 billion instructions for `OS` and thus around 1.7k instructions per exception. This results in an overhead of around 72% over just self-compiling selfie on `HW`, that is, a slowdown by a factor of around 1.7 in this case.
 
 However, most of what `OS` does is something that needs to be done anyway such as reading input, writing output, and managing memory. Only a fraction of the 1.7k instructions executed per exception is done for context switching. How much exactly is difficult to measure. But what we can say is that self-compiling selfie on `OS` throws on average one exception every 2.4k instructions executed. If we would like to stay below, say, 10% overhead for context switching, we have around 240 instructions to do that. Not bad. Modern operating systems and virtual machine monitors can do that. How about selfie? Let us do an experiment. Consider the following program called `overhead.c` located in the `examples` folder of the selfie repository:
 
@@ -6571,7 +6571,7 @@ It takes a few minutes for the experiment to finish, so just wait for it. The re
 ./selfie: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ./selfie: 64-bit mipster terminating 64-bit RISC-U binary selfie.m with exit code 0
 ./selfie: --------------------------------------------------------------------------------
-./selfie: summary: 10022679575 executed instructions in total [19.99% nops]
+./selfie: summary: 10022679395 executed instructions in total [19.99% nops]
 ./selfie:          0.83MB mapped memory [41.60% of 2MB physical memory]
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: >> examples/overhead.c
@@ -6582,11 +6582,11 @@ It takes a few minutes for the experiment to finish, so just wait for it. The re
 ./selfie:          3 syscalls, 0 page faults, 100001 timer interrupts
 ./selfie: ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ./selfie: context: > selfie.m
-./selfie:          22679530 executed instructions [0.22% share, factor 441.92]
+./selfie:          22679350 executed instructions [0.22% share, factor 441.92]
 ./selfie:          100004 exceptions handled by 226 instructions each [0.22% overhead, factor 1.00]
 ./selfie:          0.76KB peak stack size
 ./selfie:          3.22MB allocated in 70 mallocs (0.62MB or 19.49% actually accessed)
-./selfie:          509 exceptions handled by ./selfie, one every 44557 executed instructions
+./selfie:          509 exceptions handled by ./selfie, one every 44556 executed instructions
 ./selfie:          347 syscalls, 161 page faults, 1 timer interrupts
 ./selfie: --------------------------------------------------------------------------------
 ...
