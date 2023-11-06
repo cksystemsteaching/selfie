@@ -6730,6 +6730,8 @@ Translating 32-bit virtual to physical addresses involves replacing the 20-bit p
 
 Paging allows mapping individual pages to individual frames anywhere in physical memory. The order in which frames appear in physical memory is irrelevant. Moreover, there is no external fragmentation among frames in physical memory since they are all the same size. Thus any choice of frames is as good as any other. In selfie, the procedure that allocates frames is called `palloc` which implements a simple bump pointer allocator over the available physical memory. There is also a procedure called `pfree` which we nevertheless left empty to have room for future exercises. So, for now allocated frames are never deallocated in selfie.
 
+![Page Table](figures/page-table.png "Page Table")
+
 > Page table
 
 Well, but there are roughly a million 4KB-pages in just one 32-bit virtual address space. Mapping all of them requires a data structure commonly called a *page table* that can hold up to `2^20` frame numbers. In particular, each *page table entry* (PTE) of a page table must be able to store a 20-bit frame number, and a total of `2^20` PTEs are needed. The actual number of bits needed to identify a frame depends on the size of physical memory available for paging. However, in selfie, we simply dedicate a full machine word of 64 or 32 bits to each frame number, thus requiring 8 or 4 bytes per PTE, depending on whether selfie runs on a 64-bit or 32-bit system, respectively. So, how many bytes are needed in total for a page table? Easy. On a 64-bit system, `2^20` PTEs with 8 or `2^3` bytes per PTE, the total is `2^23` bytes or 8MB. On a 32-bit system, the total is 4MB. Not so bad, but still quite a bit.
@@ -6745,6 +6747,8 @@ Modern systems may implement on-demand paging for all segments of virtual memory
 > Spatial locality
 
 Many programs exhibit spatial locality in the sense that they tend to focus on accessing memory only in specific areas before moving on to focus on accessing memory in other areas. In particular, code tends to focus on executing instructions that are located close to each other in the code segment. Moreover, code tends to focus on accessing data that is located close to each other, at least in the heap and stack segments. The choice of 4KB-pages turns out to be a sweet spot in size that keeps the number of page faults occurring in fast succession low. A translation lookaside buffer leverages spatial locality by caching page table entries for faster address translation, combined with instruction and data caches that leverage locality by caching actual memory content for overall faster memory access. Larger page sizes may improve performance even more but may also introduce more internal fragmentation.
+
+![Paging Page Tables](figures/paging-page-tables.png "Paging Page Tables")
 
 > Paging page tables
 
