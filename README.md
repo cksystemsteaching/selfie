@@ -10,7 +10,7 @@ The programming language C\* in which selfie is written is a tiny subset of the 
 
 #### License
 
-<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-nd/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License</a>.
+<a rel="license" href="creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="i.creativecommons.org/l/by-nc-nd/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License</a>.
 
 ## Table of Content
 
@@ -99,7 +99,7 @@ Think of this book as an introduction to *elementary computer science* similar t
 
 While a book about elementary computer science may sound appealing it actually requires commitment to understand the material even though we tried very hard to simplify everything as much as possible. The reason is that computers and software are so expressive that it is unlikely that any other computational machine in the future will be more expressive. Anything that can be computed can be computed now, provided you have enough time, space (as in memory), and energy. That power comes with a level of complexity that is unavoidable but a lot of fun to explore. Computer science is challenging like other natural sciences. In order to study and understand it you cannot just look at software or hardware and get it. No, its true nature is too complex for that. You need tools to see what is going on, like a microscope, except that here the microscope is a particular way to think!
 
-This book is based on the [Selfie Project](https://selfie.cs.uni-salzburg.at), an educational software system that has grown out of many years of teaching undergraduate and graduate classes in computer science. The key observation is that understanding computer science and software in particular can only be achieved by understanding how software translates all the way down to the machine and then does whatever we want it to do. Selfie shows how this works which may sound difficult but can actually be done in a systematic and well-founded fashion with a strong focus on basic principles. Understanding selfie gives you the microscope you need to understand elementary computer science.
+This book is based on the [Selfie Project](selfie.cs.uni-salzburg.at), an educational software system that has grown out of many years of teaching undergraduate and graduate classes in computer science. The key observation is that understanding computer science and software in particular can only be achieved by understanding how software translates all the way down to the machine and then does whatever we want it to do. Selfie shows how this works which may sound difficult but can actually be done in a systematic and well-founded fashion with a strong focus on basic principles. Understanding selfie gives you the microscope you need to understand elementary computer science.
 
 Selfie is *self-referential* software that translates software including *itself* to code that can be *run* or, as computer scientists say, *executed* by a computer. Selfie can even mimic the very computer that can execute the code of selfie. This means selfie cannot only translate itself but also execute its own translation to translate itself again and so on. By now your mind might be spinning but you at least know why selfie is called selfie.
 
@@ -161,7 +161,7 @@ For this purpose we have developed a software system called selfie that integrat
 
 In order to interact with selfie effectively and, more importantly, with joy, we ask you to do something that is already quite scary for many students, even though it is similar to using a chat app, just not for chatting with people but with a machine. In short, you need to learn how to use a *terminal* app. Most laptops have a terminal app pre-installed already but even if yours does not, you do not have to install one but just use a terminal in your web browser, which is in fact the easiest way to get access. The homepage of selfie tells you all about how to get started, just go to:
 
-[https://github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
+[github.com/cksystemsteaching/selfie](github.com/cksystemsteaching/selfie)
 
 Once you have a terminal with selfie up and running in a directory called, say, `selfie`, type in the terminal (also called *console*):
 
@@ -303,7 +303,7 @@ Most importantly, take your time! We go through almost every detail and motivate
 
 C\* is a tiny subset of the programming language C. In a nutshell, for readers familiar with basic programming language terminology, C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`) operators over variables and procedure calls as well as integer, character, and string literals. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*` (`int` is bootstrapped to `uint64_t`), bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 7 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored. For more information see:
 
-[https://github.com/cksystemsteaching/selfie/blob/main/grammar.md](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)
+[github.com/cksystemsteaching/selfie/blob/main/grammar.md](github.com/cksystemsteaching/selfie/blob/main/grammar.md)
 
 The following example is C\* code that implements a simple *numerical function* in a *procedure* called `double` for calculating the doubled value of a given *whole number* or *integer* represented by a *formal parameter* `n`:
 
@@ -1076,7 +1076,7 @@ This book is seminal work introducing the programming language C. It is a must h
 
 > Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
 
-This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model ([RISC-V](https://riscv.org)) we introduce in the machine chapter and use throughout the book.
+This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model ([RISC-V](riscv.org)) we introduce in the machine chapter and use throughout the book.
 
 > Foundations of Computer Science by Alfred V. Aho and Jeffrey D. Ullman
 
@@ -1939,9 +1939,9 @@ Below is a summary of the relevant prefixes. We include kilobits et cetera for l
 
 | Unit | Prefix |
 | ---- | ------ |
-| byte (B) | 1 [kilobyte](https://en.wikipedia.org/wiki/Kilobyte "Kilobyte") (kB) = 1000B = 10^3^B, 1 megabyte (MB) = 10^6^B, 1 gigabyte (GB) = 10^9^B, 1 terabyte (TB) = 10^12^B, ... |
-| byte (B) | 1 [kibibyte](https://en.wikipedia.org/wiki/Kibibyte "Kibibyte") (KB,KiB) = 1024B = 2^10^B, 1 mebibyte (MB,MiB) = 2^20^B, 1 gibibyte (GB,GiB) = 2^30^B, 1 tebibyte (TB,TiB) = 2^40^B, ... |
-| bit (b)  | 1 [kilobit](https://en.wikipedia.org/wiki/Kilobit "Kilobit") (kb) = 1000b = 10^3^b, 1 megabit (mb) = 10^6^b, 1 gigabit (gb) = 10^9^b, 1 terabit (tb) = 10^12^b, ... |
+| byte (B) | 1 [kilobyte](en.wikipedia.org/wiki/Kilobyte "Kilobyte") (kB) = 1000B = 10^3^B, 1 megabyte (MB) = 10^6^B, 1 gigabyte (GB) = 10^9^B, 1 terabyte (TB) = 10^12^B, ... |
+| byte (B) | 1 [kibibyte](en.wikipedia.org/wiki/Kibibyte "Kibibyte") (KB,KiB) = 1024B = 2^10^B, 1 mebibyte (MB,MiB) = 2^20^B, 1 gibibyte (GB,GiB) = 2^30^B, 1 tebibyte (TB,TiB) = 2^40^B, ... |
+| bit (b)  | 1 [kilobit](en.wikipedia.org/wiki/Kilobit "Kilobit") (kb) = 1000b = 10^3^b, 1 megabit (mb) = 10^6^b, 1 gigabit (gb) = 10^9^b, 1 terabit (tb) = 10^12^b, ... |
 
 So, by now we know how storage is measured but how about address spaces? Why not simply do the same? After all, there are as many addresses as there are bytes in byte-addressed memory. The reason why they are measured differently is because address spaces do not cost anything. They are free whereas storage is not. However, addresses are not free since addresses need to be encoded and stored! The size of an address space is thus measured in the number of bits necessary to encode the highest address in binary.
 
@@ -2111,8 +2111,8 @@ The key difference between video and *still* images is that video is *streaming 
 
 | Unit                   | Prefix |
 | ---------------------- | ------ |
-[ bits per second (bps)  | 1 [kilobit per second](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units") (kbps) = 1000bps = 10^3^bps, 1 megabit per second (mbps) = 10^6^bps, 1 gigabit per second (gbps) = 10^9^bps, 1 terabit per second (tbps) = 10^12^bps, ... |
-[ bytes per second (B/s) | 1 [kilobyte per second](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units") = 1000B/s = 10^3^B/s, 1 megabyte per second (MB/s) = 10^6^B/s, 1 gigabyte per second (GB/s) = 10^9^B/s, 1 terabyte per second (TB/s) = 10^12^B/s, ... |
+[ bits per second (bps)  | 1 [kilobit per second](en.wikipedia.org/wiki/Data_rate_units "Data Rate Units") (kbps) = 1000bps = 10^3^bps, 1 megabit per second (mbps) = 10^6^bps, 1 gigabit per second (gbps) = 10^9^bps, 1 terabit per second (tbps) = 10^12^bps, ... |
+[ bytes per second (B/s) | 1 [kilobyte per second](en.wikipedia.org/wiki/Data_rate_units "Data Rate Units") = 1000B/s = 10^3^B/s, 1 megabyte per second (MB/s) = 10^6^B/s, 1 gigabyte per second (GB/s) = 10^9^B/s, 1 terabyte per second (TB/s) = 10^12^B/s, ... |
 
 Suppose we need to handle a 1-hour uncompressed video in 4K resolution with a 24-bit color depth and a frame rate of 30fps. What is the size and what is the bit rate of that video? Easy. One hour is 60\*60 seconds and the number of bytes per frame is 4096\*2160\*3. At 30fps we therefore need to store 60\*60\*30\*4096\*2160\*3 bytes which is around 2.6TB! To get to the unit of TB, just divide the number of bytes by 1TB which is 2^40^B. For calculating the bit rate, we need the number of bits per frame which is 4096\*2160\*24. Again, at 30fps, we thus need to handle 4096\*2160\*24\*30 bits per second which is around 5.9gbps! This is in fact the rate at which bits need to be handled when showing them as pixels on your 4K screen.
 
@@ -2130,7 +2130,7 @@ So, how often do we have to take a sample? In other words, the question is what 
 
 | Unit              | Prefix |
 | ----------------- | ------ |
-| cycles per second ([Hertz,Hz](https://en.wikipedia.org/wiki/Hertz "Hertz"))                   | 1 kilohertz (kHz) = 1000Hz = 10^3^Hz, 1 megahertz (MHz) = 10^6^Hz, 1 gigahertz (GHz) = 10^9^Hz, ... |
+| cycles per second ([Hertz,Hz](en.wikipedia.org/wiki/Hertz "Hertz"))                   | 1 kilohertz (kHz) = 1000Hz = 10^3^Hz, 1 megahertz (MHz) = 10^6^Hz, 1 gigahertz (GHz) = 10^9^Hz, ... |
 
 According to the famous *Nyquist-Shannon sampling theorem*, we need to sample at twice the rate of the highest frequency we would like to capture in order to be able to reconstruct that frequency and all lower frequencies from our samples without any loss of information. So, it is 40kHz then. Well, for legacy reasons, the slightly higher frequency of 44.1kHz was chosen for Audio CDs, for example, and subsequently for audio formats such as MP3 as well.
 
@@ -2345,7 +2345,7 @@ Given the rates at which bits arrive and are processed and the latency until pro
 
 | Unit       | Prefix |
 | ---------- | ------ |
-| second (s) | 1 [millisecond](https://en.wikipedia.org/wiki/Millisecond "Millisecond") (ms) = 0.001s = 10^-3^s, 1 microsecond (us) = 0.000001s = 10^-6^s, 1 nanosecond (ns) = 0.000000001s = 10^-9^s, ... |
+| second (s) | 1 [millisecond](en.wikipedia.org/wiki/Millisecond "Millisecond") (ms) = 0.001s = 10^-3^s, 1 microsecond (us) = 0.000001s = 10^-6^s, 1 nanosecond (ns) = 0.000000001s = 10^-9^s, ... |
 
 On a more abstract level, the I/O challenge is that Alice and the White Rabbit are two separate entities, just like you and your computer, that would like to communicate but are on their own, independent timelines, that is, operate at their own, individual speed (bit rates) and have no way of anticipating communication (latency). Even if we have both agree on a time when to communicate and use synchronized clocks, and there are systems that do that, the problem remains, just on a smaller timescale, because of clock drift. It is a fundamental issue that is yet another fascinating research topic in computer science but clearly beyond what we intend to do here.
 
@@ -3348,9 +3348,9 @@ Well, it is time to celebrate. By now, you have all the information necessary to
 
 RISC-U code including selfie runs on actual RISC-V hardware. If you are interested in seeing how, check out:
 
-[https://github.com/cksystemsteaching/selfie/tree/main/machine](https://github.com/cksystemsteaching/selfie/tree/main/machine)
+[github.com/cksystemsteaching/selfie/tree/main/machine](github.com/cksystemsteaching/selfie/tree/main/machine)
 
-Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that mimics actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](https://www.qemu.org). By the way, the difference between *emulation* and *simulation* is important. Emulation *reproduces* exact functionality (but not performance) whereas simulation *approximates* behavior. Both methods are usually slower than the real thing but there are ways to make them faster. For example, an emulator typically uses interpretation, which is slow, but can also use compilation by translating at least parts of the code to machine code that can run directly on the machine without interpretation (in software). QEMU does that. In any case, it is impossible for any code to know if it is running on hardware or an emulator, assuming hardware and emulator are sound, and the code has no way of checking the progress of real time.
+Well, most of us do not have access to RISC-V hardware, at least not yet. We can nevertheless run RISC-U code using an *emulator* which is software that mimics actual hardware. For example, RISC-U code including selfie runs on the popular emulator [QEMU](www.qemu.org). By the way, the difference between *emulation* and *simulation* is important. Emulation *reproduces* exact functionality (but not performance) whereas simulation *approximates* behavior. Both methods are usually slower than the real thing but there are ways to make them faster. For example, an emulator typically uses interpretation, which is slow, but can also use compilation by translating at least parts of the code to machine code that can run directly on the machine without interpretation (in software). QEMU does that. In any case, it is impossible for any code to know if it is running on hardware or an emulator, assuming hardware and emulator are sound, and the code has no way of checking the progress of real time.
 
 > RISC-U emulation with `mipster`
 
@@ -3576,11 +3576,11 @@ While reporting execution time and memory consumption in seconds and bytes, resp
 
 | Performance | Unit |
 | ----------- | ---- |
-| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
-|             | floating-point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
-| frequency   | processor cycles per second ([Hertz,Hz](https://en.wikipedia.org/wiki/Hertz "Hertz")) |
-| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
-| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
+| throughput  | million instructions per second ([MIPS](en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
+|             | floating-point operations per second ([FLOPS](en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+| frequency   | processor cycles per second ([Hertz,Hz](en.wikipedia.org/wiki/Hertz "Hertz")) |
+| energy      | [joule](en.wikipedia.org/wiki/Joule "Joule") |
+| power       | joule/second ([watt](en.wikipedia.org/wiki/Watt "Watt")) |
 | efficiency  | operations/joule, MIPS/watt, FLOPS/watt |
 
 Intuitively, *throughput* refers to an amount of work done per second, whatever that work might be. For example, instruction throughput refers to the number of instructions a processor can execute per second. MIPS is a popular metric for that, and not to be confused with the MIPS ISA. The problem is that different instructions and even the same instruction may take different time to execute, the latter depending on the machine context in which it executes. FLOPS are an attempt to address that issue by focusing on a subset of instructions such as special instructions for floating-point arithmetic.
@@ -3589,7 +3589,7 @@ We could also just state processor speed in terms of the frequency at which the 
 
 > Time versus space versus energy
 
-When it comes to performance, [there is no such thing as a free lunch](https://en.wikipedia.org/wiki/There_ain't_no_such_thing_as_a_free_lunch) in computer science, just like in other disciplines. Making something faster usually takes more energy and possibly more memory as well as more code and circuit complexity too. Nowadays, hardware design often begins with a power budget that dictates all other decisions. For mobile devices this means that everything is designed around the battery. Even software design cannot ignore memory and in particular power consumption anymore. The important lesson to learn here is to be cautious with any performance improvements without knowing the price we pay. For example, improvements in processor speed have resulted in increased complexity to an extent that correctness is extremely hard to establish, sometimes causing even safety and security issues in hardware, and not just in software.
+When it comes to performance, [there is no such thing as a free lunch](en.wikipedia.org/wiki/There_ain't_no_such_thing_as_a_free_lunch) in computer science, just like in other disciplines. Making something faster usually takes more energy and possibly more memory as well as more code and circuit complexity too. Nowadays, hardware design often begins with a power budget that dictates all other decisions. For mobile devices this means that everything is designed around the battery. Even software design cannot ignore memory and in particular power consumption anymore. The important lesson to learn here is to be cautious with any performance improvements without knowing the price we pay. For example, improvements in processor speed have resulted in increased complexity to an extent that correctness is extremely hard to establish, sometimes causing even safety and security issues in hardware, and not just in software.
 
 > Caches
 
@@ -3938,7 +3938,7 @@ And this is where the next chapter comes in. Coding in machine code is tedious a
 
 > Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
 
-We already mentioned this book but since it fits here as well we recommend it again. This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model ([RISC-V](https://riscv.org)) behind our RISC-U model.
+We already mentioned this book but since it fits here as well we recommend it again. This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model ([RISC-V](riscv.org)) behind our RISC-U model.
 
 > Introduction to Algorithms by Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein
 
