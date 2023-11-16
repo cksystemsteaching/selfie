@@ -25,7 +25,7 @@ on selfie. It also enables teachers bulk grading students' Git repositories.
 
 The autograder is part of the Selfie Project of the Computational Systems Group
 at the Department of Computer Sciences of the University of Salzburg in Austria,
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 For more detailed information about its usage, please consult the README.
 '''

@@ -7,7 +7,7 @@ Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
 in Austria. For further information and code please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 Monster is a hybrid symbolic execution and bounded model checking
 engine that implements a sound and (up to a given bound) complete

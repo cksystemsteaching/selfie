@@ -7,7 +7,7 @@ Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
 in Austria. For further information please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 The Selfie Project provides an educational platform for teaching
 undergraduate and graduate students the design and implementation
@@ -80,7 +80,7 @@ is inspired by the conservative garbage collector of Hans Boehm.
 
 All of selfie including its source code is available at:
 
-https://github.com/cksystemsteaching/selfie
+github.com/cksystemsteaching/selfie
 
 */
 
@@ -2184,7 +2184,7 @@ void gc_init(uint64_t* context);
 
 // this function performs first-fit retrieval of free memory in O(n) where n is memory size
 // improvement: push O(n) down to O(1), e.g. using Boehm's chunk allocator, or even compact-fit
-// see https://github.com/cksystemsgroup/compact-fit
+// see github.com/cksystemsgroup/compact-fit
 uint64_t* retrieve_from_free_list(uint64_t* context, uint64_t size);
 
 uint64_t gc_load_memory(uint64_t* context, uint64_t address);
@@ -7925,7 +7925,7 @@ void implement_brk(uint64_t* context) {
 
 uint64_t is_boot_level_zero() {
   // C99 malloc(0) returns either a null pointer or a unique pointer,
-  // see http://pubs.opengroup.org/onlinepubs/9699919799
+  // see pubs.opengroup.org/onlinepubs/9699919799
   // in contrast, selfie's malloc(0) returns the same not null address,
   // if malloc(0) is called consecutively.
   uint64_t first_malloc;

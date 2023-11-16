@@ -1,6 +1,6 @@
 # The Selfie Autograder
 
-[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features [compiler](../assignments/compiler-assignments.md) and [systems](../assignments/systems-assignments.md) assignments, located in the [assignments](assignments) subdirectory. The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
+[Selfie](selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features [compiler](../assignments/compiler-assignments.md) and [systems](../assignments/systems-assignments.md) assignments, located in the [assignments](assignments) subdirectory. The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
 
 In order to use the autograder [install](../README.md) selfie first.
 
@@ -39,7 +39,7 @@ If you subsequently invoke the autograder in bulk mode on `student-repos` again,
 
 ## Submitting Solutions for Grading
 
-Solutions of assignments must be submitted as git commit links to a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](https://github.com/ckirsch) and the teaching assistant.
+Solutions of assignments must be submitted as git commit links to a private clone of the selfie repository hosted on GitHub and exclusively shared with your teacher such as the GitHub user [ckirsch](github.com/ckirsch) and the teaching assistant.
 
 ### Creating a private clone of selfie
 
@@ -47,17 +47,17 @@ First [install](../README.md) selfie either in the cloud or locally on your mach
 
 Then, on the web:
 
-1. Create an account on [github.com](https://github.com) unless you already have one.
-2. [Set up SSH-key authentication for GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh) if you haven't done it yet.
-3. Create a [new](https://github.com/new), empty repository, name it `myselfie`, and set it to private.
-4. Invite your teacher, for example, the GitHub user [ckirsch](https://github.com/ckirsch), to the repository as your only collaborator.
+1. Create an account on [github.com](github.com) unless you already have one.
+2. [Set up SSH-key authentication for GitHub](docs.github.com/en/authentication/connecting-to-github-with-ssh) if you haven't done it yet.
+3. Create a [new](github.com/new), empty repository, name it `myselfie`, and set it to private.
+4. Invite your teacher, for example, the GitHub user [ckirsch](github.com/ckirsch), to the repository as your only collaborator.
 
 And then, in a terminal where your selfie installation is:
 
-1. Change directory to the root directory of your selfie installation (from https://github.com/cksystemsteaching/selfie).
+1. Change directory to the root directory of your selfie installation (from github.com/cksystemsteaching/selfie).
 2. Change the `origin` remote name to `upstream`: `git remote rename origin upstream`
 3. Add your `myselfie` repository on GitHub as `origin`: `git remote add origin git@github.com:<yourusername>/myselfie.git`
-4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](https://repl.it))
+4. Update your installation from `upstream`: `git fetch upstream` (or, initially `git fetch --unshallow upstream` if you are on [repl.it](repl.it))
 5. Mirror your installation to your `myselfie` repository on GitHub: `git push --mirror origin`
 6. Set up the main branch of your installation to push to your `myselfie` repository: `git branch --set-upstream-to=origin/main main`
 
@@ -68,7 +68,7 @@ Your selfie installation as well as your `myselfie` repository on GitHub are suc
 Update your selfie installation to the latest version of the official selfie repository:
 
 1. Change directory to the root directory of your selfie installation.
-2. Make sure that the official selfie repository is set as `upstream`: `git remote add upstream https://github.com/cksystemsteaching/selfie.git`
+2. Make sure that the official selfie repository is set as `upstream`: `git remote add upstream github.com/cksystemsteaching/selfie.git`
 3. Fetch the latest commits from the official selfie repository (`upstream`): `git fetch upstream main`
 4. Make sure the main branch of your selfie installation is checked out: `git checkout main`
 5. Merge the updated main branch of the official selfie repository into your main branch: `git merge upstream/main`
@@ -87,7 +87,7 @@ Create a development branch in your selfie installation and work on your solutio
 2. Make sure the main branch in your selfie installation is checked out: `git checkout main`
 3. Create the development branch off the main branch and check it out: `git checkout -b <developmentbranch>`
 4. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
-5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](https://github.com/cksystemsteaching/selfie/actions) on the next push.
+5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](github.com/cksystemsteaching/selfie/actions) on the next push.
 6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin <developmentbranch>`
 7. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
 8. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
@@ -110,7 +110,7 @@ Finally, on the web:
 With your solution committed into the main branch of your `myselfie` repository on GibHub in accordance to the above instructions:
 
 1. Go to your `myselfie` repository on GitHub in a browser and click on the `Latest commit` link.
-2. Copy the link and make sure that the link is in the form `https://github.com/<yourusername>/myselfie/commit/<commithash>`.
+2. Copy the link and make sure that the link is in the form `github.com/<yourusername>/myselfie/commit/<commithash>`.
 3. Submit the link along with the grade reported by the autograder to your teacher as discussed in class.
 
 If the autograder reports grade 2, you may submit grade 1 provided that, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.

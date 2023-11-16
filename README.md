@@ -1,52 +1,52 @@
-# Selfie [![selfie](https://github.com/cksystemsteaching/selfie/actions/workflows/selfie.yml/badge.svg)](https://github.com/cksystemsteaching/selfie/actions) [![Run on Repl.it](https://replit.com/badge/github/cksystemsteaching/selfie)](https://replit.com/new/github/cksystemsteaching/selfie)
+# Selfie [![selfie](github.com/cksystemsteaching/selfie/actions/workflows/selfie.yml/badge.svg)](github.com/cksystemsteaching/selfie/actions) [![Run on Repl.it](replit.com/badge/github/cksystemsteaching/selfie)](replit.com/new/github/cksystemsteaching/selfie)
 
-Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
+Selfie is a project of the [Computational Systems Group](cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
 Selfie is a self-contained 64-bit, 12KLOC C implementation of:
 
-1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/main/semantics.md) called C Star ([C\*](https://github.com/cksystemsteaching/selfie/blob/main/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/main/riscu.md),
+1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](github.com/cksystemsteaching/selfie/blob/main/semantics.md) called C Star ([C\*](github.com/cksystemsteaching/selfie/blob/main/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](github.com/cksystemsteaching/selfie/blob/main/riscu.md),
 2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C\* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a garbage collector, L1 instruction and data caches, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator and hypervisor. The garbage collector is conservative and even self-collecting. It may operate as library in the same address space as the mutator and/or as part of the emulator in the address space of the kernel.
 
-Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
+Selfie generates ELF binaries that run on real [RISC-V hardware](www.sifive.com/boards) as well as on [QEMU](www.qemu.org) and are compatible with the official [RISC-V](riscv.org) toolchain, in particular the [spike emulator](github.com/riscv/riscv-isa-sim) and the [pk kernel](github.com/riscv/riscv-pk).
 
 Selfie is designed as 64-bit system and requires as such a 64-bit system to run (LP64 data model). However, selfie also compiles on systems that support compiling and executing 32-bit binaries (ILP32 data model). In that case, selfie becomes a 32-bit system that generates and executes 32-bit binaries out-of-the-box. This is possible because the implementation of selfie carefully avoids 32-bit overflows throughout the system.
 
 ## Support
 
-1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
-2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
-3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
-4. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
-5. Book: There is a free book in early draft form based on selfie called [Elementary Computer Science: From Bits and Bytes to the Universality of Computing](https://github.com/ckirsch/book) reaching out to everyone with an interest in learning about computer science.
-6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
-7. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
-8. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
+1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
+2. Slides: There are classroom [slides](selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
+3. Autograder: There is an [autograder](github.com/cksystemsteaching/selfie/blob/main/grader/README.md) with compiler and operating systems assignments.
+4. Paper: There is an [Onward! 2017 paper](dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
+5. Book: There is a free book in early draft form based on selfie called [Elementary Computer Science: From Bits and Bytes to the Universality of Computing](github.com/ckirsch/book) reaching out to everyone with an interest in learning about computer science.
+6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](github.com/cksystemsteaching/selfie)
+7. X: Follow us at [x.com/christophkirsch](twitter.com/christophkirsch)
+8. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](selfie.cs.uni-salzburg.at)
 
 ## Extras
 
-1. Garbage collection: In addition to the conservative but O(n^2) garbage collector in selfie, there is an implementation of an O(n) [Boehm](https://github.com/cksystemsteaching/selfie/blob/main/tools/boehm-gc.c) garbage collector for small memory blocks with fall-back to the garbage collector in selfie for large memory blocks.
-2. Fuzzing: There is a simple but self-fuzzing fuzzer called [buzzr](https://github.com/cksystemsteaching/selfie/blob/main/tools/buzzr.c) based on selfie that fuzzes RISC-U code including all of selfie and itself.
-3. Symbolic execution: There is a self-executing symbolic execution engine called [monster](https://github.com/cksystemsteaching/selfie/blob/main/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
-4. Bounded model checking: There is a self-translating modeling engine called [BEATOR](https://github.com/cksystemsteaching/selfie/blob/main/tools/beator.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
-5. BTOR2 visualization: There is a visualization tool called [beatle](https://github.com/cksystemsgroup/beator-visualizer) that displays BTOR2 formulae generated from RISC-U binaries as directed acyclic graphs.
-6. SAT solving: There is a bruteforce SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/main/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
-7. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/riscv-2-x86-unsupported/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
+1. Garbage collection: In addition to the conservative but O(n^2) garbage collector in selfie, there is an implementation of an O(n) [Boehm](github.com/cksystemsteaching/selfie/blob/main/tools/boehm-gc.c) garbage collector for small memory blocks with fall-back to the garbage collector in selfie for large memory blocks.
+2. Fuzzing: There is a simple but self-fuzzing fuzzer called [buzzr](github.com/cksystemsteaching/selfie/blob/main/tools/buzzr.c) based on selfie that fuzzes RISC-U code including all of selfie and itself.
+3. Symbolic execution: There is a self-executing symbolic execution engine called [monster](github.com/cksystemsteaching/selfie/blob/main/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
+4. Bounded model checking: There is a self-translating modeling engine called [BEATOR](github.com/cksystemsteaching/selfie/blob/main/tools/beator.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
+5. BTOR2 visualization: There is a visualization tool called [beatle](github.com/cksystemsgroup/beator-visualizer) that displays BTOR2 formulae generated from RISC-U binaries as directed acyclic graphs.
+6. SAT solving: There is a bruteforce SAT solver called [babysat](github.com/cksystemsteaching/selfie/blob/main/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
+7. Binary translation: There is a self-translating [binary translator](github.com/cksystemsteaching/selfie/blob/riscv-2-x86-unsupported/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
 
 ## Installing Selfie
 
 Selfie runs natively on Linux, macOS, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even without a C compiler installed on your machine, or if you only have access to a web browser you can run selfie. There are at least three ways to install and run selfie:
 
-1. Natively on your machine (recommended): download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/main.zip). Then, open a terminal to run selfie, see further below. For this to work, you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org) (with [cygwin](https://www.cygwin.com) on Windows).
+1. Natively on your machine (recommended): download and unzip [selfie](github.com/cksystemsteaching/selfie/archive/main.zip). Then, open a terminal to run selfie, see further below. For this to work, you need to have a C compiler installed on your machine. We recommend using [clang](clang.llvm.org) or [gcc](gcc.gnu.org) (with [cygwin](www.cygwin.com) on Windows).
 
-2. In docker on your machine (advanced): download and install [docker](https://docker.com). Then, open a terminal and type `docker run -it cksystemsteaching/selfie`. The advantage of using docker is that you can run selfie out of the box on your machine without installing any tools such as a C compiler. All necessary and even optional tools are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie). However, you need to know how to use docker.
+2. In docker on your machine (advanced): download and install [docker](docker.com). Then, open a terminal and type `docker run -it cksystemsteaching/selfie`. The advantage of using docker is that you can run selfie out of the box on your machine without installing any tools such as a C compiler. All necessary and even optional tools are pre-installed in the [selfie docker image](hub.docker.com/r/cksystemsteaching/selfie). However, you need to know how to use docker.
 
-1. In the cloud (easy but requires Internet connectivity): if you only have access to a web browser, just click [here](https://replit.com/new/github/cksystemsteaching/selfie). Alternatively, create a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
+1. In the cloud (easy but requires Internet connectivity): if you only have access to a web browser, just click [here](replit.com/new/github/cksystemsteaching/selfie). Alternatively, create a [github](github.com) account, unless you already have one, and fork [selfie](github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 

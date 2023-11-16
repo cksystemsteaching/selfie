@@ -2,7 +2,7 @@ Copyright (c) the Selfie Project authors. All rights reserved. Please see the AU
 
 Selfie is a project of the Computational Systems Group at the Department of Computer Sciences of the University of Salzburg in Austria. For further information and code please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 This document provides an overview of the differences in semantics between the programming language C\* in which selfie is written and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in, for example, how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement [C11](https://en.wikipedia.org/wiki/C11_(C_standard_revision)) semantics.
 

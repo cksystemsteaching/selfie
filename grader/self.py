@@ -8,7 +8,7 @@ Selfie is a project of the Computational Systems Group at the Department of
 Computer Sciences of the University of Salzburg in Austria. For further
 information and code please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 This is the automatic grader of the selfie system.
 """
