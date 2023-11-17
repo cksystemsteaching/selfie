@@ -1,6 +1,6 @@
 # Selfie [![selfie](https://github.com/cksystemsteaching/selfie/actions/workflows/selfie.yml/badge.svg)](https://github.com/cksystemsteaching/selfie/actions) [![Run on Repl.it](https://replit.com/badge/github/cksystemsteaching/selfie)](https://replit.com/new/github/cksystemsteaching/selfie)
 
-Selfie is a project of the [Computational Systems Group](https://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
+Selfie is a project of the [Computational Systems Group](https://cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
@@ -25,7 +25,7 @@ Selfie is designed as 64-bit system and requires as such a 64-bit system to run 
 4. Paper: There is an [Onward! 2017 paper](https://dl.acm.org/doi/10.1145/3133850.3133857) featuring selfie.
 5. Book: There is a free book in early draft form based on selfie called [Elementary Computer Science: From Bits and Bytes to the Universality of Computing](https://github.com/ckirsch/book) reaching out to everyone with an interest in learning about computer science.
 6. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
-7. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
+7. X: Follow us at [x.com/christophkirsch](https://twitter.com/christophkirsch)
 8. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](https://selfie.cs.uni-salzburg.at)
 
 ## Extras
