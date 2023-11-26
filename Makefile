@@ -295,6 +295,13 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard examples/symbolic/*.c))
 # Run beator on *.c files in symbolic folder and even on selfie
 btor2: $(btor2s) selfie.btor2
 
+# Compile rotor.c with selfie.h as library into rotor executable
+rotor: tools/rotor.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
+# Prevent make from deleting intermediate target rotor
+.SECONDARY: rotor
+
 # Consider these targets as targets, not files
 .PHONY: spike qemu assemble beator-32 32-bit boolector btormc extras
 
