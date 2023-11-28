@@ -144,17 +144,19 @@ void init_architecture() {
 // --------------------------- REGISTERS ---------------------------
 // -----------------------------------------------------------------
 
-void new_register_state();
+void new_register_file_state();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* state_registers = (uint64_t*) 0;
-uint64_t* init_registers  = (uint64_t*) 0;
-uint64_t* next_registers  = (uint64_t*) 0;
+uint64_t* state_register_file = (uint64_t*) 0;
+uint64_t* init_register_file  = (uint64_t*) 0;
+uint64_t* next_register_file  = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
+
+void new_main_memory_state();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -167,6 +169,12 @@ uint64_t laddr_space_size = 32; // size of linear address space in bits
 
 uint64_t paddr_sort_nid   = 2;  // nid of physical address sort
 uint64_t paddr_space_size = 64; // size of physical address space in bits
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* state_main_memory = (uint64_t*) 0;
+uint64_t* init_main_memory  = (uint64_t*) 0;
+uint64_t* next_main_memory  = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
@@ -296,13 +304,17 @@ void print_state(uint64_t* line) {
 // --------------------------- REGISTERS ---------------------------
 // -----------------------------------------------------------------
 
-void new_register_state() {
-  state_registers = new_state(SID_REGISTER_STATE, "regs", "register file");
+void new_register_file_state() {
+  state_register_file = new_state(SID_REGISTER_STATE, "regs", "register file");
 }
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
+
+void new_main_memory_state() {
+  state_main_memory = new_state(SID_MEMORY_STATE, "mem", "main memory");
+}
 
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
@@ -317,7 +329,8 @@ void new_register_state() {
 // -----------------------------------------------------------------
 
 void rotor() {
-  new_register_state();
+  new_register_file_state();
+  new_main_memory_state();
 
   print_line(1, SID_BOOLEAN);
   print_line(2, SID_MACHINE_WORD);
@@ -341,7 +354,9 @@ void rotor() {
   print_line(27, NID_7);
   print_line(28, NID_8);
 
-  print_line(200, state_registers);
+  print_line(200, state_register_file);
+
+  print_line(1000, state_main_memory);
 }
 
 uint64_t selfie_model() {
