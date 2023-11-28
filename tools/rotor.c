@@ -58,14 +58,26 @@ uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 
+uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment);
+
+uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
+
+uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
+
 void print_comment(uint64_t* line);
 void print_line(uint64_t nid, uint64_t* line);
+
+uint64_t print_function(uint64_t nid, uint64_t* line);
 
 void print_sort(uint64_t* line);
 void print_constant(uint64_t* line);
 void print_state(uint64_t* line);
 void print_init(uint64_t* line);
-void print_next(uint64_t* line);
+
+void print_binary_operator(uint64_t* line);
+void print_tenary_operator(uint64_t* line);
+
+void print_slice(uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -80,6 +92,12 @@ char* OP_CONST = (char*) 0;
 char* OP_STATE = (char*) 0;
 char* OP_INIT  = (char*) 0;
 char* OP_NEXT  = (char*) 0;
+
+char* OP_READ = (char*) 0;
+
+char* OP_SLICE = (char*) 0;
+
+char* OP_ITE = (char*) 0;
 
 uint64_t* SID_BOOLEAN = (uint64_t*) 0;
 uint64_t* NID_FALSE   = (uint64_t*) 0;
@@ -118,6 +136,12 @@ void init_architecture() {
   OP_STATE = "state";
   OP_INIT  = "init";
   OP_NEXT  = "next";
+
+  OP_READ = "read";
+
+  OP_SLICE = "slice";
+
+  OP_ITE = "ite";
 
   SID_BOOLEAN = new_bitvec(1, "Boolean");
   NID_FALSE   = new_constant(0, SID_BOOLEAN);
@@ -162,7 +186,9 @@ void new_register_file_state();
 
 uint64_t* state_register_file = (uint64_t*) 0;
 uint64_t* init_register_file  = (uint64_t*) 0;
-uint64_t* next_register_file  = (uint64_t*) 0;
+
+uint64_t* eval_register_file = (uint64_t*) 0;
+uint64_t* next_register_file = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -170,13 +196,18 @@ uint64_t* next_register_file  = (uint64_t*) 0;
 
 void new_main_memory_state();
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
+uint64_t* vaddr_to_laddr(uint64_t* vaddr);
+
+uint64_t* load_machine_word(uint64_t* vaddr);
+uint64_t* fetch_instruction(uint64_t* vaddr);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_main_memory = (uint64_t*) 0;
 uint64_t* init_main_memory  = (uint64_t*) 0;
-uint64_t* next_main_memory  = (uint64_t*) 0;
+
+uint64_t* eval_main_memory = (uint64_t*) 0;
+uint64_t* next_main_memory = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
@@ -192,15 +223,17 @@ void new_core_state();
 
 uint64_t* state_core_pc = (uint64_t*) 0;
 uint64_t* init_core_pc  = (uint64_t*) 0;
-uint64_t* next_core_pc  = (uint64_t*) 0;
 
-uint64_t* state_core_ir = (uint64_t*) 0;
-uint64_t* init_core_ir  = (uint64_t*) 0;
-uint64_t* next_core_ir  = (uint64_t*) 0;
+uint64_t* eval_core_pc = (uint64_t*) 0;
+uint64_t* next_core_pc = (uint64_t*) 0;
+
+uint64_t* eval_core_ir = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
+
+void output_machine();
 
 void rotor();
 
@@ -282,6 +315,18 @@ uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char
   return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
 }
 
+uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment) {
+  return new_line(OP_READ, sid, array_nid, index_nid, UNUSED, comment);
+}
+
+uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment) {
+  return new_line(OP_SLICE, sid, value_nid, (uint64_t*) u, (uint64_t*) l, comment);
+}
+
+uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment) {
+  return new_line(OP_ITE, sid, condition_nid, true_nid, false_nid, comment);
+}
+
 void print_comment(uint64_t* line) {
   if (get_comment(line) != NOCOMMENT)
     w = w + dprintf(output_fd, " ; %s", get_comment(line));
@@ -299,9 +344,35 @@ void print_line(uint64_t nid, uint64_t* line) {
     print_state(line);
   else if (get_op(line) == OP_INIT)
     print_init(line);
-  else if (get_op(line) == OP_NEXT)
-    print_next(line);
+  else if (get_op(line) == OP_SLICE)
+    print_slice(line);
+  else if (get_op(line) == OP_ITE)
+    print_tenary_operator(line);
+  else
+    print_binary_operator(line);
   print_comment(line);
+}
+
+uint64_t print_function(uint64_t nid, uint64_t* line) {
+  if (get_nid(line) > 0)
+    // print lines only once
+    return nid;
+
+  if (get_op(line) == OP_READ) {
+    nid = print_function(nid, get_arg1(line));
+    nid = print_function(nid, get_arg2(line));
+  } else if (get_op(line) == OP_SLICE)
+    nid = print_function(nid, get_arg1(line));
+  else if (get_op(line) == OP_ITE) {
+    nid = print_function(nid, get_arg1(line));
+    nid = print_function(nid, get_arg2(line));
+    nid = print_function(nid, get_arg3(line));
+  } else
+    return nid;
+
+  print_line(nid, line);
+
+  return nid + 1;
 }
 
 void print_sort(uint64_t* line) {
@@ -331,9 +402,19 @@ void print_init(uint64_t* line) {
     OP_INIT, get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), (char*) get_arg3(line));
 }
 
-void print_next(uint64_t* line) {
+void print_binary_operator(uint64_t* line) {
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    OP_NEXT, get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+}
+
+void print_tenary_operator(uint64_t* line) {
+  print_binary_operator(line);
+  w = w + dprintf(output_fd, " %lu", get_nid(get_arg3(line)));
+}
+
+void print_slice(uint64_t* line) {
+  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
 }
 
 // -----------------------------------------------------------------
@@ -343,7 +424,9 @@ void print_next(uint64_t* line) {
 void new_register_file_state() {
   state_register_file = new_state(SID_REGISTER_STATE, "regs", "register file");
   init_register_file  = new_init(SID_REGISTER_STATE, state_register_file, NID_MACHINE_WORD_0, "regs", "initial value");
-  next_register_file  = new_next(SID_REGISTER_STATE, state_register_file, state_register_file, "TBD");
+
+  eval_register_file = state_register_file;
+  next_register_file = new_next(SID_REGISTER_STATE, state_register_file, eval_register_file, "TBD");
 }
 
 // -----------------------------------------------------------------
@@ -353,7 +436,35 @@ void new_register_file_state() {
 void new_main_memory_state() {
   state_main_memory = new_state(SID_MEMORY_STATE, "mem", "main memory");
   init_main_memory  = new_init(SID_MEMORY_STATE, state_main_memory, NID_MACHINE_WORD_0, "mem", "initial value");
-  next_main_memory  = new_next(SID_MEMORY_STATE, state_main_memory, state_main_memory, "TBD");
+
+  eval_main_memory = state_main_memory;
+  next_main_memory = new_next(SID_MEMORY_STATE, state_main_memory, eval_main_memory, "TBD");
+}
+
+uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
+  if (IS64BITTARGET)
+    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 3, "map 64-bit virtual to 29-bit linear address");
+  else
+    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 2, "map 32-bit virtual to 30-bit linear address");
+}
+
+uint64_t* load_machine_word(uint64_t* vaddr) {
+  return new_read(SID_MACHINE_WORD, state_main_memory, vaddr_to_laddr(vaddr), "load machine word");
+}
+
+uint64_t* fetch_instruction(uint64_t* vaddr) {
+  uint64_t* machine_word;
+
+  machine_word = load_machine_word(vaddr);
+
+  if (IS64BITTARGET)
+    return new_ite(SID_SINGLE_WORD,
+      new_slice(SID_BOOLEAN, vaddr, 2, 2, "remainder of division by 4"),
+      new_slice(SID_SINGLE_WORD, machine_word, 63, 32, "high single word"),
+      new_slice(SID_SINGLE_WORD, machine_word, 31, 0, "low single word"),
+      "high or low single word?");
+  else
+    return machine_word;
 }
 
 // -----------------------------------------------------------------
@@ -367,24 +478,16 @@ void new_main_memory_state() {
 void new_core_state() {
   state_core_pc = new_state(SID_MACHINE_WORD, "pc", "program counter");
   init_core_pc  = new_init(SID_MACHINE_WORD, state_core_pc, NID_MACHINE_WORD_0, "pc", "initial value");
-  next_core_pc  = new_next(SID_MACHINE_WORD, state_core_pc, state_core_pc, "TBD");
 
-  state_core_ir = new_state(SID_SINGLE_WORD, "ir", "instruction register");
-  init_core_ir  = new_init(SID_SINGLE_WORD, state_core_ir, NID_SINGLE_WORD_0, "ir", "initial value");
-  next_core_ir  = new_next(SID_SINGLE_WORD, state_core_ir, state_core_ir, "TBD");
+  eval_core_pc = state_core_pc;
+  next_core_pc = new_next(SID_MACHINE_WORD, state_core_pc, eval_core_pc, "TBD");
 }
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
-void rotor() {
-  new_register_file_state();
-  new_main_memory_state();
-  new_core_state();
-
-  // output RISC-U machine model
-
+void output_machine() {
   w = w
     + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
     + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
@@ -414,25 +517,38 @@ void rotor() {
 
   print_line(200, state_register_file);
   print_line(201, init_register_file);
+
   print_line(202, next_register_file);
 
   w = w + dprintf(output_fd, "\n; program counter\n\n");
 
   print_line(300, state_core_pc);
   print_line(301, init_core_pc);
+
   print_line(302, next_core_pc);
-
-  w = w + dprintf(output_fd, "\n; instruction register\n\n");
-
-  print_line(400, state_core_ir);
-  print_line(401, init_core_ir);
-  print_line(402, next_core_ir);
 
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
   print_line(1000, state_main_memory);
   print_line(1001, init_main_memory);
-  print_line(1002, next_main_memory);
+
+  w = w + dprintf(output_fd, "\n; instruction register\n\n");
+
+  print_function(2000, eval_core_ir);
+
+  w = w + dprintf(output_fd, "\n; update main memory\n\n");
+
+  print_line(3000, next_main_memory);
+}
+
+void rotor() {
+  new_register_file_state();
+  new_main_memory_state();
+  new_core_state();
+
+  eval_core_ir = fetch_instruction(state_core_pc);
+
+  output_machine();
 }
 
 uint64_t selfie_model() {
@@ -499,8 +615,6 @@ int main(int argc, char** argv) {
   init_kernel();
 
   exit_code = selfie(1);
-
-  // IS64BITTARGET = 0;
 
   if (exit_code == EXITCODE_MOREARGUMENTS)
     exit_code = selfie_model();
