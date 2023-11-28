@@ -168,16 +168,6 @@ void new_main_memory_state();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t vaddr_sort_nid   = 2;  // nid of virtual or linear address sort
-uint64_t vaddr_space_size = 64; // size of virtual address space in bits
-uint64_t vaddr_mask_nid   = 27; // nid of bit mask for resetting LSBs in virtual addresses
-uint64_t vaddr_alignment  = 3;  // virtual address alignment in bits
-
-uint64_t laddr_space_size = 32; // size of linear address space in bits
-
-uint64_t paddr_sort_nid   = 2;  // nid of physical address sort
-uint64_t paddr_space_size = 64; // size of physical address space in bits
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_main_memory = (uint64_t*) 0;
@@ -405,15 +395,6 @@ void rotor() {
 }
 
 uint64_t selfie_model() {
-  if (IS64BITTARGET == 0) {
-    // assert: 32-bit system
-    vaddr_mask_nid  = 23;
-    vaddr_alignment = 2;
-
-    vaddr_space_size = WORDSIZEINBITS;
-    paddr_space_size = vaddr_space_size;
-  }
-
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
