@@ -54,12 +54,14 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
 uint64_t* new_constant(uint64_t constant, uint64_t* sid);
+uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 
 void print_comment(uint64_t* line);
 void print_line(uint64_t nid, uint64_t* line);
 
 void print_sort(uint64_t* line);
 void print_constant(uint64_t* line);
+void print_state(uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -246,6 +248,10 @@ uint64_t* new_constant(uint64_t constant, uint64_t* sid) {
   return new_line(OP_CONST, sid, (uint64_t*) constant, UNUSED, UNUSED, NOCOMMENT);
 }
 
+uint64_t* new_state(uint64_t* sid, char* symbol, char* comment) {
+  return new_line(OP_STATE, sid, (uint64_t*) symbol, UNUSED, UNUSED, comment);
+}
+
 void print_comment(uint64_t* line) {
   if (get_comment(line) != NOCOMMENT)
     w = w + dprintf(output_fd, " ; %s", get_comment(line));
@@ -259,14 +265,16 @@ void print_line(uint64_t nid, uint64_t* line) {
     print_sort(line);
   else if (get_op(line) == OP_CONST)
     print_constant(line);
+  else if (get_op(line) == OP_STATE)
+    print_state(line);
   print_comment(line);
 }
 
 void print_sort(uint64_t* line) {
   w = w + dprintf(output_fd, " %s", OP_SORT);
-  if ((char*) get_arg1(line) == BITVEC) {
+  if ((char*) get_arg1(line) == BITVEC)
     w = w + dprintf(output_fd, " %s %lu", BITVEC, (uint64_t) get_arg2(line));
-  } else
+  else
     // assert: theory of bitvector arrays
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
 }
@@ -280,12 +288,16 @@ void print_constant(uint64_t* line) {
     w = w + dprintf(output_fd, " %s %lu %lu", OP_CONST, get_nid(get_sid(line)), (uint64_t) get_arg1(line));
 }
 
+void print_state(uint64_t* line) {
+  w = w + dprintf(output_fd, " %s %lu %s", OP_STATE, get_nid(get_sid(line)), (char*) get_arg1(line));
+}
+
 // -----------------------------------------------------------------
 // --------------------------- REGISTERS ---------------------------
 // -----------------------------------------------------------------
 
 void new_register_state() {
-  state_registers = new_line(OP_STATE, SID_REGISTER_STATE, 0, 0, 0, "register file");
+  state_registers = new_state(SID_REGISTER_STATE, "regs", "register file");
 }
 
 // -----------------------------------------------------------------
@@ -305,6 +317,8 @@ void new_register_state() {
 // -----------------------------------------------------------------
 
 void rotor() {
+  new_register_state();
+
   print_line(1, SID_BOOLEAN);
   print_line(2, SID_MACHINE_WORD);
 
@@ -326,6 +340,8 @@ void rotor() {
   print_line(26, NID_6);
   print_line(27, NID_7);
   print_line(28, NID_8);
+
+  print_line(200, state_registers);
 }
 
 uint64_t selfie_model() {
