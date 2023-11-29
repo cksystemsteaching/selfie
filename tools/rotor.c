@@ -64,20 +64,20 @@ uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, 
 
 uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
 
+void print_nid(uint64_t nid, uint64_t* line);
 void print_comment(uint64_t* line);
-void print_line(uint64_t nid, uint64_t* line);
 
-uint64_t print_function(uint64_t nid, uint64_t* line);
+uint64_t print_line(uint64_t nid, uint64_t* line);
 
-void print_sort(uint64_t* line);
-void print_constant(uint64_t* line);
-void print_state(uint64_t* line);
-void print_init(uint64_t* line);
+uint64_t print_sort(uint64_t nid, uint64_t* line);
+uint64_t print_constant(uint64_t nid, uint64_t* line);
+uint64_t print_state(uint64_t nid, uint64_t* line);
+uint64_t print_init(uint64_t nid, uint64_t* line);
 
-void print_binary_operator(uint64_t* line);
-void print_tenary_operator(uint64_t* line);
+uint64_t print_binary_operator(uint64_t nid, uint64_t* line);
+uint64_t print_tenary_operator(uint64_t nid, uint64_t* line);
 
-void print_slice(uint64_t* line);
+uint64_t print_slice(uint64_t nid, uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -114,12 +114,6 @@ uint64_t* NID_DOUBLE_WORD_0 = (uint64_t*) 0;
 
 uint64_t* SID_MACHINE_WORD   = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_0 = (uint64_t*) 0;
-
-uint64_t* SID_REGISTER_ADDRESS = (uint64_t*) 0;
-uint64_t* SID_REGISTER_STATE   = (uint64_t*) 0;
-
-uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
-uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -163,17 +157,6 @@ void init_architecture() {
     SID_MACHINE_WORD   = SID_SINGLE_WORD;
     NID_MACHINE_WORD_0 = NID_SINGLE_WORD_0;
   }
-
-  SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
-  SID_REGISTER_STATE   = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
-
-  if (IS64BITTARGET)
-    SID_MEMORY_ADDRESS = new_bitvec(29, "29-bit 64-bit-word-addressed memory address");
-  else
-    // assert: 32-bit system
-    SID_MEMORY_ADDRESS = new_bitvec(30, "30-bit 32-bit-word-addressed memory address");
-
-  SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MACHINE_WORD, "memory state");
 }
 
 // -----------------------------------------------------------------
@@ -182,6 +165,11 @@ void init_architecture() {
 
 void new_register_file_state();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* SID_REGISTER_ADDRESS = (uint64_t*) 0;
+uint64_t* SID_REGISTER_STATE   = (uint64_t*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_register_file = (uint64_t*) 0;
@@ -189,6 +177,13 @@ uint64_t* init_register_file  = (uint64_t*) 0;
 
 uint64_t* eval_register_file = (uint64_t*) 0;
 uint64_t* next_register_file = (uint64_t*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_register_file_sorts() {
+  SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
+  SID_REGISTER_STATE   = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
+}
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -201,6 +196,11 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr);
 uint64_t* load_machine_word(uint64_t* vaddr);
 uint64_t* fetch_instruction(uint64_t* vaddr);
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
+uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_main_memory = (uint64_t*) 0;
@@ -209,9 +209,50 @@ uint64_t* init_main_memory  = (uint64_t*) 0;
 uint64_t* eval_main_memory = (uint64_t*) 0;
 uint64_t* next_main_memory = (uint64_t*) 0;
 
+// ------------------------- INITIALIZATION ------------------------
+
+void init_main_memory_sorts() {
+  if (IS64BITTARGET)
+    SID_MEMORY_ADDRESS = new_bitvec(29, "29-bit 64-bit-word-addressed memory address");
+  else
+    // assert: 32-bit system
+    SID_MEMORY_ADDRESS = new_bitvec(30, "30-bit 32-bit-word-addressed memory address");
+
+  SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MACHINE_WORD, "memory state");
+}
+
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
+
+uint64_t* get_instruction_opcode(uint64_t* instruction);
+uint64_t* get_instruction_funct3(uint64_t* instruction);
+uint64_t* get_instruction_funct7(uint64_t* instruction);
+uint64_t* get_instruction_rd(uint64_t* instruction);
+uint64_t* get_instruction_rs1(uint64_t* instruction);
+uint64_t* get_instruction_rs2(uint64_t* instruction);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* SID_OPCODE = (uint64_t*) 0;
+uint64_t* SID_FUNCT3 = (uint64_t*) 0;
+uint64_t* SID_FUNCT7 = (uint64_t*) 0;
+
+uint64_t* SID_IS_IMM = (uint64_t*) 0;
+uint64_t* SID_U_IMM  = (uint64_t*) 0;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_instruction_sorts() {
+  SID_OPCODE = new_bitvec(7, "opcode sort");
+  SID_FUNCT3 = new_bitvec(3, "funct3 sort");
+  SID_FUNCT7 = new_bitvec(7, "funct7 sort");
+
+  SID_IS_IMM = new_bitvec(12, "12-bit immediate sort");
+  SID_U_IMM  = new_bitvec(20, "20-bit immediate sort");
+}
 
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
@@ -228,6 +269,7 @@ uint64_t* eval_core_pc = (uint64_t*) 0;
 uint64_t* next_core_pc = (uint64_t*) 0;
 
 uint64_t* eval_core_ir = (uint64_t*) 0;
+uint64_t* eval_core_rd = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -327,94 +369,111 @@ uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, ui
   return new_line(OP_ITE, sid, condition_nid, true_nid, false_nid, comment);
 }
 
+void print_nid(uint64_t nid, uint64_t* line) {
+  set_nid(line, nid);
+  w = w + dprintf(output_fd, "%lu", nid);
+}
+
 void print_comment(uint64_t* line) {
   if (get_comment(line) != NOCOMMENT)
     w = w + dprintf(output_fd, " ; %s", get_comment(line));
   w = w + dprintf(output_fd, "\n");
 }
 
-void print_line(uint64_t nid, uint64_t* line) {
-  set_nid(line, nid);
-  w = w + dprintf(output_fd, "%lu", nid);
-  if (get_op(line) == OP_SORT)
-    print_sort(line);
-  else if (get_op(line) == OP_CONST)
-    print_constant(line);
-  else if (get_op(line) == OP_STATE)
-    print_state(line);
-  else if (get_op(line) == OP_INIT)
-    print_init(line);
-  else if (get_op(line) == OP_SLICE)
-    print_slice(line);
-  else if (get_op(line) == OP_ITE)
-    print_tenary_operator(line);
-  else
-    print_binary_operator(line);
-  print_comment(line);
-}
-
-uint64_t print_function(uint64_t nid, uint64_t* line) {
+uint64_t print_line(uint64_t nid, uint64_t* line) {
   if (get_nid(line) > 0)
     // print lines only once
     return nid;
-
-  if (get_op(line) == OP_READ) {
-    nid = print_function(nid, get_arg1(line));
-    nid = print_function(nid, get_arg2(line));
-  } else if (get_op(line) == OP_SLICE)
-    nid = print_function(nid, get_arg1(line));
-  else if (get_op(line) == OP_ITE) {
-    nid = print_function(nid, get_arg1(line));
-    nid = print_function(nid, get_arg2(line));
-    nid = print_function(nid, get_arg3(line));
-  } else
-    return nid;
-
-  print_line(nid, line);
-
+  else if (get_op(line) == OP_SORT)
+    nid = print_sort(nid, line);
+  else if (get_op(line) == OP_CONST)
+    nid = print_constant(nid, line);
+  else if (get_op(line) == OP_STATE)
+    nid = print_state(nid, line);
+  else if (get_op(line) == OP_INIT)
+    nid = print_init(nid, line);
+  else if (get_op(line) == OP_SLICE)
+    nid = print_slice(nid, line);
+  else if (get_op(line) == OP_ITE)
+    nid = print_tenary_operator(nid, line);
+  else
+    nid = print_binary_operator(nid, line);
+  print_comment(line);
   return nid + 1;
 }
 
-void print_sort(uint64_t* line) {
+uint64_t print_sort(uint64_t nid, uint64_t* line) {
+  if ((char*) get_arg1(line) == ARRAY) {
+    nid = print_line(nid, get_arg2(line));
+    nid = print_line(nid, get_arg3(line));
+  }
+  print_nid(nid, line);
   w = w + dprintf(output_fd, " %s", OP_SORT);
   if ((char*) get_arg1(line) == BITVEC)
     w = w + dprintf(output_fd, " %s %lu", BITVEC, (uint64_t) get_arg2(line));
   else
     // assert: theory of bitvector arrays
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
 }
 
-void print_constant(uint64_t* line) {
+uint64_t print_constant(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  print_nid(nid, line);
   if ((uint64_t) get_arg1(line) == 0)
     w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
   else if ((uint64_t) get_arg1(line) == 1)
     w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
   else
     w = w + dprintf(output_fd, " %s %lu %lu", OP_CONST, get_nid(get_sid(line)), (uint64_t) get_arg1(line));
+  return nid;
 }
 
-void print_state(uint64_t* line) {
+uint64_t print_state(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %s", OP_STATE, get_nid(get_sid(line)), (char*) get_arg1(line));
+  return nid;
 }
 
-void print_init(uint64_t* line) {
+uint64_t print_init(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  nid = print_line(nid, get_arg2(line));
+  print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %s",
     OP_INIT, get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), (char*) get_arg3(line));
+  return nid;
 }
 
-void print_binary_operator(uint64_t* line) {
+uint64_t print_binary_operator(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  nid = print_line(nid, get_arg2(line));
+  print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  return nid;
 }
 
-void print_tenary_operator(uint64_t* line) {
-  print_binary_operator(line);
-  w = w + dprintf(output_fd, " %lu", get_nid(get_arg3(line)));
+uint64_t print_tenary_operator(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  nid = print_line(nid, get_arg2(line));
+  nid = print_line(nid, get_arg3(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
 }
 
-void print_slice(uint64_t* line) {
+uint64_t print_slice(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
+  return nid;
 }
 
 // -----------------------------------------------------------------
@@ -443,9 +502,9 @@ void new_main_memory_state() {
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
   if (IS64BITTARGET)
-    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 3, "map 64-bit virtual to 29-bit linear address");
+    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 3, "map 64-bit virtual address to 29-bit linear address");
   else
-    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 2, "map 32-bit virtual to 30-bit linear address");
+    return new_slice(SID_MEMORY_ADDRESS, vaddr, 31, 2, "map 32-bit virtual address to 30-bit linear address");
 }
 
 uint64_t* load_machine_word(uint64_t* vaddr) {
@@ -459,10 +518,10 @@ uint64_t* fetch_instruction(uint64_t* vaddr) {
 
   if (IS64BITTARGET)
     return new_ite(SID_SINGLE_WORD,
-      new_slice(SID_BOOLEAN, vaddr, 2, 2, "remainder of division by 4"),
+      new_slice(SID_BOOLEAN, vaddr, 2, 2, "high or low single word?"),
       new_slice(SID_SINGLE_WORD, machine_word, 63, 32, "high single word"),
       new_slice(SID_SINGLE_WORD, machine_word, 31, 0, "low single word"),
-      "high or low single word?");
+      "fetch instruction");
   else
     return machine_word;
 }
@@ -470,6 +529,63 @@ uint64_t* fetch_instruction(uint64_t* vaddr) {
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
+
+uint64_t* get_instruction_opcode(uint64_t* instruction) {
+  return new_slice(SID_OPCODE, instruction, 6, 0, "get opcode");
+}
+
+uint64_t* get_instruction_funct3(uint64_t* instruction) {
+  return new_slice(SID_FUNCT3, instruction, 14, 12, "get funct3");
+}
+
+uint64_t* get_instruction_funct7(uint64_t* instruction) {
+  return new_slice(SID_FUNCT7, instruction, 31, 25, "get funct7");
+}
+
+uint64_t* get_instruction_rd(uint64_t* instruction) {
+  return new_slice(SID_REGISTER_ADDRESS, instruction, 11, 7, "get rd");
+}
+
+uint64_t* get_instruction_rs1(uint64_t* instruction) {
+  return new_slice(SID_REGISTER_ADDRESS, instruction, 19, 15, "get rs1");
+}
+
+uint64_t* get_instruction_rs2(uint64_t* instruction) {
+  return new_slice(SID_REGISTER_ADDRESS, instruction, 24, 20, "get rs2");
+}
+
+uint64_t* get_instruction_I_imm(uint64_t* instruction) {
+  return new_slice(SID_IS_IMM, instruction, 31, 20, "get I-immediate");
+}
+
+/*
+uint64_t* get_instruction_S_imm(uint64_t* instruction) {
+  return new_concat(SID_IS_IMM,
+    get_instruction_funct7(instruction),
+    get_instruction_rd(instruction),
+    "get S-immediate");
+}
+*/
+
+uint64_t* get_instruction_U_imm(uint64_t* instruction) {
+  return new_slice(SID_U_IMM, instruction, 31, 12, "get U-immediate");
+}
+
+/*
+uint64_t* get_instruction_IS_immediate(uint64_t* imm) {
+  if (IS64BITTARGET)
+    return new_sext(SID_MACHINE_WORD, imm, 52, "sign-extend");
+  else
+    return new_sext(SID_MACHINE_WORD, imm, 20, "sign-extend");
+}
+
+uint64_t* get_instruction_U_immediate(uint64_t* imm) {
+  if (IS64BITTARGET)
+    return new_sext(SID_MACHINE_WORD, imm, 44, "sign-extend");
+  else
+    return new_sext(SID_MACHINE_WORD, imm, 12, "sign-extend");
+}
+*/
 
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
@@ -520,25 +636,29 @@ void output_machine() {
 
   print_line(202, next_register_file);
 
-  w = w + dprintf(output_fd, "\n; program counter\n\n");
-
-  print_line(300, state_core_pc);
-  print_line(301, init_core_pc);
-
-  print_line(302, next_core_pc);
-
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
-  print_line(1000, state_main_memory);
-  print_line(1001, init_main_memory);
+  print_line(300, state_main_memory);
+  print_line(301, init_main_memory);
 
-  w = w + dprintf(output_fd, "\n; instruction register\n\n");
+  w = w + dprintf(output_fd, "\n; program counter\n\n");
 
-  print_function(2000, eval_core_ir);
+  print_line(1000, state_core_pc);
+  print_line(1001, init_core_pc);
+
+  print_line(1002, next_core_pc);
+
+  w = w + dprintf(output_fd, "\n; fetch instruction\n\n");
+
+  print_line(2000, eval_core_ir);
+
+  w = w + dprintf(output_fd, "\n; decode instruction\n\n");
+
+  print_line(3000, eval_core_rd);
 
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
-  print_line(3000, next_main_memory);
+  print_line(4000, next_main_memory);
 }
 
 void rotor() {
@@ -547,6 +667,7 @@ void rotor() {
   new_core_state();
 
   eval_core_ir = fetch_instruction(state_core_pc);
+  eval_core_rd = get_instruction_opcode(eval_core_ir);
 
   output_machine();
 }
@@ -570,6 +691,9 @@ uint64_t selfie_model() {
       }
 
       init_architecture();
+      init_register_file_sorts();
+      init_main_memory_sorts();
+      init_instruction_sorts();
 
       output_name = model_name;
       output_fd   = model_fd;
