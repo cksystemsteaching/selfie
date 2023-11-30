@@ -53,13 +53,15 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
-uint64_t* new_constant(uint64_t constant, uint64_t* sid);
+uint64_t* new_constant(uint64_t* sid, uint64_t constant);
 uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 
+uint64_t* new_concat(uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment);
 
+uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
 
 uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
@@ -77,6 +79,7 @@ uint64_t print_init(uint64_t nid, uint64_t* line);
 uint64_t print_binary_operator(uint64_t nid, uint64_t* line);
 uint64_t print_tenary_operator(uint64_t nid, uint64_t* line);
 
+uint64_t print_sext(uint64_t nid, uint64_t* line);
 uint64_t print_slice(uint64_t nid, uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -93,8 +96,10 @@ char* OP_STATE = (char*) 0;
 char* OP_INIT  = (char*) 0;
 char* OP_NEXT  = (char*) 0;
 
-char* OP_READ = (char*) 0;
+char* OP_CONCAT = (char*) 0;
+char* OP_READ   = (char*) 0;
 
+char* OP_SEXT  = (char*) 0;
 char* OP_SLICE = (char*) 0;
 
 char* OP_ITE = (char*) 0;
@@ -131,24 +136,26 @@ void init_architecture() {
   OP_INIT  = "init";
   OP_NEXT  = "next";
 
-  OP_READ = "read";
+  OP_CONCAT = "concat";
+  OP_READ   = "read";
 
+  OP_SEXT  = "sext";
   OP_SLICE = "slice";
 
   OP_ITE = "ite";
 
   SID_BOOLEAN = new_bitvec(1, "Boolean");
-  NID_FALSE   = new_constant(0, SID_BOOLEAN);
-  NID_TRUE    = new_constant(1, SID_BOOLEAN);
+  NID_FALSE   = new_constant(SID_BOOLEAN, 0);
+  NID_TRUE    = new_constant(SID_BOOLEAN, 1);
 
   SID_BYTE = new_bitvec(8, "8-bit byte");
 
   SID_SINGLE_WORD   = new_bitvec(32, "32-bit single word");
-  NID_SINGLE_WORD_0 = new_constant(0, SID_SINGLE_WORD);
+  NID_SINGLE_WORD_0 = new_constant(SID_SINGLE_WORD, 0);
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD   = new_bitvec(64, "64-bit double word");
-    NID_DOUBLE_WORD_0 = new_constant(0, SID_DOUBLE_WORD);
+    NID_DOUBLE_WORD_0 = new_constant(SID_DOUBLE_WORD, 0);
 
     SID_MACHINE_WORD   = SID_DOUBLE_WORD;
     NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0;
@@ -268,8 +275,9 @@ uint64_t* init_core_pc  = (uint64_t*) 0;
 uint64_t* eval_core_pc = (uint64_t*) 0;
 uint64_t* next_core_pc = (uint64_t*) 0;
 
-uint64_t* eval_core_ir = (uint64_t*) 0;
-uint64_t* eval_core_rd = (uint64_t*) 0;
+uint64_t* eval_core_ir  = (uint64_t*) 0;
+uint64_t* eval_core_rd  = (uint64_t*) 0;
+uint64_t* eval_core_imm = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -341,7 +349,7 @@ uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment) {
   return new_line(OP_SORT, UNUSED, (uint64_t*) ARRAY, size_sid, element_sid, comment);
 }
 
-uint64_t* new_constant(uint64_t constant, uint64_t* sid) {
+uint64_t* new_constant(uint64_t* sid, uint64_t constant) {
   return new_line(OP_CONST, sid, (uint64_t*) constant, UNUSED, UNUSED, NOCOMMENT);
 }
 
@@ -357,8 +365,16 @@ uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char
   return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
 }
 
+uint64_t* new_concat(uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
+  return new_line(OP_CONCAT, sid, left_nid, right_nid, UNUSED, comment);
+}
+
 uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment) {
   return new_line(OP_READ, sid, array_nid, index_nid, UNUSED, comment);
+}
+
+uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
+  return new_line(OP_SEXT, sid, value_nid, (uint64_t*) w, UNUSED, comment);
 }
 
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment) {
@@ -392,6 +408,8 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
     nid = print_state(nid, line);
   else if (get_op(line) == OP_INIT)
     nid = print_init(nid, line);
+  else if (get_op(line) == OP_SEXT)
+    nid = print_sext(nid, line);
   else if (get_op(line) == OP_SLICE)
     nid = print_slice(nid, line);
   else if (get_op(line) == OP_ITE)
@@ -464,6 +482,15 @@ uint64_t print_tenary_operator(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
+}
+
+uint64_t print_sext(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu",
+    OP_SEXT, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
   return nid;
 }
 
@@ -558,34 +585,38 @@ uint64_t* get_instruction_I_imm(uint64_t* instruction) {
   return new_slice(SID_IS_IMM, instruction, 31, 20, "get I-immediate");
 }
 
-/*
 uint64_t* get_instruction_S_imm(uint64_t* instruction) {
   return new_concat(SID_IS_IMM,
     get_instruction_funct7(instruction),
     get_instruction_rd(instruction),
     "get S-immediate");
 }
-*/
 
 uint64_t* get_instruction_U_imm(uint64_t* instruction) {
   return new_slice(SID_U_IMM, instruction, 31, 12, "get U-immediate");
 }
 
-/*
-uint64_t* get_instruction_IS_immediate(uint64_t* imm) {
+uint64_t* sign_extend_IS_imm(uint64_t* imm) {
   if (IS64BITTARGET)
     return new_sext(SID_MACHINE_WORD, imm, 52, "sign-extend");
   else
     return new_sext(SID_MACHINE_WORD, imm, 20, "sign-extend");
 }
 
-uint64_t* get_instruction_U_immediate(uint64_t* imm) {
-  if (IS64BITTARGET)
-    return new_sext(SID_MACHINE_WORD, imm, 44, "sign-extend");
-  else
-    return new_sext(SID_MACHINE_WORD, imm, 12, "sign-extend");
+uint64_t* get_machine_word_I_immediate(uint64_t* instruction) {
+  return sign_extend_IS_imm(get_instruction_I_imm(instruction));
 }
-*/
+
+uint64_t* get_machine_word_S_immediate(uint64_t* instruction) {
+  return sign_extend_IS_imm(get_instruction_S_imm(instruction));
+}
+
+uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
+  if (IS64BITTARGET)
+    return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 44, "sign-extend");
+  else
+    return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
+}
 
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
@@ -656,6 +687,10 @@ void output_machine() {
 
   print_line(3000, eval_core_rd);
 
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(3100, eval_core_imm);
+
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
   print_line(4000, next_main_memory);
@@ -668,6 +703,8 @@ void rotor() {
 
   eval_core_ir = fetch_instruction(state_core_pc);
   eval_core_rd = get_instruction_opcode(eval_core_ir);
+
+  eval_core_imm = get_machine_word_S_immediate(eval_core_ir);
 
   output_machine();
 }
