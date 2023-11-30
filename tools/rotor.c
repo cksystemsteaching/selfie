@@ -15,17 +15,7 @@ Rotor is a tool for generating BTOR2 models of RISC-V machines.
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// -------------------     I N T E R F A C E     -------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
-// -----------------------------------------------------------------
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// -----------------    A R C H I T E C T U R E    -----------------
+// -----------------------     M O D E L     -----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -58,8 +48,7 @@ uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 
-uint64_t* new_concat(uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
-uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment);
+uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 
 uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
@@ -96,6 +85,9 @@ char* OP_STATE = (char*) 0;
 char* OP_INIT  = (char*) 0;
 char* OP_NEXT  = (char*) 0;
 
+char* OP_EQ  = (char*) 0;
+char* OP_AND = (char*) 0;
+
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
 
@@ -126,7 +118,7 @@ uint64_t number_of_lines = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_architecture() {
+void init_model() {
   BITVEC = "bitvec";
   ARRAY  = "array";
 
@@ -135,6 +127,9 @@ void init_architecture() {
   OP_STATE = "state";
   OP_INIT  = "init";
   OP_NEXT  = "next";
+
+  OP_EQ  = "eq";
+  OP_AND = "and";
 
   OP_CONCAT = "concat";
   OP_READ   = "read";
@@ -166,6 +161,32 @@ void init_architecture() {
   }
 }
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -------------------     I N T E R F A C E     -------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ----------------------- MIPSTER SYSCALLS ------------------------
+// -----------------------------------------------------------------
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* NID_SYSCALL_EXIT = (uint64_t*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_interface() {
+  NID_SYSCALL_EXIT = new_constant(SID_MACHINE_WORD, SYSCALL_EXIT);
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -----------------    A R C H I T E C T U R E    -----------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
 // -----------------------------------------------------------------
 // --------------------------- REGISTERS ---------------------------
 // -----------------------------------------------------------------
@@ -175,7 +196,41 @@ void new_register_file_state();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t* SID_REGISTER_ADDRESS = (uint64_t*) 0;
-uint64_t* SID_REGISTER_STATE   = (uint64_t*) 0;
+
+uint64_t* NID_ZR  = (uint64_t*) 0;
+uint64_t* NID_RA  = (uint64_t*) 0;
+uint64_t* NID_SP  = (uint64_t*) 0;
+uint64_t* NID_GP  = (uint64_t*) 0;
+uint64_t* NID_TP  = (uint64_t*) 0;
+uint64_t* NID_T0  = (uint64_t*) 0;
+uint64_t* NID_T1  = (uint64_t*) 0;
+uint64_t* NID_T2  = (uint64_t*) 0;
+uint64_t* NID_S0  = (uint64_t*) 0;
+uint64_t* NID_S1  = (uint64_t*) 0;
+uint64_t* NID_A0  = (uint64_t*) 0;
+uint64_t* NID_A1  = (uint64_t*) 0;
+uint64_t* NID_A2  = (uint64_t*) 0;
+uint64_t* NID_A3  = (uint64_t*) 0;
+uint64_t* NID_A4  = (uint64_t*) 0;
+uint64_t* NID_A5  = (uint64_t*) 0;
+uint64_t* NID_A6  = (uint64_t*) 0;
+uint64_t* NID_A7  = (uint64_t*) 0;
+uint64_t* NID_S2  = (uint64_t*) 0;
+uint64_t* NID_S3  = (uint64_t*) 0;
+uint64_t* NID_S4  = (uint64_t*) 0;
+uint64_t* NID_S5  = (uint64_t*) 0;
+uint64_t* NID_S6  = (uint64_t*) 0;
+uint64_t* NID_S7  = (uint64_t*) 0;
+uint64_t* NID_S8  = (uint64_t*) 0;
+uint64_t* NID_S9  = (uint64_t*) 0;
+uint64_t* NID_S10 = (uint64_t*) 0;
+uint64_t* NID_S11 = (uint64_t*) 0;
+uint64_t* NID_T3  = (uint64_t*) 0;
+uint64_t* NID_T4  = (uint64_t*) 0;
+uint64_t* NID_T5  = (uint64_t*) 0;
+uint64_t* NID_T6  = (uint64_t*) 0;
+
+uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -189,7 +244,41 @@ uint64_t* next_register_file = (uint64_t*) 0;
 
 void init_register_file_sorts() {
   SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
-  SID_REGISTER_STATE   = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
+
+  NID_ZR  = new_constant(SID_REGISTER_ADDRESS, REG_ZR);
+  NID_RA  = new_constant(SID_REGISTER_ADDRESS, REG_RA);
+  NID_SP  = new_constant(SID_REGISTER_ADDRESS, REG_SP);
+  NID_GP  = new_constant(SID_REGISTER_ADDRESS, REG_GP);
+  NID_TP  = new_constant(SID_REGISTER_ADDRESS, REG_TP);
+  NID_T0  = new_constant(SID_REGISTER_ADDRESS, REG_T0);
+  NID_T1  = new_constant(SID_REGISTER_ADDRESS, REG_T1);
+  NID_T2  = new_constant(SID_REGISTER_ADDRESS, REG_T2);
+  NID_S0  = new_constant(SID_REGISTER_ADDRESS, REG_S0);
+  NID_S1  = new_constant(SID_REGISTER_ADDRESS, REG_S1);
+  NID_A0  = new_constant(SID_REGISTER_ADDRESS, REG_A0);
+  NID_A1  = new_constant(SID_REGISTER_ADDRESS, REG_A1);
+  NID_A2  = new_constant(SID_REGISTER_ADDRESS, REG_A2);
+  NID_A3  = new_constant(SID_REGISTER_ADDRESS, REG_A3);
+  NID_A4  = new_constant(SID_REGISTER_ADDRESS, REG_A4);
+  NID_A5  = new_constant(SID_REGISTER_ADDRESS, REG_A5);
+  NID_A6  = new_constant(SID_REGISTER_ADDRESS, REG_A6);
+  NID_A7  = new_constant(SID_REGISTER_ADDRESS, REG_A7);
+  NID_S2  = new_constant(SID_REGISTER_ADDRESS, REG_S2);
+  NID_S3  = new_constant(SID_REGISTER_ADDRESS, REG_S3);
+  NID_S4  = new_constant(SID_REGISTER_ADDRESS, REG_S4);
+  NID_S5  = new_constant(SID_REGISTER_ADDRESS, REG_S5);
+  NID_S6  = new_constant(SID_REGISTER_ADDRESS, REG_S6);
+  NID_S7  = new_constant(SID_REGISTER_ADDRESS, REG_S7);
+  NID_S8  = new_constant(SID_REGISTER_ADDRESS, REG_S8);
+  NID_S9  = new_constant(SID_REGISTER_ADDRESS, REG_S9);
+  NID_S10 = new_constant(SID_REGISTER_ADDRESS, REG_S10);
+  NID_S11 = new_constant(SID_REGISTER_ADDRESS, REG_S11);
+  NID_T3  = new_constant(SID_REGISTER_ADDRESS, REG_T3);
+  NID_T4  = new_constant(SID_REGISTER_ADDRESS, REG_T4);
+  NID_T5  = new_constant(SID_REGISTER_ADDRESS, REG_T5);
+  NID_T6  = new_constant(SID_REGISTER_ADDRESS, REG_T6);
+
+  SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
 }
 
 // -----------------------------------------------------------------
@@ -242,11 +331,52 @@ uint64_t* get_instruction_rs2(uint64_t* instruction);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t* SID_OPCODE = (uint64_t*) 0;
+
+uint64_t* NID_OP_LOAD   = (uint64_t*) 0;
+uint64_t* NID_OP_IMM    = (uint64_t*) 0;
+uint64_t* NID_OP_STORE  = (uint64_t*) 0;
+uint64_t* NID_OP_OP     = (uint64_t*) 0;
+uint64_t* NID_OP_LUI    = (uint64_t*) 0;
+uint64_t* NID_OP_BRANCH = (uint64_t*) 0;
+uint64_t* NID_OP_JALR   = (uint64_t*) 0;
+uint64_t* NID_OP_JAL    = (uint64_t*) 0;
+uint64_t* NID_OP_SYSTEM = (uint64_t*) 0;
+
 uint64_t* SID_FUNCT3 = (uint64_t*) 0;
+
+uint64_t* NID_F3_NOP   = (uint64_t*) 0;
+uint64_t* NID_F3_ADDI  = (uint64_t*) 0;
+uint64_t* NID_F3_ADD   = (uint64_t*) 0;
+uint64_t* NID_F3_SUB   = (uint64_t*) 0;
+uint64_t* NID_F3_MUL   = (uint64_t*) 0;
+uint64_t* NID_F3_DIVU  = (uint64_t*) 0;
+uint64_t* NID_F3_REMU  = (uint64_t*) 0;
+uint64_t* NID_F3_SLTU  = (uint64_t*) 0;
+uint64_t* NID_F3_LD    = (uint64_t*) 0;
+uint64_t* NID_F3_SD    = (uint64_t*) 0;
+uint64_t* NID_F3_LW    = (uint64_t*) 0;
+uint64_t* NID_F3_SW    = (uint64_t*) 0;
+uint64_t* NID_F3_BEQ   = (uint64_t*) 0;
+uint64_t* NID_F3_JALR  = (uint64_t*) 0;
+uint64_t* NID_F3_ECALL = (uint64_t*) 0;
+
 uint64_t* SID_FUNCT7 = (uint64_t*) 0;
 
-uint64_t* SID_IS_IMM = (uint64_t*) 0;
-uint64_t* SID_U_IMM  = (uint64_t*) 0;
+uint64_t* NID_F7_ADD  = (uint64_t*) 0;
+uint64_t* NID_F7_MUL  = (uint64_t*) 0;
+uint64_t* NID_F7_SUB  = (uint64_t*) 0;
+uint64_t* NID_F7_DIVU = (uint64_t*) 0;
+uint64_t* NID_F7_REMU = (uint64_t*) 0;
+uint64_t* NID_F7_SLTU = (uint64_t*) 0;
+
+uint64_t* SID_FUNCT12 = (uint64_t*) 0;
+
+uint64_t* NID_F12_ECALL = (uint64_t*) 0;
+
+uint64_t* NID_ECALL = (uint64_t*) 0;
+
+uint64_t* SID_12_BIT_IMM = (uint64_t*) 0;
+uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -254,11 +384,53 @@ uint64_t* SID_U_IMM  = (uint64_t*) 0;
 
 void init_instruction_sorts() {
   SID_OPCODE = new_bitvec(7, "opcode sort");
+
+  NID_OP_LOAD   = new_constant(SID_OPCODE, OP_LOAD);
+  NID_OP_IMM    = new_constant(SID_OPCODE, OP_IMM);
+  NID_OP_STORE  = new_constant(SID_OPCODE, OP_STORE);
+  NID_OP_OP     = new_constant(SID_OPCODE, OP_OP);
+  NID_OP_LUI    = new_constant(SID_OPCODE, OP_LUI);
+  NID_OP_BRANCH = new_constant(SID_OPCODE, OP_BRANCH);
+  NID_OP_JALR   = new_constant(SID_OPCODE, OP_JALR);
+  NID_OP_JAL    = new_constant(SID_OPCODE, OP_JAL);
+  NID_OP_SYSTEM = new_constant(SID_OPCODE, OP_SYSTEM);
+
   SID_FUNCT3 = new_bitvec(3, "funct3 sort");
+
+  NID_F3_NOP   = new_constant(SID_FUNCT3, F3_NOP);
+  NID_F3_ADDI  = new_constant(SID_FUNCT3, F3_ADDI);
+  NID_F3_ADD   = new_constant(SID_FUNCT3, F3_ADD);
+  NID_F3_SUB   = new_constant(SID_FUNCT3, F3_SUB);
+  NID_F3_MUL   = new_constant(SID_FUNCT3, F3_MUL);
+  NID_F3_DIVU  = new_constant(SID_FUNCT3, F3_DIVU);
+  NID_F3_REMU  = new_constant(SID_FUNCT3, F3_REMU);
+  NID_F3_SLTU  = new_constant(SID_FUNCT3, F3_SLTU);
+  NID_F3_LD    = new_constant(SID_FUNCT3, F3_LD);
+  NID_F3_SD    = new_constant(SID_FUNCT3, F3_SD);
+  NID_F3_LW    = new_constant(SID_FUNCT3, F3_LW);
+  NID_F3_SW    = new_constant(SID_FUNCT3, F3_SW);
+  NID_F3_BEQ   = new_constant(SID_FUNCT3, F3_BEQ);
+  NID_F3_JALR  = new_constant(SID_FUNCT3, F3_JALR);
+  NID_F3_ECALL = new_constant(SID_FUNCT3, F3_ECALL);
+
   SID_FUNCT7 = new_bitvec(7, "funct7 sort");
 
-  SID_IS_IMM = new_bitvec(12, "12-bit immediate sort");
-  SID_U_IMM  = new_bitvec(20, "20-bit immediate sort");
+  NID_F7_ADD  = new_constant(SID_FUNCT7, F7_ADD);
+  NID_F7_MUL  = new_constant(SID_FUNCT7, F7_MUL);
+  NID_F7_SUB  = new_constant(SID_FUNCT7, F7_SUB);
+  NID_F7_DIVU = new_constant(SID_FUNCT7, F7_DIVU);
+  NID_F7_REMU = new_constant(SID_FUNCT7, F7_REMU);
+  NID_F7_SLTU = new_constant(SID_FUNCT7, F7_SLTU);
+
+  SID_FUNCT12 = new_bitvec(12, "funct12 sort");
+
+  NID_F12_ECALL = new_constant(SID_FUNCT12, F12_ECALL);
+
+  NID_ECALL = new_constant(SID_SINGLE_WORD,
+    left_shift(left_shift(left_shift(left_shift(F12_ECALL, 5) + REG_ZR, 3) + F3_ECALL, 5) + REG_ZR, 7) + OP_SYSTEM);
+
+  SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort");
+  SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort");
 }
 
 // -----------------------------------------------------------------
@@ -275,9 +447,11 @@ uint64_t* init_core_pc  = (uint64_t*) 0;
 uint64_t* eval_core_pc = (uint64_t*) 0;
 uint64_t* next_core_pc = (uint64_t*) 0;
 
-uint64_t* eval_core_ir  = (uint64_t*) 0;
-uint64_t* eval_core_rd  = (uint64_t*) 0;
-uint64_t* eval_core_imm = (uint64_t*) 0;
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -300,27 +474,7 @@ uint64_t bad_exit_code  = 0; // model for this exit code
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ----------------------    R U N T I M E    ----------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ---------------------------- KERNEL -----------------------------
-// -----------------------------------------------------------------
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// -------------------     I N T E R F A C E     -------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
-// -----------------------------------------------------------------
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// -----------------    A R C H I T E C T U R E    -----------------
+// -----------------------     M O D E L     -----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -365,12 +519,8 @@ uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char
   return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
 }
 
-uint64_t* new_concat(uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
-  return new_line(OP_CONCAT, sid, left_nid, right_nid, UNUSED, comment);
-}
-
-uint64_t* new_read(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, char* comment) {
-  return new_line(OP_READ, sid, array_nid, index_nid, UNUSED, comment);
+uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
+  return new_line(op, sid, left_nid, right_nid, UNUSED, comment);
 }
 
 uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
@@ -503,6 +653,22 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -------------------     I N T E R F A C E     -------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ----------------------- MIPSTER SYSCALLS ------------------------
+// -----------------------------------------------------------------
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -----------------    A R C H I T E C T U R E    -----------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
 // -----------------------------------------------------------------
 // --------------------------- REGISTERS ---------------------------
 // -----------------------------------------------------------------
@@ -513,6 +679,10 @@ void new_register_file_state() {
 
   eval_register_file = state_register_file;
   next_register_file = new_next(SID_REGISTER_STATE, state_register_file, eval_register_file, "TBD");
+}
+
+uint64_t* get_register_value(uint64_t* reg) {
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file, reg, "value of a7");
 }
 
 // -----------------------------------------------------------------
@@ -535,7 +705,7 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
 }
 
 uint64_t* load_machine_word(uint64_t* vaddr) {
-  return new_read(SID_MACHINE_WORD, state_main_memory, vaddr_to_laddr(vaddr), "load machine word");
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_main_memory, vaddr_to_laddr(vaddr), "load machine word");
 }
 
 uint64_t* fetch_instruction(uint64_t* vaddr) {
@@ -545,10 +715,10 @@ uint64_t* fetch_instruction(uint64_t* vaddr) {
 
   if (IS64BITTARGET)
     return new_ite(SID_SINGLE_WORD,
-      new_slice(SID_BOOLEAN, vaddr, 2, 2, "high or low single word?"),
+      new_slice(SID_BOOLEAN, vaddr, 2, 2, "fetch high or low single word"),
       new_slice(SID_SINGLE_WORD, machine_word, 63, 32, "high single word"),
       new_slice(SID_SINGLE_WORD, machine_word, 31, 0, "low single word"),
-      "fetch instruction");
+      "32-bit value of instruction register");
   else
     return machine_word;
 }
@@ -582,18 +752,18 @@ uint64_t* get_instruction_rs2(uint64_t* instruction) {
 }
 
 uint64_t* get_instruction_I_imm(uint64_t* instruction) {
-  return new_slice(SID_IS_IMM, instruction, 31, 20, "get I-immediate");
+  return new_slice(SID_12_BIT_IMM, instruction, 31, 20, "get I-immediate");
 }
 
 uint64_t* get_instruction_S_imm(uint64_t* instruction) {
-  return new_concat(SID_IS_IMM,
+  return new_binary(OP_CONCAT, SID_12_BIT_IMM,
     get_instruction_funct7(instruction),
     get_instruction_rd(instruction),
     "get S-immediate");
 }
 
 uint64_t* get_instruction_U_imm(uint64_t* instruction) {
-  return new_slice(SID_U_IMM, instruction, 31, 12, "get U-immediate");
+  return new_slice(SID_20_BIT_IMM, instruction, 31, 12, "get U-immediate");
 }
 
 uint64_t* sign_extend_IS_imm(uint64_t* imm) {
@@ -629,6 +799,12 @@ void new_core_state() {
   eval_core_pc = state_core_pc;
   next_core_pc = new_next(SID_MACHINE_WORD, state_core_pc, eval_core_pc, "TBD");
 }
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
@@ -677,19 +853,11 @@ void output_machine() {
   print_line(1000, state_core_pc);
   print_line(1001, init_core_pc);
 
-  print_line(1002, next_core_pc);
-
   w = w + dprintf(output_fd, "\n; fetch instruction\n\n");
-
-  print_line(2000, eval_core_ir);
 
   w = w + dprintf(output_fd, "\n; decode instruction\n\n");
 
-  print_line(3000, eval_core_rd);
-
-  w = w + dprintf(output_fd, "\n");
-
-  print_line(3100, eval_core_imm);
+  print_line(1002, next_core_pc);
 
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
@@ -697,16 +865,29 @@ void output_machine() {
 }
 
 void rotor() {
+  uint64_t* eval_core_ir;
+  uint64_t* eval_core_a7;
+  uint64_t* experimental;
+
   new_register_file_state();
   new_main_memory_state();
   new_core_state();
 
   eval_core_ir = fetch_instruction(state_core_pc);
-  eval_core_rd = get_instruction_opcode(eval_core_ir);
+  eval_core_a7 = get_register_value(NID_A7);
 
-  eval_core_imm = get_machine_word_S_immediate(eval_core_ir);
+  experimental = new_binary(OP_AND, SID_BOOLEAN,
+    new_binary(OP_EQ, SID_BOOLEAN, eval_core_a7, NID_SYSCALL_EXIT, "a7 == SYSCALL_EXIT"),
+    new_binary(OP_EQ, SID_BOOLEAN, eval_core_ir, NID_ECALL, "ir == ECALL"),
+    "exit system call");
+
+  eval_core_pc = state_core_pc;
 
   output_machine();
+
+  w = w + dprintf(output_fd, "\n; experimental\n\n");
+
+  print_line(5000, experimental);
 }
 
 uint64_t selfie_model() {
@@ -727,7 +908,10 @@ uint64_t selfie_model() {
         exit(EXITCODE_IOERROR);
       }
 
-      init_architecture();
+      init_model();
+
+      init_interface();
+
       init_register_file_sorts();
       init_main_memory_sorts();
       init_instruction_sorts();
@@ -750,16 +934,6 @@ uint64_t selfie_model() {
   } else
     return EXITCODE_BADARGUMENTS;
 }
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// ----------------------    R U N T I M E    ----------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ---------------------------- KERNEL -----------------------------
-// -----------------------------------------------------------------
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
