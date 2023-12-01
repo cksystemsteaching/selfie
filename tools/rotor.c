@@ -173,12 +173,12 @@ void init_model() {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t* NID_SYSCALL_EXIT = (uint64_t*) 0;
+uint64_t* NID_SYSCALL_EXIT_ID = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface() {
-  NID_SYSCALL_EXIT = new_constant(SID_MACHINE_WORD, SYSCALL_EXIT);
+  NID_SYSCALL_EXIT_ID = new_constant(SID_MACHINE_WORD, SYSCALL_EXIT);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -234,11 +234,11 @@ uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* state_register_file = (uint64_t*) 0;
-uint64_t* init_register_file  = (uint64_t*) 0;
+uint64_t* state_register_file_nid = (uint64_t*) 0;
+uint64_t* init_register_file_nid  = (uint64_t*) 0;
 
-uint64_t* eval_register_file = (uint64_t*) 0;
-uint64_t* next_register_file = (uint64_t*) 0;
+uint64_t* eval_register_file_nid = (uint64_t*) 0;
+uint64_t* next_register_file_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -299,11 +299,11 @@ uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* state_main_memory = (uint64_t*) 0;
-uint64_t* init_main_memory  = (uint64_t*) 0;
+uint64_t* state_main_memory_nid = (uint64_t*) 0;
+uint64_t* init_main_memory_nid  = (uint64_t*) 0;
 
-uint64_t* eval_main_memory = (uint64_t*) 0;
-uint64_t* next_main_memory = (uint64_t*) 0;
+uint64_t* eval_main_memory_nid = (uint64_t*) 0;
+uint64_t* next_main_memory_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -441,11 +441,11 @@ void new_core_state();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* state_core_pc = (uint64_t*) 0;
-uint64_t* init_core_pc  = (uint64_t*) 0;
+uint64_t* state_core_pc_nid = (uint64_t*) 0;
+uint64_t* init_core_pc_nid  = (uint64_t*) 0;
 
-uint64_t* eval_core_pc = (uint64_t*) 0;
-uint64_t* next_core_pc = (uint64_t*) 0;
+uint64_t* eval_core_pc_nid = (uint64_t*) 0;
+uint64_t* next_core_pc_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -470,7 +470,7 @@ uint64_t model_fd   = 0;         // file descriptor of open model file
 
 uint64_t w = 0; // number of written characters
 
-uint64_t bad_exit_code  = 0; // model for this exit code
+uint64_t bad_exit_code = 0; // model for this exit code
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -674,15 +674,15 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
 // -----------------------------------------------------------------
 
 void new_register_file_state() {
-  state_register_file = new_state(SID_REGISTER_STATE, "regs", "register file");
-  init_register_file  = new_init(SID_REGISTER_STATE, state_register_file, NID_MACHINE_WORD_0, "regs", "initial value");
+  state_register_file_nid = new_state(SID_REGISTER_STATE, "regs", "register file");
+  init_register_file_nid  = new_init(SID_REGISTER_STATE, state_register_file_nid, NID_MACHINE_WORD_0, "regs", "initial value");
 
-  eval_register_file = state_register_file;
-  next_register_file = new_next(SID_REGISTER_STATE, state_register_file, eval_register_file, "TBD");
+  eval_register_file_nid = state_register_file_nid;
+  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid, eval_register_file_nid, "TBD");
 }
 
 uint64_t* get_register_value(uint64_t* reg) {
-  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file, reg, "value of a7");
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file_nid, reg, "value of a7");
 }
 
 // -----------------------------------------------------------------
@@ -690,11 +690,11 @@ uint64_t* get_register_value(uint64_t* reg) {
 // -----------------------------------------------------------------
 
 void new_main_memory_state() {
-  state_main_memory = new_state(SID_MEMORY_STATE, "mem", "main memory");
-  init_main_memory  = new_init(SID_MEMORY_STATE, state_main_memory, NID_MACHINE_WORD_0, "mem", "initial value");
+  state_main_memory_nid = new_state(SID_MEMORY_STATE, "mem", "main memory");
+  init_main_memory_nid  = new_init(SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "mem", "initial value");
 
-  eval_main_memory = state_main_memory;
-  next_main_memory = new_next(SID_MEMORY_STATE, state_main_memory, eval_main_memory, "TBD");
+  eval_main_memory_nid = state_main_memory_nid;
+  next_main_memory_nid = new_next(SID_MEMORY_STATE, state_main_memory_nid, eval_main_memory_nid, "TBD");
 }
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
@@ -705,7 +705,7 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
 }
 
 uint64_t* load_machine_word(uint64_t* vaddr) {
-  return new_binary(OP_READ, SID_MACHINE_WORD, state_main_memory, vaddr_to_laddr(vaddr), "load machine word");
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_main_memory_nid, vaddr_to_laddr(vaddr), "load machine word");
 }
 
 uint64_t* fetch_instruction(uint64_t* vaddr) {
@@ -793,11 +793,11 @@ uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
 // -----------------------------------------------------------------
 
 void new_core_state() {
-  state_core_pc = new_state(SID_MACHINE_WORD, "pc", "program counter");
-  init_core_pc  = new_init(SID_MACHINE_WORD, state_core_pc, NID_MACHINE_WORD_0, "pc", "initial value");
+  state_core_pc_nid = new_state(SID_MACHINE_WORD, "pc", "program counter");
+  init_core_pc_nid  = new_init(SID_MACHINE_WORD, state_core_pc_nid, NID_MACHINE_WORD_0, "pc", "initial value");
 
-  eval_core_pc = state_core_pc;
-  next_core_pc = new_next(SID_MACHINE_WORD, state_core_pc, eval_core_pc, "TBD");
+  eval_core_pc_nid = state_core_pc_nid;
+  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid, eval_core_pc_nid, "TBD");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -838,30 +838,30 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
-  print_line(200, state_register_file);
-  print_line(201, init_register_file);
+  print_line(200, state_register_file_nid);
+  print_line(201, init_register_file_nid);
 
-  print_line(202, next_register_file);
+  print_line(202, next_register_file_nid);
 
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
-  print_line(300, state_main_memory);
-  print_line(301, init_main_memory);
+  print_line(300, state_main_memory_nid);
+  print_line(301, init_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; program counter\n\n");
 
-  print_line(1000, state_core_pc);
-  print_line(1001, init_core_pc);
+  print_line(1000, state_core_pc_nid);
+  print_line(1001, init_core_pc_nid);
 
   w = w + dprintf(output_fd, "\n; fetch instruction\n\n");
 
   w = w + dprintf(output_fd, "\n; decode instruction\n\n");
 
-  print_line(1002, next_core_pc);
+  print_line(1002, next_core_pc_nid);
 
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
-  print_line(4000, next_main_memory);
+  print_line(4000, next_main_memory_nid);
 }
 
 void rotor() {
@@ -873,15 +873,15 @@ void rotor() {
   new_main_memory_state();
   new_core_state();
 
-  eval_core_ir = fetch_instruction(state_core_pc);
+  eval_core_ir = fetch_instruction(state_core_pc_nid);
   eval_core_a7 = get_register_value(NID_A7);
 
   experimental = new_binary(OP_AND, SID_BOOLEAN,
-    new_binary(OP_EQ, SID_BOOLEAN, eval_core_a7, NID_SYSCALL_EXIT, "a7 == SYSCALL_EXIT"),
+    new_binary(OP_EQ, SID_BOOLEAN, eval_core_a7, NID_SYSCALL_EXIT_ID, "a7 == SYSCALL_EXIT"),
     new_binary(OP_EQ, SID_BOOLEAN, eval_core_ir, NID_ECALL, "ir == ECALL"),
     "exit system call");
 
-  eval_core_pc = state_core_pc;
+  eval_core_pc_nid = state_core_pc_nid;
 
   output_machine();
 
