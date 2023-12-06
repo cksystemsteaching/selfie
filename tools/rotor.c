@@ -43,7 +43,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
-uint64_t* new_constant(uint64_t* sid, uint64_t constant);
+uint64_t* new_constant(uint64_t* sid, uint64_t constant, char* comment);
 uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
