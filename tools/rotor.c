@@ -374,6 +374,7 @@ uint64_t* get_machine_word_I_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
 
+uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid, uint64_t* register_file_nid);
 uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -416,8 +417,6 @@ uint64_t* NID_F7_SUB  = (uint64_t*) 0;
 uint64_t* NID_F7_DIVU = (uint64_t*) 0;
 uint64_t* NID_F7_REMU = (uint64_t*) 0;
 uint64_t* NID_F7_SLTU = (uint64_t*) 0;
-
-uint64_t* NID_F7_DONT_CARE = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT12 = (uint64_t*) 0;
 
@@ -866,14 +865,44 @@ uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
     return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
 }
 
-uint64_t* decode_instruction(uint64_t* ir_nid, uint64_t* F7_nid, uint64_t* F3_nid, uint64_t* op_nid) {
-  if (F7_nid == NID_F7_DONT_CARE)
-    return new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, get_instruction_funct3(ir_nid), F3_nid, "funct3"),
-      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), op_nid, "opcode"),
-      "decode funct3 and opcode");
-  else
-    return (uint64_t*) 0;
+uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid, uint64_t* register_file_nid) {
+  uint64_t* rd_nid;
+  uint64_t* rd_value_nid;
+  uint64_t* rs1_value_nid;
+  uint64_t* I_immediate;
+
+  rd_nid       = get_instruction_rd(ir_nid);
+  rd_value_nid = get_register_value(rd_nid, "old rd value");
+
+  rs1_value_nid = get_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+
+  I_immediate = get_machine_word_I_immediate(ir_nid);
+
+  rd_value_nid = new_ite(SID_MACHINE_WORD,
+    new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
+    new_ite(SID_MACHINE_WORD,
+      new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        rs1_value_nid,
+        I_immediate,
+        "rs1 value + immediate"),
+      rd_value_nid,
+      "addi data flow"),
+    rd_value_nid,
+    "new rd value");
+
+  return new_ite(SID_REGISTER_STATE,
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
+      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
+      "STORE or BRANCH"),
+    register_file_nid,
+    new_ite(SID_REGISTER_STATE,
+      new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero"),
+      register_file_nid,
+      new_write(SID_REGISTER_STATE, register_file_nid, rd_nid, rd_value_nid, "write rd"),
+      "write non-zero rd"),
+    "update non-zero rd");
 }
 
 uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid) {
@@ -941,7 +970,7 @@ void output_machine() {
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
   print_line(200, state_register_file_nid);
-  //print_line(201, init_register_file_nid);
+  print_line(201, init_register_file_nid);
 
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
@@ -953,76 +982,74 @@ void output_machine() {
   print_line(1000, state_core_pc_nid);
   print_line(1001, init_core_pc_nid);
 
+  w = w + dprintf(output_fd, "\n; update registers\n\n");
+
+  print_line(2000, next_register_file_nid);
+
   w = w + dprintf(output_fd, "\n; kernel mode\n\n");
 
-  print_line(2000, eval_kernel_mode_nid);
+  print_line(4000, eval_kernel_mode_nid);
 
   w = w + dprintf(output_fd, "\n; update program counter\n\n");
 
-  print_line(3000, next_core_pc_nid);
-
-  w = w + dprintf(output_fd, "\n; update registers\n\n");
-
-  print_line(4000, next_register_file_nid);
+  print_line(5000, next_core_pc_nid);
 
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
-  print_line(5000, next_main_memory_nid);
+  print_line(6000, next_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
-  print_line(6000, bad_pc_nid);
+  print_line(7000, bad_pc_nid);
+
+  //w = w + dprintf(output_fd, "\n");
+
+  // print_line(7100, bad_syscall_id_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(6100, bad_syscall_id_nid);
-
-  w = w + dprintf(output_fd, "\n");
-
-  print_line(6200, bad_exit_nid);
+  print_line(7200, bad_exit_nid);
 }
 
 void rotor() {
-  uint64_t* eval_register_file_nid;
+  uint64_t* ir_nid;
 
-  uint64_t* eval_core_ir_nid;
-  uint64_t* eval_core_rs1_nid;
+  uint64_t* funct3_nid;
+  uint64_t* opcode_nid;
 
-  uint64_t* eval_core_a0_nid;
-  uint64_t* eval_core_a7_nid;
+  uint64_t* a7_value_nid;
+  uint64_t* a0_value_nid;
 
-  uint64_t* active_addi_nid;
   uint64_t* active_ecall_nid;
   uint64_t* active_exit_nid;
-  uint64_t* bad_exit_code_nid;
 
   new_register_file_state();
   new_main_memory_state();
   new_core_state();
 
-  // instruction
+  // fetch
 
-  eval_core_ir_nid = fetch_instruction(state_core_pc_nid);
+  ir_nid = fetch_instruction(state_core_pc_nid);
 
-  active_addi_nid = decode_instruction(eval_core_ir_nid, NID_F7_DONT_CARE, NID_F3_ADDI, NID_OP_IMM);
+  // decode
 
-  eval_core_rs1_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
+  funct3_nid = get_instruction_funct3(ir_nid);
+  opcode_nid = get_instruction_opcode(ir_nid);
 
-  eval_register_file_nid = new_ite(SID_REGISTER_STATE, active_addi_nid,
-    new_write(SID_REGISTER_STATE, state_register_file_nid, get_instruction_rd(eval_core_ir_nid),
-      new_binary(OP_ADD, SID_MACHINE_WORD, eval_core_rs1_nid, get_machine_word_I_immediate(eval_core_ir_nid),
-      "register source 1 + immediate"), "update register"),
-    state_register_file_nid,
-    "update register with addi");
+  // data flow
+
+  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid,
+    data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
+    "register file");
 
   // kernel
 
-  eval_core_a7_nid = get_register_value(NID_A7, "a7 value");
+  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL");
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, eval_core_ir_nid, NID_ECALL, "ir == ECALL");
+  a7_value_nid = get_register_value(NID_A7, "a7 value");
 
   active_exit_nid = new_binary_boolean(OP_AND, active_ecall_nid,
-    new_binary_boolean(OP_EQ, eval_core_a7_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID"),
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID"),
     "exit system call");
 
   eval_kernel_mode_nid = active_exit_nid;
@@ -1031,13 +1058,11 @@ void rotor() {
 
   next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
     new_ite(SID_MACHINE_WORD, eval_kernel_mode_nid, state_core_pc_nid,
-      control_flow(get_instruction_opcode(eval_core_ir_nid), state_core_pc_nid),
+      control_flow(opcode_nid, state_core_pc_nid),
         "update program counter unless in kernel mode"),
       "program counter");
 
-  // data flow
-
-  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid, eval_register_file_nid, "register file");
+  // bad states
 
   bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
     new_binary_boolean(OP_ULT, state_core_pc_nid,
@@ -1050,19 +1075,19 @@ void rotor() {
     "b0", "pc not in code segment");
 
   bad_syscall_id_nid = new_bad(new_binary_boolean(OP_AND, active_ecall_nid,
-    new_binary_boolean(OP_NEQ, eval_core_a7_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+    new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
       "active ecall and a7 != exit syscall ID"),
     "b1", "unknown syscall ID");
 
-  eval_core_a0_nid = get_register_value(NID_A0, "a0 value");
-
-  bad_exit_code_nid = new_binary_boolean(OP_EQ,
-    eval_core_a0_nid,
-    new_constant(SID_MACHINE_WORD, bad_exit_code, format_comment("bad exit code %lu", bad_exit_code)),
-    "actual exit code == bad exit code");
+  a0_value_nid = get_register_value(NID_A0, "a0 value");
 
   bad_exit_nid = new_bad(new_binary_boolean(OP_AND,
-    active_exit_nid, bad_exit_code_nid, "active exit with bad exit code"),
+    active_exit_nid,
+    new_binary_boolean(OP_EQ,
+      a0_value_nid,
+      new_constant(SID_MACHINE_WORD, bad_exit_code, format_comment("bad exit code %lu", bad_exit_code)),
+      "actual exit code == bad exit code"),
+    "active exit system call with bad exit code"),
     "b2", format_comment("exit(%lu)", bad_exit_code));
 
   output_machine();
@@ -1098,7 +1123,7 @@ uint64_t selfie_model() {
       output_fd   = model_fd;
 
       code_start = 0;
-      code_size  = 4;
+      code_size  = 12;
 
       rotor();
 
