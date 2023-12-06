@@ -55,6 +55,7 @@ uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
 
 uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
+uint64_t* new_write(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, uint64_t* element_nid, char* comment);
 
 uint64_t* new_bad(uint64_t* condition_nid, char* symbol, char* comment);
 
@@ -100,13 +101,16 @@ char* OP_ULT  = (char*) 0;
 char* OP_AND = (char*) 0;
 char* OP_OR  = (char*) 0;
 
+char* OP_ADD = (char*) 0;
+
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
 
 char* OP_SEXT  = (char*) 0;
 char* OP_SLICE = (char*) 0;
 
-char* OP_ITE = (char*) 0;
+char* OP_ITE   = (char*) 0;
+char* OP_WRITE = (char*) 0;
 
 char* OP_BAD = (char*) 0;
 
@@ -150,13 +154,16 @@ void init_model() {
   OP_AND = "and";
   OP_OR  = "or";
 
+  OP_ADD = "add";
+
   OP_CONCAT = "concat";
   OP_READ   = "read";
 
   OP_SEXT  = "sext";
   OP_SLICE = "slice";
 
-  OP_ITE = "ite";
+  OP_ITE   = "ite";
+  OP_WRITE = "write";
 
   OP_BAD = "bad";
 
@@ -262,9 +269,7 @@ uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
 uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
-
-uint64_t* eval_register_file_nid = (uint64_t*) 0;
-uint64_t* next_register_file_nid = (uint64_t*) 0;
+uint64_t* next_register_file_nid  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -394,6 +399,8 @@ uint64_t* NID_F7_SUB  = (uint64_t*) 0;
 uint64_t* NID_F7_DIVU = (uint64_t*) 0;
 uint64_t* NID_F7_REMU = (uint64_t*) 0;
 uint64_t* NID_F7_SLTU = (uint64_t*) 0;
+
+uint64_t* NID_F7_DONT_CARE = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT12 = (uint64_t*) 0;
 
@@ -568,6 +575,10 @@ uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, ui
   return new_line(OP_ITE, sid, condition_nid, true_nid, false_nid, comment);
 }
 
+uint64_t* new_write(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, uint64_t* element_nid, char* comment) {
+  return new_line(OP_WRITE, sid, array_nid, index_nid, element_nid, comment);
+}
+
 uint64_t* new_bad(uint64_t* condition_nid, char* symbol, char* comment) {
   return new_line(OP_BAD, UNUSED, condition_nid, (uint64_t*) symbol, UNUSED, comment);
 }
@@ -600,6 +611,8 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
   else if (get_op(line) == OP_SLICE)
     nid = print_slice(nid, line);
   else if (get_op(line) == OP_ITE)
+    nid = print_tenary_operator(nid, line);
+  else if (get_op(line) == OP_WRITE)
     nid = print_tenary_operator(nid, line);
   else if (get_op(line) == OP_BAD)
     nid = print_bad(nid, line);
@@ -727,16 +740,10 @@ char* format_comment(char* comment, uint64_t value) {
 void new_register_file_state() {
   state_register_file_nid = new_state(SID_REGISTER_STATE, "regs", "register file");
   init_register_file_nid  = new_init(SID_REGISTER_STATE, state_register_file_nid, NID_MACHINE_WORD_0, "regs", "initial value");
-
-  eval_register_file_nid = state_register_file_nid;
-  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid, eval_register_file_nid, "TBD");
 }
 
-uint64_t* get_register_value(uint64_t* reg_nid) {
-  return new_binary(OP_READ, SID_MACHINE_WORD,
-    state_register_file_nid,
-    reg_nid,
-    (char*) *(REGISTERS + (uint64_t) get_arg1(reg_nid)));
+uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file_nid, reg_nid, comment);
 }
 
 // -----------------------------------------------------------------
@@ -842,6 +849,16 @@ uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
     return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
 }
 
+uint64_t* decode_instruction(uint64_t* ir_nid, uint64_t* F7_nid, uint64_t* F3_nid, uint64_t* op_nid) {
+  if (F7_nid == NID_F7_DONT_CARE)
+    return new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ, get_instruction_funct3(ir_nid), F3_nid, "funct3"),
+      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), op_nid, "opcode"),
+      "decode funct3 and opcode");
+  else
+    return (uint64_t*) 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
 // -----------------------------------------------------------------
@@ -892,8 +909,6 @@ void output_machine() {
   print_line(200, state_register_file_nid);
   //print_line(201, init_register_file_nid);
 
-  print_line(202, next_register_file_nid);
-
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
   print_line(300, state_main_memory_nid);
@@ -912,30 +927,38 @@ void output_machine() {
 
   print_line(3000, next_core_pc_nid);
 
+  w = w + dprintf(output_fd, "\n; update registers\n\n");
+
+  print_line(4000, next_register_file_nid);
+
   w = w + dprintf(output_fd, "\n; update main memory\n\n");
 
-  print_line(4000, next_main_memory_nid);
+  print_line(5000, next_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
-  print_line(5000, bad_pc_nid);
+  print_line(6000, bad_pc_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(5100, bad_syscall_id_nid);
+  print_line(6100, bad_syscall_id_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(5200, bad_exit_nid);
+  print_line(6200, bad_exit_nid);
 }
 
 void rotor() {
+  uint64_t* eval_register_file_nid;
   uint64_t* eval_core_pc_nid;
 
   uint64_t* eval_core_ir_nid;
+  uint64_t* eval_core_rs1_nid;
+
   uint64_t* eval_core_a0_nid;
   uint64_t* eval_core_a7_nid;
 
+  uint64_t* active_addi_nid;
   uint64_t* active_ecall_nid;
   uint64_t* active_exit_nid;
   uint64_t* bad_exit_code_nid;
@@ -944,8 +967,24 @@ void rotor() {
   new_main_memory_state();
   new_core_state();
 
+  // instruction
+
   eval_core_ir_nid = fetch_instruction(state_core_pc_nid);
-  eval_core_a7_nid = get_register_value(NID_A7);
+
+  active_addi_nid = decode_instruction(eval_core_ir_nid, NID_F7_DONT_CARE, NID_F3_ADDI, NID_OP_IMM);
+
+  eval_core_rs1_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
+
+  eval_register_file_nid = new_ite(SID_REGISTER_STATE, active_addi_nid,
+    new_write(SID_REGISTER_STATE, state_register_file_nid, get_instruction_rd(eval_core_ir_nid),
+      new_binary(OP_ADD, SID_MACHINE_WORD, eval_core_rs1_nid, get_machine_word_I_immediate(eval_core_ir_nid),
+      "register source 1 + immediate"), "update register"),
+    state_register_file_nid,
+    "update register with addi");
+
+  // kernel
+
+  eval_core_a7_nid = get_register_value(NID_A7, "a7 value");
 
   active_ecall_nid = new_binary_boolean(OP_EQ, eval_core_ir_nid, NID_ECALL, "ir == ECALL");
 
@@ -955,8 +994,14 @@ void rotor() {
 
   eval_kernel_mode_nid = active_exit_nid;
 
+  // control flow
+
   eval_core_pc_nid = new_ite(SID_MACHINE_WORD, eval_kernel_mode_nid, state_core_pc_nid, state_core_pc_nid, "keep pc value if in kernel mode");
   next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid, eval_core_pc_nid, "program counter");
+
+  // data flow
+
+  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid, eval_register_file_nid, "register file");
 
   bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
     new_binary_boolean(OP_ULT, state_core_pc_nid,
@@ -973,7 +1018,7 @@ void rotor() {
       "active ecall and a7 != exit syscall ID"),
     "b1", "unknown syscall ID");
 
-  eval_core_a0_nid = get_register_value(NID_A0);
+  eval_core_a0_nid = get_register_value(NID_A0, "a0 value");
 
   bad_exit_code_nid = new_binary_boolean(OP_EQ,
     eval_core_a0_nid,
