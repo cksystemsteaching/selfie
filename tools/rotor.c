@@ -123,12 +123,15 @@ uint64_t* NID_BYTE_0 = (uint64_t*) 0;
 
 uint64_t* SID_SINGLE_WORD   = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_4 = (uint64_t*) 0;
 
 uint64_t* SID_DOUBLE_WORD   = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_4 = (uint64_t*) 0;
 
 uint64_t* SID_MACHINE_WORD   = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_4 = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -174,18 +177,22 @@ void init_model() {
   SID_BYTE = new_bitvec(8, "8-bit byte");
 
   SID_SINGLE_WORD   = new_bitvec(32, "32-bit single word");
-  NID_SINGLE_WORD_0 = new_constant(SID_SINGLE_WORD, 0, "single-word zero");
+  NID_SINGLE_WORD_0 = new_constant(SID_SINGLE_WORD, 0, "single-word 0");
+  NID_SINGLE_WORD_4 = new_constant(SID_SINGLE_WORD, 4, "single-word 4");
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD   = new_bitvec(64, "64-bit double word");
-    NID_DOUBLE_WORD_0 = new_constant(SID_DOUBLE_WORD, 0, "double-word zero");
+    NID_DOUBLE_WORD_0 = new_constant(SID_DOUBLE_WORD, 0, "double-word 0");
+    NID_DOUBLE_WORD_4 = new_constant(SID_DOUBLE_WORD, 4, "double-word 4");
 
     SID_MACHINE_WORD   = SID_DOUBLE_WORD;
     NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0;
+    NID_MACHINE_WORD_4 = NID_DOUBLE_WORD_4;
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD   = SID_SINGLE_WORD;
     NID_MACHINE_WORD_0 = NID_SINGLE_WORD_0;
+    NID_MACHINE_WORD_4 = NID_SINGLE_WORD_4;
   }
 }
 
@@ -358,6 +365,16 @@ uint64_t* get_instruction_funct7(uint64_t* instruction);
 uint64_t* get_instruction_rd(uint64_t* instruction);
 uint64_t* get_instruction_rs1(uint64_t* instruction);
 uint64_t* get_instruction_rs2(uint64_t* instruction);
+
+uint64_t* get_instruction_I_imm(uint64_t* instruction);
+uint64_t* get_instruction_S_imm(uint64_t* instruction);
+uint64_t* get_instruction_U_imm(uint64_t* instruction);
+uint64_t* sign_extend_IS_imm(uint64_t* imm);
+uint64_t* get_machine_word_I_immediate(uint64_t* instruction);
+uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
+uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
+
+uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -859,6 +876,20 @@ uint64_t* decode_instruction(uint64_t* ir_nid, uint64_t* F7_nid, uint64_t* F3_ni
     return (uint64_t*) 0;
 }
 
+uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid) {
+  return new_ite(SID_MACHINE_WORD,
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL"),
+        new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
+        "JAL or JALR"),
+      "BRANCH or JAL or JALR"),
+    pc_nid,
+    new_binary(OP_ADD, SID_MACHINE_WORD, pc_nid, NID_MACHINE_WORD_4, "pc + 4"),
+    "pc + 4 if non-control-flow instruction is active");
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
 // -----------------------------------------------------------------
@@ -901,8 +932,11 @@ void output_machine() {
   print_line(11, NID_TRUE);
 
   print_line(30, NID_SINGLE_WORD_0);
-  if (IS64BITTARGET)
+  print_line(31, NID_SINGLE_WORD_4);
+  if (IS64BITTARGET) {
     print_line(40, NID_DOUBLE_WORD_0);
+    print_line(41, NID_DOUBLE_WORD_4);
+  }
 
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
@@ -950,7 +984,6 @@ void output_machine() {
 
 void rotor() {
   uint64_t* eval_register_file_nid;
-  uint64_t* eval_core_pc_nid;
 
   uint64_t* eval_core_ir_nid;
   uint64_t* eval_core_rs1_nid;
@@ -996,8 +1029,11 @@ void rotor() {
 
   // control flow
 
-  eval_core_pc_nid = new_ite(SID_MACHINE_WORD, eval_kernel_mode_nid, state_core_pc_nid, state_core_pc_nid, "keep pc value if in kernel mode");
-  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid, eval_core_pc_nid, "program counter");
+  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
+    new_ite(SID_MACHINE_WORD, eval_kernel_mode_nid, state_core_pc_nid,
+      control_flow(get_instruction_opcode(eval_core_ir_nid), state_core_pc_nid),
+        "update program counter unless in kernel mode"),
+      "program counter");
 
   // data flow
 
