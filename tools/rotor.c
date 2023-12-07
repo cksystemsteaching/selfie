@@ -936,17 +936,13 @@ uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid
   I_immediate = get_machine_word_I_immediate(ir_nid);
 
   rd_value_nid = new_ite(SID_MACHINE_WORD,
-    new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
-    new_ite(SID_MACHINE_WORD,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
       new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
-      new_binary(OP_ADD, SID_MACHINE_WORD,
-        rs1_value_nid,
-        I_immediate,
-        "rs1 value + immediate"),
-      rd_value_nid,
-      "addi data flow"),
+      "active addi"),
+    new_binary(OP_ADD, SID_MACHINE_WORD, rs1_value_nid, I_immediate, "rs1 value + immediate"),
     rd_value_nid,
-    "new rd value");
+    "addi data flow");
 
   return new_ite(SID_REGISTER_STATE,
     new_binary_boolean(OP_OR,
