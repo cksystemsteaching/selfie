@@ -48,11 +48,13 @@ uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
 
-uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
-uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
-
 uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
+
+uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment);
+
+uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
+uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 
 uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
 uint64_t* new_write(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, uint64_t* element_nid, char* comment);
@@ -69,11 +71,12 @@ uint64_t print_constant(uint64_t nid, uint64_t* line);
 uint64_t print_state(uint64_t nid, uint64_t* line);
 uint64_t print_init(uint64_t nid, uint64_t* line);
 
-uint64_t print_binary_operator(uint64_t nid, uint64_t* line);
-uint64_t print_tenary_operator(uint64_t nid, uint64_t* line);
-
 uint64_t print_sext(uint64_t nid, uint64_t* line);
 uint64_t print_slice(uint64_t nid, uint64_t* line);
+
+uint64_t print_unary_operator(uint64_t nid, uint64_t* line);
+uint64_t print_binary_operator(uint64_t nid, uint64_t* line);
+uint64_t print_tenary_operator(uint64_t nid, uint64_t* line);
 
 uint64_t print_bad(uint64_t nid, uint64_t* line);
 
@@ -93,8 +96,15 @@ char* OP_STATE = (char*) 0;
 char* OP_INIT  = (char*) 0;
 char* OP_NEXT  = (char*) 0;
 
+char* OP_SEXT  = (char*) 0;
+char* OP_SLICE = (char*) 0;
+
+char* OP_INC = (char*) 0;
+char* OP_DEC = (char*) 0;
+
 char* OP_EQ   = (char*) 0;
 char* OP_NEQ  = (char*) 0;
+char* OP_UGT  = (char*) 0;
 char* OP_UGTE = (char*) 0;
 char* OP_ULT  = (char*) 0;
 
@@ -105,9 +115,6 @@ char* OP_ADD = (char*) 0;
 
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
-
-char* OP_SEXT  = (char*) 0;
-char* OP_SLICE = (char*) 0;
 
 char* OP_ITE   = (char*) 0;
 char* OP_WRITE = (char*) 0;
@@ -149,10 +156,17 @@ void init_model() {
   OP_INIT  = "init";
   OP_NEXT  = "next";
 
+  OP_SEXT  = "sext";
+  OP_SLICE = "slice";
+
+  OP_INC = "inc";
+  OP_DEC = "dec";
+
   OP_EQ   = "eq";
   OP_NEQ  = "neq";
-  OP_ULT  = "ult";
+  OP_UGT  = "ugt";
   OP_UGTE = "ugte";
+  OP_ULT  = "ult";
 
   OP_AND = "and";
   OP_OR  = "or";
@@ -161,9 +175,6 @@ void init_model() {
 
   OP_CONCAT = "concat";
   OP_READ   = "read";
-
-  OP_SEXT  = "sext";
-  OP_SLICE = "slice";
 
   OP_ITE   = "ite";
   OP_WRITE = "write";
@@ -206,19 +217,36 @@ void init_model() {
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
+void new_kernel_state(uint64_t bytes_to_read);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t* NID_EXIT_SYSCALL_ID = (uint64_t*) 0;
+uint64_t* NID_READ_SYSCALL_ID = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* read_capacity_nid = (uint64_t*) 0;
+
+uint64_t* state_bytes_still_to_be_read_nid = (uint64_t*) 0;
+uint64_t* init_bytes_still_to_be_read_nid  = (uint64_t*) 0;
+uint64_t* next_bytes_still_to_be_read_nid  = (uint64_t*) 0;
+
+uint64_t* state_currently_read_bytes_nid = (uint64_t*) 0;
+uint64_t* init_currently_read_bytes_nid  = (uint64_t*) 0;
+uint64_t* next_currently_read_bytes_nid  = (uint64_t*) 0;
 
 uint64_t* eval_kernel_mode_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface() {
-  NID_EXIT_SYSCALL_ID = new_constant(SID_MACHINE_WORD, SYSCALL_EXIT,
+  NID_EXIT_SYSCALL_ID = new_constant(SID_MACHINE_WORD,
+    SYSCALL_EXIT,
     format_comment("exit syscall ID %lu", SYSCALL_EXIT));
+  NID_READ_SYSCALL_ID = new_constant(SID_MACHINE_WORD,
+    SYSCALL_READ,
+    format_comment("read syscall ID %lu", SYSCALL_READ));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -571,20 +599,24 @@ uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char
   return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
 }
 
-uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
-  return new_line(op, sid, left_nid, right_nid, UNUSED, comment);
-}
-
-uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
-  return new_binary(op, SID_BOOLEAN, left_nid, right_nid, comment);
-}
-
 uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
   return new_line(OP_SEXT, sid, value_nid, (uint64_t*) w, UNUSED, comment);
 }
 
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment) {
   return new_line(OP_SLICE, sid, value_nid, (uint64_t*) u, (uint64_t*) l, comment);
+}
+
+uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment) {
+  return new_line(op, sid, value_nid, UNUSED, UNUSED, comment);
+}
+
+uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
+  return new_line(op, sid, left_nid, right_nid, UNUSED, comment);
+}
+
+uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
+  return new_binary(op, SID_BOOLEAN, left_nid, right_nid, comment);
 }
 
 uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment) {
@@ -626,6 +658,10 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
     nid = print_sext(nid, line);
   else if (get_op(line) == OP_SLICE)
     nid = print_slice(nid, line);
+  else if (get_op(line) == OP_INC)
+    nid = print_unary_operator(nid, line);
+  else if (get_op(line) == OP_DEC)
+    nid = print_unary_operator(nid, line);
   else if (get_op(line) == OP_ITE)
     nid = print_tenary_operator(nid, line);
   else if (get_op(line) == OP_WRITE)
@@ -682,6 +718,33 @@ uint64_t print_init(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
+uint64_t print_sext(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu",
+    OP_SEXT, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
+  return nid;
+}
+
+uint64_t print_slice(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
+  return nid;
+}
+
+uint64_t print_unary_operator(uint64_t nid, uint64_t* line) {
+  nid = print_line(nid, get_sid(line));
+  nid = print_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  return nid;
+}
+
 uint64_t print_binary_operator(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   nid = print_line(nid, get_arg1(line));
@@ -700,24 +763,6 @@ uint64_t print_tenary_operator(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
-  return nid;
-}
-
-uint64_t print_sext(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    OP_SEXT, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
-  return nid;
-}
-
-uint64_t print_slice(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
   return nid;
 }
 
@@ -742,6 +787,18 @@ char* format_comment(char* comment, uint64_t value) {
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
+
+void new_kernel_state(uint64_t bytes_to_read) {
+  read_capacity_nid = new_constant(SID_MACHINE_WORD, bytes_to_read, "read capacity in bytes");
+
+  state_bytes_still_to_be_read_nid = new_state(SID_MACHINE_WORD, "still-read", "bytes still to be read");
+  init_bytes_still_to_be_read_nid  = new_init(SID_MACHINE_WORD, state_bytes_still_to_be_read_nid,
+    read_capacity_nid, "still-read", "initial value");
+
+  state_currently_read_bytes_nid = new_state(SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
+  init_currently_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_currently_read_bytes_nid,
+    NID_MACHINE_WORD_0, "read-bytes", "initial value");
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -967,6 +1024,15 @@ void output_machine() {
     print_line(41, NID_DOUBLE_WORD_4);
   }
 
+  w = w + dprintf(output_fd, "\n; kernel\n\n");
+
+  print_line(100, read_capacity_nid);
+  print_line(101, state_bytes_still_to_be_read_nid);
+  print_line(102, init_bytes_still_to_be_read_nid);
+
+  print_line(103, state_currently_read_bytes_nid);
+  print_line(104, init_currently_read_bytes_nid);
+
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
   print_line(200, state_register_file_nid);
@@ -982,11 +1048,16 @@ void output_machine() {
   print_line(1000, state_core_pc_nid);
   print_line(1001, init_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; update registers\n\n");
+  w = w + dprintf(output_fd, "\n; update kernel data flow\n\n");
 
-  print_line(2000, next_register_file_nid);
+  print_line(2000, next_bytes_still_to_be_read_nid);
+  print_line(2100, next_currently_read_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel mode\n\n");
+  w = w + dprintf(output_fd, "\n; update register data flow\n\n");
+
+  print_line(3000, next_register_file_nid);
+
+  w = w + dprintf(output_fd, "\n; update kernel control flow\n\n");
 
   print_line(4000, eval_kernel_mode_nid);
 
@@ -994,7 +1065,7 @@ void output_machine() {
 
   print_line(5000, next_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; update main memory\n\n");
+  w = w + dprintf(output_fd, "\n; update main memory data flow\n\n");
 
   print_line(6000, next_main_memory_nid);
 
@@ -1014,15 +1085,25 @@ void output_machine() {
 void rotor() {
   uint64_t* ir_nid;
 
-  uint64_t* funct3_nid;
-  uint64_t* opcode_nid;
+  uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
   uint64_t* a0_value_nid;
+  //uint64_t* a1_value_nid;
+  uint64_t* a2_value_nid;
 
-  uint64_t* active_ecall_nid;
+  uint64_t* pending_read_nid;
+  uint64_t* active_read_nid;
+
+  uint64_t* incremented_currently_read_bytes_nid;
+
+  uint64_t* funct3_nid;
+  uint64_t* opcode_nid;
+
+  uint64_t* pending_exit_nid;
   uint64_t* active_exit_nid;
 
+  new_kernel_state(8);
   new_register_file_state();
   new_main_memory_state();
   new_core_state();
@@ -1031,28 +1112,86 @@ void rotor() {
 
   ir_nid = fetch_instruction(state_core_pc_nid);
 
+  // kernel data flow
+
+  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL");
+
+  a7_value_nid = get_register_value(NID_A7, "a7 value");
+  a2_value_nid = get_register_value(NID_A2, "a2 value");
+
+  pending_read_nid =
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ,
+        a7_value_nid,
+        NID_READ_SYSCALL_ID,
+        "a7 == read syscall ID"),
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_ULT,
+          state_currently_read_bytes_nid,
+          a2_value_nid,
+          "fewer bytes read than requested in a2"),
+        new_binary_boolean(OP_UGT,
+          state_bytes_still_to_be_read_nid,
+          NID_MACHINE_WORD_0,
+          "bytes still to be read > 0"),
+        "can still read more bytes"),
+      "pending read system call");
+
+  active_read_nid = new_binary_boolean(OP_AND, active_ecall_nid, pending_read_nid, "active read system call");
+
+  next_bytes_still_to_be_read_nid =
+    new_next(SID_MACHINE_WORD, state_bytes_still_to_be_read_nid,
+      new_ite(SID_MACHINE_WORD,
+        active_read_nid,
+        new_unary(OP_DEC, SID_MACHINE_WORD,
+          state_bytes_still_to_be_read_nid,
+          "decrement bytes still to be read"),
+        state_bytes_still_to_be_read_nid,
+        "decrement bytes still to be read if read system call is active"),
+      "bytes still to be read");
+
+  incremented_currently_read_bytes_nid =
+    new_unary(OP_INC,
+      SID_MACHINE_WORD,
+      state_currently_read_bytes_nid,
+      "increment bytes already read in active read system call");
+
+  next_currently_read_bytes_nid =
+    new_next(SID_MACHINE_WORD, state_currently_read_bytes_nid,
+      new_ite(SID_MACHINE_WORD,
+        new_binary_boolean(OP_AND,
+          active_read_nid,
+          new_binary_boolean(OP_ULT,
+            incremented_currently_read_bytes_nid,
+            a2_value_nid,
+            "more than one byte still to be read as requested in a2"),
+          "more than one byte still to be read as requested in a2 in active read system call"),
+        incremented_currently_read_bytes_nid,
+        NID_MACHINE_WORD_0,
+        "increment bytes already read if read system call is active and more than one byte still to be read"),
+      "bytes already read in active read system call");
+
+  // TODO: read data flow
+
   // decode
 
   funct3_nid = get_instruction_funct3(ir_nid);
   opcode_nid = get_instruction_opcode(ir_nid);
 
-  // data flow
+  // register data flow
 
   next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid,
     data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
     "register file");
 
-  // kernel
+  // kernel control flow
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL");
+  pending_exit_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
+  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, pending_exit_nid, "active exit system call");
 
-  a7_value_nid = get_register_value(NID_A7, "a7 value");
-
-  active_exit_nid = new_binary_boolean(OP_AND, active_ecall_nid,
-    new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID"),
-    "exit system call");
-
-  eval_kernel_mode_nid = active_exit_nid;
+  eval_kernel_mode_nid = new_binary_boolean(OP_AND, active_ecall_nid,
+    new_binary_boolean(OP_OR, pending_read_nid, pending_exit_nid, "read or exit system call"),
+    "active system call");
 
   // control flow
 
@@ -1065,18 +1204,28 @@ void rotor() {
   // bad states
 
   bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_ULT, state_core_pc_nid,
-      new_constant(SID_MACHINE_WORD, code_start, format_comment("start of code segment at 0x%08lX", code_start)),
+    new_binary_boolean(OP_ULT,
+      state_core_pc_nid,
+      new_constant(SID_MACHINE_WORD,
+        code_start,
+        format_comment("start of code segment at 0x%08lX", code_start)),
       "pc < start of code segment"),
-    new_binary_boolean(OP_UGTE, state_core_pc_nid,
-      new_constant(SID_MACHINE_WORD, code_start + code_size, format_comment("end of code segment at 0x%08lX", code_start + code_size)),
+    new_binary_boolean(OP_UGTE,
+      state_core_pc_nid,
+      new_constant(SID_MACHINE_WORD,
+        code_start + code_size,
+        format_comment("end of code segment at 0x%08lX", code_start + code_size)),
       "pc >= end of code segment"),
     "pc < start of code segment or pc >= end of code segment"),
     "b0", "pc not in code segment");
 
-  bad_syscall_id_nid = new_bad(new_binary_boolean(OP_AND, active_ecall_nid,
-    new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
-      "active ecall and a7 != exit syscall ID"),
+  bad_syscall_id_nid = new_bad(new_binary_boolean(OP_AND,
+    active_ecall_nid,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+      new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
+      "a7 != known syscall ID"),
+    "active ecall and a7 != known syscall ID"),
     "b1", "unknown syscall ID");
 
   a0_value_nid = get_register_value(NID_A0, "a0 value");
@@ -1085,7 +1234,9 @@ void rotor() {
     active_exit_nid,
     new_binary_boolean(OP_EQ,
       a0_value_nid,
-      new_constant(SID_MACHINE_WORD, bad_exit_code, format_comment("bad exit code %lu", bad_exit_code)),
+      new_constant(SID_MACHINE_WORD,
+        bad_exit_code,
+        format_comment("bad exit code %lu", bad_exit_code)),
       "actual exit code == bad exit code"),
     "active exit system call with bad exit code"),
     "b2", format_comment("exit(%lu)", bad_exit_code));
