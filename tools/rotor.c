@@ -130,15 +130,24 @@ uint64_t* NID_BYTE_0 = (uint64_t*) 0;
 
 uint64_t* SID_SINGLE_WORD   = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_4 = (uint64_t*) 0;
+
+uint64_t* NID_SINGLE_WORD_MINUS_1 = (uint64_t*) 0;
 
 uint64_t* SID_DOUBLE_WORD   = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_4 = (uint64_t*) 0;
+
+uint64_t* NID_DOUBLE_WORD_MINUS_1 = (uint64_t*) 0;
 
 uint64_t* SID_MACHINE_WORD   = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_4 = (uint64_t*) 0;
+
+uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -189,21 +198,33 @@ void init_model() {
 
   SID_SINGLE_WORD   = new_bitvec(32, "32-bit single word");
   NID_SINGLE_WORD_0 = new_constant(SID_SINGLE_WORD, 0, "single-word 0");
+  NID_SINGLE_WORD_1 = new_constant(SID_SINGLE_WORD, 1, "single-word 1");
   NID_SINGLE_WORD_4 = new_constant(SID_SINGLE_WORD, 4, "single-word 4");
+
+  NID_SINGLE_WORD_MINUS_1 = new_constant(SID_SINGLE_WORD, sign_shrink(-1, SINGLEWORDSIZEINBITS), "single-word -1");
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD   = new_bitvec(64, "64-bit double word");
     NID_DOUBLE_WORD_0 = new_constant(SID_DOUBLE_WORD, 0, "double-word 0");
+    NID_DOUBLE_WORD_1 = new_constant(SID_DOUBLE_WORD, 1, "double-word 1");
     NID_DOUBLE_WORD_4 = new_constant(SID_DOUBLE_WORD, 4, "double-word 4");
+
+    NID_DOUBLE_WORD_MINUS_1 = new_constant(SID_DOUBLE_WORD, -1, "double-word -1");
 
     SID_MACHINE_WORD   = SID_DOUBLE_WORD;
     NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0;
+    NID_MACHINE_WORD_1 = NID_DOUBLE_WORD_1;
     NID_MACHINE_WORD_4 = NID_DOUBLE_WORD_4;
+
+    NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD   = SID_SINGLE_WORD;
     NID_MACHINE_WORD_0 = NID_SINGLE_WORD_0;
+    NID_MACHINE_WORD_1 = NID_SINGLE_WORD_1;
     NID_MACHINE_WORD_4 = NID_SINGLE_WORD_4;
+
+    NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
   }
 }
 
@@ -226,17 +247,18 @@ uint64_t* NID_READ_SYSCALL_ID = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* read_capacity_nid = (uint64_t*) 0;
+uint64_t* readable_bytes_nid = (uint64_t*) 0;
 
-uint64_t* state_bytes_still_to_be_read_nid = (uint64_t*) 0;
-uint64_t* init_bytes_still_to_be_read_nid  = (uint64_t*) 0;
-uint64_t* next_bytes_still_to_be_read_nid  = (uint64_t*) 0;
+uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
+uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
+uint64_t* next_readable_bytes_nid  = (uint64_t*) 0;
 
 uint64_t* state_currently_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_currently_read_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_currently_read_bytes_nid  = (uint64_t*) 0;
 
-uint64_t* eval_kernel_mode_nid = (uint64_t*) 0;
+uint64_t* eval_kernel_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_kernel_mode_nid      = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -789,11 +811,11 @@ char* format_comment(char* comment, uint64_t value) {
 // -----------------------------------------------------------------
 
 void new_kernel_state(uint64_t bytes_to_read) {
-  read_capacity_nid = new_constant(SID_MACHINE_WORD, bytes_to_read, "read capacity in bytes");
+  readable_bytes_nid = new_constant(SID_MACHINE_WORD, bytes_to_read, "read capacity in bytes");
 
-  state_bytes_still_to_be_read_nid = new_state(SID_MACHINE_WORD, "still-read", "bytes still to be read");
-  init_bytes_still_to_be_read_nid  = new_init(SID_MACHINE_WORD, state_bytes_still_to_be_read_nid,
-    read_capacity_nid, "still-read", "initial value");
+  state_readable_bytes_nid = new_state(SID_MACHINE_WORD, "readable-bytes", "readable bytes");
+  init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
+    readable_bytes_nid, "readable-bytes", "initial value");
 
   state_currently_read_bytes_nid = new_state(SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
   init_currently_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_currently_read_bytes_nid,
@@ -1014,17 +1036,25 @@ void output_machine() {
   print_line(11, NID_TRUE);
 
   print_line(30, NID_SINGLE_WORD_0);
-  print_line(31, NID_SINGLE_WORD_4);
+  print_line(31, NID_SINGLE_WORD_1);
+  print_line(32, NID_SINGLE_WORD_4);
+
+  print_line(33, NID_SINGLE_WORD_MINUS_1);
   if (IS64BITTARGET) {
     print_line(40, NID_DOUBLE_WORD_0);
-    print_line(41, NID_DOUBLE_WORD_4);
+    print_line(41, NID_DOUBLE_WORD_1);
+    print_line(42, NID_DOUBLE_WORD_4);
+
+    print_line(43, NID_DOUBLE_WORD_MINUS_1);
   }
 
   w = w + dprintf(output_fd, "\n; kernel\n\n");
 
-  print_line(100, read_capacity_nid);
-  print_line(101, state_bytes_still_to_be_read_nid);
-  print_line(102, init_bytes_still_to_be_read_nid);
+  print_line(100, readable_bytes_nid);
+  print_line(101, state_readable_bytes_nid);
+  print_line(102, init_readable_bytes_nid);
+
+  w = w + dprintf(output_fd, "\n");
 
   print_line(103, state_currently_read_bytes_nid);
   print_line(104, init_currently_read_bytes_nid);
@@ -1046,8 +1076,15 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; update kernel data flow\n\n");
 
-  print_line(2000, next_bytes_still_to_be_read_nid);
+  print_line(2000, next_readable_bytes_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
   print_line(2100, next_currently_read_bytes_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(2200, eval_kernel_data_flow_nid);
 
   w = w + dprintf(output_fd, "\n; update register data flow\n\n");
 
@@ -1088,15 +1125,27 @@ void rotor() {
   //uint64_t* a1_value_nid;
   uint64_t* a2_value_nid;
 
-  uint64_t* pending_read_nid;
+  uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
 
+  uint64_t* more_bytes_to_read_nid;
+  uint64_t* more_readable_bytes_nid;
+  uint64_t* more_readable_bytes_to_read_nid;
+
   uint64_t* incremented_currently_read_bytes_nid;
+  uint64_t* more_than_one_byte_to_read_nid;
+  uint64_t* more_than_one_readable_byte_nid;
+  uint64_t* more_than_one_readable_byte_to_read_nid;
+
+  uint64_t* read_return_value_nid;
+  uint64_t* kernel_data_flow_nid;
 
   uint64_t* funct3_nid;
   uint64_t* opcode_nid;
 
-  uint64_t* pending_exit_nid;
+  uint64_t* pending_read_nid;
+
+  uint64_t* exit_syscall_nid;
   uint64_t* active_exit_nid;
 
   new_kernel_state(8);
@@ -1115,59 +1164,118 @@ void rotor() {
   a7_value_nid = get_register_value(NID_A7, "a7 value");
   a2_value_nid = get_register_value(NID_A2, "a2 value");
 
-  pending_read_nid =
+  read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID");
+  active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+
+  more_bytes_to_read_nid =
+    new_binary_boolean(OP_ULT,
+      state_currently_read_bytes_nid,
+      a2_value_nid,
+      "more bytes to read as requested in a2");
+
+  more_readable_bytes_nid =
+    new_binary_boolean(OP_UGT,
+      state_readable_bytes_nid,
+      NID_MACHINE_WORD_0,
+      "more readable bytes");
+
+  more_readable_bytes_to_read_nid =
     new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ,
-        a7_value_nid,
-        NID_READ_SYSCALL_ID,
-        "a7 == read syscall ID"),
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_ULT,
-          state_currently_read_bytes_nid,
-          a2_value_nid,
-          "fewer bytes read than requested in a2"),
-        new_binary_boolean(OP_UGT,
-          state_bytes_still_to_be_read_nid,
-          NID_MACHINE_WORD_0,
-          "bytes still to be read > 0"),
-        "can still read more bytes"),
-      "pending read system call");
+      more_bytes_to_read_nid,
+      more_readable_bytes_nid,
+      "can and still would like to read more bytes"),
 
-  active_read_nid = new_binary_boolean(OP_AND, active_ecall_nid, pending_read_nid, "active read system call");
-
-  next_bytes_still_to_be_read_nid =
-    new_next(SID_MACHINE_WORD, state_bytes_still_to_be_read_nid,
+  next_readable_bytes_nid =
+    new_next(SID_MACHINE_WORD, state_readable_bytes_nid,
       new_ite(SID_MACHINE_WORD,
-        active_read_nid,
+        new_binary_boolean(OP_AND,
+          active_read_nid,
+          more_readable_bytes_to_read_nid,
+          "still reading system call"),
         new_unary(OP_DEC, SID_MACHINE_WORD,
-          state_bytes_still_to_be_read_nid,
-          "decrement bytes still to be read"),
-        state_bytes_still_to_be_read_nid,
-        "decrement bytes still to be read if read system call is active"),
-      "bytes still to be read");
+          state_readable_bytes_nid,
+          "decrement readable bytes"),
+        state_readable_bytes_nid,
+        "decrement readable bytes if system call is still reading"),
+      "readable bytes");
 
   incremented_currently_read_bytes_nid =
     new_unary(OP_INC,
       SID_MACHINE_WORD,
       state_currently_read_bytes_nid,
-      "increment bytes already read in active read system call");
+      "increment bytes already read by read system call");
+
+  more_than_one_byte_to_read_nid =
+    new_binary_boolean(OP_ULT,
+      incremented_currently_read_bytes_nid,
+      a2_value_nid,
+      "more than one byte to read as requested in a2");
+
+  more_than_one_readable_byte_nid =
+    new_binary_boolean(OP_UGT,
+      state_readable_bytes_nid,
+      NID_MACHINE_WORD_1,
+      "more than one readable byte");
+
+  more_than_one_readable_byte_to_read_nid =
+    new_binary_boolean(OP_AND,
+      more_than_one_byte_to_read_nid,
+      more_than_one_readable_byte_nid,
+      "can and still would like to read more than one byte");
 
   next_currently_read_bytes_nid =
     new_next(SID_MACHINE_WORD, state_currently_read_bytes_nid,
       new_ite(SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
-          new_binary_boolean(OP_ULT,
-            incremented_currently_read_bytes_nid,
-            a2_value_nid,
-            "more than one byte still to be read as requested in a2"),
-          "more than one byte still to be read as requested in a2 in active read system call"),
+          more_than_one_readable_byte_to_read_nid,
+          "active read system call"),
         incremented_currently_read_bytes_nid,
         NID_MACHINE_WORD_0,
-        "increment bytes already read if read system call is active and more than one byte still to be read"),
+        "increment bytes already read if read system call is active"),
       "bytes already read in active read system call");
 
-  // TODO: read data flow
+  // register data flow of read system call
+
+  a0_value_nid = get_register_value(NID_A0, "a0 value");
+
+  read_return_value_nid = new_ite(SID_MACHINE_WORD,
+    new_binary_boolean(OP_UGT,
+      a2_value_nid,
+      NID_MACHINE_WORD_0,
+      "more than zero bytes to read"),
+    new_ite(SID_MACHINE_WORD,
+      more_readable_bytes_nid,
+      new_ite(SID_MACHINE_WORD,
+        more_than_one_byte_to_read_nid,
+        new_ite(SID_MACHINE_WORD,
+          more_than_one_readable_byte_nid,
+          a0_value_nid,
+          incremented_currently_read_bytes_nid,
+          "return number of bytes read so far + 1 if there is only one more readable byte"),
+        a2_value_nid,
+        "return a2 if number of bytes read so far is a2 - 1 and there are still readable bytes"),
+      NID_MACHINE_WORD_MINUS_1,
+      "return -1 if a2 > 0 and there are no readable bytes when starting to read"),
+    NID_MACHINE_WORD_0,
+    "return 0 if a2 == 0");
+
+  kernel_data_flow_nid = new_ite(SID_REGISTER_STATE,
+    read_syscall_nid,
+    new_ite(SID_REGISTER_STATE,
+      more_than_one_readable_byte_to_read_nid,
+      state_register_file_nid,
+      new_write(SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
+      "update a0 when read system call returns"),
+    state_register_file_nid,
+    "read return value in a0");
+
+  // TODO: eval_kernel_data_flow_nid == active_read_nid
+
+  eval_kernel_data_flow_nid = new_binary_boolean(OP_AND,
+    active_ecall_nid,
+    read_syscall_nid,
+    "active system call with data flow");
 
   // decode
 
@@ -1177,25 +1285,38 @@ void rotor() {
   // register data flow
 
   next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid,
-    data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
+    new_ite(SID_REGISTER_STATE,
+      eval_kernel_data_flow_nid,
+      kernel_data_flow_nid,
+      data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
+      "update register file"),
     "register file");
 
   // kernel control flow
 
-  pending_exit_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
-  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, pending_exit_nid, "active exit system call");
+  pending_read_nid =
+    new_binary_boolean(OP_AND,
+      read_syscall_nid,
+      more_than_one_readable_byte_to_read_nid,
+      "pending read system call");
 
-  eval_kernel_mode_nid = new_binary_boolean(OP_AND, active_ecall_nid,
-    new_binary_boolean(OP_OR, pending_read_nid, pending_exit_nid, "read or exit system call"),
+  exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
+  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
+
+  eval_kernel_mode_nid = new_binary_boolean(OP_AND,
+    active_ecall_nid,
+    new_binary_boolean(OP_OR, pending_read_nid, exit_syscall_nid, "pending read or exit system call"),
     "active system call");
 
   // control flow
 
   next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
-    new_ite(SID_MACHINE_WORD, eval_kernel_mode_nid, state_core_pc_nid,
+    new_ite(SID_MACHINE_WORD,
+      eval_kernel_mode_nid,
+      state_core_pc_nid,
       control_flow(opcode_nid, state_core_pc_nid),
-        "update program counter unless in kernel mode"),
-      "program counter");
+      "update program counter unless in kernel mode"),
+    "program counter");
 
   // bad states
 
@@ -1223,8 +1344,6 @@ void rotor() {
       "a7 != known syscall ID"),
     "active ecall and a7 != known syscall ID"),
     "b1", "unknown syscall ID");
-
-  a0_value_nid = get_register_value(NID_A0, "a0 value");
 
   bad_exit_nid = new_bad(new_binary_boolean(OP_AND,
     active_exit_nid,
