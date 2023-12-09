@@ -44,20 +44,15 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
 uint64_t* new_constant(uint64_t* sid, uint64_t constant, char* comment);
-uint64_t* new_state(uint64_t* sid, char* symbol, char* comment);
-uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment);
-uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
+uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment);
 
-uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
+uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
 
 uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment);
-
 uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
-
-uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment);
-uint64_t* new_write(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, uint64_t* element_nid, char* comment);
+uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment);
 
 uint64_t* new_bad(uint64_t* condition_nid, char* symbol, char* comment);
 
@@ -67,16 +62,14 @@ void print_comment(uint64_t* line);
 uint64_t print_line(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
-uint64_t print_constant(uint64_t nid, uint64_t* line);
-uint64_t print_state(uint64_t nid, uint64_t* line);
-uint64_t print_init(uint64_t nid, uint64_t* line);
+uint64_t print_input(uint64_t nid, uint64_t* line);
 
-uint64_t print_sext(uint64_t nid, uint64_t* line);
+uint64_t print_ext(uint64_t nid, uint64_t* line);
 uint64_t print_slice(uint64_t nid, uint64_t* line);
 
-uint64_t print_unary_operator(uint64_t nid, uint64_t* line);
-uint64_t print_binary_operator(uint64_t nid, uint64_t* line);
-uint64_t print_tenary_operator(uint64_t nid, uint64_t* line);
+uint64_t print_unary_op(uint64_t nid, uint64_t* line);
+uint64_t print_binary_op(uint64_t nid, uint64_t* line);
+uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 
 uint64_t print_bad(uint64_t nid, uint64_t* line);
 
@@ -92,11 +85,13 @@ char* ARRAY  = (char*) 0;
 
 char* OP_SORT  = (char*) 0;
 char* OP_CONST = (char*) 0;
+char* OP_INPUT = (char*) 0;
 char* OP_STATE = (char*) 0;
 char* OP_INIT  = (char*) 0;
 char* OP_NEXT  = (char*) 0;
 
 char* OP_SEXT  = (char*) 0;
+char* OP_UEXT  = (char*) 0;
 char* OP_SLICE = (char*) 0;
 
 char* OP_NOT = (char*) 0;
@@ -162,11 +157,13 @@ void init_model() {
 
   OP_SORT  = "sort";
   OP_CONST = "constd";
+  OP_INPUT = "input";
   OP_STATE = "state";
   OP_INIT  = "init";
   OP_NEXT  = "next";
 
   OP_SEXT  = "sext";
+  OP_UEXT  = "uext";
   OP_SLICE = "slice";
 
   OP_NOT = "not";
@@ -377,6 +374,8 @@ void init_register_file_sorts() {
 // -----------------------------------------------------------------
 
 void new_main_memory_state();
+
+uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* segment_start_nid, uint64_t* segment_end_nid);
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr);
 
@@ -612,20 +611,12 @@ uint64_t* new_constant(uint64_t* sid, uint64_t constant, char* comment) {
   return new_line(OP_CONST, sid, (uint64_t*) constant, UNUSED, UNUSED, comment);
 }
 
-uint64_t* new_state(uint64_t* sid, char* symbol, char* comment) {
-  return new_line(OP_STATE, sid, (uint64_t*) symbol, UNUSED, UNUSED, comment);
+uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment) {
+  return new_line(op, sid, (uint64_t*) symbol, UNUSED, UNUSED, comment);
 }
 
-uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* symbol, char* comment) {
-  return new_line(OP_INIT, sid, state_nid, value_nid, (uint64_t*) symbol, comment);
-}
-
-uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
-  return new_line(OP_NEXT, sid, state_nid, value_nid, UNUSED, comment);
-}
-
-uint64_t* new_sext(uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
-  return new_line(OP_SEXT, sid, value_nid, (uint64_t*) w, UNUSED, comment);
+uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
+  return new_line(op, sid, value_nid, (uint64_t*) w, UNUSED, comment);
 }
 
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment) {
@@ -644,12 +635,8 @@ uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, 
   return new_binary(op, SID_BOOLEAN, left_nid, right_nid, comment);
 }
 
-uint64_t* new_ite(uint64_t* sid, uint64_t* condition_nid, uint64_t* true_nid, uint64_t* false_nid, char* comment) {
-  return new_line(OP_ITE, sid, condition_nid, true_nid, false_nid, comment);
-}
-
-uint64_t* new_write(uint64_t* sid, uint64_t* array_nid, uint64_t* index_nid, uint64_t* element_nid, char* comment) {
-  return new_line(OP_WRITE, sid, array_nid, index_nid, element_nid, comment);
+uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment) {
+  return new_line(op, sid, first_nid, second_nid, third_nid, comment);
 }
 
 uint64_t* new_bad(uint64_t* condition_nid, char* symbol, char* comment) {
@@ -674,29 +661,31 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
   else if (get_op(line) == OP_SORT)
     nid = print_sort(nid, line);
   else if (get_op(line) == OP_CONST)
-    nid = print_constant(nid, line);
+    nid = print_input(nid, line);
+  else if (get_op(line) == OP_INPUT)
+    nid = print_input(nid, line);
   else if (get_op(line) == OP_STATE)
-    nid = print_state(nid, line);
-  else if (get_op(line) == OP_INIT)
-    nid = print_init(nid, line);
+    nid = print_input(nid, line);
   else if (get_op(line) == OP_SEXT)
-    nid = print_sext(nid, line);
+    nid = print_ext(nid, line);
+  else if (get_op(line) == OP_UEXT)
+    nid = print_ext(nid, line);
   else if (get_op(line) == OP_SLICE)
     nid = print_slice(nid, line);
   else if (get_op(line) == OP_NOT)
-    nid = print_unary_operator(nid, line);
+    nid = print_unary_op(nid, line);
   else if (get_op(line) == OP_INC)
-    nid = print_unary_operator(nid, line);
+    nid = print_unary_op(nid, line);
   else if (get_op(line) == OP_DEC)
-    nid = print_unary_operator(nid, line);
+    nid = print_unary_op(nid, line);
   else if (get_op(line) == OP_ITE)
-    nid = print_tenary_operator(nid, line);
+    nid = print_ternary_op(nid, line);
   else if (get_op(line) == OP_WRITE)
-    nid = print_tenary_operator(nid, line);
+    nid = print_ternary_op(nid, line);
   else if (get_op(line) == OP_BAD)
     nid = print_bad(nid, line);
   else
-    nid = print_binary_operator(nid, line);
+    nid = print_binary_op(nid, line);
   print_comment(line);
   return nid + 1;
 }
@@ -716,41 +705,27 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_constant(uint64_t nid, uint64_t* line) {
+uint64_t print_input(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   print_nid(nid, line);
-  if ((uint64_t) get_arg1(line) == 0)
-    w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
-  else if ((uint64_t) get_arg1(line) == 1)
-    w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
-  else
-    w = w + dprintf(output_fd, " %s %lu %lu", OP_CONST, get_nid(get_sid(line)), (uint64_t) get_arg1(line));
+  if (get_op(line) == OP_CONST) {
+    if ((uint64_t) get_arg1(line) == 0)
+      w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
+    else if ((uint64_t) get_arg1(line) == 1)
+      w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
+    else
+      w = w + dprintf(output_fd, " %s %lu %lu", OP_CONST, get_nid(get_sid(line)), (uint64_t) get_arg1(line));
+  } else
+    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
   return nid;
 }
 
-uint64_t print_state(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", OP_STATE, get_nid(get_sid(line)), (char*) get_arg1(line));
-  return nid;
-}
-
-uint64_t print_init(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  nid = print_line(nid, get_arg2(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %s",
-    OP_INIT, get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), (char*) get_arg3(line));
-  return nid;
-}
-
-uint64_t print_sext(uint64_t nid, uint64_t* line) {
+uint64_t print_ext(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   nid = print_line(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    OP_SEXT, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
   return nid;
 }
 
@@ -763,7 +738,7 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_unary_operator(uint64_t nid, uint64_t* line) {
+uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   nid = print_line(nid, get_arg1(line));
   print_nid(nid, line);
@@ -772,7 +747,7 @@ uint64_t print_unary_operator(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_binary_operator(uint64_t nid, uint64_t* line) {
+uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   nid = print_line(nid, get_arg1(line));
   nid = print_line(nid, get_arg2(line));
@@ -782,7 +757,7 @@ uint64_t print_binary_operator(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_tenary_operator(uint64_t nid, uint64_t* line) {
+uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   nid = print_line(nid, get_arg1(line));
   nid = print_line(nid, get_arg2(line));
@@ -818,13 +793,13 @@ char* format_comment(char* comment, uint64_t value) {
 void new_kernel_state(uint64_t bytes_to_read) {
   readable_bytes_nid = new_constant(SID_MACHINE_WORD, bytes_to_read, "read capacity in bytes");
 
-  state_readable_bytes_nid = new_state(SID_MACHINE_WORD, "readable-bytes", "readable bytes");
-  init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
-    readable_bytes_nid, "readable-bytes", "initial value");
+  state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD, "readable-bytes", "readable bytes");
+  init_readable_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_readable_bytes_nid,
+    readable_bytes_nid, "number of readable bytes");
 
-  state_read_bytes_nid = new_state(SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
-  init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
-    NID_MACHINE_WORD_0, "read-bytes", "initial value");
+  state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
+  init_read_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_read_bytes_nid,
+    NID_MACHINE_WORD_0, "initially zero read bytes");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -838,8 +813,8 @@ void new_kernel_state(uint64_t bytes_to_read) {
 // -----------------------------------------------------------------
 
 void new_register_file_state() {
-  state_register_file_nid = new_state(SID_REGISTER_STATE, "regs", "register file");
-  init_register_file_nid  = new_init(SID_REGISTER_STATE, state_register_file_nid, NID_MACHINE_WORD_0, "regs", "initial value");
+  state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE, "regs", "register file");
+  init_register_file_nid  = new_binary(OP_INIT, SID_REGISTER_STATE, state_register_file_nid, NID_MACHINE_WORD_0, "zeroed registers");
 }
 
 uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
@@ -851,11 +826,24 @@ uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
 // -----------------------------------------------------------------
 
 void new_main_memory_state() {
-  state_main_memory_nid = new_state(SID_MEMORY_STATE, "mem", "main memory");
-  init_main_memory_nid  = new_init(SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "mem", "initial value");
+  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "mem", "main memory");
+  init_main_memory_nid  = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
 
   eval_main_memory_nid = state_main_memory_nid;
-  next_main_memory_nid = new_next(SID_MEMORY_STATE, state_main_memory_nid, eval_main_memory_nid, "TBD");
+  next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE, state_main_memory_nid, eval_main_memory_nid, "TBD");
+}
+
+uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* segment_start_nid, uint64_t* segment_end_nid) {
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_UGTE,
+      vaddr_nid,
+      segment_start_nid,
+      "vaddr >= start of segment"),
+    new_binary_boolean(OP_ULT,
+      vaddr_nid,
+      segment_end_nid,
+      "vaddr < end of segment"),
+    "vaddr in segment");
 }
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr) {
@@ -875,7 +863,7 @@ uint64_t* fetch_instruction(uint64_t* vaddr) {
   machine_word = load_machine_word(vaddr);
 
   if (IS64BITTARGET)
-    return new_ite(SID_SINGLE_WORD,
+    return new_ternary(OP_ITE, SID_SINGLE_WORD,
       new_slice(SID_BOOLEAN, vaddr, 2, 2, "fetch high or low single word"),
       new_slice(SID_SINGLE_WORD, machine_word, 63, 32, "high single word"),
       new_slice(SID_SINGLE_WORD, machine_word, 31, 0, "low single word"),
@@ -929,9 +917,9 @@ uint64_t* get_instruction_U_imm(uint64_t* instruction) {
 
 uint64_t* sign_extend_IS_imm(uint64_t* imm) {
   if (IS64BITTARGET)
-    return new_sext(SID_MACHINE_WORD, imm, 52, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm, 52, "sign-extend");
   else
-    return new_sext(SID_MACHINE_WORD, imm, 20, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm, 20, "sign-extend");
 }
 
 uint64_t* get_machine_word_I_immediate(uint64_t* instruction) {
@@ -944,9 +932,9 @@ uint64_t* get_machine_word_S_immediate(uint64_t* instruction) {
 
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
   if (IS64BITTARGET)
-    return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 44, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 44, "sign-extend");
   else
-    return new_sext(SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
 }
 
 uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid, uint64_t* register_file_nid) {
@@ -962,7 +950,7 @@ uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid
 
   I_immediate = get_machine_word_I_immediate(ir_nid);
 
-  rd_value_nid = new_ite(SID_MACHINE_WORD,
+  rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
       new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
@@ -971,22 +959,22 @@ uint64_t* data_flow(uint64_t* ir_nid, uint64_t* funct3_nid, uint64_t* opcode_nid
     rd_value_nid,
     "addi data flow");
 
-  return new_ite(SID_REGISTER_STATE,
+  return new_ternary(OP_ITE, SID_REGISTER_STATE,
     new_binary_boolean(OP_OR,
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
       "STORE or BRANCH"),
     register_file_nid,
-    new_ite(SID_REGISTER_STATE,
+    new_ternary(OP_ITE, SID_REGISTER_STATE,
       new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero"),
       register_file_nid,
-      new_write(SID_REGISTER_STATE, register_file_nid, rd_nid, rd_value_nid, "write rd"),
+      new_ternary(OP_WRITE, SID_REGISTER_STATE, register_file_nid, rd_nid, rd_value_nid, "write rd"),
       "write non-zero rd"),
     "update non-zero rd");
 }
 
 uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid) {
-  return new_ite(SID_MACHINE_WORD,
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_OR,
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
       new_binary_boolean(OP_OR,
@@ -1004,8 +992,8 @@ uint64_t* control_flow(uint64_t* opcode_nid, uint64_t* pc_nid) {
 // -----------------------------------------------------------------
 
 void new_core_state() {
-  state_core_pc_nid = new_state(SID_MACHINE_WORD, "pc", "program counter");
-  init_core_pc_nid  = new_init(SID_MACHINE_WORD, state_core_pc_nid, NID_MACHINE_WORD_0, "pc", "initial value");
+  state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, "pc", "program counter");
+  init_core_pc_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_core_pc_nid, NID_MACHINE_WORD_0, "initial value of pc");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1209,8 +1197,8 @@ void rotor() {
       "can and still would like to read more bytes"),
 
   next_readable_bytes_nid =
-    new_next(SID_MACHINE_WORD, state_readable_bytes_nid,
-      new_ite(SID_MACHINE_WORD,
+    new_binary(OP_NEXT, SID_MACHINE_WORD, state_readable_bytes_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
           more_readable_bytes_to_read_nid,
@@ -1247,8 +1235,8 @@ void rotor() {
       "can and still would like to read more than one byte");
 
   next_read_bytes_nid =
-    new_next(SID_MACHINE_WORD, state_read_bytes_nid,
-      new_ite(SID_MACHINE_WORD,
+    new_binary(OP_NEXT, SID_MACHINE_WORD, state_read_bytes_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
           more_than_one_readable_byte_to_read_nid,
@@ -1277,8 +1265,8 @@ void rotor() {
 
   // control flow
 
-  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
-    new_ite(SID_MACHINE_WORD,
+  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD, state_core_pc_nid,
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
       eval_kernel_mode_nid,
       state_core_pc_nid,
       control_flow(opcode_nid, state_core_pc_nid),
@@ -1291,16 +1279,16 @@ void rotor() {
 
   // kernel register data flow
 
-  read_return_value_nid = new_ite(SID_MACHINE_WORD,
+  read_return_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_UGT,
       a2_value_nid,
       NID_MACHINE_WORD_0,
       "more than 0 bytes to read"),
-    new_ite(SID_MACHINE_WORD,
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
       more_readable_bytes_nid,
-      new_ite(SID_MACHINE_WORD,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
         more_than_one_byte_to_read_nid,
-        new_ite(SID_MACHINE_WORD,
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
           more_than_one_readable_byte_nid,
           a0_value_nid,
           incremented_read_bytes_nid,
@@ -1312,14 +1300,14 @@ void rotor() {
     NID_MACHINE_WORD_0,
     "return 0 if a2 == 0");
 
-  eval_kernel_register_data_flow_nid = new_ite(SID_REGISTER_STATE,
+  eval_kernel_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
     new_binary_boolean(OP_AND,
       read_syscall_nid,
       new_unary(OP_NOT, SID_BOOLEAN,
         more_than_one_readable_byte_to_read_nid,
         "read system call returns if there is at most one more byte to read"),
       "update a0 when read system call returns"),
-    new_write(SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
+    new_ternary(OP_WRITE, SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
     state_register_file_nid,
     "read return value in a0");
 
@@ -1336,8 +1324,8 @@ void rotor() {
 
   // register data flow
 
-  next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid,
-    new_ite(SID_REGISTER_STATE,
+  next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE, state_register_file_nid,
+    new_ternary(OP_ITE, SID_REGISTER_STATE,
       kernel_data_flow_nid,
       eval_kernel_register_data_flow_nid,
       data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
@@ -1350,22 +1338,28 @@ void rotor() {
 
   // kernel memory data flow
 
-  eval_kernel_memory_data_flow_nid = new_ite(SID_MEMORY_STATE,
+  eval_kernel_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_AND,
       read_syscall_nid,
       more_readable_bytes_to_read_nid,
       "more input bytes to read"),
-    new_write(SID_MEMORY_STATE, state_main_memory_nid,
-      vaddr_to_laddr(a1_value_nid),
-      NID_MACHINE_WORD_0,
-      "write input byte to memory at a1 + state_read_bytes_nid"),
+    new_ternary(OP_WRITE, SID_MEMORY_STATE, state_main_memory_nid,
+      vaddr_to_laddr(new_binary(OP_ADD, SID_MACHINE_WORD,
+        a1_value_nid,
+        state_read_bytes_nid,
+        "a1 + number of already read_bytes")),
+      new_ext(OP_UEXT, SID_MACHINE_WORD,
+        new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
+        WORDSIZEINBITS - 8,
+        "unsigned extension of input byte to machine word"),
+      "write input byte to memory at a1 + number of already read bytes"),
     state_main_memory_nid,
-    "input byte");
+    "read input byte");
 
   // memory data flow
 
-  next_main_memory_nid = new_next(SID_MEMORY_STATE, state_main_memory_nid,
-    new_ite(SID_MEMORY_STATE,
+  next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE, state_main_memory_nid,
+    new_ternary(OP_ITE, SID_MEMORY_STATE,
       kernel_data_flow_nid,
       eval_kernel_memory_data_flow_nid,
       state_main_memory_nid,
@@ -1374,21 +1368,18 @@ void rotor() {
 
   // bad states
 
-  bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_ULT,
-      state_core_pc_nid,
+  bad_pc_nid = new_bad(new_unary(OP_NOT, SID_BOOLEAN,
+    is_access_in_segment(state_core_pc_nid,
       new_constant(SID_MACHINE_WORD,
         code_start,
         format_comment("start of code segment at 0x%08lX", code_start)),
-      "pc < start of code segment"),
-    new_binary_boolean(OP_UGTE,
-      state_core_pc_nid,
       new_constant(SID_MACHINE_WORD,
         code_start + code_size,
-        format_comment("end of code segment at 0x%08lX", code_start + code_size)),
-      "pc >= end of code segment"),
-    "pc < start of code segment or pc >= end of code segment"),
-    "b0", "pc not in code segment");
+        format_comment("end of code segment at 0x%08lX", code_start + code_size))),
+    "pc not in code segment"),
+    "b0", "next fetch not in code segment");
+
+  // TODO: check read system call segmentation
 
   bad_syscall_id_nid = new_bad(new_binary_boolean(OP_AND,
     active_ecall_nid,
