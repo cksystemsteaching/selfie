@@ -257,8 +257,8 @@ uint64_t* state_currently_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_currently_read_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_currently_read_bytes_nid  = (uint64_t*) 0;
 
-uint64_t* eval_kernel_data_flow_nid = (uint64_t*) 0;
-uint64_t* eval_kernel_mode_nid      = (uint64_t*) 0;
+uint64_t* eval_kernel_mode_nid               = (uint64_t*) 0;
+uint64_t* eval_kernel_register_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1048,7 +1048,7 @@ void output_machine() {
     print_line(43, NID_DOUBLE_WORD_MINUS_1);
   }
 
-  w = w + dprintf(output_fd, "\n; kernel\n\n");
+  w = w + dprintf(output_fd, "\n; kernel state\n\n");
 
   print_line(100, readable_bytes_nid);
   print_line(101, state_readable_bytes_nid);
@@ -1074,7 +1074,7 @@ void output_machine() {
   print_line(1000, state_core_pc_nid);
   print_line(1001, init_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; update kernel data flow\n\n");
+  w = w + dprintf(output_fd, "\n; update kernel state\n\n");
 
   print_line(2000, next_readable_bytes_nid);
 
@@ -1082,29 +1082,29 @@ void output_machine() {
 
   print_line(2100, next_currently_read_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  w = w + dprintf(output_fd, "\n; kernel control flow\n\n");
 
-  print_line(2200, eval_kernel_data_flow_nid);
-
-  w = w + dprintf(output_fd, "\n; update register data flow\n\n");
-
-  print_line(3000, next_register_file_nid);
-
-  w = w + dprintf(output_fd, "\n; update kernel control flow\n\n");
-
-  print_line(4000, eval_kernel_mode_nid);
+  print_line(3000, eval_kernel_mode_nid);
 
   w = w + dprintf(output_fd, "\n; update program counter\n\n");
 
-  print_line(5000, next_core_pc_nid);
+  print_line(3100, next_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; update main memory data flow\n\n");
+  w = w + dprintf(output_fd, "\n; kernel register data flow\n\n");
 
-  print_line(6000, next_main_memory_nid);
+  print_line(4000, eval_kernel_register_data_flow_nid);
+
+  w = w + dprintf(output_fd, "\n; update register data flow\n\n");
+
+  print_line(4100, next_register_file_nid);
+
+  w = w + dprintf(output_fd, "\n; update memory data flow\n\n");
+
+  print_line(5000, next_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
-  print_line(7000, bad_pc_nid);
+  print_line(6000, bad_pc_nid);
 
   //w = w + dprintf(output_fd, "\n");
 
@@ -1112,7 +1112,7 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(7200, bad_exit_nid);
+  print_line(6200, bad_exit_nid);
 }
 
 void rotor() {
@@ -1121,12 +1121,14 @@ void rotor() {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
-  uint64_t* a0_value_nid;
-  //uint64_t* a1_value_nid;
-  uint64_t* a2_value_nid;
 
   uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
+
+  uint64_t* exit_syscall_nid;
+  uint64_t* active_exit_nid;
+
+  uint64_t* a2_value_nid;
 
   uint64_t* more_bytes_to_read_nid;
   uint64_t* more_readable_bytes_nid;
@@ -1137,16 +1139,16 @@ void rotor() {
   uint64_t* more_than_one_readable_byte_nid;
   uint64_t* more_than_one_readable_byte_to_read_nid;
 
+  uint64_t* pending_read_nid;
+
+  uint64_t* opcode_nid;
+
+  uint64_t* a0_value_nid;
+
   uint64_t* read_return_value_nid;
   uint64_t* kernel_data_flow_nid;
 
   uint64_t* funct3_nid;
-  uint64_t* opcode_nid;
-
-  uint64_t* pending_read_nid;
-
-  uint64_t* exit_syscall_nid;
-  uint64_t* active_exit_nid;
 
   new_kernel_state(8);
   new_register_file_state();
@@ -1157,15 +1159,25 @@ void rotor() {
 
   ir_nid = fetch_instruction(state_core_pc_nid);
 
-  // kernel data flow
+  // decode ecall
 
   active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL");
 
+  // system call ABI control flow
+
   a7_value_nid = get_register_value(NID_A7, "a7 value");
-  a2_value_nid = get_register_value(NID_A2, "a2 value");
 
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+
+  exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
+  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
+
+  // system call ABI data flow
+
+  a2_value_nid = get_register_value(NID_A2, "a2 value");
+
+  // kernel state
 
   more_bytes_to_read_nid =
     new_binary_boolean(OP_ULT,
@@ -1235,15 +1247,44 @@ void rotor() {
         "increment bytes already read if read system call is active"),
       "bytes already read in active read system call");
 
-  // register data flow of read system call
+  // kernel control flow
+
+  pending_read_nid =
+    new_binary_boolean(OP_AND,
+      read_syscall_nid,
+      more_than_one_readable_byte_to_read_nid,
+      "pending read system call");
+
+  eval_kernel_mode_nid = new_binary_boolean(OP_AND,
+    active_ecall_nid,
+    new_binary_boolean(OP_OR, pending_read_nid, exit_syscall_nid, "pending read or exit system call"),
+    "active system call");
+
+  // decode
+
+  opcode_nid = get_instruction_opcode(ir_nid);
+
+  // control flow
+
+  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
+    new_ite(SID_MACHINE_WORD,
+      eval_kernel_mode_nid,
+      state_core_pc_nid,
+      control_flow(opcode_nid, state_core_pc_nid),
+      "update program counter unless in kernel mode"),
+    "program counter");
+
+  // system call ABI data flow
 
   a0_value_nid = get_register_value(NID_A0, "a0 value");
+
+  // kernel register data flow
 
   read_return_value_nid = new_ite(SID_MACHINE_WORD,
     new_binary_boolean(OP_UGT,
       a2_value_nid,
       NID_MACHINE_WORD_0,
-      "more than zero bytes to read"),
+      "more than 0 bytes to read"),
     new_ite(SID_MACHINE_WORD,
       more_readable_bytes_nid,
       new_ite(SID_MACHINE_WORD,
@@ -1260,7 +1301,7 @@ void rotor() {
     NID_MACHINE_WORD_0,
     "return 0 if a2 == 0");
 
-  kernel_data_flow_nid = new_ite(SID_REGISTER_STATE,
+  eval_kernel_register_data_flow_nid = new_ite(SID_REGISTER_STATE,
     read_syscall_nid,
     new_ite(SID_REGISTER_STATE,
       more_than_one_readable_byte_to_read_nid,
@@ -1270,9 +1311,9 @@ void rotor() {
     state_register_file_nid,
     "read return value in a0");
 
-  // TODO: eval_kernel_data_flow_nid == active_read_nid
+  // TODO: kernel_data_flow_nid == active_read_nid
 
-  eval_kernel_data_flow_nid = new_binary_boolean(OP_AND,
+  kernel_data_flow_nid = new_binary_boolean(OP_AND,
     active_ecall_nid,
     read_syscall_nid,
     "active system call with data flow");
@@ -1280,44 +1321,28 @@ void rotor() {
   // decode
 
   funct3_nid = get_instruction_funct3(ir_nid);
-  opcode_nid = get_instruction_opcode(ir_nid);
 
   // register data flow
 
   next_register_file_nid = new_next(SID_REGISTER_STATE, state_register_file_nid,
     new_ite(SID_REGISTER_STATE,
-      eval_kernel_data_flow_nid,
       kernel_data_flow_nid,
+      eval_kernel_register_data_flow_nid,
       data_flow(ir_nid, funct3_nid, opcode_nid, state_register_file_nid),
       "update register file"),
     "register file");
 
-  // kernel control flow
+  // memory data flow
 
-  pending_read_nid =
-    new_binary_boolean(OP_AND,
-      read_syscall_nid,
-      more_than_one_readable_byte_to_read_nid,
-      "pending read system call");
-
-  exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
-  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
-
-  eval_kernel_mode_nid = new_binary_boolean(OP_AND,
-    active_ecall_nid,
-    new_binary_boolean(OP_OR, pending_read_nid, exit_syscall_nid, "pending read or exit system call"),
-    "active system call");
-
-  // control flow
-
-  next_core_pc_nid = new_next(SID_MACHINE_WORD, state_core_pc_nid,
-    new_ite(SID_MACHINE_WORD,
-      eval_kernel_mode_nid,
-      state_core_pc_nid,
-      control_flow(opcode_nid, state_core_pc_nid),
-      "update program counter unless in kernel mode"),
-    "program counter");
-
+/*
+  next_main_memory_nid = new_next(SID_MEMORY_STATE, state_main_memory_nid,
+    new_ite(SID_MEMORY_STATE,
+      kernel_data_flow_nid,
+      kernel_memory_data_flow_nid,
+      state_main_memory_nid,
+      "update main memory"),
+    "main memory");
+*/
   // bad states
 
   bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
