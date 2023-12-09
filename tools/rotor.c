@@ -99,6 +99,7 @@ char* OP_NEXT  = (char*) 0;
 char* OP_SEXT  = (char*) 0;
 char* OP_SLICE = (char*) 0;
 
+char* OP_NOT = (char*) 0;
 char* OP_INC = (char*) 0;
 char* OP_DEC = (char*) 0;
 
@@ -168,6 +169,7 @@ void init_model() {
   OP_SEXT  = "sext";
   OP_SLICE = "slice";
 
+  OP_NOT = "not";
   OP_INC = "inc";
   OP_DEC = "dec";
 
@@ -253,12 +255,13 @@ uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_readable_bytes_nid  = (uint64_t*) 0;
 
-uint64_t* state_currently_read_bytes_nid = (uint64_t*) 0;
-uint64_t* init_currently_read_bytes_nid  = (uint64_t*) 0;
-uint64_t* next_currently_read_bytes_nid  = (uint64_t*) 0;
+uint64_t* state_read_bytes_nid = (uint64_t*) 0;
+uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
+uint64_t* next_read_bytes_nid  = (uint64_t*) 0;
 
 uint64_t* eval_kernel_mode_nid               = (uint64_t*) 0;
 uint64_t* eval_kernel_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -680,6 +683,8 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
     nid = print_sext(nid, line);
   else if (get_op(line) == OP_SLICE)
     nid = print_slice(nid, line);
+  else if (get_op(line) == OP_NOT)
+    nid = print_unary_operator(nid, line);
   else if (get_op(line) == OP_INC)
     nid = print_unary_operator(nid, line);
   else if (get_op(line) == OP_DEC)
@@ -817,8 +822,8 @@ void new_kernel_state(uint64_t bytes_to_read) {
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     readable_bytes_nid, "readable-bytes", "initial value");
 
-  state_currently_read_bytes_nid = new_state(SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
-  init_currently_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_currently_read_bytes_nid,
+  state_read_bytes_nid = new_state(SID_MACHINE_WORD, "read-bytes", "bytes read in active read system call");
+  init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "read-bytes", "initial value");
 }
 
@@ -1056,8 +1061,8 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(103, state_currently_read_bytes_nid);
-  print_line(104, init_currently_read_bytes_nid);
+  print_line(103, state_read_bytes_nid);
+  print_line(104, init_read_bytes_nid);
 
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
@@ -1080,7 +1085,7 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(2100, next_currently_read_bytes_nid);
+  print_line(2100, next_read_bytes_nid);
 
   w = w + dprintf(output_fd, "\n; kernel control flow\n\n");
 
@@ -1098,9 +1103,13 @@ void output_machine() {
 
   print_line(4100, next_register_file_nid);
 
+  w = w + dprintf(output_fd, "\n; kernel memory data flow\n\n");
+
+  print_line(5000, eval_kernel_memory_data_flow_nid);
+
   w = w + dprintf(output_fd, "\n; update memory data flow\n\n");
 
-  print_line(5000, next_main_memory_nid);
+  print_line(5100, next_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
@@ -1134,7 +1143,7 @@ void rotor() {
   uint64_t* more_readable_bytes_nid;
   uint64_t* more_readable_bytes_to_read_nid;
 
-  uint64_t* incremented_currently_read_bytes_nid;
+  uint64_t* incremented_read_bytes_nid;
   uint64_t* more_than_one_byte_to_read_nid;
   uint64_t* more_than_one_readable_byte_nid;
   uint64_t* more_than_one_readable_byte_to_read_nid;
@@ -1149,6 +1158,8 @@ void rotor() {
   uint64_t* kernel_data_flow_nid;
 
   uint64_t* funct3_nid;
+
+  uint64_t* a1_value_nid;
 
   new_kernel_state(8);
   new_register_file_state();
@@ -1181,7 +1192,7 @@ void rotor() {
 
   more_bytes_to_read_nid =
     new_binary_boolean(OP_ULT,
-      state_currently_read_bytes_nid,
+      state_read_bytes_nid,
       a2_value_nid,
       "more bytes to read as requested in a2");
 
@@ -1211,15 +1222,15 @@ void rotor() {
         "decrement readable bytes if system call is still reading"),
       "readable bytes");
 
-  incremented_currently_read_bytes_nid =
+  incremented_read_bytes_nid =
     new_unary(OP_INC,
       SID_MACHINE_WORD,
-      state_currently_read_bytes_nid,
+      state_read_bytes_nid,
       "increment bytes already read by read system call");
 
   more_than_one_byte_to_read_nid =
     new_binary_boolean(OP_ULT,
-      incremented_currently_read_bytes_nid,
+      incremented_read_bytes_nid,
       a2_value_nid,
       "more than one byte to read as requested in a2");
 
@@ -1235,14 +1246,14 @@ void rotor() {
       more_than_one_readable_byte_nid,
       "can and still would like to read more than one byte");
 
-  next_currently_read_bytes_nid =
-    new_next(SID_MACHINE_WORD, state_currently_read_bytes_nid,
+  next_read_bytes_nid =
+    new_next(SID_MACHINE_WORD, state_read_bytes_nid,
       new_ite(SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
           more_than_one_readable_byte_to_read_nid,
           "active read system call"),
-        incremented_currently_read_bytes_nid,
+        incremented_read_bytes_nid,
         NID_MACHINE_WORD_0,
         "increment bytes already read if read system call is active"),
       "bytes already read in active read system call");
@@ -1292,7 +1303,7 @@ void rotor() {
         new_ite(SID_MACHINE_WORD,
           more_than_one_readable_byte_nid,
           a0_value_nid,
-          incremented_currently_read_bytes_nid,
+          incremented_read_bytes_nid,
           "return number of bytes read so far + 1 if there is only one more readable byte"),
         a2_value_nid,
         "return a2 if number of bytes read so far is a2 - 1 and there are still readable bytes"),
@@ -1302,12 +1313,13 @@ void rotor() {
     "return 0 if a2 == 0");
 
   eval_kernel_register_data_flow_nid = new_ite(SID_REGISTER_STATE,
-    read_syscall_nid,
-    new_ite(SID_REGISTER_STATE,
-      more_than_one_readable_byte_to_read_nid,
-      state_register_file_nid,
-      new_write(SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
+    new_binary_boolean(OP_AND,
+      read_syscall_nid,
+      new_unary(OP_NOT, SID_BOOLEAN,
+        more_than_one_readable_byte_to_read_nid,
+        "read system call returns if there is at most one more byte to read"),
       "update a0 when read system call returns"),
+    new_write(SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
     state_register_file_nid,
     "read return value in a0");
 
@@ -1332,17 +1344,34 @@ void rotor() {
       "update register file"),
     "register file");
 
+  // system call ABI data flow
+
+  a1_value_nid = get_register_value(NID_A1, "a1 value");
+
+  // kernel memory data flow
+
+  eval_kernel_memory_data_flow_nid = new_ite(SID_MEMORY_STATE,
+    new_binary_boolean(OP_AND,
+      read_syscall_nid,
+      more_readable_bytes_to_read_nid,
+      "more input bytes to read"),
+    new_write(SID_MEMORY_STATE, state_main_memory_nid,
+      vaddr_to_laddr(a1_value_nid),
+      NID_MACHINE_WORD_0,
+      "write input byte to memory at a1 + state_read_bytes_nid"),
+    state_main_memory_nid,
+    "input byte");
+
   // memory data flow
 
-/*
   next_main_memory_nid = new_next(SID_MEMORY_STATE, state_main_memory_nid,
     new_ite(SID_MEMORY_STATE,
       kernel_data_flow_nid,
-      kernel_memory_data_flow_nid,
+      eval_kernel_memory_data_flow_nid,
       state_main_memory_nid,
       "update main memory"),
     "main memory");
-*/
+
   // bad states
 
   bad_pc_nid = new_bad(new_binary_boolean(OP_OR,
