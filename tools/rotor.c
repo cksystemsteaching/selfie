@@ -44,7 +44,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
 
-uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, char* comment);
+uint64_t* new_constant(char* op, uint64_t* sid, char* constant, char* comment);
 uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment);
 
 uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
@@ -78,6 +78,11 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 char* format_comment(char* comment, uint64_t value);
+
+char* format_binary(uint64_t value, uint64_t alignment);
+char* format_decimal(uint64_t value);
+
+char* format_comment_binary(char* comment, uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -190,8 +195,6 @@ void print_interface_sorts();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t ISBYTEMEMORY = 0;
-
 uint64_t* SID_BOOLEAN = (uint64_t*) 0;
 
 uint64_t* NID_FALSE = (uint64_t*) 0;
@@ -242,45 +245,43 @@ uint64_t* NID_MACHINE_WORD_BYTE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
-uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
-
 // ------------------------- INITIALIZATION ------------------------
 
-void init_sizes() {
+void init_interface_sorts() {
   SID_BOOLEAN = new_bitvec(1, "Boolean");
 
-  NID_FALSE = new_constant(OP_CONST, SID_BOOLEAN, (uint64_t) "0", "false");
-  NID_TRUE  = new_constant(OP_CONST, SID_BOOLEAN, (uint64_t) "1", "true");
+  NID_FALSE = new_constant(OP_CONSTD, SID_BOOLEAN, (char*) 0, "false");
+  NID_TRUE  = new_constant(OP_CONSTD, SID_BOOLEAN, (char*) 1, "true");
 
   SID_BYTE = new_bitvec(8, "8-bit byte");
 
-  NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, 0, "byte 0");
-  NID_BYTE_4 = new_constant(OP_CONSTD, SID_BYTE, 4, "byte 4");
+  NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, "0", "byte 0");
+  NID_BYTE_4 = new_constant(OP_CONSTD, SID_BYTE, "4", "byte 4");
 
   SID_SINGLE_WORD = new_bitvec(32, "32-bit single word");
 
-  NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 0, "single-word 0");
-  NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 1, "single-word 1");
-  NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 2, "single-word 2");
-  NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 3, "single-word 3");
-  NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 4, "single-word 4");
-  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 8, "single-word 8");
+  NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "0", "single-word 0");
+  NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "1", "single-word 1");
+  NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "2", "single-word 2");
+  NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "3", "single-word 3");
+  NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "4", "single-word 4");
+  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "8", "single-word 8");
 
-  NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, sign_shrink(-1, SINGLEWORDSIZEINBITS), "single-word -1");
+  NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "-1", "single-word -1");
 
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD = new_bitvec(64, "64-bit double word");
 
-    NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 0, "double-word 0");
-    NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 1, "double-word 1");
-    NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 2, "double-word 2");
-    NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 3, "double-word 3");
-    NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 4, "double-word 4");
-    NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, "double-word 8");
+    NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "0", "double-word 0");
+    NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "1", "double-word 1");
+    NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "2", "double-word 2");
+    NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "3", "double-word 3");
+    NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "4", "double-word 4");
+    NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "8", "double-word 8");
 
-    NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, "double-word -1");
+    NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "-1", "double-word -1");
 
     SID_MACHINE_WORD = SID_DOUBLE_WORD;
 
@@ -294,7 +295,7 @@ void init_sizes() {
     NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
 
     NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONST, SID_MACHINE_WORD,
-      (uint64_t) "0000000000000000000000000000000000000000000000000000000000000111", "2^3 == machine word size in bytes");
+      "0000000000000000000000000000000000000000000000000000000000000111", "machine word size in bytes - 1");
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD = SID_SINGLE_WORD;
@@ -309,23 +310,52 @@ void init_sizes() {
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
 
     NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONST, SID_MACHINE_WORD,
-      (uint64_t) "00000000000000000000000000000011", "2^2 == word size in bytes");
+      "00000000000000000000000000000011", "machine word size in bytes - 1");
   }
 
   NID_MACHINE_WORD_BYTE_MASK = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    (uint64_t) "FF", "maximum value of a byte in a machine word");
+    "FF", "maximum value of a byte in a machine word");
 
   NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
+}
 
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+void print_interface_memory();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t ISBYTEMEMORY = 0;
+
+uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
+
+uint64_t* NID_CODE_START = (uint64_t*) 0;
+uint64_t* NID_CODE_END   = (uint64_t*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_interface_memory() {
   if (ISBYTEMEMORY)
     SID_MEMORY_WORD = SID_BYTE;
   else
     SID_MEMORY_WORD = SID_MACHINE_WORD;
+
+  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", code_start),
+    "start of code segment");
+
+  NID_CODE_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", code_start + code_size),
+    "end of code segment");
 }
 
 // -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
+
+void print_interface_kernel();
 
 void new_kernel_state(uint64_t bytes_to_read);
 
@@ -352,13 +382,13 @@ uint64_t* eval_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_interface() {
+void init_interface_kernel() {
   NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_EXIT,
-    format_comment("exit syscall ID %lu", SYSCALL_EXIT));
+    format_decimal(SYSCALL_EXIT),
+    format_comment_binary("exit syscall ID", SYSCALL_EXIT));
   NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_READ,
-    format_comment("read syscall ID %lu", SYSCALL_READ));
+    format_decimal(SYSCALL_READ),
+    format_comment_binary("read syscall ID", SYSCALL_READ));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -425,38 +455,38 @@ uint64_t* next_register_file_nid  = (uint64_t*) 0;
 void init_register_file_sorts() {
   SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
 
-  NID_ZR  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_ZR, (char*) *(REGISTERS + REG_ZR));
-  NID_RA  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_RA, (char*) *(REGISTERS + REG_RA));
-  NID_SP  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_SP, (char*) *(REGISTERS + REG_SP));
-  NID_GP  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_GP, (char*) *(REGISTERS + REG_GP));
-  NID_TP  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_TP, (char*) *(REGISTERS + REG_TP));
-  NID_T0  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T0, (char*) *(REGISTERS + REG_T0));
-  NID_T1  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T1, (char*) *(REGISTERS + REG_T1));
-  NID_T2  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T2, (char*) *(REGISTERS + REG_T2));
-  NID_S0  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S0, (char*) *(REGISTERS + REG_S0));
-  NID_S1  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S1, (char*) *(REGISTERS + REG_S1));
-  NID_A0  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A0, (char*) *(REGISTERS + REG_A0));
-  NID_A1  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A1, (char*) *(REGISTERS + REG_A1));
-  NID_A2  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A2, (char*) *(REGISTERS + REG_A2));
-  NID_A3  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A3, (char*) *(REGISTERS + REG_A3));
-  NID_A4  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A4, (char*) *(REGISTERS + REG_A4));
-  NID_A5  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A5, (char*) *(REGISTERS + REG_A5));
-  NID_A6  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A6, (char*) *(REGISTERS + REG_A6));
-  NID_A7  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_A7, (char*) *(REGISTERS + REG_A7));
-  NID_S2  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S2, (char*) *(REGISTERS + REG_S2));
-  NID_S3  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S3, (char*) *(REGISTERS + REG_S3));
-  NID_S4  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S4, (char*) *(REGISTERS + REG_S4));
-  NID_S5  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S5, (char*) *(REGISTERS + REG_S5));
-  NID_S6  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S6, (char*) *(REGISTERS + REG_S6));
-  NID_S7  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S7, (char*) *(REGISTERS + REG_S7));
-  NID_S8  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S8, (char*) *(REGISTERS + REG_S8));
-  NID_S9  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S9, (char*) *(REGISTERS + REG_S9));
-  NID_S10 = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S10, (char*) *(REGISTERS + REG_S10));
-  NID_S11 = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_S11, (char*) *(REGISTERS + REG_S11));
-  NID_T3  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T3, (char*) *(REGISTERS + REG_T3));
-  NID_T4  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T4, (char*) *(REGISTERS + REG_T4));
-  NID_T5  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T5, (char*) *(REGISTERS + REG_T5));
-  NID_T6  = new_constant(OP_CONSTD, SID_REGISTER_ADDRESS, REG_T6, (char*) *(REGISTERS + REG_T6));
+  NID_ZR  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_ZR, 5), (char*) *(REGISTERS + REG_ZR));
+  NID_RA  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_RA, 5), (char*) *(REGISTERS + REG_RA));
+  NID_SP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_SP, 5), (char*) *(REGISTERS + REG_SP));
+  NID_GP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_GP, 5), (char*) *(REGISTERS + REG_GP));
+  NID_TP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_TP, 5), (char*) *(REGISTERS + REG_TP));
+  NID_T0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T0, 5), (char*) *(REGISTERS + REG_T0));
+  NID_T1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T1, 5), (char*) *(REGISTERS + REG_T1));
+  NID_T2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T2, 5), (char*) *(REGISTERS + REG_T2));
+  NID_S0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S0, 5), (char*) *(REGISTERS + REG_S0));
+  NID_S1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S1, 5), (char*) *(REGISTERS + REG_S1));
+  NID_A0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A0, 5), (char*) *(REGISTERS + REG_A0));
+  NID_A1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A1, 5), (char*) *(REGISTERS + REG_A1));
+  NID_A2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A2, 5), (char*) *(REGISTERS + REG_A2));
+  NID_A3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A3, 5), (char*) *(REGISTERS + REG_A3));
+  NID_A4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A4, 5), (char*) *(REGISTERS + REG_A4));
+  NID_A5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A5, 5), (char*) *(REGISTERS + REG_A5));
+  NID_A6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A6, 5), (char*) *(REGISTERS + REG_A6));
+  NID_A7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_A7, 5), (char*) *(REGISTERS + REG_A7));
+  NID_S2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S2, 5), (char*) *(REGISTERS + REG_S2));
+  NID_S3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S3, 5), (char*) *(REGISTERS + REG_S3));
+  NID_S4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S4, 5), (char*) *(REGISTERS + REG_S4));
+  NID_S5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S5, 5), (char*) *(REGISTERS + REG_S5));
+  NID_S6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S6, 5), (char*) *(REGISTERS + REG_S6));
+  NID_S7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S7, 5), (char*) *(REGISTERS + REG_S7));
+  NID_S8  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S8, 5), (char*) *(REGISTERS + REG_S8));
+  NID_S9  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S9, 5), (char*) *(REGISTERS + REG_S9));
+  NID_S10 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S10, 5), (char*) *(REGISTERS + REG_S10));
+  NID_S11 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_S11, 5), (char*) *(REGISTERS + REG_S11));
+  NID_T3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T3, 5), (char*) *(REGISTERS + REG_T3));
+  NID_T4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T4, 5), (char*) *(REGISTERS + REG_T4));
+  NID_T5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T5, 5), (char*) *(REGISTERS + REG_T5));
+  NID_T6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, format_binary(REG_T6, 5), (char*) *(REGISTERS + REG_T6));
 
   SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
 }
@@ -595,50 +625,52 @@ uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 void init_instruction_sorts() {
   SID_OPCODE = new_bitvec(7, "opcode sort");
 
-  NID_OP_LOAD   = new_constant(OP_CONSTD, SID_OPCODE, OP_LOAD, "OP_LOAD");
-  NID_OP_IMM    = new_constant(OP_CONSTD, SID_OPCODE, OP_IMM, "OP_IMM");
-  NID_OP_STORE  = new_constant(OP_CONSTD, SID_OPCODE, OP_STORE, "OP_STORE");
-  NID_OP_OP     = new_constant(OP_CONSTD, SID_OPCODE, OP_OP, "OP_OP");
-  NID_OP_LUI    = new_constant(OP_CONSTD, SID_OPCODE, OP_LUI, "OP_LUI");
-  NID_OP_BRANCH = new_constant(OP_CONSTD, SID_OPCODE, OP_BRANCH, "OP_BRANCH");
-  NID_OP_JALR   = new_constant(OP_CONSTD, SID_OPCODE, OP_JALR, "OP_JALR");
-  NID_OP_JAL    = new_constant(OP_CONSTD, SID_OPCODE, OP_JAL, "OP_JAL");
-  NID_OP_SYSTEM = new_constant(OP_CONSTD, SID_OPCODE, OP_SYSTEM, "OP_SYSTEM");
+  NID_OP_LOAD   = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_LOAD, 7), "OP_LOAD");
+  NID_OP_IMM    = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_IMM, 7), "OP_IMM");
+  NID_OP_STORE  = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_STORE, 7), "OP_STORE");
+  NID_OP_OP     = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_OP, 7), "OP_OP");
+  NID_OP_LUI    = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_LUI, 7), "OP_LUI");
+  NID_OP_BRANCH = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_BRANCH, 7), "OP_BRANCH");
+  NID_OP_JALR   = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_JALR, 7), "OP_JALR");
+  NID_OP_JAL    = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_JAL, 7), "OP_JAL");
+  NID_OP_SYSTEM = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_SYSTEM, 7), "OP_SYSTEM");
 
   SID_FUNCT3 = new_bitvec(3, "funct3 sort");
 
-  NID_F3_NOP   = new_constant(OP_CONSTD, SID_FUNCT3, F3_NOP, "F3_NOP");
-  NID_F3_ADDI  = new_constant(OP_CONSTD, SID_FUNCT3, F3_ADDI, "F3_ADDI");
-  NID_F3_ADD   = new_constant(OP_CONSTD, SID_FUNCT3, F3_ADD, "F3_ADD");
-  NID_F3_SUB   = new_constant(OP_CONSTD, SID_FUNCT3, F3_SUB, "F3_SUB");
-  NID_F3_MUL   = new_constant(OP_CONSTD, SID_FUNCT3, F3_MUL, "F3_MUL");
-  NID_F3_DIVU  = new_constant(OP_CONSTD, SID_FUNCT3, F3_DIVU, "F3_DIVU");
-  NID_F3_REMU  = new_constant(OP_CONSTD, SID_FUNCT3, F3_REMU, "F3_REMU");
-  NID_F3_SLTU  = new_constant(OP_CONSTD, SID_FUNCT3, F3_SLTU, "F3_SLTU");
-  NID_F3_LD    = new_constant(OP_CONSTD, SID_FUNCT3, F3_LD, "F3_LD");
-  NID_F3_SD    = new_constant(OP_CONSTD, SID_FUNCT3, F3_SD, "F3_SD");
-  NID_F3_LW    = new_constant(OP_CONSTD, SID_FUNCT3, F3_LW, "F3_LW");
-  NID_F3_SW    = new_constant(OP_CONSTD, SID_FUNCT3, F3_SW, "F3_SW");
-  NID_F3_BEQ   = new_constant(OP_CONSTD, SID_FUNCT3, F3_BEQ, "F3_BEQ");
-  NID_F3_JALR  = new_constant(OP_CONSTD, SID_FUNCT3, F3_JALR, "F3_JALR");
-  NID_F3_ECALL = new_constant(OP_CONSTD, SID_FUNCT3, F3_ECALL, "F3_ECALL");
+  NID_F3_NOP   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_NOP, 3), "F3_NOP");
+  NID_F3_ADDI  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADDI, 3), "F3_ADDI");
+  NID_F3_ADD   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADD, 3), "F3_ADD");
+  NID_F3_SUB   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SUB, 3), "F3_SUB");
+  NID_F3_MUL   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_MUL, 3), "F3_MUL");
+  NID_F3_DIVU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_DIVU, 3), "F3_DIVU");
+  NID_F3_REMU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_REMU, 3), "F3_REMU");
+  NID_F3_SLTU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SLTU, 3), "F3_SLTU");
+  NID_F3_LD    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LD, 3), "F3_LD");
+  NID_F3_SD    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SD, 3), "F3_SD");
+  NID_F3_LW    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LW, 3), "F3_LW");
+  NID_F3_SW    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SW, 3), "F3_SW");
+  NID_F3_BEQ   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BEQ, 3), "F3_BEQ");
+  NID_F3_JALR  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_JALR, 3), "F3_JALR");
+  NID_F3_ECALL = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ECALL, 3), "F3_ECALL");
 
   SID_FUNCT7 = new_bitvec(7, "funct7 sort");
 
-  NID_F7_ADD  = new_constant(OP_CONSTD, SID_FUNCT7, F7_ADD, "F7_ADD");
-  NID_F7_MUL  = new_constant(OP_CONSTD, SID_FUNCT7, F7_MUL, "F7_MUL");
-  NID_F7_SUB  = new_constant(OP_CONSTD, SID_FUNCT7, F7_SUB, "F7_SUB");
-  NID_F7_DIVU = new_constant(OP_CONSTD, SID_FUNCT7, F7_DIVU, "F7_DIVU");
-  NID_F7_REMU = new_constant(OP_CONSTD, SID_FUNCT7, F7_REMU, "F7_REMU");
-  NID_F7_SLTU = new_constant(OP_CONSTD, SID_FUNCT7, F7_SLTU, "F7_SLTU");
+  NID_F7_ADD  = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_ADD, 7), "F7_ADD");
+  NID_F7_MUL  = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_MUL, 7), "F7_MUL");
+  NID_F7_SUB  = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_SUB, 7), "F7_SUB");
+  NID_F7_DIVU = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_DIVU, 7), "F7_DIVU");
+  NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_REMU, 7), "F7_REMU");
+  NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, format_binary(F7_SLTU, 7), "F7_SLTU");
 
   SID_FUNCT12 = new_bitvec(12, "funct12 sort");
 
-  NID_F12_ECALL = new_constant(OP_CONSTD, SID_FUNCT12, F12_ECALL, "F12_ECALL");
+  NID_F12_ECALL = new_constant(OP_CONST, SID_FUNCT12, format_binary(F12_ECALL, 12), "F12_ECALL");
 
-  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_WORD,
-    left_shift(left_shift(left_shift(left_shift(F12_ECALL, 5) + REG_ZR, 3)
-      + F3_ECALL, 5) + REG_ZR, 7) + OP_SYSTEM, "ECALL opcode");
+  NID_ECALL = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+    format_binary(left_shift(left_shift(left_shift(left_shift(F12_ECALL, 5) + REG_ZR, 3)
+      + F3_ECALL, 5) + REG_ZR, 7) + OP_SYSTEM,
+    32),
+    "ECALL instruction");
 
   SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort");
   SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort");
@@ -716,7 +748,7 @@ uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment) {
   return new_line(OP_SORT, UNUSED, (uint64_t*) ARRAY, size_sid, element_sid, comment);
 }
 
-uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, char* comment) {
+uint64_t* new_constant(char* op, uint64_t* sid, char* constant, char* comment) {
   return new_line(op, sid, (uint64_t*) constant, UNUSED, UNUSED, comment);
 }
 
@@ -842,14 +874,15 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   nid = print_line(nid, get_sid(line));
   print_nid(nid, line);
   if (get_op(line) == OP_CONSTD) {
-    if ((uint64_t) get_arg1(line) == 0)
+    if ((uint64_t) get_arg1(line) == 0) {
       w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
-    else if ((uint64_t) get_arg1(line) == 1)
+      return nid;
+    } else if ((uint64_t) get_arg1(line) == 1) {
       w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
-    else
-      w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), (uint64_t) get_arg1(line));
-  } else
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
+      return nid;
+    }
+  }
+  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
   return nid;
 }
 
@@ -913,6 +946,19 @@ char* format_comment(char* comment, uint64_t value) {
   return string_copy(string_buffer);
 }
 
+char* format_binary(uint64_t value, uint64_t alignment) {
+  return string_copy(itoa(value, integer_buffer, 2, 0, alignment));
+}
+
+char* format_decimal(uint64_t value) {
+  return format_comment("%ld", value);
+}
+
+char* format_comment_binary(char* comment, uint64_t value) {
+  sprintf(string_buffer, "%s %s", comment, format_binary(value, 0));
+  return string_copy(string_buffer);
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -------------------     I N T E R F A C E     -------------------
@@ -961,13 +1007,32 @@ void print_interface_sorts() {
     print_line(49, NID_DOUBLE_WORD_MINUS_1);
   }
 }
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+void print_interface_memory() {
+  w = w + dprintf(output_fd, "\n; memory interface\n\n");
+
+  print_line(50, NID_CODE_START);
+  print_line(51, NID_CODE_END);
+}
 
 // -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
+
+void print_interface_kernel() {
+  w = w + dprintf(output_fd, "\n; kernel interface\n\n");
+
+  print_line(60, NID_EXIT_SYSCALL_ID);
+  print_line(61, NID_READ_SYSCALL_ID);
+}
 
 void new_kernel_state(uint64_t bytes_to_read) {
-  readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD, bytes_to_read, "read capacity in bytes");
+  readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    format_decimal(bytes_to_read),
+    "read capacity in bytes");
 
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD, "readable-bytes", "readable bytes");
   init_readable_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_readable_bytes_nid,
@@ -991,8 +1056,8 @@ void new_kernel_state(uint64_t bytes_to_read) {
 void print_register_sorts() {
   w = w + dprintf(output_fd, "\n; register sorts\n\n");
 
-  print_line(50, SID_REGISTER_ADDRESS);
-  print_line(51, SID_REGISTER_STATE);
+  print_line(70, SID_REGISTER_ADDRESS);
+  print_line(71, SID_REGISTER_STATE);
 }
 
 void new_register_file_state() {
@@ -1011,17 +1076,17 @@ uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
 void print_memory_sorts() {
   w = w + dprintf(output_fd, "\n; memory sorts\n\n");
 
-  print_line(60, SID_CODE_ADDRESS);
-  print_line(61, SID_CODE_STATE);
+  print_line(80, SID_CODE_ADDRESS);
+  print_line(81, SID_CODE_STATE);
 
   if (ISBYTEMEMORY) {
-    print_line(70, SID_MEMORY_ADDRESS);
-    print_line(71, SID_MEMORY_STATE);
+    print_line(90, SID_MEMORY_ADDRESS);
+    print_line(91, SID_MEMORY_STATE);
   } else if (IS64BITTARGET) {
-    print_line(70, SID_MEMORY_ADDRESS);
-    print_line(71, SID_MEMORY_STATE);
+    print_line(90, SID_MEMORY_ADDRESS);
+    print_line(91, SID_MEMORY_STATE);
   } else
-    print_line(71, SID_MEMORY_STATE);
+    print_line(91, SID_MEMORY_STATE);
 }
 
 void new_main_memory_state() {
@@ -1276,6 +1341,9 @@ void output_machine() {
     + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
 
   print_interface_sorts();
+  print_interface_memory();
+  print_interface_kernel();
+
   print_register_sorts();
   print_memory_sorts();
 
@@ -1606,6 +1674,14 @@ void rotor() {
   // bad states
 
   bad_pc_nid = new_property(OP_CONSTRAINT, new_unary(OP_NOT, SID_BOOLEAN,
+    is_access_in_segment(state_core_pc_nid, NID_CODE_START, NID_CODE_END),
+    "pc not in code segment"),
+    "b0", "next fetch not in code segment");
+
+  // TODO: check read system call segmentation
+
+/*
+  bad_read_nid = new_property(OP_CONSTRAINT, new_unary(OP_NOT, SID_BOOLEAN,
     is_access_in_segment(state_core_pc_nid,
       new_constant(OP_CONSTD, SID_MACHINE_WORD,
         code_start,
@@ -1615,8 +1691,7 @@ void rotor() {
         format_comment("end of code segment at 0x%08lX", code_start + code_size))),
     "pc not in code segment"),
     "b0", "next fetch not in code segment");
-
-  // TODO: check read system call segmentation
+*/
 
   bad_syscall_id_nid = new_property(OP_BAD, new_binary_boolean(OP_AND,
     active_ecall_nid,
@@ -1632,11 +1707,11 @@ void rotor() {
     new_binary_boolean(OP_EQ,
       a0_value_nid,
       new_constant(OP_CONSTD, SID_MACHINE_WORD,
-        bad_exit_code,
-        format_comment("bad exit code %lu", bad_exit_code)),
+        format_decimal(bad_exit_code),
+        format_comment("bad exit code %ld", bad_exit_code)),
       "actual exit code == bad exit code"),
     "active exit system call with bad exit code"),
-    "b3", format_comment("exit(%lu)", bad_exit_code));
+    "b3", format_comment("exit(%ld)", bad_exit_code));
 
   output_machine();
 }
@@ -1659,10 +1734,14 @@ uint64_t selfie_model() {
         exit(EXITCODE_IOERROR);
       }
 
+      code_start = 0;
+      code_size  = 16;
+
       init_model();
 
-      init_sizes();
-      init_interface();
+      init_interface_sorts();
+      init_interface_memory();
+      init_interface_kernel();
 
       init_register_file_sorts();
       init_memory_sorts();
@@ -1670,9 +1749,6 @@ uint64_t selfie_model() {
 
       output_name = model_name;
       output_fd   = model_fd;
-
-      code_start = 0;
-      code_size  = 16;
 
       rotor();
 
