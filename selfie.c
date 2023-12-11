@@ -3055,7 +3055,7 @@ uint64_t write_to_printf(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write)
       // assert: buffer is null-terminated
       return printf("%s", (char*) buffer);
 
-  return write(fd, buffer, bytes_to_write);
+  return sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 }
 
 void put_character(char c) {
@@ -7692,7 +7692,7 @@ void implement_write(uint64_t* context) {
   *(IO_buffer + size / sizeof(uint64_t)) = 0;
 
   if (copy_buffer(context, vbuffer, IO_buffer, size, 0))
-    *(get_regs(context) + REG_A0) = write_to_printf(fd, IO_buffer, size);
+    *(get_regs(context) + REG_A0) = sign_shrink(write_to_printf(fd, IO_buffer, size), SYSCALL_BITWIDTH);
   else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
