@@ -1440,7 +1440,7 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; state properties\n\n");
 
-  //print_line(6000, bad_pc_nid);
+  print_line(6000, bad_pc_nid);
 
   //w = w + dprintf(output_fd, "\n");
 
@@ -1482,6 +1482,8 @@ void rotor() {
   uint64_t* pending_read_nid;
 
   uint64_t* opcode_nid;
+
+  uint64_t* eval_core_pc_nid;
 
   uint64_t* a0_value_nid;
 
@@ -1608,12 +1610,15 @@ void rotor() {
 
   // control flow
 
-  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD, state_core_pc_nid,
-    new_ternary(OP_ITE, SID_MACHINE_WORD,
-      eval_kernel_mode_nid,
-      state_core_pc_nid,
-      control_flow(opcode_nid, state_core_pc_nid),
-      "update program counter unless in kernel mode"),
+  eval_core_pc_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
+    eval_kernel_mode_nid,
+    state_core_pc_nid,
+    control_flow(opcode_nid, state_core_pc_nid),
+    "update program counter unless in kernel mode");
+
+  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+    state_core_pc_nid,
+    eval_core_pc_nid,
     "program counter");
 
   // system call ABI data flow
@@ -1706,18 +1711,18 @@ void rotor() {
 
   // state properties
 
-  bad_pc_nid = new_property(OP_CONSTRAINT,
+  bad_pc_nid = new_property(OP_BAD,
     new_unary(OP_NOT, SID_BOOLEAN,
-      is_access_in_code_segment(state_core_pc_nid),
-      "pc not in code segment"),
-    "b0", "fetch segmentation fault");
+      is_access_in_code_segment(eval_core_pc_nid),
+      "next pc not in code segment"),
+    "b0", "imminent fetch segmentation fault");
 
   bad_read_nid = new_property(OP_BAD,
     new_binary_boolean(OP_AND,
       active_read_nid,
       is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
       "active read system call reading into code segment"),
-    "b1", "read segmentation fault");
+    "b1", "possible read segmentation fault");
 
   bad_syscall_id_nid = new_property(OP_BAD,
     new_binary_boolean(OP_AND,
