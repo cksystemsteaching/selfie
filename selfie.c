@@ -232,6 +232,7 @@ uint64_t SIZEOFUINT     = 8; // size of target-dependent unsigned integer in byt
 uint64_t SIZEOFUINTSTAR = 8; // size of target-dependent pointer to unsigned integer in bytes
 
 uint64_t UINT_MAX; // maximum numerical value of target-dependent unsigned integer
+uint64_t INT_MIN;  // minimum numerical value of target-dependent signed integer
 
 uint64_t WORDSIZE       = 8;  // target-dependent word size in bytes
 uint64_t WORDSIZEINBITS = 64; // WORDSIZE * 8
@@ -331,6 +332,7 @@ void init_library() {
   SIZEOFUINT     = sizeof(uint64_t);
   SIZEOFUINTSTAR = sizeof(uint64_t*);
   UINT_MAX       = UINT64_MAX;
+  INT_MIN        = INT64_MIN;
   WORDSIZE       = sizeof(uint64_t);
   WORDSIZEINBITS = WORDSIZE * 8;
 
@@ -2541,9 +2543,8 @@ void init_target() {
     if (IS64BITSYSTEM) {
       SIZEOFUINT     = sizeof(uint64_t);
       SIZEOFUINTSTAR = sizeof(uint64_t*);
-
-      UINT_MAX = UINT64_MAX;
-
+      UINT_MAX       = UINT64_MAX;
+      INT_MIN        = INT64_MIN;
       WORDSIZE       = sizeof(uint64_t);
       WORDSIZEINBITS = WORDSIZE * 8;
 
@@ -2564,17 +2565,15 @@ void init_target() {
     if (IS64BITSYSTEM) {
       SIZEOFUINT     = SINGLEWORDSIZE;
       SIZEOFUINTSTAR = SINGLEWORDSIZE;
-
-      UINT_MAX = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
-
-      WORDSIZE = SINGLEWORDSIZE;
+      UINT_MAX       = two_to_the_power_of(SINGLEWORDSIZEINBITS) - 1;
+      INT_MIN        = two_to_the_power_of(SINGLEWORDSIZEINBITS - 1);
+      WORDSIZE       = SINGLEWORDSIZE;
     } else {
       SIZEOFUINT     = sizeof(uint64_t);
       SIZEOFUINTSTAR = sizeof(uint64_t*);
-
-      UINT_MAX = UINT64_MAX;
-
-      WORDSIZE = sizeof(uint64_t);
+      UINT_MAX       = UINT64_MAX;
+      INT_MIN        = INT64_MIN;
+      WORDSIZE       = sizeof(uint64_t);
     }
 
     WORDSIZEINBITS = WORDSIZE * 8;
@@ -2874,6 +2873,7 @@ uint64_t atoi(char* s) {
   uint64_t i;
   uint64_t n;
   uint64_t c;
+  uint64_t sign;
 
   // the conversion of the ASCII string in s to its
   // numerical value n begins with the leftmost digit in s
@@ -2885,6 +2885,16 @@ uint64_t atoi(char* s) {
   // load character (one byte) at index i in s from memory requires
   // bit shifting since memory access can only be done at word granularity
   c = load_character(s, i);
+
+  // only used by console argument scanner
+  if (c == '-') {
+    sign = 1;
+
+    i = i + 1;
+
+    c = load_character(s, i);
+  } else
+    sign = 0;
 
   // loop until s is terminated
   while (c != 0) {
@@ -2901,19 +2911,19 @@ uint64_t atoi(char* s) {
     // assert: s contains a decimal number
 
     // use base 10 but detect wrap around
-    if (n < UINT_MAX / 10)
+    if (n < UINT64_MAX / 10)
       n = n * 10 + c;
-    else if (n == UINT_MAX / 10)
-      if (c <= UINT_MAX % 10)
+    else if (n == UINT64_MAX / 10)
+      if (c <= UINT64_MAX % 10)
         n = n * 10 + c;
       else {
-        // s contains a decimal number larger than UINT_MAX
+        // s contains a decimal number larger than UINT64_MAX
         printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
         exit(EXITCODE_SCANNERERROR);
       }
     else {
-      // s contains a decimal number larger than UINT_MAX
+      // s contains a decimal number larger than UINT64_MAX
       printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
       exit(EXITCODE_SCANNERERROR);
@@ -2927,7 +2937,17 @@ uint64_t atoi(char* s) {
     c = load_character(s, i);
   }
 
-  return n;
+  if (sign)
+    if (n <= INT64_MIN)
+      return -n;
+    else {
+      // s contains a decimal number smaller than INT64_MIN
+      printf("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
+
+      exit(EXITCODE_SCANNERERROR);
+    }
+  else
+    return n;
 }
 
 char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
@@ -3748,7 +3768,7 @@ void get_symbol() {
               if (integer_is_signed)
                 syntax_error_message("signed integer out of bound");
               else
-                syntax_error_message("integer out of bound");
+                syntax_error_message("unsigned integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
@@ -3764,12 +3784,17 @@ void get_symbol() {
 
           literal = atoi(integer);
 
-          if (integer_is_signed)
-            if (literal > INT64_MIN) {
-                syntax_error_message("signed integer out of bound");
+          if (integer_is_signed) {
+            if (literal > INT_MIN) {
+              syntax_error_message("signed integer out of target bound");
 
-                exit(EXITCODE_SCANNERERROR);
-              }
+              exit(EXITCODE_SCANNERERROR);
+            }
+          } else if (literal > UINT_MAX) {
+            syntax_error_message("unsigned integer out of target bound");
+
+            exit(EXITCODE_SCANNERERROR);
+          }
         }
 
         symbol = SYM_INTEGER;
