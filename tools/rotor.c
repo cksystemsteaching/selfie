@@ -499,7 +499,11 @@ void print_memory_sorts();
 
 void new_main_memory_state();
 
-uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* segment_start_nid, uint64_t* segment_end_nid);
+uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid);
+
+uint64_t* is_range_accessing_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid);
 
@@ -714,6 +718,7 @@ uint64_t w = 0; // number of written characters
 uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t* bad_pc_nid         = (uint64_t*) 0;
+uint64_t* bad_read_nid       = (uint64_t*) 0;
 uint64_t* bad_syscall_id_nid = (uint64_t*) 0;
 uint64_t* bad_exit_nid       = (uint64_t*) 0;
 
@@ -1100,17 +1105,41 @@ void new_main_memory_state() {
     init_main_memory_nid  = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
 }
 
-uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* segment_start_nid, uint64_t* segment_end_nid) {
+uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
     new_binary_boolean(OP_UGTE,
       vaddr_nid,
-      segment_start_nid,
+      start_nid,
       "vaddr >= start of segment"),
     new_binary_boolean(OP_ULT,
       vaddr_nid,
-      segment_end_nid,
+      end_nid,
       "vaddr < end of segment"),
     "vaddr in segment");
+}
+
+uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid) {
+  return is_access_in_segment(vaddr_nid, NID_CODE_START, NID_CODE_END);
+}
+
+uint64_t* is_range_accessing_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
+  return new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_UGTE,
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        vaddr_nid,
+        range_nid,
+        "vaddr + range in bytes"),
+      start_nid,
+      "vaddr + range >= start of segment"),
+    new_binary_boolean(OP_ULT,
+      vaddr_nid,
+      end_nid,
+      "vaddr < end of segment"),
+    "some vaddresses in range in segment");
+}
+
+uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_accessing_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
 }
 
 uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid) {
@@ -1415,11 +1444,15 @@ void output_machine() {
 
   //w = w + dprintf(output_fd, "\n");
 
-  // print_line(7100, bad_syscall_id_nid);
+  print_line(6100, bad_read_nid);
 
   //w = w + dprintf(output_fd, "\n");
 
-  print_line(6200, bad_exit_nid);
+  //print_line(6200, bad_syscall_id_nid);
+
+  //w = w + dprintf(output_fd, "\n");
+
+  //print_line(6300, bad_exit_nid);
 }
 
 void rotor() {
@@ -1671,46 +1704,41 @@ void rotor() {
       "update main memory"),
     "main memory");
 
-  // bad states
+  // state properties
 
-  bad_pc_nid = new_property(OP_CONSTRAINT, new_unary(OP_NOT, SID_BOOLEAN,
-    is_access_in_segment(state_core_pc_nid, NID_CODE_START, NID_CODE_END),
-    "pc not in code segment"),
-    "b0", "next fetch not in code segment");
+  bad_pc_nid = new_property(OP_CONSTRAINT,
+    new_unary(OP_NOT, SID_BOOLEAN,
+      is_access_in_code_segment(state_core_pc_nid),
+      "pc not in code segment"),
+    "b0", "fetch segmentation fault");
 
-  // TODO: check read system call segmentation
-
-/*
-  bad_read_nid = new_property(OP_CONSTRAINT, new_unary(OP_NOT, SID_BOOLEAN,
-    is_access_in_segment(state_core_pc_nid,
-      new_constant(OP_CONSTD, SID_MACHINE_WORD,
-        code_start,
-        format_comment("start of code segment at 0x%08lX", code_start)),
-      new_constant(OP_CONSTD, SID_MACHINE_WORD,
-        code_start + code_size,
-        format_comment("end of code segment at 0x%08lX", code_start + code_size))),
-    "pc not in code segment"),
-    "b0", "next fetch not in code segment");
-*/
-
-  bad_syscall_id_nid = new_property(OP_BAD, new_binary_boolean(OP_AND,
-    active_ecall_nid,
+  bad_read_nid = new_property(OP_BAD,
     new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
-      new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
-      "a7 != known syscall ID"),
-    "active ecall and a7 != known syscall ID"),
-    "b1", "unknown syscall ID");
+      active_read_nid,
+      is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
+      "active read system call reading into code segment"),
+    "b1", "read segmentation fault");
 
-  bad_exit_nid = new_property(OP_BAD, new_binary_boolean(OP_AND,
-    active_exit_nid,
-    new_binary_boolean(OP_EQ,
-      a0_value_nid,
-      new_constant(OP_CONSTD, SID_MACHINE_WORD,
-        format_decimal(bad_exit_code),
-        format_comment("bad exit code %ld", bad_exit_code)),
-      "actual exit code == bad exit code"),
-    "active exit system call with bad exit code"),
+  bad_syscall_id_nid = new_property(OP_BAD,
+    new_binary_boolean(OP_AND,
+      active_ecall_nid,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+        new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
+        "a7 != known syscall ID"),
+      "active ecall and a7 != known syscall ID"),
+    "b2", "unknown syscall ID");
+
+  bad_exit_nid = new_property(OP_BAD,
+    new_binary_boolean(OP_AND,
+      active_exit_nid,
+      new_binary_boolean(OP_EQ,
+        a0_value_nid,
+        new_constant(OP_CONSTD, SID_MACHINE_WORD,
+          format_decimal(bad_exit_code),
+          format_comment("bad exit code %ld", bad_exit_code)),
+        "actual exit code == bad exit code"),
+      "active exit system call with bad exit code"),
     "b3", format_comment("exit(%ld)", bad_exit_code));
 
   output_machine();
