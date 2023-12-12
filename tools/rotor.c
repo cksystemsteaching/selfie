@@ -1438,7 +1438,11 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 }
 
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
-  return main_memory_nid;
+  return new_ternary(OP_ITE, SID_MEMORY_STATE,
+    eval_core_store_nid,
+    main_memory_nid,
+    main_memory_nid,
+    "update main memory");
 }
 
 uint64_t* control_flow(uint64_t* pc_nid) {
@@ -1552,33 +1556,37 @@ void output_machine() {
 
   print_line(7000, next_register_file_nid);
 
+  w = w + dprintf(output_fd, "\n; non-kernel memory data flow\n\n");
+
+  print_line(8000, eval_core_memory_data_flow_nid);
+
   w = w + dprintf(output_fd, "\n; kernel memory data flow\n\n");
 
-  print_line(8000, eval_kernel_memory_data_flow_nid);
+  print_line(9000, eval_kernel_memory_data_flow_nid);
 
   w = w + dprintf(output_fd, "\n; update memory data flow\n\n");
 
-  print_line(8100, next_main_memory_nid);
+  print_line(10000, next_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; constraints\n\n");
 
-  print_line(9000, constraint_ir_nid);
+  print_line(11000, constraint_ir_nid);
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
-  //print_line(10000, bad_pc_nid);
+  //print_line(12000, bad_pc_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  //print_line(10100, bad_read_nid);
+  //print_line(12100, bad_read_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  //print_line(10200, bad_syscall_id_nid);
+  //print_line(12200, bad_syscall_id_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(10300, bad_exit_nid);
+  print_line(12300, bad_exit_nid);
 }
 
 void rotor() {
@@ -1789,7 +1797,7 @@ void rotor() {
       "update a0 when read system call returns"),
     new_ternary(OP_WRITE, SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
     eval_core_register_data_flow_nid,
-    "read return value in a0");
+    "register data flow");
 
   // update register data flow
 
@@ -1819,7 +1827,7 @@ void rotor() {
       "a1 + number of already read_bytes"),
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call")),
     eval_core_memory_data_flow_nid,
-    "store read input byte");
+    "main memory data flow");
 
   // update memory data flow
 
