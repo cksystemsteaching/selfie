@@ -573,7 +573,7 @@ uint64_t* get_machine_word_I_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
 
-void decode_instruction();
+uint64_t* decode_instruction();
 
 uint64_t* data_flow(uint64_t* register_file_nid);
 uint64_t* control_flow();
@@ -594,21 +594,19 @@ uint64_t* NID_OP_SYSTEM = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT3 = (uint64_t*) 0;
 
-uint64_t* NID_F3_NOP   = (uint64_t*) 0;
-uint64_t* NID_F3_ADDI  = (uint64_t*) 0;
-uint64_t* NID_F3_ADD   = (uint64_t*) 0;
-uint64_t* NID_F3_SUB   = (uint64_t*) 0;
-uint64_t* NID_F3_MUL   = (uint64_t*) 0;
-uint64_t* NID_F3_DIVU  = (uint64_t*) 0;
-uint64_t* NID_F3_REMU  = (uint64_t*) 0;
-uint64_t* NID_F3_SLTU  = (uint64_t*) 0;
-uint64_t* NID_F3_LD    = (uint64_t*) 0;
-uint64_t* NID_F3_SD    = (uint64_t*) 0;
-uint64_t* NID_F3_LW    = (uint64_t*) 0;
-uint64_t* NID_F3_SW    = (uint64_t*) 0;
-uint64_t* NID_F3_BEQ   = (uint64_t*) 0;
-uint64_t* NID_F3_JALR  = (uint64_t*) 0;
-uint64_t* NID_F3_ECALL = (uint64_t*) 0;
+uint64_t* NID_F3_NOP         = (uint64_t*) 0;
+uint64_t* NID_F3_ADDI        = (uint64_t*) 0;
+uint64_t* NID_F3_ADD_SUB_MUL = (uint64_t*) 0;
+uint64_t* NID_F3_DIVU        = (uint64_t*) 0;
+uint64_t* NID_F3_REMU        = (uint64_t*) 0;
+uint64_t* NID_F3_SLTU        = (uint64_t*) 0;
+uint64_t* NID_F3_LD          = (uint64_t*) 0;
+uint64_t* NID_F3_SD          = (uint64_t*) 0;
+uint64_t* NID_F3_LW          = (uint64_t*) 0;
+uint64_t* NID_F3_SW          = (uint64_t*) 0;
+uint64_t* NID_F3_BEQ         = (uint64_t*) 0;
+uint64_t* NID_F3_JALR        = (uint64_t*) 0;
+uint64_t* NID_F3_ECALL       = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT7 = (uint64_t*) 0;
 
@@ -631,7 +629,13 @@ uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* eval_core_active_ecall_nid = (uint64_t*) 0;
-uint64_t* eval_core_active_addi_nid  = (uint64_t*) 0;
+
+uint64_t* eval_core_imm_nid            = (uint64_t*) 0;
+uint64_t* eval_core_f3_addi_nid        = (uint64_t*) 0;
+uint64_t* eval_core_op_nid             = (uint64_t*) 0;
+uint64_t* eval_core_f3_add_sub_mul_nid = (uint64_t*) 0;
+uint64_t* eval_core_f7_add             = (uint64_t*) 0;
+uint64_t* eval_core_store_nid          = (uint64_t*) 0;
 
 uint64_t* eval_core_no_data_flow_nid                   = (uint64_t*) 0;
 uint64_t* eval_core_register_relative_control_flow_nid = (uint64_t*) 0;
@@ -653,21 +657,19 @@ void init_instruction_sorts() {
 
   SID_FUNCT3 = new_bitvec(3, "funct3 sort");
 
-  NID_F3_NOP   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_NOP, 3), "F3_NOP");
-  NID_F3_ADDI  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADDI, 3), "F3_ADDI");
-  NID_F3_ADD   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADD, 3), "F3_ADD");
-  NID_F3_SUB   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SUB, 3), "F3_SUB");
-  NID_F3_MUL   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_MUL, 3), "F3_MUL");
-  NID_F3_DIVU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_DIVU, 3), "F3_DIVU");
-  NID_F3_REMU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_REMU, 3), "F3_REMU");
-  NID_F3_SLTU  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SLTU, 3), "F3_SLTU");
-  NID_F3_LD    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LD, 3), "F3_LD");
-  NID_F3_SD    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SD, 3), "F3_SD");
-  NID_F3_LW    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LW, 3), "F3_LW");
-  NID_F3_SW    = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SW, 3), "F3_SW");
-  NID_F3_BEQ   = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BEQ, 3), "F3_BEQ");
-  NID_F3_JALR  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_JALR, 3), "F3_JALR");
-  NID_F3_ECALL = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ECALL, 3), "F3_ECALL");
+  NID_F3_NOP         = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_NOP, 3), "F3_NOP");
+  NID_F3_ADDI        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADDI, 3), "F3_ADDI");
+  NID_F3_ADD_SUB_MUL = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ADD, 3), "F3_ADD_SUB_MUL");
+  NID_F3_DIVU        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_DIVU, 3), "F3_DIVU");
+  NID_F3_REMU        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_REMU, 3), "F3_REMU");
+  NID_F3_SLTU        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SLTU, 3), "F3_SLTU");
+  NID_F3_LD          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LD, 3), "F3_LD");
+  NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SD, 3), "F3_SD");
+  NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LW, 3), "F3_LW");
+  NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SW, 3), "F3_SW");
+  NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BEQ, 3), "F3_BEQ");
+  NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_JALR, 3), "F3_JALR");
+  NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ECALL, 3), "F3_ECALL");
 
   SID_FUNCT7 = new_bitvec(7, "funct7 sort");
 
@@ -1329,12 +1331,10 @@ uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
     return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
 }
 
-void decode_instruction() {
+uint64_t* decode_instruction() {
   uint64_t* opcode_nid;
   uint64_t* funct3_nid;
-
-  uint64_t* imm_nid;
-  uint64_t* store_nid;
+  uint64_t* funct7_nid;
 
   uint64_t* branch_nid;
   uint64_t* jal_nid;
@@ -1345,20 +1345,23 @@ void decode_instruction() {
   opcode_nid = get_instruction_opcode(eval_core_ir_nid);
   funct3_nid = get_instruction_funct3(eval_core_ir_nid);
 
-  imm_nid   = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM");
-  store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
+  eval_core_imm_nid     = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM");
+  eval_core_f3_addi_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI");
 
-  eval_core_active_addi_nid = new_binary_boolean(OP_AND,
-    imm_nid,
-    new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
-    "active addi");
+  funct7_nid = get_instruction_funct7(eval_core_ir_nid);
+
+  eval_core_op_nid             = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_OP, "opcode == OP");
+  eval_core_f3_add_sub_mul_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL");
+  eval_core_f7_add             = new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD");
+
+  eval_core_store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
 
   branch_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH");
   jal_nid    = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL");
   jalr_nid   = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR");
 
   eval_core_no_data_flow_nid = new_binary_boolean(OP_OR,
-    store_nid,
+    eval_core_store_nid,
     branch_nid,
     "STORE or BRANCH");
 
@@ -1369,26 +1372,64 @@ void decode_instruction() {
       jalr_nid,
       "JAL or JALR"),
     "BRANCH or JAL or JALR");
+
+  return new_binary_boolean(OP_OR,
+    new_binary_boolean(OP_AND,
+      eval_core_imm_nid,
+      eval_core_f3_addi_nid,
+      "addi"),
+    new_binary_boolean(OP_AND,
+      eval_core_op_nid,
+      new_binary_boolean(OP_AND,
+        eval_core_f3_add_sub_mul_nid,
+        eval_core_f7_add,
+        "add funct3 and funct7"),
+      "add"),
+    "known instruction");
 }
 
 uint64_t* data_flow(uint64_t* register_file_nid) {
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
   uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
   uint64_t* I_immediate;
 
   rd_nid       = get_instruction_rd(eval_core_ir_nid);
   rd_value_nid = get_register_value(rd_nid, "old rd value");
 
   rs1_value_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
+  rs2_value_nid = get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value");
 
   I_immediate = get_machine_word_I_immediate(eval_core_ir_nid);
 
   rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
-    eval_core_active_addi_nid,
-    new_binary(OP_ADD, SID_MACHINE_WORD, rs1_value_nid, I_immediate, "rs1 value + immediate"),
-    rd_value_nid,
-    "addi data flow");
+    eval_core_imm_nid,
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      eval_core_f3_addi_nid,
+      new_binary(OP_ADD, SID_MACHINE_WORD,
+        rs1_value_nid,
+        I_immediate,
+        "rs1 value + immediate"),
+      rd_value_nid,
+      "addi data flow"),
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      eval_core_op_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        eval_core_f3_add_sub_mul_nid,
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
+          eval_core_f7_add,
+          new_binary(OP_ADD, SID_MACHINE_WORD,
+            rs1_value_nid,
+            rs2_value_nid,
+            "rs1 value + rs2 value"),
+          rd_value_nid,
+          "add data flow"),
+        rd_value_nid,
+        "no data flow"),
+      rd_value_nid,
+      "no data flow"),
+    "data flow");
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     eval_core_no_data_flow_nid,
@@ -1524,6 +1565,8 @@ void output_machine() {
 }
 
 void rotor() {
+  uint64_t* known_instruction_nid;
+
   uint64_t* a7_value_nid;
 
   uint64_t* read_syscall_nid;
@@ -1565,7 +1608,7 @@ void rotor() {
 
   // decode
 
-  decode_instruction();
+  known_instruction_nid = decode_instruction();
 
   // system call ABI control flow
 
@@ -1766,9 +1809,9 @@ void rotor() {
   constraint_ir_nid = new_property(OP_CONSTRAINT,
     new_binary_boolean(OP_OR,
       eval_core_active_ecall_nid,
-      eval_core_active_addi_nid,
-      "ecall or addi"),
-    "unkown-instruction", "unknown instruction");
+      known_instruction_nid,
+      "ecall or known instruction"),
+    "known-instructions", "known instructions");
 
   // bad states
 
