@@ -1367,7 +1367,7 @@ uint64_t* decode_instruction() {
   eval_core_f7_add_nid         = new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD");
 
   eval_core_store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
-  eval_core_store_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB");
+  eval_core_f3_sb_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB");
 
   eval_core_branch_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH");
 
