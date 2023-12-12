@@ -579,6 +579,11 @@ uint64_t* control_flow();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+// RISC-V codes missing in RISC-U
+
+uint64_t F3_LB = 0;
+uint64_t F3_SB = 0;
+
 uint64_t* SID_OPCODE = (uint64_t*) 0;
 
 uint64_t* NID_OP_LOAD   = (uint64_t*) 0;
@@ -603,6 +608,8 @@ uint64_t* NID_F3_LD          = (uint64_t*) 0;
 uint64_t* NID_F3_SD          = (uint64_t*) 0;
 uint64_t* NID_F3_LW          = (uint64_t*) 0;
 uint64_t* NID_F3_SW          = (uint64_t*) 0;
+uint64_t* NID_F3_LB          = (uint64_t*) 0;
+uint64_t* NID_F3_SB          = (uint64_t*) 0;
 uint64_t* NID_F3_BEQ         = (uint64_t*) 0;
 uint64_t* NID_F3_JALR        = (uint64_t*) 0;
 uint64_t* NID_F3_ECALL       = (uint64_t*) 0;
@@ -635,8 +642,9 @@ uint64_t* eval_core_imm_nid            = (uint64_t*) 0;
 uint64_t* eval_core_f3_addi_nid        = (uint64_t*) 0;
 uint64_t* eval_core_op_nid             = (uint64_t*) 0;
 uint64_t* eval_core_f3_add_sub_mul_nid = (uint64_t*) 0;
-uint64_t* eval_core_f7_add             = (uint64_t*) 0;
+uint64_t* eval_core_f7_add_nid         = (uint64_t*) 0;
 uint64_t* eval_core_store_nid          = (uint64_t*) 0;
+uint64_t* eval_core_f3_sb_nid          = (uint64_t*) 0;
 uint64_t* eval_core_branch_nid         = (uint64_t*) 0;
 uint64_t* eval_core_jal_nid            = (uint64_t*) 0;
 uint64_t* eval_core_jalr_nid           = (uint64_t*) 0;
@@ -671,6 +679,8 @@ void init_instruction_sorts() {
   NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SD, 3), "F3_SD");
   NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LW, 3), "F3_LW");
   NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SW, 3), "F3_SW");
+  NID_F3_LB          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LB, 3), "F3_LB");
+  NID_F3_SB          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SB, 3), "F3_SB");
   NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BEQ, 3), "F3_BEQ");
   NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_JALR, 3), "F3_JALR");
   NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ECALL, 3), "F3_ECALL");
@@ -1354,9 +1364,11 @@ uint64_t* decode_instruction() {
 
   eval_core_op_nid             = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_OP, "opcode == OP");
   eval_core_f3_add_sub_mul_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL");
-  eval_core_f7_add             = new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD");
+  eval_core_f7_add_nid         = new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD");
 
-  eval_core_store_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
+  eval_core_store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
+  eval_core_store_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB");
+
   eval_core_branch_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH");
 
   eval_core_jal_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL");
@@ -1367,13 +1379,19 @@ uint64_t* decode_instruction() {
       eval_core_imm_nid,
       eval_core_f3_addi_nid,
       "addi"),
-    new_binary_boolean(OP_AND,
-      eval_core_op_nid,
+    new_binary_boolean(OP_OR,
       new_binary_boolean(OP_AND,
-        eval_core_f3_add_sub_mul_nid,
-        eval_core_f7_add,
-        "add funct3 and funct7"),
-      "add"),
+        eval_core_op_nid,
+        new_binary_boolean(OP_AND,
+          eval_core_f3_add_sub_mul_nid,
+          eval_core_f7_add_nid,
+          "add funct3 and funct7"),
+        "add"),
+      new_binary_boolean(OP_AND,
+        eval_core_store_nid,
+        eval_core_f3_sb_nid,
+        "sb"),
+      ""),
     "known instruction");
 }
 
@@ -1409,7 +1427,7 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
       new_ternary(OP_ITE, SID_MACHINE_WORD,
         eval_core_f3_add_sub_mul_nid,
         new_ternary(OP_ITE, SID_MACHINE_WORD,
-          eval_core_f7_add,
+          eval_core_f7_add_nid,
           new_binary(OP_ADD, SID_MACHINE_WORD,
             rs1_value_nid,
             rs2_value_nid,
