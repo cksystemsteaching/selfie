@@ -121,6 +121,7 @@ char* OP_AND = (char*) 0;
 char* OP_OR  = (char*) 0;
 
 char* OP_SLL = (char*) 0;
+char* OP_SRL = (char*) 0;
 
 char* OP_ADD = (char*) 0;
 
@@ -172,6 +173,7 @@ void init_model() {
   OP_OR  = "or";
 
   OP_SLL = "sll";
+  OP_SRL = "srl";
 
   OP_ADD = "add";
 
@@ -510,7 +512,7 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid);
 uint64_t* load_machine_word(uint64_t* laddr_nid);
 uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid);
 
-uint64_t* load_byte(uint64_t* laddr_nid);
+uint64_t* load_byte(uint64_t* vaddr_nid);
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid);
 
 void fetch_instruction();
@@ -1189,9 +1191,29 @@ uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid) {
     "store machine word in memory at laddr");
 }
 
-uint64_t* load_byte(uint64_t* laddr_nid) {
-  // TODO: implement for word memory
-  return new_binary(OP_READ, SID_MEMORY_WORD, state_main_memory_nid, laddr_nid, "load byte");
+uint64_t* load_byte(uint64_t* vaddr_nid) {
+  uint64_t* laddr_nid;
+  uint64_t* shift_by_nid;
+
+  laddr_nid = vaddr_to_laddr(vaddr_nid);
+
+  if (ISBYTEMEMORY)
+    return new_binary(OP_READ, SID_MEMORY_WORD, state_main_memory_nid, laddr_nid, "load byte");
+
+  shift_by_nid = new_binary(OP_SLL, SID_MACHINE_WORD,
+    new_binary(OP_AND, SID_MACHINE_WORD,
+      vaddr_nid,
+      NID_MACHINE_WORD_SIZE_MASK,
+      "reset bits above machine word size"),
+    NID_BYTE_SIZE_IN_BASE_BITS,
+    "multiply by 8 bits");
+
+  return new_slice(SID_BYTE,
+    new_binary(OP_SRL, SID_MACHINE_WORD,
+      load_machine_word(laddr_nid),
+        shift_by_nid,
+        "shift byte to LSBs"),
+    7, 0, "slice byte");
 }
 
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
