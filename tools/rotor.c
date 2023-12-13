@@ -575,7 +575,7 @@ uint64_t* decode_instruction();
 uint64_t* core_register_data_flow(uint64_t* register_file_nid);
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid);
 
-uint64_t* control_flow();
+uint64_t* core_control_flow();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -755,6 +755,7 @@ uint64_t* bad_syscall_id_nid = (uint64_t*) 0;
 uint64_t* bad_exit_nid       = (uint64_t*) 0;
 
 uint64_t* bad_a0_nid       = (uint64_t*) 0;
+uint64_t* bad_memory_nid   = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1465,7 +1466,7 @@ uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
     "update main memory");
 }
 
-uint64_t* control_flow(uint64_t* pc_nid) {
+uint64_t* core_control_flow(uint64_t* pc_nid) {
   uint64_t* register_relative_control_flow_nid;
 
   register_relative_control_flow_nid = new_binary_boolean(OP_OR,
@@ -1605,12 +1606,12 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(12400, bad_a0_nid);
+  //print_line(12400, bad_a0_nid);
+
+  //print_line(12500, bad_memory_nid);
 }
 
-void rotor() {
-  uint64_t* known_instruction_nid;
-
+void kernel() {
   uint64_t* a7_value_nid;
 
   uint64_t* read_syscall_nid;
@@ -1630,31 +1631,12 @@ void rotor() {
   uint64_t* more_than_one_readable_byte_nid;
   uint64_t* more_than_one_readable_byte_to_read_nid;
 
-  uint64_t* kernel_mode_nid;
-
   uint64_t* a0_value_nid;
 
   uint64_t* read_return_value_nid;
   uint64_t* kernel_data_flow_nid;
 
   uint64_t* a1_value_nid;
-
-  new_kernel_state(2);
-  new_register_file_state();
-  new_memory_state();
-  new_core_state();
-
-  // fetch
-
-  fetch_instruction();
-
-  // decode
-
-  known_instruction_nid = decode_instruction();
-
-  // non-kernel control flow
-
-  eval_core_pc_nid = control_flow(state_core_pc_nid);
 
   // system call ABI control flow
 
@@ -1666,7 +1648,7 @@ void rotor() {
   exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID");
   active_exit_nid  = new_binary_boolean(OP_AND, eval_core_active_ecall_nid, exit_syscall_nid, "active exit system call");
 
-  // system call ABI data flow
+  // system call ABI kernel control data flow
 
   a2_value_nid = get_register_value(NID_A2, "a2 value");
 
@@ -1742,37 +1724,22 @@ void rotor() {
 
   // kernel control flow
 
-  kernel_mode_nid = new_binary_boolean(OP_AND,
-    eval_core_active_ecall_nid,
-    new_binary_boolean(OP_OR,
-      new_binary_boolean(OP_AND,
-        read_syscall_nid,
-        more_than_one_readable_byte_to_read_nid,
-        "ongoing read system call"),
-      exit_syscall_nid,
-      "ongoing read or exit system call"),
-    "active system call");
-
-  // control flow
-
   eval_kernel_pc_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
-    kernel_mode_nid,
+    new_binary_boolean(OP_AND,
+      eval_core_active_ecall_nid,
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_AND,
+          read_syscall_nid,
+          more_than_one_readable_byte_to_read_nid,
+          "ongoing read system call"),
+        exit_syscall_nid,
+        "ongoing read or exit system call"),
+      "active system call"),
     state_core_pc_nid,
     eval_core_pc_nid,
     "update program counter unless in kernel mode");
 
-  // update control flow
-
-  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
-    state_core_pc_nid,
-    eval_kernel_pc_nid,
-    "program counter");
-
-  // non-kernel register data flow
-
-  eval_core_register_data_flow_nid = core_register_data_flow(state_register_file_nid);
-
-  // system call ABI data flow
+  // system call ABI kernel register data flow
 
   a0_value_nid = get_register_value(NID_A0, "a0 value");
 
@@ -1817,18 +1784,7 @@ void rotor() {
     eval_core_register_data_flow_nid,
     "register data flow");
 
-  // update register data flow
-
-  next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
-    state_register_file_nid,
-    eval_kernel_register_data_flow_nid,
-    "register file");
-
-  // non-kernel memory data flow
-
-  eval_core_memory_data_flow_nid = core_memory_data_flow(state_main_memory_nid);
-
-  // system call ABI data flow
+  // system call ABI kernel memory data flow
 
   a1_value_nid = get_register_value(NID_A1, "a1 value");
 
@@ -1846,6 +1802,109 @@ void rotor() {
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call")),
     eval_core_memory_data_flow_nid,
     "main memory data flow");
+
+  // kernel properties
+
+  bad_read_nid = new_property(OP_CONSTRAINT,
+    new_unary(OP_NOT, SID_BOOLEAN,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_AND,
+          active_read_nid,
+          new_binary_boolean(OP_EQ,
+            state_read_bytes_nid,
+            NID_MACHINE_WORD_0,
+            ""),
+          ""),
+        is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
+        "active read system call reading into code segment"),
+      ""),
+    "b1", "possible read segmentation fault");
+
+  bad_syscall_id_nid = new_property(OP_CONSTRAINT,
+    new_unary(OP_NOT, SID_BOOLEAN,
+      new_binary_boolean(OP_AND,
+        eval_core_active_ecall_nid,
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
+          "a7 != known syscall ID"),
+        "active ecall and a7 != known syscall ID"),
+      ""),
+    "b2", "unknown syscall ID");
+
+  bad_exit_nid = new_property(OP_BAD,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_EQ,
+        load_byte(new_constant(OP_CONSTD, SID_MACHINE_WORD, "129", "")),
+        NID_BYTE_4, ""),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_EQ,
+          load_byte(new_constant(OP_CONSTD, SID_MACHINE_WORD, "130", "")),
+          NID_BYTE_0, ""),
+          new_binary_boolean(OP_EQ,
+          load_byte(new_constant(OP_CONSTD, SID_MACHINE_WORD, "131", "")),
+          NID_BYTE_4, ""),
+          ""),
+        ""),
+    new_binary_boolean(OP_AND,
+      active_exit_nid,
+      new_binary_boolean(OP_EQ,
+        a0_value_nid,
+        new_constant(OP_CONSTD, SID_MACHINE_WORD,
+          format_decimal(bad_exit_code),
+          format_comment("bad exit code %ld", bad_exit_code)),
+        "actual exit code == bad exit code"),
+      "active exit system call with bad exit code"),
+    ""),
+    "b3", format_comment("exit(%ld)", bad_exit_code));
+}
+
+void rotor() {
+  uint64_t* known_instruction_nid;
+
+  new_kernel_state(2);
+  new_register_file_state();
+  new_memory_state();
+  new_core_state();
+
+  // fetch
+
+  fetch_instruction();
+
+  // decode
+
+  known_instruction_nid = decode_instruction();
+
+  // non-kernel control flow
+
+  eval_core_pc_nid = core_control_flow(state_core_pc_nid);
+
+  // non-kernel register data flow
+
+  eval_core_register_data_flow_nid = core_register_data_flow(state_register_file_nid);
+
+  // non-kernel memory data flow
+
+  eval_core_memory_data_flow_nid = core_memory_data_flow(state_main_memory_nid);
+
+  // kernel
+
+  kernel();
+
+  // update control flow
+
+  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+    state_core_pc_nid,
+    eval_kernel_pc_nid,
+    "program counter");
+
+  // update register data flow
+
+  next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+    state_register_file_nid,
+    eval_kernel_register_data_flow_nid,
+    "register file");
 
   // update memory data flow
 
@@ -1871,44 +1930,15 @@ void rotor() {
       //"next pc not in code segment"),
     "b0", "imminent fetch segmentation fault");
 
-  bad_read_nid = new_property(OP_CONSTRAINT,
-    new_unary(OP_NOT, SID_BOOLEAN,
-      new_binary_boolean(OP_AND,
-        active_read_nid,
-        is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
-        "active read system call reading into code segment"),
-      ""),
-    "b1", "possible read segmentation fault");
-
-  bad_syscall_id_nid = new_property(OP_CONSTRAINT,
-    new_unary(OP_NOT, SID_BOOLEAN,
-      new_binary_boolean(OP_AND,
-        eval_core_active_ecall_nid,
-        new_binary_boolean(OP_AND,
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
-          "a7 != known syscall ID"),
-        "active ecall and a7 != known syscall ID"),
-      ""),
-    "b2", "unknown syscall ID");
-
   bad_a0_nid = new_property(OP_CONSTRAINT,
       new_binary_boolean(OP_NEQ, get_instruction_rd(eval_core_ir_nid), NID_A0, ""),
-    "b", "a0"),
+    "b", "a0");
 
-  bad_exit_nid = new_property(OP_BAD,
-    new_binary_boolean(OP_AND,
-      active_exit_nid,
-      new_binary_boolean(OP_EQ,
-        a0_value_nid,
-        new_constant(OP_CONSTD, SID_MACHINE_WORD,
-          format_decimal(bad_exit_code),
-          format_comment("bad exit code %ld", bad_exit_code)),
-        "actual exit code == bad exit code"),
-      "active exit system call with bad exit code"),
-    "b3", format_comment("exit(%ld)", bad_exit_code));
-
-  output_machine();
+  bad_memory_nid = new_property(OP_BAD,
+    new_binary_boolean(OP_EQ,
+      load_byte(new_constant(OP_CONSTD, SID_MACHINE_WORD, "128", "")),
+      NID_BYTE_4, ""),
+    "b", "memory");
 }
 
 uint64_t selfie_model() {
@@ -1930,7 +1960,7 @@ uint64_t selfie_model() {
       }
 
       code_start = 0;
-      code_size  = 24;
+      code_size  = 28;
 
       init_model();
 
@@ -1942,10 +1972,12 @@ uint64_t selfie_model() {
       init_memory_sorts();
       init_instruction_sorts();
 
+      rotor();
+
       output_name = model_name;
       output_fd   = model_fd;
 
-      rotor();
+      output_machine();
 
       output_name = (char*) 0;
       output_fd   = 1;
