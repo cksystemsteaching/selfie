@@ -500,7 +500,7 @@ void init_register_file_sorts() {
 
 void print_memory_sorts();
 
-void new_main_memory_state();
+void new_memory_state();
 
 uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid);
@@ -1126,7 +1126,7 @@ void print_memory_sorts() {
     print_line(91, SID_MEMORY_STATE);
 }
 
-void new_main_memory_state() {
+void new_memory_state() {
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
 
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
@@ -1515,18 +1515,15 @@ void output_machine() {
   w = w + dprintf(output_fd, "\n; kernel state\n\n");
 
   print_line(100, readable_bytes_nid);
-  print_line(101, state_readable_bytes_nid);
-  print_line(102, init_readable_bytes_nid);
+  print_line(101, init_readable_bytes_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(103, state_read_bytes_nid);
-  print_line(104, init_read_bytes_nid);
+  print_line(103, init_read_bytes_nid);
 
   w = w + dprintf(output_fd, "\n; register file\n\n");
 
-  print_line(200, state_register_file_nid);
-  print_line(201, init_register_file_nid);
+  print_line(200, init_register_file_nid);
 
   w = w + dprintf(output_fd, "\n; code segment\n\n");
 
@@ -1534,13 +1531,11 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
-  print_line(400, state_main_memory_nid);
-  print_line(401, init_main_memory_nid);
+  print_line(400, init_main_memory_nid);
 
   w = w + dprintf(output_fd, "\n; program counter\n\n");
 
-  print_line(1000, state_core_pc_nid);
-  print_line(1001, init_core_pc_nid);
+  print_line(1000, init_core_pc_nid);
 
   w = w + dprintf(output_fd, "\n; non-kernel control flow\n\n");
 
@@ -1641,7 +1636,7 @@ void rotor() {
 
   new_kernel_state(1);
   new_register_file_state();
-  new_main_memory_state();
+  new_memory_state();
   new_core_state();
 
   // fetch
