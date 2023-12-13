@@ -563,11 +563,15 @@ uint64_t* get_instruction_rs1(uint64_t* instruction);
 uint64_t* get_instruction_rs2(uint64_t* instruction);
 
 uint64_t* get_instruction_I_imm(uint64_t* instruction);
-uint64_t* get_instruction_S_imm(uint64_t* instruction);
+uint64_t* get_instruction_S_imm(uint64_t* funct7_nid, uint64_t* rd_nid);
+uint64_t* get_instruction_SB_imm(uint64_t* instruction);
 uint64_t* get_instruction_U_imm(uint64_t* instruction);
-uint64_t* sign_extend_IS_imm(uint64_t* imm);
+
+uint64_t* sign_extend_ISB_imm(uint64_t* imm);
+
 uint64_t* get_machine_word_I_immediate(uint64_t* instruction);
-uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
+uint64_t* get_machine_word_S_immediate(uint64_t* funct7_nid, uint64_t* rd_nid);
+uint64_t* get_machine_word_SB_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
 
 uint64_t* decode_instruction();
@@ -631,6 +635,10 @@ uint64_t* NID_F12_ECALL = (uint64_t*) 0;
 
 uint64_t* NID_ECALL = (uint64_t*) 0;
 
+uint64_t* SID_4_BIT_IMM  = (uint64_t*) 0;
+uint64_t* SID_6_BIT_IMM  = (uint64_t*) 0;
+uint64_t* SID_10_BIT_IMM = (uint64_t*) 0;
+uint64_t* SID_11_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_12_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 
@@ -648,13 +656,20 @@ uint64_t* eval_core_f7_add_nid         = (uint64_t*) 0;
 uint64_t* eval_core_store_nid          = (uint64_t*) 0;
 uint64_t* eval_core_f3_sb_nid          = (uint64_t*) 0;
 uint64_t* eval_core_branch_nid         = (uint64_t*) 0;
+uint64_t* eval_core_f3_beq_nid         = (uint64_t*) 0;
 uint64_t* eval_core_jal_nid            = (uint64_t*) 0;
 uint64_t* eval_core_jalr_nid           = (uint64_t*) 0;
+
+uint64_t* eval_core_rd_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_rs1_value_nid = (uint64_t*) 0;
 uint64_t* eval_core_rs2_value_nid = (uint64_t*) 0;
 
-uint64_t* eval_core_rs1_S_imm_nid = (uint64_t*) 0;
+uint64_t* eval_core_I_immediate  = (uint64_t*) 0;
+uint64_t* eval_core_S_immediate  = (uint64_t*) 0;
+uint64_t* eval_core_SB_immediate = (uint64_t*) 0;
+
+uint64_t* eval_core_rs1_S_immediate_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
@@ -711,6 +726,10 @@ void init_instruction_sorts() {
     32),
     "ECALL instruction");
 
+  SID_4_BIT_IMM  = new_bitvec(4, "4-bit immediate sort");
+  SID_6_BIT_IMM  = new_bitvec(6, "6-bit immediate sort");
+  SID_10_BIT_IMM = new_bitvec(10, "10-bit immediate sort");
+  SID_11_BIT_IMM = new_bitvec(11, "11-bit immediate sort");
   SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort");
   SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort");
 }
@@ -1330,18 +1349,28 @@ uint64_t* get_instruction_I_imm(uint64_t* instruction) {
   return new_slice(SID_12_BIT_IMM, instruction, 31, 20, "get I-immediate");
 }
 
-uint64_t* get_instruction_S_imm(uint64_t* instruction) {
+uint64_t* get_instruction_S_imm(uint64_t* funct7_nid, uint64_t* rd_nid) {
+  return new_binary(OP_CONCAT, SID_12_BIT_IMM, funct7_nid, rd_nid, "get S-immediate");
+}
+
+uint64_t* get_instruction_SB_imm(uint64_t* instruction) {
   return new_binary(OP_CONCAT, SID_12_BIT_IMM,
-    get_instruction_funct7(instruction),
-    get_instruction_rd(instruction),
-    "get S-immediate");
+    new_slice(SID_BOOLEAN, instruction, 31, 31, "get SB-immediate[12]"),
+    new_binary(OP_CONCAT, SID_11_BIT_IMM,
+      new_slice(SID_BOOLEAN, instruction, 7, 7, "get SB-immediate[11]"),
+      new_binary(OP_CONCAT, SID_10_BIT_IMM,
+        new_slice(SID_6_BIT_IMM, instruction, 30, 25, "get SB-immediate[10:5]"),
+        new_slice(SID_4_BIT_IMM, instruction, 11, 8, "get SB-immediate[4:1]"),
+        "get SB-immediate[10:1]"),
+      "get SB-immediate[11:1]"),
+    "get SB-immediate[12:1]");
 }
 
 uint64_t* get_instruction_U_imm(uint64_t* instruction) {
   return new_slice(SID_20_BIT_IMM, instruction, 31, 12, "get U-immediate");
 }
 
-uint64_t* sign_extend_IS_imm(uint64_t* imm) {
+uint64_t* sign_extend_ISB_imm(uint64_t* imm) {
   if (IS64BITTARGET)
     return new_ext(OP_SEXT, SID_MACHINE_WORD, imm, 52, "sign-extend");
   else
@@ -1349,11 +1378,18 @@ uint64_t* sign_extend_IS_imm(uint64_t* imm) {
 }
 
 uint64_t* get_machine_word_I_immediate(uint64_t* instruction) {
-  return sign_extend_IS_imm(get_instruction_I_imm(instruction));
+  return sign_extend_ISB_imm(get_instruction_I_imm(instruction));
 }
 
-uint64_t* get_machine_word_S_immediate(uint64_t* instruction) {
-  return sign_extend_IS_imm(get_instruction_S_imm(instruction));
+uint64_t* get_machine_word_S_immediate(uint64_t* funct7_nid, uint64_t* rd_nid) {
+  return sign_extend_ISB_imm(get_instruction_S_imm(funct7_nid, rd_nid));
+}
+
+uint64_t* get_machine_word_SB_immediate(uint64_t* instruction) {
+  return new_binary(OP_SLL, SID_MACHINE_WORD,
+    sign_extend_ISB_imm(get_instruction_SB_imm(instruction)),
+    NID_MACHINE_WORD_1,
+    "multiply SB-immediate[12:1] by 2");
 }
 
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
@@ -1371,12 +1407,20 @@ uint64_t* decode_instruction() {
   eval_core_active_ecall_nid = new_binary_boolean(OP_EQ, eval_core_ir_nid, NID_ECALL, "ir == ECALL");
 
   opcode_nid = get_instruction_opcode(eval_core_ir_nid);
+
+  eval_core_rd_nid = get_instruction_rd(eval_core_ir_nid);
+
   funct3_nid = get_instruction_funct3(eval_core_ir_nid);
+
+  eval_core_rs1_value_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
+  eval_core_rs2_value_nid = get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value");
+
+  funct7_nid = get_instruction_funct7(eval_core_ir_nid);
 
   eval_core_imm_nid     = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM");
   eval_core_f3_addi_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI");
 
-  funct7_nid = get_instruction_funct7(eval_core_ir_nid);
+  eval_core_I_immediate = get_machine_word_I_immediate(eval_core_ir_nid);
 
   eval_core_op_nid             = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_OP, "opcode == OP");
   eval_core_f3_add_sub_mul_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL");
@@ -1385,13 +1429,14 @@ uint64_t* decode_instruction() {
   eval_core_store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
   eval_core_f3_sb_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB");
 
+  eval_core_S_immediate  = get_machine_word_S_immediate(funct7_nid, eval_core_rd_nid);
+  eval_core_SB_immediate = get_machine_word_SB_immediate(eval_core_S_immediate);
+
   eval_core_branch_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH");
+  eval_core_f3_beq_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_BEQ, "funct3 == BEQ");
 
   eval_core_jal_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL");
   eval_core_jalr_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR");
-
-  eval_core_rs1_value_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
-  eval_core_rs2_value_nid = get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value");
 
   return new_binary_boolean(OP_OR,
     new_binary_boolean(OP_AND,
@@ -1406,25 +1451,26 @@ uint64_t* decode_instruction() {
           eval_core_f7_add_nid,
           "add funct3 and funct7"),
         "add"),
-      new_binary_boolean(OP_AND,
-        eval_core_store_nid,
-        eval_core_f3_sb_nid,
-        "sb"),
-      "add or sb"),
+      new_binary_boolean(OP_OR,
+        new_binary_boolean(OP_AND,
+          eval_core_store_nid,
+          eval_core_f3_sb_nid,
+          "sb"),
+        new_binary_boolean(OP_AND,
+          eval_core_branch_nid,
+          eval_core_f3_beq_nid,
+          "beq"),
+        "sb or beq"),
+      "add or sb or beq"),
     "known instruction");
 }
 
 uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
-  uint64_t* rd_nid;
   uint64_t* rd_value_nid;
-  uint64_t* I_immediate;
 
   uint64_t* no_register_data_flow_nid;
 
-  rd_nid       = get_instruction_rd(eval_core_ir_nid);
-  rd_value_nid = get_register_value(rd_nid, "old rd value");
-
-  I_immediate = get_machine_word_I_immediate(eval_core_ir_nid);
+  rd_value_nid = get_register_value(eval_core_rd_nid, "current rd value");
 
   rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     eval_core_imm_nid,
@@ -1432,8 +1478,8 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
       eval_core_f3_addi_nid,
       new_binary(OP_ADD, SID_MACHINE_WORD,
         eval_core_rs1_value_nid,
-        I_immediate,
-        "rs1 value + I_immediate"),
+        eval_core_I_immediate,
+        "rs1 value + I-immediate"),
       rd_value_nid,
       "addi data flow"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1455,7 +1501,10 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
     "data flow");
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero"),
+    new_binary_boolean(OP_EQ,
+      eval_core_rd_nid,
+      NID_ZR,
+      "rd == register zero"),
     new_binary_boolean(OP_OR,
       eval_core_store_nid,
       eval_core_branch_nid,
@@ -1465,21 +1514,21 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
     register_file_nid,
-    new_ternary(OP_WRITE, SID_REGISTER_STATE, register_file_nid, rd_nid, rd_value_nid, "write rd"),
+    new_ternary(OP_WRITE, SID_REGISTER_STATE,
+      register_file_nid,
+      eval_core_rd_nid,
+      rd_value_nid,
+      "write rd"),
     "update non-zero register");
 }
 
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
-  uint64_t* S_immediate;
-
   uint64_t* rs2_byte_value_nid;
 
-  S_immediate = get_machine_word_S_immediate(eval_core_ir_nid);
-
-  eval_core_rs1_S_imm_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+  eval_core_rs1_S_immediate_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
     eval_core_rs1_value_nid,
-    S_immediate,
-    "rs1 value + S_immediate");
+    eval_core_S_immediate,
+    "rs1 value + S-immediate");
 
   rs2_byte_value_nid = new_slice(SID_BYTE,
     eval_core_rs2_value_nid,
@@ -1487,27 +1536,32 @@ uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
 
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
     eval_core_store_nid,
-    store_byte(eval_core_rs1_S_imm_nid, rs2_byte_value_nid),
+    store_byte(eval_core_rs1_S_immediate_nid, rs2_byte_value_nid),
     main_memory_nid,
     "update main memory");
 }
 
 uint64_t* core_control_flow(uint64_t* pc_nid) {
-  uint64_t* register_relative_control_flow_nid;
-
-  register_relative_control_flow_nid = new_binary_boolean(OP_OR,
-    eval_core_branch_nid,
-    new_binary_boolean(OP_OR,
-      eval_core_jal_nid,
-      eval_core_jalr_nid,
-      "JAL or JALR"),
-    "BRANCH or JAL or JALR");
-
   return new_ternary(OP_ITE, SID_MACHINE_WORD,
-    register_relative_control_flow_nid,
-    pc_nid,
-    new_binary(OP_ADD, SID_MACHINE_WORD, pc_nid, NID_MACHINE_WORD_4, "pc + 4"),
-    "pc + 4 if non-control-flow instruction is active");
+    new_binary_boolean(OP_AND,
+      eval_core_branch_nid,
+      new_binary_boolean(OP_AND,
+        eval_core_f3_beq_nid,
+        new_binary_boolean(OP_EQ,
+          eval_core_rs1_value_nid,
+          eval_core_rs2_value_nid,
+          "rs1 value == rs2 value"),
+        "beq"),
+      "branch"),
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      pc_nid,
+      eval_core_SB_immediate,
+      "pc + SB-immediate"),
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      pc_nid,
+      NID_MACHINE_WORD_4,
+      "pc + 4"),
+    "next pc value");
 }
 
 // -----------------------------------------------------------------
@@ -1851,7 +1905,7 @@ void rotor() {
     UNUSED,
     new_binary_boolean(OP_AND,
       eval_core_store_nid,
-      is_access_in_code_segment(eval_core_rs1_S_imm_nid),
+      is_access_in_code_segment(eval_core_rs1_S_immediate_nid),
       "store causes segmentation fault"),
     "store-seg-fault",
     "store segmentation fault");
