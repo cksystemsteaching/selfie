@@ -754,6 +754,8 @@ uint64_t* bad_read_nid       = (uint64_t*) 0;
 uint64_t* bad_syscall_id_nid = (uint64_t*) 0;
 uint64_t* bad_exit_nid       = (uint64_t*) 0;
 
+uint64_t* bad_a0_nid       = (uint64_t*) 0;
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -----------------------     M O D E L     -----------------------
@@ -1587,19 +1589,23 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; bad states\n\n");
 
-  //print_line(12000, bad_pc_nid);
+  print_line(12000, bad_pc_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  //print_line(12100, bad_read_nid);
+  print_line(12100, bad_read_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  //print_line(12200, bad_syscall_id_nid);
+  print_line(12200, bad_syscall_id_nid);
 
   w = w + dprintf(output_fd, "\n");
 
   print_line(12300, bad_exit_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(12400, bad_a0_nid);
 }
 
 void rotor() {
@@ -1634,7 +1640,7 @@ void rotor() {
 
   uint64_t* a1_value_nid;
 
-  new_kernel_state(1);
+  new_kernel_state(2);
   new_register_file_state();
   new_memory_state();
   new_core_state();
@@ -1860,28 +1866,36 @@ void rotor() {
 
   // bad states
 
-  bad_pc_nid = new_property(OP_BAD,
-    new_unary(OP_NOT, SID_BOOLEAN,
+  bad_pc_nid = new_property(OP_CONSTRAINT,
+    //new_unary(OP_NOT, SID_BOOLEAN,
       is_access_in_code_segment(eval_kernel_pc_nid),
-      "next pc not in code segment"),
+      //"next pc not in code segment"),
     "b0", "imminent fetch segmentation fault");
 
-  bad_read_nid = new_property(OP_BAD,
-    new_binary_boolean(OP_AND,
-      active_read_nid,
-      is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
-      "active read system call reading into code segment"),
+  bad_read_nid = new_property(OP_CONSTRAINT,
+    new_unary(OP_NOT, SID_BOOLEAN,
+      new_binary_boolean(OP_AND,
+        active_read_nid,
+        is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
+        "active read system call reading into code segment"),
+      ""),
     "b1", "possible read segmentation fault");
 
-  bad_syscall_id_nid = new_property(OP_BAD,
-    new_binary_boolean(OP_AND,
-      eval_core_active_ecall_nid,
+  bad_syscall_id_nid = new_property(OP_CONSTRAINT,
+    new_unary(OP_NOT, SID_BOOLEAN,
       new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
-        new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
-        "a7 != known syscall ID"),
-      "active ecall and a7 != known syscall ID"),
+        eval_core_active_ecall_nid,
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
+          "a7 != known syscall ID"),
+        "active ecall and a7 != known syscall ID"),
+      ""),
     "b2", "unknown syscall ID");
+
+  bad_a0_nid = new_property(OP_CONSTRAINT,
+      new_binary_boolean(OP_NEQ, get_instruction_rd(eval_core_ir_nid), NID_A0, ""),
+    "b", "a0"),
 
   bad_exit_nid = new_property(OP_BAD,
     new_binary_boolean(OP_AND,
@@ -1917,7 +1931,7 @@ uint64_t selfie_model() {
       }
 
       code_start = 0;
-      code_size  = 16;
+      code_size  = 24;
 
       init_model();
 
