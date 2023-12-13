@@ -752,12 +752,12 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* is_instruction_known_nid          = (uint64_t*) 0;
-uint64_t* is_next_fetch_in_code_segment_nid = (uint64_t*) 0;
+uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
+uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 
-uint64_t* bad_read_nid       = (uint64_t*) 0;
-uint64_t* bad_syscall_id_nid = (uint64_t*) 0;
-uint64_t* bad_exit_nid       = (uint64_t*) 0;
+uint64_t* possible_read_seg_fault_nid = (uint64_t*) 0;
+uint64_t* is_syscall_id_known_nid     = (uint64_t*) 0;
+uint64_t* bad_exit_code_nid           = (uint64_t*) 0;
 
 uint64_t* bad_a0_nid       = (uint64_t*) 0;
 uint64_t* bad_memory_nid   = (uint64_t*) 0;
@@ -1401,7 +1401,7 @@ uint64_t* decode_instruction() {
         eval_core_store_nid,
         eval_core_f3_sb_nid,
         "sb"),
-      ""),
+      "add or sb"),
     "known instruction");
 }
 
@@ -1718,34 +1718,34 @@ void kernel() {
 
   // kernel properties
 
-  bad_read_nid = new_property(OP_CONSTRAINT,
-    new_unary(OP_NOT, SID_BOOLEAN,
+  possible_read_seg_fault_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
       new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_AND,
-          active_read_nid,
-          new_binary_boolean(OP_EQ,
-            state_read_bytes_nid,
-            NID_MACHINE_WORD_0,
-            ""),
-          ""),
-        is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
-        "active read system call reading into code segment"),
-      ""),
-    "b1", "possible read segmentation fault");
+        active_read_nid,
+        new_binary_boolean(OP_EQ,
+          state_read_bytes_nid,
+          NID_MACHINE_WORD_0,
+          "no bytes read yet"),
+        "no bytes read yet by active read system call"),
+      is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
+      "bytes to be read may cause segmentation fault"),
+    "read-seg-fault",
+    "possible read segmentation fault");
 
-  bad_syscall_id_nid = new_property(OP_CONSTRAINT,
-    new_unary(OP_NOT, SID_BOOLEAN,
+  is_syscall_id_known_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      eval_core_active_ecall_nid,
       new_binary_boolean(OP_AND,
-        eval_core_active_ecall_nid,
-        new_binary_boolean(OP_AND,
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
-          "a7 != known syscall ID"),
-        "active ecall and a7 != known syscall ID"),
-      ""),
-    "b2", "unknown syscall ID");
+        new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID"),
+        new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID"),
+        "a7 != known syscall ID"),
+      "active ecall and a7 != known syscall ID"),
+    "unknown-syscall-ID",
+    "unknown syscall ID");
 
-  bad_exit_nid = new_property(OP_BAD,
+  bad_exit_code_nid = new_property(OP_BAD,
     new_binary_boolean(OP_AND,
       active_exit_nid,
       new_binary_boolean(OP_EQ,
@@ -1761,7 +1761,7 @@ void kernel() {
 void rotor() {
   uint64_t* known_instructions_nid;
 
-  new_kernel_state(2);
+  new_kernel_state(1);
   new_register_file_state();
   new_memory_state();
   new_core_state();
@@ -1822,7 +1822,7 @@ void rotor() {
     "known-instructions",
     "known instructions");
 
-  is_next_fetch_in_code_segment_nid = state_property(
+  next_fetch_seg_faulting_nid = state_property(
     is_access_in_code_segment(eval_kernel_pc_nid),
     UNUSED,
     "fetch-seg-fault",
@@ -1916,19 +1916,19 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11100, is_next_fetch_in_code_segment_nid);
+  print_line(11100, next_fetch_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11200, bad_read_nid);
+  print_line(11200, possible_read_seg_fault_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11300, bad_syscall_id_nid);
+  print_line(11300, is_syscall_id_known_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11400, bad_exit_nid);
+  print_line(11400, bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
