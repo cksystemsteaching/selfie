@@ -651,6 +651,11 @@ uint64_t* eval_core_branch_nid         = (uint64_t*) 0;
 uint64_t* eval_core_jal_nid            = (uint64_t*) 0;
 uint64_t* eval_core_jalr_nid           = (uint64_t*) 0;
 
+uint64_t* eval_core_rs1_value_nid = (uint64_t*) 0;
+uint64_t* eval_core_rs2_value_nid = (uint64_t*) 0;
+
+uint64_t* eval_core_rs1_S_imm_nid = (uint64_t*) 0;
+
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
 
@@ -754,6 +759,7 @@ uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
+uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 
 uint64_t* possible_read_seg_fault_nid = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid     = (uint64_t*) 0;
@@ -1384,6 +1390,9 @@ uint64_t* decode_instruction() {
   eval_core_jal_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL");
   eval_core_jalr_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR");
 
+  eval_core_rs1_value_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
+  eval_core_rs2_value_nid = get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value");
+
   return new_binary_boolean(OP_OR,
     new_binary_boolean(OP_AND,
       eval_core_imm_nid,
@@ -1408,17 +1417,12 @@ uint64_t* decode_instruction() {
 uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
-  uint64_t* rs1_value_nid;
-  uint64_t* rs2_value_nid;
   uint64_t* I_immediate;
 
   uint64_t* no_register_data_flow_nid;
 
   rd_nid       = get_instruction_rd(eval_core_ir_nid);
   rd_value_nid = get_register_value(rd_nid, "old rd value");
-
-  rs1_value_nid = get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value");
-  rs2_value_nid = get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value");
 
   I_immediate = get_machine_word_I_immediate(eval_core_ir_nid);
 
@@ -1427,9 +1431,9 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       eval_core_f3_addi_nid,
       new_binary(OP_ADD, SID_MACHINE_WORD,
-        rs1_value_nid,
+        eval_core_rs1_value_nid,
         I_immediate,
-        "rs1 value + immediate"),
+        "rs1 value + I_immediate"),
       rd_value_nid,
       "addi data flow"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1439,8 +1443,8 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           eval_core_f7_add_nid,
           new_binary(OP_ADD, SID_MACHINE_WORD,
-            rs1_value_nid,
-            rs2_value_nid,
+            eval_core_rs1_value_nid,
+            eval_core_rs2_value_nid,
             "rs1 value + rs2 value"),
           rd_value_nid,
           "add data flow"),
@@ -1466,9 +1470,24 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 }
 
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
+  uint64_t* S_immediate;
+
+  uint64_t* rs2_byte_value_nid;
+
+  S_immediate = get_machine_word_S_immediate(eval_core_ir_nid);
+
+  eval_core_rs1_S_imm_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+    eval_core_rs1_value_nid,
+    S_immediate,
+    "rs1 value + S_immediate");
+
+  rs2_byte_value_nid = new_slice(SID_BYTE,
+    eval_core_rs2_value_nid,
+    7, 0, "least-significant byte of rs2 value");
+
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
     eval_core_store_nid,
-    main_memory_nid,
+    store_byte(eval_core_rs1_S_imm_nid, rs2_byte_value_nid),
     main_memory_nid,
     "update main memory");
 }
@@ -1827,6 +1846,16 @@ void rotor() {
     UNUSED,
     "fetch-seg-fault",
     "imminent fetch segmentation fault");
+
+  store_seg_faulting_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      eval_core_store_nid,
+      is_access_in_code_segment(eval_core_rs1_S_imm_nid),
+      "store causes segmentation fault"),
+    "store-seg-fault",
+    "store segmentation fault");
+
 }
 
 void output_machine() {
@@ -1920,15 +1949,19 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11200, possible_read_seg_fault_nid);
+  print_line(11200, store_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11300, is_syscall_id_known_nid);
+  print_line(11300, possible_read_seg_fault_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11400, bad_exit_code_nid);
+  print_line(11400, is_syscall_id_known_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(11500, bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
