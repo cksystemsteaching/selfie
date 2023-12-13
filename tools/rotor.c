@@ -329,6 +329,8 @@ void print_interface_memory();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t SYNTHESIZE_LEGACY = 0;
+
 uint64_t ISBYTEMEMORY = 0;
 
 uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
@@ -516,7 +518,7 @@ uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid);
 uint64_t* load_byte(uint64_t* vaddr_nid);
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid);
 
-void fetch_instruction();
+uint64_t* fetch_instruction();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -529,6 +531,8 @@ uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
+uint64_t* init_code_segment_nid  = (uint64_t*) 0;
+uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -1130,6 +1134,7 @@ void print_memory_sorts() {
 
 void new_memory_state() {
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
+  init_code_segment_nid  = new_binary(OP_INIT, SID_CODE_STATE, state_code_segment_nid, NID_SINGLE_WORD_0, "zeroed code segment");
 
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
 
@@ -1279,9 +1284,42 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
     );
 }
 
-void fetch_instruction() {
+uint64_t* fetch_instruction() {
+  uint64_t* laddr_nid;
+  uint64_t* not_yet_synthesized_nid;
+  uint64_t* synthesized_instruction_nid;
+
+  laddr_nid = vaddr_to_30_bit_laddr(state_core_pc_nid);
+
   eval_core_ir_nid = new_binary(OP_READ, SID_INSTRUCTION_WORD,
-    state_code_segment_nid, vaddr_to_30_bit_laddr(state_core_pc_nid), "fetch instruction");
+    state_code_segment_nid, laddr_nid, "fetch instruction");
+
+  if (SYNTHESIZE_LEGACY) {
+    not_yet_synthesized_nid = new_binary_boolean(OP_EQ,
+      eval_core_ir_nid,
+      NID_SINGLE_WORD_0,
+      "not yet synthesized instruction");
+
+    synthesized_instruction_nid = new_input(OP_INPUT, SID_INSTRUCTION_WORD,
+      "synthesized-instruction", "synthesized instruction");
+
+    eval_core_ir_nid = new_ternary(OP_ITE, SID_INSTRUCTION_WORD,
+      not_yet_synthesized_nid,
+      synthesized_instruction_nid,
+      eval_core_ir_nid,
+      "currently or previously synthesized instruction");
+
+    return new_ternary(OP_ITE, SID_CODE_STATE,
+      not_yet_synthesized_nid,
+      new_ternary(OP_WRITE, SID_CODE_STATE,
+        state_code_segment_nid,
+        laddr_nid,
+        synthesized_instruction_nid,
+        "write synthesized instruction"),
+      state_code_segment_nid,
+      "synthesized code segment");
+  } else
+    return state_code_segment_nid;
 }
 
 // -----------------------------------------------------------------
@@ -1529,7 +1567,10 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; code segment\n\n");
 
-  print_line(300, state_code_segment_nid);
+  if (SYNTHESIZE_LEGACY)
+    print_line(300, init_code_segment_nid);
+  else
+    print_line(300, state_code_segment_nid);
 
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
@@ -1538,6 +1579,12 @@ void output_machine() {
   w = w + dprintf(output_fd, "\n; program counter\n\n");
 
   print_line(1000, init_core_pc_nid);
+
+  if (SYNTHESIZE_LEGACY) {
+    w = w + dprintf(output_fd, "\n; synthesize code\n\n");
+
+    print_line(1100, next_code_segment_nid);
+  }
 
   w = w + dprintf(output_fd, "\n; non-kernel control flow\n\n");
 
@@ -1647,7 +1694,10 @@ void rotor() {
 
   // fetch
 
-  fetch_instruction();
+  next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
+    state_code_segment_nid,
+    fetch_instruction(),
+    "code segment");
 
   // decode
 
