@@ -1630,7 +1630,6 @@ void rotor() {
   uint64_t* more_than_one_readable_byte_nid;
   uint64_t* more_than_one_readable_byte_to_read_nid;
 
-  uint64_t* pending_read_nid;
   uint64_t* kernel_mode_nid;
 
   uint64_t* a0_value_nid;
@@ -1743,15 +1742,15 @@ void rotor() {
 
   // kernel control flow
 
-  pending_read_nid =
-    new_binary_boolean(OP_AND,
-      read_syscall_nid,
-      more_than_one_readable_byte_to_read_nid,
-      "pending read system call");
-
   kernel_mode_nid = new_binary_boolean(OP_AND,
     eval_core_active_ecall_nid,
-    new_binary_boolean(OP_OR, pending_read_nid, exit_syscall_nid, "pending read or exit system call"),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_AND,
+        read_syscall_nid,
+        more_than_one_readable_byte_to_read_nid,
+        "ongoing read system call"),
+      exit_syscall_nid,
+      "ongoing read or exit system call"),
     "active system call");
 
   // control flow
