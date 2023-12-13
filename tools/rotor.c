@@ -1231,8 +1231,8 @@ uint64_t* load_byte(uint64_t* vaddr_nid) {
   return new_slice(SID_BYTE,
     new_binary(OP_SRL, SID_MACHINE_WORD,
       load_machine_word(laddr_nid),
-        shift_by_nid,
-        "shift byte to LSBs"),
+      shift_by_nid,
+      "shift byte to LSBs"),
     7, 0, "slice byte");
 }
 
@@ -1258,7 +1258,7 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
     "multiply by 8 bits");
 
   return store_machine_word(laddr_nid,
-    new_binary(OP_AND, SID_MACHINE_WORD,
+    new_binary(OP_OR, SID_MACHINE_WORD,
       new_binary(OP_AND, SID_MACHINE_WORD,
         load_machine_word(laddr_nid),
         new_unary(OP_NOT, SID_MACHINE_WORD,
@@ -1837,7 +1837,7 @@ void rotor() {
 
   eval_kernel_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_AND,
-      read_syscall_nid,
+      kernel_data_flow_nid,
       more_readable_bytes_to_read_nid,
       "more input bytes to read"),
     store_byte(new_binary(OP_ADD, SID_MACHINE_WORD,
