@@ -672,10 +672,13 @@ uint64_t* eval_core_rs1_value_nid = (uint64_t*) 0;
 uint64_t* eval_core_rs2_value_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_I_immediate  = (uint64_t*) 0;
+
+uint64_t* eval_core_rs1_value_plus_I_immediate_nid = (uint64_t*) 0;
+
 uint64_t* eval_core_S_immediate  = (uint64_t*) 0;
 uint64_t* eval_core_SB_immediate = (uint64_t*) 0;
 
-uint64_t* eval_core_rs1_S_immediate_nid = (uint64_t*) 0;
+uint64_t* eval_core_rs1_value_plus_S_immediate_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
@@ -784,6 +787,7 @@ uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
+uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 
 uint64_t* possible_read_seg_fault_nid = (uint64_t*) 0;
@@ -1512,12 +1516,11 @@ uint64_t* decode_instruction() {
 }
 
 uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
-  uint64_t* rs1_value_plus_I_immediate;
   uint64_t* rd_value_nid;
 
   uint64_t* no_register_data_flow_nid;
 
-  rs1_value_plus_I_immediate = new_binary(OP_ADD, SID_MACHINE_WORD,
+  eval_core_rs1_value_plus_I_immediate_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
     eval_core_rs1_value_nid,
     eval_core_I_immediate,
     "rs1 value + I-immediate");
@@ -1528,7 +1531,7 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
     eval_core_imm_nid,
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       eval_core_f3_addi_nid,
-      rs1_value_plus_I_immediate,
+      eval_core_rs1_value_plus_I_immediate_nid,
       rd_value_nid,
       "addi data flow"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1549,7 +1552,7 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
         eval_core_load_nid,
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           eval_core_f3_lb_nid,
-          load_byte(rs1_value_plus_I_immediate),
+          load_byte(eval_core_rs1_value_plus_I_immediate_nid),
           rd_value_nid,
           "lb data flow"),
         new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1588,14 +1591,14 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 }
 
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
-  eval_core_rs1_S_immediate_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
+  eval_core_rs1_value_plus_S_immediate_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
     eval_core_rs1_value_nid,
     eval_core_S_immediate,
     "rs1 value + S-immediate");
 
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
     eval_core_store_nid,
-    store_byte(eval_core_rs1_S_immediate_nid, UNUSED, eval_core_rs2_value_nid),
+    store_byte(eval_core_rs1_value_plus_S_immediate_nid, UNUSED, eval_core_rs2_value_nid),
     main_memory_nid,
     "update main memory");
 }
@@ -1971,15 +1974,23 @@ void rotor() {
     "fetch-seg-fault",
     "imminent fetch segmentation fault");
 
+  load_seg_faulting_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      eval_core_load_nid,
+      is_access_in_code_segment(eval_core_rs1_value_plus_I_immediate_nid),
+      "load causes segmentation fault"),
+    "load-seg-fault",
+    "load segmentation fault");
+
   store_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
       eval_core_store_nid,
-      is_access_in_code_segment(eval_core_rs1_S_immediate_nid),
+      is_access_in_code_segment(eval_core_rs1_value_plus_S_immediate_nid),
       "store causes segmentation fault"),
     "store-seg-fault",
     "store segmentation fault");
-
 }
 
 void output_machine() {
@@ -2073,19 +2084,23 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11200, store_seg_faulting_nid);
+  print_line(11200, load_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11300, possible_read_seg_fault_nid);
+  print_line(11300, store_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11400, is_syscall_id_known_nid);
+  print_line(11400, possible_read_seg_fault_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11500, bad_exit_code_nid);
+  print_line(11500, is_syscall_id_known_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(11600, bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
