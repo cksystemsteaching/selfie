@@ -515,7 +515,7 @@ uint64_t* load_machine_word(uint64_t* laddr_nid);
 uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid);
 
 uint64_t* load_byte(uint64_t* vaddr_nid);
-uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid);
+uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid);
 
 void fetch_instruction();
 
@@ -656,6 +656,8 @@ uint64_t* eval_core_f3_addi_nid        = (uint64_t*) 0;
 uint64_t* eval_core_op_nid             = (uint64_t*) 0;
 uint64_t* eval_core_f3_add_sub_mul_nid = (uint64_t*) 0;
 uint64_t* eval_core_f7_add_nid         = (uint64_t*) 0;
+uint64_t* eval_core_load_nid           = (uint64_t*) 0;
+uint64_t* eval_core_f3_lb_nid          = (uint64_t*) 0;
 uint64_t* eval_core_store_nid          = (uint64_t*) 0;
 uint64_t* eval_core_f3_sb_nid          = (uint64_t*) 0;
 uint64_t* eval_core_branch_nid         = (uint64_t*) 0;
@@ -1248,6 +1250,17 @@ uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid) {
     "store machine word in memory at laddr");
 }
 
+uint64_t* extend_byte_to_machine_word(uint64_t* byte_nid) {
+  return new_ext(OP_UEXT, SID_MACHINE_WORD,
+    byte_nid,
+    WORDSIZEINBITS - 8,
+    "unsigned extension of byte to machine word");
+}
+
+uint64_t* slice_byte_from_machine_word(uint64_t* word_nid) {
+  return new_slice(SID_BYTE, word_nid, 7, 0, "slice least-significant byte");
+}
+
 uint64_t* load_byte(uint64_t* vaddr_nid) {
   uint64_t* laddr_nid;
   uint64_t* shift_by_nid;
@@ -1255,7 +1268,11 @@ uint64_t* load_byte(uint64_t* vaddr_nid) {
   laddr_nid = vaddr_to_laddr(vaddr_nid);
 
   if (ISBYTEMEMORY)
-    return new_binary(OP_READ, SID_MEMORY_WORD, state_main_memory_nid, laddr_nid, "load byte");
+    return extend_byte_to_machine_word(
+      new_binary(OP_READ, SID_MEMORY_WORD,
+        state_main_memory_nid,
+        laddr_nid,
+        "load byte"));
 
   shift_by_nid = new_binary(OP_SLL, SID_MACHINE_WORD,
     new_binary(OP_AND, SID_MACHINE_WORD,
@@ -1265,26 +1282,32 @@ uint64_t* load_byte(uint64_t* vaddr_nid) {
     NID_BYTE_SIZE_IN_BASE_BITS,
     "multiply by 8 bits");
 
-  return new_slice(SID_BYTE,
+  return new_binary(OP_AND, SID_MACHINE_WORD,
     new_binary(OP_SRL, SID_MACHINE_WORD,
       load_machine_word(laddr_nid),
       shift_by_nid,
-      "shift byte to LSBs"),
-    7, 0, "slice byte");
+      "shift byte to least-significant byte"),
+    NID_MACHINE_WORD_BYTE_MASK,
+    "reset all bits but of least-significant byte");
 }
 
-uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
+uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid) {
   uint64_t* laddr_nid;
   uint64_t* shift_by_nid;
 
   laddr_nid = vaddr_to_laddr(vaddr_nid);
 
-  if (ISBYTEMEMORY)
+  if (ISBYTEMEMORY) {
+    if (byte_nid == UNUSED)
+      byte_nid = slice_byte_from_machine_word(word_nid);
+
     return new_ternary(OP_WRITE, SID_MEMORY_STATE,
       state_main_memory_nid,
       laddr_nid,
       byte_nid,
     "store byte in memory at laddr");
+  } if (word_nid == UNUSED)
+    word_nid = extend_byte_to_machine_word(byte_nid);
 
   shift_by_nid = new_binary(OP_SLL, SID_MACHINE_WORD,
     new_binary(OP_AND, SID_MACHINE_WORD,
@@ -1303,13 +1326,10 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
             NID_MACHINE_WORD_BYTE_MASK,
             shift_by_nid,
             "shift mask to byte location"),
-          "negate mask"),
+          "bitwise-not mask"),
         "reset bits at byte location"),
       new_binary(OP_SLL, SID_MACHINE_WORD,
-        new_ext(OP_UEXT, SID_MACHINE_WORD,
-          byte_nid,
-          WORDSIZEINBITS - 8,
-          "unsigned extension of byte to machine word"),
+        word_nid,
         shift_by_nid,
         "shift byte to byte location"),
       "insert byte at byte location")
@@ -1435,6 +1455,9 @@ uint64_t* decode_instruction() {
   eval_core_f3_add_sub_mul_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL");
   eval_core_f7_add_nid         = new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD");
 
+  eval_core_load_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_LOAD, "opcode == LOAD");
+  eval_core_f3_lb_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_LB, "funct3 == LB");
+
   eval_core_store_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE");
   eval_core_f3_sb_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB");
 
@@ -1464,28 +1487,40 @@ uint64_t* decode_instruction() {
         "add"),
       new_binary_boolean(OP_OR,
         new_binary_boolean(OP_AND,
-          eval_core_store_nid,
-          eval_core_f3_sb_nid,
-          "sb"),
+          eval_core_load_nid,
+          eval_core_f3_lb_nid,
+          "lb"),
         new_binary_boolean(OP_OR,
           new_binary_boolean(OP_AND,
-            eval_core_branch_nid,
-            eval_core_f3_beq_nid,
-            "beq"),
-          new_binary_boolean(OP_AND,
-            eval_core_jalr_nid,
-            eval_core_f3_jalr_nid,
-            "jalr"),
-          "beq or jalr"),
-        "sb or beq or jalr"),
-      "add or sb or beq or jalr"),
+            eval_core_store_nid,
+            eval_core_f3_sb_nid,
+            "sb"),
+          new_binary_boolean(OP_OR,
+            new_binary_boolean(OP_AND,
+              eval_core_branch_nid,
+              eval_core_f3_beq_nid,
+              "beq"),
+            new_binary_boolean(OP_AND,
+              eval_core_jalr_nid,
+              eval_core_f3_jalr_nid,
+              "jalr"),
+            "beq, jalr"),
+          "sb, beq, jalr"),
+        "lb, sb, beq, jalr"),
+      "add, lb, sb, beq, jalr"),
     "known instructions");
 }
 
 uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
+  uint64_t* rs1_value_plus_I_immediate;
   uint64_t* rd_value_nid;
 
   uint64_t* no_register_data_flow_nid;
+
+  rs1_value_plus_I_immediate = new_binary(OP_ADD, SID_MACHINE_WORD,
+    eval_core_rs1_value_nid,
+    eval_core_I_immediate,
+    "rs1 value + I-immediate");
 
   rd_value_nid = get_register_value(eval_core_rd_nid, "current rd value");
 
@@ -1493,10 +1528,7 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
     eval_core_imm_nid,
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       eval_core_f3_addi_nid,
-      new_binary(OP_ADD, SID_MACHINE_WORD,
-        eval_core_rs1_value_nid,
-        eval_core_I_immediate,
-        "rs1 value + I-immediate"),
+      rs1_value_plus_I_immediate,
       rd_value_nid,
       "addi data flow"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1512,18 +1544,26 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
           rd_value_nid,
           "add data flow"),
         rd_value_nid,
-        "no data flow"),
+        "op data flow"),
       new_ternary(OP_ITE, SID_MACHINE_WORD,
-        eval_core_jalr_nid,
+        eval_core_load_nid,
         new_ternary(OP_ITE, SID_MACHINE_WORD,
-          eval_core_f3_jalr_nid,
-          eval_core_incremented_pc,
+          eval_core_f3_lb_nid,
+          load_byte(rs1_value_plus_I_immediate),
           rd_value_nid,
-          "pc value + 4"),
-        rd_value_nid,
-        "jalr data flow"),
-      "add and jalr data flow"),
-    "addi and add and jalr data flow");
+          "lb data flow"),
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
+          eval_core_jalr_nid,
+          new_ternary(OP_ITE, SID_MACHINE_WORD,
+            eval_core_f3_jalr_nid,
+            eval_core_incremented_pc,
+            rd_value_nid,
+            "jalr data flow"),
+          rd_value_nid,
+          "jalr data flow"),
+        "lb, jalr data flow"),
+      "add, lb, jalr data flow"),
+    "addi, add, lb, jalr data flow");
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
     new_binary_boolean(OP_EQ,
@@ -1548,20 +1588,14 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 }
 
 uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
-  uint64_t* rs2_byte_value_nid;
-
   eval_core_rs1_S_immediate_nid = new_binary(OP_ADD, SID_MACHINE_WORD,
     eval_core_rs1_value_nid,
     eval_core_S_immediate,
     "rs1 value + S-immediate");
 
-  rs2_byte_value_nid = new_slice(SID_BYTE,
-    eval_core_rs2_value_nid,
-    7, 0, "least-significant byte of rs2 value");
-
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
     eval_core_store_nid,
-    store_byte(eval_core_rs1_S_immediate_nid, rs2_byte_value_nid),
+    store_byte(eval_core_rs1_S_immediate_nid, UNUSED, eval_core_rs2_value_nid),
     main_memory_nid,
     "update main memory");
 }
@@ -1576,7 +1610,7 @@ uint64_t* core_control_flow() {
           eval_core_rs1_value_nid,
           eval_core_rs2_value_nid,
           "rs1 value == rs2 value"),
-        "beq"),
+        "branch on equal"),
       "branch"),
     new_binary(OP_ADD, SID_MACHINE_WORD,
       state_core_pc_nid,
@@ -1596,7 +1630,7 @@ uint64_t* core_control_flow() {
         "reset LSB"),
       eval_core_incremented_pc,
       "jalr and all other control flow"),
-    "beq and jalr and all other control flow");
+    "beq, jalr, all other control flow");
 }
 
 // -----------------------------------------------------------------
@@ -1820,7 +1854,8 @@ void kernel() {
       a1_value_nid,
       state_read_bytes_nid,
       "a1 + number of already read_bytes"),
-      new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call")),
+      new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
+      UNUSED),
     eval_core_memory_data_flow_nid,
     "main memory data flow");
 
