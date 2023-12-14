@@ -600,9 +600,9 @@ uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_SB_immediate(uint64_t* instruction);
 uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
 
-uint64_t* decode_instruction();
+uint64_t* decode_instruction(uint64_t* ir_nid);
 
-uint64_t* get_incremented_pc();
+uint64_t* get_incremented_pc(uint64_t* pc_nid);
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* instruction);
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* instruction);
 
