@@ -393,11 +393,6 @@ uint64_t* state_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_read_bytes_nid  = (uint64_t*) 0;
 
-uint64_t* eval_kernel_pc_nid = (uint64_t*) 0;
-
-uint64_t* eval_kernel_register_data_flow_nid = (uint64_t*) 0;
-uint64_t* eval_kernel_memory_data_flow_nid   = (uint64_t*) 0;
-
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface_kernel() {
@@ -540,7 +535,7 @@ uint64_t* slice_byte_from_machine_word(uint64_t* word_nid);
 uint64_t* load_byte(uint64_t* vaddr_nid);
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid);
 
-void fetch_instruction();
+uint64_t* fetch_instruction(uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -604,10 +599,10 @@ uint64_t* get_incremented_pc();
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* instruction);
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* instruction);
 
-uint64_t* core_register_data_flow(uint64_t* register_file_nid);
-uint64_t* core_memory_data_flow(uint64_t* main_memory_nid);
+uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* main_memory_nid);
 
-uint64_t* core_control_flow();
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -672,10 +667,11 @@ uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_core_ir_nid = (uint64_t*) 0;
-
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
+
+uint64_t* eval_core_non_kernel_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -751,6 +747,8 @@ uint64_t* init_core_pc_nid  = (uint64_t*) 0;
 uint64_t* eval_core_pc_nid = (uint64_t*) 0;
 uint64_t* next_core_pc_nid = (uint64_t*) 0;
 
+uint64_t* eval_core_non_kernel_pc_nid = (uint64_t*) 0;
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ----------------------    R U N T I M E    ----------------------
@@ -763,7 +761,8 @@ uint64_t* next_core_pc_nid = (uint64_t*) 0;
 
 uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
 
-void kernel();
+void kernel(uint64_t* pc_nid, uint64_t* ir_nid);
+
 void rotor();
 
 void output_machine();
@@ -1432,9 +1431,11 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid
     );
 }
 
-void fetch_instruction() {
-  eval_core_ir_nid = new_binary(OP_READ, SID_INSTRUCTION_WORD,
-    state_code_segment_nid, vaddr_to_30_bit_laddr(state_core_pc_nid), "fetch instruction");
+uint64_t* fetch_instruction(uint64_t* pc_nid) {
+  return new_binary(OP_READ, SID_INSTRUCTION_WORD,
+    state_code_segment_nid,
+    vaddr_to_30_bit_laddr(pc_nid),
+    "fetch instruction");
 }
 
 // -----------------------------------------------------------------
@@ -1522,14 +1523,14 @@ uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
     return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
 }
 
-uint64_t* decode_instruction() {
+uint64_t* decode_instruction(uint64_t* ir_nid) {
   uint64_t* opcode_nid;
   uint64_t* funct3_nid;
   uint64_t* funct7_nid;
 
-  opcode_nid = get_instruction_opcode(eval_core_ir_nid);
-  funct3_nid = get_instruction_funct3(eval_core_ir_nid);
-  funct7_nid = get_instruction_funct7(eval_core_ir_nid);
+  opcode_nid = get_instruction_opcode(ir_nid);
+  funct3_nid = get_instruction_funct3(ir_nid);
+  funct7_nid = get_instruction_funct7(ir_nid);
 
   return new_binary_boolean(OP_OR,
     new_binary_boolean(OP_AND,
@@ -1570,9 +1571,9 @@ uint64_t* decode_instruction() {
     "known instructions");
 }
 
-uint64_t* get_incremented_pc() {
+uint64_t* get_incremented_pc(uint64_t* pc_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
-    state_core_pc_nid,
+    pc_nid,
     NID_MACHINE_WORD_4,
     "pc value + 4");
 }
@@ -1591,7 +1592,7 @@ uint64_t* get_rs1_value_plus_S_immediate(uint64_t* instruction) {
     "rs1 value + S-immediate");
 }
 
-uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
+uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid) {
   uint64_t* opcode_nid;
   uint64_t* funct3_nid;
   uint64_t* funct7_nid;
@@ -1600,17 +1601,17 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 
   uint64_t* no_register_data_flow_nid;
 
-  opcode_nid = get_instruction_opcode(eval_core_ir_nid);
-  funct3_nid = get_instruction_funct3(eval_core_ir_nid);
-  funct7_nid = get_instruction_funct7(eval_core_ir_nid);
+  opcode_nid = get_instruction_opcode(ir_nid);
+  funct3_nid = get_instruction_funct3(ir_nid);
+  funct7_nid = get_instruction_funct7(ir_nid);
 
-  rd_value_nid = get_register_value(get_instruction_rd(eval_core_ir_nid), "current rd value");
+  rd_value_nid = get_register_value(get_instruction_rd(ir_nid), "current rd value");
 
   rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
-      get_rs1_value_plus_I_immediate(eval_core_ir_nid),
+      get_rs1_value_plus_I_immediate(ir_nid),
       rd_value_nid,
       "addi data flow"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1620,8 +1621,8 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD"),
           new_binary(OP_ADD, SID_MACHINE_WORD,
-            get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value"),
-            get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value"),
+            get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+            get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
             "rs1 value + rs2 value"),
           rd_value_nid,
           "add data flow"),
@@ -1631,14 +1632,14 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
         new_binary_boolean(OP_EQ, opcode_nid, NID_OP_LOAD, "opcode == LOAD"),
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           new_binary_boolean(OP_EQ, funct3_nid, NID_F3_LB, "funct3 == LB"),
-          load_byte(get_rs1_value_plus_I_immediate(eval_core_ir_nid)),
+          load_byte(get_rs1_value_plus_I_immediate(ir_nid)),
           rd_value_nid,
           "lb data flow"),
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
           new_ternary(OP_ITE, SID_MACHINE_WORD,
             new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR"),
-            get_incremented_pc(),
+            get_incremented_pc(pc_nid),
             rd_value_nid,
             "jalr data flow"),
           rd_value_nid,
@@ -1649,7 +1650,7 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
     new_binary_boolean(OP_EQ,
-      get_instruction_rd(eval_core_ir_nid),
+      get_instruction_rd(ir_nid),
       NID_ZR,
       "rd == register zero"),
     new_binary_boolean(OP_OR,
@@ -1663,32 +1664,32 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
     register_file_nid,
     new_ternary(OP_WRITE, SID_REGISTER_STATE,
       register_file_nid,
-      get_instruction_rd(eval_core_ir_nid),
+      get_instruction_rd(ir_nid),
       rd_value_nid,
       "write rd"),
     "update non-zero register");
 }
 
-uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
+uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* main_memory_nid) {
   uint64_t* opcode_nid;
 
-  opcode_nid = get_instruction_opcode(eval_core_ir_nid);
+  opcode_nid = get_instruction_opcode(ir_nid);
 
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
-    store_byte(get_rs1_value_plus_S_immediate(eval_core_ir_nid),
+    store_byte(get_rs1_value_plus_S_immediate(ir_nid),
       UNUSED,
-      get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value")),
+      get_register_value(get_instruction_rs2(ir_nid), "rs2 value")),
     main_memory_nid,
     "update main memory");
 }
 
-uint64_t* core_control_flow() {
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
   uint64_t* opcode_nid;
   uint64_t* funct3_nid;
 
-  opcode_nid = get_instruction_opcode(eval_core_ir_nid);
-  funct3_nid = get_instruction_funct3(eval_core_ir_nid);
+  opcode_nid = get_instruction_opcode(ir_nid);
+  funct3_nid = get_instruction_funct3(ir_nid);
 
   return new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
@@ -1696,14 +1697,14 @@ uint64_t* core_control_flow() {
       new_binary_boolean(OP_AND,
         new_binary_boolean(OP_EQ, funct3_nid, NID_F3_BEQ, "funct3 == BEQ"),
         new_binary_boolean(OP_EQ,
-          get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value"),
-          get_register_value(get_instruction_rs2(eval_core_ir_nid), "rs2 value"),
+          get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+          get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
           "rs1 value == rs2 value"),
         "branch on equal"),
       "branch"),
     new_binary(OP_ADD, SID_MACHINE_WORD,
-      state_core_pc_nid,
-      get_machine_word_SB_immediate(eval_core_ir_nid),
+      pc_nid,
+      get_machine_word_SB_immediate(ir_nid),
       "pc + SB-immediate"),
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       new_binary_boolean(OP_AND,
@@ -1712,12 +1713,12 @@ uint64_t* core_control_flow() {
         "jalr"),
       new_binary(OP_AND, SID_MACHINE_WORD,
         new_binary(OP_ADD, SID_MACHINE_WORD,
-          get_register_value(get_instruction_rs1(eval_core_ir_nid), "rs1 value"),
-          get_machine_word_I_immediate(eval_core_ir_nid),
+          get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+          get_machine_word_I_immediate(ir_nid),
           "rs1 value + I-immediate"),
         NID_MACHINE_WORD_LSB_MASK,
         "reset LSB"),
-      get_incremented_pc(),
+      get_incremented_pc(pc_nid),
       "jalr and all other control flow"),
     "beq, jalr, all other control flow");
 }
@@ -1755,7 +1756,7 @@ uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, ch
   }
 }
 
-void kernel() {
+void kernel(uint64_t* pc_nid, uint64_t* ir_nid) {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
@@ -1786,7 +1787,7 @@ void kernel() {
 
   // system call ABI control flow
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, eval_core_ir_nid, NID_ECALL, "ir == ECALL");
+  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL");
 
   a7_value_nid = get_register_value(NID_A7, "a7 value");
 
@@ -1870,9 +1871,9 @@ void kernel() {
         "increment bytes already read if read system call is active"),
       "bytes already read in active read system call");
 
-  // kernel control flow
+  // kernel and non-kernel control flow
 
-  eval_kernel_pc_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
+  eval_core_pc_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
       active_ecall_nid,
       new_binary_boolean(OP_OR,
@@ -1883,8 +1884,8 @@ void kernel() {
         exit_syscall_nid,
         "ongoing read or exit system call"),
       "active system call"),
-    state_core_pc_nid,
-    eval_core_pc_nid,
+    pc_nid,
+    eval_core_non_kernel_pc_nid,
     "update program counter unless in kernel mode");
 
   // system call ABI kernel register data flow
@@ -1921,7 +1922,9 @@ void kernel() {
     read_syscall_nid,
     "active system call with data flow");
 
-  eval_kernel_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
+  // kernel and non-kernel register data flow
+
+  eval_core_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
     new_binary_boolean(OP_AND,
       kernel_data_flow_nid,
       new_unary(OP_NOT, SID_BOOLEAN,
@@ -1929,16 +1932,16 @@ void kernel() {
         "read system call returns if there is at most one more byte to read"),
       "update a0 when read system call returns"),
     new_ternary(OP_WRITE, SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
-    eval_core_register_data_flow_nid,
+    eval_core_non_kernel_register_data_flow_nid,
     "register data flow");
 
   // system call ABI kernel memory data flow
 
   a1_value_nid = get_register_value(NID_A1, "a1 value");
 
-  // kernel memory data flow
+  // kernel and non-kernel memory data flow
 
-  eval_kernel_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
+  eval_core_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_AND,
       kernel_data_flow_nid,
       more_readable_bytes_to_read_nid,
@@ -1949,7 +1952,7 @@ void kernel() {
       "a1 + number of already read_bytes"),
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
       UNUSED),
-    eval_core_memory_data_flow_nid,
+    eval_core_non_kernel_memory_data_flow_nid,
     "main memory data flow");
 
   // kernel properties
@@ -1995,6 +1998,7 @@ void kernel() {
 }
 
 void rotor() {
+  uint64_t* ir_nid;
   uint64_t* known_instructions_nid;
 
   new_kernel_state(1);
@@ -2004,54 +2008,54 @@ void rotor() {
 
   // fetch
 
-  fetch_instruction();
+  ir_nid = fetch_instruction(state_core_pc_nid);
 
   // decode
 
-  known_instructions_nid = decode_instruction();
+  known_instructions_nid = decode_instruction(ir_nid);
 
   // non-kernel control flow
 
-  eval_core_pc_nid = core_control_flow();
+  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid);
 
   // non-kernel register data flow
 
-  eval_core_register_data_flow_nid = core_register_data_flow(state_register_file_nid);
+  eval_core_non_kernel_register_data_flow_nid = core_register_data_flow(state_core_pc_nid, ir_nid, state_register_file_nid);
 
   // non-kernel memory data flow
 
-  eval_core_memory_data_flow_nid = core_memory_data_flow(state_main_memory_nid);
+  eval_core_non_kernel_memory_data_flow_nid = core_memory_data_flow(ir_nid, state_main_memory_nid);
 
   // kernel
 
-  kernel();
+  kernel(state_core_pc_nid, ir_nid);
 
   // update control flow
 
   next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
     state_core_pc_nid,
-    eval_kernel_pc_nid,
+    eval_core_pc_nid,
     "program counter");
 
   // update register data flow
 
   next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
     state_register_file_nid,
-    eval_kernel_register_data_flow_nid,
+    eval_core_register_data_flow_nid,
     "register file");
 
   // update memory data flow
 
   next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
     state_main_memory_nid,
-    eval_kernel_memory_data_flow_nid,
+    eval_core_memory_data_flow_nid,
     "main memory");
 
   // state properties
 
   is_instruction_known_nid = state_property(
     new_binary_boolean(OP_OR,
-      new_binary_boolean(OP_EQ, eval_core_ir_nid, NID_ECALL, "ir == ECALL"),
+      new_binary_boolean(OP_EQ, ir_nid, NID_ECALL, "ir == ECALL"),
       known_instructions_nid,
       "ecall or other known instructions"),
     UNUSED,
@@ -2059,7 +2063,7 @@ void rotor() {
     "known instructions");
 
   next_fetch_seg_faulting_nid = state_property(
-    is_access_in_code_segment(eval_kernel_pc_nid),
+    is_access_in_code_segment(eval_core_pc_nid),
     UNUSED,
     "fetch-seg-fault",
     "imminent fetch segmentation fault");
@@ -2067,8 +2071,8 @@ void rotor() {
   load_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, get_instruction_opcode(eval_core_ir_nid), NID_OP_LOAD, "opcode == LOAD"),
-      is_access_in_code_segment(get_rs1_value_plus_I_immediate(eval_core_ir_nid)),
+      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), NID_OP_LOAD, "opcode == LOAD"),
+      is_access_in_code_segment(get_rs1_value_plus_I_immediate(ir_nid)),
       "load causes segmentation fault"),
     "load-seg-fault",
     "load segmentation fault");
@@ -2076,8 +2080,8 @@ void rotor() {
   store_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, get_instruction_opcode(eval_core_ir_nid), NID_OP_STORE, "opcode == STORE"),
-      is_access_in_code_segment(get_rs1_value_plus_S_immediate(eval_core_ir_nid)),
+      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), NID_OP_STORE, "opcode == STORE"),
+      is_access_in_code_segment(get_rs1_value_plus_S_immediate(ir_nid)),
       "store causes segmentation fault"),
     "store-seg-fault",
     "store segmentation fault");
@@ -2122,7 +2126,7 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; non-kernel control flow\n\n");
 
-  print_line(2000, eval_core_pc_nid);
+  print_line(2000, eval_core_non_kernel_pc_nid);
 
   w = w + dprintf(output_fd, "\n; update kernel state\n\n");
 
@@ -2132,9 +2136,9 @@ void output_machine() {
 
   print_line(3100, next_read_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel control flow\n\n");
+  w = w + dprintf(output_fd, "\n; kernel and non-kernel control flow\n\n");
 
-  print_line(3200, eval_kernel_pc_nid);
+  print_line(3200, eval_core_pc_nid);
 
   w = w + dprintf(output_fd, "\n; update program counter\n\n");
 
@@ -2142,11 +2146,11 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; non-kernel register data flow\n\n");
 
-  print_line(5000, eval_core_register_data_flow_nid);
+  print_line(5000, eval_core_non_kernel_register_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel register data flow\n\n");
+  w = w + dprintf(output_fd, "\n; kernel and non-kernel register data flow\n\n");
 
-  print_line(6000, eval_kernel_register_data_flow_nid);
+  print_line(6000, eval_core_register_data_flow_nid);
 
   w = w + dprintf(output_fd, "\n; update register data flow\n\n");
 
@@ -2154,11 +2158,11 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n; non-kernel memory data flow\n\n");
 
-  print_line(8000, eval_core_memory_data_flow_nid);
+  print_line(8000, eval_core_non_kernel_memory_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel memory data flow\n\n");
+  w = w + dprintf(output_fd, "\n; kernel and non-kernel memory data flow\n\n");
 
-  print_line(9000, eval_kernel_memory_data_flow_nid);
+  print_line(9000, eval_core_memory_data_flow_nid);
 
   w = w + dprintf(output_fd, "\n; update memory data flow\n\n");
 
