@@ -20,7 +20,7 @@ Rotor is a tool for generating BTOR2 models of RISC-V machines.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(5 * sizeof(uint64_t*) + 2 * sizeof(char*) + sizeof(uint64_t));
+  return smalloc(5 * sizeof(uint64_t*) + 2 * sizeof(char*) + 2 * sizeof(uint64_t));
 }
 
 uint64_t  get_nid(uint64_t* line)     { return *line; }
@@ -30,7 +30,8 @@ uint64_t* get_arg1(uint64_t* line)    { return (uint64_t*) *(line + 3); }
 uint64_t* get_arg2(uint64_t* line)    { return (uint64_t*) *(line + 4); }
 uint64_t* get_arg3(uint64_t* line)    { return (uint64_t*) *(line + 5); }
 char*     get_comment(uint64_t* line) { return (char*)     *(line + 6); }
-uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 7); }
+uint64_t  get_reuse(uint64_t* line)   { return (uint64_t)  *(line + 7); }
+uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 8); }
 
 void set_nid(uint64_t* line, uint64_t nid)      { *line       = nid; }
 void set_op(uint64_t* line, char* op)           { *(line + 1) = (uint64_t) op; }
@@ -39,7 +40,8 @@ void set_arg1(uint64_t* line, uint64_t* arg1)   { *(line + 3) = (uint64_t) arg1;
 void set_arg2(uint64_t* line, uint64_t* arg2)   { *(line + 4) = (uint64_t) arg2; }
 void set_arg3(uint64_t* line, uint64_t* arg3)   { *(line + 5) = (uint64_t) arg3; }
 void set_comment(uint64_t* line, char* comment) { *(line + 6) = (uint64_t) comment; }
-void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 7) = (uint64_t) pred; }
+void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 7) = reuse; }
+void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 8) = (uint64_t) pred; }
 
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
@@ -840,13 +842,14 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg2(new_line, arg2);
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
+  set_reuse(new_line, 0);
 
   old_line = find_equal_line(new_line);
 
   if (old_line) {
     unused_line = new_line;
 
-    set_comment(old_line, format_comment("%s, reused", (uint64_t) get_comment(old_line)));
+    set_reuse(old_line, get_reuse(old_line) + 1);
 
     // invariant: pointer equivalence iff structural equivalence
 
@@ -916,8 +919,13 @@ void print_nid(uint64_t nid, uint64_t* line) {
 }
 
 void print_comment(uint64_t* line) {
-  if (get_comment(line) != NOCOMMENT)
-    w = w + dprintf(output_fd, " ; %s", get_comment(line));
+  if (get_comment(line) != NOCOMMENT) {
+    if (get_reuse(line) > 0)
+      w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
+    else
+      w = w + dprintf(output_fd, " ; %s", get_comment(line));
+  } else if (get_reuse(line) > 0)
+    w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
   w = w + dprintf(output_fd, "\n");
 }
 
