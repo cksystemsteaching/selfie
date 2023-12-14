@@ -207,6 +207,8 @@ uint64_t* SID_BYTE = (uint64_t*) 0;
 uint64_t* NID_BYTE_0 = (uint64_t*) 0;
 uint64_t* NID_BYTE_4 = (uint64_t*) 0;
 
+uint64_t* SID_HALF_WORD = (uint64_t*) 0;
+
 uint64_t* SID_SINGLE_WORD = (uint64_t*) 0;
 
 uint64_t* NID_SINGLE_WORD_0 = (uint64_t*) 0;
@@ -261,6 +263,8 @@ void init_interface_sorts() {
 
   NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, "0", "byte 0");
   NID_BYTE_4 = new_constant(OP_CONSTD, SID_BYTE, "4", "byte 4");
+
+  SID_HALF_WORD = new_bitvec(16, "16-bit half word");
 
   SID_SINGLE_WORD = new_bitvec(32, "32-bit single word");
 
@@ -511,8 +515,17 @@ uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_n
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid);
 
+uint64_t* load_byte_from_byte_memory(uint64_t* laddr_nid);
+uint64_t* load_half_word_from_byte_memory(uint64_t* laddr_nid);
+uint64_t* load_single_word_from_byte_memory(uint64_t* laddr_nid);
+uint64_t* load_double_word_from_byte_memory(uint64_t* laddr_nid);
+uint64_t* load_machine_word_from_word_memory(uint64_t* laddr_nid);
+
 uint64_t* load_machine_word(uint64_t* laddr_nid);
 uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid);
+
+uint64_t* extend_byte_to_machine_word(uint64_t* byte_nid);
+uint64_t* slice_byte_from_machine_word(uint64_t* word_nid);
 
 uint64_t* load_byte(uint64_t* vaddr_nid);
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid);
@@ -1049,9 +1062,10 @@ void print_interface_sorts() {
   print_line(1, SID_BOOLEAN);
 
   print_line(2, SID_BYTE);
-  print_line(3, SID_SINGLE_WORD);
+  print_line(3, SID_HALF_WORD);
+  print_line(4, SID_SINGLE_WORD);
   if (IS64BITTARGET)
-    print_line(4, SID_DOUBLE_WORD);
+    print_line(5, SID_DOUBLE_WORD);
 
   w = w + dprintf(output_fd, "\n; machine constants\n\n");
 
@@ -1240,9 +1254,50 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid) {
     return vaddr_to_30_bit_laddr(vaddr_nid);
 }
 
+uint64_t* load_byte_from_byte_memory(uint64_t* laddr_nid) {
+  return new_binary(OP_READ, SID_MEMORY_WORD, state_main_memory_nid, laddr_nid, "load byte");
+}
+
+uint64_t* load_half_word_from_byte_memory(uint64_t* laddr_nid) {
+  return new_binary(OP_CONCAT, SID_HALF_WORD,
+    load_byte_from_byte_memory(new_unary(OP_INC, SID_MEMORY_ADDRESS, laddr_nid, "laddr + 1")),
+    load_byte_from_byte_memory(laddr_nid),
+    "half word");
+}
+
+uint64_t* load_single_word_from_byte_memory(uint64_t* laddr_nid) {
+  return new_binary(OP_CONCAT, SID_SINGLE_WORD,
+    load_half_word_from_byte_memory(new_unary(OP_INC, SID_MEMORY_ADDRESS,
+      new_unary(OP_INC, SID_MEMORY_ADDRESS, laddr_nid, "laddr + 1"), "laddr + 1")),
+    load_half_word_from_byte_memory(laddr_nid),
+    "single word");
+}
+
+uint64_t* load_double_word_from_byte_memory(uint64_t* laddr_nid) {
+  return new_binary(OP_CONCAT, SID_SINGLE_WORD,
+    load_single_word_from_byte_memory(new_unary(OP_INC, SID_MEMORY_ADDRESS,
+      new_unary(OP_INC, SID_MEMORY_ADDRESS,
+        new_unary(OP_INC, SID_MEMORY_ADDRESS,
+          new_unary(OP_INC, SID_MEMORY_ADDRESS, laddr_nid, "laddr + 1"),
+          "laddr + 1"),
+        "laddr + 1"),
+      "laddr + 1")),
+    load_single_word_from_byte_memory(laddr_nid),
+    "single word");
+}
+
+uint64_t* load_machine_word_from_word_memory(uint64_t* laddr_nid) {
+  return new_binary(OP_READ, SID_MEMORY_WORD, state_main_memory_nid, laddr_nid, "load machine word");
+}
+
 uint64_t* load_machine_word(uint64_t* laddr_nid) {
-  // TODO: implement for byte memory
-  return new_binary(OP_READ, SID_MACHINE_WORD, state_main_memory_nid, laddr_nid, "load machine word");
+  if (ISBYTEMEMORY)
+    if (IS64BITTARGET)
+      return load_double_word_from_byte_memory(laddr_nid);
+    else
+      return load_single_word_from_byte_memory(laddr_nid);
+  else
+    return new_binary(OP_READ, SID_MACHINE_WORD, state_main_memory_nid, laddr_nid, "load machine word");
 }
 
 uint64_t* store_machine_word(uint64_t* laddr_nid, uint64_t* word_nid) {
@@ -1272,11 +1327,7 @@ uint64_t* load_byte(uint64_t* vaddr_nid) {
   laddr_nid = vaddr_to_laddr(vaddr_nid);
 
   if (ISBYTEMEMORY)
-    return extend_byte_to_machine_word(
-      new_binary(OP_READ, SID_MEMORY_WORD,
-        state_main_memory_nid,
-        laddr_nid,
-        "load byte"));
+    return extend_byte_to_machine_word(load_byte_from_byte_memory(laddr_nid));
 
   shift_by_nid = new_binary(OP_SLL, SID_MACHINE_WORD,
     new_binary(OP_AND, SID_MACHINE_WORD,
@@ -1288,7 +1339,7 @@ uint64_t* load_byte(uint64_t* vaddr_nid) {
 
   return new_binary(OP_AND, SID_MACHINE_WORD,
     new_binary(OP_SRL, SID_MACHINE_WORD,
-      load_machine_word(laddr_nid),
+      load_machine_word_from_word_memory(laddr_nid),
       shift_by_nid,
       "shift byte to least-significant byte"),
     NID_MACHINE_WORD_BYTE_MASK,
@@ -1324,7 +1375,7 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* word_nid
   return store_machine_word(laddr_nid,
     new_binary(OP_OR, SID_MACHINE_WORD,
       new_binary(OP_AND, SID_MACHINE_WORD,
-        load_machine_word(laddr_nid),
+        load_machine_word_from_word_memory(laddr_nid),
         new_unary(OP_NOT, SID_MACHINE_WORD,
           new_binary(OP_SLL, SID_MACHINE_WORD,
             NID_MACHINE_WORD_BYTE_MASK,
