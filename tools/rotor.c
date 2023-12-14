@@ -247,6 +247,8 @@ uint64_t* NID_MACHINE_WORD_BYTE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
+uint64_t* NID_MACHINE_WORD_LSB_MASK = (uint64_t*) 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface_sorts() {
@@ -296,8 +298,7 @@ void init_interface_sorts() {
 
     NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONST, SID_MACHINE_WORD,
-      "0000000000000000000000000000000000000000000000000000000000000111", "machine word size in bytes - 1");
+    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "7", "machine word size in bytes - 1");
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD = SID_SINGLE_WORD;
@@ -311,14 +312,14 @@ void init_interface_sorts() {
 
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONST, SID_MACHINE_WORD,
-      "00000000000000000000000000000011", "machine word size in bytes - 1");
+    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "3", "machine word size in bytes - 1");
   }
 
-  NID_MACHINE_WORD_BYTE_MASK = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    "FF", "maximum value of a byte in a machine word");
+  NID_MACHINE_WORD_BYTE_MASK = new_constant(OP_CONSTH, SID_MACHINE_WORD, "FF", "maximum least-significant byte value");
 
   NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
+
+  NID_MACHINE_WORD_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "-2", "all bits but LSB set");
 }
 
 // -----------------------------------------------------------------
@@ -646,6 +647,8 @@ uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 
 uint64_t* eval_core_ir_nid = (uint64_t*) 0;
 
+uint64_t* eval_core_incremented_pc = (uint64_t*) 0;
+
 uint64_t* eval_core_active_ecall_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_imm_nid            = (uint64_t*) 0;
@@ -659,6 +662,7 @@ uint64_t* eval_core_branch_nid         = (uint64_t*) 0;
 uint64_t* eval_core_f3_beq_nid         = (uint64_t*) 0;
 uint64_t* eval_core_jal_nid            = (uint64_t*) 0;
 uint64_t* eval_core_jalr_nid           = (uint64_t*) 0;
+uint64_t* eval_core_f3_jalr_nid        = (uint64_t*) 0;
 
 uint64_t* eval_core_rd_nid = (uint64_t*) 0;
 
@@ -1315,6 +1319,11 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid) {
 void fetch_instruction() {
   eval_core_ir_nid = new_binary(OP_READ, SID_INSTRUCTION_WORD,
     state_code_segment_nid, vaddr_to_30_bit_laddr(state_core_pc_nid), "fetch instruction");
+
+  eval_core_incremented_pc = new_binary(OP_ADD, SID_MACHINE_WORD,
+    state_core_pc_nid,
+    NID_MACHINE_WORD_4,
+    "pc value + 4");
 }
 
 // -----------------------------------------------------------------
@@ -1436,7 +1445,9 @@ uint64_t* decode_instruction() {
   eval_core_f3_beq_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_BEQ, "funct3 == BEQ");
 
   eval_core_jal_nid  = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JAL, "opcode == JAL");
-  eval_core_jalr_nid = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR");
+
+  eval_core_jalr_nid    = new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR");
+  eval_core_f3_jalr_nid = new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR");
 
   return new_binary_boolean(OP_OR,
     new_binary_boolean(OP_AND,
@@ -1456,13 +1467,19 @@ uint64_t* decode_instruction() {
           eval_core_store_nid,
           eval_core_f3_sb_nid,
           "sb"),
-        new_binary_boolean(OP_AND,
-          eval_core_branch_nid,
-          eval_core_f3_beq_nid,
-          "beq"),
-        "sb or beq"),
-      "add or sb or beq"),
-    "known instruction");
+        new_binary_boolean(OP_OR,
+          new_binary_boolean(OP_AND,
+            eval_core_branch_nid,
+            eval_core_f3_beq_nid,
+            "beq"),
+          new_binary_boolean(OP_AND,
+            eval_core_jalr_nid,
+            eval_core_f3_jalr_nid,
+            "jalr"),
+          "beq or jalr"),
+        "sb or beq or jalr"),
+      "add or sb or beq or jalr"),
+    "known instructions");
 }
 
 uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
@@ -1496,9 +1513,17 @@ uint64_t* core_register_data_flow(uint64_t* register_file_nid) {
           "add data flow"),
         rd_value_nid,
         "no data flow"),
-      rd_value_nid,
-      "no data flow"),
-    "data flow");
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        eval_core_jalr_nid,
+        new_ternary(OP_ITE, SID_MACHINE_WORD,
+          eval_core_f3_jalr_nid,
+          eval_core_incremented_pc,
+          rd_value_nid,
+          "pc value + 4"),
+        rd_value_nid,
+        "jalr data flow"),
+      "add and jalr data flow"),
+    "addi and add and jalr data flow");
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
     new_binary_boolean(OP_EQ,
@@ -1541,7 +1566,7 @@ uint64_t* core_memory_data_flow(uint64_t* main_memory_nid) {
     "update main memory");
 }
 
-uint64_t* core_control_flow(uint64_t* pc_nid) {
+uint64_t* core_control_flow() {
   return new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
       eval_core_branch_nid,
@@ -1554,14 +1579,24 @@ uint64_t* core_control_flow(uint64_t* pc_nid) {
         "beq"),
       "branch"),
     new_binary(OP_ADD, SID_MACHINE_WORD,
-      pc_nid,
+      state_core_pc_nid,
       eval_core_SB_immediate,
       "pc + SB-immediate"),
-    new_binary(OP_ADD, SID_MACHINE_WORD,
-      pc_nid,
-      NID_MACHINE_WORD_4,
-      "pc + 4"),
-    "next pc value");
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_binary_boolean(OP_AND,
+        eval_core_jalr_nid,
+        eval_core_f3_jalr_nid,
+        "jalr"),
+      new_binary(OP_AND, SID_MACHINE_WORD,
+        new_binary(OP_ADD, SID_MACHINE_WORD,
+          eval_core_rs1_value_nid,
+          eval_core_I_immediate,
+          "rs1 value + I-immediate"),
+        NID_MACHINE_WORD_LSB_MASK,
+        "reset LSB"),
+      eval_core_incremented_pc,
+      "jalr and all other control flow"),
+    "beq and jalr and all other control flow");
 }
 
 // -----------------------------------------------------------------
@@ -1849,7 +1884,7 @@ void rotor() {
 
   // non-kernel control flow
 
-  eval_core_pc_nid = core_control_flow(state_core_pc_nid);
+  eval_core_pc_nid = core_control_flow();
 
   // non-kernel register data flow
 
