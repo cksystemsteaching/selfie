@@ -215,7 +215,6 @@ uint64_t* NID_TRUE  = (uint64_t*) 1;
 uint64_t* SID_BYTE = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_0 = (uint64_t*) 0;
-uint64_t* NID_BYTE_4 = (uint64_t*) 0;
 
 uint64_t* SID_HALF_WORD = (uint64_t*) 0;
 
@@ -223,23 +222,19 @@ uint64_t* SID_SINGLE_WORD = (uint64_t*) 0;
 
 uint64_t* NID_SINGLE_WORD_0 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_1 = (uint64_t*) 0;
-uint64_t* NID_SINGLE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_4 = (uint64_t*) 0;
-uint64_t* NID_SINGLE_WORD_8 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_7 = (uint64_t*) 0;
 
 uint64_t* NID_SINGLE_WORD_MINUS_1 = (uint64_t*) 0;
-
-uint64_t* SID_INSTRUCTION_WORD = (uint64_t*) 0;
 
 uint64_t* SID_DOUBLE_WORD = (uint64_t*) 0;
 
 uint64_t* NID_DOUBLE_WORD_0 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_1 = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_4 = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_8 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_7 = (uint64_t*) 0;
 
 uint64_t* NID_DOUBLE_WORD_MINUS_1 = (uint64_t*) 0;
 
@@ -247,19 +242,22 @@ uint64_t* SID_MACHINE_WORD = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_0 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_1 = (uint64_t*) 0;
-uint64_t* NID_MACHINE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_4 = (uint64_t*) 0;
-uint64_t* NID_MACHINE_WORD_8 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_7 = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_SIZE_MASK = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_BYTE_MASK = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_LSB_MASK  = (uint64_t*) 0;
+
+uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
-uint64_t* NID_MACHINE_WORD_LSB_MASK = (uint64_t*) 0;
+uint64_t* SID_INSTRUCTION_WORD           = (uint64_t*) 0;
+uint64_t* NID_INSTRUCTION_WORD_SIZE_MASK = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -272,7 +270,6 @@ void init_interface_sorts() {
   SID_BYTE = new_bitvec(8, "8-bit byte");
 
   NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, "0", "byte 0");
-  NID_BYTE_4 = new_constant(OP_CONSTD, SID_BYTE, "4", "byte 4");
 
   SID_HALF_WORD = new_bitvec(16, "16-bit half word");
 
@@ -280,24 +277,20 @@ void init_interface_sorts() {
 
   NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "0", "single-word 0");
   NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "1", "single-word 1");
-  NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "2", "single-word 2");
   NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "3", "single-word 3");
   NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "4", "single-word 4");
-  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "8", "single-word 8");
+  NID_SINGLE_WORD_7 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "7", "single-word 7");
 
   NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "-1", "single-word -1");
-
-  SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD = new_bitvec(64, "64-bit double word");
 
     NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "0", "double-word 0");
     NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "1", "double-word 1");
-    NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "2", "double-word 2");
     NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "3", "double-word 3");
     NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "4", "double-word 4");
-    NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "8", "double-word 8");
+    NID_DOUBLE_WORD_7 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "7", "double-word 7");
 
     NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "-1", "double-word -1");
 
@@ -305,35 +298,38 @@ void init_interface_sorts() {
 
     NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0;
     NID_MACHINE_WORD_1 = NID_DOUBLE_WORD_1;
-    NID_MACHINE_WORD_2 = NID_DOUBLE_WORD_2;
     NID_MACHINE_WORD_3 = NID_DOUBLE_WORD_3;
     NID_MACHINE_WORD_4 = NID_DOUBLE_WORD_4;
-    NID_MACHINE_WORD_8 = NID_DOUBLE_WORD_8;
+    NID_MACHINE_WORD_7 = NID_DOUBLE_WORD_7;
 
     NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "7", "machine word size in bytes - 1");
+    NID_MACHINE_WORD_SIZE_MASK = NID_DOUBLE_WORD_7;
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD = SID_SINGLE_WORD;
 
     NID_MACHINE_WORD_0 = NID_SINGLE_WORD_0;
     NID_MACHINE_WORD_1 = NID_SINGLE_WORD_1;
-    NID_MACHINE_WORD_2 = NID_SINGLE_WORD_2;
     NID_MACHINE_WORD_3 = NID_SINGLE_WORD_3;
     NID_MACHINE_WORD_4 = NID_SINGLE_WORD_4;
-    NID_MACHINE_WORD_8 = NID_SINGLE_WORD_8;
+    NID_MACHINE_WORD_7 = NID_SINGLE_WORD_7;
 
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "3", "machine word size in bytes - 1");
+    NID_MACHINE_WORD_SIZE_MASK = NID_SINGLE_WORD_3;
   }
 
   NID_MACHINE_WORD_BYTE_MASK = new_constant(OP_CONSTH, SID_MACHINE_WORD, "FF", "maximum least-significant byte value");
+  NID_MACHINE_WORD_LSB_MASK  = new_constant(OP_CONSTD, SID_MACHINE_WORD, "-2", "all bits but LSB set");
+
+  NID_HALF_WORD_SIZE_MASK = NID_MACHINE_WORD_1;
 
   NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
 
-  NID_MACHINE_WORD_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, "-2", "all bits but LSB set");
+  SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
+
+  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
 }
 
 // -----------------------------------------------------------------
@@ -786,6 +782,7 @@ uint64_t w = 0; // number of written characters
 uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
+uint64_t* next_fetch_unaligned_nid    = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
@@ -1122,16 +1119,14 @@ void print_interface_sorts() {
   w = w + dprintf(output_fd, "\n");
 
   print_line(20, NID_BYTE_0);
-  print_line(24, NID_BYTE_4);
 
   w = w + dprintf(output_fd, "\n");
 
   print_line(30, NID_SINGLE_WORD_0);
   print_line(31, NID_SINGLE_WORD_1);
-  print_line(32, NID_SINGLE_WORD_2);
   print_line(33, NID_SINGLE_WORD_3);
   print_line(34, NID_SINGLE_WORD_4);
-  print_line(38, NID_SINGLE_WORD_8);
+  print_line(37, NID_SINGLE_WORD_7);
 
   print_line(39, NID_SINGLE_WORD_MINUS_1);
 
@@ -1140,10 +1135,9 @@ void print_interface_sorts() {
 
     print_line(40, NID_DOUBLE_WORD_0);
     print_line(41, NID_DOUBLE_WORD_1);
-    print_line(42, NID_DOUBLE_WORD_2);
     print_line(43, NID_DOUBLE_WORD_3);
     print_line(44, NID_DOUBLE_WORD_4);
-    print_line(48, NID_DOUBLE_WORD_8);
+    print_line(47, NID_DOUBLE_WORD_7);
 
     print_line(49, NID_DOUBLE_WORD_MINUS_1);
   }
@@ -2072,6 +2066,18 @@ void rotor() {
     "known-instructions",
     "known instructions");
 
+  next_fetch_unaligned_nid = state_property(
+    new_binary_boolean(OP_EQ,
+      new_binary(OP_AND, SID_MACHINE_WORD,
+        eval_core_pc_nid,
+        NID_INSTRUCTION_WORD_SIZE_MASK,
+        ""),
+      NID_MACHINE_WORD_0,
+      ""),
+    UNUSED,
+    "fetch-unaligned",
+    "imminent unaligned fetch");
+
   next_fetch_seg_faulting_nid = state_property(
     is_access_in_code_segment(eval_core_pc_nid),
     UNUSED,
@@ -2184,27 +2190,31 @@ void output_machine() {
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11100, next_fetch_seg_faulting_nid);
+  print_line(11100, next_fetch_unaligned_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11200, load_seg_faulting_nid);
+  print_line(11200, next_fetch_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11300, store_seg_faulting_nid);
+  print_line(11300, load_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11400, possible_read_seg_fault_nid);
+  print_line(11400, store_seg_faulting_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11500, is_syscall_id_known_nid);
+  print_line(11500, possible_read_seg_fault_nid);
 
   w = w + dprintf(output_fd, "\n");
 
-  print_line(11600, bad_exit_code_nid);
+  print_line(11600, is_syscall_id_known_nid);
+
+  w = w + dprintf(output_fd, "\n");
+
+  print_line(11700, bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
