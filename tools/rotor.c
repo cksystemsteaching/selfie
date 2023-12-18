@@ -702,32 +702,56 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_funct3_nid);
+uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct7_nid, char* funct7_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct7_nid);
 
+uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* addi_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* add_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* beq_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* jalr_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 
 uint64_t* decode_instruction(uint64_t* ir_nid);
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid);
+uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
+
+uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
 uint64_t* load_seg_faults(uint64_t* ir_nid);
 
 uint64_t* get_incremented_pc(uint64_t* pc_nid);
+uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
 
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid);
-
 uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
 uint64_t* store_seg_faults(uint64_t* ir_nid);
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid);
+
+uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
+
+uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
@@ -1950,6 +1974,49 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
     execute_comment);
 }
 
+uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct7_nid, char* funct7_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct7_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_instruction_funct7(ir_nid),
+      funct7_nid,
+      format_comment("funct7 == %s", (uint64_t) funct7_comment)),
+    execute_nid,
+    other_funct7_nid,
+    execute_comment);
+}
+
+uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* addi_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_IMM, "IMM",
+    decode_funct3(sid, ir_nid,
+      NID_F3_ADDI, "ADDI",
+      addi_nid, format_comment("addi %s", (uint64_t) comment),
+      no_funct3_nid),
+    format_comment("imm %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
+uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* add_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_OP, "OP",
+    decode_funct3(sid, ir_nid,
+      NID_F3_ADD_SUB_MUL, "ADD or SUB or MUL",
+      decode_funct7(sid, ir_nid,
+        NID_F7_ADD, "ADD",
+        add_nid, format_comment("add %s", (uint64_t) comment),
+        no_funct7_nid), format_comment("add ... %s", (uint64_t) comment),
+      no_funct3_nid),
+    format_comment("op %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
@@ -1982,46 +2049,46 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
     other_opcode_nid);
 }
 
+uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* beq_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_BRANCH, "BRANCH",
+    decode_funct3(sid, ir_nid,
+      NID_F3_BEQ, "BEQ",
+      beq_nid, format_comment("beq %s", (uint64_t) comment),
+      no_funct3_nid),
+    format_comment("branch %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
+uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* jalr_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_JALR, "JALR",
+    decode_funct3(sid, ir_nid,
+      NID_F3_JALR, "JALR",
+      jalr_nid, format_comment("jalr %s", (uint64_t) comment),
+      no_funct3_nid),
+    format_comment("jalr %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
 uint64_t* decode_instruction(uint64_t* ir_nid) {
-  uint64_t* opcode_nid;
-  uint64_t* funct3_nid;
-  uint64_t* funct7_nid;
-
-  opcode_nid = get_instruction_opcode(ir_nid);
-  funct3_nid = get_instruction_funct3(ir_nid);
-  funct7_nid = get_instruction_funct7(ir_nid);
-
-  return new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
-      new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
-      "addi"),
-    new_binary_boolean(OP_OR,
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_EQ, opcode_nid, NID_OP_OP, "opcode == OP"),
-        new_binary_boolean(OP_AND,
-          new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL"),
-          new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD"),
-          "add funct3 and funct7"),
-        "add"),
-      new_binary_boolean(OP_OR,
-        decode_load(SID_BOOLEAN, ir_nid, NID_TRUE, NID_TRUE, "is known", NID_FALSE, NID_FALSE),
-        new_binary_boolean(OP_OR,
-          decode_store(SID_BOOLEAN, ir_nid, NID_TRUE, NID_TRUE, "is known", NID_FALSE, NID_FALSE),
-          new_binary_boolean(OP_OR,
-            new_binary_boolean(OP_AND,
-              new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
-              new_binary_boolean(OP_EQ, funct3_nid, NID_F3_BEQ, "funct3 == BEQ"),
-              "beq"),
-            new_binary_boolean(OP_AND,
-              new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
-              new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR"),
-              "jalr"),
-            "beq, jalr"),
-          "sh, sb, beq, jalr"),
-        "lh, lb, sh, sb, beq, jalr"),
-      "add, lh, lb, sh, sb, beq, jalr"),
-    "known instructions");
+  return decode_imm(SID_BOOLEAN, ir_nid,
+    NID_TRUE, "is known", NID_FALSE,
+    decode_op(SID_BOOLEAN, ir_nid,
+      NID_TRUE, "is known", NID_FALSE, NID_FALSE,
+      decode_load(SID_BOOLEAN, ir_nid,
+        NID_TRUE, NID_TRUE, "is known", NID_FALSE,
+        decode_store(SID_BOOLEAN, ir_nid,
+          NID_TRUE, NID_TRUE, "is known", NID_FALSE,
+          decode_branch(SID_BOOLEAN, ir_nid,
+            NID_TRUE, "is known", NID_FALSE,
+            decode_jalr(SID_BOOLEAN, ir_nid,
+              NID_TRUE, "is known", NID_FALSE,
+              NID_FALSE))))));
 }
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
@@ -2029,6 +2096,26 @@ uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
     get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
     get_machine_word_I_immediate(ir_nid),
     "rs1 value + I-immediate");
+}
+
+uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_imm(SID_MACHINE_WORD, ir_nid,
+    get_rs1_value_plus_I_immediate(ir_nid),
+    "register data flow",
+    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    other_data_flow_nid);
+}
+
+uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_op(SID_MACHINE_WORD, ir_nid,
+    new_binary(OP_ADD, SID_MACHINE_WORD,
+      get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+      get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
+      "rs1 value + rs2 value"),
+    "register data flow",
+    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    other_data_flow_nid);
 }
 
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
@@ -2058,11 +2145,17 @@ uint64_t* get_incremented_pc(uint64_t* pc_nid) {
     "pc value + 4");
 }
 
+uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_jalr(SID_MACHINE_WORD, ir_nid,
+    get_incremented_pc(pc_nid),
+    "register data flow",
+    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    other_data_flow_nid);
+}
+
 uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* opcode_nid;
-  uint64_t* funct3_nid;
-  uint64_t* funct7_nid;
 
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
@@ -2070,56 +2163,23 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* no_register_data_flow_nid;
 
   opcode_nid = get_instruction_opcode(ir_nid);
-  funct3_nid = get_instruction_funct3(ir_nid);
-  funct7_nid = get_instruction_funct7(ir_nid);
 
   rd_nid       = get_instruction_rd(ir_nid);
   rd_value_nid = get_register_value(rd_nid, "current rd value");
 
-  rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
-    new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
-    new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADDI, "funct3 == ADDI"),
-      get_rs1_value_plus_I_immediate(ir_nid),
-      rd_value_nid,
-      "addi data flow"),
-    new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_OP, "opcode == OP"),
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        new_binary_boolean(OP_EQ, funct3_nid, NID_F3_ADD_SUB_MUL, "funct3 == ADD or SUB or MUL"),
-        new_ternary(OP_ITE, SID_MACHINE_WORD,
-          new_binary_boolean(OP_EQ, funct7_nid, NID_F7_ADD, "funct7 == ADD"),
-          new_binary(OP_ADD, SID_MACHINE_WORD,
-            get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-            get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
-            "rs1 value + rs2 value"),
-          rd_value_nid,
-          "add data flow"),
-        rd_value_nid,
-        "op data flow"),
-      load_data_flow(ir_nid, memory_nid,
-        new_ternary(OP_ITE, SID_MACHINE_WORD,
-          new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
-          new_ternary(OP_ITE, SID_MACHINE_WORD,
-            new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR"),
-            get_incremented_pc(pc_nid),
-            rd_value_nid,
-            "jalr data flow"),
-          rd_value_nid,
-          "jalr data flow")),
-      "add, lb, jalr data flow"),
-    "addi, add, lb, jalr data flow");
-
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_EQ,
-      rd_nid,
-      NID_ZR,
-      "rd == register zero"),
+    new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero"),
     new_binary_boolean(OP_OR,
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
-      "STORE or BRANCH"),
+      "STORE or BRANCH"), // redundant
     "rd == zero register or STORE or BRANCH");
+
+  rd_value_nid =
+    imm_data_flow(ir_nid,
+      op_data_flow(ir_nid,
+        load_data_flow(ir_nid, memory_nid,
+          jalr_data_flow(pc_nid, ir_nid, rd_value_nid))));
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
@@ -2165,43 +2225,44 @@ uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
   return store_data_flow(ir_nid, memory_nid, memory_nid);
 }
 
-uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
-  uint64_t* opcode_nid;
-  uint64_t* funct3_nid;
+uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    get_machine_word_SB_immediate(ir_nid),
+    "pc value + SB-immediate");
+}
 
-  opcode_nid = get_instruction_opcode(ir_nid);
-  funct3_nid = get_instruction_funct3(ir_nid);
-
-  return new_ternary(OP_ITE, SID_MACHINE_WORD,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_EQ, funct3_nid, NID_F3_BEQ, "funct3 == BEQ"),
-        new_binary_boolean(OP_EQ,
-          get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-          get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
-          "rs1 value == rs2 value"),
-        "branch on equal"),
-      "branch"),
-    new_binary(OP_ADD, SID_MACHINE_WORD,
-      pc_nid,
-      get_machine_word_SB_immediate(ir_nid),
-      "pc + SB-immediate"),
+uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
+  return decode_branch(SID_MACHINE_WORD, ir_nid,
     new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
-        new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR"),
-        "jalr"),
-      new_binary(OP_AND, SID_MACHINE_WORD,
-        new_binary(OP_ADD, SID_MACHINE_WORD,
-          get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-          get_machine_word_I_immediate(ir_nid),
-          "rs1 value + I-immediate"),
-        NID_LSB_MASK,
-        "reset LSB"),
+      new_binary_boolean(OP_EQ,
+        get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+        get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
+        "rs1 value == rs2 value"),
+      get_pc_value_plus_SB_immediate(pc_nid, ir_nid),
       get_incremented_pc(pc_nid),
-      "jalr and all other control flow"),
-    "beq, jalr, all other control flow");
+      "branch on equal"),
+    "branch control flow",
+    get_incremented_pc(pc_nid),
+    other_control_flow_nid);
+}
+
+uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
+  return decode_jalr(SID_MACHINE_WORD, ir_nid,
+    new_binary(OP_AND, SID_MACHINE_WORD,
+      get_rs1_value_plus_I_immediate(ir_nid),
+      NID_LSB_MASK,
+      "reset LSB"),
+    "jalr control flow",
+    get_incremented_pc(pc_nid),
+    other_control_flow_nid);
+}
+
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return
+    branch_control_flow(pc_nid, ir_nid,
+      jalr_control_flow(pc_nid, ir_nid,
+        get_incremented_pc(pc_nid)));
 }
 
 // -----------------------------------------------------------------
