@@ -705,7 +705,10 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
 
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
-  uint64_t* no_load_funct3_nid, uint64_t* other_opcode_nid);
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 
 uint64_t* decode_instruction(uint64_t* ir_nid);
 
@@ -720,6 +723,9 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
 
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid);
+
+uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
+uint64_t* store_seg_faults(uint64_t* ir_nid);
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid);
 
@@ -940,7 +946,6 @@ uint64_t* possible_read_seg_fault_nid = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid     = (uint64_t*) 0;
 uint64_t* bad_exit_code_nid           = (uint64_t*) 0;
 
-uint64_t* bad_a0_nid     = (uint64_t*) 0;
 uint64_t* bad_memory_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1947,7 +1952,7 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
 
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
-  uint64_t* no_load_funct3_nid, uint64_t* other_opcode_nid) {
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_LOAD, "LOAD",
     decode_funct3(sid, ir_nid,
@@ -1956,8 +1961,24 @@ uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3(sid, ir_nid,
         NID_F3_LB, "LB",
         lb_nid, format_comment("lb %s", (uint64_t) comment),
-        no_load_funct3_nid)),
+        no_funct3_nid)),
     format_comment("load %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
+uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_STORE, "STORE",
+    decode_funct3(sid, ir_nid,
+      NID_F3_SH, "SH",
+      sh_nid, format_comment("sh %s", (uint64_t) comment),
+      decode_funct3(sid, ir_nid,
+        NID_F3_SB, "SB",
+        sb_nid, format_comment("sb %s", (uint64_t) comment),
+        no_funct3_nid)),
+    format_comment("store %s", (uint64_t) comment),
     other_opcode_nid);
 }
 
@@ -1986,10 +2007,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
       new_binary_boolean(OP_OR,
         decode_load(SID_BOOLEAN, ir_nid, NID_TRUE, NID_TRUE, "is known", NID_FALSE, NID_FALSE),
         new_binary_boolean(OP_OR,
-          new_binary_boolean(OP_AND,
-            new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
-            new_binary_boolean(OP_EQ, funct3_nid, NID_F3_SB, "funct3 == SB"),
-            "sb"),
+          decode_store(SID_BOOLEAN, ir_nid, NID_TRUE, NID_TRUE, "is known", NID_FALSE, NID_FALSE),
           new_binary_boolean(OP_OR,
             new_binary_boolean(OP_AND,
               new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH"),
@@ -2000,9 +2018,9 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
               new_binary_boolean(OP_EQ, funct3_nid, NID_F3_JALR, "funct3 == JALR"),
               "jalr"),
             "beq, jalr"),
-          "sb, beq, jalr"),
-        "lh, lb, sb, beq, jalr"),
-      "add, lh, lb, sb, beq, jalr"),
+          "sh, sb, beq, jalr"),
+        "lh, lb, sh, sb, beq, jalr"),
+      "add, lh, lb, sh, sb, beq, jalr"),
     "known instructions");
 }
 
@@ -2019,7 +2037,7 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
       load_half_word(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
     extend_byte_to_machine_word(OP_SEXT,
       load_byte(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
-    "data flow",
+    "register data flow",
     get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
 }
@@ -2121,18 +2139,30 @@ uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
     "rs1 value + S-immediate");
 }
 
-uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
-  uint64_t* opcode_nid;
-
-  opcode_nid = get_instruction_opcode(ir_nid);
-
-  return new_ternary(OP_ITE, SID_MEMORY_STATE,
-    new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
+uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
+  return decode_store(SID_MEMORY_STATE, ir_nid,
+    store_half_word(get_rs1_value_plus_S_immediate(ir_nid),
+      slice_half_word_from_machine_word(get_register_value(get_instruction_rs2(ir_nid), "rs2 value")),
+      memory_nid),
     store_byte(get_rs1_value_plus_S_immediate(ir_nid),
       slice_byte_from_machine_word(get_register_value(get_instruction_rs2(ir_nid), "rs2 value")),
       memory_nid),
+    "memory data flow",
     memory_nid,
-    "update main memory");
+    other_data_flow_nid);
+}
+
+uint64_t* store_seg_faults(uint64_t* ir_nid) {
+  return decode_store(SID_BOOLEAN, ir_nid,
+    is_range_accessing_code_segment(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_access_in_code_segment(get_rs1_value_plus_S_immediate(ir_nid)),
+    "seg-faults",
+    NID_FALSE,
+    NID_FALSE);
+}
+
+uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
+  return store_data_flow(ir_nid, memory_nid, memory_nid);
 }
 
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
@@ -2540,10 +2570,7 @@ void rotor() {
 
   store_seg_faulting_nid = state_property(
     UNUSED,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), NID_OP_STORE, "opcode == STORE"),
-      is_access_in_code_segment(get_rs1_value_plus_S_immediate(ir_nid)),
-      "store causes segmentation fault"),
+    store_seg_faults(ir_nid),
     "store-seg-fault",
     "store segmentation fault");
 }
