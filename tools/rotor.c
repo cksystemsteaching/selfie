@@ -227,8 +227,10 @@ uint64_t* NID_SINGLE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_4 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_5 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_6 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_7 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_SINGLE_WORD_MINUS_1 = (uint64_t*) 0;
 
@@ -239,8 +241,10 @@ uint64_t* NID_DOUBLE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_4 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_5 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_6 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_7 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_DOUBLE_WORD_MINUS_1 = (uint64_t*) 0;
 
@@ -251,23 +255,28 @@ uint64_t* NID_MACHINE_WORD_1 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_3 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_4 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_5 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_6 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_7 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
 
+uint64_t* NID_MACHINE_WORD_SIZE      = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_SIZE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
+
+uint64_t* NID_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_SIZE = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_MASK        = (uint64_t*) 0;
 uint64_t* NID_HALF_WORD_MASK   = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_MASK = (uint64_t*) 0;
 
 uint64_t* NID_LSB_MASK = (uint64_t*) 0;
-
-uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
@@ -295,8 +304,10 @@ void init_interface_sorts() {
   NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "2", "single-word 2");
   NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "3", "single-word 3");
   NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "4", "single-word 4");
+  NID_SINGLE_WORD_5 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "5", "single-word 5");
   NID_SINGLE_WORD_6 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "6", "single-word 6");
   NID_SINGLE_WORD_7 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "7", "single-word 7");
+  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "8", "single-word 8");
 
   NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, "-1", "single-word -1");
 
@@ -308,8 +319,10 @@ void init_interface_sorts() {
     NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "2", "double-word 2");
     NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "3", "double-word 3");
     NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "4", "double-word 4");
+    NID_DOUBLE_WORD_5 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "5", "double-word 5");
     NID_DOUBLE_WORD_6 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "6", "double-word 6");
     NID_DOUBLE_WORD_7 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "7", "double-word 7");
+    NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "8", "double-word 8");
 
     NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, "-1", "double-word -1");
 
@@ -320,12 +333,16 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_2 = NID_DOUBLE_WORD_2;
     NID_MACHINE_WORD_3 = NID_DOUBLE_WORD_3;
     NID_MACHINE_WORD_4 = NID_DOUBLE_WORD_4;
+    NID_MACHINE_WORD_5 = NID_DOUBLE_WORD_5;
     NID_MACHINE_WORD_6 = NID_DOUBLE_WORD_6;
     NID_MACHINE_WORD_7 = NID_DOUBLE_WORD_7;
+    NID_MACHINE_WORD_8 = NID_DOUBLE_WORD_8;
 
     NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK                   = NID_MACHINE_WORD_7;
+    NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_8;
+    NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
+
     NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
     NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
   } else {
@@ -337,15 +354,23 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_2 = NID_SINGLE_WORD_2;
     NID_MACHINE_WORD_3 = NID_SINGLE_WORD_3;
     NID_MACHINE_WORD_4 = NID_SINGLE_WORD_4;
+    NID_MACHINE_WORD_5 = NID_SINGLE_WORD_5;
     NID_MACHINE_WORD_6 = NID_SINGLE_WORD_6;
     NID_MACHINE_WORD_7 = NID_SINGLE_WORD_7;
+    NID_MACHINE_WORD_8 = NID_SINGLE_WORD_8;
 
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
 
-    NID_MACHINE_WORD_SIZE_MASK                   = NID_MACHINE_WORD_3;
+    NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_4;
+    NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
+
     NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
     NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_0;
   }
+
+  NID_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
+  NID_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
+  NID_DOUBLE_WORD_SIZE = NID_MACHINE_WORD_8;
 
   NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_MACHINE_WORD, "FF", "maximum least-significant byte value");
   NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MACHINE_WORD, "FFFF", "maximum least-significant half-word value");
@@ -650,32 +675,52 @@ void init_memory_sorts() {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-uint64_t* get_instruction_opcode(uint64_t* instruction);
-uint64_t* get_instruction_funct3(uint64_t* instruction);
-uint64_t* get_instruction_funct7(uint64_t* instruction);
-uint64_t* get_instruction_rd(uint64_t* instruction);
-uint64_t* get_instruction_rs1(uint64_t* instruction);
-uint64_t* get_instruction_rs2(uint64_t* instruction);
+uint64_t* get_instruction_opcode(uint64_t* ir_nid);
+uint64_t* get_instruction_funct3(uint64_t* ir_nid);
+uint64_t* get_instruction_funct7(uint64_t* ir_nid);
+uint64_t* get_instruction_rd(uint64_t* ir_nid);
+uint64_t* get_instruction_rs1(uint64_t* ir_nid);
+uint64_t* get_instruction_rs2(uint64_t* ir_nid);
 
-uint64_t* get_instruction_I_imm(uint64_t* instruction);
-uint64_t* get_instruction_S_imm(uint64_t* instruction);
-uint64_t* get_instruction_SB_imm(uint64_t* instruction);
-uint64_t* get_instruction_U_imm(uint64_t* instruction);
+uint64_t* get_instruction_I_imm(uint64_t* ir_nid);
+uint64_t* get_instruction_S_imm(uint64_t* ir_nid);
+uint64_t* get_instruction_SB_imm(uint64_t* ir_nid);
+uint64_t* get_instruction_U_imm(uint64_t* ir_nid);
 
-uint64_t* sign_extend_ISB_imm(uint64_t* imm);
+uint64_t* sign_extend_ISB_imm(uint64_t* imm_nid);
 
-uint64_t* get_machine_word_I_immediate(uint64_t* instruction);
-uint64_t* get_machine_word_S_immediate(uint64_t* instruction);
-uint64_t* get_machine_word_SB_immediate(uint64_t* instruction);
-uint64_t* get_machine_word_U_immediate(uint64_t* instruction);
+uint64_t* get_machine_word_I_immediate(uint64_t* ir_nid);
+uint64_t* get_machine_word_S_immediate(uint64_t* ir_nid);
+uint64_t* get_machine_word_SB_immediate(uint64_t* ir_nid);
+uint64_t* get_machine_word_U_immediate(uint64_t* ir_nid);
+
+uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* opcode_nid, char* opcode_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_opcode_nid);
+uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct3_nid, char* funct3_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct3_nid);
+
+uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
+  uint64_t* no_load_funct3_nid, uint64_t* other_opcode_nid);
 
 uint64_t* decode_instruction(uint64_t* ir_nid);
 
-uint64_t* get_incremented_pc(uint64_t* pc_nid);
-uint64_t* get_rs1_value_plus_I_immediate(uint64_t* instruction);
-uint64_t* get_rs1_value_plus_S_immediate(uint64_t* instruction);
+uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid);
 
-uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
+uint64_t* load_seg_faults(uint64_t* ir_nid);
+
+uint64_t* get_incremented_pc(uint64_t* pc_nid);
+
+uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
+  uint64_t* register_file_nid, uint64_t* memory_nid);
+
+uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid);
+
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid);
 
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
@@ -684,10 +729,7 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
 uint64_t SYNTHESIZE = 1;
 
-// RISC-V codes missing in RISC-U
-
-uint64_t F3_LB = 0;
-uint64_t F3_SB = 0;
+// RISC-U codes
 
 uint64_t* SID_OPCODE = (uint64_t*) 0;
 
@@ -713,8 +755,6 @@ uint64_t* NID_F3_LD          = (uint64_t*) 0;
 uint64_t* NID_F3_SD          = (uint64_t*) 0;
 uint64_t* NID_F3_LW          = (uint64_t*) 0;
 uint64_t* NID_F3_SW          = (uint64_t*) 0;
-uint64_t* NID_F3_LB          = (uint64_t*) 0;
-uint64_t* NID_F3_SB          = (uint64_t*) 0;
 uint64_t* NID_F3_BEQ         = (uint64_t*) 0;
 uint64_t* NID_F3_JALR        = (uint64_t*) 0;
 uint64_t* NID_F3_ECALL       = (uint64_t*) 0;
@@ -733,6 +773,30 @@ uint64_t* SID_FUNCT12 = (uint64_t*) 0;
 uint64_t* NID_F12_ECALL = (uint64_t*) 0;
 
 uint64_t* NID_ECALL = (uint64_t*) 0;
+
+// RISC-V codes missing in RISC-U
+
+uint64_t* NID_F3_LWU = (uint64_t*) 0;
+
+uint64_t* NID_F3_LH  = (uint64_t*) 0;
+uint64_t* NID_F3_LHU = (uint64_t*) 0;
+uint64_t* NID_F3_SH  = (uint64_t*) 0;
+
+uint64_t* NID_F3_LB  = (uint64_t*) 0;
+uint64_t* NID_F3_LBU = (uint64_t*) 0;
+uint64_t* NID_F3_SB  = (uint64_t*) 0;
+
+uint64_t F3_LWU = 6; // 110
+
+uint64_t F3_LH  = 1; // 001
+uint64_t F3_LHU = 5; // 101
+uint64_t F3_SH  = 1; // 001
+
+uint64_t F3_LB  = 0; // 000
+uint64_t F3_LBU = 4; // 100
+uint64_t F3_SB  = 0; // 000
+
+// immediate sorts
 
 uint64_t* SID_4_BIT_IMM  = (uint64_t*) 0;
 uint64_t* SID_6_BIT_IMM  = (uint64_t*) 0;
@@ -776,8 +840,6 @@ void init_instruction_sorts() {
   NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SD, 3), "F3_SD");
   NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LW, 3), "F3_LW");
   NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SW, 3), "F3_SW");
-  NID_F3_LB          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LB, 3), "F3_LB");
-  NID_F3_SB          = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SB, 3), "F3_SB");
   NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BEQ, 3), "F3_BEQ");
   NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_JALR, 3), "F3_JALR");
   NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_ECALL, 3), "F3_ECALL");
@@ -800,6 +862,20 @@ void init_instruction_sorts() {
       + F3_ECALL, 5) + REG_ZR, 7) + OP_SYSTEM,
     32),
     "ECALL instruction");
+
+  // RISC-V codes missing in RISC-U
+
+  NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LWU, 3), "F3_LWU");
+
+  NID_F3_LH  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LH, 3), "F3_LH");
+  NID_F3_LHU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LHU, 3), "F3_LHU");
+  NID_F3_SH  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SH, 3), "F3_SH");
+
+  NID_F3_LB  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LB, 3), "F3_LB");
+  NID_F3_LBU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LBU, 3), "F3_LBU");
+  NID_F3_SB  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SB, 3), "F3_SB");
+
+  // immediate sorts
 
   SID_4_BIT_IMM  = new_bitvec(4, "4-bit immediate sort");
   SID_6_BIT_IMM  = new_bitvec(6, "6-bit immediate sort");
@@ -1200,8 +1276,10 @@ void print_interface_sorts() {
   print_line(32, NID_SINGLE_WORD_2);
   print_line(33, NID_SINGLE_WORD_3);
   print_line(34, NID_SINGLE_WORD_4);
+  print_line(35, NID_SINGLE_WORD_5);
   print_line(36, NID_SINGLE_WORD_6);
   print_line(37, NID_SINGLE_WORD_7);
+  print_line(38, NID_SINGLE_WORD_8);
 
   print_line(39, NID_SINGLE_WORD_MINUS_1);
 
@@ -1213,8 +1291,10 @@ void print_interface_sorts() {
     print_line(42, NID_DOUBLE_WORD_2);
     print_line(43, NID_DOUBLE_WORD_3);
     print_line(44, NID_DOUBLE_WORD_4);
+    print_line(45, NID_DOUBLE_WORD_5);
     print_line(46, NID_DOUBLE_WORD_6);
     print_line(47, NID_DOUBLE_WORD_7);
+    print_line(48, NID_DOUBLE_WORD_8);
 
     print_line(49, NID_DOUBLE_WORD_MINUS_1);
   }
@@ -1756,85 +1836,129 @@ uint64_t* fetch_instruction(uint64_t* pc_nid) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-uint64_t* get_instruction_opcode(uint64_t* instruction) {
-  return new_slice(SID_OPCODE, instruction, 6, 0, "get opcode");
+uint64_t* get_instruction_opcode(uint64_t* ir_nid) {
+  return new_slice(SID_OPCODE, ir_nid, 6, 0, "get opcode");
 }
 
-uint64_t* get_instruction_funct3(uint64_t* instruction) {
-  return new_slice(SID_FUNCT3, instruction, 14, 12, "get funct3");
+uint64_t* get_instruction_funct3(uint64_t* ir_nid) {
+  return new_slice(SID_FUNCT3, ir_nid, 14, 12, "get funct3");
 }
 
-uint64_t* get_instruction_funct7(uint64_t* instruction) {
-  return new_slice(SID_FUNCT7, instruction, 31, 25, "get funct7");
+uint64_t* get_instruction_funct7(uint64_t* ir_nid) {
+  return new_slice(SID_FUNCT7, ir_nid, 31, 25, "get funct7");
 }
 
-uint64_t* get_instruction_rd(uint64_t* instruction) {
-  return new_slice(SID_REGISTER_ADDRESS, instruction, 11, 7, "get rd");
+uint64_t* get_instruction_rd(uint64_t* ir_nid) {
+  return new_slice(SID_REGISTER_ADDRESS, ir_nid, 11, 7, "get rd");
 }
 
-uint64_t* get_instruction_rs1(uint64_t* instruction) {
-  return new_slice(SID_REGISTER_ADDRESS, instruction, 19, 15, "get rs1");
+uint64_t* get_instruction_rs1(uint64_t* ir_nid) {
+  return new_slice(SID_REGISTER_ADDRESS, ir_nid, 19, 15, "get rs1");
 }
 
-uint64_t* get_instruction_rs2(uint64_t* instruction) {
-  return new_slice(SID_REGISTER_ADDRESS, instruction, 24, 20, "get rs2");
+uint64_t* get_instruction_rs2(uint64_t* ir_nid) {
+  return new_slice(SID_REGISTER_ADDRESS, ir_nid, 24, 20, "get rs2");
 }
 
-uint64_t* get_instruction_I_imm(uint64_t* instruction) {
-  return new_slice(SID_12_BIT_IMM, instruction, 31, 20, "get I-immediate");
+uint64_t* get_instruction_I_imm(uint64_t* ir_nid) {
+  return new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate");
 }
 
-uint64_t* get_instruction_S_imm(uint64_t* instruction) {
+uint64_t* get_instruction_S_imm(uint64_t* ir_nid) {
   return new_binary(OP_CONCAT, SID_12_BIT_IMM,
-    get_instruction_funct7(instruction),
-    get_instruction_rd(instruction),
+    get_instruction_funct7(ir_nid),
+    get_instruction_rd(ir_nid),
     "get S-immediate");
 }
 
-uint64_t* get_instruction_SB_imm(uint64_t* instruction) {
+uint64_t* get_instruction_SB_imm(uint64_t* ir_nid) {
   return new_binary(OP_CONCAT, SID_12_BIT_IMM,
-    new_slice(SID_BOOLEAN, instruction, 31, 31, "get SB-immediate[12]"),
+    new_slice(SID_BOOLEAN, ir_nid, 31, 31, "get SB-immediate[12]"),
     new_binary(OP_CONCAT, SID_11_BIT_IMM,
-      new_slice(SID_BOOLEAN, instruction, 7, 7, "get SB-immediate[11]"),
+      new_slice(SID_BOOLEAN, ir_nid, 7, 7, "get SB-immediate[11]"),
       new_binary(OP_CONCAT, SID_10_BIT_IMM,
-        new_slice(SID_6_BIT_IMM, instruction, 30, 25, "get SB-immediate[10:5]"),
-        new_slice(SID_4_BIT_IMM, instruction, 11, 8, "get SB-immediate[4:1]"),
+        new_slice(SID_6_BIT_IMM, ir_nid, 30, 25, "get SB-immediate[10:5]"),
+        new_slice(SID_4_BIT_IMM, ir_nid, 11, 8, "get SB-immediate[4:1]"),
         "get SB-immediate[10:1]"),
       "get SB-immediate[11:1]"),
     "get SB-immediate[12:1]");
 }
 
-uint64_t* get_instruction_U_imm(uint64_t* instruction) {
-  return new_slice(SID_20_BIT_IMM, instruction, 31, 12, "get U-immediate");
+uint64_t* get_instruction_U_imm(uint64_t* ir_nid) {
+  return new_slice(SID_20_BIT_IMM, ir_nid, 31, 12, "get U-immediate");
 }
 
-uint64_t* sign_extend_ISB_imm(uint64_t* imm) {
+uint64_t* sign_extend_ISB_imm(uint64_t* imm_nid) {
   if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm, 52, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 52, "sign-extend");
   else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm, 20, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 20, "sign-extend");
 }
 
-uint64_t* get_machine_word_I_immediate(uint64_t* instruction) {
-  return sign_extend_ISB_imm(get_instruction_I_imm(instruction));
+uint64_t* get_machine_word_I_immediate(uint64_t* ir_nid) {
+  return sign_extend_ISB_imm(get_instruction_I_imm(ir_nid));
 }
 
-uint64_t* get_machine_word_S_immediate(uint64_t* instruction) {
-  return sign_extend_ISB_imm(get_instruction_S_imm(instruction));
+uint64_t* get_machine_word_S_immediate(uint64_t* ir_nid) {
+  return sign_extend_ISB_imm(get_instruction_S_imm(ir_nid));
 }
 
-uint64_t* get_machine_word_SB_immediate(uint64_t* instruction) {
+uint64_t* get_machine_word_SB_immediate(uint64_t* ir_nid) {
   return new_binary(OP_SLL, SID_MACHINE_WORD,
-    sign_extend_ISB_imm(get_instruction_SB_imm(instruction)),
+    sign_extend_ISB_imm(get_instruction_SB_imm(ir_nid)),
     NID_MACHINE_WORD_1,
     "multiply SB-immediate[12:1] by 2");
 }
 
-uint64_t* get_machine_word_U_immediate(uint64_t* instruction) {
+uint64_t* get_machine_word_U_immediate(uint64_t* ir_nid) {
   if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 44, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(ir_nid), 44, "sign-extend");
   else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(instruction), 12, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(ir_nid), 12, "sign-extend");
+}
+
+uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* opcode_nid, char* opcode_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_opcode_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_instruction_opcode(ir_nid),
+      opcode_nid,
+      format_comment("opcode == %s", (uint64_t) opcode_comment)),
+    execute_nid,
+    other_opcode_nid,
+    execute_comment);
+}
+
+uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct3_nid, char* funct3_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct3_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_instruction_funct3(ir_nid),
+      funct3_nid,
+      format_comment("funct3 == %s", (uint64_t) funct3_comment)),
+    execute_nid,
+    other_funct3_nid,
+    execute_comment);
+}
+
+uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* lh_nid, uint64_t* lb_nid, char* comment,
+  uint64_t* no_load_funct3_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_LOAD, "LOAD",
+    decode_funct3(sid, ir_nid,
+      NID_F3_LH, "LH",
+      lh_nid, format_comment("lh %s", (uint64_t) comment),
+      decode_funct3(sid, ir_nid,
+        NID_F3_LB, "LB",
+        lb_nid, format_comment("lb %s", (uint64_t) comment),
+        no_load_funct3_nid)),
+    format_comment("load %s", (uint64_t) comment),
+    other_opcode_nid);
 }
 
 uint64_t* decode_instruction(uint64_t* ir_nid) {
@@ -1860,10 +1984,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
           "add funct3 and funct7"),
         "add"),
       new_binary_boolean(OP_OR,
-        new_binary_boolean(OP_AND,
-          new_binary_boolean(OP_EQ, opcode_nid, NID_OP_LOAD, "opcode == LOAD"),
-          new_binary_boolean(OP_EQ, funct3_nid, NID_F3_LB, "funct3 == LB"),
-          "lb"),
+        decode_load(SID_BOOLEAN, ir_nid, NID_TRUE, NID_TRUE, "is known", NID_FALSE, NID_FALSE),
         new_binary_boolean(OP_OR,
           new_binary_boolean(OP_AND,
             new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE"),
@@ -1880,9 +2001,36 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
               "jalr"),
             "beq, jalr"),
           "sb, beq, jalr"),
-        "lb, sb, beq, jalr"),
-      "add, lb, sb, beq, jalr"),
+        "lh, lb, sb, beq, jalr"),
+      "add, lh, lb, sb, beq, jalr"),
     "known instructions");
+}
+
+uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+    get_machine_word_I_immediate(ir_nid),
+    "rs1 value + I-immediate");
+}
+
+uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
+  return decode_load(SID_MACHINE_WORD, ir_nid,
+    extend_half_word_to_machine_word(OP_SEXT,
+      load_half_word(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
+    extend_byte_to_machine_word(OP_SEXT,
+      load_byte(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
+    "data flow",
+    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    other_data_flow_nid);
+}
+
+uint64_t* load_seg_faults(uint64_t* ir_nid) {
+  return decode_load(SID_BOOLEAN, ir_nid,
+    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_access_in_code_segment(get_rs1_value_plus_I_immediate(ir_nid)),
+    "seg-faults",
+    NID_FALSE,
+    NID_FALSE);
 }
 
 uint64_t* get_incremented_pc(uint64_t* pc_nid) {
@@ -1892,26 +2040,13 @@ uint64_t* get_incremented_pc(uint64_t* pc_nid) {
     "pc value + 4");
 }
 
-uint64_t* get_rs1_value_plus_I_immediate(uint64_t* instruction) {
-  return new_binary(OP_ADD, SID_MACHINE_WORD,
-    get_register_value(get_instruction_rs1(instruction), "rs1 value"),
-    get_machine_word_I_immediate(instruction),
-    "rs1 value + I-immediate");
-}
-
-uint64_t* get_rs1_value_plus_S_immediate(uint64_t* instruction) {
-  return new_binary(OP_ADD, SID_MACHINE_WORD,
-    get_register_value(get_instruction_rs1(instruction), "rs1 value"),
-    get_machine_word_S_immediate(instruction),
-    "rs1 value + S-immediate");
-}
-
 uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* opcode_nid;
   uint64_t* funct3_nid;
   uint64_t* funct7_nid;
 
+  uint64_t* rd_nid;
   uint64_t* rd_value_nid;
 
   uint64_t* no_register_data_flow_nid;
@@ -1920,7 +2055,8 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   funct3_nid = get_instruction_funct3(ir_nid);
   funct7_nid = get_instruction_funct7(ir_nid);
 
-  rd_value_nid = get_register_value(get_instruction_rd(ir_nid), "current rd value");
+  rd_nid       = get_instruction_rd(ir_nid);
+  rd_value_nid = get_register_value(rd_nid, "current rd value");
 
   rd_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_EQ, opcode_nid, NID_OP_IMM, "opcode == IMM"),
@@ -1943,14 +2079,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
           "add data flow"),
         rd_value_nid,
         "op data flow"),
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        new_binary_boolean(OP_EQ, opcode_nid, NID_OP_LOAD, "opcode == LOAD"),
-        new_ternary(OP_ITE, SID_MACHINE_WORD,
-          new_binary_boolean(OP_EQ, funct3_nid, NID_F3_LB, "funct3 == LB"),
-          extend_byte_to_machine_word(OP_SEXT,
-            load_byte(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
-          rd_value_nid,
-          "lb data flow"),
+      load_data_flow(ir_nid, memory_nid,
         new_ternary(OP_ITE, SID_MACHINE_WORD,
           new_binary_boolean(OP_EQ, opcode_nid, NID_OP_JALR, "opcode == JALR"),
           new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -1959,14 +2088,13 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
             rd_value_nid,
             "jalr data flow"),
           rd_value_nid,
-          "jalr data flow"),
-        "lb, jalr data flow"),
+          "jalr data flow")),
       "add, lb, jalr data flow"),
     "addi, add, lb, jalr data flow");
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
     new_binary_boolean(OP_EQ,
-      get_instruction_rd(ir_nid),
+      rd_nid,
       NID_ZR,
       "rd == register zero"),
     new_binary_boolean(OP_OR,
@@ -1980,10 +2108,17 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
     register_file_nid,
     new_ternary(OP_WRITE, SID_REGISTER_STATE,
       register_file_nid,
-      get_instruction_rd(ir_nid),
+      rd_nid,
       rd_value_nid,
       "write rd"),
     "update non-zero register");
+}
+
+uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+    get_machine_word_S_immediate(ir_nid),
+    "rs1 value + S-immediate");
 }
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
@@ -2399,10 +2534,7 @@ void rotor() {
 
   load_seg_faulting_nid = state_property(
     UNUSED,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ, get_instruction_opcode(ir_nid), NID_OP_LOAD, "opcode == LOAD"),
-      is_access_in_code_segment(get_rs1_value_plus_I_immediate(ir_nid)),
-      "load causes segmentation fault"),
+    load_seg_faults(ir_nid),
     "load-seg-fault",
     "load segmentation fault");
 
