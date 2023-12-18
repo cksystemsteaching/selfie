@@ -702,6 +702,10 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_funct3_nid);
+uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct3_nid, char* funct3_comment,
+  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct3_nid);
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_nid, char* funct7_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -720,7 +724,7 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* beq_nid, char* comment,
+  uint64_t* beq_nid, uint64_t* bne_nid, uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jalr_nid, char* comment,
@@ -806,6 +810,8 @@ uint64_t* NID_ECALL = (uint64_t*) 0;
 
 // RISC-V codes missing in RISC-U
 
+uint64_t* NID_F3_BNE = (uint64_t*) 0;
+
 uint64_t* NID_F3_LWU = (uint64_t*) 0;
 
 uint64_t* NID_F3_LH  = (uint64_t*) 0;
@@ -815,6 +821,8 @@ uint64_t* NID_F3_SH  = (uint64_t*) 0;
 uint64_t* NID_F3_LB  = (uint64_t*) 0;
 uint64_t* NID_F3_LBU = (uint64_t*) 0;
 uint64_t* NID_F3_SB  = (uint64_t*) 0;
+
+uint64_t F3_BNE = 1; // 001
 
 uint64_t F3_LWU = 6; // 110
 
@@ -894,6 +902,8 @@ void init_instruction_sorts() {
     "ECALL instruction");
 
   // RISC-V codes missing in RISC-U
+
+  NID_F3_BNE = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BNE, 3), "F3_BNE");
 
   NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LWU, 3), "F3_LWU");
 
@@ -1974,6 +1984,23 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
     execute_comment);
 }
 
+uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* funct3_nid, char* funct3_comment,
+  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_funct3_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ,
+        get_instruction_funct3(ir_nid),
+        funct3_nid,
+        format_comment("funct3 == %s", (uint64_t) funct3_comment)),
+      evaluate_nid,
+      "evaluate branch condition if funct3 matches"),
+    execute_nid,
+    other_funct3_nid,
+    execute_comment);
+}
+
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_nid, char* funct7_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -2050,14 +2077,17 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* beq_nid, char* comment,
+  uint64_t* beq_nid, uint64_t* bne_nid, uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_BRANCH, "BRANCH",
-    decode_funct3(sid, ir_nid,
+    decode_funct3_conditional(sid, ir_nid,
       NID_F3_BEQ, "BEQ",
-      beq_nid, format_comment("beq %s", (uint64_t) comment),
-      no_funct3_nid),
+      beq_nid, branch_nid, format_comment("beq %s", (uint64_t) comment),
+      decode_funct3_conditional(sid, ir_nid,
+        NID_F3_BNE, "BNE",
+        bne_nid, branch_nid, format_comment("bne %s", (uint64_t) comment),
+        no_funct3_nid)),
     format_comment("branch %s", (uint64_t) comment),
     other_opcode_nid);
 }
@@ -2069,9 +2099,9 @@ uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
     NID_OP_JALR, "JALR",
     decode_funct3(sid, ir_nid,
       NID_F3_JALR, "JALR",
-      jalr_nid, format_comment("jalr %s", (uint64_t) comment),
+      jalr_nid, format_comment("jalr funct3 %s", (uint64_t) comment),
       no_funct3_nid),
-    format_comment("jalr %s", (uint64_t) comment),
+    format_comment("jalr opcode %s", (uint64_t) comment),
     other_opcode_nid);
 }
 
@@ -2085,7 +2115,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
         decode_store(SID_BOOLEAN, ir_nid,
           NID_TRUE, NID_TRUE, "is known", NID_FALSE,
           decode_branch(SID_BOOLEAN, ir_nid,
-            NID_TRUE, "is known", NID_FALSE,
+            NID_TRUE, NID_TRUE, NID_TRUE, "is known", NID_FALSE,
             decode_jalr(SID_BOOLEAN, ir_nid,
               NID_TRUE, "is known", NID_FALSE,
               NID_FALSE))))));
@@ -2107,14 +2137,24 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
 }
 
 uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  uint64_t* rd_value_nid;
+
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+
+  rd_value_nid = get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value");
+
+  rs1_value_nid = get_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+
   return decode_op(SID_MACHINE_WORD, ir_nid,
     new_binary(OP_ADD, SID_MACHINE_WORD,
-      get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-      get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
+      rs1_value_nid,
+      rs2_value_nid,
       "rs1 value + rs2 value"),
     "register data flow",
-    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    rd_value_nid,
+    rd_value_nid,
     other_data_flow_nid);
 }
 
@@ -2200,12 +2240,16 @@ uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
+  uint64_t* rs2_value_nid;
+
+  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+
   return decode_store(SID_MEMORY_STATE, ir_nid,
     store_half_word(get_rs1_value_plus_S_immediate(ir_nid),
-      slice_half_word_from_machine_word(get_register_value(get_instruction_rs2(ir_nid), "rs2 value")),
+      slice_half_word_from_machine_word(rs2_value_nid),
       memory_nid),
     store_byte(get_rs1_value_plus_S_immediate(ir_nid),
-      slice_byte_from_machine_word(get_register_value(get_instruction_rs2(ir_nid), "rs2 value")),
+      slice_byte_from_machine_word(rs2_value_nid),
       memory_nid),
     "memory data flow",
     memory_nid,
@@ -2233,16 +2277,16 @@ uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
 }
 
 uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+
+  rs1_value_nid = get_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+
   return decode_branch(SID_MACHINE_WORD, ir_nid,
-    new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_EQ,
-        get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-        get_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
-        "rs1 value == rs2 value"),
-      get_pc_value_plus_SB_immediate(pc_nid, ir_nid),
-      get_incremented_pc(pc_nid),
-      "branch on equal"),
-    "branch control flow",
+    new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value"),
+    new_binary_boolean(OP_NEQ, rs1_value_nid, rs2_value_nid, "rs1 value != rs2 value"),
+    get_pc_value_plus_SB_immediate(pc_nid, ir_nid), "pc-relative control flow",
     get_incremented_pc(pc_nid),
     other_control_flow_nid);
 }
@@ -2253,7 +2297,7 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_
       get_rs1_value_plus_I_immediate(ir_nid),
       NID_LSB_MASK,
       "reset LSB"),
-    "jalr control flow",
+    "register-relative control flow",
     get_incremented_pc(pc_nid),
     other_control_flow_nid);
 }
