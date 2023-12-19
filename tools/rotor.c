@@ -120,9 +120,13 @@ char* OP_DEC = (char*) 0;
 
 char* OP_EQ   = (char*) 0;
 char* OP_NEQ  = (char*) 0;
+char* OP_SGT  = (char*) 0;
 char* OP_UGT  = (char*) 0;
+char* OP_SGTE = (char*) 0;
 char* OP_UGTE = (char*) 0;
+char* OP_SLT  = (char*) 0;
 char* OP_ULT  = (char*) 0;
+char* OP_SLTE = (char*) 0;
 char* OP_ULTE = (char*) 0;
 
 char* OP_AND = (char*) 0;
@@ -176,9 +180,13 @@ void init_model() {
 
   OP_EQ   = "eq";
   OP_NEQ  = "neq";
+  OP_SGT  = "sgt";
   OP_UGT  = "ugt";
+  OP_SGTE = "sgte";
   OP_UGTE = "ugte";
+  OP_SLT  = "slt";
   OP_ULT  = "ult";
+  OP_SLTE = "slte";
   OP_ULTE = "ulte";
 
   OP_AND = "and";
@@ -734,7 +742,10 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* beq_nid, uint64_t* bne_nid, uint64_t* branch_nid, char* comment,
+  uint64_t* beq_nid, uint64_t* bne_nid,
+  uint64_t* blt_nid, uint64_t* bge_nid,
+  uint64_t* bltu_nid, uint64_t* bgeu_nid,
+  uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jalr_nid, char* comment,
@@ -820,7 +831,11 @@ uint64_t* NID_ECALL = (uint64_t*) 0;
 
 // RISC-V codes missing in RISC-U
 
-uint64_t* NID_F3_BNE = (uint64_t*) 0;
+uint64_t* NID_F3_BNE  = (uint64_t*) 0;
+uint64_t* NID_F3_BLT  = (uint64_t*) 0;
+uint64_t* NID_F3_BGE  = (uint64_t*) 0;
+uint64_t* NID_F3_BLTU = (uint64_t*) 0;
+uint64_t* NID_F3_BGEU = (uint64_t*) 0;
 
 uint64_t* NID_F3_LWU = (uint64_t*) 0;
 
@@ -832,7 +847,11 @@ uint64_t* NID_F3_LB  = (uint64_t*) 0;
 uint64_t* NID_F3_LBU = (uint64_t*) 0;
 uint64_t* NID_F3_SB  = (uint64_t*) 0;
 
-uint64_t F3_BNE = 1; // 001
+uint64_t F3_BNE  = 1; // 001
+uint64_t F3_BLT  = 4; // 100
+uint64_t F3_BGE  = 5; // 101
+uint64_t F3_BLTU = 6; // 110
+uint64_t F3_BGEU = 7; // 111
 
 uint64_t F3_LWU = 6; // 110
 
@@ -913,7 +932,11 @@ void init_instruction_sorts() {
 
   // RISC-V codes missing in RISC-U
 
-  NID_F3_BNE = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BNE, 3), "F3_BNE");
+  NID_F3_BNE  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BNE, 3), "F3_BNE");
+  NID_F3_BLT  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BLT, 3), "F3_BLT");
+  NID_F3_BGE  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BGE, 3), "F3_BGE");
+  NID_F3_BLTU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BLTU, 3), "F3_BLTU");
+  NID_F3_BGEU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BGEU, 3), "F3_BGEU");
 
   NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_LWU, 3), "F3_LWU");
 
@@ -2116,7 +2139,10 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* beq_nid, uint64_t* bne_nid, uint64_t* branch_nid, char* comment,
+  uint64_t* beq_nid, uint64_t* bne_nid,
+  uint64_t* blt_nid, uint64_t* bge_nid,
+  uint64_t* bltu_nid, uint64_t* bgeu_nid,
+  uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_BRANCH, "BRANCH",
@@ -2126,7 +2152,19 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3_conditional(sid, ir_nid,
         NID_F3_BNE, "BNE",
         bne_nid, branch_nid, format_comment("bne %s", (uint64_t) comment),
-        no_funct3_nid)),
+        decode_funct3_conditional(sid, ir_nid,
+          NID_F3_BLT, "BLT",
+          blt_nid, branch_nid, format_comment("blt %s", (uint64_t) comment),
+          decode_funct3_conditional(sid, ir_nid,
+            NID_F3_BGE, "BGE",
+            bge_nid, branch_nid, format_comment("bge %s", (uint64_t) comment),
+            decode_funct3_conditional(sid, ir_nid,
+              NID_F3_BLTU, "BLTU",
+              bltu_nid, branch_nid, format_comment("bltu %s", (uint64_t) comment),
+              decode_funct3_conditional(sid, ir_nid,
+                NID_F3_BGEU, "BGEU",
+                bgeu_nid, branch_nid, format_comment("bgeu %s", (uint64_t) comment),
+                no_funct3_nid)))))),
     format_comment("branch %s", (uint64_t) comment),
     other_opcode_nid);
 }
@@ -2159,7 +2197,10 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
           NID_IS_64_BIT_TARGET, NID_TRUE,
           NID_TRUE, NID_TRUE, "is known", NID_FALSE,
           decode_branch(SID_BOOLEAN, ir_nid,
-            NID_TRUE, NID_TRUE, NID_TRUE, "is known", NID_FALSE,
+            NID_TRUE, NID_TRUE,
+            NID_TRUE, NID_TRUE,
+            NID_TRUE, NID_TRUE,
+            NID_TRUE, "is known", NID_FALSE,
             decode_jalr(SID_BOOLEAN, ir_nid,
               NID_TRUE, "is known", NID_FALSE,
               NID_FALSE))))));
@@ -2352,6 +2393,10 @@ uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* othe
   return decode_branch(SID_MACHINE_WORD, ir_nid,
     new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value"),
     new_binary_boolean(OP_NEQ, rs1_value_nid, rs2_value_nid, "rs1 value != rs2 value"),
+    new_binary_boolean(OP_SLT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value"),
+    new_binary_boolean(OP_SGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value"),
+    new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)"),
+    new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)"),
     get_pc_value_plus_SB_immediate(pc_nid, ir_nid), "pc-relative control flow",
     get_incremented_pc(pc_nid),
     other_control_flow_nid);
