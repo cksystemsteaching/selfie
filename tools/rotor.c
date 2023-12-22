@@ -690,17 +690,15 @@ uint64_t* get_instruction_rd(uint64_t* ir_nid);
 uint64_t* get_instruction_rs1(uint64_t* ir_nid);
 uint64_t* get_instruction_rs2(uint64_t* ir_nid);
 
-uint64_t* get_instruction_I_imm(uint64_t* ir_nid);
-uint64_t* get_instruction_S_imm(uint64_t* ir_nid);
-uint64_t* get_instruction_SB_imm(uint64_t* ir_nid);
-uint64_t* get_instruction_U_imm(uint64_t* ir_nid);
-
-uint64_t* sign_extend_ISB_imm(uint64_t* imm_nid);
-
-uint64_t* get_machine_word_I_immediate(uint64_t* ir_nid);
-uint64_t* get_machine_word_S_immediate(uint64_t* ir_nid);
-uint64_t* get_machine_word_SB_immediate(uint64_t* ir_nid);
-uint64_t* get_machine_word_U_immediate(uint64_t* ir_nid);
+uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid);
+uint64_t* get_instruction_I_immediate(uint64_t* ir_nid);
+uint64_t* get_instruction_S_immediate(uint64_t* ir_nid);
+uint64_t* sign_extend_SB_immediate(uint64_t* imm_nid);
+uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid);
+uint64_t* sign_extend_U_immediate(uint64_t* imm_nid);
+uint64_t* get_instruction_U_immediate(uint64_t* ir_nid);
+uint64_t* sign_extend_UJ_immediate(uint64_t* imm_nid);
+uint64_t* get_instruction_UJ_immediate(uint64_t* ir_nid);
 
 uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* opcode_nid, char* opcode_comment,
@@ -747,6 +745,9 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* bltu_nid, uint64_t* bgeu_nid,
   uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* jal_nid, char* comment,
+  uint64_t* other_opcode_nid);
 uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jalr_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
@@ -761,7 +762,8 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
 uint64_t* load_seg_faults(uint64_t* ir_nid);
 
-uint64_t* get_incremented_pc(uint64_t* pc_nid);
+uint64_t* get_pc_value_plus_4(uint64_t* pc_nid);
+uint64_t* jal_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* lui_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
@@ -779,6 +781,9 @@ uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid);
 
 uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
 uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
+
+uint64_t* get_pc_value_plus_UJ_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
 
@@ -835,13 +840,20 @@ uint64_t* NID_ECALL_I = (uint64_t*) 0;
 
 // immediate sorts
 
+uint64_t* SID_1_BIT_IMM  = (uint64_t*) 0;
 uint64_t* SID_4_BIT_IMM  = (uint64_t*) 0;
+uint64_t* SID_5_BIT_IMM  = (uint64_t*) 0;
 uint64_t* SID_6_BIT_IMM  = (uint64_t*) 0;
+uint64_t* SID_8_BIT_IMM  = (uint64_t*) 0;
 uint64_t* SID_10_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_11_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_12_BIT_IMM = (uint64_t*) 0;
+uint64_t* SID_13_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
+uint64_t* SID_21_BIT_IMM = (uint64_t*) 0;
+uint64_t* SID_32_BIT_IMM = (uint64_t*) 0;
 
+uint64_t* NID_1_BIT_IMM_0  = (uint64_t*) 0;
 uint64_t* NID_12_BIT_IMM_0 = (uint64_t*) 0;
 
 // RISC-U instruction switches
@@ -990,13 +1002,20 @@ void init_instruction_sorts() {
 
   // immediate sorts
 
+  SID_1_BIT_IMM  = new_bitvec(1, "1-bit immediate sort");
   SID_4_BIT_IMM  = new_bitvec(4, "4-bit immediate sort");
+  SID_5_BIT_IMM  = new_bitvec(5, "5-bit immediate sort");
   SID_6_BIT_IMM  = new_bitvec(6, "6-bit immediate sort");
+  SID_8_BIT_IMM  = new_bitvec(8, "8-bit immediate sort");
   SID_10_BIT_IMM = new_bitvec(10, "10-bit immediate sort");
   SID_11_BIT_IMM = new_bitvec(11, "11-bit immediate sort");
   SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort");
+  SID_13_BIT_IMM = new_bitvec(13, "13-bit immediate sort");
   SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort");
+  SID_21_BIT_IMM = new_bitvec(21, "21-bit immediate sort");
+  SID_32_BIT_IMM = new_bitvec(32, "32-bit immediate sort");
 
+  NID_1_BIT_IMM_0  = NID_FALSE;
   NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, "000000000000", "12 LSBs zeroed");
 
 // RISC-U instructions
@@ -2056,68 +2075,87 @@ uint64_t* get_instruction_rs2(uint64_t* ir_nid) {
   return new_slice(SID_REGISTER_ADDRESS, ir_nid, 24, 20, "get rs2");
 }
 
-uint64_t* get_instruction_I_imm(uint64_t* ir_nid) {
-  return new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate");
-}
-
-uint64_t* get_instruction_S_imm(uint64_t* ir_nid) {
-  return new_binary(OP_CONCAT, SID_12_BIT_IMM,
-    get_instruction_funct7(ir_nid),
-    get_instruction_rd(ir_nid),
-    "get S-immediate");
-}
-
-uint64_t* get_instruction_SB_imm(uint64_t* ir_nid) {
-  return new_binary(OP_CONCAT, SID_12_BIT_IMM,
-    new_slice(SID_BOOLEAN, ir_nid, 31, 31, "get SB-immediate[12]"),
-    new_binary(OP_CONCAT, SID_11_BIT_IMM,
-      new_slice(SID_BOOLEAN, ir_nid, 7, 7, "get SB-immediate[11]"),
-      new_binary(OP_CONCAT, SID_10_BIT_IMM,
-        new_slice(SID_6_BIT_IMM, ir_nid, 30, 25, "get SB-immediate[10:5]"),
-        new_slice(SID_4_BIT_IMM, ir_nid, 11, 8, "get SB-immediate[4:1]"),
-        "get SB-immediate[10:1]"),
-      "get SB-immediate[11:1]"),
-    "get SB-immediate[12:1]");
-}
-
-uint64_t* get_instruction_U_imm(uint64_t* ir_nid) {
-  return new_slice(SID_20_BIT_IMM, ir_nid, 31, 12, "get U-immediate");
-}
-
-uint64_t* sign_extend_ISB_imm(uint64_t* imm_nid) {
+uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid) {
   if (IS64BITTARGET)
     return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 52, "sign-extend");
   else
     return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 20, "sign-extend");
 }
 
-uint64_t* get_machine_word_I_immediate(uint64_t* ir_nid) {
-  return sign_extend_ISB_imm(get_instruction_I_imm(ir_nid));
+uint64_t* get_instruction_I_immediate(uint64_t* ir_nid) {
+  return sign_extend_IS_immediate(
+    new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate"));
 }
 
-uint64_t* get_machine_word_S_immediate(uint64_t* ir_nid) {
-  return sign_extend_ISB_imm(get_instruction_S_imm(ir_nid));
+uint64_t* get_instruction_S_immediate(uint64_t* ir_nid) {
+  return sign_extend_IS_immediate(
+    new_binary(OP_CONCAT, SID_12_BIT_IMM,
+      get_instruction_funct7(ir_nid),
+      get_instruction_rd(ir_nid),
+      "get S-immediate"));
 }
 
-uint64_t* get_machine_word_SB_immediate(uint64_t* ir_nid) {
-  return new_binary(OP_SLL, SID_MACHINE_WORD,
-    sign_extend_ISB_imm(get_instruction_SB_imm(ir_nid)),
-    NID_MACHINE_WORD_1,
-    "multiply SB-immediate[12:1] by 2");
+uint64_t* sign_extend_SB_immediate(uint64_t* imm_nid) {
+  if (IS64BITTARGET)
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 51, "sign-extend");
+  else
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 19, "sign-extend");
 }
 
-uint64_t* get_machine_word_U_immediate(uint64_t* ir_nid) {
-  uint64_t* imm_nid;
+uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid) {
+  return sign_extend_SB_immediate(
+    new_binary(OP_CONCAT, SID_13_BIT_IMM,
+      new_slice(SID_1_BIT_IMM, ir_nid, 31, 31, "get SB-immediate[12]"),
+      new_binary(OP_CONCAT, SID_12_BIT_IMM,
+        new_slice(SID_1_BIT_IMM, ir_nid, 7, 7, "get SB-immediate[11]"),
+        new_binary(OP_CONCAT, SID_11_BIT_IMM,
+          new_slice(SID_6_BIT_IMM, ir_nid, 30, 25, "get SB-immediate[10:5]"),
+          new_binary(OP_CONCAT, SID_5_BIT_IMM,
+            new_slice(SID_4_BIT_IMM, ir_nid, 11, 8, "get SB-immediate[4:1]"),
+            NID_1_BIT_IMM_0,
+            "get SB-immediate[4:0]"),
+          "get SB-immediate[10:0]"),
+        "get SB-immediate[11:0]"),
+      "get SB-immediate[12:0]"));
+}
 
-  imm_nid = new_binary(OP_CONCAT, SID_SINGLE_WORD,
-    get_instruction_U_imm(ir_nid),
-    NID_12_BIT_IMM_0,
-    "shift U-immediate left by 12 bits");
-
+uint64_t* sign_extend_U_immediate(uint64_t* imm_nid) {
   if (IS64BITTARGET)
     return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 32, "sign-extend");
   else
     return imm_nid;
+}
+
+uint64_t* get_instruction_U_immediate(uint64_t* ir_nid) {
+  return sign_extend_U_immediate(
+    new_binary(OP_CONCAT, SID_32_BIT_IMM,
+      new_slice(SID_20_BIT_IMM, ir_nid, 31, 12, "get U-immediate[31:12]"),
+      NID_12_BIT_IMM_0,
+      "get UJ-immediate[31:0]"));
+}
+
+uint64_t* sign_extend_UJ_immediate(uint64_t* imm_nid) {
+  if (IS64BITTARGET)
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 43, "sign-extend");
+  else
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 11, "sign-extend");
+}
+
+uint64_t* get_instruction_UJ_immediate(uint64_t* ir_nid) {
+  return sign_extend_UJ_immediate(
+    new_binary(OP_CONCAT, SID_21_BIT_IMM,
+      new_slice(SID_1_BIT_IMM, ir_nid, 31, 31, "get UJ-immediate[20]"),
+      new_binary(OP_CONCAT, SID_20_BIT_IMM,
+        new_slice(SID_8_BIT_IMM, ir_nid, 19, 12, "get UJ-immediate[19:12]"),
+        new_binary(OP_CONCAT, SID_12_BIT_IMM,
+          new_slice(SID_1_BIT_IMM, ir_nid, 20, 20, "get UJ-immediate[11]"),
+          new_binary(OP_CONCAT, SID_11_BIT_IMM,
+            new_slice(SID_10_BIT_IMM, ir_nid, 30, 21, "get UJ-immediate[10:1]"),
+            NID_1_BIT_IMM_0,
+            "get UJ-immediate[10:0]"),
+          "get UJ-immediate[11:0]"),
+        "get UJ-immediate[19:0]"),
+      "get UJ-immediate[20:0]"));
 }
 
 uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
@@ -2314,6 +2352,15 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
     other_opcode_nid);
 }
 
+uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* jal_nid, char* comment,
+  uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_JAL, "JAL?",
+    jal_nid, format_comment("jal opcode %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
 uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jalr_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
@@ -2349,20 +2396,22 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
               NID_BLT, NID_BGE,
               NID_BLTU, NID_BGEU,
               NID_TRUE, "known?", NID_FALSE,
-              decode_jalr(SID_BOOLEAN, ir_nid,
-                NID_JALR, "known?", NID_FALSE,
-                decode_lui(SID_BOOLEAN, ir_nid,
-                  NID_LUI, "known?",
-                  decode_auipc(SID_BOOLEAN, ir_nid,
-                    NID_AUIPC, "known?",
-                    NID_FALSE)))))))),
+              decode_jal(SID_BOOLEAN, ir_nid,
+                NID_JAL, "known?",
+                decode_jalr(SID_BOOLEAN, ir_nid,
+                  NID_JALR, "known?", NID_FALSE,
+                  decode_lui(SID_BOOLEAN, ir_nid,
+                    NID_LUI, "known?",
+                    decode_auipc(SID_BOOLEAN, ir_nid,
+                      NID_AUIPC, "known?",
+                      NID_FALSE))))))))),
     "ecall known?");
 }
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-    get_machine_word_I_immediate(ir_nid),
+    get_instruction_I_immediate(ir_nid),
     "rs1 value + I-immediate");
 }
 
@@ -2430,16 +2479,23 @@ uint64_t* load_seg_faults(uint64_t* ir_nid) {
     NID_FALSE);
 }
 
-uint64_t* get_incremented_pc(uint64_t* pc_nid) {
+uint64_t* get_pc_value_plus_4(uint64_t* pc_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
     NID_MACHINE_WORD_4,
     "pc value + 4");
 }
 
+uint64_t* jal_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_jal(SID_MACHINE_WORD, ir_nid,
+    get_pc_value_plus_4(pc_nid),
+    "register data flow",
+    other_data_flow_nid);
+}
+
 uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   return decode_jalr(SID_MACHINE_WORD, ir_nid,
-    get_incremented_pc(pc_nid),
+    get_pc_value_plus_4(pc_nid),
     "register data flow",
     get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
@@ -2447,7 +2503,7 @@ uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_dat
 
 uint64_t* lui_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   return decode_lui(SID_MACHINE_WORD, ir_nid,
-    get_machine_word_U_immediate(ir_nid),
+    get_instruction_U_immediate(ir_nid),
     "register data flow",
     other_data_flow_nid);
 }
@@ -2455,7 +2511,7 @@ uint64_t* lui_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
 uint64_t* get_pc_value_plus_U_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
-    get_machine_word_U_immediate(ir_nid),
+    get_instruction_U_immediate(ir_nid),
     "pc value + U-immediate");
 }
 
@@ -2492,9 +2548,10 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
     imm_data_flow(ir_nid,
       op_data_flow(ir_nid,
         load_data_flow(ir_nid, memory_nid,
-          jalr_data_flow(pc_nid, ir_nid,
-            lui_data_flow(ir_nid,
-              auipc_data_flow(pc_nid, ir_nid, rd_value_nid))))));
+          jal_data_flow(pc_nid, ir_nid,
+            jalr_data_flow(pc_nid, ir_nid,
+              lui_data_flow(ir_nid,
+                auipc_data_flow(pc_nid, ir_nid, rd_value_nid)))))));
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
@@ -2510,7 +2567,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
-    get_machine_word_S_immediate(ir_nid),
+    get_instruction_S_immediate(ir_nid),
     "rs1 value + S-immediate");
 }
 
@@ -2555,7 +2612,7 @@ uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
 uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
-    get_machine_word_SB_immediate(ir_nid),
+    get_instruction_SB_immediate(ir_nid),
     "pc value + SB-immediate");
 }
 
@@ -2574,7 +2631,21 @@ uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* othe
     new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?"),
     new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)?"),
     get_pc_value_plus_SB_immediate(pc_nid, ir_nid), "pc-relative control flow",
-    get_incremented_pc(pc_nid),
+    get_pc_value_plus_4(pc_nid),
+    other_control_flow_nid);
+}
+
+uint64_t* get_pc_value_plus_UJ_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    get_instruction_UJ_immediate(ir_nid),
+    "pc value + UJ-immediate");
+}
+
+uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
+  return decode_jal(SID_MACHINE_WORD, ir_nid,
+    get_pc_value_plus_UJ_immediate(pc_nid, ir_nid),
+    "pc-relative control flow",
     other_control_flow_nid);
 }
 
@@ -2585,15 +2656,16 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_
       NID_LSB_MASK,
       "reset LSB"),
     "register-relative control flow",
-    get_incremented_pc(pc_nid),
+    get_pc_value_plus_4(pc_nid),
     other_control_flow_nid);
 }
 
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
   return
     branch_control_flow(pc_nid, ir_nid,
-      jalr_control_flow(pc_nid, ir_nid,
-        get_incremented_pc(pc_nid)));
+      jal_control_flow(pc_nid, ir_nid,
+        jalr_control_flow(pc_nid, ir_nid,
+          get_pc_value_plus_4(pc_nid))));
 }
 
 // -----------------------------------------------------------------
