@@ -9,8 +9,8 @@ in Austria. For further information and code please refer to:
 
 selfie.cs.uni-salzburg.at
 
-Rotor is a tool for generating BTOR2 models of RISC-V machines.
-
+Rotor is a tool for bit-precise reasoning about RISC-V machines
+using BTOR2 as intermediate modeling format.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -719,6 +719,12 @@ uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_funct7_nid);
 
+uint64_t* decode_lui(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* lui_nid, char* comment,
+  uint64_t* other_opcode_nid);
+uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* auipc_nid, char* comment,
+  uint64_t* other_opcode_nid);
 uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
@@ -757,6 +763,10 @@ uint64_t* load_seg_faults(uint64_t* ir_nid);
 
 uint64_t* get_incremented_pc(uint64_t* pc_nid);
 uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
+
+uint64_t* lui_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
+uint64_t* get_pc_value_plus_U_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* auipc_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
@@ -832,6 +842,8 @@ uint64_t* SID_11_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_12_BIT_IMM = (uint64_t*) 0;
 uint64_t* SID_20_BIT_IMM = (uint64_t*) 0;
 
+uint64_t* NID_12_BIT_IMM_0 = (uint64_t*) 0;
+
 // RISC-U instruction switches
 
 uint64_t* NID_LUI  = (uint64_t*) 0;
@@ -858,6 +870,8 @@ uint64_t* NID_ECALL = (uint64_t*) 0;
 
 // RV32I codes missing in RISC-U
 
+uint64_t OP_AUIPC = 23; // 0010111, U format (AUIPC)
+
 uint64_t F3_BNE  = 1; // 001
 uint64_t F3_BLT  = 4; // 100
 uint64_t F3_BGE  = 5; // 101
@@ -871,6 +885,8 @@ uint64_t F3_LHU = 5; // 101
 
 uint64_t F3_SB = 0; // 000
 uint64_t F3_SH = 1; // 001
+
+uint64_t* NID_OP_AUIPC = (uint64_t*) 0;
 
 uint64_t* NID_F3_BNE  = (uint64_t*) 0;
 uint64_t* NID_F3_BLT  = (uint64_t*) 0;
@@ -887,6 +903,8 @@ uint64_t* NID_F3_SB = (uint64_t*) 0;
 uint64_t* NID_F3_SH = (uint64_t*) 0;
 
 // RV32I instruction switches
+
+uint64_t* NID_AUIPC = (uint64_t*) 0;
 
 uint64_t* NID_BNE  = (uint64_t*) 0;
 uint64_t* NID_BLT  = (uint64_t*) 0;
@@ -979,6 +997,8 @@ void init_instruction_sorts() {
   SID_12_BIT_IMM = new_bitvec(12, "12-bit immediate sort");
   SID_20_BIT_IMM = new_bitvec(20, "20-bit immediate sort");
 
+  NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, "000000000000", "12 LSBs zeroed");
+
 // RISC-U instructions
 
   NID_LUI  = NID_TRUE;
@@ -1011,6 +1031,8 @@ void init_instruction_sorts() {
 
   // RV32I codes missing in RISC-U
 
+  NID_OP_AUIPC = new_constant(OP_CONST, SID_OPCODE, format_binary(OP_AUIPC, 7), "OP_AUIPC");
+
   NID_F3_BNE  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BNE, 3), "F3_BNE");
   NID_F3_BLT  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BLT, 3), "F3_BLT");
   NID_F3_BGE  = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_BGE, 3), "F3_BGE");
@@ -1026,6 +1048,8 @@ void init_instruction_sorts() {
   NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, format_binary(F3_SH, 3), "F3_SH");
 
   // RV32I instruction switches
+
+  NID_AUIPC = NID_TRUE;
 
   NID_BNE  = NID_TRUE;
   NID_BLT  = NID_TRUE;
@@ -2083,10 +2107,17 @@ uint64_t* get_machine_word_SB_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* get_machine_word_U_immediate(uint64_t* ir_nid) {
+  uint64_t* imm_nid;
+
+  imm_nid = new_binary(OP_CONCAT, SID_SINGLE_WORD,
+    get_instruction_U_imm(ir_nid),
+    NID_12_BIT_IMM_0,
+    "shift U-immediate left by 12 bits");
+
   if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(ir_nid), 44, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 32, "sign-extend");
   else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, get_instruction_U_imm(ir_nid), 12, "sign-extend");
+    return imm_nid;
 }
 
 uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
@@ -2146,6 +2177,24 @@ uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
     execute_nid,
     other_funct7_nid,
     execute_comment);
+}
+
+uint64_t* decode_lui(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* lui_nid, char* comment,
+  uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_LUI, "LUI?",
+    lui_nid, format_comment("lui %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
+uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* auipc_nid, char* comment,
+  uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_AUIPC, "AUIPC?",
+    auipc_nid, format_comment("auipc %s", (uint64_t) comment),
+    other_opcode_nid);
 }
 
 uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
@@ -2302,7 +2351,11 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
               NID_TRUE, "known?", NID_FALSE,
               decode_jalr(SID_BOOLEAN, ir_nid,
                 NID_JALR, "known?", NID_FALSE,
-                NID_FALSE)))))),
+                decode_lui(SID_BOOLEAN, ir_nid,
+                  NID_LUI, "known?",
+                  decode_auipc(SID_BOOLEAN, ir_nid,
+                    NID_AUIPC, "known?",
+                    NID_FALSE)))))))),
     "ecall known?");
 }
 
@@ -2392,6 +2445,27 @@ uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_dat
     other_data_flow_nid);
 }
 
+uint64_t* lui_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_lui(SID_MACHINE_WORD, ir_nid,
+    get_machine_word_U_immediate(ir_nid),
+    "register data flow",
+    other_data_flow_nid);
+}
+
+uint64_t* get_pc_value_plus_U_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    get_machine_word_U_immediate(ir_nid),
+    "pc value + U-immediate");
+}
+
+uint64_t* auipc_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  return decode_auipc(SID_MACHINE_WORD, ir_nid,
+    get_pc_value_plus_U_immediate(pc_nid, ir_nid),
+    "register data flow",
+    other_data_flow_nid);
+}
+
 uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* opcode_nid;
@@ -2418,7 +2492,9 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
     imm_data_flow(ir_nid,
       op_data_flow(ir_nid,
         load_data_flow(ir_nid, memory_nid,
-          jalr_data_flow(pc_nid, ir_nid, rd_value_nid))));
+          jalr_data_flow(pc_nid, ir_nid,
+            lui_data_flow(ir_nid,
+              auipc_data_flow(pc_nid, ir_nid, rd_value_nid))))));
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
