@@ -397,16 +397,11 @@ void init_interface_sorts() {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void print_interface_memory();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t ISBYTEMEMORY = 0;
 
 uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
-
-uint64_t* NID_CODE_START = (uint64_t*) 0;
-uint64_t* NID_CODE_END   = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -415,14 +410,6 @@ void init_interface_memory() {
     SID_MEMORY_WORD = SID_BYTE;
   else
     SID_MEMORY_WORD = SID_MACHINE_WORD;
-
-  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    format_comment("%08lX", code_start),
-    "start of code segment");
-
-  NID_CODE_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    format_comment("%08lX", code_start + code_size),
-    "end of code segment");
 }
 
 // -----------------------------------------------------------------
@@ -654,7 +641,19 @@ uint64_t* SID_CODE_STATE   = (uint64_t*) 0;
 uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
 uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
 
+uint64_t* NID_CODE_START = (uint64_t*) 0;
+uint64_t* NID_CODE_END   = (uint64_t*) 0;
+
+uint64_t* NID_DATA_START = (uint64_t*) 0;
+uint64_t* NID_DATA_END   = (uint64_t*) 0;
+
+uint64_t* NID_HEAP_START = (uint64_t*) 0;
+uint64_t* NID_STACK_END  = (uint64_t*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* end_heap_nid    = (uint64_t*) 0;
+uint64_t* start_stack_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 
@@ -1018,7 +1017,7 @@ void init_instruction_sorts() {
   NID_1_BIT_IMM_0  = NID_FALSE;
   NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, "000000000000", "12 LSBs zeroed");
 
-// RISC-U instructions
+  // RISC-U instructions
 
   NID_LUI  = NID_TRUE;
   NID_ADDI = NID_TRUE;
@@ -1510,16 +1509,6 @@ void print_interface_sorts() {
     print_line(49, NID_DOUBLE_WORD_MINUS_1);
   }
 }
-// -----------------------------------------------------------------
-// ---------------------------- MEMORY -----------------------------
-// -----------------------------------------------------------------
-
-void print_interface_memory() {
-  w = w + dprintf(output_fd, "\n; memory interface\n\n");
-
-  print_line(50, NID_CODE_START);
-  print_line(51, NID_CODE_END);
-}
 
 // -----------------------------------------------------------------
 // ---------------------------- KERNEL -----------------------------
@@ -1528,8 +1517,8 @@ void print_interface_memory() {
 void print_interface_kernel() {
   w = w + dprintf(output_fd, "\n; kernel interface\n\n");
 
-  print_line(60, NID_EXIT_SYSCALL_ID);
-  print_line(61, NID_READ_SYSCALL_ID);
+  print_line(50, NID_EXIT_SYSCALL_ID);
+  print_line(51, NID_READ_SYSCALL_ID);
 }
 
 void new_kernel_state(uint64_t bytes_to_read) {
@@ -1559,8 +1548,8 @@ void new_kernel_state(uint64_t bytes_to_read) {
 void print_register_sorts() {
   w = w + dprintf(output_fd, "\n; register sorts\n\n");
 
-  print_line(70, SID_REGISTER_ADDRESS);
-  print_line(71, SID_REGISTER_STATE);
+  print_line(60, SID_REGISTER_ADDRESS);
+  print_line(61, SID_REGISTER_STATE);
 }
 
 void new_register_file_state() {
@@ -1579,17 +1568,33 @@ uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
 void print_memory_sorts() {
   w = w + dprintf(output_fd, "\n; memory sorts\n\n");
 
-  print_line(80, SID_CODE_ADDRESS);
-  print_line(81, SID_CODE_STATE);
+  print_line(70, SID_CODE_ADDRESS);
+  print_line(71, SID_CODE_STATE);
 
   w = w + dprintf(output_fd, "\n");
 
   if (ISBYTEMEMORY)
-    print_line(90, SID_MEMORY_ADDRESS);
+    print_line(80, SID_MEMORY_ADDRESS);
   else if (IS64BITTARGET)
-    print_line(90, SID_MEMORY_ADDRESS);
+    print_line(80, SID_MEMORY_ADDRESS);
 
-  print_line(91, SID_MEMORY_STATE);
+  print_line(81, SID_MEMORY_STATE);
+}
+
+void print_segmentation() {
+  w = w + dprintf(output_fd, "\n; segmentation\n\n");
+
+  print_line(500, NID_CODE_START);
+  print_line(501, NID_CODE_END);
+
+  print_line(510, NID_DATA_START);
+  print_line(511, NID_DATA_END);
+
+  //print_line(520, NID_HEAP_START);
+  //print_line(530, end_heap_nid);
+
+  print_line(540, start_stack_nid);
+  print_line(550, NID_STACK_END);
 }
 
 void new_memory_state() {
@@ -1598,9 +1603,36 @@ void new_memory_state() {
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
 
   if (ISBYTEMEMORY)
-    init_main_memory_nid  = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
+    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
   else
-    init_main_memory_nid  = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
+    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
+
+  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", code_start),
+    "start of code segment");
+
+  NID_CODE_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", code_start + code_size),
+    "end of code segment");
+
+  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", data_start),
+    "start of data segment");
+
+  NID_DATA_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    format_comment("%08lX", data_start + data_size),
+    "end of data segment");
+
+  start_stack_nid = get_register_value(NID_SP, "sp value");
+
+  if (IS64BITTARGET)
+    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      "100000000",
+      "end of stack segment");
+  else
+    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      "00000000",
+      "end of stack segment");
 }
 
 uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
@@ -3042,7 +3074,6 @@ void output_machine() {
     + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
 
   print_interface_sorts();
-  print_interface_memory();
   print_interface_kernel();
 
   print_register_sorts();
@@ -3068,6 +3099,8 @@ void output_machine() {
   w = w + dprintf(output_fd, "\n; main memory\n\n");
 
   print_line(400, init_main_memory_nid);
+
+  print_segmentation();
 
   w = w + dprintf(output_fd, "\n; program counter\n\n");
 
@@ -3168,9 +3201,6 @@ uint64_t selfie_model() {
         exit(EXITCODE_IOERROR);
       }
 
-      code_start = 0;
-      code_size  = 28;
-
       init_model();
 
       init_interface_sorts();
@@ -3180,6 +3210,9 @@ uint64_t selfie_model() {
       init_register_file_sorts();
       init_memory_sorts();
       init_instruction_sorts();
+
+      code_start = 0;
+      code_size  = 28;
 
       rotor();
 
