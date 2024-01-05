@@ -65,12 +65,6 @@ uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* se
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment);
 
 void print_nid(uint64_t nid, uint64_t* line);
-void print_comment(uint64_t* line);
-
-uint64_t is_input_op(char* op);
-uint64_t is_unary_op(char* op);
-
-uint64_t print_line(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
 uint64_t print_input(uint64_t nid, uint64_t* line);
@@ -84,10 +78,22 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
+void print_comment(uint64_t* line);
+
+uint64_t is_input_op(char* op);
+uint64_t is_unary_op(char* op);
+
+uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
+
+void print_line(uint64_t* line);
+void print_break(char* comment);
+void print_aligned_break(char* comment, uint64_t alignment);
+
 char* format_comment(char* comment, uint64_t value);
 
 char* format_binary(uint64_t value, uint64_t alignment);
 char* format_decimal(uint64_t value);
+char* format_hexadecimal(uint64_t value);
 
 char* format_comment_binary(char* comment, uint64_t value);
 
@@ -152,6 +158,8 @@ uint64_t* last_line   = (uint64_t*) 0;
 uint64_t* unused_line = (uint64_t*) 0;
 
 uint64_t number_of_lines = 0;
+
+uint64_t current_nid = 1; // first nid is 1
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -554,6 +562,9 @@ void init_register_file_sorts() {
 
 void print_memory_sorts();
 
+void print_segmentation();
+
+void new_code_segment();
 void new_memory_state();
 
 uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
@@ -655,7 +666,10 @@ uint64_t* NID_STACK_END  = (uint64_t*) 0;
 uint64_t* end_heap_nid    = (uint64_t*) 0;
 uint64_t* start_stack_nid = (uint64_t*) 0;
 
+uint64_t* initial_code_segment_nid = (uint64_t*) 0;
+
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
+uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -1102,6 +1116,8 @@ void new_core_state();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t* initial_core_pc_nid = (uint64_t*) 0;
+
 uint64_t* state_core_pc_nid = (uint64_t*) 0;
 uint64_t* init_core_pc_nid  = (uint64_t*) 0;
 
@@ -1131,6 +1147,8 @@ void output_model();
 uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t REUSE_LINES = 1; // flag for reusing lines
 
 uint64_t SYNTHESIZE = 1; // flag for synthesizing versus analyzing code
 
@@ -1222,7 +1240,10 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_comment(new_line, comment);
   set_reuse(new_line, 0);
 
-  old_line = find_equal_line(new_line);
+  if (REUSE_LINES)
+    old_line = find_equal_line(new_line);
+  else
+    old_line = (uint64_t*) 0;
 
   if (old_line) {
     unused_line = new_line;
@@ -1296,6 +1317,92 @@ void print_nid(uint64_t nid, uint64_t* line) {
   w = w + dprintf(output_fd, "%lu", nid);
 }
 
+uint64_t print_sort(uint64_t nid, uint64_t* line) {
+  if ((char*) get_arg1(line) == ARRAY) {
+    nid = print_referenced_line(nid, get_arg2(line));
+    nid = print_referenced_line(nid, get_arg3(line));
+  }
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s", OP_SORT);
+  if ((char*) get_arg1(line) == BITVEC)
+    w = w + dprintf(output_fd, " %s %lu", BITVEC, (uint64_t) get_arg2(line));
+  else
+    // assert: theory of bitvector arrays
+    w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
+}
+
+uint64_t print_input(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  print_nid(nid, line);
+  if (get_op(line) == OP_CONSTD) {
+    if ((uint64_t) get_arg1(line) == 0) {
+      w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
+      return nid;
+    } else if ((uint64_t) get_arg1(line) == 1) {
+      w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
+      return nid;
+    }
+  }
+  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
+  return nid;
+}
+
+uint64_t print_ext(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_referenced_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
+  return nid;
+}
+
+uint64_t print_slice(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_referenced_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
+  return nid;
+}
+
+uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_referenced_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  return nid;
+}
+
+uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_referenced_line(nid, get_arg2(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  return nid;
+}
+
+uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_referenced_line(nid, get_arg2(line));
+  nid = print_referenced_line(nid, get_arg3(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
+}
+
+uint64_t print_constraint(uint64_t nid, uint64_t* line) {
+  nid = print_referenced_line(nid, get_arg1(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
+  return nid;
+}
+
 void print_comment(uint64_t* line) {
   if (get_comment(line) != NOCOMMENT) {
     if (get_reuse(line) > 0)
@@ -1333,7 +1440,7 @@ uint64_t is_unary_op(char* op) {
     return 0;
 }
 
-uint64_t print_line(uint64_t nid, uint64_t* line) {
+uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
   char* op;
 
   op = get_op(line);
@@ -1367,90 +1474,25 @@ uint64_t print_line(uint64_t nid, uint64_t* line) {
   return nid + 1;
 }
 
-uint64_t print_sort(uint64_t nid, uint64_t* line) {
-  if ((char*) get_arg1(line) == ARRAY) {
-    nid = print_line(nid, get_arg2(line));
-    nid = print_line(nid, get_arg3(line));
-  }
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s", OP_SORT);
-  if ((char*) get_arg1(line) == BITVEC)
-    w = w + dprintf(output_fd, " %s %lu", BITVEC, (uint64_t) get_arg2(line));
-  else
-    // assert: theory of bitvector arrays
-    w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
-  return nid;
+void print_line(uint64_t* line) {
+  current_nid = print_referenced_line(current_nid, line);
 }
 
-uint64_t print_input(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  print_nid(nid, line);
-  if (get_op(line) == OP_CONSTD) {
-    if ((uint64_t) get_arg1(line) == 0) {
-      w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
-      return nid;
-    } else if ((uint64_t) get_arg1(line) == 1) {
-      w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
-      return nid;
-    }
-  }
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
-  return nid;
+void print_break(char* comment) {
+  uint64_t order_of_magnitude;
+
+  w = w + dprintf(output_fd, comment);
+
+  order_of_magnitude = ten_to_the_power_of(log_ten(current_nid));
+
+  current_nid = current_nid - current_nid % order_of_magnitude + order_of_magnitude;
 }
 
-uint64_t print_ext(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
-  return nid;
-}
+void print_aligned_break(char* comment, uint64_t alignment) {
+  print_break(comment);
 
-uint64_t print_slice(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
-  return nid;
-}
-
-uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
-  return nid;
-}
-
-uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  nid = print_line(nid, get_arg2(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
-  return nid;
-}
-
-uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_sid(line));
-  nid = print_line(nid, get_arg1(line));
-  nid = print_line(nid, get_arg2(line));
-  nid = print_line(nid, get_arg3(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
-  return nid;
-}
-
-uint64_t print_constraint(uint64_t nid, uint64_t* line) {
-  nid = print_line(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
-  return nid;
+  if (log_ten(current_nid) < alignment)
+    current_nid = ten_to_the_power_of(alignment);
 }
 
 char* format_comment(char* comment, uint64_t value) {
@@ -1466,6 +1508,10 @@ char* format_decimal(uint64_t value) {
   return format_comment("%ld", value);
 }
 
+char* format_hexadecimal(uint64_t value) {
+  return format_comment("%lX", value);
+}
+
 char* format_comment_binary(char* comment, uint64_t value) {
   sprintf(string_buffer, "%s %s", comment, format_binary(value, 0));
   return string_copy(string_buffer);
@@ -1478,51 +1524,51 @@ char* format_comment_binary(char* comment, uint64_t value) {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 void print_interface_sorts() {
-  print_line(1, SID_BOOLEAN);
+  print_line(SID_BOOLEAN);
 
-  print_line(2, SID_BYTE);
-  print_line(3, SID_HALF_WORD);
-  print_line(4, SID_SINGLE_WORD);
+  print_line(SID_BYTE);
+  print_line(SID_HALF_WORD);
+  print_line(SID_SINGLE_WORD);
   if (IS64BITTARGET)
-    print_line(5, SID_DOUBLE_WORD);
+    print_line(SID_DOUBLE_WORD);
 
-  w = w + dprintf(output_fd, "\n; machine constants\n\n");
+  print_break("\n; machine constants\n\n");
 
-  print_line(10, NID_FALSE);
-  print_line(11, NID_TRUE);
+  print_line(NID_FALSE);
+  print_line(NID_TRUE);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(20, NID_BYTE_0);
+  print_line(NID_BYTE_0);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(30, NID_SINGLE_WORD_0);
-  print_line(31, NID_SINGLE_WORD_1);
-  print_line(32, NID_SINGLE_WORD_2);
-  print_line(33, NID_SINGLE_WORD_3);
-  print_line(34, NID_SINGLE_WORD_4);
-  print_line(35, NID_SINGLE_WORD_5);
-  print_line(36, NID_SINGLE_WORD_6);
-  print_line(37, NID_SINGLE_WORD_7);
-  print_line(38, NID_SINGLE_WORD_8);
+  print_line(NID_SINGLE_WORD_0);
+  print_line(NID_SINGLE_WORD_1);
+  print_line(NID_SINGLE_WORD_2);
+  print_line(NID_SINGLE_WORD_3);
+  print_line(NID_SINGLE_WORD_4);
+  print_line(NID_SINGLE_WORD_5);
+  print_line(NID_SINGLE_WORD_6);
+  print_line(NID_SINGLE_WORD_7);
+  print_line(NID_SINGLE_WORD_8);
 
-  print_line(39, NID_SINGLE_WORD_MINUS_1);
+  print_line(NID_SINGLE_WORD_MINUS_1);
 
   if (IS64BITTARGET) {
-    w = w + dprintf(output_fd, "\n");
+    print_break("\n");
 
-    print_line(40, NID_DOUBLE_WORD_0);
-    print_line(41, NID_DOUBLE_WORD_1);
-    print_line(42, NID_DOUBLE_WORD_2);
-    print_line(43, NID_DOUBLE_WORD_3);
-    print_line(44, NID_DOUBLE_WORD_4);
-    print_line(45, NID_DOUBLE_WORD_5);
-    print_line(46, NID_DOUBLE_WORD_6);
-    print_line(47, NID_DOUBLE_WORD_7);
-    print_line(48, NID_DOUBLE_WORD_8);
+    print_line(NID_DOUBLE_WORD_0);
+    print_line(NID_DOUBLE_WORD_1);
+    print_line(NID_DOUBLE_WORD_2);
+    print_line(NID_DOUBLE_WORD_3);
+    print_line(NID_DOUBLE_WORD_4);
+    print_line(NID_DOUBLE_WORD_5);
+    print_line(NID_DOUBLE_WORD_6);
+    print_line(NID_DOUBLE_WORD_7);
+    print_line(NID_DOUBLE_WORD_8);
 
-    print_line(49, NID_DOUBLE_WORD_MINUS_1);
+    print_line(NID_DOUBLE_WORD_MINUS_1);
   }
 }
 
@@ -1531,10 +1577,10 @@ void print_interface_sorts() {
 // -----------------------------------------------------------------
 
 void print_interface_kernel() {
-  w = w + dprintf(output_fd, "\n; kernel interface\n\n");
+  print_break("\n; kernel interface\n\n");
 
-  print_line(50, NID_EXIT_SYSCALL_ID);
-  print_line(51, NID_READ_SYSCALL_ID);
+  print_line(NID_EXIT_SYSCALL_ID);
+  print_line(NID_READ_SYSCALL_ID);
 }
 
 void new_kernel_state(uint64_t bytes_to_read) {
@@ -1562,10 +1608,10 @@ void new_kernel_state(uint64_t bytes_to_read) {
 // -----------------------------------------------------------------
 
 void print_register_sorts() {
-  w = w + dprintf(output_fd, "\n; register sorts\n\n");
+  print_break("\n; register sorts\n\n");
 
-  print_line(60, SID_REGISTER_ADDRESS);
-  print_line(61, SID_REGISTER_STATE);
+  print_line(SID_REGISTER_ADDRESS);
+  print_line(SID_REGISTER_STATE);
 }
 
 void new_register_file_state() {
@@ -1582,40 +1628,78 @@ uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
 // -----------------------------------------------------------------
 
 void print_memory_sorts() {
-  w = w + dprintf(output_fd, "\n; memory sorts\n\n");
+  print_break("\n; memory sorts\n\n");
 
-  print_line(70, SID_CODE_ADDRESS);
-  print_line(71, SID_CODE_STATE);
+  print_line(SID_CODE_ADDRESS);
+  print_line(SID_CODE_STATE);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
   if (ISBYTEMEMORY)
-    print_line(80, SID_MEMORY_ADDRESS);
+    print_line(SID_MEMORY_ADDRESS);
   else if (IS64BITTARGET)
-    print_line(80, SID_MEMORY_ADDRESS);
+    print_line(SID_MEMORY_ADDRESS);
 
-  print_line(81, SID_MEMORY_STATE);
+  print_line(SID_MEMORY_STATE);
 }
 
 void print_segmentation() {
-  w = w + dprintf(output_fd, "\n; segmentation\n\n");
+  print_break("\n; segmentation\n\n");
 
-  print_line(500, NID_CODE_START);
-  print_line(501, NID_CODE_END);
+  print_line(NID_CODE_START);
+  print_line(NID_CODE_END);
 
-  print_line(510, NID_DATA_START);
-  print_line(511, NID_DATA_END);
+  print_line(NID_DATA_START);
+  print_line(NID_DATA_END);
 
-  //print_line(520, NID_HEAP_START);
-  //print_line(530, end_heap_nid);
+  //print_line(NID_HEAP_START);
+  //print_line(end_heap_nid);
 
-  print_line(540, start_stack_nid);
-  print_line(550, NID_STACK_END);
+  print_line(start_stack_nid);
+  print_line(NID_STACK_END);
+}
+
+void new_code_segment() {
+  uint64_t* laddr_nid;
+  uint64_t* ir_nid;
+
+  state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
+
+  if (SYNTHESIZE == 0) {
+    initial_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-dump", "code dump");
+
+    REUSE_LINES = 0;
+
+    pc = code_start;
+
+    while (pc < code_start + code_size) {
+      fetch();
+
+      laddr_nid = new_constant(OP_CONSTD, SID_CODE_ADDRESS,
+        format_decimal(pc / INSTRUCTIONSIZE),
+        format_comment("0x%lX", pc));
+
+      ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+        format_binary(ir, 32),
+        format_comment("0x%08lX", ir));
+
+      initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
+        initial_code_segment_nid,
+        laddr_nid,
+        ir_nid,
+        "");
+
+      pc = pc + INSTRUCTIONSIZE;
+    }
+
+    REUSE_LINES = 1;
+
+    init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+      state_code_segment_nid, initial_code_segment_nid, "loaded code");
+  }
 }
 
 void new_memory_state() {
-  state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
-
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
 
   if (ISBYTEMEMORY)
@@ -1721,7 +1805,7 @@ uint64_t* store_byte_in_bytes(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t*
     memory_nid,
     vaddr_to_laddr(vaddr_nid),
     byte_nid,
-  "store byte in memory at vaddr");
+    "store byte in memory at vaddr");
 }
 
 uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* alignment_nid) {
@@ -2721,8 +2805,14 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
 // -----------------------------------------------------------------
 
 void new_core_state() {
+  if (SYNTHESIZE)
+    initial_core_pc_nid = NID_MACHINE_WORD_0;
+  else
+    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      format_comment("%08lX", get_pc(current_context)), "entry pc value");
+
   state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, "pc", "program counter");
-  init_core_pc_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_core_pc_nid, NID_MACHINE_WORD_0, "initial value of pc");
+  init_core_pc_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2994,10 +3084,13 @@ void rotor() {
   uint64_t* ir_nid;
   uint64_t* known_instructions_nid;
 
-  new_kernel_state(1);
-  new_register_file_state();
-  new_memory_state();
   new_core_state();
+  new_register_file_state();
+
+  new_code_segment();
+  new_memory_state();
+
+  new_kernel_state(1);
 
   // fetch
 
@@ -3095,108 +3188,120 @@ void output_model() {
   print_register_sorts();
   print_memory_sorts();
 
-  w = w + dprintf(output_fd, "\n; kernel state\n\n");
+  print_break("\n; program counter\n\n");
 
-  print_line(100, readable_bytes_nid);
-  print_line(101, init_readable_bytes_nid);
+  print_line(initial_core_pc_nid);
+  print_line(init_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n; register file\n\n");
 
-  print_line(103, init_read_bytes_nid);
+  print_line(init_register_file_nid);
 
-  w = w + dprintf(output_fd, "\n; register file\n\n");
+  if (SYNTHESIZE) {
+    print_break("\n; uninitialized code segment\n\n");
 
-  print_line(200, init_register_file_nid);
+    print_line(state_code_segment_nid);
+  }
+  else {
+    print_aligned_break("\n; code dump\n\n", log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
-  w = w + dprintf(output_fd, "\n; code segment\n\n");
+    print_line(initial_code_segment_nid);
 
-  print_line(300, state_code_segment_nid);
+    print_break("\n; initialized code segment\n\n");
 
-  w = w + dprintf(output_fd, "\n; main memory\n\n");
+    print_line(init_code_segment_nid);
+  }
 
-  print_line(400, init_main_memory_nid);
+  print_break("\n; main memory\n\n");
+
+  print_line(init_main_memory_nid);
 
   print_segmentation();
 
-  w = w + dprintf(output_fd, "\n; program counter\n\n");
+  print_break("\n; kernel state\n\n");
 
-  print_line(1000, init_core_pc_nid);
+  print_line(readable_bytes_nid);
+  print_line(init_readable_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; non-kernel control flow\n\n");
+  print_break("\n");
 
-  print_line(2000, eval_core_non_kernel_pc_nid);
+  print_line(init_read_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; update kernel state\n\n");
+  print_break("\n; non-kernel control flow\n\n");
 
-  print_line(3000, next_readable_bytes_nid);
+  print_line(eval_core_non_kernel_pc_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n; update kernel state\n\n");
 
-  print_line(3100, next_read_bytes_nid);
+  print_line(next_readable_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel and non-kernel control flow\n\n");
+  print_break("\n");
 
-  print_line(3200, eval_core_pc_nid);
+  print_line(next_read_bytes_nid);
 
-  w = w + dprintf(output_fd, "\n; update program counter\n\n");
+  print_break("\n; kernel and non-kernel control flow\n\n");
 
-  print_line(4000, next_core_pc_nid);
+  print_line(eval_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; non-kernel register data flow\n\n");
+  print_break("\n; update program counter\n\n");
 
-  print_line(5000, eval_core_non_kernel_register_data_flow_nid);
+  print_line(next_core_pc_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel and non-kernel register data flow\n\n");
+  print_break("\n; non-kernel register data flow\n\n");
 
-  print_line(6000, eval_core_register_data_flow_nid);
+  print_line(eval_core_non_kernel_register_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; update register data flow\n\n");
+  print_break("\n; kernel and non-kernel register data flow\n\n");
 
-  print_line(7000, next_register_file_nid);
+  print_line(eval_core_register_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; non-kernel memory data flow\n\n");
+  print_break("\n; update register data flow\n\n");
 
-  print_line(8000, eval_core_non_kernel_memory_data_flow_nid);
+  print_line(next_register_file_nid);
 
-  w = w + dprintf(output_fd, "\n; kernel and non-kernel memory data flow\n\n");
+  print_break("\n; non-kernel memory data flow\n\n");
 
-  print_line(9000, eval_core_memory_data_flow_nid);
+  print_line(eval_core_non_kernel_memory_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; update memory data flow\n\n");
+  print_break("\n; kernel and non-kernel memory data flow\n\n");
 
-  print_line(10000, next_main_memory_nid);
+  print_line(eval_core_memory_data_flow_nid);
 
-  w = w + dprintf(output_fd, "\n; state properties\n\n");
+  print_break("\n; update memory data flow\n\n");
 
-  print_line(11000, is_instruction_known_nid);
+  print_line(next_main_memory_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n; state properties\n\n");
 
-  print_line(11100, next_fetch_unaligned_nid);
+  print_line(is_instruction_known_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11200, next_fetch_seg_faulting_nid);
+  print_line(next_fetch_unaligned_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11300, load_seg_faulting_nid);
+  print_line(next_fetch_seg_faulting_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11400, store_seg_faulting_nid);
+  print_line(load_seg_faulting_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11500, possible_read_seg_fault_nid);
+  print_line(store_seg_faulting_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11600, is_syscall_id_known_nid);
+  print_line(possible_read_seg_fault_nid);
 
-  w = w + dprintf(output_fd, "\n");
+  print_break("\n");
 
-  print_line(11700, bad_exit_code_nid);
+  print_line(is_syscall_id_known_nid);
+
+  print_break("\n");
+
+  print_line(bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
@@ -3218,6 +3323,10 @@ uint64_t selfie_model() {
         // assert: number_of_remaining_arguments() > 0
 
         boot_loader(current_context);
+
+        restore_context(current_context);
+
+        do_switch(current_context, TIMEROFF);
 
         SYNTHESIZE = 0;
       } else {
