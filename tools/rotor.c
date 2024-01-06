@@ -657,11 +657,13 @@ uint64_t CODE_ADDRESS_SPACE = 0; // number of bits in code segment addresses
 uint64_t* SID_CODE_ADDRESS = (uint64_t*) 0;
 uint64_t* SID_CODE_STATE   = (uint64_t*) 0;
 
-uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
-uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
-
 uint64_t* NID_CODE_START = (uint64_t*) 0;
 uint64_t* NID_CODE_END   = (uint64_t*) 0;
+
+uint64_t MEMORY_ADDRESS_SPACE = 0; // number of bits in main memory addresses
+
+uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
+uint64_t* SID_MEMORY_STATE   = (uint64_t*) 0;
 
 uint64_t* NID_DATA_START = (uint64_t*) 0;
 uint64_t* NID_DATA_END   = (uint64_t*) 0;
@@ -678,6 +680,8 @@ uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
+
+uint64_t* initial_main_memory_nid = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -696,13 +700,20 @@ void init_memory_sorts() {
 
   SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_INSTRUCTION_WORD, "code segment state");
 
-  if (ISBYTEMEMORY)
-    SID_MEMORY_ADDRESS = new_bitvec(32, "32-bit memory address over 8-bit bytes");
-  else if (IS64BITTARGET)
-    SID_MEMORY_ADDRESS = new_bitvec(29, "29-bit memory address over 64-bit double words");
-  else
+  if (ISBYTEMEMORY) {
+    MEMORY_ADDRESS_SPACE = 32;
+
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "32-bit memory address over 8-bit bytes");
+  } else if (IS64BITTARGET) {
+    MEMORY_ADDRESS_SPACE = 29;
+
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "29-bit memory address over 64-bit double words");
+  } else {
     // assert: 32-bit system
-    SID_MEMORY_ADDRESS = new_bitvec(30, "30-bit memory address over 32-bit single words");
+    MEMORY_ADDRESS_SPACE = 30;
+
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "30-bit memory address over 32-bit single words");
+  }
 
   SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MEMORY_WORD, "main memory state");
 }
@@ -1715,7 +1726,7 @@ void new_code_segment() {
 
     initial_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-dump", "code dump");
 
-    REUSE_LINES = 1;
+    REUSE_LINES = 1; // TODO: turn off via console argument
 
     pc = code_start;
 
@@ -1747,15 +1758,22 @@ void new_code_segment() {
 }
 
 void new_memory_state() {
-  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
+  uint64_t  number_of_hex_digits;
+  uint64_t  vaddr;
+  uint64_t  data;
+  uint64_t* data_nid;
+  uint64_t* vaddr_nid;
+  uint64_t* laddr_nid;
 
-  if (ISBYTEMEMORY)
-    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
-  else
-    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
+  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    data_start,
+    8,
+    format_comment("start of data segment @ 0x%08lX", data_start));
 
-  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD, data_start, 8, "start of data segment");
-  NID_DATA_END   = new_constant(OP_CONSTH, SID_MACHINE_WORD, data_start + data_size, 8, "end of data segment");
+  NID_DATA_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    data_start + data_size,
+    8,
+    format_comment("end of data segment accommodating %lu bytes", data_size));
 
   start_stack_nid = get_register_value(NID_SP, "sp value");
 
@@ -1764,6 +1782,58 @@ void new_memory_state() {
   else
     // force wrap-around
     NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD, 0, 8, "end of stack segment");
+
+  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
+
+  if (SYNTHESIZE) {
+    if (ISBYTEMEMORY)
+      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
+    else
+      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
+  } else {
+    number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
+
+    initial_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "data-dump", "data dump");
+
+    REUSE_LINES = 1; // TODO: turn off via console argument
+
+    vaddr = data_start;
+
+    while (vaddr < data_start + data_size) {
+      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+        data = load_virtual_memory(get_pt(current_context), vaddr);
+      else
+        // memory allocated but not yet mapped is zeroed
+        data = 0;
+
+      data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, data, 0, format_comment("data 0x%lX", data));
+
+      if (ISBYTEMEMORY) {
+        vaddr_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          vaddr,
+          number_of_hex_digits,
+          format_comment("vaddr 0x%lX", vaddr));
+        initial_main_memory_nid = store_machine_word(vaddr_nid, data_nid, initial_main_memory_nid);
+      } else {
+        laddr_nid = new_constant(OP_CONSTH, SID_MEMORY_ADDRESS,
+          vaddr / WORDSIZE,
+          number_of_hex_digits,
+          format_comment("vaddr 0x%lX", vaddr));
+        initial_main_memory_nid = new_ternary(OP_WRITE, SID_MEMORY_STATE,
+          initial_main_memory_nid,
+          laddr_nid,
+          data_nid,
+          "");
+      }
+
+      vaddr = vaddr + WORDSIZE;
+    }
+
+    REUSE_LINES = 1;
+
+    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+      state_main_memory_nid, initial_main_memory_nid, "loaded data");
+  }
 }
 
 uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
@@ -3252,9 +3322,23 @@ void output_model() {
     print_line(init_code_segment_nid);
   }
 
-  print_break("\n; main memory\n\n");
+  if (SYNTHESIZE) {
+    print_break("\n; zeroed main memory\n\n");
 
-  print_line(init_main_memory_nid);
+    print_line(init_main_memory_nid);
+  } else {
+    if (ISBYTEMEMORY)
+      // only estimating number of lines needed to store one byte
+      print_aligned_break("\n; data dump\n\n", log_ten(data_size * 5) + 1);
+    else
+      print_aligned_break("\n; data dump\n\n", log_ten(data_size / WORDSIZE * 3 + 1) + 1);
+
+    print_line(initial_main_memory_nid);
+
+    print_break("\n; initialized main memory\n\n");
+
+    print_line(init_main_memory_nid);
+  }
 
   print_segmentation();
 
