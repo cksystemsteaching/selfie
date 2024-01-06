@@ -144,6 +144,7 @@ char* OP_SLL = (char*) 0;
 char* OP_SRL = (char*) 0;
 
 char* OP_ADD = (char*) 0;
+char* OP_SUB = (char*) 0;
 
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
@@ -206,6 +207,7 @@ void init_model() {
   OP_SRL = "srl";
 
   OP_ADD = "add";
+  OP_SUB = "sub";
 
   OP_CONCAT = "concat";
   OP_READ   = "read";
@@ -575,9 +577,11 @@ uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid);
 uint64_t* is_range_accessing_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
 
-uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid);
-uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid);
+
 uint64_t* vaddr_to_32_bit_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid);
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid);
 
@@ -648,6 +652,8 @@ uint64_t* fetch_instruction(uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t CODE_ADDRESS_SPACE = 0; // number of bits in code segment addresses
+
 uint64_t* SID_CODE_ADDRESS = (uint64_t*) 0;
 uint64_t* SID_CODE_STATE   = (uint64_t*) 0;
 
@@ -680,8 +686,15 @@ uint64_t* next_main_memory_nid  = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_memory_sorts() {
-  SID_CODE_ADDRESS = new_bitvec(30, "30-bit memory address over 32-bit single words");
-  SID_CODE_STATE   = new_array(SID_CODE_ADDRESS, SID_INSTRUCTION_WORD, "code segment state");
+  CODE_ADDRESS_SPACE = log_two(code_size / INSTRUCTIONSIZE);
+
+  if (code_size / INSTRUCTIONSIZE > two_to_the_power_of(CODE_ADDRESS_SPACE))
+    CODE_ADDRESS_SPACE = CODE_ADDRESS_SPACE + 1;
+
+  SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
+    format_comment("%lu-bit code segment address over 32-bit single words", CODE_ADDRESS_SPACE));
+
+  SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_INSTRUCTION_WORD, "code segment state");
 
   if (ISBYTEMEMORY)
     SID_MEMORY_ADDRESS = new_bitvec(32, "32-bit memory address over 8-bit bytes");
@@ -689,7 +702,7 @@ void init_memory_sorts() {
     SID_MEMORY_ADDRESS = new_bitvec(29, "29-bit memory address over 64-bit double words");
   else
     // assert: 32-bit system
-    SID_MEMORY_ADDRESS = SID_CODE_ADDRESS;
+    SID_MEMORY_ADDRESS = new_bitvec(30, "30-bit memory address over 32-bit single words");
 
   SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MEMORY_WORD, "main memory state");
 }
@@ -1681,12 +1694,25 @@ void print_segmentation() {
 }
 
 void new_code_segment() {
+  uint64_t  number_of_hex_digits;
   uint64_t* laddr_nid;
   uint64_t* ir_nid;
+
+  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    code_start,
+    8,
+    format_comment("start of code segment @ 0x%08lX", code_start));
+
+  NID_CODE_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    code_start + code_size,
+    8,
+    format_comment("end of code segment accommodating %lu instructions", code_size / INSTRUCTIONSIZE));
 
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
 
   if (SYNTHESIZE == 0) {
+    number_of_hex_digits = round_up(CODE_ADDRESS_SPACE, 4) / 4;
+
     initial_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-dump", "code dump");
 
     REUSE_LINES = 1;
@@ -1696,9 +1722,14 @@ void new_code_segment() {
     while (pc < code_start + code_size) {
       fetch();
 
-      laddr_nid = new_constant(OP_CONSTD, SID_CODE_ADDRESS, pc / INSTRUCTIONSIZE, 0, format_comment("0x%lX", pc));
-      ir_nid    = new_constant(OP_CONST, SID_INSTRUCTION_WORD, ir, 32, format_comment("0x%08lX", ir));
-
+      laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
+        (pc - code_start) / INSTRUCTIONSIZE,
+        number_of_hex_digits,
+        format_comment("vaddr 0x%lX", pc));
+      ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+        ir,
+        32,
+        format_comment("code 0x%08lX", ir));
       initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
         initial_code_segment_nid,
         laddr_nid,
@@ -1722,9 +1753,6 @@ void new_memory_state() {
     init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
   else
     init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
-
-  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "start of code segment");
-  NID_CODE_END   = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start + code_size, 8, "end of code segment");
 
   NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD, data_start, 8, "start of data segment");
   NID_DATA_END   = new_constant(OP_CONSTH, SID_MACHINE_WORD, data_start + data_size, 8, "end of data segment");
@@ -1775,16 +1803,26 @@ uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_n
   return is_range_accessing_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
 }
 
-uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid) {
-  return new_slice(SID_CODE_ADDRESS, vaddr_nid, 31, 2, "map virtual address to 30-bit linear address");
+uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid) {
+  if (code_start > 0)
+    vaddr_nid = new_binary(OP_SUB, SID_MACHINE_WORD, vaddr_nid, NID_CODE_START, "offset code segment start");
+
+  return new_slice(SID_CODE_ADDRESS, vaddr_nid,
+    CODE_ADDRESS_SPACE + 1,
+    2,
+    format_comment("map virtual address to %lu-bit linear address", CODE_ADDRESS_SPACE));
+}
+
+uint64_t* vaddr_to_32_bit_laddr(uint64_t* vaddr_nid) {
+  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 0, "map virtual address to 32-bit linear address");
 }
 
 uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid) {
   return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 3, "map virtual address to 29-bit linear address");
 }
 
-uint64_t* vaddr_to_32_bit_laddr(uint64_t* vaddr_nid) {
-  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 0, "map virtual address to 32-bit linear address");
+uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid) {
+  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 2, "map virtual address to 30-bit linear address");
 }
 
 uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid) {
@@ -2178,7 +2216,7 @@ uint64_t* store_machine_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* 
 uint64_t* fetch_instruction(uint64_t* pc_nid) {
   return new_binary(OP_READ, SID_INSTRUCTION_WORD,
     state_code_segment_nid,
-    vaddr_to_30_bit_laddr(pc_nid),
+    vaddr_to_code_segment_laddr(pc_nid),
     "fetch instruction");
 }
 
@@ -3204,8 +3242,7 @@ void output_model() {
     print_break("\n; uninitialized code segment\n\n");
 
     print_line(state_code_segment_nid);
-  }
-  else {
+  } else {
     print_aligned_break("\n; code dump\n\n", log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
     print_line(initial_code_segment_nid);
@@ -3312,8 +3349,6 @@ uint64_t selfie_model() {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
 
-      init_model_generator();
-
       if (code_size > 0) {
         reset_interpreter();
         reset_profiler();
@@ -3338,6 +3373,8 @@ uint64_t selfie_model() {
 
         SYNTHESIZE = 1;
       }
+
+      init_model_generator();
 
       rotor();
 
