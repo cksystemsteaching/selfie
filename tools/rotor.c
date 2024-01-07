@@ -2502,10 +2502,7 @@ uint64_t* get_instruction_rs2(uint64_t* ir_nid) {
 }
 
 uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid) {
-  if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 52, "sign-extend");
-  else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 20, "sign-extend");
+  return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 12, "sign-extend");
 }
 
 uint64_t* get_instruction_I_immediate(uint64_t* ir_nid) {
@@ -2522,10 +2519,7 @@ uint64_t* get_instruction_S_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* sign_extend_SB_immediate(uint64_t* imm_nid) {
-  if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 51, "sign-extend");
-  else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 19, "sign-extend");
+  return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 13, "sign-extend");
 }
 
 uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid) {
@@ -2546,8 +2540,9 @@ uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* sign_extend_U_immediate(uint64_t* imm_nid) {
+  // redundant with extend_single_word_to_machine_word
   if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 32, "sign-extend");
+    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 32, "sign-extend");
   else
     return imm_nid;
 }
@@ -2561,10 +2556,7 @@ uint64_t* get_instruction_U_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* sign_extend_UJ_immediate(uint64_t* imm_nid) {
-  if (IS64BITTARGET)
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 43, "sign-extend");
-  else
-    return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, 11, "sign-extend");
+  return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 21, "sign-extend");
 }
 
 uint64_t* get_instruction_UJ_immediate(uint64_t* ir_nid) {
