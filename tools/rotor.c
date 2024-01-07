@@ -146,6 +146,7 @@ char* OP_SRL = (char*) 0;
 
 char* OP_ADD = (char*) 0;
 char* OP_SUB = (char*) 0;
+char* OP_MUL = (char*) 0;
 
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
@@ -209,6 +210,7 @@ void init_model() {
 
   OP_ADD = "add";
   OP_SUB = "sub";
+  OP_MUL = "mul";
 
   OP_CONCAT = "concat";
   OP_READ   = "read";
@@ -789,7 +791,7 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* add_nid, char* comment,
+  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* mul_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid,
@@ -2662,7 +2664,7 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* add_nid, char* comment,
+  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* mul_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_OP, "OP?",
@@ -2671,7 +2673,14 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
       decode_funct7(sid, ir_nid,
         NID_F7_ADD, "ADD?",
         add_nid, format_comment("add %s", (uint64_t) comment),
-        no_funct7_nid), format_comment("add ... %s", (uint64_t) comment),
+        decode_funct7(sid, ir_nid,
+          NID_F7_SUB, "SUB?",
+          sub_nid, format_comment("sub %s", (uint64_t) comment),
+          decode_funct7(sid, ir_nid,
+            NID_F7_MUL, "MUL?",
+            mul_nid, format_comment("mul %s", (uint64_t) comment),
+            no_funct7_nid))),
+      format_comment("add or sub or mul %s", (uint64_t) comment),
       no_funct3_nid),
     format_comment("op %s", (uint64_t) comment),
     other_opcode_nid);
@@ -2794,7 +2803,10 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
     decode_imm(SID_BOOLEAN, ir_nid,
       NID_ADDI, "known?", NID_FALSE,
       decode_op(SID_BOOLEAN, ir_nid,
-        NID_ADD, "known?", NID_FALSE, NID_FALSE,
+        NID_ADD,
+        NID_SUB,
+        NID_MUL,
+        "known?", NID_FALSE, NID_FALSE,
         decode_load(SID_BOOLEAN, ir_nid,
           NID_LD,
           NID_LW, NID_LWU,
@@ -2852,6 +2864,14 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
       rs1_value_nid,
       rs2_value_nid,
       "rs1 value + rs2 value"),
+    new_binary(OP_SUB, SID_MACHINE_WORD,
+      rs1_value_nid,
+      rs2_value_nid,
+      "rs1 value - rs2 value"),
+    new_binary(OP_MUL, SID_MACHINE_WORD,
+      rs1_value_nid,
+      rs2_value_nid,
+      "rs1 value * rs2 value"),
     "register data flow",
     rd_value_nid,
     rd_value_nid,
