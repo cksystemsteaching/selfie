@@ -568,6 +568,8 @@ void print_memory_sorts();
 
 void print_segmentation();
 
+void new_segmentation();
+
 void new_code_segment();
 void new_memory_state();
 
@@ -669,19 +671,28 @@ uint64_t* NID_DATA_START = (uint64_t*) 0;
 uint64_t* NID_DATA_END   = (uint64_t*) 0;
 
 uint64_t* NID_HEAP_START = (uint64_t*) 0;
-uint64_t* NID_STACK_END  = (uint64_t*) 0;
+uint64_t* NID_HEAP_END   = (uint64_t*) 0;
+
+uint64_t* NID_STACK_START = (uint64_t*) 0;
+uint64_t* NID_STACK_END   = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* end_heap_nid    = (uint64_t*) 0;
-uint64_t* start_stack_nid = (uint64_t*) 0;
+uint64_t heap_start     = 0;
+uint64_t heap_size      = 0;
+uint64_t heap_allowance = 0;
+
+uint64_t stack_start     = 0;
+uint64_t stack_size      = 0;
+uint64_t stack_allowance = 0;
 
 uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 
-uint64_t* initial_main_memory_nid = (uint64_t*) 0;
+uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
+uint64_t* initial_data_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -1697,18 +1708,14 @@ void print_segmentation() {
   print_line(NID_DATA_START);
   print_line(NID_DATA_END);
 
-  //print_line(NID_HEAP_START);
-  //print_line(end_heap_nid);
+  print_line(NID_HEAP_START);
+  print_line(NID_HEAP_END);
 
-  print_line(start_stack_nid);
+  print_line(NID_STACK_START);
   print_line(NID_STACK_END);
 }
 
-void new_code_segment() {
-  uint64_t  number_of_hex_digits;
-  uint64_t* laddr_nid;
-  uint64_t* ir_nid;
-
+void new_segmentation() {
   NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
     code_start,
     8,
@@ -1718,6 +1725,61 @@ void new_code_segment() {
     code_start + code_size,
     8,
     format_comment("end of code segment accommodating %lu instructions", code_size / INSTRUCTIONSIZE));
+
+  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    data_start,
+    8,
+    format_comment("start of data segment @ 0x%08lX", data_start));
+
+  NID_DATA_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    data_start + data_size,
+    8,
+    format_comment("end of data segment accommodating %lu bytes", data_size));
+
+  NID_HEAP_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    heap_start,
+    8,
+    format_comment("start of heap segment @ 0x%08lX", heap_start));
+
+  NID_HEAP_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    heap_start + heap_size,
+    8,
+    format_comment("static end of heap segment accommodating %lu bytes", heap_size));
+
+  if (IS64BITTARGET) {
+    NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      stack_start,
+      8,
+      format_comment("static start of stack segment @ 0x%08lX", stack_start));
+
+    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      stack_start + stack_size,
+      0,
+      format_comment("end of stack segment accommodating %lu bytes", stack_size));
+  } else {
+    // force wrap-around
+    if (stack_start == VIRTUALMEMORYSIZE * GIGABYTE)
+      NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+        0,
+        8,
+        format_comment("static start of stack segment @ 0x%08lX", stack_start));
+    else
+      NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+        stack_start,
+        8,
+        format_comment("static start of stack segment @ 0x%08lX", stack_start));
+
+    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+      0,
+      8,
+      format_comment("end of stack segment accommodating %lu bytes", stack_size));
+  }
+}
+
+void new_code_segment() {
+  uint64_t  number_of_hex_digits;
+  uint64_t* laddr_nid;
+  uint64_t* ir_nid;
 
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
 
@@ -1765,24 +1827,6 @@ void new_memory_state() {
   uint64_t* vaddr_nid;
   uint64_t* laddr_nid;
 
-  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    data_start,
-    8,
-    format_comment("start of data segment @ 0x%08lX", data_start));
-
-  NID_DATA_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-    data_start + data_size,
-    8,
-    format_comment("end of data segment accommodating %lu bytes", data_size));
-
-  start_stack_nid = get_register_value(NID_SP, "sp value");
-
-  if (IS64BITTARGET)
-    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD, HIGHESTVIRTUALADDRESS + 1, 0, "end of stack segment");
-  else
-    // force wrap-around
-    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD, 0, 8, "end of stack segment");
-
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
 
   if (SYNTHESIZE) {
@@ -1793,13 +1837,19 @@ void new_memory_state() {
   } else {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
-    initial_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "data-dump", "data dump");
+    initial_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "memory-dump", "memory dump");
 
     REUSE_LINES = 1; // TODO: turn off via console argument
 
     vaddr = data_start;
 
-    while (vaddr < data_start + data_size) {
+    while (vaddr < VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
+      if (vaddr == data_start + data_size) {
+        initial_data_segment_nid = initial_main_memory_nid;
+
+        vaddr = stack_start;
+      }
+
       if (is_virtual_address_mapped(get_pt(current_context), vaddr))
         data = load_virtual_memory(get_pt(current_context), vaddr);
       else
@@ -3198,6 +3248,8 @@ void rotor() {
   new_core_state();
   new_register_file_state();
 
+  new_segmentation();
+
   new_code_segment();
   new_memory_state();
 
@@ -3308,6 +3360,8 @@ void output_model() {
 
   print_line(init_register_file_nid);
 
+  print_segmentation();
+
   if (SYNTHESIZE) {
     print_break("\n; uninitialized code segment\n\n");
 
@@ -3329,9 +3383,13 @@ void output_model() {
   } else {
     if (ISBYTEMEMORY)
       // only estimating number of lines needed to store one byte
-      print_aligned_break("\n; data dump\n\n", log_ten(data_size * 5) + 1);
+      print_aligned_break("\n; initial data segment\n\n", log_ten((data_size + stack_size) * 5) + 1);
     else
-      print_aligned_break("\n; data dump\n\n", log_ten(data_size / WORDSIZE * 3 + 1) + 1);
+      print_aligned_break("\n; initial data segment\n\n", log_ten((data_size + stack_size) / WORDSIZE * 3 + 1) + 1);
+
+    print_line(initial_data_segment_nid);
+
+    print_break("\n; initial stack segment\n\n");
 
     print_line(initial_main_memory_nid);
 
@@ -3339,8 +3397,6 @@ void output_model() {
 
     print_line(init_main_memory_nid);
   }
-
-  print_segmentation();
 
   print_break("\n; kernel state\n\n");
 
@@ -3433,6 +3489,11 @@ uint64_t selfie_model() {
     if (number_of_remaining_arguments() > 0) {
       bad_exit_code = atoi(peek_argument(0));
 
+      // TODO: introduce console arguments for allowances
+
+      heap_allowance  = 0;
+      stack_allowance = 0;
+
       if (code_size > 0) {
         reset_interpreter();
         reset_profiler();
@@ -3450,10 +3511,33 @@ uint64_t selfie_model() {
 
         do_switch(current_context, TIMEROFF);
 
+        // assert: allowances are multiples of word size
+
+        if (get_program_break(current_context) - get_heap_seg_start(current_context) > heap_allowance)
+          heap_allowance = round_up(get_program_break(current_context) - get_heap_seg_start(current_context), PAGESIZE);
+
+        heap_start = get_heap_seg_start(current_context);
+        heap_size  = heap_allowance;
+
+        if (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP) > stack_allowance)
+          stack_allowance = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP), PAGESIZE);
+
+        stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+        stack_size  = stack_allowance;
+
         SYNTHESIZE = 0;
       } else {
         code_start = 0;
         code_size  = 28;
+
+        data_start = 4096;
+        data_size  = 0;
+
+        heap_start = 8192;
+        heap_size  = heap_allowance;
+
+        stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+        stack_size  = stack_allowance;
 
         SYNTHESIZE = 1;
       }
