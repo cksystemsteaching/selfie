@@ -144,9 +144,11 @@ char* OP_OR  = (char*) 0;
 char* OP_SLL = (char*) 0;
 char* OP_SRL = (char*) 0;
 
-char* OP_ADD = (char*) 0;
-char* OP_SUB = (char*) 0;
-char* OP_MUL = (char*) 0;
+char* OP_ADD  = (char*) 0;
+char* OP_SUB  = (char*) 0;
+char* OP_MUL  = (char*) 0;
+char* OP_UDIV = (char*) 0;
+char* OP_UREM = (char*) 0;
 
 char* OP_CONCAT = (char*) 0;
 char* OP_READ   = (char*) 0;
@@ -208,9 +210,11 @@ void init_model() {
   OP_SLL = "sll";
   OP_SRL = "srl";
 
-  OP_ADD = "add";
-  OP_SUB = "sub";
-  OP_MUL = "mul";
+  OP_ADD  = "add";
+  OP_SUB  = "sub";
+  OP_MUL  = "mul";
+  OP_UDIV = "udiv";
+  OP_UREM = "urem";
 
   OP_CONCAT = "concat";
   OP_READ   = "read";
@@ -791,7 +795,8 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* mul_nid, char* comment,
+  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* sltu_nid,
+  uint64_t* mul_nid, uint64_t* divu_nid, uint64_t* remu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid,
@@ -893,6 +898,9 @@ uint64_t* NID_F7_SUB  = (uint64_t*) 0;
 uint64_t* NID_F7_DIVU = (uint64_t*) 0;
 uint64_t* NID_F7_REMU = (uint64_t*) 0;
 uint64_t* NID_F7_SLTU = (uint64_t*) 0;
+
+uint64_t* NID_F7_ADD_SLTU      = (uint64_t*) 0;
+uint64_t* NID_F7_MUL_DIVU_REMU = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT12 = (uint64_t*) 0;
 
@@ -1051,6 +1059,9 @@ void init_instruction_sorts() {
   NID_F7_DIVU = new_constant(OP_CONST, SID_FUNCT7, F7_DIVU, 7, "F7_DIVU");
   NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, 7, "F7_REMU");
   NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, 7, "F7_SLTU");
+
+  NID_F7_ADD_SLTU      = NID_F7_ADD;
+  NID_F7_MUL_DIVU_REMU = NID_F7_MUL;
 
   SID_FUNCT12 = new_bitvec(12, "funct12 sort");
 
@@ -2664,24 +2675,42 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* mul_nid, char* comment,
+  uint64_t* add_nid, uint64_t* sub_nid, uint64_t* sltu_nid,
+  uint64_t* mul_nid, uint64_t* divu_nid, uint64_t* remu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_OP, "OP?",
-    decode_funct3(sid, ir_nid,
-      NID_F3_ADD_SUB_MUL, "ADD or SUB or MUL?",
-      decode_funct7(sid, ir_nid,
-        NID_F7_ADD, "ADD?",
+    decode_funct7(sid, ir_nid,
+      NID_F7_ADD_SLTU, "ADD or SLTU?",
+      decode_funct3(sid, ir_nid,
+        NID_F3_ADD_SUB_MUL, "ADD?",
         add_nid, format_comment("add %s", (uint64_t) comment),
-        decode_funct7(sid, ir_nid,
-          NID_F7_SUB, "SUB?",
+        decode_funct3(sid, ir_nid,
+          NID_F3_SLTU, "SLTU?",
+          sltu_nid, format_comment("sltu %s", (uint64_t) comment),
+          no_funct3_nid)),
+      format_comment("add or sltu %s", (uint64_t) comment),
+      decode_funct7(sid, ir_nid,
+        NID_F7_SUB, "SUB?",
+        decode_funct3(sid, ir_nid,
+          NID_F3_ADD_SUB_MUL, "SUB?",
           sub_nid, format_comment("sub %s", (uint64_t) comment),
-          decode_funct7(sid, ir_nid,
-            NID_F7_MUL, "MUL?",
+          no_funct3_nid),
+        format_comment("sub %s", (uint64_t) comment),
+        decode_funct7(sid, ir_nid,
+          NID_F7_MUL_DIVU_REMU, "MUL or DIVU or REMU?",
+          decode_funct3(sid, ir_nid,
+            NID_F3_ADD_SUB_MUL, "MUL?",
             mul_nid, format_comment("mul %s", (uint64_t) comment),
-            no_funct7_nid))),
-      format_comment("add or sub or mul %s", (uint64_t) comment),
-      no_funct3_nid),
+            decode_funct3(sid, ir_nid,
+              NID_F3_DIVU, "DIVU?",
+              divu_nid, format_comment("divu %s", (uint64_t) comment),
+              decode_funct3(sid, ir_nid,
+                NID_F3_REMU, "REMU?",
+                remu_nid, format_comment("remu %s", (uint64_t) comment),
+                no_funct3_nid))),
+          format_comment("mul or divu or remu %s", (uint64_t) comment),
+          no_funct7_nid))),
     format_comment("op %s", (uint64_t) comment),
     other_opcode_nid);
 }
@@ -2805,7 +2834,10 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
       decode_op(SID_BOOLEAN, ir_nid,
         NID_ADD,
         NID_SUB,
+        NID_SLTU,
         NID_MUL,
+        NID_DIVU,
+        NID_REMU,
         "known?", NID_FALSE, NID_FALSE,
         decode_load(SID_BOOLEAN, ir_nid,
           NID_LD,
@@ -2868,10 +2900,25 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
       rs1_value_nid,
       rs2_value_nid,
       "rs1 value - rs2 value"),
+    new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_binary_boolean(OP_ULT,
+        rs1_value_nid,
+        rs2_value_nid,
+        "rs1 value < rs2 value (unsigned)"),
+      WORDSIZEINBITS - 1,
+      "unsigned-extend Boolean to machine word"),
     new_binary(OP_MUL, SID_MACHINE_WORD,
       rs1_value_nid,
       rs2_value_nid,
       "rs1 value * rs2 value"),
+    new_binary(OP_UDIV, SID_MACHINE_WORD,
+      rs1_value_nid,
+      rs2_value_nid,
+      "rs1 value / rs2 value (unsigned)"),
+    new_binary(OP_UREM, SID_MACHINE_WORD,
+      rs1_value_nid,
+      rs2_value_nid,
+      "rs1 value % rs2 value (unsigned)"),
     "register data flow",
     rd_value_nid,
     rd_value_nid,
