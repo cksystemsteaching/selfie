@@ -58,6 +58,7 @@ uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char
 uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, char* comment);
 
 uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment);
+uint64_t* new_unary_boolean(char* op, uint64_t* value_nid, char* comment);
 uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment);
@@ -577,9 +578,17 @@ void new_memory_state();
 
 uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid);
+uint64_t* is_access_in_data_segment(uint64_t* vaddr_nid);
+uint64_t* is_access_in_heap_segment(uint64_t* vaddr_nid);
+uint64_t* is_access_in_stack_segment(uint64_t* vaddr_nid);
+uint64_t* is_access_in_main_memory(uint64_t* vaddr_nid);
 
-uint64_t* is_range_accessing_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
-uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_access_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_range_access_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_access_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_access_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_access_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_access_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid);
 
 uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid);
 
@@ -813,7 +822,7 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
-uint64_t* load_seg_faults(uint64_t* ir_nid);
+uint64_t* load_no_seg_faults(uint64_t* ir_nid);
 
 uint64_t* get_pc_value_plus_4(uint64_t* pc_nid);
 uint64_t* jal_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
@@ -828,7 +837,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
 
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid);
 uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
-uint64_t* store_seg_faults(uint64_t* ir_nid);
+uint64_t* store_no_seg_faults(uint64_t* ir_nid);
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid);
 
@@ -1207,9 +1216,9 @@ uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 
-uint64_t* possible_read_seg_fault_nid = (uint64_t*) 0;
-uint64_t* is_syscall_id_known_nid     = (uint64_t*) 0;
-uint64_t* bad_exit_code_nid           = (uint64_t*) 0;
+uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
+uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
+uint64_t* bad_exit_code_nid       = (uint64_t*) 0;
 
 uint64_t* bad_memory_nid = (uint64_t*) 0;
 
@@ -1334,6 +1343,10 @@ uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, 
 
 uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment) {
   return new_line(op, sid, value_nid, UNUSED, UNUSED, comment);
+}
+
+uint64_t* new_unary_boolean(char* op, uint64_t* value_nid, char* comment) {
+  return new_unary(op, SID_BOOLEAN, value_nid, comment);
 }
 
 uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
@@ -1957,36 +1970,77 @@ uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_
     new_binary_boolean(OP_UGTE,
       vaddr_nid,
       start_nid,
-      "vaddr >= start of segment"),
+      "vaddr >= start of segment?"),
     new_binary_boolean(OP_ULT,
       vaddr_nid,
       end_nid,
-      "vaddr < end of segment"),
-    "vaddr in segment");
+      "vaddr < end of segment?"),
+    "vaddr in segment?");
 }
 
 uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid) {
   return is_access_in_segment(vaddr_nid, NID_CODE_START, NID_CODE_END);
 }
 
-uint64_t* is_range_accessing_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
-  return new_binary_boolean(OP_AND,
-    new_binary_boolean(OP_UGTE,
-      new_binary(OP_ADD, SID_MACHINE_WORD,
-        vaddr_nid,
-        range_nid,
-        "vaddr + range in bytes"),
-      start_nid,
-      "vaddr + range >= start of segment"),
-    new_binary_boolean(OP_ULT,
-      vaddr_nid,
-      end_nid,
-      "vaddr < end of segment"),
-    "some vaddresses in range in segment");
+uint64_t* is_access_in_data_segment(uint64_t* vaddr_nid) {
+  return is_access_in_segment(vaddr_nid, NID_DATA_START, NID_DATA_END);
 }
 
-uint64_t* is_range_accessing_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_accessing_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
+uint64_t* is_access_in_heap_segment(uint64_t* vaddr_nid) {
+  return is_access_in_segment(vaddr_nid, NID_HEAP_START, NID_HEAP_END);
+}
+
+uint64_t* is_access_in_stack_segment(uint64_t* vaddr_nid) {
+  return is_access_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
+}
+
+uint64_t* is_access_in_main_memory(uint64_t* vaddr_nid) {
+  return new_binary_boolean(OP_OR,
+    is_access_in_data_segment(vaddr_nid),
+    new_binary_boolean(OP_OR,
+      is_access_in_heap_segment(vaddr_nid),
+      is_access_in_stack_segment(vaddr_nid),
+      "vaddr in heap or stack segment?"),
+    "vaddr in data, heap, or stack segment?");
+}
+
+uint64_t* is_range_access_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
+  return new_binary_boolean(OP_AND,
+    is_access_in_segment(vaddr_nid, start_nid, end_nid),
+    new_binary_boolean(OP_ULTE,
+      range_nid,
+      new_binary(OP_SUB, SID_MACHINE_WORD,
+        end_nid,
+        vaddr_nid,
+        "end of segment - vaddr"),
+      "range <= end of segment - vaddr? (no overflow if vaddr < end of segment)"),
+    "all vaddr in range in segment");
+}
+
+uint64_t* is_range_access_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_access_in_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
+}
+
+uint64_t* is_range_access_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_access_in_segment(vaddr_nid, range_nid, NID_DATA_START, NID_DATA_END);
+}
+
+uint64_t* is_range_access_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_access_in_segment(vaddr_nid, range_nid, NID_HEAP_START, NID_HEAP_END);
+}
+
+uint64_t* is_range_access_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_access_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
+}
+
+uint64_t* is_range_access_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return new_binary_boolean(OP_OR,
+    is_range_access_in_data_segment(vaddr_nid, range_nid),
+    new_binary_boolean(OP_OR,
+      is_range_access_in_heap_segment(vaddr_nid, range_nid),
+      is_range_access_in_stack_segment(vaddr_nid, range_nid),
+      "all vaddr in range in heap or stack segment?"),
+    "all vaddr in range in data, heap, or stack segment?");
 }
 
 uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid) {
@@ -2824,18 +2878,18 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
     other_data_flow_nid);
 }
 
-uint64_t* load_seg_faults(uint64_t* ir_nid) {
+uint64_t* load_no_seg_faults(uint64_t* ir_nid) {
   return decode_load(SID_BOOLEAN, ir_nid,
-    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_access_in_code_segment(get_rs1_value_plus_I_immediate(ir_nid)),
-    is_access_in_code_segment(get_rs1_value_plus_I_immediate(ir_nid)),
-    "seg-faults",
-    NID_FALSE,
-    NID_FALSE);
+    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
+    is_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
+    "no-seg-faults",
+    NID_TRUE,
+    NID_TRUE);
 }
 
 uint64_t* get_pc_value_plus_4(uint64_t* pc_nid) {
@@ -2953,15 +3007,15 @@ uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* othe
     other_data_flow_nid);
 }
 
-uint64_t* store_seg_faults(uint64_t* ir_nid) {
+uint64_t* store_no_seg_faults(uint64_t* ir_nid) {
   return decode_store(SID_BOOLEAN, ir_nid,
-    is_range_accessing_code_segment(get_rs1_value_plus_S_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_S_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_accessing_code_segment(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_access_in_code_segment(get_rs1_value_plus_S_immediate(ir_nid)),
-    "seg-faults",
-    NID_FALSE,
-    NID_FALSE);
+    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid)),
+    "no-seg-faults",
+    NID_TRUE,
+    NID_TRUE);
 }
 
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* memory_nid) {
@@ -3054,12 +3108,12 @@ void new_core_state() {
 uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment) {
   if (SYNTHESIZE) {
     if (good_nid == UNUSED)
-      good_nid = new_unary(OP_NOT, SID_BOOLEAN, bad_nid, "asserting");
+      good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
     return new_property(OP_CONSTRAINT, good_nid, symbol, comment);
   } else {
     if (bad_nid == UNUSED)
-      bad_nid = new_unary(OP_NOT, SID_BOOLEAN, good_nid, "targeting");
+      bad_nid = new_unary_boolean(OP_NOT, good_nid, "targeting");
 
     return new_property(OP_BAD, bad_nid, symbol, comment);
   }
@@ -3236,7 +3290,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   eval_core_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
     new_binary_boolean(OP_AND,
       kernel_data_flow_nid,
-      new_unary(OP_NOT, SID_BOOLEAN,
+      new_unary_boolean(OP_NOT,
         more_than_one_readable_byte_to_read_nid,
         "read system call returns if there is at most one more byte to read"),
       "update a0 when read system call returns"),
@@ -3266,7 +3320,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   // kernel properties
 
-  possible_read_seg_fault_nid = state_property(
+  read_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
       new_binary_boolean(OP_AND,
@@ -3276,8 +3330,10 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
           NID_MACHINE_WORD_0,
           "have bytes been read yet?"),
         "no bytes read yet by active read system call"),
-      is_range_accessing_code_segment(a1_value_nid, a2_value_nid),
-      "bytes to be read may cause segmentation fault"),
+      new_unary_boolean(OP_NOT,
+        is_range_access_in_heap_segment(a1_value_nid, a2_value_nid),
+        "access outside of heap segment"),
+      "storing bytes to be read may cause segmentation fault"),
     "read-seg-fault",
     "possible read segmentation fault");
 
@@ -3394,14 +3450,14 @@ void rotor() {
     "imminent fetch segmentation fault");
 
   load_seg_faulting_nid = state_property(
+    load_no_seg_faults(ir_nid),
     UNUSED,
-    load_seg_faults(ir_nid),
     "load-seg-fault",
     "load segmentation fault");
 
   store_seg_faulting_nid = state_property(
+    store_no_seg_faults(ir_nid),
     UNUSED,
-    store_seg_faults(ir_nid),
     "store-seg-fault",
     "store segmentation fault");
 }
@@ -3458,7 +3514,7 @@ void output_model() {
 
     print_line(init_main_memory_nid);
   } else {
-    // assert: data_size > 0 and stack_size > 0
+    // assert: data_size > 0 and stack_size > 0 and non-zero data in data and stack segment
 
     if (ISBYTEMEMORY)
       // only estimating number of lines needed to store one byte
@@ -3560,7 +3616,7 @@ void output_model() {
 
   print_break("\n");
 
-  print_line(possible_read_seg_fault_nid);
+  print_line(read_seg_faulting_nid);
 
   print_break("\n");
 
@@ -3615,7 +3671,7 @@ uint64_t selfie_model() {
         SYNTHESIZE = 0;
       } else {
         code_start = 0;
-        code_size  = 28;
+        code_size  = 7 * 4;
 
         data_start = 4096;
         data_size  = 0;
