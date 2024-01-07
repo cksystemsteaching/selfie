@@ -515,6 +515,8 @@ uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t* initial_register_file_nid = (uint64_t*) 0;
+
 uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
 uint64_t* next_register_file_nid  = (uint64_t*) 0;
@@ -1676,8 +1678,53 @@ void print_register_sorts() {
 }
 
 void new_register_file_state() {
+  uint64_t* dump_nid;
+  uint64_t  reg;
+  uint64_t* register_nid;
+  uint64_t  value;
+  uint64_t* value_nid;
+
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE, "regs", "register file");
-  init_register_file_nid  = new_binary(OP_INIT, SID_REGISTER_STATE, state_register_file_nid, NID_MACHINE_WORD_0, "zeroed registers");
+
+  init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+    state_register_file_nid, NID_MACHINE_WORD_0, "zeroed registers");
+
+  if (SYNTHESIZE == 0) {
+    dump_nid = new_input(OP_STATE, SID_REGISTER_STATE, "register-dump", "register dump");
+
+    initial_register_file_nid = dump_nid;
+
+    reg = 0;
+
+    while (reg < 32) {
+      value = *(registers + reg);
+
+      if (value != 0) {
+        // skipping zero as initial value
+        value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          value,
+          0,
+          format_comment("initial register value 0x%lX", value));
+        // for reuse creating register address exactly as above in register sorts
+        register_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
+          reg,
+          5,
+          format_comment("%s", (uint64_t) *(REGISTERS + reg)));
+        initial_register_file_nid = new_ternary(OP_WRITE, SID_REGISTER_STATE,
+          initial_register_file_nid,
+          register_nid,
+          value_nid,
+          "load initial register value");
+      }
+
+      reg = reg + 1;
+    }
+
+    if (initial_register_file_nid != dump_nid)
+      // original initialization to zero is not used
+      init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+        state_register_file_nid, initial_register_file_nid, "loaded registers");
+  }
 }
 
 uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
@@ -1802,19 +1849,19 @@ void new_code_segment() {
 
       if (ir != 0) {
         // skipping zero as instruction
-        laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
-          (pc - code_start) / INSTRUCTIONSIZE,
-          number_of_hex_digits,
-          format_comment("vaddr 0x%lX", pc));
         ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
           ir,
           32,
           format_comment("code 0x%08lX", ir));
+        laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
+          (pc - code_start) / INSTRUCTIONSIZE,
+          number_of_hex_digits,
+          format_comment("vaddr 0x%lX", pc));
         initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
           initial_code_segment_nid,
           laddr_nid,
           ir_nid,
-          "");
+          "load code");
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -1870,7 +1917,10 @@ void new_memory_state() {
 
         if (data != 0) {
           // skipping zero as initial value
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, data, 0, format_comment("data 0x%lX", data));
+          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+            data,
+            0,
+            format_comment("data 0x%lX", data));
 
           if (ISBYTEMEMORY) {
             vaddr_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
@@ -1887,7 +1937,7 @@ void new_memory_state() {
               initial_main_memory_nid,
               laddr_nid,
               data_nid,
-              "");
+              "load data");
           }
         }
       }
@@ -3372,9 +3422,19 @@ void output_model() {
   print_line(initial_core_pc_nid);
   print_line(init_core_pc_nid);
 
-  print_break("\n; register file\n\n");
+  if (SYNTHESIZE) {
+    print_break("\n; zeroed register file\n\n");
 
-  print_line(init_register_file_nid);
+    print_line(init_register_file_nid);
+  } else {
+    print_aligned_break("\n; register dump\n\n", log_ten(32 * 3 + 1) + 1);
+
+    print_line(initial_register_file_nid);
+
+    print_break("\n; initialized register file\n\n");
+
+    print_line(init_register_file_nid);
+  }
 
   print_segmentation();
 
