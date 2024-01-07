@@ -1530,7 +1530,11 @@ uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
 }
 
 void print_line(uint64_t* line) {
-  current_nid = print_referenced_line(current_nid, line);
+  if (get_nid(line) > 0)
+    // print lines only once but mention reuse at top level
+    w = w + dprintf(output_fd, "; skipping line reusing %lu\n", get_nid(line));
+  else
+    current_nid = print_referenced_line(current_nid, line);
 }
 
 void print_break(char* comment) {
@@ -1754,7 +1758,7 @@ void new_segmentation() {
 
     NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
       stack_start + stack_size,
-      0,
+      8,
       format_comment("end of stack segment accommodating %lu bytes", stack_size));
   } else {
     // force wrap-around
