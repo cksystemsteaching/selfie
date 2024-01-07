@@ -693,6 +693,7 @@ uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 
 uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
 uint64_t* initial_data_segment_nid = (uint64_t*) 0;
+uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -1799,19 +1800,22 @@ void new_code_segment() {
     while (pc < code_start + code_size) {
       fetch();
 
-      laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
-        (pc - code_start) / INSTRUCTIONSIZE,
-        number_of_hex_digits,
-        format_comment("vaddr 0x%lX", pc));
-      ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
-        ir,
-        32,
-        format_comment("code 0x%08lX", ir));
-      initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
-        initial_code_segment_nid,
-        laddr_nid,
-        ir_nid,
-        "");
+      if (ir != 0) {
+        // skipping zero as instruction
+        laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
+          (pc - code_start) / INSTRUCTIONSIZE,
+          number_of_hex_digits,
+          format_comment("vaddr 0x%lX", pc));
+        ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+          ir,
+          32,
+          format_comment("code 0x%08lX", ir));
+        initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
+          initial_code_segment_nid,
+          laddr_nid,
+          ir_nid,
+          "");
+      }
 
       pc = pc + INSTRUCTIONSIZE;
     }
@@ -1851,33 +1855,41 @@ void new_memory_state() {
       if (vaddr == data_start + data_size) {
         initial_data_segment_nid = initial_main_memory_nid;
 
+        vaddr = heap_start;
+      }
+
+      if (vaddr == heap_start + heap_size) {
+        initial_heap_segment_nid = initial_data_segment_nid;
+
         vaddr = stack_start;
       }
 
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
+        // memory allocated but not yet mapped is assumed to be zeroed
         data = load_virtual_memory(get_pt(current_context), vaddr);
-      else
-        // memory allocated but not yet mapped is zeroed
-        data = 0;
 
-      data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, data, 0, format_comment("data 0x%lX", data));
+        if (data != 0) {
+          // skipping zero as initial value
+          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, data, 0, format_comment("data 0x%lX", data));
 
-      if (ISBYTEMEMORY) {
-        vaddr_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-          vaddr,
-          number_of_hex_digits,
-          format_comment("vaddr 0x%lX", vaddr));
-        initial_main_memory_nid = store_machine_word(vaddr_nid, data_nid, initial_main_memory_nid);
-      } else {
-        laddr_nid = new_constant(OP_CONSTH, SID_MEMORY_ADDRESS,
-          vaddr / WORDSIZE,
-          number_of_hex_digits,
-          format_comment("vaddr 0x%lX", vaddr));
-        initial_main_memory_nid = new_ternary(OP_WRITE, SID_MEMORY_STATE,
-          initial_main_memory_nid,
-          laddr_nid,
-          data_nid,
-          "");
+          if (ISBYTEMEMORY) {
+            vaddr_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+              vaddr,
+              number_of_hex_digits,
+              format_comment("vaddr 0x%lX", vaddr));
+            initial_main_memory_nid = store_machine_word(vaddr_nid, data_nid, initial_main_memory_nid);
+          } else {
+            laddr_nid = new_constant(OP_CONSTH, SID_MEMORY_ADDRESS,
+              vaddr / WORDSIZE,
+              number_of_hex_digits,
+              format_comment("vaddr 0x%lX", vaddr));
+            initial_main_memory_nid = new_ternary(OP_WRITE, SID_MEMORY_STATE,
+              initial_main_memory_nid,
+              laddr_nid,
+              data_nid,
+              "");
+          }
+        }
       }
 
       vaddr = vaddr + WORDSIZE;
@@ -3371,7 +3383,8 @@ void output_model() {
 
     print_line(state_code_segment_nid);
   } else {
-    print_aligned_break("\n; code dump\n\n", log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
+    print_aligned_break("\n; code dump\n\n",
+      log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
     print_line(initial_code_segment_nid);
 
@@ -3385,13 +3398,23 @@ void output_model() {
 
     print_line(init_main_memory_nid);
   } else {
+    // assert: data_size > 0 and stack_size > 0
+
     if (ISBYTEMEMORY)
       // only estimating number of lines needed to store one byte
-      print_aligned_break("\n; initial data segment\n\n", log_ten((data_size + stack_size) * 5) + 1);
+      print_aligned_break("\n; initial data segment\n\n",
+        log_ten((data_size + heap_size + stack_size) * 5) + 1);
     else
-      print_aligned_break("\n; initial data segment\n\n", log_ten((data_size + stack_size) / WORDSIZE * 3 + 1) + 1);
+      print_aligned_break("\n; initial data segment\n\n",
+        log_ten((data_size + heap_size + stack_size) / WORDSIZE * 3 + 1) + 1);
 
     print_line(initial_data_segment_nid);
+
+    if (initial_heap_segment_nid != initial_data_segment_nid) {
+      print_break("\n; initial heap segment\n\n");
+
+      print_line(initial_heap_segment_nid);
+    }
 
     print_break("\n; initial stack segment\n\n");
 
