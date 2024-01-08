@@ -487,6 +487,9 @@ void init_interface_kernel() {
 
 void print_register_sorts();
 
+uint64_t* load_register_value(uint64_t* reg_nid, char* comment);
+uint64_t* store_register_value(uint64_t* reg_nid, uint64_t* value_nid, uint64_t* register_file_nid, char* comment);
+
 void new_register_file_state();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -530,6 +533,7 @@ uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t* zeroed_register_file_nid  = (uint64_t*) 0;
 uint64_t* initial_register_file_nid = (uint64_t*) 0;
 
 uint64_t* state_register_file_nid = (uint64_t*) 0;
@@ -1716,22 +1720,31 @@ void print_register_sorts() {
   print_line(SID_REGISTER_STATE);
 }
 
+uint64_t* load_register_value(uint64_t* reg_nid, char* comment) {
+  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file_nid, reg_nid, comment);
+}
+
+uint64_t* store_register_value(uint64_t* reg_nid, uint64_t* value_nid, uint64_t* register_file_nid, char* comment) {
+  return new_ternary(OP_WRITE, SID_REGISTER_STATE, register_file_nid, reg_nid, value_nid, comment);
+}
+
 void new_register_file_state() {
-  uint64_t* dump_nid;
   uint64_t  reg;
-  uint64_t* register_nid;
+  uint64_t* reg_nid;
   uint64_t  value;
   uint64_t* value_nid;
 
-  state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE, "regs", "register file");
+  state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
+    "zeroed-register-file", "zeroed register file");
 
-  init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
-    state_register_file_nid, NID_MACHINE_WORD_0, "zeroed registers");
+  zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+    state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  if (SYNTHESIZE == 0) {
-    dump_nid = new_input(OP_STATE, SID_REGISTER_STATE, "register-dump", "register dump");
-
-    initial_register_file_nid = dump_nid;
+  if (SYNTHESIZE)
+    initial_register_file_nid =
+      store_register_value(NID_SP, NID_STACK_END, state_register_file_nid, "write initial sp value");
+  else {
+    initial_register_file_nid = state_register_file_nid;
 
     reg = 0;
 
@@ -1745,29 +1758,27 @@ void new_register_file_state() {
           0,
           format_comment("initial register value 0x%lX", value));
         // for reuse creating register address exactly as above in register sorts
-        register_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
+        reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
           reg,
           5,
           format_comment("%s", (uint64_t) *(REGISTERS + reg)));
-        initial_register_file_nid = new_ternary(OP_WRITE, SID_REGISTER_STATE,
-          initial_register_file_nid,
-          register_nid,
-          value_nid,
-          "load initial register value");
+        initial_register_file_nid =
+          store_register_value(reg_nid, value_nid,
+            initial_register_file_nid, "write initial register value");
       }
 
       reg = reg + 1;
     }
-
-    if (initial_register_file_nid != dump_nid)
-      // original initialization to zero is not used
-      init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
-        state_register_file_nid, initial_register_file_nid, "loaded registers");
   }
-}
 
-uint64_t* get_register_value(uint64_t* reg_nid, char* comment) {
-  return new_binary(OP_READ, SID_MACHINE_WORD, state_register_file_nid, reg_nid, comment);
+  if (initial_register_file_nid != state_register_file_nid) {
+    state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
+      "initialized-register-file", "initialized register file");
+
+    init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+      state_register_file_nid, initial_register_file_nid, "initializing registers");
+  } else
+    init_register_file_nid = zeroed_register_file_nid;
 }
 
 // -----------------------------------------------------------------
@@ -2872,7 +2883,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
-    get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+    load_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
     get_instruction_I_immediate(ir_nid),
     "rs1 value + I-immediate");
 }
@@ -2881,7 +2892,7 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   return decode_imm(SID_MACHINE_WORD, ir_nid,
     get_rs1_value_plus_I_immediate(ir_nid),
     "register data flow",
-    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
 }
 
@@ -2891,10 +2902,10 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   uint64_t* rs1_value_nid;
   uint64_t* rs2_value_nid;
 
-  rd_value_nid = get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value");
+  rd_value_nid = load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value");
 
-  rs1_value_nid = get_register_value(get_instruction_rs1(ir_nid), "rs1 value");
-  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value");
 
   return decode_op(SID_MACHINE_WORD, ir_nid,
     new_binary(OP_ADD, SID_MACHINE_WORD,
@@ -2946,7 +2957,7 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
     extend_byte_to_machine_word(OP_UEXT,
       load_byte(get_rs1_value_plus_I_immediate(ir_nid), memory_nid)),
     "register data flow",
-    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
 }
 
@@ -2982,7 +2993,7 @@ uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_dat
   return decode_jalr(SID_MACHINE_WORD, ir_nid,
     get_pc_value_plus_4(pc_nid),
     "register data flow",
-    get_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
 }
 
@@ -3019,7 +3030,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   opcode_nid = get_instruction_opcode(ir_nid);
 
   rd_nid       = get_instruction_rd(ir_nid);
-  rd_value_nid = get_register_value(rd_nid, "current rd value");
+  rd_value_nid = load_register_value(rd_nid, "current rd value");
 
   no_register_data_flow_nid = new_binary_boolean(OP_OR,
     new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero?"),
@@ -3041,17 +3052,13 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
     register_file_nid,
-    new_ternary(OP_WRITE, SID_REGISTER_STATE,
-      register_file_nid,
-      rd_nid,
-      rd_value_nid,
-      "write rd"),
+    store_register_value(rd_nid, rd_value_nid, register_file_nid, "write rd"),
     "update non-zero register");
 }
 
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
-    get_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
+    load_register_value(get_instruction_rs1(ir_nid), "rs1 value"),
     get_instruction_S_immediate(ir_nid),
     "rs1 value + S-immediate");
 }
@@ -3059,7 +3066,7 @@ uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid) {
 uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
   uint64_t* rs2_value_nid;
 
-  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value");
 
   return decode_store(SID_MEMORY_STATE, ir_nid,
     store_double_word(get_rs1_value_plus_S_immediate(ir_nid),
@@ -3105,8 +3112,8 @@ uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* othe
   uint64_t* rs1_value_nid;
   uint64_t* rs2_value_nid;
 
-  rs1_value_nid = get_register_value(get_instruction_rs1(ir_nid), "rs1 value");
-  rs2_value_nid = get_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value");
 
   return decode_branch(SID_MACHINE_WORD, ir_nid,
     new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value?"),
@@ -3393,11 +3400,11 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     active_ecall_nid,
     new_ternary(OP_ITE, SID_REGISTER_STATE,
       brk_syscall_nid,
-      new_ternary(OP_WRITE, SID_REGISTER_STATE,
-        state_register_file_nid,
+      store_register_value(
         NID_A0,
         new_program_break_nid,
-        "write new program break into a0"),
+        state_register_file_nid,
+        "store new program break in a0"),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
         new_binary_boolean(OP_AND,
           read_syscall_nid,
@@ -3405,11 +3412,11 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
             more_than_one_readable_byte_to_read_nid,
             "read system call returns if there is at most one more byte to read"),
           "update a0 when read system call returns"),
-        new_ternary(OP_WRITE, SID_REGISTER_STATE,
-          state_register_file_nid,
+        store_register_value(
           NID_A0,
           read_return_value_nid,
-          "write read return value into a0"),
+          state_register_file_nid,
+          "store read return value in a0"),
         state_register_file_nid,
         "read system call register data flow"),
       "brk system call register data flow"),
@@ -3418,7 +3425,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   // system call ABI data flow
 
-  a1_value_nid = get_register_value(NID_A1, "a1 value");
+  a1_value_nid = load_register_value(NID_A1, "a1 value");
 
   // kernel and non-kernel memory data flow
 
@@ -3488,10 +3495,10 @@ void rotor() {
   uint64_t* ir_nid;
   uint64_t* known_instructions_nid;
 
+  new_segmentation();
+
   new_core_state();
   new_register_file_state();
-
-  new_segmentation();
 
   new_code_segment();
   new_memory_state();
@@ -3594,17 +3601,22 @@ void output_model() {
   print_register_sorts();
   print_memory_sorts();
 
+  print_segmentation();
+
   print_break("\n; program counter\n\n");
 
   print_line(initial_core_pc_nid);
   print_line(init_core_pc_nid);
 
-  if (SYNTHESIZE) {
-    print_break("\n; zeroed register file\n\n");
+  print_break("\n; zeroed register file\n\n");
 
-    print_line(init_register_file_nid);
-  } else {
-    print_aligned_break("\n; register dump\n\n", log_ten(32 * 3 + 1) + 1);
+  print_line(zeroed_register_file_nid);
+
+  if (init_register_file_nid != zeroed_register_file_nid) {
+    if (SYNTHESIZE)
+    print_break("\n; initializing sp\n\n");
+  else
+    print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
 
     print_line(initial_register_file_nid);
 
@@ -3612,8 +3624,6 @@ void output_model() {
 
     print_line(init_register_file_nid);
   }
-
-  print_segmentation();
 
   if (SYNTHESIZE) {
     print_break("\n; uninitialized code segment\n\n");
