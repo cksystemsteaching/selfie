@@ -442,9 +442,14 @@ void new_kernel_state(uint64_t bytes_to_read);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t* NID_EXIT_SYSCALL_ID = (uint64_t*) 0;
+uint64_t* NID_BRK_SYSCALL_ID  = (uint64_t*) 0;
 uint64_t* NID_READ_SYSCALL_ID = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* state_program_break_nid = (uint64_t*) 0;
+uint64_t* init_program_break_nid  = (uint64_t*) 0;
+uint64_t* next_program_break_nid  = (uint64_t*) 0;
 
 uint64_t* readable_bytes_nid = (uint64_t*) 0;
 
@@ -462,6 +467,9 @@ void init_interface_kernel() {
   NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_EXIT, 0,
     format_comment_binary("exit syscall ID", SYSCALL_EXIT));
+  NID_BRK_SYSCALL_ID  = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    SYSCALL_BRK, 0,
+    format_comment_binary("brk syscall ID", SYSCALL_BRK));
   NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_READ, 0,
     format_comment_binary("read syscall ID", SYSCALL_READ));
@@ -582,19 +590,19 @@ void new_segmentation();
 void new_code_segment();
 void new_memory_state();
 
-uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
-uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid);
-uint64_t* is_access_in_data_segment(uint64_t* vaddr_nid);
-uint64_t* is_access_in_heap_segment(uint64_t* vaddr_nid);
-uint64_t* is_access_in_stack_segment(uint64_t* vaddr_nid);
-uint64_t* is_access_in_main_memory(uint64_t* vaddr_nid);
+uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid);
+uint64_t* is_address_in_data_segment(uint64_t* vaddr_nid);
+uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid);
+uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid);
+uint64_t* is_address_in_main_memory(uint64_t* vaddr_nid);
 
-uint64_t* is_range_access_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
-uint64_t* is_range_access_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_access_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_access_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_access_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_access_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_range_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_range_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid);
 
 uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid);
 
@@ -1668,10 +1676,15 @@ void print_interface_kernel() {
   print_break("\n; kernel interface\n\n");
 
   print_line(NID_EXIT_SYSCALL_ID);
+  print_line(NID_BRK_SYSCALL_ID);
   print_line(NID_READ_SYSCALL_ID);
 }
 
 void new_kernel_state(uint64_t bytes_to_read) {
+  state_program_break_nid = new_input(OP_STATE, SID_MACHINE_WORD, "program-break", "program break");
+  init_program_break_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_program_break_nid,
+    NID_HEAP_START, "initial program break is start of heap segment");
+
   readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     bytes_to_read,
     0,
@@ -1723,7 +1736,7 @@ void new_register_file_state() {
     reg = 0;
 
     while (reg < 32) {
-      value = *(registers + reg);
+      value = *(get_regs(current_context) + reg);
 
       if (value != 0) {
         // skipping zero as initial value
@@ -1978,7 +1991,7 @@ void new_memory_state() {
   }
 }
 
-uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
+uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
     new_binary_boolean(OP_UGTE,
       vaddr_nid,
@@ -1991,35 +2004,35 @@ uint64_t* is_access_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_
     "vaddr in segment?");
 }
 
-uint64_t* is_access_in_code_segment(uint64_t* vaddr_nid) {
-  return is_access_in_segment(vaddr_nid, NID_CODE_START, NID_CODE_END);
+uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid) {
+  return is_address_in_segment(vaddr_nid, NID_CODE_START, NID_CODE_END);
 }
 
-uint64_t* is_access_in_data_segment(uint64_t* vaddr_nid) {
-  return is_access_in_segment(vaddr_nid, NID_DATA_START, NID_DATA_END);
+uint64_t* is_address_in_data_segment(uint64_t* vaddr_nid) {
+  return is_address_in_segment(vaddr_nid, NID_DATA_START, NID_DATA_END);
 }
 
-uint64_t* is_access_in_heap_segment(uint64_t* vaddr_nid) {
-  return is_access_in_segment(vaddr_nid, NID_HEAP_START, NID_HEAP_END);
+uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid) {
+  return is_address_in_segment(vaddr_nid, NID_HEAP_START, NID_HEAP_END);
 }
 
-uint64_t* is_access_in_stack_segment(uint64_t* vaddr_nid) {
-  return is_access_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
+uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid) {
+  return is_address_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
 }
 
-uint64_t* is_access_in_main_memory(uint64_t* vaddr_nid) {
+uint64_t* is_address_in_main_memory(uint64_t* vaddr_nid) {
   return new_binary_boolean(OP_OR,
-    is_access_in_data_segment(vaddr_nid),
+    is_address_in_data_segment(vaddr_nid),
     new_binary_boolean(OP_OR,
-      is_access_in_heap_segment(vaddr_nid),
-      is_access_in_stack_segment(vaddr_nid),
+      is_address_in_heap_segment(vaddr_nid),
+      is_address_in_stack_segment(vaddr_nid),
       "vaddr in heap or stack segment?"),
     "vaddr in data, heap, or stack segment?");
 }
 
-uint64_t* is_range_access_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
+uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
-    is_access_in_segment(vaddr_nid, start_nid, end_nid),
+    is_address_in_segment(vaddr_nid, start_nid, end_nid),
     new_binary_boolean(OP_ULTE,
       range_nid,
       new_binary(OP_SUB, SID_MACHINE_WORD,
@@ -2030,28 +2043,28 @@ uint64_t* is_range_access_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, u
     "all vaddr in range in segment");
 }
 
-uint64_t* is_range_access_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_access_in_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
+uint64_t* is_range_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_in_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
 }
 
-uint64_t* is_range_access_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_access_in_segment(vaddr_nid, range_nid, NID_DATA_START, NID_DATA_END);
+uint64_t* is_range_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_in_segment(vaddr_nid, range_nid, NID_DATA_START, NID_DATA_END);
 }
 
-uint64_t* is_range_access_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_access_in_segment(vaddr_nid, range_nid, NID_HEAP_START, NID_HEAP_END);
+uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_in_segment(vaddr_nid, range_nid, NID_HEAP_START, NID_HEAP_END);
 }
 
-uint64_t* is_range_access_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_access_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
+uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
+  return is_range_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
 }
 
-uint64_t* is_range_access_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid) {
+uint64_t* is_range_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid) {
   return new_binary_boolean(OP_OR,
-    is_range_access_in_data_segment(vaddr_nid, range_nid),
+    is_range_in_data_segment(vaddr_nid, range_nid),
     new_binary_boolean(OP_OR,
-      is_range_access_in_heap_segment(vaddr_nid, range_nid),
-      is_range_access_in_stack_segment(vaddr_nid, range_nid),
+      is_range_in_heap_segment(vaddr_nid, range_nid),
+      is_range_in_stack_segment(vaddr_nid, range_nid),
       "all vaddr in range in heap or stack segment?"),
     "all vaddr in range in data, heap, or stack segment?");
 }
@@ -2939,13 +2952,13 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
 
 uint64_t* load_no_seg_faults(uint64_t* ir_nid) {
   return decode_load(SID_BOOLEAN, ir_nid,
-    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
-    is_access_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
+    is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
     "no-seg-faults",
     NID_TRUE,
     NID_TRUE);
@@ -3068,10 +3081,10 @@ uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* othe
 
 uint64_t* store_no_seg_faults(uint64_t* ir_nid) {
   return decode_store(SID_BOOLEAN, ir_nid,
-    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_access_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid)),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_address_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid)),
     "no-seg-faults",
     NID_TRUE,
     NID_TRUE);
@@ -3183,11 +3196,18 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   uint64_t* a7_value_nid;
 
+  uint64_t* exit_syscall_nid;
+  uint64_t* active_exit_nid;
+
+  uint64_t* brk_syscall_nid;
+  uint64_t* active_brk_nid;
+
   uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
 
-  uint64_t* exit_syscall_nid;
-  uint64_t* active_exit_nid;
+  uint64_t* a0_value_nid;
+
+  uint64_t* new_program_break_nid;
 
   uint64_t* a2_value_nid;
 
@@ -3200,10 +3220,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   uint64_t* more_than_one_readable_byte_nid;
   uint64_t* more_than_one_readable_byte_to_read_nid;
 
-  uint64_t* a0_value_nid;
-
   uint64_t* read_return_value_nid;
-  uint64_t* kernel_data_flow_nid;
 
   uint64_t* a1_value_nid;
 
@@ -3211,19 +3228,54 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
 
-  a7_value_nid = get_register_value(NID_A7, "a7 value");
-
-  read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
-  active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+  a7_value_nid = load_register_value(NID_A7, "a7 value");
 
   exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
   active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
 
-  // system call ABI kernel control data flow
+  brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
+  active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
 
-  a2_value_nid = get_register_value(NID_A2, "a2 value");
+  read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
+  active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
 
-  // update kernel state
+  // system call ABI data flow
+
+  a0_value_nid = load_register_value(NID_A0, "a0 value");
+
+  // update brk kernel state
+
+  new_program_break_nid =
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_UGTE,
+          a0_value_nid,
+          state_program_break_nid,
+          "new program break >= current program break?"),
+        new_binary_boolean(OP_ULTE,
+          a0_value_nid,
+          NID_HEAP_END,
+          "new program break <= end of heap segment?"),
+        "is new program break in heap segment?"),
+      a0_value_nid,
+      state_program_break_nid,
+      "");
+
+  next_program_break_nid =
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_program_break_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        active_brk_nid,
+        new_program_break_nid,
+        state_program_break_nid,
+        "new program break"),
+      "new program break");
+
+  // system call ABI data flow
+
+  a2_value_nid = load_register_value(NID_A2, "a2 value");
+
+  // update read kernel state
 
   more_bytes_to_read_nid =
     new_binary_boolean(OP_ULT,
@@ -3244,7 +3296,8 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       "can and still would like to read more bytes"),
 
   next_readable_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD, state_readable_bytes_nid,
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_readable_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
@@ -3282,7 +3335,8 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       "can and still would like to read more than one byte");
 
   next_read_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD, state_read_bytes_nid,
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_read_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
           active_read_nid,
@@ -3299,20 +3353,16 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     new_binary_boolean(OP_AND,
       active_ecall_nid,
       new_binary_boolean(OP_OR,
+        exit_syscall_nid,
         new_binary_boolean(OP_AND,
           read_syscall_nid,
           more_than_one_readable_byte_to_read_nid,
           "ongoing read system call"),
-        exit_syscall_nid,
-        "ongoing read or exit system call"),
+        "ongoing exit or read system call"),
       "active system call"),
     pc_nid,
     eval_core_non_kernel_pc_nid,
     "update program counter unless in kernel mode");
-
-  // system call ABI kernel register data flow
-
-  a0_value_nid = get_register_value(NID_A0, "a0 value");
 
   // kernel register data flow
 
@@ -3337,27 +3387,36 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     NID_MACHINE_WORD_0,
     "return 0 if a2 == 0");
 
-  // TODO: kernel_data_flow_nid == active_read_nid
-
-  kernel_data_flow_nid = new_binary_boolean(OP_AND,
-    active_ecall_nid,
-    read_syscall_nid,
-    "active system call with data flow");
-
   // kernel and non-kernel register data flow
 
   eval_core_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
-    new_binary_boolean(OP_AND,
-      kernel_data_flow_nid,
-      new_unary_boolean(OP_NOT,
-        more_than_one_readable_byte_to_read_nid,
-        "read system call returns if there is at most one more byte to read"),
-      "update a0 when read system call returns"),
-    new_ternary(OP_WRITE, SID_REGISTER_STATE, state_register_file_nid, NID_A0, read_return_value_nid, "write a0"),
+    active_ecall_nid,
+    new_ternary(OP_ITE, SID_REGISTER_STATE,
+      brk_syscall_nid,
+      new_ternary(OP_WRITE, SID_REGISTER_STATE,
+        state_register_file_nid,
+        NID_A0,
+        new_program_break_nid,
+        "write new program break into a0"),
+      new_ternary(OP_ITE, SID_REGISTER_STATE,
+        new_binary_boolean(OP_AND,
+          read_syscall_nid,
+          new_unary_boolean(OP_NOT,
+            more_than_one_readable_byte_to_read_nid,
+            "read system call returns if there is at most one more byte to read"),
+          "update a0 when read system call returns"),
+        new_ternary(OP_WRITE, SID_REGISTER_STATE,
+          state_register_file_nid,
+          NID_A0,
+          read_return_value_nid,
+          "write read return value into a0"),
+        state_register_file_nid,
+        "read system call register data flow"),
+      "brk system call register data flow"),
     eval_core_non_kernel_register_data_flow_nid,
     "register data flow");
 
-  // system call ABI kernel memory data flow
+  // system call ABI data flow
 
   a1_value_nid = get_register_value(NID_A1, "a1 value");
 
@@ -3365,7 +3424,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   eval_core_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_AND,
-      kernel_data_flow_nid,
+      active_read_nid,
       more_readable_bytes_to_read_nid,
       "more input bytes to read"),
     store_byte(new_binary(OP_ADD, SID_MACHINE_WORD,
@@ -3390,7 +3449,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
           "have bytes been read yet?"),
         "no bytes read yet by active read system call"),
       new_unary_boolean(OP_NOT,
-        is_range_access_in_heap_segment(a1_value_nid, a2_value_nid),
+        is_range_in_heap_segment(a1_value_nid, a2_value_nid),
         "access outside of heap segment"),
       "storing bytes to be read may cause segmentation fault"),
     "read-seg-fault",
@@ -3402,8 +3461,11 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       active_ecall_nid,
       new_binary_boolean(OP_AND,
         new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID?"),
-        new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID?"),
-        "a7 != known syscall ID"),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 != brk syscall ID?"),
+          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID?"),
+          "a7 != brk or read syscall ID"),
+        "a7 != exit or brk or read syscall ID"),
       "active ecall and a7 != known syscall ID"),
     "unknown-syscall-ID",
     "unknown syscall ID");
@@ -3503,7 +3565,7 @@ void rotor() {
     "imminent unaligned fetch");
 
   next_fetch_seg_faulting_nid = state_property(
-    is_access_in_code_segment(eval_core_pc_nid),
+    is_address_in_code_segment(eval_core_pc_nid),
     UNUSED,
     "fetch-seg-fault",
     "imminent fetch segmentation fault");
@@ -3602,6 +3664,10 @@ void output_model() {
 
   print_break("\n; kernel state\n\n");
 
+  print_line(init_program_break_nid);
+
+  print_break("\n");
+
   print_line(readable_bytes_nid);
   print_line(init_readable_bytes_nid);
 
@@ -3614,6 +3680,10 @@ void output_model() {
   print_line(eval_core_non_kernel_pc_nid);
 
   print_break("\n; update kernel state\n\n");
+
+  print_line(next_program_break_nid);
+
+  print_break("\n");
 
   print_line(next_readable_bytes_nid);
 
@@ -3721,21 +3791,23 @@ uint64_t selfie_model() {
         heap_start = get_heap_seg_start(current_context);
         heap_size  = heap_allowance;
 
-        if (VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP) > stack_allowance)
-          stack_allowance = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(registers + REG_SP), PAGESIZE);
+        if (VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP) > stack_allowance)
+          stack_allowance = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP), PAGESIZE);
 
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
         stack_size  = stack_allowance;
 
+        // assert: heap_start <= stack start - heap_size
+
         SYNTHESIZE = 0;
       } else {
-        code_start = 0;
+        code_start = 4096;
         code_size  = 7 * 4;
 
-        data_start = 4096;
+        data_start = 8192;
         data_size  = 0;
 
-        heap_start = 8192;
+        heap_start = 12288;
         heap_size  = heap_allowance;
 
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
