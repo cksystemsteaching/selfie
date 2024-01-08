@@ -3571,8 +3571,10 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     UNUSED,
     new_binary_boolean(OP_AND,
       active_brk_nid,
-      new_unary_boolean(OP_NOT, new_program_break_in_heap_segment_nid, ""),
-      "new program break is in heap segment if brk system call is active"),
+      new_unary_boolean(OP_NOT,
+        new_program_break_in_heap_segment_nid,
+        "new program break not in heap segment"),
+      "new program break is not in heap segment if brk system call is active"),
     "brk-failing",
     "brk is failing");
 
