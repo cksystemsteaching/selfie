@@ -1249,6 +1249,7 @@ uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
 
+uint64_t* brk_failing_nid         = (uint64_t*) 0;
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
 uint64_t* bad_exit_code_nid       = (uint64_t*) 0;
@@ -3284,7 +3285,7 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
 
 void new_core_state() {
   if (SYNTHESIZE)
-    initial_core_pc_nid = NID_MACHINE_WORD_0;
+    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
   else
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
 
@@ -3332,6 +3333,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   uint64_t* a0_value_nid;
 
+  uint64_t* new_program_break_in_heap_segment_nid;
   uint64_t* new_program_break_nid;
 
   uint64_t* a2_value_nid;
@@ -3370,21 +3372,23 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   // update brk kernel state
 
-  new_program_break_nid =
-    new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_UGTE,
-          a0_value_nid,
-          state_program_break_nid,
-          "new program break >= current program break?"),
-        new_binary_boolean(OP_ULTE,
-          a0_value_nid,
-          NID_HEAP_END,
-          "new program break <= end of heap segment?"),
-        "is new program break in heap segment?"),
+  new_program_break_in_heap_segment_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_UGTE,
       a0_value_nid,
       state_program_break_nid,
-      "");
+      "new program break >= current program break?"),
+    new_binary_boolean(OP_ULTE,
+      a0_value_nid,
+      NID_HEAP_END,
+      "new program break <= end of heap segment?"),
+    "is new program break in heap segment?");
+
+  new_program_break_nid =
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_program_break_in_heap_segment_nid,
+      a0_value_nid,
+      state_program_break_nid,
+      "update a0 if new program break is in heap segment");
 
   next_program_break_nid =
     new_binary(OP_NEXT, SID_MACHINE_WORD,
@@ -3562,6 +3566,15 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     "main memory data flow");
 
   // kernel properties
+
+  brk_failing_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      active_brk_nid,
+      new_unary_boolean(OP_NOT, new_program_break_in_heap_segment_nid, ""),
+      "new program break is in heap segment if brk system call is active"),
+    "brk-failing",
+    "brk is failing");
 
   read_seg_faulting_nid = state_property(
     UNUSED,
@@ -3821,6 +3834,10 @@ void output_model() {
   print_break("\n");
 
   print_line(stack_seg_faulting_nid);
+
+  print_break("\n");
+
+  print_line(brk_failing_nid);
 
   print_break("\n");
 
