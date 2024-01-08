@@ -1037,6 +1037,8 @@ uint64_t* NID_LWU = (uint64_t*) 0;
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
 
+uint64_t* eval_core_rd_value_nid = (uint64_t*) 0;
+
 uint64_t* eval_core_non_kernel_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 
@@ -3165,7 +3167,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
       "STORE or BRANCH"), // redundant
     "rd == zero register or STORE or BRANCH");
 
-  rd_value_nid =
+  eval_core_rd_value_nid =
     imm_data_flow(ir_nid,
       op_data_flow(ir_nid,
         load_data_flow(ir_nid, memory_nid,
@@ -3177,7 +3179,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
     register_file_nid,
-    store_register_value(rd_nid, rd_value_nid, register_file_nid, "write rd"),
+    store_register_value(rd_nid, eval_core_rd_value_nid, register_file_nid, "write rd"),
     "update non-zero register");
 }
 
@@ -3339,7 +3341,6 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   uint64_t* a0_value_nid;
 
-  uint64_t* new_program_break_in_heap_segment_nid;
   uint64_t* new_program_break_nid;
 
   uint64_t* a2_value_nid;
@@ -3378,20 +3379,18 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   // update brk kernel state
 
-  new_program_break_in_heap_segment_nid = new_binary_boolean(OP_AND,
-    new_binary_boolean(OP_UGTE,
-      a0_value_nid,
-      state_program_break_nid,
-      "new program break >= current program break?"),
-    new_binary_boolean(OP_ULTE,
-      a0_value_nid,
-      NID_HEAP_END,
-      "new program break <= end of heap segment?"),
-    "is new program break in heap segment?");
-
   new_program_break_nid =
     new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_program_break_in_heap_segment_nid,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_UGTE,
+          a0_value_nid,
+          state_program_break_nid,
+          "new program break >= current program break?"),
+        new_binary_boolean(OP_ULTE,
+          a0_value_nid,
+          NID_HEAP_END,
+          "new program break <= end of heap segment?"),
+        "is new program break in heap segment?"),
       a0_value_nid,
       state_program_break_nid,
       "update a0 if new program break is in heap segment");
@@ -3581,7 +3580,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         a0_value_nid,
         NID_HEAP_END,
         "new program break > end of heap segment?"),
-      "new program break is not in heap segment with active brk system call"),
+      "new program break is above heap segment with active brk system call"),
     "brk-seg-fault",
     "possible brk segmentation fault");
 
@@ -3730,7 +3729,10 @@ void rotor() {
     "store segmentation fault");
 
   stack_seg_faulting_nid = state_property(
-    is_address_in_stack_segment(load_register_value(NID_SP, "sp value")),
+    new_binary_boolean(OP_OR,
+      new_binary_boolean(OP_NEQ, get_instruction_rd(ir_nid), NID_SP, "rd != sp?"),
+      is_address_in_stack_segment(eval_core_rd_value_nid),
+      "rd != sp or new sp value is in stack segment"),
     UNUSED,
     "stack-seg-fault",
     "stack segmentation fault");
@@ -3869,7 +3871,7 @@ uint64_t selfie_model() {
       // TODO: introduce console arguments for allowances
 
       heap_allowance  = WORDSIZE;
-      stack_allowance = PAGESIZE; // stack allowance must be greater than zero
+      stack_allowance = WORDSIZE; // stack allowance must be greater than zero
 
       if (code_size > 0) {
         reset_interpreter();
