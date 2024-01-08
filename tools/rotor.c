@@ -126,6 +126,7 @@ char* OP_SLICE = (char*) 0;
 char* OP_NOT = (char*) 0;
 char* OP_INC = (char*) 0;
 char* OP_DEC = (char*) 0;
+char* OP_NEG = (char*) 0;
 
 char* OP_EQ   = (char*) 0;
 char* OP_NEQ  = (char*) 0;
@@ -192,6 +193,7 @@ void init_model() {
   OP_NOT = "not";
   OP_INC = "inc";
   OP_DEC = "dec";
+  OP_NEG = "neg";
 
   OP_EQ   = "eq";
   OP_NEQ  = "neq";
@@ -1245,6 +1247,7 @@ uint64_t* next_fetch_unaligned_nid    = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
+uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
 
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
@@ -1535,6 +1538,8 @@ uint64_t is_unary_op(char* op) {
     return 1;
   else if (op == OP_DEC)
     return 1;
+  else if (op == OP_NEG)
+    return 1;
   else
     return 0;
 }
@@ -1747,7 +1752,11 @@ void new_register_file_state() {
 
   if (SYNTHESIZE)
     initial_register_file_nid =
-      store_register_value(NID_SP, NID_STACK_END, state_register_file_nid, "write initial sp value");
+      store_register_value(
+        NID_SP,
+        new_unary(OP_DEC, SID_MACHINE_WORD, NID_STACK_END, "end of stack segment - 1"),
+        state_register_file_nid,
+        "write initial sp value");
   else {
     initial_register_file_nid = state_register_file_nid;
 
@@ -1856,34 +1865,24 @@ void new_segmentation() {
     8,
     format_comment("static end of heap segment accommodating %lu bytes", heap_size));
 
-  if (IS64BITTARGET) {
-    NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-      stack_start,
-      8,
-      format_comment("static start of stack segment @ 0x%08lX", stack_start));
+  // assert: stack_start >= heap_start + heap_size > 0
 
+  NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    stack_start,
+    8,
+    format_comment("static start of stack segment @ 0x%08lX", stack_start));
+
+  if (IS64BITTARGET)
     NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
       stack_start + stack_size,
       8,
       format_comment("end of stack segment accommodating %lu bytes", stack_size));
-  } else {
+  else
     // force wrap-around
-    if (stack_start == VIRTUALMEMORYSIZE * GIGABYTE)
-      NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-        0,
-        8,
-        format_comment("static start of stack segment @ 0x%08lX", stack_start));
-    else
-      NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-        stack_start,
-        8,
-        format_comment("static start of stack segment @ 0x%08lX", stack_start));
-
     NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
       0,
       8,
       format_comment("end of stack segment accommodating %lu bytes", stack_size));
-  }
 }
 
 void print_segmentation() {
@@ -2132,7 +2131,11 @@ uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid) {
 }
 
 uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid) {
-  return is_address_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
+  if (IS64BITTARGET)
+    return is_address_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
+  else
+    // checking end of stack segment is unnecessary since it wraps around to zero
+    return new_binary_boolean(OP_UGTE, vaddr_nid, NID_STACK_START, "vaddr >= start of stack segment?");
 }
 
 uint64_t* is_address_in_main_memory(uint64_t* vaddr_nid) {
@@ -2171,7 +2174,18 @@ uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
 }
 
 uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
+  if (IS64BITTARGET)
+    return is_range_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
+  else
+    return new_binary_boolean(OP_AND,
+      is_address_in_stack_segment(vaddr_nid),
+      new_binary_boolean(OP_ULTE,
+        range_nid,
+        new_unary(OP_NEG, SID_MACHINE_WORD,
+          vaddr_nid,
+          "-vaddr"),
+        "range <= -vaddr?"),
+      "all vaddr in range in segment");
 }
 
 uint64_t* is_range_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid) {
@@ -3692,6 +3706,12 @@ void rotor() {
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
+
+  stack_seg_faulting_nid = state_property(
+    is_address_in_stack_segment(load_register_value(NID_SP, "sp value")),
+    UNUSED,
+    "stack-seg-fault",
+    "stack segmentation fault");
 }
 
 void output_model() {
@@ -3800,6 +3820,10 @@ void output_model() {
 
   print_break("\n");
 
+  print_line(stack_seg_faulting_nid);
+
+  print_break("\n");
+
   print_line(read_seg_faulting_nid);
 
   print_break("\n");
@@ -3819,7 +3843,7 @@ uint64_t selfie_model() {
       // TODO: introduce console arguments for allowances
 
       heap_allowance  = 0;
-      stack_allowance = 0;
+      stack_allowance = WORDSIZE; // stack allowance must be greater than zero
 
       if (code_size > 0) {
         reset_interpreter();
@@ -3852,7 +3876,7 @@ uint64_t selfie_model() {
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
         stack_size  = stack_allowance;
 
-        // assert: heap_start <= stack start - heap_size
+        // assert: stack_start >= heap_start + heap_size > 0
 
         SYNTHESIZE = 0;
       } else {
@@ -3862,11 +3886,15 @@ uint64_t selfie_model() {
         data_start = 8192;
         data_size  = 0;
 
+        heap_allowance = 10;
+
         heap_start = 12288;
         heap_size  = heap_allowance;
 
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
         stack_size  = stack_allowance;
+
+        // assert: stack_start >= heap_start + heap_size > 0
 
         SYNTHESIZE = 1;
       }
