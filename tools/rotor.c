@@ -491,6 +491,7 @@ uint64_t* load_register_value(uint64_t* reg_nid, char* comment);
 uint64_t* store_register_value(uint64_t* reg_nid, uint64_t* value_nid, uint64_t* register_file_nid, char* comment);
 
 void new_register_file_state();
+void print_register_file_state();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -587,12 +588,14 @@ void init_register_file_sorts() {
 
 void print_memory_sorts();
 
+void new_segmentation();
 void print_segmentation();
 
-void new_segmentation();
-
 void new_code_segment();
+void print_code_segment();
+
 void new_memory_state();
+void print_memory_state();
 
 uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid);
@@ -1783,6 +1786,25 @@ void new_register_file_state() {
     init_register_file_nid = zeroed_register_file_nid;
 }
 
+void print_register_file_state() {
+  print_break("\n; zeroed register file\n\n");
+
+  print_line(zeroed_register_file_nid);
+
+  if (init_register_file_nid != zeroed_register_file_nid) {
+    if (SYNTHESIZE)
+      print_break("\n; initializing sp\n\n");
+    else
+      print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
+
+    print_line(initial_register_file_nid);
+
+    print_break("\n; initialized register file\n\n");
+
+    print_line(init_register_file_nid);
+  }
+}
+
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
@@ -1801,22 +1823,6 @@ void print_memory_sorts() {
     print_line(SID_MEMORY_ADDRESS);
 
   print_line(SID_MEMORY_STATE);
-}
-
-void print_segmentation() {
-  print_break("\n; segmentation\n\n");
-
-  print_line(NID_CODE_START);
-  print_line(NID_CODE_END);
-
-  print_line(NID_DATA_START);
-  print_line(NID_DATA_END);
-
-  print_line(NID_HEAP_START);
-  print_line(NID_HEAP_END);
-
-  print_line(NID_STACK_START);
-  print_line(NID_STACK_END);
 }
 
 void new_segmentation() {
@@ -1880,6 +1886,22 @@ void new_segmentation() {
   }
 }
 
+void print_segmentation() {
+  print_break("\n; segmentation\n\n");
+
+  print_line(NID_CODE_START);
+  print_line(NID_CODE_END);
+
+  print_line(NID_DATA_START);
+  print_line(NID_DATA_END);
+
+  print_line(NID_HEAP_START);
+  print_line(NID_HEAP_END);
+
+  print_line(NID_STACK_START);
+  print_line(NID_STACK_END);
+}
+
 void new_code_segment() {
   uint64_t  number_of_hex_digits;
   uint64_t* laddr_nid;
@@ -1932,6 +1954,29 @@ void new_code_segment() {
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
     } else
       init_code_segment_nid = zeroed_code_segment_nid;
+  }
+}
+
+void print_code_segment() {
+  if (SYNTHESIZE) {
+    print_break("\n; uninitialized code segment\n\n");
+
+    print_line(state_code_segment_nid);
+  } else {
+    print_break("\n; zeroed code segment\n\n");
+
+    print_line(zeroed_code_segment_nid);
+
+    if (initial_code_segment_nid != state_code_segment_nid) {
+      print_aligned_break("\n; loading code\n\n",
+        log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
+
+      print_line(initial_code_segment_nid);
+
+      print_break("\n; loaded code segment\n\n");
+
+      print_line(init_code_segment_nid);
+    }
   }
 }
 
@@ -2022,6 +2067,43 @@ void new_memory_state() {
     } else
       init_main_memory_nid = zeroed_main_memory_nid;
   }
+}
+
+void print_memory_state() {
+  print_break("\n; zeroed main memory\n\n");
+
+  print_line(zeroed_main_memory_nid);
+
+  if (SYNTHESIZE == 0)
+    if (initial_main_memory_nid != state_main_memory_nid) {
+      // assert: data_size > 0 and non-zero data in data segment
+
+      if (ISBYTEMEMORY)
+        // only estimating number of lines needed to store one byte
+        print_aligned_break("\n; loaded data segment\n\n",
+          log_ten((data_size + heap_size + stack_size) * 5) + 1);
+      else
+        print_aligned_break("\n; loaded data segment\n\n",
+          log_ten((data_size + heap_size + stack_size) / WORDSIZE * 3 + 1) + 1);
+
+      print_line(initial_data_segment_nid);
+
+      if (initial_heap_segment_nid != initial_data_segment_nid) {
+        print_break("\n; loaded heap segment\n\n");
+
+        print_line(initial_heap_segment_nid);
+      }
+
+      if (initial_main_memory_nid != initial_heap_segment_nid) {
+        print_break("\n; loaded stack segment\n\n");
+
+        print_line(initial_main_memory_nid);
+      }
+
+      print_break("\n; loaded main memory\n\n");
+
+      print_line(init_main_memory_nid);
+    }
 }
 
 uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
@@ -3630,78 +3712,10 @@ void output_model() {
   print_line(initial_core_pc_nid);
   print_line(init_core_pc_nid);
 
-  print_break("\n; zeroed register file\n\n");
+  print_register_file_state();
 
-  print_line(zeroed_register_file_nid);
-
-  if (init_register_file_nid != zeroed_register_file_nid) {
-    if (SYNTHESIZE)
-      print_break("\n; initializing sp\n\n");
-    else
-      print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
-
-    print_line(initial_register_file_nid);
-
-    print_break("\n; initialized register file\n\n");
-
-    print_line(init_register_file_nid);
-  }
-
-  if (SYNTHESIZE) {
-    print_break("\n; uninitialized code segment\n\n");
-
-    print_line(state_code_segment_nid);
-  } else {
-    print_break("\n; zeroed code segment\n\n");
-
-    print_line(zeroed_code_segment_nid);
-
-    if (initial_code_segment_nid != state_code_segment_nid) {
-      print_aligned_break("\n; loading code\n\n",
-        log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
-
-      print_line(initial_code_segment_nid);
-
-      print_break("\n; loaded code segment\n\n");
-
-      print_line(init_code_segment_nid);
-    }
-  }
-
-  print_break("\n; zeroed main memory\n\n");
-
-  print_line(zeroed_main_memory_nid);
-
-  if (SYNTHESIZE == 0)
-    if (initial_main_memory_nid != state_main_memory_nid) {
-      // assert: data_size > 0 and non-zero data in data segment
-
-      if (ISBYTEMEMORY)
-        // only estimating number of lines needed to store one byte
-        print_aligned_break("\n; loaded data segment\n\n",
-          log_ten((data_size + heap_size + stack_size) * 5) + 1);
-      else
-        print_aligned_break("\n; loaded data segment\n\n",
-          log_ten((data_size + heap_size + stack_size) / WORDSIZE * 3 + 1) + 1);
-
-      print_line(initial_data_segment_nid);
-
-      if (initial_heap_segment_nid != initial_data_segment_nid) {
-        print_break("\n; loaded heap segment\n\n");
-
-        print_line(initial_heap_segment_nid);
-      }
-
-      if (initial_main_memory_nid != initial_heap_segment_nid) {
-        print_break("\n; loaded stack segment\n\n");
-
-        print_line(initial_main_memory_nid);
-      }
-
-      print_break("\n; loaded main memory\n\n");
-
-      print_line(init_main_memory_nid);
-    }
+  print_code_segment();
+  print_memory_state();
 
   print_break("\n; kernel state\n\n");
 
