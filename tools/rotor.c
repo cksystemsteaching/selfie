@@ -721,6 +721,7 @@ uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 
+uint64_t* zeroed_main_memory_nid   = (uint64_t*) 0;
 uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
 uint64_t* initial_data_segment_nid = (uint64_t*) 0;
 uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
@@ -1942,17 +1943,22 @@ void new_memory_state() {
   uint64_t* vaddr_nid;
   uint64_t* laddr_nid;
 
-  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "main-memory", "main memory");
+  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "zeroed-main-memory", "zeroed main memory");
 
-  if (SYNTHESIZE) {
-    if (ISBYTEMEMORY)
-      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_BYTE_0, "zeroed memory");
-    else
-      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE, state_main_memory_nid, NID_MACHINE_WORD_0, "zeroed memory");
-  } else {
+  if (ISBYTEMEMORY)
+    zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+      state_main_memory_nid, NID_BYTE_0, "zeroing memory");
+  else
+    zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+      state_main_memory_nid, NID_MACHINE_WORD_0, "zeroing memory");
+
+  if (SYNTHESIZE == 0) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
-    initial_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "memory-dump", "memory dump");
+    initial_data_segment_nid = state_main_memory_nid;
+    initial_heap_segment_nid = state_main_memory_nid;
+
+    initial_main_memory_nid = state_main_memory_nid;
 
     REUSE_LINES = 1; // TODO: turn off via console argument
 
@@ -2007,8 +2013,14 @@ void new_memory_state() {
 
     REUSE_LINES = 1;
 
-    init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
-      state_main_memory_nid, initial_main_memory_nid, "loaded data");
+    if (initial_main_memory_nid != state_main_memory_nid) {
+      state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
+        "loaded-main-memory", "loaded main memory");
+
+      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+        state_main_memory_nid, initial_main_memory_nid, "loaded data");
+    } else
+      init_main_memory_nid = zeroed_main_memory_nid;
   }
 }
 
@@ -3644,47 +3656,52 @@ void output_model() {
 
     print_line(zeroed_code_segment_nid);
 
-    print_aligned_break("\n; loading code\n\n",
-      log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
+    if (initial_code_segment_nid != state_code_segment_nid) {
+      print_aligned_break("\n; loading code\n\n",
+        log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
-    print_line(initial_code_segment_nid);
+      print_line(initial_code_segment_nid);
 
-    print_break("\n; loaded code segment\n\n");
+      print_break("\n; loaded code segment\n\n");
 
-    print_line(init_code_segment_nid);
-  }
-
-  if (SYNTHESIZE) {
-    print_break("\n; zeroed main memory\n\n");
-
-    print_line(init_main_memory_nid);
-  } else {
-    // assert: data_size > 0 and stack_size > 0 and non-zero data in data and stack segment
-
-    if (ISBYTEMEMORY)
-      // only estimating number of lines needed to store one byte
-      print_aligned_break("\n; initial data segment\n\n",
-        log_ten((data_size + heap_size + stack_size) * 5) + 1);
-    else
-      print_aligned_break("\n; initial data segment\n\n",
-        log_ten((data_size + heap_size + stack_size) / WORDSIZE * 3 + 1) + 1);
-
-    print_line(initial_data_segment_nid);
-
-    if (initial_heap_segment_nid != initial_data_segment_nid) {
-      print_break("\n; initial heap segment\n\n");
-
-      print_line(initial_heap_segment_nid);
+      print_line(init_code_segment_nid);
     }
-
-    print_break("\n; initial stack segment\n\n");
-
-    print_line(initial_main_memory_nid);
-
-    print_break("\n; initialized main memory\n\n");
-
-    print_line(init_main_memory_nid);
   }
+
+  print_break("\n; zeroed main memory\n\n");
+
+  print_line(zeroed_main_memory_nid);
+
+  if (SYNTHESIZE == 0)
+    if (initial_main_memory_nid != state_main_memory_nid) {
+      // assert: data_size > 0 and non-zero data in data segment
+
+      if (ISBYTEMEMORY)
+        // only estimating number of lines needed to store one byte
+        print_aligned_break("\n; loaded data segment\n\n",
+          log_ten((data_size + heap_size + stack_size) * 5) + 1);
+      else
+        print_aligned_break("\n; loaded data segment\n\n",
+          log_ten((data_size + heap_size + stack_size) / WORDSIZE * 3 + 1) + 1);
+
+      print_line(initial_data_segment_nid);
+
+      if (initial_heap_segment_nid != initial_data_segment_nid) {
+        print_break("\n; loaded heap segment\n\n");
+
+        print_line(initial_heap_segment_nid);
+      }
+
+      if (initial_main_memory_nid != initial_heap_segment_nid) {
+        print_break("\n; loaded stack segment\n\n");
+
+        print_line(initial_main_memory_nid);
+      }
+
+      print_break("\n; loaded main memory\n\n");
+
+      print_line(init_main_memory_nid);
+    }
 
   print_break("\n; kernel state\n\n");
 
