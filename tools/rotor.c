@@ -1251,6 +1251,7 @@ uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
+uint64_t* exclude_a0_from_rd_nid      = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
@@ -3736,6 +3737,15 @@ void rotor() {
     UNUSED,
     "stack-seg-fault",
     "stack segmentation fault");
+
+  exclude_a0_from_rd_nid = state_property(
+    new_binary_boolean(OP_NEQ,
+      get_instruction_rd(ir_nid),
+      NID_A0,
+      "rd != a0"),
+    UNUSED,
+    "exclude-a0-from-rd",
+    "only brk and read system call may update a0");
 }
 
 void output_model() {
@@ -3845,6 +3855,10 @@ void output_model() {
   print_break("\n");
 
   print_line(stack_seg_faulting_nid);
+
+  //print_break("\n");
+
+  //print_line(exclude_a0_from_rd_nid);
 
   print_break("\n");
 
