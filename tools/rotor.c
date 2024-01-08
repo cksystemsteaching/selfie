@@ -715,6 +715,7 @@ uint64_t stack_start     = 0;
 uint64_t stack_size      = 0;
 uint64_t stack_allowance = 0;
 
+uint64_t* zeroed_code_segment_nid  = (uint64_t*) 0;
 uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
@@ -1886,9 +1887,12 @@ void new_code_segment() {
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
 
   if (SYNTHESIZE == 0) {
+    zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+      state_code_segment_nid, NID_SINGLE_WORD_0, "zeroing code segment");
+
     number_of_hex_digits = round_up(CODE_ADDRESS_SPACE, 4) / 4;
 
-    initial_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-dump", "code dump");
+    initial_code_segment_nid = state_code_segment_nid;
 
     REUSE_LINES = 1; // TODO: turn off via console argument
 
@@ -1919,8 +1923,14 @@ void new_code_segment() {
 
     REUSE_LINES = 1;
 
-    init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
-      state_code_segment_nid, initial_code_segment_nid, "loaded code");
+    if (initial_code_segment_nid != state_code_segment_nid) {
+      state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
+        "loaded-code-segment", "loaded code segment");
+
+      init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+        state_code_segment_nid, initial_code_segment_nid, "loaded code");
+    } else
+      init_code_segment_nid = zeroed_code_segment_nid;
   }
 }
 
@@ -3614,9 +3624,9 @@ void output_model() {
 
   if (init_register_file_nid != zeroed_register_file_nid) {
     if (SYNTHESIZE)
-    print_break("\n; initializing sp\n\n");
-  else
-    print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
+      print_break("\n; initializing sp\n\n");
+    else
+      print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
 
     print_line(initial_register_file_nid);
 
@@ -3630,12 +3640,16 @@ void output_model() {
 
     print_line(state_code_segment_nid);
   } else {
-    print_aligned_break("\n; code dump\n\n",
+    print_break("\n; zeroed code segment\n\n");
+
+    print_line(zeroed_code_segment_nid);
+
+    print_aligned_break("\n; loading code\n\n",
       log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
     print_line(initial_code_segment_nid);
 
-    print_break("\n; initialized code segment\n\n");
+    print_break("\n; loaded code segment\n\n");
 
     print_line(init_code_segment_nid);
   }
