@@ -725,6 +725,7 @@ uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
+uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
 uint64_t* zeroed_main_memory_nid   = (uint64_t*) 0;
 uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
@@ -1249,7 +1250,7 @@ uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
 
-uint64_t* brk_failing_nid         = (uint64_t*) 0;
+uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
 uint64_t* bad_exit_code_nid       = (uint64_t*) 0;
@@ -1954,6 +1955,9 @@ void new_code_segment() {
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
     } else
       init_code_segment_nid = zeroed_code_segment_nid;
+
+    next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
+      state_code_segment_nid, state_code_segment_nid, "read-only code segment");
   }
 }
 
@@ -1977,6 +1981,8 @@ void print_code_segment() {
 
       print_line(init_code_segment_nid);
     }
+
+    print_line(next_code_segment_nid);
   }
 }
 
@@ -3567,16 +3573,17 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   // kernel properties
 
-  brk_failing_nid = state_property(
+  brk_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
       active_brk_nid,
-      new_unary_boolean(OP_NOT,
-        new_program_break_in_heap_segment_nid,
-        "new program break not in heap segment"),
-      "new program break is not in heap segment if brk system call is active"),
-    "brk-failing",
-    "brk is failing");
+      new_binary_boolean(OP_UGT,
+        a0_value_nid,
+        NID_HEAP_END,
+        "new program break > end of heap segment?"),
+      "new program break is not in heap segment with active brk system call"),
+    "brk-seg-fault",
+    "possible brk segmentation fault");
 
   read_seg_faulting_nid = state_property(
     UNUSED,
@@ -3839,7 +3846,7 @@ void output_model() {
 
   print_break("\n");
 
-  print_line(brk_failing_nid);
+  print_line(brk_seg_faulting_nid);
 
   print_break("\n");
 
@@ -3861,8 +3868,8 @@ uint64_t selfie_model() {
 
       // TODO: introduce console arguments for allowances
 
-      heap_allowance  = 0;
-      stack_allowance = WORDSIZE; // stack allowance must be greater than zero
+      heap_allowance  = WORDSIZE;
+      stack_allowance = PAGESIZE; // stack allowance must be greater than zero
 
       if (code_size > 0) {
         reset_interpreter();
