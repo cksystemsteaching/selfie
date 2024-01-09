@@ -312,6 +312,8 @@ uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 uint64_t* SID_INSTRUCTION_WORD           = (uint64_t*) 0;
 uint64_t* NID_INSTRUCTION_WORD_SIZE_MASK = (uint64_t*) 0;
 
+uint64_t* NID_MAX_STRING_LENGTH = (uint64_t*) 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface_sorts() {
@@ -412,6 +414,8 @@ void init_interface_sorts() {
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
   NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
+
+  NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD, MAX_STRING_LENGTH, 0, "maximum string length");
 }
 
 // -----------------------------------------------------------------
@@ -443,15 +447,21 @@ void new_kernel_state(uint64_t bytes_to_read);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t* NID_EXIT_SYSCALL_ID = (uint64_t*) 0;
-uint64_t* NID_BRK_SYSCALL_ID  = (uint64_t*) 0;
-uint64_t* NID_READ_SYSCALL_ID = (uint64_t*) 0;
+uint64_t* NID_EXIT_SYSCALL_ID   = (uint64_t*) 0;
+uint64_t* NID_BRK_SYSCALL_ID    = (uint64_t*) 0;
+uint64_t* NID_OPENAT_SYSCALL_ID = (uint64_t*) 0;
+uint64_t* NID_READ_SYSCALL_ID   = (uint64_t*) 0;
+uint64_t* NID_WRITE_SYSCALL_ID  = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* state_program_break_nid = (uint64_t*) 0;
 uint64_t* init_program_break_nid  = (uint64_t*) 0;
 uint64_t* next_program_break_nid  = (uint64_t*) 0;
+
+uint64_t* state_file_descriptor_nid = (uint64_t*) 0;
+uint64_t* init_file_descriptor_nid  = (uint64_t*) 0;
+uint64_t* next_file_descriptor_nid  = (uint64_t*) 0;
 
 uint64_t* readable_bytes_nid = (uint64_t*) 0;
 
@@ -469,12 +479,18 @@ void init_interface_kernel() {
   NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_EXIT, 0,
     format_comment_binary("exit syscall ID", SYSCALL_EXIT));
-  NID_BRK_SYSCALL_ID  = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+  NID_BRK_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_BRK, 0,
     format_comment_binary("brk syscall ID", SYSCALL_BRK));
+  NID_OPENAT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    SYSCALL_OPENAT, 0,
+    format_comment_binary("openat syscall ID", SYSCALL_OPENAT));
   NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_READ, 0,
     format_comment_binary("read syscall ID", SYSCALL_READ));
+  NID_WRITE_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    SYSCALL_WRITE, 0,
+    format_comment_binary("write syscall ID", SYSCALL_WRITE));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1255,6 +1271,7 @@ uint64_t* division_by_zero_nid        = (uint64_t*) 0;
 uint64_t* exclude_a0_from_rd_nid      = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
+uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
 uint64_t* bad_exit_code_nid       = (uint64_t*) 0;
@@ -1697,13 +1714,19 @@ void print_interface_kernel() {
 
   print_line(NID_EXIT_SYSCALL_ID);
   print_line(NID_BRK_SYSCALL_ID);
+  print_line(NID_OPENAT_SYSCALL_ID);
   print_line(NID_READ_SYSCALL_ID);
+  print_line(NID_WRITE_SYSCALL_ID);
 }
 
 void new_kernel_state(uint64_t bytes_to_read) {
   state_program_break_nid = new_input(OP_STATE, SID_MACHINE_WORD, "program-break", "program break");
   init_program_break_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_program_break_nid,
     NID_HEAP_START, "initial program break is start of heap segment");
+
+  state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
+  init_file_descriptor_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_file_descriptor_nid,
+    NID_MACHINE_WORD_0, "initial file descriptor is zero");
 
   readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     bytes_to_read,
@@ -3338,12 +3361,19 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   uint64_t* brk_syscall_nid;
   uint64_t* active_brk_nid;
 
+  uint64_t* openat_syscall_nid;
+  uint64_t* active_openat_nid;
+
   uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
+
+  uint64_t* write_syscall_nid;
+  uint64_t* active_write_nid;
 
   uint64_t* a0_value_nid;
 
   uint64_t* new_program_break_nid;
+  uint64_t* new_file_descriptor_nid;
 
   uint64_t* a2_value_nid;
 
@@ -3372,8 +3402,14 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
   active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
 
+  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
+  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
+
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+
+  write_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 == write syscall ID?");
+  active_write_nid  = new_binary_boolean(OP_AND, active_ecall_nid, write_syscall_nid, "active write system call");
 
   // system call ABI data flow
 
@@ -3406,6 +3442,22 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         state_program_break_nid,
         "new program break"),
       "new program break");
+
+  // update openat kernel state
+
+  new_file_descriptor_nid = new_unary(OP_INC, SID_MACHINE_WORD,
+    state_file_descriptor_nid,
+    "increment file descriptor");
+
+  next_file_descriptor_nid =
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_file_descriptor_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        active_openat_nid,
+        new_file_descriptor_nid,
+        state_file_descriptor_nid,
+        "new file descriptor"),
+      "new file descriptor");
 
   // system call ABI data flow
 
@@ -3535,19 +3587,27 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         state_register_file_nid,
         "store new program break in a0"),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
-        new_binary_boolean(OP_AND,
-          read_syscall_nid,
-          new_unary_boolean(OP_NOT,
-            more_than_one_readable_byte_to_read_nid,
-            "read system call returns if there is at most one more byte to read"),
-          "update a0 when read system call returns"),
+        openat_syscall_nid,
         store_register_value(
           NID_A0,
-          read_return_value_nid,
+          new_file_descriptor_nid,
           state_register_file_nid,
-          "store read return value in a0"),
-        state_register_file_nid,
-        "read system call register data flow"),
+          "store new file descriptor in a0"),
+        new_ternary(OP_ITE, SID_REGISTER_STATE,
+          new_binary_boolean(OP_AND,
+            read_syscall_nid,
+            new_unary_boolean(OP_NOT,
+              more_than_one_readable_byte_to_read_nid,
+              "read system call returns if there is at most one more byte to read"),
+            "update a0 when read system call returns"),
+          store_register_value(
+            NID_A0,
+            read_return_value_nid,
+            state_register_file_nid,
+            "store read return value in a0"),
+          state_register_file_nid,
+          "read system call register data flow"),
+        "openat system call register data flow"),
       "brk system call register data flow"),
     eval_core_non_kernel_register_data_flow_nid,
     "register data flow");
@@ -3586,6 +3646,19 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     "brk-seg-fault",
     "possible brk segmentation fault");
 
+  // TODO: validate openat arguments other than filename
+
+  openat_seg_faulting_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      active_openat_nid,
+      new_unary_boolean(OP_NOT,
+        is_range_in_heap_segment(a1_value_nid, NID_MAX_STRING_LENGTH),
+        "openat system call access outside of heap segment"),
+      "accessing filename may cause segmentation fault"),
+    "openat-seg-fault",
+    "possible openat segmentation fault");
+
   read_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
@@ -3598,7 +3671,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         "no bytes read yet by active read system call"),
       new_unary_boolean(OP_NOT,
         is_range_in_heap_segment(a1_value_nid, a2_value_nid),
-        "access outside of heap segment"),
+        "read system call access outside of heap segment"),
       "storing bytes to be read may cause segmentation fault"),
     "read-seg-fault",
     "possible read segmentation fault");
@@ -3611,9 +3684,15 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID?"),
         new_binary_boolean(OP_AND,
           new_binary_boolean(OP_NEQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 != brk syscall ID?"),
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID?"),
-          "a7 != brk or read syscall ID"),
-        "a7 != exit or brk or read syscall ID"),
+          new_binary_boolean(OP_AND,
+            new_binary_boolean(OP_NEQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 != openat syscall ID?"),
+            new_binary_boolean(OP_AND,
+              new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID?"),
+              new_binary_boolean(OP_NEQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 != write syscall ID?"),
+              "a7 != read or write syscall ID"),
+            "a7 != openat or read or write syscall ID"),
+          "a7 != brk or openat or read or write syscall ID"),
+        "a7 != exit or brk or openat or read or write syscall ID"),
       "active ecall and a7 != known syscall ID"),
     "unknown-syscall-ID",
     "unknown syscall ID");
@@ -3798,6 +3877,10 @@ void output_model() {
 
   print_break("\n");
 
+  print_line(init_file_descriptor_nid);
+
+  print_break("\n");
+
   print_line(readable_bytes_nid);
   print_line(init_readable_bytes_nid);
 
@@ -3812,6 +3895,10 @@ void output_model() {
   print_break("\n; update kernel state\n\n");
 
   print_line(next_program_break_nid);
+
+  print_break("\n");
+
+  print_line(next_file_descriptor_nid);
 
   print_break("\n");
 
@@ -3888,6 +3975,10 @@ void output_model() {
   print_break("\n");
 
   print_line(brk_seg_faulting_nid);
+
+  print_break("\n");
+
+  print_line(openat_seg_faulting_nid);
 
   print_break("\n");
 
