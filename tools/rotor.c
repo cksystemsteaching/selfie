@@ -935,8 +935,8 @@ uint64_t* NID_F7_DIVU = (uint64_t*) 0;
 uint64_t* NID_F7_REMU = (uint64_t*) 0;
 uint64_t* NID_F7_SLTU = (uint64_t*) 0;
 
-uint64_t* NID_F7_ADD_SLTU      = (uint64_t*) 0;
-uint64_t* NID_F7_MUL_DIVU_REMU = (uint64_t*) 0;
+uint64_t* NID_F7_ADD_SLTU    = (uint64_t*) 0;
+uint64_t* NID_F7_MUL_DIV_REM = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT12 = (uint64_t*) 0;
 
@@ -1048,6 +1048,54 @@ uint64_t* NID_F3_LWU = (uint64_t*) 0;
 
 uint64_t* NID_LWU = (uint64_t*) 0;
 
+// RV32M codes missing in RISC-U
+
+uint64_t F3_MULH   = 1; // 001
+uint64_t F3_MULHSU = 2; // 010
+uint64_t F3_MULHU  = 3; // 011
+uint64_t F3_DIV    = 4; // 100
+uint64_t F3_REM    = 6; // 110
+
+uint64_t* NID_F3_MULH   = (uint64_t*) 0;
+uint64_t* NID_F3_MULHSU = (uint64_t*) 0;
+uint64_t* NID_F3_MULHU  = (uint64_t*) 0;
+uint64_t* NID_F3_DIV    = (uint64_t*) 0;
+uint64_t* NID_F3_REM    = (uint64_t*) 0;
+
+// RV32M instruction switches
+
+uint64_t* NID_MULH   = (uint64_t*) 0;
+uint64_t* NID_MULHSU = (uint64_t*) 0;
+uint64_t* NID_MULHU  = (uint64_t*) 0;
+uint64_t* NID_DIV    = (uint64_t*) 0;
+uint64_t* NID_REM    = (uint64_t*) 0;
+
+// RV64M codes
+
+uint64_t OP_OP_32 = 59; // 0111011, I format
+
+uint64_t F3_MULW  = 0; // 000
+uint64_t F3_DIVW  = 4; // 100
+uint64_t F3_DIVUW = 5; // 101
+uint64_t F3_REMW  = 6; // 110
+uint64_t F3_REMUW = 7; // 111
+
+uint64_t* NID_OP_OP_32 = (uint64_t*) 0;
+
+uint64_t* NID_F3_MULW  = (uint64_t*) 0;
+uint64_t* NID_F3_DIVW  = (uint64_t*) 0;
+uint64_t* NID_F3_DIVUW = (uint64_t*) 0;
+uint64_t* NID_F3_REMW  = (uint64_t*) 0;
+uint64_t* NID_F3_REMUW = (uint64_t*) 0;
+
+// RV64M instruction switches
+
+uint64_t* NID_MULW  = (uint64_t*) 0;
+uint64_t* NID_DIVW  = (uint64_t*) 0;
+uint64_t* NID_DIVUW = (uint64_t*) 0;
+uint64_t* NID_REMW  = (uint64_t*) 0;
+uint64_t* NID_REMUW = (uint64_t*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
@@ -1098,8 +1146,8 @@ void init_instruction_sorts() {
   NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, 7, "F7_REMU");
   NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, 7, "F7_SLTU");
 
-  NID_F7_ADD_SLTU      = NID_F7_ADD;
-  NID_F7_MUL_DIVU_REMU = NID_F7_MUL;
+  NID_F7_ADD_SLTU    = NID_F7_ADD;
+  NID_F7_MUL_DIV_REM = NID_F7_MUL;
 
   SID_FUNCT12 = new_bitvec(12, "funct12 sort");
 
@@ -1201,10 +1249,51 @@ void init_instruction_sorts() {
 
   // RV64I instruction switches
 
-  if (IS64BITTARGET) {
+  if (IS64BITTARGET)
     NID_LWU = NID_TRUE;
-  } else {
+  else
     NID_LWU = NID_FALSE;
+
+  // RV32M codes missing in RISC-U
+
+  NID_F3_MULH   = new_constant(OP_CONST, SID_FUNCT3, F3_MULH, 3, "F3_MULH");
+  NID_F3_MULHSU = new_constant(OP_CONST, SID_FUNCT3, F3_MULHSU, 3, "F3_MULHSU");
+  NID_F3_MULHU  = new_constant(OP_CONST, SID_FUNCT3, F3_MULHU, 3, "F3_MULHU");
+  NID_F3_DIV    = new_constant(OP_CONST, SID_FUNCT3, F3_DIV, 3, "F3_DIV");
+  NID_F3_REM    = new_constant(OP_CONST, SID_FUNCT3, F3_REM, 3, "F3_REM");
+
+  // RV32M instruction switches
+
+  NID_MULH   = NID_TRUE;
+  NID_MULHSU = NID_TRUE;
+  NID_MULHU  = NID_TRUE;
+  NID_DIV    = NID_TRUE;
+  NID_REM    = NID_TRUE;
+
+  // RV64M codes
+
+  NID_OP_OP_32 = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, 7, "OP_OP_32");
+
+  NID_F3_MULW  = new_constant(OP_CONST, SID_FUNCT3, F3_MULW, 3, "F3_MULW");
+  NID_F3_DIVW  = new_constant(OP_CONST, SID_FUNCT3, F3_DIVW, 3, "F3_DIVW");
+  NID_F3_DIVUW = new_constant(OP_CONST, SID_FUNCT3, F3_DIVUW, 3, "F3_DIVUW");
+  NID_F3_REMW  = new_constant(OP_CONST, SID_FUNCT3, F3_REMW, 3, "F3_REMW");
+  NID_F3_REMUW = new_constant(OP_CONST, SID_FUNCT3, F3_REMUW, 3, "F3_REMUW");
+
+  // RV64M instruction switches
+
+  if (IS64BITTARGET) {
+    NID_MULW  = NID_TRUE;
+    NID_DIVW  = NID_TRUE;
+    NID_DIVUW = NID_TRUE;
+    NID_REMW  = NID_TRUE;
+    NID_REMUW = NID_TRUE;
+  } else {
+    NID_MULW  = NID_FALSE;
+    NID_DIVW  = NID_FALSE;
+    NID_DIVUW = NID_FALSE;
+    NID_REMW  = NID_FALSE;
+    NID_REMUW = NID_FALSE;
   }
 }
 
@@ -2867,7 +2956,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
           no_funct3_nid),
         format_comment("sub %s", (uint64_t) comment),
         decode_funct7(sid, ir_nid,
-          NID_F7_MUL_DIVU_REMU, "MUL or DIVU or REMU?",
+          NID_F7_MUL_DIV_REM, "MUL or DIVU or REMU?",
           decode_funct3(sid, ir_nid,
             NID_F3_ADD_SUB_MUL, "MUL?",
             mul_nid, format_comment("mul %s", (uint64_t) comment),
