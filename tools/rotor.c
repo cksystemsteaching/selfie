@@ -1251,6 +1251,7 @@ uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
 uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
+uint64_t* division_by_zero_nid        = (uint64_t*) 0;
 uint64_t* exclude_a0_from_rd_nid      = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
@@ -3738,6 +3739,26 @@ void rotor() {
     "stack-seg-fault",
     "stack segmentation fault");
 
+  division_by_zero_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      decode_op(SID_BOOLEAN, ir_nid,
+        NID_FALSE,
+        NID_FALSE,
+        NID_FALSE,
+        NID_FALSE,
+        NID_DIVU,
+        NID_REMU,
+        "or just divu or remu?", NID_FALSE, NID_FALSE,
+        NID_FALSE),
+      new_binary_boolean(OP_EQ,
+        load_register_value(get_instruction_rs2(ir_nid), "rs2 value"),
+        NID_MACHINE_WORD_0,
+        "rs2 value == zero?"),
+      "divu or remu by zero?"),
+    "division-by-zero",
+    "division by zero");
+
   exclude_a0_from_rd_nid = state_property(
     new_binary_boolean(OP_NEQ,
       get_instruction_rd(ir_nid),
@@ -3855,6 +3876,10 @@ void output_model() {
   print_break("\n");
 
   print_line(stack_seg_faulting_nid);
+
+  print_break("\n");
+
+  print_line(division_by_zero_nid);
 
   //print_break("\n");
 
