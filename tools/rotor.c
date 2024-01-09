@@ -1273,6 +1273,7 @@ uint64_t* exclude_a0_from_rd_nid      = (uint64_t*) 0;
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* read_seg_faulting_nid   = (uint64_t*) 0;
+uint64_t* write_seg_faulting_nid  = (uint64_t*) 0;
 uint64_t* is_syscall_id_known_nid = (uint64_t*) 0;
 uint64_t* bad_exit_code_nid       = (uint64_t*) 0;
 
@@ -3605,7 +3606,15 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
             read_return_value_nid,
             state_register_file_nid,
             "store read return value in a0"),
-          state_register_file_nid,
+          new_ternary(OP_ITE, SID_REGISTER_STATE,
+            write_syscall_nid,
+            store_register_value(
+              NID_A0,
+              a2_value_nid,
+              state_register_file_nid,
+              "store write return value in a0"),
+            state_register_file_nid,
+            "write system call register data flow"),
           "read system call register data flow"),
         "openat system call register data flow"),
       "brk system call register data flow"),
@@ -3659,6 +3668,8 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     "openat-seg-fault",
     "possible openat segmentation fault");
 
+  // TODO: further validate read arguments
+
   read_seg_faulting_nid = state_property(
     UNUSED,
     new_binary_boolean(OP_AND,
@@ -3675,6 +3686,19 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       "storing bytes to be read may cause segmentation fault"),
     "read-seg-fault",
     "possible read segmentation fault");
+
+  // TODO: further validate write arguments
+
+  write_seg_faulting_nid = state_property(
+    UNUSED,
+    new_binary_boolean(OP_AND,
+      active_write_nid,
+      new_unary_boolean(OP_NOT,
+        is_range_in_heap_segment(a1_value_nid, a2_value_nid),
+        "write system call access outside of heap segment"),
+      "loading bytes to be written may cause segmentation fault"),
+    "write-seg-fault",
+    "possible write segmentation fault");
 
   is_syscall_id_known_nid = state_property(
     UNUSED,
@@ -3983,6 +4007,10 @@ void output_model() {
   print_break("\n");
 
   print_line(read_seg_faulting_nid);
+
+  print_break("\n");
+
+  print_line(write_seg_faulting_nid);
 
   print_break("\n");
 
