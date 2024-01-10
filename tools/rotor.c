@@ -1101,11 +1101,46 @@ uint64_t* NID_AND = (uint64_t*) 0;
 
 uint64_t F3_LWU = 6; // 110
 
+uint64_t OP_IMM_32 = 27; // 0011011, I format
+
+uint64_t F3_ADDIW = 0; // 000
+uint64_t F3_SLLIW = 1; // 001
+uint64_t F3_SRLIW = 5; // 101
+uint64_t F3_SRAIW = 5; // 101
+
+uint64_t F3_ADDW = 0; // 000
+uint64_t F3_SUBW = 0; // 000
+uint64_t F3_SLLW = 1; // 001
+uint64_t F3_SRLW = 5; // 101
+uint64_t F3_SRAW = 5; // 101
+
 uint64_t* NID_F3_LWU = (uint64_t*) 0;
+
+uint64_t* NID_F3_ADDIW = (uint64_t*) 0;
+uint64_t* NID_F3_SLLIW = (uint64_t*) 0;
+uint64_t* NID_F3_SRLIW = (uint64_t*) 0;
+uint64_t* NID_F3_SRAIW = (uint64_t*) 0;
+
+uint64_t* NID_F3_ADDW = (uint64_t*) 0;
+uint64_t* NID_F3_SUBW = (uint64_t*) 0;
+uint64_t* NID_F3_SLLW = (uint64_t*) 0;
+uint64_t* NID_F3_SRLW = (uint64_t*) 0;
+uint64_t* NID_F3_SRAW = (uint64_t*) 0;
 
 // RV64I instruction switches
 
 uint64_t* NID_LWU = (uint64_t*) 0;
+
+uint64_t* NID_ADDIW = (uint64_t*) 0;
+uint64_t* NID_SLLIW = (uint64_t*) 0;
+uint64_t* NID_SRLIW = (uint64_t*) 0;
+uint64_t* NID_SRAIW = (uint64_t*) 0;
+
+uint64_t* NID_ADDW = (uint64_t*) 0;
+uint64_t* NID_SUBW = (uint64_t*) 0;
+uint64_t* NID_SLLW = (uint64_t*) 0;
+uint64_t* NID_SRLW = (uint64_t*) 0;
+uint64_t* NID_SRAW = (uint64_t*) 0;
 
 // RV32M codes missing in RISC-U
 
@@ -1289,10 +1324,6 @@ void init_instruction_sorts() {
   NID_F3_ORI   = new_constant(OP_CONST, SID_FUNCT3, F3_ORI, 3, "F3_ORI");
   NID_F3_ANDI  = new_constant(OP_CONST, SID_FUNCT3, F3_ANDI, 3, "F3_ANDI");
 
-  NID_F3_SLLI = new_constant(OP_CONST, SID_FUNCT3, F3_SLLI, 3, "F3_SLLI");
-  NID_F3_SRLI = new_constant(OP_CONST, SID_FUNCT3, F3_SRLI, 3, "F3_SRLI");
-  NID_F3_SRAI = new_constant(OP_CONST, SID_FUNCT3, F3_SRAI, 3, "F3_SRAI");
-
   NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, 3, "F3_SLL");
   NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, 3, "F3_SLT");
   NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, 3, "F3_XOR");
@@ -1346,12 +1377,46 @@ void init_instruction_sorts() {
 
   NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, 3, "F3_LWU");
 
+  NID_F3_ADDIW = new_constant(OP_CONST, SID_FUNCT3, F3_ADDIW, 3, "F3_ADDIW");
+  NID_F3_SLLIW = new_constant(OP_CONST, SID_FUNCT3, F3_SLLIW, 3, "F3_SLLIW");
+  NID_F3_SRLIW = new_constant(OP_CONST, SID_FUNCT3, F3_SRLIW, 3, "F3_SRLIW");
+  NID_F3_SRAIW = new_constant(OP_CONST, SID_FUNCT3, F3_SRAIW, 3, "F3_SRAIW");
+
+  NID_F3_ADDW = new_constant(OP_CONST, SID_FUNCT3, F3_ADDW, 3, "F3_ADDW");
+  NID_F3_SUBW = new_constant(OP_CONST, SID_FUNCT3, F3_SUBW, 3, "F3_SUBW");
+  NID_F3_SLLW = new_constant(OP_CONST, SID_FUNCT3, F3_SLLW, 3, "F3_SLLW");
+  NID_F3_SRLW = new_constant(OP_CONST, SID_FUNCT3, F3_SRLW, 3, "F3_SRLW");
+  NID_F3_SRAW = new_constant(OP_CONST, SID_FUNCT3, F3_SRAW, 3, "F3_SRAW");
+
   // RV64I instruction switches
 
-  if (IS64BITTARGET)
+  if (IS64BITTARGET) {
     NID_LWU = NID_TRUE;
-  else
+
+    NID_ADDIW = NID_TRUE;
+    NID_SLLIW = NID_TRUE;
+    NID_SRLIW = NID_TRUE;
+    NID_SRAIW = NID_TRUE;
+
+    NID_ADDW = NID_TRUE;
+    NID_SUBW = NID_TRUE;
+    NID_SLLW = NID_TRUE;
+    NID_SRLW = NID_TRUE;
+    NID_SRAW = NID_TRUE;
+  } else {
     NID_LWU = NID_FALSE;
+
+    NID_ADDIW = NID_FALSE;
+    NID_SLLIW = NID_FALSE;
+    NID_SRLIW = NID_FALSE;
+    NID_SRAIW = NID_FALSE;
+
+    NID_ADDW = NID_FALSE;
+    NID_SUBW = NID_FALSE;
+    NID_SLLW = NID_FALSE;
+    NID_SRLW = NID_FALSE;
+    NID_SRAW = NID_FALSE;
+  }
 
   // RV32M codes missing in RISC-U
 
