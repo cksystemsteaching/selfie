@@ -1003,22 +1003,11 @@ uint64_t F3_LHU = 5; // 101
 uint64_t F3_SB = 0; // 000
 uint64_t F3_SH = 1; // 001
 
-uint64_t F3_SLTI  = 2; // 010
-uint64_t F3_SLTIU = 3; // 011
-uint64_t F3_XORI  = 4; // 100
-uint64_t F3_ORI   = 6; // 110
-uint64_t F3_ANDI  = 7; // 111
-
-uint64_t F3_SLLI = 1; // 001
-uint64_t F3_SRLI = 5; // 101
-uint64_t F3_SRAI = 5; // 101
-
 uint64_t F3_SLL = 1; // 001
 uint64_t F3_SLT = 2; // 010
 uint64_t F3_XOR = 4; // 100
 uint64_t F3_SRL = 5; // 101
 uint64_t F3_SRA = 5; // 101
-
 uint64_t F3_OR  = 6; // 110
 uint64_t F3_AND = 7; // 111
 
@@ -1038,27 +1027,16 @@ uint64_t* NID_F3_LHU = (uint64_t*) 0;
 uint64_t* NID_F3_SB = (uint64_t*) 0;
 uint64_t* NID_F3_SH = (uint64_t*) 0;
 
-uint64_t* NID_F3_SLTI  = (uint64_t*) 0;
-uint64_t* NID_F3_SLTIU = (uint64_t*) 0;
-uint64_t* NID_F3_XORI  = (uint64_t*) 0;
-uint64_t* NID_F3_ORI   = (uint64_t*) 0;
-uint64_t* NID_F3_ANDI  = (uint64_t*) 0;
-
-uint64_t* NID_F3_SLLI = (uint64_t*) 0;
-uint64_t* NID_F3_SRLI = (uint64_t*) 0;
-uint64_t* NID_F3_SRAI = (uint64_t*) 0;
-
 uint64_t* NID_F3_SLL = (uint64_t*) 0;
 uint64_t* NID_F3_SLT = (uint64_t*) 0;
 uint64_t* NID_F3_XOR = (uint64_t*) 0;
 uint64_t* NID_F3_SRL = (uint64_t*) 0;
 uint64_t* NID_F3_SRA = (uint64_t*) 0;
-
 uint64_t* NID_F3_OR  = (uint64_t*) 0;
 uint64_t* NID_F3_AND = (uint64_t*) 0;
 
-uint64_t* NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND = (uint64_t*) 0;
-uint64_t* NID_F7_SRAI_SUB_SRA                              = (uint64_t*) 0;
+uint64_t* NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND = (uint64_t*) 0;
+uint64_t* NID_F7_SUB_SRA                    = (uint64_t*) 0;
 
 // RV32I instruction switches
 
@@ -1101,31 +1079,9 @@ uint64_t* NID_AND = (uint64_t*) 0;
 
 uint64_t F3_LWU = 6; // 110
 
-uint64_t OP_IMM_32 = 27; // 0011011, I format
-
-uint64_t F3_ADDIW = 0; // 000
-uint64_t F3_SLLIW = 1; // 001
-uint64_t F3_SRLIW = 5; // 101
-uint64_t F3_SRAIW = 5; // 101
-
-uint64_t F3_ADDW = 0; // 000
-uint64_t F3_SUBW = 0; // 000
-uint64_t F3_SLLW = 1; // 001
-uint64_t F3_SRLW = 5; // 101
-uint64_t F3_SRAW = 5; // 101
-
 uint64_t* NID_F3_LWU = (uint64_t*) 0;
 
-uint64_t* NID_F3_ADDIW = (uint64_t*) 0;
-uint64_t* NID_F3_SLLIW = (uint64_t*) 0;
-uint64_t* NID_F3_SRLIW = (uint64_t*) 0;
-uint64_t* NID_F3_SRAIW = (uint64_t*) 0;
-
-uint64_t* NID_F3_ADDW = (uint64_t*) 0;
-uint64_t* NID_F3_SUBW = (uint64_t*) 0;
-uint64_t* NID_F3_SLLW = (uint64_t*) 0;
-uint64_t* NID_F3_SRLW = (uint64_t*) 0;
-uint64_t* NID_F3_SRAW = (uint64_t*) 0;
+uint64_t OP_IMM_32 = 27; // 0011011, I format
 
 // RV64I instruction switches
 
@@ -1168,19 +1124,7 @@ uint64_t* NID_REM    = (uint64_t*) 0;
 
 uint64_t OP_OP_32 = 59; // 0111011, I format
 
-uint64_t F3_MULW  = 0; // 000
-uint64_t F3_DIVW  = 4; // 100
-uint64_t F3_DIVUW = 5; // 101
-uint64_t F3_REMW  = 6; // 110
-uint64_t F3_REMUW = 7; // 111
-
 uint64_t* NID_OP_OP_32 = (uint64_t*) 0;
-
-uint64_t* NID_F3_MULW  = (uint64_t*) 0;
-uint64_t* NID_F3_DIVW  = (uint64_t*) 0;
-uint64_t* NID_F3_DIVUW = (uint64_t*) 0;
-uint64_t* NID_F3_REMW  = (uint64_t*) 0;
-uint64_t* NID_F3_REMUW = (uint64_t*) 0;
 
 // RV64M instruction switches
 
@@ -1318,23 +1262,16 @@ void init_instruction_sorts() {
   NID_F3_SB = new_constant(OP_CONST, SID_FUNCT3, F3_SB, 3, "F3_SB");
   NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, F3_SH, 3, "F3_SH");
 
-  NID_F3_SLTI  = new_constant(OP_CONST, SID_FUNCT3, F3_SLTI, 3, "F3_SLTI");
-  NID_F3_SLTIU = new_constant(OP_CONST, SID_FUNCT3, F3_SLTIU, 3, "F3_SLTIU");
-  NID_F3_XORI  = new_constant(OP_CONST, SID_FUNCT3, F3_XORI, 3, "F3_XORI");
-  NID_F3_ORI   = new_constant(OP_CONST, SID_FUNCT3, F3_ORI, 3, "F3_ORI");
-  NID_F3_ANDI  = new_constant(OP_CONST, SID_FUNCT3, F3_ANDI, 3, "F3_ANDI");
-
   NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, 3, "F3_SLL");
   NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, 3, "F3_SLT");
   NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, 3, "F3_XOR");
   NID_F3_SRL = new_constant(OP_CONST, SID_FUNCT3, F3_SRL, 3, "F3_SRL");
   NID_F3_SRA = new_constant(OP_CONST, SID_FUNCT3, F3_SRA, 3, "F3_SRA");
-
   NID_F3_OR  = new_constant(OP_CONST, SID_FUNCT3, F3_OR, 3, "F3_OR");
   NID_F3_AND = new_constant(OP_CONST, SID_FUNCT3, F3_AND, 3, "F3_AND");
 
-  NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND = NID_F7_ADD;
-  NID_F7_SRAI_SUB_SRA                              = NID_F7_SUB;
+  NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND = NID_F7_ADD;
+  NID_F7_SUB_SRA                    = NID_F7_SUB;
 
   // RV32I instruction switches
 
@@ -1376,17 +1313,6 @@ void init_instruction_sorts() {
   // RV64I codes missing in RISC-U
 
   NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, 3, "F3_LWU");
-
-  NID_F3_ADDIW = new_constant(OP_CONST, SID_FUNCT3, F3_ADDIW, 3, "F3_ADDIW");
-  NID_F3_SLLIW = new_constant(OP_CONST, SID_FUNCT3, F3_SLLIW, 3, "F3_SLLIW");
-  NID_F3_SRLIW = new_constant(OP_CONST, SID_FUNCT3, F3_SRLIW, 3, "F3_SRLIW");
-  NID_F3_SRAIW = new_constant(OP_CONST, SID_FUNCT3, F3_SRAIW, 3, "F3_SRAIW");
-
-  NID_F3_ADDW = new_constant(OP_CONST, SID_FUNCT3, F3_ADDW, 3, "F3_ADDW");
-  NID_F3_SUBW = new_constant(OP_CONST, SID_FUNCT3, F3_SUBW, 3, "F3_SUBW");
-  NID_F3_SLLW = new_constant(OP_CONST, SID_FUNCT3, F3_SLLW, 3, "F3_SLLW");
-  NID_F3_SRLW = new_constant(OP_CONST, SID_FUNCT3, F3_SRLW, 3, "F3_SRLW");
-  NID_F3_SRAW = new_constant(OP_CONST, SID_FUNCT3, F3_SRAW, 3, "F3_SRAW");
 
   // RV64I instruction switches
 
@@ -1437,12 +1363,6 @@ void init_instruction_sorts() {
   // RV64M codes
 
   NID_OP_OP_32 = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, 7, "OP_OP_32");
-
-  NID_F3_MULW  = new_constant(OP_CONST, SID_FUNCT3, F3_MULW, 3, "F3_MULW");
-  NID_F3_DIVW  = new_constant(OP_CONST, SID_FUNCT3, F3_DIVW, 3, "F3_DIVW");
-  NID_F3_DIVUW = new_constant(OP_CONST, SID_FUNCT3, F3_DIVUW, 3, "F3_DIVUW");
-  NID_F3_REMW  = new_constant(OP_CONST, SID_FUNCT3, F3_REMW, 3, "F3_REMW");
-  NID_F3_REMUW = new_constant(OP_CONST, SID_FUNCT3, F3_REMUW, 3, "F3_REMUW");
 
   // RV64M instruction switches
 
@@ -3103,7 +3023,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
   return decode_opcode(sid, ir_nid,
     NID_OP_OP, "OP?",
     decode_funct7(sid, ir_nid,
-      NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND, "ADD or SLTU?",
+      NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND, "ADD or SLTU?",
       decode_funct3(sid, ir_nid,
         NID_F3_ADD_SUB_MUL, "ADD?",
         add_nid, format_comment("add %s", (uint64_t) comment),
