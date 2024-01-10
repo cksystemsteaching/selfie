@@ -141,9 +141,11 @@ char* OP_ULTE = (char*) 0;
 
 char* OP_AND = (char*) 0;
 char* OP_OR  = (char*) 0;
+char* OP_XOR = (char*) 0;
 
 char* OP_SLL = (char*) 0;
 char* OP_SRL = (char*) 0;
+char* OP_SRA = (char*) 0;
 
 char* OP_ADD  = (char*) 0;
 char* OP_SUB  = (char*) 0;
@@ -208,9 +210,11 @@ void init_model() {
 
   OP_AND = "and";
   OP_OR  = "or";
+  OP_XOR = "xor";
 
   OP_SLL = "sll";
   OP_SRL = "srl";
+  OP_SRA = "sra";
 
   OP_ADD  = "add";
   OP_SUB  = "sub";
@@ -796,6 +800,7 @@ uint64_t* get_instruction_rs2(uint64_t* ir_nid);
 
 uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid);
 uint64_t* get_instruction_I_immediate(uint64_t* ir_nid);
+uint64_t* get_instruction_shamt(uint64_t* ir_nid);
 uint64_t* get_instruction_S_immediate(uint64_t* ir_nid);
 uint64_t* sign_extend_SB_immediate(uint64_t* imm_nid);
 uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid);
@@ -1293,15 +1298,15 @@ void init_instruction_sorts() {
   NID_SB = NID_TRUE;
   NID_SH = NID_TRUE;
 
-  NID_SLTI  = NID_FALSE;
-  NID_SLTIU = NID_FALSE;
-  NID_XORI  = NID_FALSE;
-  NID_ORI   = NID_FALSE;
-  NID_ANDI  = NID_FALSE;
+  NID_SLTI  = NID_TRUE;
+  NID_SLTIU = NID_TRUE;
+  NID_XORI  = NID_TRUE;
+  NID_ORI   = NID_TRUE;
+  NID_ANDI  = NID_TRUE;
 
-  NID_SLLI = NID_FALSE;
-  NID_SRLI = NID_FALSE;
-  NID_SRAI = NID_FALSE;
+  NID_SLLI = NID_TRUE;
+  NID_SRLI = NID_TRUE;
+  NID_SRAI = NID_TRUE;
 
   NID_SLL = NID_FALSE;
   NID_SLT = NID_FALSE;
@@ -1437,6 +1442,7 @@ uint64_t w = 0; // number of written characters
 uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
+uint64_t* illegal_instruction_nid     = (uint64_t*) 0;
 uint64_t* next_fetch_unaligned_nid    = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
@@ -2854,12 +2860,25 @@ uint64_t* get_instruction_rs2(uint64_t* ir_nid) {
 }
 
 uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid) {
-  return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 12, "sign-extend");
+  return new_ext(OP_SEXT, SID_MACHINE_WORD, imm_nid, WORDSIZEINBITS - 12, "sign-extend immediate");
 }
 
 uint64_t* get_instruction_I_immediate(uint64_t* ir_nid) {
   return sign_extend_IS_immediate(
     new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate"));
+}
+
+uint64_t* get_instruction_shamt(uint64_t* ir_nid) {
+  if (IS64BITTARGET)
+    return new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_slice(SID_6_BIT_IMM, ir_nid, 25, 20, "get 6-bit shamt"),
+      WORDSIZEINBITS - 6,
+      "unsigned-extend 6-bit shamt");
+  else
+    return new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_slice(SID_5_BIT_IMM, ir_nid, 24, 20, "get 5-bit shamt"),
+      WORDSIZEINBITS - 5,
+      "unsigned-extend 5-bit shamt");
 }
 
 uint64_t* get_instruction_S_immediate(uint64_t* ir_nid) {
@@ -3018,24 +3037,36 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3(sid, ir_nid,
         NID_F3_SLT, "SLTI?",
         slti_nid, format_comment("slti %s", (uint64_t) comment),
-        decode_funct7(sid, ir_nid,
-          NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND, "SLLI or SRLI?",
+        decode_funct3(sid, ir_nid,
+          NID_F3_SLTU, "SLTIU?",
+          sltiu_nid, format_comment("sltiu %s", (uint64_t) comment),
           decode_funct3(sid, ir_nid,
-            NID_F3_SLL, "SLLI?",
-            slli_nid, format_comment("slli %s", (uint64_t) comment),
+            NID_F3_XOR, "XORI?",
+            xori_nid, format_comment("xori %s", (uint64_t) comment),
             decode_funct3(sid, ir_nid,
-              NID_F3_SRL, "SRLI?",
-              srli_nid, format_comment("srli %s", (uint64_t) comment),
-              no_funct3_nid)),
-          format_comment("SLLI or SRLI %s", (uint64_t) comment),
-          decode_funct7(sid, ir_nid,
-            NID_F7_SUB_SRA, "SRAI?",
-            decode_funct3(sid, ir_nid,
-              NID_F3_SRA, "SRAI?",
-              srai_nid, format_comment("srai %s", (uint64_t) comment),
-              no_funct3_nid),
-            format_comment("srai %s", (uint64_t) comment),
-            no_funct7_nid)))),
+              NID_F3_OR, "ORI?",
+              ori_nid, format_comment("ori %s", (uint64_t) comment),
+              decode_funct3(sid, ir_nid,
+                NID_F3_AND, "ANDI?",
+                andi_nid, format_comment("andi %s", (uint64_t) comment),
+                decode_funct7(sid, ir_nid,
+                  NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND, "SLLI or SRLI?",
+                  decode_funct3(sid, ir_nid,
+                    NID_F3_SLL, "SLLI?",
+                    slli_nid, format_comment("slli %s", (uint64_t) comment),
+                    decode_funct3(sid, ir_nid,
+                      NID_F3_SRL, "SRLI?",
+                      srli_nid, format_comment("srli %s", (uint64_t) comment),
+                      no_funct3_nid)),
+                  format_comment("SLLI or SRLI %s", (uint64_t) comment),
+                  decode_funct7(sid, ir_nid,
+                    NID_F7_SUB_SRA, "SRAI?",
+                    decode_funct3(sid, ir_nid,
+                      NID_F3_SRA, "SRAI?",
+                      srai_nid, format_comment("srai %s", (uint64_t) comment),
+                      no_funct3_nid),
+                    format_comment("srai %s", (uint64_t) comment),
+                    no_funct7_nid)))))))),
     format_comment("imm %s", (uint64_t) comment),
     other_opcode_nid);
 }
@@ -3248,16 +3279,50 @@ uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
 }
 
 uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
+  uint64_t* rs1_value_nid;
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+
   return decode_imm(SID_MACHINE_WORD, ir_nid,
     get_rs1_value_plus_I_immediate(ir_nid),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
+    new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_binary_boolean(OP_SLT,
+        rs1_value_nid,
+        get_instruction_I_immediate(ir_nid),
+        "rs1 value < I-immediate?"),
+      WORDSIZEINBITS - 1,
+      "unsigned-extend Boolean to machine word"),
+    new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_binary_boolean(OP_ULT,
+        rs1_value_nid,
+        get_instruction_I_immediate(ir_nid),
+        "rs1 value < I-immediate (unsigned)?"),
+      WORDSIZEINBITS - 1,
+      "unsigned-extend Boolean to machine word"),
+    new_binary(OP_XOR, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_I_immediate(ir_nid),
+      "rs1 value ^ I-immediate"),
+    new_binary(OP_OR, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_I_immediate(ir_nid),
+      "rs1 value | I-immediate"),
+    new_binary(OP_AND, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_I_immediate(ir_nid),
+      "rs1 value & I-immediate"),
+    new_binary(OP_SLL, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_shamt(ir_nid),
+      "rs1 value << shamt"),
+    new_binary(OP_SRL, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_shamt(ir_nid),
+      "rs1 value >> shamt"),
+    new_binary(OP_SRA, SID_MACHINE_WORD,
+      rs1_value_nid,
+      get_instruction_shamt(ir_nid),
+      "signed rs1 value >> shamt"),
     "register data flow",
     load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
@@ -3288,7 +3353,7 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
       new_binary_boolean(OP_ULT,
         rs1_value_nid,
         rs2_value_nid,
-        "rs1 value < rs2 value (unsigned)"),
+        "rs1 value < rs2 value (unsigned)?"),
       WORDSIZEINBITS - 1,
       "unsigned-extend Boolean to machine word"),
     new_binary(OP_MUL, SID_MACHINE_WORD,
@@ -4012,6 +4077,13 @@ void rotor() {
 
   // state properties
 
+  if (IS64BITTARGET == 0)
+    illegal_instruction_nid = state_property(
+      UNUSED,
+      NID_FALSE,
+      "illegal-instruction",
+      "illegal instruction");
+
   is_instruction_known_nid = state_property(
     known_instructions_nid,
     UNUSED,
@@ -4180,6 +4252,12 @@ void output_model() {
   print_line(next_main_memory_nid);
 
   print_break("\n; state properties\n\n");
+
+  if (IS64BITTARGET == 0) {
+    print_line(illegal_instruction_nid);
+
+    print_break("\n");
+  }
 
   print_line(is_instruction_known_nid);
 
