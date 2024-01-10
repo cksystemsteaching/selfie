@@ -935,7 +935,6 @@ uint64_t* NID_F7_DIVU = (uint64_t*) 0;
 uint64_t* NID_F7_REMU = (uint64_t*) 0;
 uint64_t* NID_F7_SLTU = (uint64_t*) 0;
 
-uint64_t* NID_F7_ADD_SLTU    = (uint64_t*) 0;
 uint64_t* NID_F7_MUL_DIV_REM = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT12 = (uint64_t*) 0;
@@ -1004,6 +1003,25 @@ uint64_t F3_LHU = 5; // 101
 uint64_t F3_SB = 0; // 000
 uint64_t F3_SH = 1; // 001
 
+uint64_t F3_SLTI  = 2; // 010
+uint64_t F3_SLTIU = 3; // 011
+uint64_t F3_XORI  = 4; // 100
+uint64_t F3_ORI   = 6; // 110
+uint64_t F3_ANDI  = 7; // 111
+
+uint64_t F3_SLLI = 1; // 001
+uint64_t F3_SRLI = 5; // 101
+uint64_t F3_SRAI = 5; // 101
+
+uint64_t F3_SLL = 1; // 001
+uint64_t F3_SLT = 2; // 010
+uint64_t F3_XOR = 4; // 100
+uint64_t F3_SRL = 5; // 101
+uint64_t F3_SRA = 5; // 101
+
+uint64_t F3_OR  = 6; // 110
+uint64_t F3_AND = 7; // 111
+
 uint64_t* NID_OP_AUIPC = (uint64_t*) 0;
 
 uint64_t* NID_F3_BNE  = (uint64_t*) 0;
@@ -1019,6 +1037,28 @@ uint64_t* NID_F3_LHU = (uint64_t*) 0;
 
 uint64_t* NID_F3_SB = (uint64_t*) 0;
 uint64_t* NID_F3_SH = (uint64_t*) 0;
+
+uint64_t* NID_F3_SLTI  = (uint64_t*) 0;
+uint64_t* NID_F3_SLTIU = (uint64_t*) 0;
+uint64_t* NID_F3_XORI  = (uint64_t*) 0;
+uint64_t* NID_F3_ORI   = (uint64_t*) 0;
+uint64_t* NID_F3_ANDI  = (uint64_t*) 0;
+
+uint64_t* NID_F3_SLLI = (uint64_t*) 0;
+uint64_t* NID_F3_SRLI = (uint64_t*) 0;
+uint64_t* NID_F3_SRAI = (uint64_t*) 0;
+
+uint64_t* NID_F3_SLL = (uint64_t*) 0;
+uint64_t* NID_F3_SLT = (uint64_t*) 0;
+uint64_t* NID_F3_XOR = (uint64_t*) 0;
+uint64_t* NID_F3_SRL = (uint64_t*) 0;
+uint64_t* NID_F3_SRA = (uint64_t*) 0;
+
+uint64_t* NID_F3_OR  = (uint64_t*) 0;
+uint64_t* NID_F3_AND = (uint64_t*) 0;
+
+uint64_t* NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND = (uint64_t*) 0;
+uint64_t* NID_F7_SRAI_SUB_SRA                              = (uint64_t*) 0;
 
 // RV32I instruction switches
 
@@ -1037,6 +1077,25 @@ uint64_t* NID_LHU = (uint64_t*) 0;
 
 uint64_t* NID_SB = (uint64_t*) 0;
 uint64_t* NID_SH = (uint64_t*) 0;
+
+uint64_t* NID_SLTI  = (uint64_t*) 0;
+uint64_t* NID_SLTIU = (uint64_t*) 0;
+uint64_t* NID_XORI  = (uint64_t*) 0;
+uint64_t* NID_ORI   = (uint64_t*) 0;
+uint64_t* NID_ANDI  = (uint64_t*) 0;
+
+uint64_t* NID_SLLI = (uint64_t*) 0;
+uint64_t* NID_SRLI = (uint64_t*) 0;
+uint64_t* NID_SRAI = (uint64_t*) 0;
+
+uint64_t* NID_SLL = (uint64_t*) 0;
+uint64_t* NID_SLT = (uint64_t*) 0;
+uint64_t* NID_XOR = (uint64_t*) 0;
+uint64_t* NID_SRL = (uint64_t*) 0;
+uint64_t* NID_SRA = (uint64_t*) 0;
+
+uint64_t* NID_OR  = (uint64_t*) 0;
+uint64_t* NID_AND = (uint64_t*) 0;
 
 // RV64I codes missing in RISC-U
 
@@ -1146,7 +1205,6 @@ void init_instruction_sorts() {
   NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, 7, "F7_REMU");
   NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, 7, "F7_SLTU");
 
-  NID_F7_ADD_SLTU    = NID_F7_ADD;
   NID_F7_MUL_DIV_REM = NID_F7_MUL;
 
   SID_FUNCT12 = new_bitvec(12, "funct12 sort");
@@ -1225,6 +1283,28 @@ void init_instruction_sorts() {
   NID_F3_SB = new_constant(OP_CONST, SID_FUNCT3, F3_SB, 3, "F3_SB");
   NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, F3_SH, 3, "F3_SH");
 
+  NID_F3_SLTI  = new_constant(OP_CONST, SID_FUNCT3, F3_SLTI, 3, "F3_SLTI");
+  NID_F3_SLTIU = new_constant(OP_CONST, SID_FUNCT3, F3_SLTIU, 3, "F3_SLTIU");
+  NID_F3_XORI  = new_constant(OP_CONST, SID_FUNCT3, F3_XORI, 3, "F3_XORI");
+  NID_F3_ORI   = new_constant(OP_CONST, SID_FUNCT3, F3_ORI, 3, "F3_ORI");
+  NID_F3_ANDI  = new_constant(OP_CONST, SID_FUNCT3, F3_ANDI, 3, "F3_ANDI");
+
+  NID_F3_SLLI = new_constant(OP_CONST, SID_FUNCT3, F3_SLLI, 3, "F3_SLLI");
+  NID_F3_SRLI = new_constant(OP_CONST, SID_FUNCT3, F3_SRLI, 3, "F3_SRLI");
+  NID_F3_SRAI = new_constant(OP_CONST, SID_FUNCT3, F3_SRAI, 3, "F3_SRAI");
+
+  NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, 3, "F3_SLL");
+  NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, 3, "F3_SLT");
+  NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, 3, "F3_XOR");
+  NID_F3_SRL = new_constant(OP_CONST, SID_FUNCT3, F3_SRL, 3, "F3_SRL");
+  NID_F3_SRA = new_constant(OP_CONST, SID_FUNCT3, F3_SRA, 3, "F3_SRA");
+
+  NID_F3_OR  = new_constant(OP_CONST, SID_FUNCT3, F3_OR, 3, "F3_OR");
+  NID_F3_AND = new_constant(OP_CONST, SID_FUNCT3, F3_AND, 3, "F3_AND");
+
+  NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND = NID_F7_ADD;
+  NID_F7_SRAI_SUB_SRA                              = NID_F7_SUB;
+
   // RV32I instruction switches
 
   NID_AUIPC = NID_TRUE;
@@ -1242,6 +1322,25 @@ void init_instruction_sorts() {
 
   NID_SB = NID_TRUE;
   NID_SH = NID_TRUE;
+
+  NID_SLTI  = NID_TRUE;
+  NID_SLTIU = NID_TRUE;
+  NID_XORI  = NID_TRUE;
+  NID_ORI   = NID_TRUE;
+  NID_ANDI  = NID_TRUE;
+
+  NID_SLLI = NID_TRUE;
+  NID_SRLI = NID_TRUE;
+  NID_SRAI = NID_TRUE;
+
+  NID_SLL = NID_TRUE;
+  NID_SLT = NID_TRUE;
+  NID_XOR = NID_TRUE;
+  NID_SRL = NID_TRUE;
+  NID_SRA = NID_TRUE;
+
+  NID_OR  = NID_TRUE;
+  NID_AND = NID_TRUE;
 
   // RV64I codes missing in RISC-U
 
@@ -2939,7 +3038,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
   return decode_opcode(sid, ir_nid,
     NID_OP_OP, "OP?",
     decode_funct7(sid, ir_nid,
-      NID_F7_ADD_SLTU, "ADD or SLTU?",
+      NID_F7_SLLI_SRLI_ADD_SLL_SLT_SLTU_XOR_SRL_OR_AND, "ADD or SLTU?",
       decode_funct3(sid, ir_nid,
         NID_F3_ADD_SUB_MUL, "ADD?",
         add_nid, format_comment("add %s", (uint64_t) comment),
