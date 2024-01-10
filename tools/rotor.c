@@ -832,6 +832,9 @@ uint64_t* decode_lui(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* auipc_nid, char* comment,
   uint64_t* other_opcode_nid);
+uint64_t* decode_illegal_shift_imm(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* slli_nid, uint64_t* srli_nid, uint64_t* srai_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, uint64_t* slti_nid, uint64_t* sltiu_nid,
   uint64_t* xori_nid, uint64_t* ori_nid, uint64_t* andi_nid,
@@ -1044,6 +1047,9 @@ uint64_t* NID_F3_AND = (uint64_t*) 0;
 
 uint64_t* NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND = (uint64_t*) 0;
 uint64_t* NID_F7_SUB_SRA                    = (uint64_t*) 0;
+
+uint64_t* NID_F7_SLL_SRL_ILLEGAL = (uint64_t*) 0;
+uint64_t* NID_F7_SRA_ILLEGAL     = (uint64_t*) 0;
 
 // RV32I instruction switches
 
@@ -1279,6 +1285,9 @@ void init_instruction_sorts() {
 
   NID_F7_SLL_SRL_ADD_SLT_XOR_OR_AND = NID_F7_ADD;
   NID_F7_SUB_SRA                    = NID_F7_SUB;
+
+  NID_F7_SLL_SRL_ILLEGAL = new_constant(OP_CONST, SID_FUNCT7, F7_ADD + 1, 7, "F7_SLL_SRL_ILLEGAL");
+  NID_F7_SRA_ILLEGAL     = new_constant(OP_CONST, SID_FUNCT7, F7_SUB + 1, 7, "F7_SRA_ILLEGAL");
 
   // RV32I instruction switches
 
@@ -3024,6 +3033,33 @@ uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
     other_opcode_nid);
 }
 
+uint64_t* decode_illegal_shift_imm(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* slli_nid, uint64_t* srli_nid, uint64_t* srai_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
+  return decode_opcode(sid, ir_nid,
+    NID_OP_IMM, "IMM?",
+    decode_funct7(sid, ir_nid,
+      NID_F7_SLL_SRL_ILLEGAL, "illegal SLLI or SRLI?",
+      decode_funct3(sid, ir_nid,
+        NID_F3_SLL, "illegal SLLI?",
+        slli_nid, format_comment("illegal slli %s", (uint64_t) comment),
+        decode_funct3(sid, ir_nid,
+          NID_F3_SRL, "illegal SRLI?",
+          srli_nid, format_comment("illegal srli %s", (uint64_t) comment),
+          no_funct3_nid)),
+      format_comment("illegal SLLI or SRLI %s", (uint64_t) comment),
+      decode_funct7(sid, ir_nid,
+        NID_F7_SRA_ILLEGAL, "illegal SRAI?",
+        decode_funct3(sid, ir_nid,
+          NID_F3_SRA, "illegal SRAI?",
+          srai_nid, format_comment("illegal srai %s", (uint64_t) comment),
+          no_funct3_nid),
+        format_comment("illegal srai %s", (uint64_t) comment),
+        no_funct7_nid)),
+    format_comment("illegal shift imm %s", (uint64_t) comment),
+    other_opcode_nid);
+}
+
 uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, uint64_t* slti_nid, uint64_t* sltiu_nid,
   uint64_t* xori_nid, uint64_t* ori_nid, uint64_t* andi_nid,
@@ -4080,7 +4116,12 @@ void rotor() {
   if (IS64BITTARGET == 0)
     illegal_instruction_nid = state_property(
       UNUSED,
-      NID_FALSE,
+      decode_illegal_shift_imm(SID_BOOLEAN, ir_nid,
+        NID_TRUE,
+        NID_TRUE,
+        NID_TRUE,
+        "there?", NID_FALSE, NID_FALSE,
+        NID_FALSE),
       "illegal-instruction",
       "illegal instruction");
 
