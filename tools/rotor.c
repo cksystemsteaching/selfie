@@ -1032,6 +1032,8 @@ uint64_t* NID_12_BIT_IMM_0 = (uint64_t*) 0;
 
 // RISC-U instruction switches
 
+uint64_t RISCU = 0; // restrict to RISC-U
+
 uint64_t* NID_LUI  = (uint64_t*) 0;
 uint64_t* NID_ADDI = (uint64_t*) 0;
 
@@ -1360,40 +1362,77 @@ void init_instruction_sorts() {
 
   // RV32I instruction switches
 
-  NID_AUIPC = NID_TRUE;
+  if (RISCU) {
+    NID_AUIPC = NID_FALSE;
 
-  NID_BNE  = NID_TRUE;
-  NID_BLT  = NID_TRUE;
-  NID_BGE  = NID_TRUE;
-  NID_BLTU = NID_TRUE;
-  NID_BGEU = NID_TRUE;
+    NID_BNE  = NID_FALSE;
+    NID_BLT  = NID_FALSE;
+    NID_BGE  = NID_FALSE;
+    NID_BLTU = NID_FALSE;
+    NID_BGEU = NID_FALSE;
 
-  NID_LB  = NID_TRUE;
-  NID_LH  = NID_TRUE;
-  NID_LBU = NID_TRUE;
-  NID_LHU = NID_TRUE;
+    NID_LB  = NID_FALSE;
+    NID_LH  = NID_FALSE;
+    NID_LBU = NID_FALSE;
+    NID_LHU = NID_FALSE;
 
-  NID_SB = NID_TRUE;
-  NID_SH = NID_TRUE;
+    NID_SB = NID_FALSE;
+    NID_SH = NID_FALSE;
 
-  NID_SLTI  = NID_TRUE;
-  NID_SLTIU = NID_TRUE;
-  NID_XORI  = NID_TRUE;
-  NID_ORI   = NID_TRUE;
-  NID_ANDI  = NID_TRUE;
+    NID_SLTI  = NID_FALSE;
+    NID_SLTIU = NID_FALSE;
+    NID_XORI  = NID_FALSE;
+    NID_ORI   = NID_FALSE;
+    NID_ANDI  = NID_FALSE;
 
-  NID_SLLI = NID_TRUE;
-  NID_SRLI = NID_TRUE;
-  NID_SRAI = NID_TRUE;
+    NID_SLLI = NID_FALSE;
+    NID_SRLI = NID_FALSE;
+    NID_SRAI = NID_FALSE;
 
-  NID_SLL = NID_TRUE;
-  NID_SLT = NID_TRUE;
-  NID_XOR = NID_TRUE;
-  NID_SRL = NID_TRUE;
-  NID_SRA = NID_TRUE;
+    NID_SLL = NID_FALSE;
+    NID_SLT = NID_FALSE;
+    NID_XOR = NID_FALSE;
+    NID_SRL = NID_FALSE;
+    NID_SRA = NID_FALSE;
 
-  NID_OR  = NID_TRUE;
-  NID_AND = NID_TRUE;
+    NID_OR  = NID_FALSE;
+    NID_AND = NID_FALSE;
+  } else {
+    NID_AUIPC = NID_TRUE;
+
+    NID_BNE  = NID_TRUE;
+    NID_BLT  = NID_TRUE;
+    NID_BGE  = NID_TRUE;
+    NID_BLTU = NID_TRUE;
+    NID_BGEU = NID_TRUE;
+
+    NID_LB  = NID_TRUE;
+    NID_LH  = NID_TRUE;
+    NID_LBU = NID_TRUE;
+    NID_LHU = NID_TRUE;
+
+    NID_SB = NID_TRUE;
+    NID_SH = NID_TRUE;
+
+    NID_SLTI  = NID_TRUE;
+    NID_SLTIU = NID_TRUE;
+    NID_XORI  = NID_TRUE;
+    NID_ORI   = NID_TRUE;
+    NID_ANDI  = NID_TRUE;
+
+    NID_SLLI = NID_TRUE;
+    NID_SRLI = NID_TRUE;
+    NID_SRAI = NID_TRUE;
+
+    NID_SLL = NID_TRUE;
+    NID_SLT = NID_TRUE;
+    NID_XOR = NID_TRUE;
+    NID_SRL = NID_TRUE;
+    NID_SRA = NID_TRUE;
+
+    NID_OR  = NID_TRUE;
+    NID_AND = NID_TRUE;
+  }
 
   // RV64I codes missing in RISC-U
 
@@ -1411,33 +1450,34 @@ void init_instruction_sorts() {
 
   // RV64I instruction switches
 
-  if (IS64BITTARGET) {
-    NID_LWU = NID_TRUE;
+  NID_LWU = NID_FALSE;
 
-    NID_ADDIW = NID_TRUE;
-    NID_SLLIW = NID_TRUE;
-    NID_SRLIW = NID_TRUE;
-    NID_SRAIW = NID_TRUE;
+  NID_ADDIW = NID_FALSE;
+  NID_SLLIW = NID_FALSE;
+  NID_SRLIW = NID_FALSE;
+  NID_SRAIW = NID_FALSE;
 
-    NID_ADDW = NID_TRUE;
-    NID_SUBW = NID_TRUE;
-    NID_SLLW = NID_TRUE;
-    NID_SRLW = NID_TRUE;
-    NID_SRAW = NID_TRUE;
-  } else {
-    NID_LWU = NID_FALSE;
+  NID_ADDW = NID_FALSE;
+  NID_SUBW = NID_FALSE;
+  NID_SLLW = NID_FALSE;
+  NID_SRLW = NID_FALSE;
+  NID_SRAW = NID_FALSE;
 
-    NID_ADDIW = NID_FALSE;
-    NID_SLLIW = NID_FALSE;
-    NID_SRLIW = NID_FALSE;
-    NID_SRAIW = NID_FALSE;
+  if (RISCU == 0)
+    if (IS64BITTARGET) {
+      NID_LWU = NID_TRUE;
 
-    NID_ADDW = NID_FALSE;
-    NID_SUBW = NID_FALSE;
-    NID_SLLW = NID_FALSE;
-    NID_SRLW = NID_FALSE;
-    NID_SRAW = NID_FALSE;
-  }
+      NID_ADDIW = NID_TRUE;
+      NID_SLLIW = NID_TRUE;
+      NID_SRLIW = NID_TRUE;
+      NID_SRAIW = NID_TRUE;
+
+      NID_ADDW = NID_TRUE;
+      NID_SUBW = NID_TRUE;
+      NID_SLLW = NID_TRUE;
+      NID_SRLW = NID_TRUE;
+      NID_SRAW = NID_TRUE;
+    }
 
   // RV32M codes missing in RISC-U
 
@@ -1449,23 +1489,28 @@ void init_instruction_sorts() {
 
   // RV32M instruction switches
 
-  if (RV32M) {
-    NID_MUL    = NID_TRUE;
-    NID_MULH   = NID_TRUE;
-    NID_MULHSU = NID_TRUE;
-    NID_MULHU  = NID_TRUE;
-    NID_DIV    = NID_TRUE;
-    NID_REM    = NID_TRUE;
-  } else {
-    NID_MUL    = NID_FALSE;
-    NID_MULH   = NID_FALSE;
-    NID_MULHSU = NID_FALSE;
-    NID_MULHU  = NID_FALSE;
-    NID_DIV    = NID_FALSE;
-    NID_REM    = NID_FALSE;
+  NID_MULH   = NID_FALSE;
+  NID_MULHSU = NID_FALSE;
+  NID_MULHU  = NID_FALSE;
+  NID_DIV    = NID_FALSE;
+  NID_REM    = NID_FALSE;
+
+  if (RISCU == 0) {
+    if (RV32M) {
+      NID_MUL    = NID_TRUE;
+      NID_MULH   = NID_TRUE;
+      NID_MULHSU = NID_TRUE;
+      NID_MULHU  = NID_TRUE;
+      NID_DIV    = NID_TRUE;
+      NID_REM    = NID_TRUE;
+    } else
+      NID_MUL = NID_FALSE;
   }
 
   // RV64M instruction switches
+
+  if (RISCU)
+    RV64M = 0;
 
   if (IS64BITTARGET == 0)
     RV64M = 0;
