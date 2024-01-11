@@ -270,6 +270,7 @@ uint64_t* NID_SINGLE_WORD_7 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_SINGLE_WORD_MINUS_1 = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_INT_MIN = (uint64_t*) 0;
 
 uint64_t* SID_DOUBLE_WORD = (uint64_t*) 0;
 
@@ -284,6 +285,7 @@ uint64_t* NID_DOUBLE_WORD_7 = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_DOUBLE_WORD_MINUS_1 = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_INT_MIN = (uint64_t*) 0;
 
 uint64_t* SID_MACHINE_WORD = (uint64_t*) 0;
 
@@ -298,6 +300,7 @@ uint64_t* NID_MACHINE_WORD_7 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_8 = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
+uint64_t* NID_MACHINE_WORD_INT_MIN = (uint64_t*) 0;
 
 uint64_t* NID_MACHINE_WORD_SIZE      = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_SIZE_MASK = (uint64_t*) 0;
@@ -351,6 +354,7 @@ void init_interface_sorts() {
   NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 8, 0, "single-word 8");
 
   NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, -1, 0, "single-word -1");
+  NID_SINGLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_SINGLE_WORD, two_to_the_power_of(SINGLEWORDSIZEINBITS - 1), 0, "single-word INT_MIN");
 
   if (IS64BITTARGET) {
     SID_DOUBLE_WORD = new_bitvec(64, "64-bit double word");
@@ -366,6 +370,7 @@ void init_interface_sorts() {
     NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, 0, "double-word 8");
 
     NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, 0, "double-word -1");
+    NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, two_to_the_power_of(WORDSIZEINBITS - 1), 0, "double-word INT_MIN");
 
     SID_MACHINE_WORD = SID_DOUBLE_WORD;
 
@@ -380,6 +385,7 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_8 = NID_DOUBLE_WORD_8;
 
     NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1;
+    NID_MACHINE_WORD_INT_MIN = NID_DOUBLE_WORD_INT_MIN;
 
     NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_8;
     NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
@@ -401,6 +407,7 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_8 = NID_SINGLE_WORD_8;
 
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
+    NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN;
 
     NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_4;
     NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
@@ -889,6 +896,7 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid);
 uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid);
+uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid);
 uint64_t* decode_load_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid, uint64_t* lwu_nid, char* comment,
   uint64_t* no_funct3_nid);
@@ -1530,15 +1538,16 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* is_instruction_known_nid    = (uint64_t*) 0;
-uint64_t* illegal_instruction_nid     = (uint64_t*) 0;
-uint64_t* next_fetch_unaligned_nid    = (uint64_t*) 0;
-uint64_t* next_fetch_seg_faulting_nid = (uint64_t*) 0;
-uint64_t* load_seg_faulting_nid       = (uint64_t*) 0;
-uint64_t* store_seg_faulting_nid      = (uint64_t*) 0;
-uint64_t* stack_seg_faulting_nid      = (uint64_t*) 0;
-uint64_t* division_by_zero_nid        = (uint64_t*) 0;
-uint64_t* exclude_a0_from_rd_nid      = (uint64_t*) 0;
+uint64_t* is_instruction_known_nid     = (uint64_t*) 0;
+uint64_t* illegal_instruction_nid      = (uint64_t*) 0;
+uint64_t* next_fetch_unaligned_nid     = (uint64_t*) 0;
+uint64_t* next_fetch_seg_faulting_nid  = (uint64_t*) 0;
+uint64_t* load_seg_faulting_nid        = (uint64_t*) 0;
+uint64_t* store_seg_faulting_nid       = (uint64_t*) 0;
+uint64_t* stack_seg_faulting_nid       = (uint64_t*) 0;
+uint64_t* division_by_zero_nid         = (uint64_t*) 0;
+uint64_t* signed_division_overflow_nid = (uint64_t*) 0;
+uint64_t* exclude_a0_from_rd_nid       = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
@@ -3503,6 +3512,73 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid) {
     return NID_FALSE;
 }
 
+uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid) {
+  uint64_t* rs1_value_nid;
+  uint64_t* rs2_value_nid;
+
+  uint64_t* rs1_value_single_word_nid;
+  uint64_t* rs2_value_single_word_nid;
+
+  uint64_t* RV64M_nid;
+  uint64_t* RV32M_nid;
+
+  rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value");
+  rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+
+  rs1_value_single_word_nid = slice_single_word_from_machine_word(rs1_value_nid);
+  rs2_value_single_word_nid = slice_single_word_from_machine_word(rs2_value_nid);
+
+  if (RV64M)
+    RV64M_nid = decode_opcode(SID_BOOLEAN, ir_nid,
+      NID_OP_OP_32, "OP-32?",
+      new_binary_boolean(OP_AND,
+        decode_RV64M(SID_BOOLEAN, ir_nid,
+          NID_FALSE,
+          NID_DIVW, NID_FALSE, NID_REMW, NID_FALSE, "active?",
+          NID_FALSE, NID_FALSE),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_EQ,
+            rs1_value_single_word_nid,
+            NID_SINGLE_WORD_INT_MIN,
+            "rs1 value == INT_MIN?"),
+          new_binary_boolean(OP_EQ,
+            rs2_value_single_word_nid,
+            NID_SINGLE_WORD_MINUS_1,
+            "rs2 value == -1?"),
+          "rs1 value == INT_MIN and rs2 value == -1?"),
+        "divw or remw overflow?"),
+      "active divw or remw overflow?",
+      NID_FALSE);
+  else
+    RV64M_nid = NID_FALSE;
+
+  if (RV32M)
+    RV32M_nid = decode_opcode(SID_BOOLEAN, ir_nid,
+      NID_OP_OP, "OP?",
+      new_binary_boolean(OP_AND,
+        decode_RV32M(SID_BOOLEAN, ir_nid,
+          NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
+          NID_DIV, NID_FALSE, NID_REM, NID_FALSE, "active?",
+          NID_FALSE, NID_FALSE),
+        new_binary_boolean(OP_AND,
+          new_binary_boolean(OP_EQ,
+            rs1_value_nid,
+            NID_MACHINE_WORD_INT_MIN,
+            "rs1 value == INT_MIN?"),
+          new_binary_boolean(OP_EQ,
+            rs2_value_nid,
+            NID_MACHINE_WORD_MINUS_1,
+            "rs2 value == -1?"),
+          "rs1 value == INT_MIN and rs2 value == -1?"),
+        "div or rem overflow?"),
+      "active div or rem overflow?",
+      RV64M_nid);
+  else
+    RV32M_nid = RV64M_nid;
+
+  return RV32M_nid;
+}
+
 uint64_t* decode_load_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid, uint64_t* lwu_nid, char* comment,
   uint64_t* no_funct3_nid) {
@@ -4735,6 +4811,13 @@ void rotor() {
       "division-by-zero",
       "division by zero");
 
+  if (RV32M + RV64M)
+    signed_division_overflow_nid = state_property(
+      UNUSED,
+      decode_signed_division_remainder_overflow(ir_nid),
+      "signed-division-overflow",
+      "signed division overflow");
+
   exclude_a0_from_rd_nid = state_property(
     new_binary_boolean(OP_NEQ,
       get_instruction_rd(ir_nid),
@@ -4839,11 +4922,9 @@ void output_model() {
 
   print_break("\n; state properties\n\n");
 
-  if (IS64BITTARGET == 0) {
-    print_line(illegal_instruction_nid);
+  print_line(illegal_instruction_nid);
 
-    print_break("\n");
-  }
+  print_break("\n");
 
   print_line(is_instruction_known_nid);
 
@@ -4871,6 +4952,12 @@ void output_model() {
     print_break("\n");
 
     print_line(division_by_zero_nid);
+  }
+
+  if (RV32M + RV64M) {
+    print_break("\n");
+
+    print_line(signed_division_overflow_nid);
   }
 
   //print_break("\n");
