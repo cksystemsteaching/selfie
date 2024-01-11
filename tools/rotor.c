@@ -3597,7 +3597,7 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
         new_binary(OP_ADD, SID_SINGLE_WORD,
           rs1_value_single_word_nid,
           get_instruction_I_immediate_32(ir_nid),
-          "rs1 value + I-immediate-32")),
+          "lower 32 bits of rs1 value + I-immediate-32")),
       extend_single_word_to_machine_word(OP_SEXT,
         new_binary(OP_SLL, SID_SINGLE_WORD,
           rs1_value_single_word_nid,
