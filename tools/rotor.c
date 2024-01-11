@@ -520,6 +520,9 @@ void print_register_sorts();
 uint64_t* load_register_value(uint64_t* reg_nid, char* comment);
 uint64_t* store_register_value(uint64_t* reg_nid, uint64_t* value_nid, uint64_t* register_file_nid, char* comment);
 
+uint64_t* get_5_bit_shamt(uint64_t* value_nid);
+uint64_t* get_shamt(uint64_t* value_nid);
+
 void new_register_file_state();
 void print_register_file_state();
 
@@ -809,9 +812,9 @@ uint64_t* get_instruction_rs2(uint64_t* ir_nid);
 
 uint64_t* sign_extend_IS_immediate(uint64_t* imm_nid);
 uint64_t* get_instruction_I_immediate(uint64_t* ir_nid);
-uint64_t* get_instruction_I_immediate_32(uint64_t* ir_nid);
+uint64_t* get_instruction_I_32_bit_immediate(uint64_t* ir_nid);
+uint64_t* get_instruction_5_bit_shamt(uint64_t* ir_nid);
 uint64_t* get_instruction_shamt(uint64_t* ir_nid);
-uint64_t* get_instruction_shamt_32(uint64_t* ir_nid);
 uint64_t* get_instruction_S_immediate(uint64_t* ir_nid);
 uint64_t* sign_extend_SB_immediate(uint64_t* imm_nid);
 uint64_t* get_instruction_SB_immediate(uint64_t* ir_nid);
@@ -867,12 +870,18 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* slli_nid, uint64_t* srli_nid, uint64_t* srai_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_op_RV64I(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* addw_nid, uint64_t* subw_nid,
+  uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* add_nid, uint64_t* sub_nid,
   uint64_t* slt_nid, uint64_t* sltu_nid,
   uint64_t* xor_nid, uint64_t* or_nid, uint64_t* and_nid,
-  uint64_t* sll_nid, uint64_t* srl_nid, uint64_t* sra_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* RV32M_nid, uint64_t* other_opcode_nid);
+  uint64_t* sll_nid, uint64_t* srl_nid, uint64_t* sra_nid,
+  uint64_t* addw_nid, uint64_t* subw_nid,
+  uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* RV32M_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mul_nid, uint64_t* mulh_nid, uint64_t* mulhsu_nid, uint64_t* mulhu_nid,
   uint64_t* div_nid, uint64_t* divu_nid, uint64_t* rem_nid, uint64_t* remu_nid, char* comment,
@@ -1397,11 +1406,11 @@ void init_instruction_sorts() {
     NID_SRLIW = NID_TRUE;
     NID_SRAIW = NID_TRUE;
 
-    NID_ADDW = NID_FALSE;
-    NID_SUBW = NID_FALSE;
-    NID_SLLW = NID_FALSE;
-    NID_SRLW = NID_FALSE;
-    NID_SRAW = NID_FALSE;
+    NID_ADDW = NID_TRUE;
+    NID_SUBW = NID_TRUE;
+    NID_SLLW = NID_TRUE;
+    NID_SRLW = NID_TRUE;
+    NID_SRAW = NID_TRUE;
   } else {
     NID_LWU = NID_FALSE;
 
@@ -2019,6 +2028,23 @@ uint64_t* load_register_value(uint64_t* reg_nid, char* comment) {
 
 uint64_t* store_register_value(uint64_t* reg_nid, uint64_t* value_nid, uint64_t* register_file_nid, char* comment) {
   return new_ternary(OP_WRITE, SID_REGISTER_STATE, register_file_nid, reg_nid, value_nid, comment);
+}
+
+uint64_t* get_5_bit_shamt(uint64_t* value_nid) {
+  return new_ext(OP_UEXT, SID_SINGLE_WORD,
+    new_slice(SID_5_BIT_IMM, value_nid, 4, 0, "get 5-bit shamt"),
+    SINGLEWORDSIZEINBITS - 5,
+    "unsigned-extend 5-bit shamt");
+}
+
+uint64_t* get_shamt(uint64_t* value_nid) {
+  if (IS64BITTARGET)
+    return new_ext(OP_UEXT, SID_MACHINE_WORD,
+      new_slice(SID_6_BIT_IMM, value_nid, 5, 0, "get 6-bit shamt"),
+      WORDSIZEINBITS - 6,
+      "unsigned-extend 6-bit shamt");
+  else
+    return get_5_bit_shamt(value_nid);
 }
 
 void new_register_file_state() {
@@ -2944,11 +2970,18 @@ uint64_t* get_instruction_I_immediate(uint64_t* ir_nid) {
     new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate"));
 }
 
-uint64_t* get_instruction_I_immediate_32(uint64_t* ir_nid) {
+uint64_t* get_instruction_I_32_bit_immediate(uint64_t* ir_nid) {
   return new_ext(OP_SEXT, SID_SINGLE_WORD,
     new_slice(SID_12_BIT_IMM, ir_nid, 31, 20, "get I-immediate"),
     SINGLEWORDSIZEINBITS - 12,
     "sign-extend immediate");
+}
+
+uint64_t* get_instruction_5_bit_shamt(uint64_t* ir_nid) {
+  return new_ext(OP_UEXT, SID_SINGLE_WORD,
+    new_slice(SID_5_BIT_IMM, ir_nid, 24, 20, "get 5-bit shamt"),
+    SINGLEWORDSIZEINBITS - 5,
+    "unsigned-extend 5-bit shamt");
 }
 
 uint64_t* get_instruction_shamt(uint64_t* ir_nid) {
@@ -2958,17 +2991,7 @@ uint64_t* get_instruction_shamt(uint64_t* ir_nid) {
       WORDSIZEINBITS - 6,
       "unsigned-extend 6-bit shamt");
   else
-    return new_ext(OP_UEXT, SID_MACHINE_WORD,
-      new_slice(SID_5_BIT_IMM, ir_nid, 24, 20, "get 5-bit shamt"),
-      WORDSIZEINBITS - 5,
-      "unsigned-extend 5-bit shamt");
-}
-
-uint64_t* get_instruction_shamt_32(uint64_t* ir_nid) {
-  return new_ext(OP_UEXT, SID_SINGLE_WORD,
-    new_slice(SID_5_BIT_IMM, ir_nid, 24, 20, "get 5-bit shamt"),
-    SINGLEWORDSIZEINBITS - 5,
-    "unsigned-extend 5-bit shamt");
+    return get_instruction_5_bit_shamt(ir_nid);
 }
 
 uint64_t* get_instruction_S_immediate(uint64_t* ir_nid) {
@@ -3271,26 +3294,59 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
                   no_funct3_nid, no_funct7_nid))))))),
     format_comment("imm %s", (uint64_t) comment),
     decode_imm_RV64I(sid, ir_nid,
-      addiw_nid,
-      slliw_nid,
-      srliw_nid,
-      sraiw_nid,
-      comment,
-      no_funct3_nid,
-      no_funct7_nid,
-      other_opcode_nid));
+      addiw_nid, slliw_nid, srliw_nid, sraiw_nid, comment,
+      no_funct3_nid, no_funct7_nid, other_opcode_nid));
+}
+
+uint64_t* decode_op_RV64I(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* addw_nid, uint64_t* subw_nid,
+  uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
+  if (IS64BITTARGET)
+    return decode_opcode(sid, ir_nid,
+      NID_OP_OP_32, "OP-32?",
+      decode_funct7(sid, ir_nid,
+        NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL, "ADDW or SLLW or SRLW?",
+        decode_funct3(sid, ir_nid,
+          NID_F3_ADD_SUB_MUL, "ADDW?",
+          addw_nid, format_comment("addw %s", (uint64_t) comment),
+          decode_funct3(sid, ir_nid,
+            NID_F3_SLL, "SLLW?",
+            sllw_nid, format_comment("sllw %s", (uint64_t) comment),
+            decode_funct3(sid, ir_nid,
+              NID_F3_SRL, "SRLW?",
+              srlw_nid, format_comment("srlw %s", (uint64_t) comment),
+              no_funct3_nid))),
+        format_comment("addw or sllw or srlw %s", (uint64_t) comment),
+        decode_funct7(sid, ir_nid,
+          NID_F7_SUB_SRA, "SUBW or SRAW?",
+          decode_funct3(sid, ir_nid,
+            NID_F3_ADD_SUB_MUL, "SUBW?",
+            subw_nid, format_comment("subw %s", (uint64_t) comment),
+            decode_funct3(sid, ir_nid,
+              NID_F3_SRA, "SRAW?",
+              sraw_nid, format_comment("sraw %s", (uint64_t) comment),
+              no_funct3_nid)),
+          format_comment("subw or sraw %s", (uint64_t) comment),
+          no_funct7_nid)),
+      format_comment("op-32 %s", (uint64_t) comment),
+      other_opcode_nid);
+  else
+    return other_opcode_nid;
 }
 
 uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* add_nid, uint64_t* sub_nid,
   uint64_t* slt_nid, uint64_t* sltu_nid,
   uint64_t* xor_nid, uint64_t* or_nid, uint64_t* and_nid,
-  uint64_t* sll_nid, uint64_t* srl_nid, uint64_t* sra_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* RV32M_nid, uint64_t* other_opcode_nid) {
+  uint64_t* sll_nid, uint64_t* srl_nid, uint64_t* sra_nid,
+  uint64_t* addw_nid, uint64_t* subw_nid,
+  uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* RV32M_nid, uint64_t* other_opcode_nid) {
   return decode_opcode(sid, ir_nid,
     NID_OP_OP, "OP?",
     decode_funct7(sid, ir_nid,
-      NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL, "ADD or SLTU?",
+      NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL, "ADD or SLT or SLTU or XOR or OR or AND or SLL or SRL?",
       decode_funct3(sid, ir_nid,
         NID_F3_ADD_SUB_MUL, "ADD?",
         add_nid, format_comment("add %s", (uint64_t) comment),
@@ -3318,7 +3374,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
                       no_funct3_nid)))))))),
       format_comment("add or slt or sltu or xor or or or and or sll or srl %s", (uint64_t) comment),
       decode_funct7(sid, ir_nid,
-        NID_F7_SUB_SRA, "SUB?",
+        NID_F7_SUB_SRA, "SUB or SRA?",
         decode_funct3(sid, ir_nid,
           NID_F3_ADD_SUB_MUL, "SUB?",
           sub_nid, format_comment("sub %s", (uint64_t) comment),
@@ -3329,7 +3385,9 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
         format_comment("sub or sra %s", (uint64_t) comment),
         RV32M_nid)),
     format_comment("op %s", (uint64_t) comment),
-    other_opcode_nid);
+    decode_op_RV64I(sid, ir_nid,
+      addw_nid, subw_nid, sllw_nid, srlw_nid, sraw_nid, comment,
+      no_funct3_nid, no_funct7_nid, other_opcode_nid));
 }
 
 uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
@@ -3535,7 +3593,12 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
         NID_SLL,
         NID_SRL,
         NID_SRA,
-        "known?", NID_FALSE,
+        NID_ADDW,
+        NID_SUBW,
+        NID_SLLW,
+        NID_SRLW,
+        NID_SRAW,
+        "known?", NID_FALSE, NID_FALSE,
         decode_RV32M(SID_BOOLEAN, ir_nid,
           NID_MUL,
           NID_MULH,
@@ -3629,23 +3692,23 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
     extend_single_word_to_machine_word(OP_SEXT,
       new_binary(OP_ADD, SID_SINGLE_WORD,
         rs1_value_single_word_nid,
-        get_instruction_I_immediate_32(ir_nid),
-        "lower 32 bits of rs1 value + I-immediate-32")),
+        get_instruction_I_32_bit_immediate(ir_nid),
+        "lower 32 bits of rs1 value + I-32-bit-immediate")),
     extend_single_word_to_machine_word(OP_SEXT,
       new_binary(OP_SLL, SID_SINGLE_WORD,
         rs1_value_single_word_nid,
-        get_instruction_shamt_32(ir_nid),
-        "lower 32 bits of rs1 value << shamt-32")),
+        get_instruction_5_bit_shamt(ir_nid),
+        "lower 32 bits of rs1 value << 5-bit shamt")),
     extend_single_word_to_machine_word(OP_SEXT,
       new_binary(OP_SRL, SID_SINGLE_WORD,
         rs1_value_single_word_nid,
-        get_instruction_shamt_32(ir_nid),
-        "lower 32 bits of rs1 value >> shamt-32")),
+        get_instruction_5_bit_shamt(ir_nid),
+        "lower 32 bits of rs1 value >> 5-bit shamt")),
     extend_single_word_to_machine_word(OP_SEXT,
       new_binary(OP_SRA, SID_SINGLE_WORD,
         rs1_value_single_word_nid,
-        get_instruction_shamt_32(ir_nid),
-        "signed lower 32 bits of rs1 value >> shamt-32")),
+        get_instruction_5_bit_shamt(ir_nid),
+        "signed lower 32 bits of rs1 value >> 5-bit shamt")),
     "imm register data flow",
     load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
@@ -3658,10 +3721,16 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   uint64_t* rs1_value_nid;
   uint64_t* rs2_value_nid;
 
+  uint64_t* rs1_value_single_word_nid;
+  uint64_t* rs2_value_single_word_nid;
+
   rd_value_nid = load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value");
 
   rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value");
   rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value");
+
+  rs1_value_single_word_nid = slice_single_word_from_machine_word(rs1_value_nid);
+  rs2_value_single_word_nid = slice_single_word_from_machine_word(rs2_value_nid);
 
   return decode_op(SID_MACHINE_WORD, ir_nid,
     new_binary(OP_ADD, SID_MACHINE_WORD,
@@ -3700,17 +3769,43 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
       "rs1 value & rs2 value"),
     new_binary(OP_SLL, SID_MACHINE_WORD,
       rs1_value_nid,
-      rs2_value_nid,
-      "rs1 value << rs2 value"),
+      get_shamt(rs2_value_nid),
+      "rs1 value << rs2 shamt value"),
     new_binary(OP_SRL, SID_MACHINE_WORD,
       rs1_value_nid,
-      rs2_value_nid,
-      "rs1 value >> rs2 value"),
+      get_shamt(rs2_value_nid),
+      "rs1 value >> rs2 shamt value"),
     new_binary(OP_SRA, SID_MACHINE_WORD,
       rs1_value_nid,
-      rs2_value_nid,
-      "signed rs1 value >> rs2 value"),
+      get_shamt(rs2_value_nid),
+      "signed rs1 value >> rs2 shamt value"),
+    extend_single_word_to_machine_word(OP_SEXT,
+      new_binary(OP_ADD, SID_SINGLE_WORD,
+        rs1_value_single_word_nid,
+        rs2_value_single_word_nid,
+        "lower 32 bits of rs1 value + lower 32 bits of rs2 value")),
+    extend_single_word_to_machine_word(OP_SEXT,
+      new_binary(OP_SUB, SID_SINGLE_WORD,
+        rs1_value_single_word_nid,
+        rs2_value_single_word_nid,
+        "lower 32 bits of rs1 value - lower 32 bits of rs2 value")),
+    extend_single_word_to_machine_word(OP_SEXT,
+      new_binary(OP_SLL, SID_SINGLE_WORD,
+        rs1_value_single_word_nid,
+        get_5_bit_shamt(rs2_value_nid),
+        "lower 32 bits of rs1 value << rs2 5-bit shamt value")),
+    extend_single_word_to_machine_word(OP_SEXT,
+      new_binary(OP_SRL, SID_SINGLE_WORD,
+        rs1_value_single_word_nid,
+        get_5_bit_shamt(rs2_value_nid),
+        "lower 32 bits of rs1 value >> rs2 5-bit shamt value")),
+    extend_single_word_to_machine_word(OP_SEXT,
+      new_binary(OP_SRA, SID_SINGLE_WORD,
+        rs1_value_single_word_nid,
+        get_5_bit_shamt(rs2_value_nid),
+        "signed lower 32 bits of rs1 value >> rs2 5-bit shamt value")),
     "op register data flow",
+    rd_value_nid,
     rd_value_nid,
     decode_RV32M(SID_MACHINE_WORD, ir_nid,
       new_binary(OP_MUL, SID_MACHINE_WORD,
