@@ -860,21 +860,21 @@ uint64_t* decode_funct7_6(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_shift_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_sll_srl_nid, uint64_t* slliw_nid, uint64_t* srliw_nid,
   uint64_t* funct7_sra_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid);
+  uint64_t* no_funct_nid);
 uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct_sll_srl_nid, uint64_t* slli_nid, uint64_t* srli_nid,
   uint64_t* funct_sra_nid, uint64_t* srai_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid);
+  uint64_t* no_funct_nid);
 uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid);
 uint64_t* decode_imm_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
+  uint64_t* no_funct_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addi_nid, uint64_t* slti_nid, uint64_t* sltiu_nid,
   uint64_t* xori_nid, uint64_t* ori_nid, uint64_t* andi_nid,
   uint64_t* slli_nid, uint64_t* srli_nid, uint64_t* srai_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid);
+  uint64_t* no_funct_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_op_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addw_nid, uint64_t* subw_nid,
   uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
@@ -890,11 +890,11 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mul_nid, uint64_t* mulh_nid, uint64_t* mulhsu_nid, uint64_t* mulhu_nid,
   uint64_t* div_nid, uint64_t* divu_nid, uint64_t* rem_nid, uint64_t* remu_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid);
+  uint64_t* no_funct_nid);
 uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mulw_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid);
+  uint64_t* no_funct_nid);
 uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid);
 uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid);
 uint64_t* decode_load_RV64I(uint64_t* sid, uint64_t* ir_nid,
@@ -3237,7 +3237,7 @@ uint64_t* decode_funct7_6(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_shift_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_sll_srl_nid, uint64_t* slliw_nid, uint64_t* srliw_nid,
   uint64_t* funct7_sra_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid) {
+  uint64_t* no_funct_nid) {
   return decode_funct7(sid, ir_nid,
     funct7_sll_srl_nid, "SLLIW or SRLIW?",
     decode_funct3(sid, ir_nid,
@@ -3246,22 +3246,22 @@ uint64_t* decode_shift_RV64I(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3(sid, ir_nid,
         NID_F3_SRL, "SRLIW?",
         srliw_nid, format_comment("srliw %s", (uint64_t) comment),
-        no_funct3_nid)),
+        no_funct_nid)),
     format_comment("slliw or srliw %s", (uint64_t) comment),
     decode_funct7(sid, ir_nid,
       funct7_sra_nid, "SRAIW?",
       decode_funct3(sid, ir_nid,
         NID_F3_SRA, "SRAIW?",
         sraiw_nid, format_comment("sraiw %s", (uint64_t) comment),
-        no_funct3_nid),
+        no_funct_nid),
       format_comment("sraiw %s", (uint64_t) comment),
-      no_funct7_nid));
+      no_funct_nid));
 }
 
 uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct_sll_srl_nid, uint64_t* slli_nid, uint64_t* srli_nid,
   uint64_t* funct_sra_nid, uint64_t* srai_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid) {
+  uint64_t* no_funct_nid) {
   return decode_funct7_6(sid, ir_nid,
     funct_sll_srl_nid, "SLLI or SRLI?",
     decode_funct3(sid, ir_nid,
@@ -3270,16 +3270,16 @@ uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3(sid, ir_nid,
         NID_F3_SRL, "SRLI?",
         srli_nid, format_comment("srli %s", (uint64_t) comment),
-        no_funct3_nid)),
+        no_funct_nid)),
     format_comment("slli or srli %s", (uint64_t) comment),
     decode_funct7_6(sid, ir_nid,
       funct_sra_nid, "SRAI?",
       decode_funct3(sid, ir_nid,
         NID_F3_SRA, "SRAI?",
         srai_nid, format_comment("srai %s", (uint64_t) comment),
-        no_funct3_nid),
+        no_funct_nid),
       format_comment("srai %s", (uint64_t) comment),
-      no_funct7_nid));
+      no_funct_nid));
 }
 
 uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
@@ -3289,7 +3289,7 @@ uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
       decode_shift_RV64I(SID_BOOLEAN, ir_nid,
         NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
         NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
-        NID_FALSE, NID_FALSE),
+        NID_FALSE),
       "illegal shift imm-32 there?",
       NID_FALSE);
   else
@@ -3298,14 +3298,14 @@ uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
       decode_shift_imm(SID_BOOLEAN, ir_nid,
         NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
         NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
-        NID_FALSE, NID_FALSE),
+        NID_FALSE),
       "illegal shift imm there?",
       NID_FALSE);
 }
 
 uint64_t* decode_imm_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
+  uint64_t* no_funct_nid, uint64_t* other_opcode_nid) {
   if (IS64BITTARGET)
     return decode_opcode(sid, ir_nid,
       NID_OP_IMM_32, "IMM-32?",
@@ -3315,7 +3315,7 @@ uint64_t* decode_imm_RV64I(uint64_t* sid, uint64_t* ir_nid,
         decode_shift_RV64I(sid, ir_nid,
           NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL, slliw_nid, srliw_nid,
           NID_F7_SUB_SRA, sraiw_nid, comment,
-          no_funct3_nid, no_funct7_nid)),
+          no_funct_nid)),
       format_comment("imm-32 %s", (uint64_t) comment),
       other_opcode_nid);
   else
@@ -3327,7 +3327,7 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* xori_nid, uint64_t* ori_nid, uint64_t* andi_nid,
   uint64_t* slli_nid, uint64_t* srli_nid, uint64_t* srai_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid, uint64_t* other_opcode_nid) {
+  uint64_t* no_funct_nid, uint64_t* other_opcode_nid) {
   uint64_t* funct_sll_srl_nid;
   uint64_t* funct_sra_nid;
 
@@ -3345,7 +3345,7 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
       decode_funct3(sid, ir_nid,
         NID_F3_ADDI, "ADDI?",
         addi_nid, format_comment("addi %s", (uint64_t) comment),
-        no_funct3_nid),
+        no_funct_nid),
       format_comment("imm %s", (uint64_t) comment),
       other_opcode_nid);
 
@@ -3372,11 +3372,11 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
                 decode_shift_imm(sid, ir_nid,
                   funct_sll_srl_nid, slli_nid, srli_nid,
                   funct_sra_nid, srai_nid, comment,
-                  no_funct3_nid, no_funct7_nid))))))),
+                  no_funct_nid))))))),
     format_comment("imm %s", (uint64_t) comment),
     decode_imm_RV64I(sid, ir_nid,
       addiw_nid, slliw_nid, srliw_nid, sraiw_nid, comment,
-      no_funct3_nid, no_funct7_nid, other_opcode_nid));
+      no_funct_nid, other_opcode_nid));
 }
 
 uint64_t* decode_op_RV64I(uint64_t* sid, uint64_t* ir_nid,
@@ -3498,7 +3498,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mul_nid, uint64_t* mulh_nid, uint64_t* mulhsu_nid, uint64_t* mulhu_nid,
   uint64_t* div_nid, uint64_t* divu_nid, uint64_t* rem_nid, uint64_t* remu_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid) {
+  uint64_t* no_funct_nid) {
   if (RISCU)
     return decode_funct7(sid, ir_nid,
       NID_F7_MUL_DIV_REM, "MUL or DIVU or REMU?",
@@ -3511,9 +3511,9 @@ uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
           decode_funct3(sid, ir_nid,
             NID_F3_REMU, "REMU?",
             remu_nid, format_comment("remu %s", (uint64_t) comment),
-            no_funct3_nid))),
+            no_funct_nid))),
       format_comment("mul or divu or remu %s", (uint64_t) comment),
-      no_funct7_nid);
+      no_funct_nid);
 
   if (RV32M)
     return decode_funct7(sid, ir_nid,
@@ -3542,19 +3542,19 @@ uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
                     decode_funct3(sid, ir_nid,
                       NID_F3_REMU, "REMU?",
                       remu_nid, format_comment("remu %s", (uint64_t) comment),
-                      no_funct3_nid)))))))),
+                      no_funct_nid)))))))),
       format_comment("mul or mulh or mulhsu or mulhu or div or divu or rem or remu %s", (uint64_t) comment),
-      no_funct7_nid);
+      no_funct_nid);
   else
-    return no_funct7_nid;
+    return no_funct_nid;
 }
 
 uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mulw_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
-  uint64_t* no_funct3_nid, uint64_t* no_funct7_nid) {
+  uint64_t* no_funct_nid) {
   if (RISCU)
-    return no_funct7_nid;
+    return no_funct_nid;
 
   if (RV64M)
     return decode_funct7(sid, ir_nid,
@@ -3574,11 +3574,11 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
               decode_funct3(sid, ir_nid,
                 NID_F3_REMU, "REMUW?",
                 remuw_nid, format_comment("remuw %s", (uint64_t) comment),
-                no_funct3_nid))))),
+                no_funct_nid))))),
       format_comment("mulw or divw or divuw or remw or remuw %s", (uint64_t) comment),
-      no_funct7_nid);
+      no_funct_nid);
   else
-    return no_funct7_nid;
+    return no_funct_nid;
 }
 
 uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid) {
@@ -3591,7 +3591,7 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid) {
       decode_RV32M(SID_BOOLEAN, ir_nid,
         NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
         NID_FALSE, NID_DIVU, NID_FALSE, NID_REMU, "active?",
-        NID_FALSE, NID_FALSE),
+        NID_FALSE),
       "divu or remu active?",
       NID_FALSE);
   else {
@@ -3601,7 +3601,7 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid) {
         decode_RV64M(SID_BOOLEAN, ir_nid,
           NID_FALSE,
           NID_DIVW, NID_DIVUW, NID_REMW, NID_REMUW, "active?",
-          NID_FALSE, NID_FALSE),
+          NID_FALSE),
         "divw or divuw or remw or remuw active?",
         NID_FALSE);
     else
@@ -3613,7 +3613,7 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid) {
         decode_RV32M(SID_BOOLEAN, ir_nid,
           NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
           NID_DIV, NID_DIVU, NID_REM, NID_REMU, "active?",
-          NID_FALSE, NID_FALSE),
+          NID_FALSE),
         "div or divu or rem or remu active?",
         RV64M_nid);
     else
@@ -3658,7 +3658,7 @@ uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid) {
         decode_RV64M(SID_BOOLEAN, ir_nid,
           NID_FALSE,
           NID_DIVW, NID_FALSE, NID_REMW, NID_FALSE, "active?",
-          NID_FALSE, NID_FALSE),
+          NID_FALSE),
         new_binary_boolean(OP_AND,
           new_binary_boolean(OP_EQ,
             rs1_value_single_word_nid,
@@ -3682,7 +3682,7 @@ uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid) {
         decode_RV32M(SID_BOOLEAN, ir_nid,
           NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
           NID_DIV, NID_FALSE, NID_REM, NID_FALSE, "active?",
-          NID_FALSE, NID_FALSE),
+          NID_FALSE),
         new_binary_boolean(OP_AND,
           new_binary_boolean(OP_EQ,
             rs1_value_nid,
@@ -3908,7 +3908,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
       NID_SLLIW,
       NID_SRLIW,
       NID_SRAIW,
-      "known?", NID_FALSE, NID_FALSE,
+      "known?", NID_FALSE,
       decode_op(SID_BOOLEAN, ir_nid,
         NID_ADD,
         NID_SUB,
@@ -3935,14 +3935,14 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
           NID_DIVU,
           NID_REM,
           NID_REMU,
-          "known?", NID_FALSE, NID_FALSE),
+          "known?", NID_FALSE),
         decode_RV64M(SID_BOOLEAN, ir_nid,
           NID_MULW,
           NID_DIVW,
           NID_DIVUW,
           NID_REMW,
           NID_REMUW,
-          "known?", NID_FALSE, NID_FALSE),
+          "known?", NID_FALSE),
         decode_load(SID_BOOLEAN, ir_nid,
           NID_LD, NID_LWU,
           NID_LW,
@@ -4044,7 +4044,6 @@ uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
         get_instruction_5_bit_shamt(ir_nid),
         "signed lower 32 bits of rs1 value >> 5-bit shamt")),
     "imm register data flow",
-    load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     load_register_value(get_instruction_rd(ir_nid), "current unmodified rd value"),
     other_data_flow_nid);
 }
@@ -4192,7 +4191,6 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
         rs2_value_nid,
         "rs1 value % rs2 value (unsigned)"),
       "RV32M register data flow",
-      rd_value_nid,
       rd_value_nid),
     decode_RV64M(SID_MACHINE_WORD, ir_nid,
       extend_single_word_to_machine_word(OP_SEXT,
@@ -4221,7 +4219,6 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
           rs2_value_single_word_nid,
           "lower 32 bits of rs1 value % lower 32 bits of rs2 value (unsigned)")),
       "RV64M register data flow",
-      rd_value_nid,
       rd_value_nid),
     other_data_flow_nid);
 }
