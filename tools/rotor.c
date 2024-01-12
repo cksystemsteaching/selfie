@@ -441,6 +441,11 @@ void init_interface_sorts() {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_memory_word_byte(uint64_t* memory_word_sort_nid);
+uint64_t is_memory_word_half_word(uint64_t* memory_word_sort_nid);
+uint64_t is_memory_word_single_word(uint64_t* memory_word_sort_nid);
+uint64_t is_memory_word_double_word(uint64_t* memory_word_sort_nid);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t ISBYTEMEMORY = 0;
@@ -449,11 +454,8 @@ uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_interface_memory() {
-  if (ISBYTEMEMORY)
-    SID_MEMORY_WORD = SID_BYTE;
-  else
-    SID_MEMORY_WORD = SID_MACHINE_WORD;
+void init_interface_memory(uint64_t* memory_word_sort_nid) {
+  SID_MEMORY_WORD = memory_word_sort_nid;
 }
 
 // -----------------------------------------------------------------
@@ -637,6 +639,13 @@ void print_code_segment();
 void new_memory_state();
 void print_memory_state();
 
+uint64_t* get_memory_word_sort(uint64_t* memory_nid);
+
+uint64_t is_byte_memory(uint64_t* memory_nid);
+uint64_t is_half_word_memory(uint64_t* memory_nid);
+uint64_t is_single_word_memory(uint64_t* memory_nid);
+uint64_t is_double_word_memory(uint64_t* memory_nid);
+
 uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid);
 uint64_t* is_address_in_data_segment(uint64_t* vaddr_nid);
@@ -654,10 +663,11 @@ uint64_t* is_range_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid);
 uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid);
 
 uint64_t* vaddr_to_32_bit_laddr(uint64_t* vaddr_nid);
-uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_31_bit_laddr(uint64_t* vaddr_nid);
 uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid);
 
-uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* memory_nid);
 
 uint64_t* load_byte_from_bytes(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_byte_in_bytes(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid);
@@ -787,20 +797,25 @@ void init_memory_sorts() {
 
   SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_INSTRUCTION_WORD, "code segment state");
 
-  if (ISBYTEMEMORY) {
+  if (is_memory_word_byte(SID_MEMORY_WORD)) {
     MEMORY_ADDRESS_SPACE = 32;
 
     SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "32-bit memory address over 8-bit bytes");
-  } else if (IS64BITTARGET) {
-    MEMORY_ADDRESS_SPACE = 29;
+  } else if (is_memory_word_half_word(SID_MEMORY_WORD)) {
+    MEMORY_ADDRESS_SPACE = 31;
 
-    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "29-bit memory address over 64-bit double words");
-  } else {
-    // assert: 32-bit system
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "31-bit memory address over 16-bit half words");
+  } else if (is_memory_word_single_word(SID_MEMORY_WORD)) {
     MEMORY_ADDRESS_SPACE = 30;
 
     SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "30-bit memory address over 32-bit single words");
+  } else if (is_memory_word_double_word(SID_MEMORY_WORD)) {
+    MEMORY_ADDRESS_SPACE = 29;
+
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "29-bit memory address over 64-bit double words");
   }
+
+  // assert: memory address sort is defined
 
   SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MEMORY_WORD, "main memory state");
 }
@@ -1617,7 +1632,12 @@ void init_model_generator() {
   init_model();
 
   init_interface_sorts();
-  init_interface_memory();
+
+  if (ISBYTEMEMORY)
+    init_interface_memory(SID_BYTE);
+  else
+    init_interface_memory(SID_MACHINE_WORD);
+
   init_interface_kernel();
 
   init_register_file_sorts();
@@ -2036,6 +2056,26 @@ void print_interface_sorts() {
 
     print_line(NID_DOUBLE_WORD_MINUS_1);
   }
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t is_memory_word_byte(uint64_t* memory_word_sort_nid) {
+  return memory_word_sort_nid == SID_BYTE;
+}
+
+uint64_t is_memory_word_half_word(uint64_t* memory_word_sort_nid) {
+  return memory_word_sort_nid == SID_HALF_WORD;
+}
+
+uint64_t is_memory_word_single_word(uint64_t* memory_word_sort_nid) {
+  return memory_word_sort_nid == SID_SINGLE_WORD;
+}
+
+uint64_t is_memory_word_double_word(uint64_t* memory_word_sort_nid) {
+  return memory_word_sort_nid == SID_DOUBLE_WORD;
 }
 
 // -----------------------------------------------------------------
@@ -2489,6 +2529,26 @@ void print_memory_state() {
     }
 }
 
+uint64_t* get_memory_word_sort(uint64_t* memory_nid) {
+  return get_arg3(get_sid(memory_nid));
+}
+
+uint64_t is_byte_memory(uint64_t* memory_nid) {
+  return is_memory_word_byte(get_memory_word_sort(memory_nid));
+}
+
+uint64_t is_half_word_memory(uint64_t* memory_nid) {
+  return is_memory_word_half_word(get_memory_word_sort(memory_nid));
+}
+
+uint64_t is_single_word_memory(uint64_t* memory_nid) {
+  return is_memory_word_single_word(get_memory_word_sort(memory_nid));
+}
+
+uint64_t is_double_word_memory(uint64_t* memory_nid) {
+  return is_memory_word_double_word(get_memory_word_sort(memory_nid));
+}
+
 uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
     new_binary_boolean(OP_UGTE,
@@ -2596,36 +2656,45 @@ uint64_t* vaddr_to_32_bit_laddr(uint64_t* vaddr_nid) {
   return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 0, "map virtual address to 32-bit linear address");
 }
 
-uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid) {
-  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 3, "map virtual address to 29-bit linear address");
+uint64_t* vaddr_to_31_bit_laddr(uint64_t* vaddr_nid) {
+  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 1, "map virtual address to 31-bit linear address");
 }
 
 uint64_t* vaddr_to_30_bit_laddr(uint64_t* vaddr_nid) {
   return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 2, "map virtual address to 30-bit linear address");
 }
 
-uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid) {
-  if (ISBYTEMEMORY)
+uint64_t* vaddr_to_29_bit_laddr(uint64_t* vaddr_nid) {
+  return new_slice(SID_MEMORY_ADDRESS, vaddr_nid, 31, 3, "map virtual address to 29-bit linear address");
+}
+
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* memory_nid) {
+  if (is_byte_memory(memory_nid))
     return vaddr_to_32_bit_laddr(vaddr_nid);
-  else if (IS64BITTARGET)
+  else if (is_half_word_memory(memory_nid))
+    return vaddr_to_31_bit_laddr(vaddr_nid);
+  else if (is_single_word_memory(memory_nid))
+    return vaddr_to_30_bit_laddr(vaddr_nid);
+  else if (is_double_word_memory(memory_nid))
     return vaddr_to_29_bit_laddr(vaddr_nid);
   else
-    return vaddr_to_30_bit_laddr(vaddr_nid);
+    // assert: unreachable
+    return NID_FALSE;
 }
 
 uint64_t* load_byte_from_bytes(uint64_t* vaddr_nid, uint64_t* memory_nid) {
-  return new_binary(OP_READ, SID_MEMORY_WORD,
+  return new_binary(OP_READ, SID_BYTE,
     memory_nid,
-    vaddr_to_laddr(vaddr_nid),
-    "load byte from memory at vaddr");
+    vaddr_to_laddr(vaddr_nid, memory_nid),
+    "load byte from byte memory at vaddr");
 }
 
 uint64_t* store_byte_in_bytes(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid) {
   return new_ternary(OP_WRITE, SID_MEMORY_STATE,
     memory_nid,
-    vaddr_to_laddr(vaddr_nid),
+    vaddr_to_laddr(vaddr_nid, memory_nid),
     byte_nid,
-    "store byte in memory at vaddr");
+    "store byte in byte memory at vaddr");
 }
 
 uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* alignment_nid) {
@@ -2704,16 +2773,32 @@ uint64_t* store_byte_in_machine_word(uint64_t* vaddr_nid, uint64_t* byte_nid, ui
 }
 
 uint64_t* load_byte(uint64_t* vaddr_nid, uint64_t* memory_nid) {
-  if (ISBYTEMEMORY)
+  if (is_byte_memory(memory_nid))
     return load_byte_from_bytes(vaddr_nid, memory_nid);
+  //else if (is_half_word_memory(memory_nid))
+  //  return load_byte_from_half_word(vaddr_nid, memory_nid);
+  //else if (is_single_word_memory(memory_nid))
+  //  return load_byte_from_single_word(vaddr_nid, memory_nid);
+  //else if (is_double_word_memory(memory_nid))
+  //  return load_byte_from_double_word(vaddr_nid, memory_nid);
   else
+    // assert: unreachable
+    //return NID_FALSE;
     return load_byte_from_machine_word(vaddr_nid, memory_nid);
 }
 
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid) {
-  if (ISBYTEMEMORY)
+  if (is_byte_memory(memory_nid))
     return store_byte_in_bytes(vaddr_nid, byte_nid, memory_nid);
+  //else if (is_half_word_memory(memory_nid))
+  //  return store_byte_in_half_word(vaddr_nid, byte_nid, memory_nid);
+  //else if (is_single_word_memory(memory_nid))
+  //  return store_byte_in_single_word(vaddr_nid, byte_nid, memory_nid);
+  //else if (is_double_word_memory(memory_nid))
+  //  return store_byte_in_double_word(vaddr_nid, byte_nid, memory_nid);
   else
+    // assert: unreachable
+    //return NID_FALSE;
     return store_byte_in_machine_word(vaddr_nid, byte_nid, memory_nid);
 }
 
@@ -2960,14 +3045,14 @@ uint64_t* store_double_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* m
 uint64_t* load_machine_word_from_word_memory(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_binary(OP_READ, SID_MEMORY_WORD,
     memory_nid,
-    vaddr_to_laddr(vaddr_nid),
+    vaddr_to_laddr(vaddr_nid, memory_nid),
     "load machine word from memory at vaddr");
 }
 
 uint64_t* store_machine_word_in_word_memory(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return new_ternary(OP_WRITE, SID_MEMORY_STATE,
     memory_nid,
-    vaddr_to_laddr(vaddr_nid),
+    vaddr_to_laddr(vaddr_nid, memory_nid),
     word_nid,
     "store machine word in memory at vaddr");
 }
