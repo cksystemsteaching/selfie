@@ -309,9 +309,6 @@ uint64_t* NID_MACHINE_WORD_INT_MIN = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_SIZE      = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_SIZE_MASK = (uint64_t*) 0;
 
-uint64_t* NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
-uint64_t* NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
-
 uint64_t* NID_HALF_WORD_SIZE      = (uint64_t*) 0;
 uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
 
@@ -320,6 +317,10 @@ uint64_t* NID_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
 
 uint64_t* NID_DOUBLE_WORD_SIZE      = (uint64_t*) 0;
 uint64_t* NID_DOUBLE_WORD_SIZE_MASK = (uint64_t*) 0;
+
+uint64_t* NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
 
 uint64_t* NID_BYTE_MASK        = (uint64_t*) 0;
 uint64_t* NID_HALF_WORD_MASK   = (uint64_t*) 0;
@@ -398,9 +399,6 @@ void init_interface_sorts() {
 
     NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_8;
     NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
-
-    NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
-    NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
   } else {
     // assert: 32-bit system
     SID_MACHINE_WORD = SID_SINGLE_WORD;
@@ -420,9 +418,6 @@ void init_interface_sorts() {
 
     NID_MACHINE_WORD_SIZE      = NID_MACHINE_WORD_4;
     NID_MACHINE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
-
-    NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
-    NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_0;
   }
 
   NID_HALF_WORD_SIZE      = NID_MACHINE_WORD_2;
@@ -433,6 +428,10 @@ void init_interface_sorts() {
 
   NID_DOUBLE_WORD_SIZE      = NID_MACHINE_WORD_8;
   NID_DOUBLE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
+
+  NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
+  NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
+  NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
 
   NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_MACHINE_WORD, 255, 2, "maximum least-significant byte value");
   NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MACHINE_WORD, 65535, 4, "maximum least-significant half-word value");
@@ -686,18 +685,19 @@ uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* load_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid);
 
-uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* alignment_nid);
-uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* alignment_nid);
-uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* alignment_nid, uint64_t* value_nid);
-uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* alignment_nid, uint64_t* value_nid);
+uint64_t* get_memory_word_size_mask(uint64_t* memory_nid);
+uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* memory_nid);
+uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid);
+uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
+uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
 uint64_t* slice_byte_from_word(uint64_t* word_nid);
 uint64_t* extend_byte_to_half_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_single_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_double_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_memory_word(char* op, uint64_t* byte_nid, uint64_t* memory_nid);
-uint64_t* extend_byte_to_machine_word(char* op, uint64_t* byte_nid);
-uint64_t* insert_value_into_memory_word(uint64_t* word_nid, uint64_t* word_size_mask_nid,
-  uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* value_mask_nid);
+uint64_t* insert_value_into_memory_word(uint64_t* vaddr_nid,
+  uint64_t* value_nid, uint64_t* value_mask_nid,
+  uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* load_byte_from_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_byte_in_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid);
@@ -705,18 +705,22 @@ uint64_t* store_byte_in_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uin
 uint64_t* load_byte(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid);
 
-uint64_t* slice_lower_byte_from_half_word(uint64_t* word_nid);
-uint64_t* slice_upper_byte_from_half_word(uint64_t* word_nid);
+uint64_t* slice_lower_byte_from_word(uint64_t* word_nid);
+uint64_t* slice_upper_byte_from_word(uint64_t* word_nid);
 
 uint64_t* load_half_word_from_bytes(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_half_word_in_bytes(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
-uint64_t* is_contained_in_machine_word(uint64_t* vaddr_nid, uint64_t* relative_size_nid);
-uint64_t* slice_half_word_from_machine_word(uint64_t* word_nid);
-uint64_t* extend_half_word_to_machine_word(char* op, uint64_t* word_nid);
+uint64_t* get_half_word_size_relative_to_memory_word_size(uint64_t* memory_nid);
+uint64_t* is_contained_in_memory_word(uint64_t* vaddr_nid, uint64_t* relative_size_nid, uint64_t* memory_nid);
+uint64_t* slice_half_word_from_word(uint64_t* word_nid);
+uint64_t* slice_half_word_from_memory_word(uint64_t* word_nid, uint64_t* memory_nid);
+uint64_t* extend_half_word_to_single_word(char* op, uint64_t* word_nid);
+uint64_t* extend_half_word_to_double_word(char* op, uint64_t* word_nid);
+uint64_t* extend_half_word_to_memory_word(char* op, uint64_t* word_nid, uint64_t* memory_nid);
 
-uint64_t* load_half_word_from_machine_words(uint64_t* vaddr_nid, uint64_t* memory_nid);
-uint64_t* store_half_word_in_machine_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
+uint64_t* load_half_word_from_memory_words(uint64_t* vaddr_nid, uint64_t* memory_nid);
+uint64_t* store_half_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* load_half_word(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_half_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
@@ -724,6 +728,7 @@ uint64_t* store_half_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* mem
 uint64_t* load_single_word_from_half_words(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_single_word_in_half_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
+uint64_t* get_single_word_size_relative_to_memory_word_size(uint64_t* memory_nid);
 uint64_t* slice_single_word_from_machine_word(uint64_t* word_nid);
 uint64_t* extend_single_word_to_machine_word(char* op, uint64_t* word_nid);
 
@@ -963,6 +968,9 @@ uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid);
 uint64_t* imm_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
 uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid);
+
+uint64_t* extend_byte_to_machine_word(char* op, uint64_t* byte_nid);
+uint64_t* extend_half_word_to_machine_word(char* op, uint64_t* word_nid);
 
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid);
 uint64_t* load_no_seg_faults(uint64_t* ir_nid);
@@ -2713,28 +2721,43 @@ uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* word_nid, uin
     "store aligned word in memory at vaddr");
 }
 
-uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* alignment_nid) {
-  return new_binary(OP_AND, SID_MACHINE_WORD, vaddr_nid, alignment_nid, "mask alignment bits");
+uint64_t* get_memory_word_size_mask(uint64_t* memory_nid) {
+  if (is_half_word_memory(memory_nid))
+    return NID_HALF_WORD_SIZE_MASK;
+  else if (is_single_word_memory(memory_nid))
+    return NID_SINGLE_WORD_SIZE_MASK;
+  else if (is_double_word_memory(memory_nid))
+    return NID_DOUBLE_WORD_SIZE_MASK;
+  else
+    // assert: unreachable
+    return NID_FALSE;
 }
 
-uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* alignment_nid) {
+uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* memory_nid) {
+  return new_binary(OP_AND, SID_MACHINE_WORD,
+    vaddr_nid,
+    get_memory_word_size_mask(memory_nid),
+    "mask alignment bits");
+}
+
+uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_binary(OP_SLL, SID_MACHINE_WORD,
-    get_vaddr_alignment(vaddr_nid, alignment_nid),
+    get_vaddr_alignment(vaddr_nid, memory_nid),
     NID_BYTE_SIZE_IN_BASE_BITS,
     "multiply by 8 bits");
 }
 
-uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* alignment_nid, uint64_t* value_nid) {
+uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
   return new_binary(OP_SRL, SID_MACHINE_WORD,
     value_nid,
-    shift_by_alignment_in_bits(vaddr_nid, alignment_nid),
+    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
     "shift right from vaddr");
 }
 
-uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* alignment_nid, uint64_t* value_nid) {
+uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
   return new_binary(OP_SLL, SID_MACHINE_WORD,
     value_nid,
-    shift_by_alignment_in_bits(vaddr_nid, alignment_nid),
+    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
     "shift left to vaddr");
 }
 
@@ -2775,17 +2798,15 @@ uint64_t* extend_byte_to_memory_word(char* op, uint64_t* byte_nid, uint64_t* mem
     return byte_nid;
 }
 
-uint64_t* extend_byte_to_machine_word(char* op, uint64_t* byte_nid) {
-  if (IS64BITTARGET)
-    return extend_byte_to_double_word(op, byte_nid);
-  else
-    return extend_byte_to_single_word(op, byte_nid);
-}
+uint64_t* insert_value_into_memory_word(uint64_t* vaddr_nid,
+  uint64_t* value_nid, uint64_t* value_mask_nid,
+  uint64_t* word_nid, uint64_t* memory_nid) {
+  if (value_mask_nid == NID_HALF_WORD_MASK)
+    if (get_memory_word_size_mask(memory_nid) == NID_HALF_WORD_SIZE_MASK)
+      return value_nid;
 
-uint64_t* insert_value_into_memory_word(uint64_t* word_nid, uint64_t* word_size_mask_nid,
-  uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* value_mask_nid) {
   if (value_mask_nid == NID_SINGLE_WORD_MASK)
-    if (word_size_mask_nid == NID_SINGLE_WORD_SIZE_MASK)
+    if (get_memory_word_size_mask(memory_nid) == NID_SINGLE_WORD_SIZE_MASK)
       return value_nid;
 
   return new_binary(OP_OR, SID_MEMORY_WORD,
@@ -2793,44 +2814,32 @@ uint64_t* insert_value_into_memory_word(uint64_t* word_nid, uint64_t* word_size_
       word_nid,
       new_unary(OP_NOT, SID_MEMORY_WORD,
         shift_to_vaddr(vaddr_nid,
-          word_size_mask_nid,
-          value_mask_nid),
+          value_mask_nid,
+          memory_nid),
         "bitwise-not value mask"),
       "reset bits at value location"),
     shift_to_vaddr(vaddr_nid,
-      word_size_mask_nid,
-      value_nid),
+      value_nid,
+      memory_nid),
     "insert value at value location");
-}
-
-uint64_t* get_memory_word_size_mask(uint64_t* memory_nid) {
-  if (is_half_word_memory(memory_nid))
-    return NID_HALF_WORD_SIZE_MASK;
-  else if (is_single_word_memory(memory_nid))
-    return NID_SINGLE_WORD_SIZE_MASK;
-  else if (is_double_word_memory(memory_nid))
-    return NID_DOUBLE_WORD_SIZE_MASK;
-  else
-    // assert: unreachable
-    return NID_FALSE;
 }
 
 uint64_t* load_byte_from_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return slice_byte_from_word(
     shift_from_vaddr(
       vaddr_nid,
-      get_memory_word_size_mask(memory_nid),
-      load_aligned_memory_word(vaddr_nid, memory_nid)));
+      load_aligned_memory_word(vaddr_nid, memory_nid),
+      memory_nid));
 }
 
 uint64_t* store_byte_in_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid) {
   return store_aligned_memory_word(vaddr_nid,
     insert_value_into_memory_word(
-      load_aligned_memory_word(vaddr_nid, memory_nid),
-      get_memory_word_size_mask(memory_nid),
       vaddr_nid,
       extend_byte_to_memory_word(OP_UEXT, byte_nid, memory_nid),
-      NID_BYTE_MASK),
+      NID_BYTE_MASK,
+      load_aligned_memory_word(vaddr_nid, memory_nid),
+      memory_nid),
     memory_nid);
 }
 
@@ -2848,12 +2857,12 @@ uint64_t* store_byte(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_n
     return store_byte_in_memory_word(vaddr_nid, byte_nid, memory_nid);
 }
 
-uint64_t* slice_lower_byte_from_half_word(uint64_t* word_nid) {
-  return new_slice(SID_BYTE, word_nid, 7, 0, "slice lower byte from half word");
+uint64_t* slice_lower_byte_from_word(uint64_t* word_nid) {
+  return new_slice(SID_BYTE, word_nid, 7, 0, "slice lower byte from word");
 }
 
-uint64_t* slice_upper_byte_from_half_word(uint64_t* word_nid) {
-  return new_slice(SID_BYTE, word_nid, 15, 8, "slice upper byte from half word");
+uint64_t* slice_upper_byte_from_word(uint64_t* word_nid) {
+  return new_slice(SID_BYTE, word_nid, 15, 8, "slice upper byte from word");
 }
 
 uint64_t* load_half_word_from_bytes(uint64_t* vaddr_nid, uint64_t* memory_nid) {
@@ -2865,72 +2874,113 @@ uint64_t* load_half_word_from_bytes(uint64_t* vaddr_nid, uint64_t* memory_nid) {
 
 uint64_t* store_half_word_in_bytes(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return store_byte(vaddr_nid,
-    slice_lower_byte_from_half_word(word_nid),
+    slice_lower_byte_from_word(word_nid),
     store_byte(new_unary(OP_INC, SID_MACHINE_WORD, vaddr_nid, "vaddr + 1"),
-      slice_upper_byte_from_half_word(word_nid),
+      slice_upper_byte_from_word(word_nid),
       memory_nid));
 }
 
-uint64_t* is_contained_in_machine_word(uint64_t* vaddr_nid, uint64_t* relative_size_nid) {
+uint64_t* get_half_word_size_relative_to_memory_word_size(uint64_t* memory_nid) {
+  if (is_half_word_memory(memory_nid))
+    return NID_MACHINE_WORD_0;
+  else if (is_single_word_memory(memory_nid))
+    return NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
+  else if (is_double_word_memory(memory_nid))
+    return NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
+  else
+    // assert: unreachable
+    return NID_FALSE;
+}
+
+uint64_t* is_contained_in_memory_word(uint64_t* vaddr_nid, uint64_t* relative_size_nid, uint64_t* memory_nid) {
   return new_binary_boolean(OP_ULTE,
-    get_vaddr_alignment(vaddr_nid, NID_MACHINE_WORD_SIZE_MASK),
+    get_vaddr_alignment(vaddr_nid, memory_nid),
     relative_size_nid,
-    "is contained in machine word");
+    "is contained in memory word");
 }
 
-uint64_t* slice_half_word_from_machine_word(uint64_t* word_nid) {
-  return new_slice(SID_HALF_WORD, word_nid, 15, 0, "slice least-significant half word");
+uint64_t* slice_half_word_from_word(uint64_t* word_nid) {
+  return new_slice(SID_HALF_WORD, word_nid, 15, 0, "slice lower half word from word");
 }
 
-uint64_t* extend_half_word_to_machine_word(char* op, uint64_t* word_nid) {
-  return new_ext(op, SID_MACHINE_WORD,
+uint64_t* slice_half_word_from_memory_word(uint64_t* word_nid, uint64_t* memory_nid) {
+  if (get_memory_word_size_mask(memory_nid) == NID_HALF_WORD_SIZE_MASK)
+    return word_nid;
+  else
+    return slice_half_word_from_word(word_nid);
+}
+
+uint64_t* extend_half_word_to_single_word(char* op, uint64_t* word_nid) {
+  return new_ext(op, SID_SINGLE_WORD,
     word_nid,
-    WORDSIZEINBITS - 16,
-    "extension of half word to machine word");
+    SINGLEWORDSIZEINBITS - HALFWORDSIZEINBITS,
+    "extension of half word to single word");
 }
 
-uint64_t* load_half_word_from_machine_words(uint64_t* vaddr_nid, uint64_t* memory_nid) {
+uint64_t* extend_half_word_to_double_word(char* op, uint64_t* word_nid) {
+  return new_ext(op, SID_DOUBLE_WORD,
+    word_nid,
+    DOUBLEWORDSIZEINBITS - HALFWORDSIZEINBITS,
+    "extension of half word to double word");
+}
+
+uint64_t* extend_half_word_to_memory_word(char* op, uint64_t* word_nid, uint64_t* memory_nid) {
+  if (is_half_word_memory(memory_nid))
+    return word_nid;
+  else if (is_single_word_memory(memory_nid))
+    return extend_half_word_to_single_word(op, word_nid);
+  else if (is_double_word_memory(memory_nid))
+    return extend_half_word_to_double_word(op, word_nid);
+  else
+    // assert: unreachable
+    return word_nid;
+}
+
+uint64_t* load_half_word_from_memory_words(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_HALF_WORD,
-    is_contained_in_machine_word(vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE),
-    slice_half_word_from_machine_word(shift_from_vaddr(
+    is_contained_in_memory_word(vaddr_nid,
+      get_half_word_size_relative_to_memory_word_size(memory_nid),
+      memory_nid),
+    slice_half_word_from_memory_word(shift_from_vaddr(
       vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MASK,
-      load_machine_word(vaddr_nid, memory_nid))),
+      load_aligned_memory_word(vaddr_nid, memory_nid),
+      memory_nid),
+    memory_nid),
     load_half_word_from_bytes(vaddr_nid, memory_nid),
-    "load half word from machine words");
+    "load half word from memory words");
 }
 
-uint64_t* store_half_word_in_machine_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
+uint64_t* store_half_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
-    is_contained_in_machine_word(vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MINUS_HALF_WORD_SIZE),
-    store_machine_word(vaddr_nid,
+    is_contained_in_memory_word(vaddr_nid,
+      get_half_word_size_relative_to_memory_word_size(memory_nid),
+      memory_nid),
+    store_aligned_memory_word(vaddr_nid,
       insert_value_into_memory_word(
-        load_machine_word(vaddr_nid, memory_nid),
-        NID_MACHINE_WORD_SIZE_MASK,
         vaddr_nid,
-        extend_half_word_to_machine_word(OP_UEXT, word_nid),
-        NID_HALF_WORD_MASK),
+        extend_half_word_to_memory_word(OP_UEXT, word_nid, memory_nid),
+        NID_HALF_WORD_MASK,
+        load_aligned_memory_word(vaddr_nid, memory_nid),
+        memory_nid),
       memory_nid),
     store_half_word_in_bytes(vaddr_nid,
       word_nid,
       memory_nid),
-    "store half word in machine words");
+    "store half word in memory words");
 }
 
 uint64_t* load_half_word(uint64_t* vaddr_nid, uint64_t* memory_nid) {
-  if (ISBYTEMEMORY)
+  if (is_byte_memory(memory_nid))
     return load_half_word_from_bytes(vaddr_nid, memory_nid);
   else
-    return load_half_word_from_machine_words(vaddr_nid, memory_nid);
+    return load_half_word_from_memory_words(vaddr_nid, memory_nid);
 }
 
 uint64_t* store_half_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
-  if (ISBYTEMEMORY)
+  if (is_byte_memory(memory_nid))
     return store_half_word_in_bytes(vaddr_nid, word_nid, memory_nid);
   else
-    return store_half_word_in_machine_words(vaddr_nid, word_nid, memory_nid);
+    return store_half_word_in_memory_words(vaddr_nid, word_nid, memory_nid);
 }
 
 uint64_t* slice_lower_half_word_from_single_word(uint64_t* word_nid) {
@@ -2963,6 +3013,16 @@ uint64_t* store_single_word_in_half_words(uint64_t* vaddr_nid, uint64_t* word_ni
       memory_nid));
 }
 
+uint64_t* get_single_word_size_relative_to_memory_word_size(uint64_t* memory_nid) {
+  if (is_single_word_memory(memory_nid))
+    return NID_MACHINE_WORD_0;
+  else if (is_double_word_memory(memory_nid))
+    return NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE;
+  else
+    // assert: unreachable
+    return NID_FALSE;
+}
+
 uint64_t* slice_single_word_from_machine_word(uint64_t* word_nid) {
   if (IS64BITTARGET)
     return new_slice(SID_SINGLE_WORD, word_nid, 31, 0, "slice least-significant single word");
@@ -2982,27 +3042,29 @@ uint64_t* extend_single_word_to_machine_word(char* op, uint64_t* word_nid) {
 
 uint64_t* load_single_word_from_machine_words(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_SINGLE_WORD,
-    is_contained_in_machine_word(vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE),
+    is_contained_in_memory_word(vaddr_nid,
+      get_single_word_size_relative_to_memory_word_size(memory_nid),
+      memory_nid),
     slice_single_word_from_machine_word(shift_from_vaddr(
       vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MASK,
-      load_machine_word(vaddr_nid, memory_nid))),
+      load_machine_word(vaddr_nid, memory_nid),
+      memory_nid)),
     load_single_word_from_half_words(vaddr_nid, memory_nid),
     "load single word from machine words");
 }
 
 uint64_t* store_single_word_in_machine_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
-    is_contained_in_machine_word(vaddr_nid,
-      NID_MACHINE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE),
+    is_contained_in_memory_word(vaddr_nid,
+      get_single_word_size_relative_to_memory_word_size(memory_nid),
+      memory_nid),
     store_machine_word(vaddr_nid,
       insert_value_into_memory_word(
-        load_machine_word(vaddr_nid, memory_nid),
-        NID_MACHINE_WORD_SIZE_MASK,
         vaddr_nid,
         extend_single_word_to_machine_word(OP_UEXT, word_nid),
-        NID_SINGLE_WORD_MASK),
+        NID_SINGLE_WORD_MASK,
+        load_machine_word(vaddr_nid, memory_nid),
+        memory_nid),
       memory_nid),
     store_single_word_in_half_words(vaddr_nid,
       word_nid,
@@ -3056,7 +3118,7 @@ uint64_t* store_double_word_in_single_words(uint64_t* vaddr_nid, uint64_t* word_
 
 uint64_t* load_double_word_from_machine_words(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_DOUBLE_WORD,
-    is_contained_in_machine_word(vaddr_nid, NID_MACHINE_WORD_0),
+    is_contained_in_memory_word(vaddr_nid, NID_MACHINE_WORD_0, memory_nid),
     load_machine_word(vaddr_nid, memory_nid),
     load_double_word_from_single_words(vaddr_nid, memory_nid),
     "load double word from machine words");
@@ -3064,7 +3126,7 @@ uint64_t* load_double_word_from_machine_words(uint64_t* vaddr_nid, uint64_t* mem
 
 uint64_t* store_double_word_in_machine_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return new_ternary(OP_ITE, SID_MEMORY_STATE,
-    is_contained_in_machine_word(vaddr_nid, NID_MACHINE_WORD_0),
+    is_contained_in_memory_word(vaddr_nid, NID_MACHINE_WORD_0, memory_nid),
     store_machine_word(vaddr_nid, word_nid, memory_nid),
     store_double_word_in_single_words(vaddr_nid, word_nid, memory_nid),
     "store double word in machine words");
@@ -4341,6 +4403,20 @@ uint64_t* op_data_flow(uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
     other_data_flow_nid);
 }
 
+uint64_t* extend_byte_to_machine_word(char* op, uint64_t* byte_nid) {
+  if (IS64BITTARGET)
+    return extend_byte_to_double_word(op, byte_nid);
+  else
+    return extend_byte_to_single_word(op, byte_nid);
+}
+
+uint64_t* extend_half_word_to_machine_word(char* op, uint64_t* word_nid) {
+  return new_ext(op, SID_MACHINE_WORD,
+    word_nid,
+    WORDSIZEINBITS - HALFWORDSIZEINBITS,
+    "extension of half word to machine word");
+}
+
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other_data_flow_nid) {
   return decode_load(SID_MACHINE_WORD, ir_nid,
     load_double_word(get_rs1_value_plus_I_immediate(ir_nid), memory_nid),
@@ -4476,7 +4552,7 @@ uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* othe
       slice_single_word_from_machine_word(rs2_value_nid),
       memory_nid),
     store_half_word(get_rs1_value_plus_S_immediate(ir_nid),
-      slice_half_word_from_machine_word(rs2_value_nid),
+      slice_half_word_from_word(rs2_value_nid),
       memory_nid),
     store_byte(get_rs1_value_plus_S_immediate(ir_nid),
       slice_byte_from_word(rs2_value_nid),
