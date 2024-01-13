@@ -308,29 +308,6 @@ uint64_t* NID_MACHINE_WORD_8 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_INT_MIN = (uint64_t*) 0;
 
-uint64_t* NID_HALF_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
-
-uint64_t* NID_SINGLE_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
-
-uint64_t* NID_DOUBLE_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MASK = (uint64_t*) 0;
-
-uint64_t* NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
-
-uint64_t* NID_LSB_MASK = (uint64_t*) 0;
-
-uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
-
-uint64_t* SID_INSTRUCTION_WORD = (uint64_t*) 0;
-
-uint64_t* NID_INSTRUCTION_WORD_SIZE_MASK = (uint64_t*) 0;
-
-uint64_t* NID_MAX_STRING_LENGTH = (uint64_t*) 0;
-
 uint64_t* SID_DOUBLE_MACHINE_WORD = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -412,29 +389,6 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN;
   }
 
-  NID_HALF_WORD_SIZE      = NID_MACHINE_WORD_2;
-  NID_HALF_WORD_SIZE_MASK = NID_MACHINE_WORD_1;
-
-  NID_SINGLE_WORD_SIZE      = NID_MACHINE_WORD_4;
-  NID_SINGLE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
-
-  NID_DOUBLE_WORD_SIZE      = NID_MACHINE_WORD_8;
-  NID_DOUBLE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
-
-  NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
-  NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
-  NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
-
-  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, 0, "all bits but LSB set");
-
-  NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
-
-  SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
-
-  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
-
-  NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD, MAX_STRING_LENGTH, 0, "maximum string length");
-
   SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word");
 }
 
@@ -447,6 +401,8 @@ void print_interface_kernel();
 void new_kernel_state(uint64_t bytes_to_read);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* NID_MAX_STRING_LENGTH = (uint64_t*) 0;
 
 uint64_t* NID_EXIT_SYSCALL_ID   = (uint64_t*) 0;
 uint64_t* NID_BRK_SYSCALL_ID    = (uint64_t*) 0;
@@ -477,6 +433,9 @@ uint64_t* next_read_bytes_nid  = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface_kernel() {
+  NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    MAX_STRING_LENGTH, 0, "maximum string length");
+
   NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_EXIT, 0,
     format_comment_binary("exit syscall ID", SYSCALL_EXIT));
@@ -734,6 +693,12 @@ uint64_t* fetch_instruction(uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t* SID_VIRTUAL_ADDRESS = (uint64_t*) 0;
+
+uint64_t* SID_CODE_WORD = (uint64_t*) 0;
+
+uint64_t* NID_CODE_WORD_0 = (uint64_t*) 0;
+
 uint64_t CODE_ADDRESS_SPACE = 0; // number of bits in code segment addresses
 
 uint64_t* SID_CODE_ADDRESS = (uint64_t*) 0;
@@ -745,10 +710,28 @@ uint64_t* NID_CODE_END   = (uint64_t*) 0;
 uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
 
 uint64_t* NID_MEMORY_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_3 = (uint64_t*) 0;
 
-uint64_t* NID_BYTE_MASK        = (uint64_t*) 0;
-uint64_t* NID_HALF_WORD_MASK   = (uint64_t*) 0;
-uint64_t* NID_SINGLE_WORD_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_BYTE_MASK        = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_HALF_WORD_MASK   = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_SINGLE_WORD_MASK = (uint64_t*) 0;
+
+uint64_t* NID_HALF_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
+
+uint64_t* NID_SINGLE_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
+
+uint64_t* NID_DOUBLE_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE_MASK = (uint64_t*) 0;
+
+uint64_t* NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
+
+uint64_t* NID_LSB_MASK = (uint64_t*) 0;
+
+uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
 uint64_t MEMORY_ADDRESS_SPACE = 0; // number of bits in main memory addresses
 
@@ -792,7 +775,16 @@ uint64_t* next_main_memory_nid  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_memory_sorts(uint64_t* memory_word_sort_nid) {
+void init_memory_sorts(uint64_t* virtual_address_sort_nid, uint64_t* code_word_sort_nid, uint64_t* memory_word_sort_nid) {
+  if (IS64BITTARGET)
+    SID_VIRTUAL_ADDRESS = virtual_address_sort_nid;
+  else
+    SID_VIRTUAL_ADDRESS = SID_SINGLE_WORD;
+
+  SID_CODE_WORD = code_word_sort_nid;
+
+  NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, 0, "code word 0");
+
   CODE_ADDRESS_SPACE = log_two(code_size / INSTRUCTIONSIZE);
 
   if (code_size / INSTRUCTIONSIZE > two_to_the_power_of(CODE_ADDRESS_SPACE))
@@ -801,43 +793,50 @@ void init_memory_sorts(uint64_t* memory_word_sort_nid) {
   SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
     format_comment("%lu-bit code segment address over 32-bit single words", CODE_ADDRESS_SPACE));
 
-  SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_INSTRUCTION_WORD, "code segment state");
+  SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_CODE_WORD, "code segment state");
 
   SID_MEMORY_WORD = memory_word_sort_nid;
 
-  if (is_memory_word_byte(SID_MEMORY_WORD)) {
-    NID_MEMORY_WORD_0 = NID_BYTE_0;
+  NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
+  NID_MEMORY_WORD_3 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 3, 0, "memory word 3");
 
+  NID_MEMORY_WORD_BYTE_MASK        = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum least-significant byte value");
+  NID_MEMORY_WORD_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MEMORY_WORD, 65535, 4, "maximum least-significant half-word value");
+  NID_MEMORY_WORD_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 4294967295, 8, "maximum least-significant single-word value");
+
+  NID_HALF_WORD_SIZE      = NID_MACHINE_WORD_2;
+  NID_HALF_WORD_SIZE_MASK = NID_MACHINE_WORD_1;
+
+  NID_SINGLE_WORD_SIZE      = NID_MACHINE_WORD_4;
+  NID_SINGLE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
+
+  NID_DOUBLE_WORD_SIZE      = NID_MACHINE_WORD_8;
+  NID_DOUBLE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
+
+  NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
+  NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
+  NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
+
+  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, 0, "all bits but LSB set");
+
+  NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
+
+  if (is_memory_word_byte(SID_MEMORY_WORD)) {
     MEMORY_ADDRESS_SPACE = 32;
 
-    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "32-bit memory address over 8-bit bytes");
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "32-bit physical memory address over 8-bit bytes");
   } else if (is_memory_word_half_word(SID_MEMORY_WORD)) {
-    NID_MEMORY_WORD_0 = NID_HALF_WORD_0;
-
-    NID_BYTE_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum least-significant byte value");
-
     MEMORY_ADDRESS_SPACE = 31;
 
-    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "31-bit memory address over 16-bit half words");
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "31-bit physical memory address over 16-bit half words");
   } else if (is_memory_word_single_word(SID_MEMORY_WORD)) {
-    NID_MEMORY_WORD_0 = NID_SINGLE_WORD_0;
-
-    NID_BYTE_MASK      = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum least-significant byte value");
-    NID_HALF_WORD_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 65535, 4, "maximum least-significant half-word value");
-
     MEMORY_ADDRESS_SPACE = 30;
 
-    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "30-bit memory address over 32-bit single words");
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "30-bit physical memory address over 32-bit single words");
   } else if (is_memory_word_double_word(SID_MEMORY_WORD)) {
-    NID_MEMORY_WORD_0 = NID_DOUBLE_WORD_0;
-
-    NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum least-significant byte value");
-    NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MEMORY_WORD, 65535, 4, "maximum least-significant half-word value");
-    NID_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 4294967295, 8, "maximum least-significant single-word value");
-
     MEMORY_ADDRESS_SPACE = 29;
 
-    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "29-bit memory address over 64-bit double words");
+    SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE, "29-bit physical memory address over 64-bit double words");
   }
 
   // assert: memory address sort is defined
@@ -1009,6 +1008,10 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_
 uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t* SID_INSTRUCTION_WORD = (uint64_t*) 0;
+
+uint64_t* NID_INSTRUCTION_WORD_SIZE_MASK = (uint64_t*) 0;
 
 // RISC-U codes
 
@@ -1276,6 +1279,10 @@ uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_instruction_sorts() {
+  SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
+
+  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MEMORY_WORD_3;
+
   SID_OPCODE = new_bitvec(7, "opcode sort");
 
   NID_OP_LOAD   = new_constant(OP_CONST, SID_OPCODE, OP_LOAD, 7, "OP_LOAD");
@@ -1667,9 +1674,9 @@ void init_model_generator() {
   init_register_file_sorts();
 
   if (IS64BITTARGET)
-    init_memory_sorts(SID_DOUBLE_WORD);
+    init_memory_sorts(SID_DOUBLE_WORD, SID_SINGLE_WORD, SID_DOUBLE_WORD);
   else
-    init_memory_sorts(SID_SINGLE_WORD);
+    init_memory_sorts(SID_SINGLE_WORD, SID_SINGLE_WORD, SID_SINGLE_WORD);
 
   init_instruction_sorts();
 }
@@ -2260,51 +2267,51 @@ void print_memory_sorts() {
 }
 
 void new_segmentation() {
-  NID_CODE_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start,
     8,
     format_comment("start of code segment @ 0x%08lX", code_start));
 
-  NID_CODE_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_CODE_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start + code_size,
     8,
     format_comment("end of code segment accommodating %lu instructions", code_size / INSTRUCTIONSIZE));
 
-  NID_DATA_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_DATA_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     data_start,
     8,
     format_comment("start of data segment @ 0x%08lX", data_start));
 
-  NID_DATA_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_DATA_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     data_start + data_size,
     8,
     format_comment("end of data segment accommodating %lu bytes", data_size));
 
-  NID_HEAP_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_HEAP_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     heap_start,
     8,
     format_comment("start of heap segment @ 0x%08lX", heap_start));
 
-  NID_HEAP_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_HEAP_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     heap_start + heap_size,
     8,
     format_comment("static end of heap segment accommodating %lu bytes", heap_size));
 
   // assert: stack_start >= heap_start + heap_size > 0
 
-  NID_STACK_START = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  NID_STACK_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     stack_start,
     8,
     format_comment("static start of stack segment @ 0x%08lX", stack_start));
 
-  if (IS64BITTARGET)
-    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+  if (SID_VIRTUAL_ADDRESS == SID_DOUBLE_WORD)
+    NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
       stack_start + stack_size,
       8,
       format_comment("end of stack segment accommodating %lu bytes", stack_size));
   else
     // force wrap-around
-    NID_STACK_END = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+    NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
       0,
       8,
       format_comment("end of stack segment accommodating %lu bytes", stack_size));
@@ -2331,11 +2338,12 @@ void new_code_segment() {
   uint64_t* laddr_nid;
   uint64_t* ir_nid;
 
-  state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE, "code-segment", "code segment");
+  state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
+    "code-segment", "code segment");
 
   if (SYNTHESIZE == 0) {
     zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
-      state_code_segment_nid, NID_SINGLE_WORD_0, "zeroing code segment");
+      state_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     number_of_hex_digits = round_up(CODE_ADDRESS_SPACE, 4) / 4;
 
@@ -2350,14 +2358,14 @@ void new_code_segment() {
 
       if (ir != 0) {
         // skipping zero as instruction
-        ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
-          ir,
-          32,
-          format_comment("code 0x%08lX", ir));
         laddr_nid = new_constant(OP_CONSTH, SID_CODE_ADDRESS,
           (pc - code_start) / INSTRUCTIONSIZE,
           number_of_hex_digits,
           format_comment("vaddr 0x%lX", pc));
+        ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
+          ir,
+          32,
+          format_comment("code 0x%08lX", ir));
         initial_code_segment_nid = new_ternary(OP_WRITE, SID_CODE_STATE,
           initial_code_segment_nid,
           laddr_nid,
@@ -2413,10 +2421,11 @@ void new_memory_state() {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
-  uint64_t* data_nid;
   uint64_t* vaddr_nid;
+  uint64_t* data_nid;
 
-  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE, "zeroed-main-memory", "zeroed main memory");
+  state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
+    "zeroed-main-memory", "zeroed main memory");
 
   zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
@@ -2452,14 +2461,14 @@ void new_memory_state() {
 
         if (data != 0) {
           // skipping zero as initial value
+          vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+            vaddr,
+            number_of_hex_digits,
+            format_comment("vaddr 0x%lX", vaddr));
           data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
             data,
             0,
             format_comment("data 0x%lX", data));
-          vaddr_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            vaddr,
-            number_of_hex_digits,
-            format_comment("vaddr 0x%lX", vaddr));
           initial_main_memory_nid =
             store_machine_word(vaddr_nid, data_nid, initial_main_memory_nid);
         }
@@ -2576,7 +2585,7 @@ uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid) {
 }
 
 uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid) {
-  if (IS64BITTARGET)
+  if (SID_VIRTUAL_ADDRESS == SID_DOUBLE_WORD)
     return is_address_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
   else
     // checking end of stack segment is unnecessary since it wraps around to zero
@@ -2593,12 +2602,14 @@ uint64_t* is_address_in_main_memory(uint64_t* vaddr_nid) {
     "vaddr in data, heap, or stack segment?");
 }
 
+// TODO: continue generalizing virtual address sort here
+
 uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
     is_address_in_segment(vaddr_nid, start_nid, end_nid),
     new_binary_boolean(OP_ULTE,
       range_nid,
-      new_binary(OP_SUB, SID_MACHINE_WORD,
+      new_binary(OP_SUB, SID_VIRTUAL_ADDRESS,
         end_nid,
         vaddr_nid,
         "end of segment - vaddr"),
@@ -2793,11 +2804,11 @@ uint64_t* insert_value_into_memory_word(uint64_t* vaddr_nid,
   uint64_t* value_nid, uint64_t* value_mask_nid,
   uint64_t* word_nid, uint64_t* memory_nid) {
   if (is_half_word_memory(memory_nid))
-    if (value_mask_nid == NID_HALF_WORD_MASK)
+    if (value_mask_nid == NID_MEMORY_WORD_HALF_WORD_MASK)
       return value_nid;
 
   if (is_single_word_memory(memory_nid))
-    if (value_mask_nid == NID_SINGLE_WORD_MASK)
+    if (value_mask_nid == NID_MEMORY_WORD_SINGLE_WORD_MASK)
       return value_nid;
 
   return new_binary(OP_OR, SID_MEMORY_WORD,
@@ -2828,7 +2839,7 @@ uint64_t* store_byte_in_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uin
     insert_value_into_memory_word(
       vaddr_nid,
       extend_byte_to_memory_word(byte_nid, memory_nid),
-      NID_BYTE_MASK,
+      NID_MEMORY_WORD_BYTE_MASK,
       load_aligned_memory_word(vaddr_nid, memory_nid),
       memory_nid),
     memory_nid);
@@ -2948,7 +2959,7 @@ uint64_t* store_half_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_ni
       insert_value_into_memory_word(
         vaddr_nid,
         extend_half_word_to_memory_word(word_nid, memory_nid),
-        NID_HALF_WORD_MASK,
+        NID_MEMORY_WORD_HALF_WORD_MASK,
         load_aligned_memory_word(vaddr_nid, memory_nid),
         memory_nid),
       memory_nid),
@@ -3065,7 +3076,7 @@ uint64_t* store_single_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_
       insert_value_into_memory_word(
         vaddr_nid,
         extend_single_word_to_memory_word(word_nid, memory_nid),
-        NID_SINGLE_WORD_MASK,
+        NID_MEMORY_WORD_SINGLE_WORD_MASK,
         load_aligned_memory_word(vaddr_nid, memory_nid),
         memory_nid),
       memory_nid),
@@ -3168,7 +3179,7 @@ uint64_t* store_machine_word(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* 
 }
 
 uint64_t* fetch_instruction(uint64_t* pc_nid) {
-  return new_binary(OP_READ, SID_INSTRUCTION_WORD,
+  return new_binary(OP_READ, SID_CODE_WORD,
     state_code_segment_nid,
     vaddr_to_code_segment_laddr(pc_nid),
     "fetch instruction");
