@@ -710,28 +710,35 @@ uint64_t* NID_CODE_END   = (uint64_t*) 0;
 uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
 
 uint64_t* NID_MEMORY_WORD_0 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_1 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_2 = (uint64_t*) 0;
 uint64_t* NID_MEMORY_WORD_3 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_4 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_5 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_6 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_7 = (uint64_t*) 0;
+uint64_t* NID_MEMORY_WORD_8 = (uint64_t*) 0;
 
-uint64_t* NID_MEMORY_WORD_BYTE_MASK        = (uint64_t*) 0;
-uint64_t* NID_MEMORY_WORD_HALF_WORD_MASK   = (uint64_t*) 0;
-uint64_t* NID_MEMORY_WORD_SINGLE_WORD_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_BYTE_MASK        = (uint64_t*) 0;
+uint64_t* NID_MEMORY_HALF_WORD_MASK   = (uint64_t*) 0;
+uint64_t* NID_MEMORY_SINGLE_WORD_MASK = (uint64_t*) 0;
 
-uint64_t* NID_HALF_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_HALF_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_MEMORY_HALF_WORD_SIZE_MASK = (uint64_t*) 0;
 
-uint64_t* NID_SINGLE_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_SINGLE_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_MEMORY_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
 
-uint64_t* NID_DOUBLE_WORD_SIZE      = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_DOUBLE_WORD_SIZE      = (uint64_t*) 0;
+uint64_t* NID_MEMORY_DOUBLE_WORD_SIZE_MASK = (uint64_t*) 0;
 
-uint64_t* NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
-uint64_t* NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
+uint64_t* NID_MEMORY_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = (uint64_t*) 0;
+uint64_t* NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = (uint64_t*) 0;
 
-uint64_t* NID_LSB_MASK = (uint64_t*) 0;
+uint64_t* NID_MEMORY_LSB_MASK = (uint64_t*) 0;
 
-uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
+uint64_t* NID_MEMORY_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
 uint64_t MEMORY_ADDRESS_SPACE = 0; // number of bits in main memory addresses
 
@@ -798,28 +805,35 @@ void init_memory_sorts(uint64_t* virtual_address_sort_nid, uint64_t* code_word_s
   SID_MEMORY_WORD = memory_word_sort_nid;
 
   NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
+  NID_MEMORY_WORD_1 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 1, 0, "memory word 1");
+  NID_MEMORY_WORD_2 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 2, 0, "memory word 2");
   NID_MEMORY_WORD_3 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 3, 0, "memory word 3");
+  NID_MEMORY_WORD_4 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 4, 0, "memory word 4");
+  NID_MEMORY_WORD_5 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 5, 0, "memory word 5");
+  NID_MEMORY_WORD_6 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 6, 0, "memory word 6");
+  NID_MEMORY_WORD_7 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 7, 0, "memory word 7");
+  NID_MEMORY_WORD_8 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 8, 0, "memory word 8");
 
-  NID_MEMORY_WORD_BYTE_MASK        = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum least-significant byte value");
-  NID_MEMORY_WORD_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MEMORY_WORD, 65535, 4, "maximum least-significant half-word value");
-  NID_MEMORY_WORD_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 4294967295, 8, "maximum least-significant single-word value");
+  NID_MEMORY_BYTE_MASK        = new_constant(OP_CONSTH, SID_MEMORY_WORD, 255, 2, "maximum byte value");
+  NID_MEMORY_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_MEMORY_WORD, 65535, 4, "maximum half-word value");
+  NID_MEMORY_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_MEMORY_WORD, 4294967295, 8, "maximum single-word value");
 
-  NID_HALF_WORD_SIZE      = NID_MACHINE_WORD_2;
-  NID_HALF_WORD_SIZE_MASK = NID_MACHINE_WORD_1;
+  NID_MEMORY_HALF_WORD_SIZE      = NID_MEMORY_WORD_2;
+  NID_MEMORY_HALF_WORD_SIZE_MASK = NID_MEMORY_WORD_1;
 
-  NID_SINGLE_WORD_SIZE      = NID_MACHINE_WORD_4;
-  NID_SINGLE_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
+  NID_MEMORY_SINGLE_WORD_SIZE      = NID_MEMORY_WORD_4;
+  NID_MEMORY_SINGLE_WORD_SIZE_MASK = NID_MEMORY_WORD_3;
 
-  NID_DOUBLE_WORD_SIZE      = NID_MACHINE_WORD_8;
-  NID_DOUBLE_WORD_SIZE_MASK = NID_MACHINE_WORD_7;
+  NID_MEMORY_DOUBLE_WORD_SIZE      = NID_MEMORY_WORD_8;
+  NID_MEMORY_DOUBLE_WORD_SIZE_MASK = NID_MEMORY_WORD_7;
 
-  NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_2;
-  NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MACHINE_WORD_6;
-  NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MACHINE_WORD_4;
+  NID_MEMORY_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MEMORY_WORD_2;
+  NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_MEMORY_WORD_6;
+  NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_MEMORY_WORD_4;
 
-  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, 0, "all bits but LSB set");
+  NID_MEMORY_LSB_MASK = new_constant(OP_CONSTD, SID_MEMORY_WORD, -2, 0, "all bits but LSB set");
 
-  NID_BYTE_SIZE_IN_BASE_BITS = NID_MACHINE_WORD_3;
+  NID_MEMORY_BYTE_SIZE_IN_BASE_BITS = NID_MEMORY_WORD_3;
 
   if (is_memory_word_byte(SID_MEMORY_WORD)) {
     MEMORY_ADDRESS_SPACE = 32;
@@ -2602,8 +2616,6 @@ uint64_t* is_address_in_main_memory(uint64_t* vaddr_nid) {
     "vaddr in data, heap, or stack segment?");
 }
 
-// TODO: continue generalizing virtual address sort here
-
 uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
   return new_binary_boolean(OP_AND,
     is_address_in_segment(vaddr_nid, start_nid, end_nid),
@@ -2630,14 +2642,14 @@ uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
 }
 
 uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  if (IS64BITTARGET)
+  if (SID_VIRTUAL_ADDRESS == SID_DOUBLE_WORD)
     return is_range_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
   else
     return new_binary_boolean(OP_AND,
       is_address_in_stack_segment(vaddr_nid),
       new_binary_boolean(OP_ULTE,
         range_nid,
-        new_unary(OP_NEG, SID_MACHINE_WORD,
+        new_unary(OP_NEG, SID_MEMORY_WORD,
           vaddr_nid,
           "-vaddr"),
         "range <= -vaddr?"),
@@ -2653,6 +2665,8 @@ uint64_t* is_range_in_main_memory(uint64_t* vaddr_nid, uint64_t* range_nid) {
       "all vaddr in range in heap or stack segment?"),
     "all vaddr in range in data, heap, or stack segment?");
 }
+
+// TODO: continue generalizing virtual address sort here
 
 uint64_t* vaddr_to_code_segment_laddr(uint64_t* vaddr_nid) {
   if (code_start > 0)
@@ -2711,11 +2725,11 @@ uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* word_nid, uin
 
 uint64_t* get_memory_word_size_mask(uint64_t* memory_nid) {
   if (is_half_word_memory(memory_nid))
-    return NID_HALF_WORD_SIZE_MASK;
+    return NID_MEMORY_HALF_WORD_SIZE_MASK;
   else if (is_single_word_memory(memory_nid))
-    return NID_SINGLE_WORD_SIZE_MASK;
+    return NID_MEMORY_SINGLE_WORD_SIZE_MASK;
   else if (is_double_word_memory(memory_nid))
-    return NID_DOUBLE_WORD_SIZE_MASK;
+    return NID_MEMORY_DOUBLE_WORD_SIZE_MASK;
   else
     // assert: unreachable
     return NID_FALSE;
@@ -2742,9 +2756,9 @@ uint64_t* slice_memory_word_from_machine_word(uint64_t* word_nid, uint64_t* memo
 
 uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return slice_memory_word_from_machine_word(
-    new_binary(OP_SLL, SID_MACHINE_WORD,
+    new_binary(OP_SLL, SID_MEMORY_WORD,
       get_vaddr_alignment(vaddr_nid, memory_nid),
-      NID_BYTE_SIZE_IN_BASE_BITS,
+      NID_MEMORY_BYTE_SIZE_IN_BASE_BITS,
       "multiply by 8 bits"),
     memory_nid);
 }
@@ -2804,11 +2818,11 @@ uint64_t* insert_value_into_memory_word(uint64_t* vaddr_nid,
   uint64_t* value_nid, uint64_t* value_mask_nid,
   uint64_t* word_nid, uint64_t* memory_nid) {
   if (is_half_word_memory(memory_nid))
-    if (value_mask_nid == NID_MEMORY_WORD_HALF_WORD_MASK)
+    if (value_mask_nid == NID_MEMORY_HALF_WORD_MASK)
       return value_nid;
 
   if (is_single_word_memory(memory_nid))
-    if (value_mask_nid == NID_MEMORY_WORD_SINGLE_WORD_MASK)
+    if (value_mask_nid == NID_MEMORY_SINGLE_WORD_MASK)
       return value_nid;
 
   return new_binary(OP_OR, SID_MEMORY_WORD,
@@ -2839,7 +2853,7 @@ uint64_t* store_byte_in_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uin
     insert_value_into_memory_word(
       vaddr_nid,
       extend_byte_to_memory_word(byte_nid, memory_nid),
-      NID_MEMORY_WORD_BYTE_MASK,
+      NID_MEMORY_BYTE_MASK,
       load_aligned_memory_word(vaddr_nid, memory_nid),
       memory_nid),
     memory_nid);
@@ -2880,11 +2894,11 @@ uint64_t* store_half_word_in_bytes(uint64_t* vaddr_nid, uint64_t* word_nid, uint
 
 uint64_t* get_half_word_size_relative_to_memory_word_size(uint64_t* memory_nid) {
   if (is_half_word_memory(memory_nid))
-    return NID_MACHINE_WORD_0;
+    return NID_MEMORY_WORD_0;
   else if (is_single_word_memory(memory_nid))
-    return NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
+    return NID_MEMORY_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
   else if (is_double_word_memory(memory_nid))
-    return NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
+    return NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE;
   else
     // assert: unreachable
     return NID_FALSE;
@@ -2959,7 +2973,7 @@ uint64_t* store_half_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_ni
       insert_value_into_memory_word(
         vaddr_nid,
         extend_half_word_to_memory_word(word_nid, memory_nid),
-        NID_MEMORY_WORD_HALF_WORD_MASK,
+        NID_MEMORY_HALF_WORD_MASK,
         load_aligned_memory_word(vaddr_nid, memory_nid),
         memory_nid),
       memory_nid),
@@ -3015,9 +3029,9 @@ uint64_t* store_single_word_in_half_words(uint64_t* vaddr_nid, uint64_t* word_ni
 
 uint64_t* get_single_word_size_relative_to_memory_word_size(uint64_t* memory_nid) {
   if (is_single_word_memory(memory_nid))
-    return NID_MACHINE_WORD_0;
+    return NID_MEMORY_WORD_0;
   else if (is_double_word_memory(memory_nid))
-    return NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE;
+    return NID_MEMORY_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE;
   else
     // assert: unreachable
     return NID_FALSE;
@@ -3076,7 +3090,7 @@ uint64_t* store_single_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_
       insert_value_into_memory_word(
         vaddr_nid,
         extend_single_word_to_memory_word(word_nid, memory_nid),
-        NID_MEMORY_WORD_SINGLE_WORD_MASK,
+        NID_MEMORY_SINGLE_WORD_MASK,
         load_aligned_memory_word(vaddr_nid, memory_nid),
         memory_nid),
       memory_nid),
@@ -4459,11 +4473,11 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
 
 uint64_t* load_no_seg_faults(uint64_t* ir_nid) {
   return decode_load(SID_BOOLEAN, ir_nid,
-    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_MEMORY_DOUBLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_MEMORY_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_MEMORY_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_MEMORY_HALF_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_MEMORY_HALF_WORD_SIZE),
     is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
     is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
     "no-seg-faults",
@@ -4584,9 +4598,9 @@ uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* othe
 
 uint64_t* store_no_seg_faults(uint64_t* ir_nid) {
   return decode_store(SID_BOOLEAN, ir_nid,
-    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_DOUBLE_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_SINGLE_WORD_SIZE),
-    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_HALF_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_MEMORY_DOUBLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_MEMORY_SINGLE_WORD_SIZE),
+    is_range_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_MEMORY_HALF_WORD_SIZE),
     is_address_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid)),
     "no-seg-faults",
     NID_TRUE,
@@ -4638,10 +4652,10 @@ uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_c
 }
 
 uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
-  return decode_jalr(SID_MACHINE_WORD, ir_nid,
-    new_binary(OP_AND, SID_MACHINE_WORD,
+  return decode_jalr(SID_MEMORY_WORD, ir_nid,
+    new_binary(OP_AND, SID_MEMORY_WORD,
       get_rs1_value_plus_I_immediate(ir_nid),
-      NID_LSB_MASK,
+      NID_MEMORY_LSB_MASK,
       "reset LSB"),
     "register-relative control flow",
     get_pc_value_plus_4(pc_nid),
