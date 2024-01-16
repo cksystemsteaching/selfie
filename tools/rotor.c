@@ -312,6 +312,8 @@ uint64_t* NID_MACHINE_WORD_8 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_MINUS_1 = (uint64_t*) 0;
 uint64_t* NID_MACHINE_WORD_INT_MIN = (uint64_t*) 0;
 
+uint64_t* NID_LSB_MASK = (uint64_t*) 0;
+
 uint64_t* SID_DOUBLE_MACHINE_WORD = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -394,6 +396,8 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1;
     NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN;
   }
+
+  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, 0, "all bits but LSB set");
 
   SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word");
 }
@@ -614,19 +618,21 @@ uint64_t* vaddr_to_paddr(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* load_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* byte_nid, uint64_t* memory_nid);
 
-uint64_t* slice_byte_from_word(uint64_t* word_nid);
-
-uint64_t* get_memory_word_size_mask(uint64_t* memory_nid);
 uint64_t* cast_virtual_address_to_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid);
+uint64_t* get_memory_word_size_mask(uint64_t* memory_nid);
 uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* memory_nid);
-uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid);
-uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
-uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
 
 uint64_t* extend_byte_to_half_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_single_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_double_word(char* op, uint64_t* byte_nid);
 uint64_t* extend_byte_to_memory_word(uint64_t* byte_nid, uint64_t* memory_nid);
+
+uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid);
+uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
+uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid);
+
+uint64_t* slice_byte_from_word(uint64_t* word_nid);
+
 uint64_t* extend_half_word_to_single_word(char* op, uint64_t* word_nid);
 uint64_t* extend_half_word_to_double_word(char* op, uint64_t* word_nid);
 uint64_t* extend_half_word_to_memory_word(uint64_t* word_nid, uint64_t* memory_nid);
@@ -737,8 +743,6 @@ uint64_t* NID_MEMORY_WORD_6 = (uint64_t*) 0;
 uint64_t* NID_MEMORY_WORD_7 = (uint64_t*) 0;
 uint64_t* NID_MEMORY_WORD_8 = (uint64_t*) 0;
 
-uint64_t* NID_MEMORY_LSB_MASK = (uint64_t*) 0;
-
 uint64_t MEMORY_ADDRESS_SPACE = 0; // number of bits in main memory addresses
 
 uint64_t* SID_MEMORY_ADDRESS = (uint64_t*) 0;
@@ -753,7 +757,7 @@ uint64_t* NID_HEAP_END   = (uint64_t*) 0;
 uint64_t* NID_STACK_START = (uint64_t*) 0;
 uint64_t* NID_STACK_END   = (uint64_t*) 0;
 
-// bit masks
+// bit masks and factors
 
 uint64_t* NID_HALF_WORD_SIZE_MASK   = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_SIZE_MASK = (uint64_t*) 0;
@@ -865,8 +869,6 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
   NID_MEMORY_WORD_7 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 7, 0, "memory word 7");
   NID_MEMORY_WORD_8 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 8, 0, "memory word 8");
 
-  NID_MEMORY_LSB_MASK = new_constant(OP_CONSTD, SID_MEMORY_WORD, -2, 0, "all bits but LSB set");
-
   // assert: memory word size is a power of 2 >= 8 bits
 
   MEMORY_ADDRESS_SPACE = VIRTUAL_ADDRESS_SPACE - (get_number_of_bytes(memory_word_sort_nid) - 1);
@@ -883,7 +885,7 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   REUSE_LINES = saved_reuse_lines;
 
-  // bit masks
+  // bit masks and factors
 
   NID_HALF_WORD_SIZE_MASK   = NID_HALF_WORD_1;
   NID_SINGLE_WORD_SIZE_MASK = NID_SINGLE_WORD_3;
@@ -1337,7 +1339,7 @@ uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 void init_instruction_sorts() {
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
-  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MEMORY_WORD_3;
+  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
 
   SID_OPCODE = new_bitvec(7, "opcode sort");
 
@@ -2769,24 +2771,6 @@ uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* word_nid, uin
     "store aligned word in memory at vaddr");
 }
 
-// TODO: continue generalizing virtual address sort here
-
-uint64_t* slice_byte_from_word(uint64_t* word_nid) {
-  return new_slice(SID_BYTE, word_nid, 7, 0, "slice least-significant byte");
-}
-
-uint64_t* get_memory_word_size_mask(uint64_t* memory_nid) {
-  if (is_half_word_memory(memory_nid))
-    return NID_HALF_WORD_SIZE_MASK;
-  else if (is_single_word_memory(memory_nid))
-    return NID_SINGLE_WORD_SIZE_MASK;
-  else if (is_double_word_memory(memory_nid))
-    return NID_DOUBLE_WORD_SIZE_MASK;
-  else
-    // assert: unreachable
-    return NID_FALSE;
-}
-
 uint64_t* cast_virtual_address_to_memory_word(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   uint64_t memory_word_size_in_bits;
 
@@ -2804,32 +2788,23 @@ uint64_t* cast_virtual_address_to_memory_word(uint64_t* vaddr_nid, uint64_t* mem
     return vaddr_nid;
 }
 
+uint64_t* get_memory_word_size_mask(uint64_t* memory_nid) {
+  if (is_half_word_memory(memory_nid))
+    return NID_HALF_WORD_SIZE_MASK;
+  else if (is_single_word_memory(memory_nid))
+    return NID_SINGLE_WORD_SIZE_MASK;
+  else if (is_double_word_memory(memory_nid))
+    return NID_DOUBLE_WORD_SIZE_MASK;
+  else
+    // assert: unreachable
+    return NID_FALSE;
+}
+
 uint64_t* get_vaddr_alignment(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   return new_binary(OP_AND, get_memory_word_sort(memory_nid),
     cast_virtual_address_to_memory_word(vaddr_nid, memory_nid),
     get_memory_word_size_mask(memory_nid),
     "mask alignment bits");
-}
-
-uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid) {
-  return new_binary(OP_SLL, get_memory_word_sort(memory_nid),
-    get_vaddr_alignment(vaddr_nid, memory_nid),
-    extend_byte_to_memory_word(NID_BYTE_SIZE_IN_BASE_BITS, memory_nid),
-    "multiply by 8 bits");
-}
-
-uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
-  return new_binary(OP_SRL, get_memory_word_sort(memory_nid),
-    value_nid,
-    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
-    "shift right from vaddr");
-}
-
-uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
-  return new_binary(OP_SLL, get_memory_word_sort(memory_nid),
-    value_nid,
-    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
-    "shift left to vaddr");
 }
 
 uint64_t* extend_byte_to_half_word(char* op, uint64_t* byte_nid) {
@@ -2863,6 +2838,31 @@ uint64_t* extend_byte_to_memory_word(uint64_t* byte_nid, uint64_t* memory_nid) {
   else
     // assert: unreachable
     return byte_nid;
+}
+
+uint64_t* shift_by_alignment_in_bits(uint64_t* vaddr_nid, uint64_t* memory_nid) {
+  return new_binary(OP_SLL, get_memory_word_sort(memory_nid),
+    get_vaddr_alignment(vaddr_nid, memory_nid),
+    extend_byte_to_memory_word(NID_BYTE_SIZE_IN_BASE_BITS, memory_nid),
+    "multiply by 8 bits");
+}
+
+uint64_t* shift_from_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
+  return new_binary(OP_SRL, get_memory_word_sort(memory_nid),
+    value_nid,
+    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
+    "shift right from vaddr");
+}
+
+uint64_t* shift_to_vaddr(uint64_t* vaddr_nid, uint64_t* value_nid, uint64_t* memory_nid) {
+  return new_binary(OP_SLL, get_memory_word_sort(memory_nid),
+    value_nid,
+    shift_by_alignment_in_bits(vaddr_nid, memory_nid),
+    "shift left to vaddr");
+}
+
+uint64_t* slice_byte_from_word(uint64_t* word_nid) {
+  return new_slice(SID_BYTE, word_nid, 7, 0, "slice least-significant byte");
 }
 
 uint64_t* extend_half_word_to_single_word(char* op, uint64_t* word_nid) {
@@ -4697,10 +4697,10 @@ uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_c
 }
 
 uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid) {
-  return decode_jalr(SID_MEMORY_WORD, ir_nid,
-    new_binary(OP_AND, SID_MEMORY_WORD,
+  return decode_jalr(SID_MACHINE_WORD, ir_nid,
+    new_binary(OP_AND, SID_MACHINE_WORD,
       get_rs1_value_plus_I_immediate(ir_nid),
-      NID_MEMORY_LSB_MASK,
+      NID_LSB_MASK,
       "reset LSB"),
     "register-relative control flow",
     get_pc_value_plus_4(pc_nid),
