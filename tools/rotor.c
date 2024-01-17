@@ -582,17 +582,12 @@ void print_memory_sorts();
 void new_segmentation();
 void print_segmentation();
 
-uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid);
-uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid);
-uint64_t* is_address_in_data_segment(uint64_t* vaddr_nid);
-uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid);
-uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid);
-
-uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid);
-uint64_t* is_range_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
-uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid);
+uint64_t* is_block_in_segment(uint64_t* block_start_nid, uint64_t* block_end_nid,
+  uint64_t* segment_start_nid, uint64_t* segment_end_nid);
+uint64_t* is_block_in_code_segment(uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_block_in_data_segment(uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_block_in_heap_segment(uint64_t* start_nid, uint64_t* end_nid);
+uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid);
 
 void new_code_segment();
 void print_code_segment();
@@ -711,7 +706,13 @@ uint64_t* load_double_word(uint64_t* machine_word_nid, uint64_t* memory_nid);
 uint64_t* store_double_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* does_machine_word_work_as_virtual_address(uint64_t* machine_word_nid, uint64_t* vaddr_property_nid);
+uint64_t* is_address_in_code_segment(uint64_t* machine_word_nid);
+uint64_t* is_address_in_data_segment(uint64_t* machine_word_nid);
+uint64_t* is_address_in_heap_segment(uint64_t* machine_word_nid);
+uint64_t* is_address_in_stack_segment(uint64_t* machine_word_nid);
 uint64_t* is_address_in_main_memory(uint64_t* machine_word_nid);
+
+uint64_t* is_range_in_heap_segment(uint64_t* machine_word_nid, uint64_t* range_nid);
 uint64_t* is_range_in_main_memory(uint64_t* machine_word_nid, uint64_t* range_nid);
 
 uint64_t* fetch_instruction(uint64_t* pc_nid);
@@ -2405,80 +2406,41 @@ void new_segmentation() {
     exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t* is_address_in_segment(uint64_t* vaddr_nid, uint64_t* start_nid, uint64_t* end_nid) {
+uint64_t* is_block_in_segment(uint64_t* block_start_nid, uint64_t* block_end_nid,
+  uint64_t* segment_start_nid, uint64_t* segment_end_nid) {
   return new_binary_boolean(OP_AND,
     new_binary_boolean(OP_UGTE,
-      vaddr_nid,
-      start_nid,
-      "virtual address >= start of segment?"),
+      block_start_nid,
+      segment_start_nid,
+      "virtual address of start of block >= start of segment?"),
     new_binary_boolean(OP_ULT,
-      vaddr_nid,
-      end_nid,
-      "virtual address < end of segment?"),
-    "virtual address in segment?");
+      block_end_nid,
+      segment_end_nid,
+      "virtual address of end of block < end of segment?"),
+    "block in segment?");
 }
 
-uint64_t* is_address_in_code_segment(uint64_t* vaddr_nid) {
-  return is_address_in_segment(vaddr_nid, NID_CODE_START, NID_CODE_END);
+uint64_t* is_block_in_code_segment(uint64_t* start_nid, uint64_t* end_nid) {
+  return is_block_in_segment(start_nid, end_nid, NID_CODE_START, NID_CODE_END);
 }
 
-uint64_t* is_address_in_data_segment(uint64_t* vaddr_nid) {
-  return is_address_in_segment(vaddr_nid, NID_DATA_START, NID_DATA_END);
+uint64_t* is_block_in_data_segment(uint64_t* start_nid, uint64_t* end_nid) {
+  return is_block_in_segment(start_nid, end_nid, NID_DATA_START, NID_DATA_END);
 }
 
-uint64_t* is_address_in_heap_segment(uint64_t* vaddr_nid) {
-  return is_address_in_segment(vaddr_nid, NID_HEAP_START, NID_HEAP_END);
+uint64_t* is_block_in_heap_segment(uint64_t* start_nid, uint64_t* end_nid) {
+  return is_block_in_segment(start_nid, end_nid, NID_HEAP_START, NID_HEAP_END);
 }
 
-uint64_t* is_address_in_stack_segment(uint64_t* vaddr_nid) {
+uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid) {
   if (get_arg1(NID_STACK_END) > 0)
-    return is_address_in_segment(vaddr_nid, NID_STACK_START, NID_STACK_END);
+    return is_block_in_segment(start_nid, end_nid, NID_STACK_START, NID_STACK_END);
   else
     // comparing with end of stack segment is unnecessary since end wrapped around to zero
     return new_binary_boolean(OP_UGTE,
-      vaddr_nid,
+      start_nid,
       NID_STACK_START,
       "virtual address >= start of stack segment?");
-}
-
-uint64_t* is_range_in_segment(uint64_t* vaddr_nid, uint64_t* range_nid, uint64_t* start_nid, uint64_t* end_nid) {
-  return new_binary_boolean(OP_AND,
-    is_address_in_segment(vaddr_nid, start_nid, end_nid),
-    new_binary_boolean(OP_ULTE,
-      range_nid,
-      new_binary(OP_SUB, SID_VIRTUAL_ADDRESS,
-        end_nid,
-        vaddr_nid,
-        "end of segment - virtual address"),
-      "range <= end of segment - virtual address? (no overflow if virtual address < end of segment)"),
-    "all virtual addresses in range in segment");
-}
-
-uint64_t* is_range_in_code_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_in_segment(vaddr_nid, range_nid, NID_CODE_START, NID_CODE_END);
-}
-
-uint64_t* is_range_in_data_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_in_segment(vaddr_nid, range_nid, NID_DATA_START, NID_DATA_END);
-}
-
-uint64_t* is_range_in_heap_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  return is_range_in_segment(vaddr_nid, range_nid, NID_HEAP_START, NID_HEAP_END);
-}
-
-uint64_t* is_range_in_stack_segment(uint64_t* vaddr_nid, uint64_t* range_nid) {
-  if (get_arg1(NID_STACK_END) > 0)
-    return is_range_in_segment(vaddr_nid, range_nid, NID_STACK_START, NID_STACK_END);
-  else
-    return new_binary_boolean(OP_AND,
-      is_address_in_stack_segment(vaddr_nid),
-      new_binary_boolean(OP_ULTE,
-        range_nid,
-        new_unary(OP_NEG, SID_VIRTUAL_ADDRESS,
-          vaddr_nid,
-          "-virtual address"),
-        "range <= -virtual address?"),
-      "all virtual addresses in range in segment");
 }
 
 void print_segmentation() {
@@ -2764,7 +2726,7 @@ uint64_t* cast_virtual_address_to_memory_word(uint64_t* vaddr_nid, uint64_t* mem
     return new_slice(get_memory_word_sort(memory_nid), vaddr_nid,
       memory_word_size_in_bits - 1, 0, "slice memory word from virtual address");
   else if (memory_word_size_in_bits > VIRTUAL_ADDRESS_SPACE)
-    return new_ext(OP_UEXT, get_memory_word_sort(memory_nid),
+    return new_ext(OP_SEXT, get_memory_word_sort(memory_nid),
       vaddr_nid,
       memory_word_size_in_bits - VIRTUAL_ADDRESS_SPACE,
       "extension of virtual address to memory word");
@@ -3299,6 +3261,42 @@ uint64_t* does_machine_word_work_as_virtual_address(uint64_t* machine_word_nid, 
     return vaddr_property_nid;
 }
 
+uint64_t* is_address_in_code_segment(uint64_t* machine_word_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return does_machine_word_work_as_virtual_address(machine_word_nid,
+    is_block_in_code_segment(vaddr_nid, vaddr_nid));
+}
+
+uint64_t* is_address_in_data_segment(uint64_t* machine_word_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return does_machine_word_work_as_virtual_address(machine_word_nid,
+    is_block_in_data_segment(vaddr_nid, vaddr_nid));
+}
+
+uint64_t* is_address_in_heap_segment(uint64_t* machine_word_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return does_machine_word_work_as_virtual_address(machine_word_nid,
+    is_block_in_heap_segment(vaddr_nid, vaddr_nid));
+}
+
+uint64_t* is_address_in_stack_segment(uint64_t* machine_word_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return does_machine_word_work_as_virtual_address(machine_word_nid,
+    is_block_in_stack_segment(vaddr_nid, vaddr_nid));
+}
+
 uint64_t* is_address_in_main_memory(uint64_t* machine_word_nid) {
   uint64_t* vaddr_nid;
 
@@ -3306,25 +3304,55 @@ uint64_t* is_address_in_main_memory(uint64_t* machine_word_nid) {
 
   return does_machine_word_work_as_virtual_address(machine_word_nid,
     new_binary_boolean(OP_OR,
-      is_address_in_data_segment(vaddr_nid),
+      is_block_in_data_segment(vaddr_nid, vaddr_nid),
       new_binary_boolean(OP_OR,
-        is_address_in_heap_segment(vaddr_nid),
-        is_address_in_stack_segment(vaddr_nid),
+        is_block_in_heap_segment(vaddr_nid, vaddr_nid),
+        is_block_in_stack_segment(vaddr_nid, vaddr_nid),
         "virtual address in heap or stack segment?"),
       "virtual address in data, heap, or stack segment?"));
 }
 
+uint64_t* is_range_in_segment(uint64_t* machine_word_nid, uint64_t* end_nid, uint64_t* segment_nid) {
+  uint64_t* no_overflow_nid;
+
+  no_overflow_nid = new_binary_boolean(OP_ULTE, machine_word_nid, end_nid, "");
+
+  return new_binary_boolean(OP_AND,
+    no_overflow_nid,
+    does_machine_word_work_as_virtual_address(end_nid, segment_nid),
+    "");
+}
+
+uint64_t* is_range_in_heap_segment(uint64_t* machine_word_nid, uint64_t* range_nid) {
+  uint64_t* end_nid;
+  uint64_t* virtual_start_nid;
+  uint64_t* virtual_end_nid;
+
+  end_nid = new_binary(OP_ADD, SID_MACHINE_WORD, machine_word_nid, range_nid, "");
+
+  virtual_start_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+  virtual_end_nid   = cast_machine_word_to_virtual_address(end_nid);
+
+  return is_range_in_segment(machine_word_nid, end_nid,
+    is_block_in_heap_segment(virtual_start_nid, virtual_end_nid));
+}
+
 uint64_t* is_range_in_main_memory(uint64_t* machine_word_nid, uint64_t* range_nid) {
-  uint64_t* vaddr_nid;
+  uint64_t* end_nid;
+  uint64_t* virtual_start_nid;
+  uint64_t* virtual_end_nid;
 
-  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+  end_nid = new_binary(OP_ADD, SID_MACHINE_WORD, machine_word_nid, range_nid, "");
 
-  return does_machine_word_work_as_virtual_address(machine_word_nid,
+  virtual_start_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+  virtual_end_nid   = cast_machine_word_to_virtual_address(end_nid);
+
+  return is_range_in_segment(machine_word_nid, end_nid,
     new_binary_boolean(OP_OR,
-      is_range_in_data_segment(vaddr_nid, range_nid),
+      is_block_in_data_segment(virtual_start_nid, virtual_end_nid),
       new_binary_boolean(OP_OR,
-        is_range_in_heap_segment(vaddr_nid, range_nid),
-        is_range_in_stack_segment(vaddr_nid, range_nid),
+        is_block_in_heap_segment(virtual_start_nid, virtual_end_nid),
+        is_block_in_stack_segment(virtual_start_nid, virtual_end_nid),
         "all virtual addresses in range in heap or stack segment?"),
       "all virtual addresses in range in data, heap, or stack segment?"));
 }
@@ -5075,7 +5103,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       brk_syscall_nid,
       store_register_value(
         NID_A0,
-        new_program_break_nid,
+        cast_virtual_address_to_memory_word(new_program_break_nid, state_register_file_nid),
         state_register_file_nid,
         "store new program break in a0"),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
@@ -5156,11 +5184,8 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     new_binary_boolean(OP_AND,
       active_openat_nid,
       new_unary_boolean(OP_NOT,
-        does_machine_word_work_as_virtual_address(a1_value_nid,
-          is_range_in_heap_segment(
-            cast_machine_word_to_virtual_address(a1_value_nid),
-            NID_MAX_STRING_LENGTH)),
-        "is filename access invalid?"),
+        is_range_in_heap_segment(a1_value_nid, NID_MAX_STRING_LENGTH),
+        "is filename access not in heap segment?"),
       "openat system call filename access may cause segmentation fault"),
     "openat-seg-fault",
     "possible openat segmentation fault");
@@ -5178,9 +5203,8 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
           "have bytes been read yet?"),
         "no bytes read yet by active read system call"),
       new_unary_boolean(OP_NOT,
-        does_machine_word_work_as_virtual_address(a1_value_nid,
-          is_range_in_heap_segment(a1_value_nid, a2_value_nid)),
-        "read system call access outside of heap segment"),
+        is_range_in_heap_segment(a1_value_nid, a2_value_nid),
+        "is read system call access not in heap segment?"),
       "storing bytes to be read may cause segmentation fault"),
     "read-seg-fault",
     "possible read segmentation fault");
@@ -5193,7 +5217,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       active_write_nid,
       new_unary_boolean(OP_NOT,
         is_range_in_heap_segment(a1_value_nid, a2_value_nid),
-        "write system call access outside of heap segment"),
+        "is write system call access not in heap segment?"),
       "loading bytes to be written may cause segmentation fault"),
     "write-seg-fault",
     "possible write segmentation fault");
