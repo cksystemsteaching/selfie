@@ -280,6 +280,7 @@ uint64_t* NID_SINGLE_WORD_8 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_MINUS_1 = (uint64_t*) 0;
 uint64_t* NID_SINGLE_WORD_INT_MIN = (uint64_t*) 0;
 
+uint64_t DOUBLEWORDSIZE       = 8;
 uint64_t DOUBLEWORDSIZEINBITS = 64;
 
 uint64_t* SID_DOUBLE_WORD = (uint64_t*) 0;
@@ -3097,6 +3098,13 @@ uint64_t* load_single_word_from_memory_words(uint64_t* vaddr_nid, uint64_t* memo
 }
 
 uint64_t* store_single_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
+  if (get_op(vaddr_nid) == OP_CONSTH)
+    // optimizes boot loading
+    if ((uint64_t) get_arg1(vaddr_nid) % SINGLEWORDSIZE == 0)
+      return store_aligned_memory_word(vaddr_nid,
+        insert_value_into_memory_word(vaddr_nid, word_nid, memory_nid),
+        memory_nid);
+
   return new_ternary(OP_ITE, get_sid(memory_nid),
     is_contained_in_memory_word(vaddr_nid,
       get_single_word_size_relative_to_memory_word_size(memory_nid),
@@ -3165,6 +3173,11 @@ uint64_t* load_double_word_from_memory_words(uint64_t* vaddr_nid, uint64_t* memo
 }
 
 uint64_t* store_double_word_in_memory_words(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid) {
+  if (get_op(vaddr_nid) == OP_CONSTH)
+    // optimizes boot loading
+    if ((uint64_t) get_arg1(vaddr_nid) % DOUBLEWORDSIZE == 0)
+      return store_aligned_memory_word(vaddr_nid, word_nid, memory_nid);
+
   return new_ternary(OP_ITE, get_sid(memory_nid),
     is_contained_in_memory_word(vaddr_nid, NID_DOUBLE_WORD_0, memory_nid),
     store_aligned_memory_word(vaddr_nid, word_nid, memory_nid),
