@@ -1742,7 +1742,7 @@ void init_model_generator() {
   init_register_file_sorts();
 
   if (IS64BITTARGET)
-    init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_DOUBLE_WORD);
+    init_memory_sorts(DOUBLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_DOUBLE_WORD);
   else
     init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_SINGLE_WORD);
 
@@ -2342,6 +2342,8 @@ void print_memory_sorts() {
 
 void new_segmentation() {
   uint64_t stack_end;
+  uint64_t low_stack_address_space;
+  uint64_t up_stack_address_space;
 
   NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start,
@@ -2388,20 +2390,38 @@ void new_segmentation() {
 
   if (stack_start < stack_end) {
     // no stack end overflow here
-    if (stack_end < two_to_the_power_of(VIRTUAL_ADDRESS_SPACE))
+    low_stack_address_space = log_two(stack_end);
+    up_stack_address_space  = low_stack_address_space;
+
+    if (stack_end > two_to_the_power_of(low_stack_address_space))
+      up_stack_address_space = up_stack_address_space + 1;
+
+    if (up_stack_address_space < VIRTUAL_ADDRESS_SPACE)
       // no stack end overflow in btor2
       NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
         stack_end,
         round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
         format_comment("end of stack segment accommodating %lu bytes", stack_size));
-    else if (stack_end == two_to_the_power_of(VIRTUAL_ADDRESS_SPACE))
-      // stack end overflow in btor2, force wrap-around
-      NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-        0,
-        round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
-        format_comment("end of stack segment accommodating %lu bytes", stack_size));
-    else
+    else if (up_stack_address_space == VIRTUAL_ADDRESS_SPACE) {
+      if (low_stack_address_space < up_stack_address_space)
+        // still no stack end overflow in btor2
+        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          stack_end,
+          round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+          format_comment("end of stack segment accommodating %lu bytes", stack_size));
+      else
+        // stack end overflow in btor2, force wrap-around
+        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          0,
+          round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+          format_comment("end of stack segment accommodating %lu bytes", stack_size));
+    } else {
+      printf("%s: end of stack segment at 0x%lX does not fit %lu-bit virtual address space\n", selfie_name,
+        stack_end,
+        VIRTUAL_ADDRESS_SPACE);
+
       exit(EXITCODE_SYSTEMERROR);
+    }
   } else if (stack_end == 0) {
     // stack end overflow here
     if (VIRTUAL_ADDRESS_SPACE == WORDSIZEINBITS)
@@ -2410,10 +2430,16 @@ void new_segmentation() {
         0,
         round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
         format_comment("end of stack segment accommodating %lu bytes", stack_size));
-    else
+    else {
+      printf("%s: end of stack segment wrapped around to 0x0\n", selfie_name);
+
       exit(EXITCODE_SYSTEMERROR);
-  } else
+    }
+  } else {
+    printf("%s: end of stack segment wrapped around to 0x%lX\n", selfie_name, stack_end);
+
     exit(EXITCODE_SYSTEMERROR);
+  }
 }
 
 uint64_t* is_block_in_segment(uint64_t* block_start_nid, uint64_t* block_end_nid,
