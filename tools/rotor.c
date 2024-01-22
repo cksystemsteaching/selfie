@@ -719,6 +719,7 @@ uint64_t* is_range_in_heap_segment(uint64_t* machine_word_nid, uint64_t* range_n
 uint64_t* is_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* size_nid);
 
 uint64_t* fetch_instruction(uint64_t* pc_nid);
+uint64_t* fetch_compressed_instruction(uint64_t* pc_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -920,9 +921,12 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 // -----------------------------------------------------------------
 
 uint64_t* get_instruction_opcode(uint64_t* ir_nid);
+uint64_t* get_compressed_instruction_opcode(uint64_t* ir_nid);
+
 uint64_t* get_instruction_funct3(uint64_t* ir_nid);
 uint64_t* get_instruction_funct7(uint64_t* ir_nid);
 uint64_t* get_instruction_funct6(uint64_t* ir_nid);
+
 uint64_t* get_instruction_rd(uint64_t* ir_nid);
 uint64_t* get_instruction_rs1(uint64_t* ir_nid);
 uint64_t* get_instruction_rs2(uint64_t* ir_nid);
@@ -1052,6 +1056,7 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
 uint64_t* load_no_seg_faults(uint64_t* ir_nid);
 
 uint64_t* get_pc_value_plus_4(uint64_t* pc_nid);
+uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* jal_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 uint64_t* jalr_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid);
 
@@ -1076,7 +1081,7 @@ uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_c
 
 uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
 
-uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1336,6 +1341,14 @@ uint64_t* NID_DIVW  = (uint64_t*) 0;
 uint64_t* NID_DIVUW = (uint64_t*) 0;
 uint64_t* NID_REMW  = (uint64_t*) 0;
 uint64_t* NID_REMUW = (uint64_t*) 0;
+
+// RVC codes
+
+uint64_t RVC = 1; // RVC support
+
+uint64_t* SID_OPCODE_C = (uint64_t*) 0;
+
+uint64_t* NID_OP_C3 = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1659,6 +1672,10 @@ void init_instruction_sorts() {
     NID_REMW  = NID_FALSE;
     NID_REMUW = NID_FALSE;
   }
+
+  SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
+
+  NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
 }
 
 // -----------------------------------------------------------------
@@ -3415,12 +3432,20 @@ uint64_t* fetch_instruction(uint64_t* pc_nid) {
   return load_single_word(pc_nid, state_code_segment_nid);
 }
 
+uint64_t* fetch_compressed_instruction(uint64_t* pc_nid) {
+  return load_half_word(pc_nid, state_code_segment_nid);
+}
+
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
 uint64_t* get_instruction_opcode(uint64_t* ir_nid) {
   return new_slice(SID_OPCODE, ir_nid, 6, 0, "get opcode");
+}
+
+uint64_t* get_compressed_instruction_opcode(uint64_t* ir_nid) {
+  return new_slice(SID_OPCODE_C, ir_nid, 1, 0, "get compressed opcode");
 }
 
 uint64_t* get_instruction_funct3(uint64_t* ir_nid) {
@@ -4708,6 +4733,13 @@ uint64_t* get_pc_value_plus_4(uint64_t* pc_nid) {
     "pc value + 4");
 }
 
+uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    NID_MACHINE_WORD_2,
+    "pc value + 2");
+}
+
 uint64_t* jal_data_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_data_flow_nid) {
   return decode_jal(SID_MACHINE_WORD, ir_nid,
     get_pc_value_plus_4(pc_nid),
@@ -4878,12 +4910,26 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_
     other_control_flow_nid);
 }
 
-uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
-  return
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_nid) {
+  uint64_t* control_flow_nid;
+
+  control_flow_nid =
     branch_control_flow(pc_nid, ir_nid,
       jal_control_flow(pc_nid, ir_nid,
         jalr_control_flow(pc_nid, ir_nid,
           get_pc_value_plus_4(pc_nid))));
+
+  if (RVC)
+    return new_ternary(OP_ITE, SID_MACHINE_WORD,
+      new_binary_boolean(OP_NEQ,
+        get_compressed_instruction_opcode(c_ir_nid),
+        NID_OP_C3,
+        "is compressed instruction opcode?"),
+      get_pc_value_plus_2(pc_nid),
+      control_flow_nid,
+      "compressed and uncompressed instruction control flow");
+  else
+    return control_flow_nid;
 }
 
 // -----------------------------------------------------------------
@@ -5319,6 +5365,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
 void rotor() {
   uint64_t* ir_nid;
+  uint64_t* c_ir_nid;
   uint64_t* known_instructions_nid;
 
   new_segmentation();
@@ -5335,13 +5382,17 @@ void rotor() {
 
   ir_nid = fetch_instruction(state_core_pc_nid);
 
+  // fetch compressed
+
+  c_ir_nid = fetch_compressed_instruction(state_core_pc_nid);
+
   // decode
 
   known_instructions_nid = decode_instruction(ir_nid);
 
   // non-kernel control flow
 
-  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid);
+  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid, c_ir_nid);
 
   // non-kernel register data flow
 
