@@ -691,6 +691,7 @@ uint64_t* store_double_word_at_virtual_address(uint64_t* vaddr_nid, uint64_t* wo
 uint64_t* load_machine_word_at_virtual_address(uint64_t* vaddr_nid, uint64_t* memory_nid);
 uint64_t* store_machine_word_at_virtual_address(uint64_t* vaddr_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
+uint64_t* cast_virtual_address_to_machine_word(uint64_t* vaddr_nid);
 uint64_t* cast_machine_word_to_virtual_address(uint64_t* machine_word_nid);
 uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid);
 
@@ -1742,7 +1743,7 @@ void init_model_generator() {
   init_register_file_sorts();
 
   if (IS64BITTARGET)
-    init_memory_sorts(DOUBLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_DOUBLE_WORD);
+    init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_DOUBLE_WORD);
   else
     init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_SINGLE_WORD);
 
@@ -2260,7 +2261,8 @@ void new_register_file_state() {
     initial_register_file_nid =
       store_register_value(
         NID_SP,
-        new_unary(OP_DEC, SID_MACHINE_WORD, NID_STACK_END, "end of stack segment - 1"),
+        cast_virtual_address_to_machine_word(
+          new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1")),
         state_register_file_nid,
         "write initial sp value");
   else {
@@ -2770,7 +2772,7 @@ uint64_t* cast_virtual_address_to_memory_word(uint64_t* vaddr_nid, uint64_t* mem
     return new_ext(OP_UEXT, get_memory_word_sort(memory_nid),
       vaddr_nid,
       memory_word_size_in_bits - VIRTUAL_ADDRESS_SPACE,
-      "extension of virtual address to memory word");
+      "unsigned extension of virtual address to memory word");
   else
     return vaddr_nid;
 }
@@ -3239,6 +3241,10 @@ uint64_t* store_machine_word_at_virtual_address(uint64_t* vaddr_nid, uint64_t* w
     return store_single_word_at_virtual_address(vaddr_nid, word_nid, memory_nid);
 }
 
+uint64_t* cast_virtual_address_to_machine_word(uint64_t* vaddr_nid) {
+  return cast_virtual_address_to_memory_word(vaddr_nid, state_register_file_nid);
+}
+
 uint64_t* cast_machine_word_to_virtual_address(uint64_t* machine_word_nid) {
   if (WORDSIZEINBITS > VIRTUAL_ADDRESS_SPACE)
     return new_slice(SID_VIRTUAL_ADDRESS, machine_word_nid,
@@ -3247,7 +3253,7 @@ uint64_t* cast_machine_word_to_virtual_address(uint64_t* machine_word_nid) {
     return new_ext(OP_UEXT, SID_VIRTUAL_ADDRESS,
       machine_word_nid,
       VIRTUAL_ADDRESS_SPACE - WORDSIZEINBITS,
-      "extension of machine word to virtual address");
+      "unsigned extension of machine word to virtual address");
   else
     return machine_word_nid;
 }
@@ -3256,9 +3262,7 @@ uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid) {
   if (WORDSIZEINBITS > VIRTUAL_ADDRESS_SPACE)
     return new_binary_boolean(OP_EQ,
         machine_word_nid,
-        cast_virtual_address_to_memory_word(
-          cast_machine_word_to_virtual_address(machine_word_nid),
-          state_register_file_nid),
+        cast_virtual_address_to_machine_word(cast_machine_word_to_virtual_address(machine_word_nid)),
         "is machine word virtual address?");
   else
     return NID_TRUE;
@@ -5153,7 +5157,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       brk_syscall_nid,
       store_register_value(
         NID_A0,
-        cast_virtual_address_to_memory_word(new_program_break_nid, state_register_file_nid),
+        cast_virtual_address_to_machine_word(new_program_break_nid),
         state_register_file_nid,
         "store new program break in a0"),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
