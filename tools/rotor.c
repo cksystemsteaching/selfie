@@ -921,9 +921,11 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 // -----------------------------------------------------------------
 
 uint64_t* get_instruction_opcode(uint64_t* ir_nid);
-uint64_t* get_compressed_instruction_opcode(uint64_t* ir_nid);
+uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid);
 
 uint64_t* get_instruction_funct3(uint64_t* ir_nid);
+uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid);
+
 uint64_t* get_instruction_funct7(uint64_t* ir_nid);
 uint64_t* get_instruction_funct6(uint64_t* ir_nid);
 
@@ -948,6 +950,11 @@ uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* opcode_nid, char* opcode_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_opcode_nid);
+uint64_t* decode_compressed_opcode(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_opcode_nid, char* c_opcode_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_opcode_nid);
+
 uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -956,6 +963,12 @@ uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_funct3_nid);
+
+uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct3_nid, char* c_funct3_comment,
+  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct3_nid);
+
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_nid, char* funct7_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -1027,12 +1040,18 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* sd_nid,
   uint64_t* sw_nid, uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* beq_nid, uint64_t* bne_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
   uint64_t* bltu_nid, uint64_t* bgeu_nid,
   uint64_t* branch_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
+  uint64_t* branch_nid, char* comment,
+  uint64_t* no_c_funct3_nid, uint64_t* other_c_opcode_nid);
+
 uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jal_nid, char* comment,
   uint64_t* other_opcode_nid);
@@ -1041,6 +1060,7 @@ uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 
 uint64_t* decode_instruction(uint64_t* ir_nid);
+uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid);
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid);
 uint64_t* slice_single_word_from_machine_word(uint64_t* word_nid);
@@ -1344,11 +1364,23 @@ uint64_t* NID_REMUW = (uint64_t*) 0;
 
 // RVC codes
 
-uint64_t RVC = 1; // RVC support
-
 uint64_t* SID_OPCODE_C = (uint64_t*) 0;
 
+uint64_t* NID_OP_C1 = (uint64_t*) 0;
 uint64_t* NID_OP_C3 = (uint64_t*) 0;
+
+uint64_t F3_C_BEQZ = 6; // 110
+uint64_t F3_C_BNEZ = 7; // 111
+
+uint64_t* NID_F3_C_BEQZ = (uint64_t*) 0;
+uint64_t* NID_F3_C_BNEZ = (uint64_t*) 0;
+
+// RVC instruction switches
+
+uint64_t RVC = 0; // RVC support
+
+uint64_t* NID_C_BEQZ = (uint64_t*) 0;
+uint64_t* NID_C_BNEZ = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1673,9 +1705,20 @@ void init_instruction_sorts() {
     NID_REMUW = NID_FALSE;
   }
 
+  // RVC codes
+
   SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
 
+  NID_OP_C1 = new_constant(OP_CONST, SID_OPCODE_C, 1, 2, "OP_C1");
   NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
+
+  NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, 3, "F3_C_BEQZ");
+  NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, 3, "F3_C_BNEZ");
+
+  // RVC instruction switches
+
+  NID_C_BEQZ = NID_FALSE;
+  NID_C_BNEZ = NID_FALSE;
 }
 
 // -----------------------------------------------------------------
@@ -1729,16 +1772,17 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* is_instruction_known_nid     = (uint64_t*) 0;
-uint64_t* illegal_instruction_nid      = (uint64_t*) 0;
-uint64_t* next_fetch_unaligned_nid     = (uint64_t*) 0;
-uint64_t* next_fetch_seg_faulting_nid  = (uint64_t*) 0;
-uint64_t* load_seg_faulting_nid        = (uint64_t*) 0;
-uint64_t* store_seg_faulting_nid       = (uint64_t*) 0;
-uint64_t* stack_seg_faulting_nid       = (uint64_t*) 0;
-uint64_t* division_by_zero_nid         = (uint64_t*) 0;
-uint64_t* signed_division_overflow_nid = (uint64_t*) 0;
-uint64_t* exclude_a0_from_rd_nid       = (uint64_t*) 0;
+uint64_t* is_instruction_known_nid            = (uint64_t*) 0;
+uint64_t* is_compressed_instruction_known_nid = (uint64_t*) 0;
+uint64_t* illegal_instruction_nid             = (uint64_t*) 0;
+uint64_t* next_fetch_unaligned_nid            = (uint64_t*) 0;
+uint64_t* next_fetch_seg_faulting_nid         = (uint64_t*) 0;
+uint64_t* load_seg_faulting_nid               = (uint64_t*) 0;
+uint64_t* store_seg_faulting_nid              = (uint64_t*) 0;
+uint64_t* stack_seg_faulting_nid              = (uint64_t*) 0;
+uint64_t* division_by_zero_nid                = (uint64_t*) 0;
+uint64_t* signed_division_overflow_nid        = (uint64_t*) 0;
+uint64_t* exclude_a0_from_rd_nid              = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
@@ -3444,12 +3488,16 @@ uint64_t* get_instruction_opcode(uint64_t* ir_nid) {
   return new_slice(SID_OPCODE, ir_nid, 6, 0, "get opcode");
 }
 
-uint64_t* get_compressed_instruction_opcode(uint64_t* ir_nid) {
-  return new_slice(SID_OPCODE_C, ir_nid, 1, 0, "get compressed opcode");
+uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid) {
+  return new_slice(SID_OPCODE_C, c_ir_nid, 1, 0, "get compressed opcode");
 }
 
 uint64_t* get_instruction_funct3(uint64_t* ir_nid) {
   return new_slice(SID_FUNCT3, ir_nid, 14, 12, "get funct3");
+}
+
+uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid) {
+  return new_slice(SID_FUNCT3, c_ir_nid, 15, 13, "get compressed funct3");
 }
 
 uint64_t* get_instruction_funct7(uint64_t* ir_nid) {
@@ -3585,6 +3633,20 @@ uint64_t* decode_opcode(uint64_t* sid, uint64_t* ir_nid,
     execute_comment);
 }
 
+uint64_t* decode_compressed_opcode(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_opcode_nid, char* c_opcode_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_opcode_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_opcode(c_ir_nid),
+      c_opcode_nid,
+      format_comment("compressed opcode == %s", (uint64_t) c_opcode_comment)),
+    execute_nid,
+    other_c_opcode_nid,
+    execute_comment);
+}
+
 uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -3613,6 +3675,23 @@ uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
       "evaluate branch condition if funct3 matches"),
     execute_nid,
     other_funct3_nid,
+    execute_comment);
+}
+
+uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct3_nid, char* c_funct3_comment,
+  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct3_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_EQ,
+        get_compressed_instruction_funct3(c_ir_nid),
+        c_funct3_nid,
+        format_comment("compressed funct3 == %s", (uint64_t) c_funct3_comment)),
+      evaluate_nid,
+      "evaluate branch condition if compressed funct3 matches"),
+    execute_nid,
+    other_c_funct3_nid,
     execute_comment);
 }
 
@@ -4309,6 +4388,26 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
     other_opcode_nid);
 }
 
+uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
+  uint64_t* branch_nid, char* comment,
+  uint64_t* no_c_funct3_nid, uint64_t* other_c_opcode_nid) {
+  if (RVC)
+    return decode_compressed_opcode(sid, c_ir_nid,
+      NID_OP_C1, "C1?",
+      decode_compressed_funct3_conditional(sid, c_ir_nid,
+        NID_F3_C_BEQZ, "C.BEQZ?",
+        c_beqz_nid, branch_nid, format_comment("c.beqz %s", (uint64_t) comment),
+        decode_compressed_funct3_conditional(sid, c_ir_nid,
+          NID_F3_C_BNEZ, "C.BNEZ?",
+          c_bnez_nid, branch_nid, format_comment("c.bnez %s", (uint64_t) comment),
+          no_c_funct3_nid)),
+      format_comment("compressed branch %s", (uint64_t) comment),
+      other_c_opcode_nid);
+  else
+    return other_c_opcode_nid;
+}
+
 uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jal_nid, char* comment,
   uint64_t* other_opcode_nid) {
@@ -4408,6 +4507,13 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
                       NID_AUIPC, "known?",
                       NID_FALSE))))))))),
     "ecall known?");
+}
+
+uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
+  return decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
+    NID_C_BEQZ, NID_C_BNEZ,
+    NID_TRUE, "known?", NID_FALSE,
+    NID_FALSE);
 }
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
@@ -5366,7 +5472,9 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 void rotor() {
   uint64_t* ir_nid;
   uint64_t* c_ir_nid;
+
   uint64_t* known_instructions_nid;
+  uint64_t* known_compressed_instructions_nid;
 
   new_segmentation();
 
@@ -5389,6 +5497,10 @@ void rotor() {
   // decode
 
   known_instructions_nid = decode_instruction(ir_nid);
+
+  // decode compressed
+
+  known_compressed_instructions_nid = decode_compressed_instruction(c_ir_nid);
 
   // non-kernel control flow
 
@@ -5441,6 +5553,12 @@ void rotor() {
     UNUSED,
     "known-instructions",
     "known instructions");
+
+  is_compressed_instruction_known_nid = state_property(
+    known_compressed_instructions_nid,
+    UNUSED,
+    "known-compressed-instructions",
+    "known compressed instructions");
 
   next_fetch_unaligned_nid = state_property(
     new_binary_boolean(OP_EQ,
@@ -5602,6 +5720,12 @@ void output_model() {
   print_break("\n");
 
   print_line(is_instruction_known_nid);
+
+  if (RVC) {
+    print_break("\n");
+
+    print_line(is_compressed_instruction_known_nid);
+  }
 
   print_break("\n");
 
