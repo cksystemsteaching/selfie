@@ -961,12 +961,16 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* other_funct3_nid);
 uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
   uint64_t* other_funct3_nid);
 
+uint64_t* decode_compressed_funct3(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct3_nid, char* c_funct3_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct3_nid, char* c_funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
   uint64_t* other_c_funct3_nid);
 
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
@@ -1045,11 +1049,11 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* beq_nid, uint64_t* bne_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
   uint64_t* bltu_nid, uint64_t* bgeu_nid,
-  uint64_t* branch_nid, char* comment,
+  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
-  uint64_t* branch_nid, char* comment,
+  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
   uint64_t* no_c_funct3_nid, uint64_t* other_c_opcode_nid);
 
 uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
@@ -1058,6 +1062,8 @@ uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* jalr_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
+
+uint64_t* is_compressed_instruction(uint64_t* ir_nid);
 
 uint64_t* decode_instruction(uint64_t* ir_nid);
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid);
@@ -1377,7 +1383,7 @@ uint64_t* NID_F3_C_BNEZ = (uint64_t*) 0;
 
 // RVC instruction switches
 
-uint64_t RVC = 0; // RVC support
+uint64_t RVC = 1; // RVC support
 
 uint64_t* NID_C_BEQZ = (uint64_t*) 0;
 uint64_t* NID_C_BNEZ = (uint64_t*) 0;
@@ -3663,36 +3669,46 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
 
 uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
   uint64_t* other_funct3_nid) {
-  return new_ternary(OP_ITE, sid,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ,
-        get_instruction_funct3(ir_nid),
-        funct3_nid,
-        format_comment("funct3 == %s", (uint64_t) funct3_comment)),
+  return decode_funct3(sid, ir_nid,
+    funct3_nid, funct3_comment,
+    new_ternary(OP_ITE, sid,
       evaluate_nid,
-      "evaluate branch condition if funct3 matches"),
+      branch_nid,
+      continue_nid,
+      branch_comment),
+    "evaluate branch condition if funct3 matches",
+    other_funct3_nid);
+}
+
+uint64_t* decode_compressed_funct3(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct3_nid, char* c_funct3_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct3_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_funct3(c_ir_nid),
+      c_funct3_nid,
+      format_comment("compressed funct3 == %s", (uint64_t) c_funct3_comment)),
     execute_nid,
-    other_funct3_nid,
+    other_c_funct3_nid,
     execute_comment);
 }
 
 uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct3_nid, char* c_funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* execute_nid, char* execute_comment,
+  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
   uint64_t* other_c_funct3_nid) {
-  return new_ternary(OP_ITE, sid,
-    new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ,
-        get_compressed_instruction_funct3(c_ir_nid),
-        c_funct3_nid,
-        format_comment("compressed funct3 == %s", (uint64_t) c_funct3_comment)),
+  return decode_compressed_funct3(sid, c_ir_nid,
+    c_funct3_nid, c_funct3_comment,
+    new_ternary(OP_ITE, sid,
       evaluate_nid,
-      "evaluate branch condition if compressed funct3 matches"),
-    execute_nid,
-    other_c_funct3_nid,
-    execute_comment);
+      branch_nid,
+      continue_nid,
+      branch_comment),
+    "evaluate branch condition if compressed funct3 matches",
+    other_c_funct3_nid);
 }
 
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
@@ -4351,14 +4367,14 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* beq_nid, uint64_t* bne_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
   uint64_t* bltu_nid, uint64_t* bgeu_nid,
-  uint64_t* branch_nid, char* comment,
+  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
   if (RISCU)
     return decode_opcode(sid, ir_nid,
       NID_OP_BRANCH, "BRANCH?",
       decode_funct3_conditional(sid, ir_nid,
         NID_F3_BEQ, "BEQ?",
-        beq_nid, branch_nid, format_comment("beq %s", (uint64_t) comment),
+        beq_nid, branch_nid, continue_nid, format_comment("beq %s", (uint64_t) comment),
         no_funct3_nid),
       format_comment("branch %s", (uint64_t) comment),
       other_opcode_nid);
@@ -4367,22 +4383,22 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
     NID_OP_BRANCH, "BRANCH?",
     decode_funct3_conditional(sid, ir_nid,
       NID_F3_BEQ, "BEQ?",
-      beq_nid, branch_nid, format_comment("beq %s", (uint64_t) comment),
+      beq_nid, branch_nid, continue_nid, format_comment("beq %s", (uint64_t) comment),
       decode_funct3_conditional(sid, ir_nid,
         NID_F3_BNE, "BNE?",
-        bne_nid, branch_nid, format_comment("bne %s", (uint64_t) comment),
+        bne_nid, branch_nid, continue_nid, format_comment("bne %s", (uint64_t) comment),
         decode_funct3_conditional(sid, ir_nid,
           NID_F3_BLT, "BLT?",
-          blt_nid, branch_nid, format_comment("blt %s", (uint64_t) comment),
+          blt_nid, branch_nid, continue_nid, format_comment("blt %s", (uint64_t) comment),
           decode_funct3_conditional(sid, ir_nid,
             NID_F3_BGE, "BGE?",
-            bge_nid, branch_nid, format_comment("bge %s", (uint64_t) comment),
+            bge_nid, branch_nid, continue_nid, format_comment("bge %s", (uint64_t) comment),
             decode_funct3_conditional(sid, ir_nid,
               NID_F3_BLTU, "BLTU?",
-              bltu_nid, branch_nid, format_comment("bltu %s", (uint64_t) comment),
+              bltu_nid, branch_nid, continue_nid, format_comment("bltu %s", (uint64_t) comment),
               decode_funct3_conditional(sid, ir_nid,
                 NID_F3_BGEU, "BGEU?",
-                bgeu_nid, branch_nid, format_comment("bgeu %s", (uint64_t) comment),
+                bgeu_nid, branch_nid, continue_nid, format_comment("bgeu %s", (uint64_t) comment),
                 no_funct3_nid)))))),
     format_comment("branch %s", (uint64_t) comment),
     other_opcode_nid);
@@ -4390,17 +4406,17 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
 
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
-  uint64_t* branch_nid, char* comment,
+  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
   uint64_t* no_c_funct3_nid, uint64_t* other_c_opcode_nid) {
   if (RVC)
     return decode_compressed_opcode(sid, c_ir_nid,
       NID_OP_C1, "C1?",
       decode_compressed_funct3_conditional(sid, c_ir_nid,
         NID_F3_C_BEQZ, "C.BEQZ?",
-        c_beqz_nid, branch_nid, format_comment("c.beqz %s", (uint64_t) comment),
+        c_beqz_nid, branch_nid, continue_nid, format_comment("c.beqz %s", (uint64_t) comment),
         decode_compressed_funct3_conditional(sid, c_ir_nid,
           NID_F3_C_BNEZ, "C.BNEZ?",
-          c_bnez_nid, branch_nid, format_comment("c.bnez %s", (uint64_t) comment),
+          c_bnez_nid, branch_nid, continue_nid, format_comment("c.bnez %s", (uint64_t) comment),
           no_c_funct3_nid)),
       format_comment("compressed branch %s", (uint64_t) comment),
       other_c_opcode_nid);
@@ -4430,8 +4446,17 @@ uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
     other_opcode_nid);
 }
 
+uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
+  return new_binary_boolean(OP_NEQ,
+    get_compressed_instruction_opcode(ir_nid),
+    NID_OP_C3,
+    "is compressed instruction?");
+}
+
 uint64_t* decode_instruction(uint64_t* ir_nid) {
-  return new_ternary(OP_ITE, SID_BOOLEAN,
+  uint64_t* known_instructions_nid;
+
+  known_instructions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
     new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?"),
     NID_ECALL,
     decode_imm(SID_BOOLEAN, ir_nid,
@@ -4496,7 +4521,7 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
               NID_BEQ, NID_BNE,
               NID_BLT, NID_BGE,
               NID_BLTU, NID_BGEU,
-              NID_TRUE, "known?", NID_FALSE,
+              NID_TRUE, NID_FALSE, "known?", NID_FALSE,
               decode_jal(SID_BOOLEAN, ir_nid,
                 NID_JAL, "known?",
                 decode_jalr(SID_BOOLEAN, ir_nid,
@@ -4507,13 +4532,26 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
                       NID_AUIPC, "known?",
                       NID_FALSE))))))))),
     "ecall known?");
+
+  if (RVC)
+    return new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(ir_nid),
+      NID_TRUE,
+      known_instructions_nid,
+      "is uncompressed instruction?");
+  else
+    return known_instructions_nid;
 }
 
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
-  return decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
-    NID_C_BEQZ, NID_C_BNEZ,
-    NID_TRUE, "known?", NID_FALSE,
-    NID_FALSE);
+  return new_ternary(OP_ITE, SID_BOOLEAN,
+    is_compressed_instruction(c_ir_nid),
+    decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
+      NID_C_BEQZ, NID_C_BNEZ,
+      NID_TRUE, NID_FALSE, "known?", NID_FALSE,
+      NID_FALSE),
+    NID_TRUE,
+    "compressed instruction known?");
 }
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
@@ -4986,8 +5024,10 @@ uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* othe
     new_binary_boolean(OP_SGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value?"),
     new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?"),
     new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)?"),
-    get_pc_value_plus_SB_immediate(pc_nid, ir_nid), "pc-relative control flow",
+    get_pc_value_plus_SB_immediate(pc_nid, ir_nid),
     get_pc_value_plus_4(pc_nid),
+    "pc-relative control flow",
+    pc_nid,
     other_control_flow_nid);
 }
 
@@ -5027,10 +5067,7 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_n
 
   if (RVC)
     return new_ternary(OP_ITE, SID_MACHINE_WORD,
-      new_binary_boolean(OP_NEQ,
-        get_compressed_instruction_opcode(c_ir_nid),
-        NID_OP_C3,
-        "is compressed instruction opcode?"),
+      is_compressed_instruction(c_ir_nid),
       get_pc_value_plus_2(pc_nid),
       control_flow_nid,
       "compressed and uncompressed instruction control flow");
