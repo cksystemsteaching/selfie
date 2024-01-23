@@ -489,6 +489,8 @@ void print_register_file_state();
 
 uint64_t* SID_REGISTER_ADDRESS = (uint64_t*) 0;
 
+uint64_t* SID_COMPRESSED_REGISTER_ADDRESS = (uint64_t*) 0;
+
 uint64_t* NID_ZR  = (uint64_t*) 0;
 uint64_t* NID_RA  = (uint64_t*) 0;
 uint64_t* NID_SP  = (uint64_t*) 0;
@@ -537,6 +539,8 @@ uint64_t* next_register_file_nid  = (uint64_t*) 0;
 
 void init_register_file_sorts() {
   SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
+
+  SID_COMPRESSED_REGISTER_ADDRESS = new_bitvec(3, "3-bit compressed register address");
 
   NID_ZR  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_ZR, 5, (char*) *(REGISTERS + REG_ZR));
   NID_RA  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_RA, 5, (char*) *(REGISTERS + REG_RA));
@@ -1111,10 +1115,11 @@ uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* no_c_funct3_nid, uint64_t* other_c_opcode_nid);
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid);
-
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid);
 
+uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
+uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1752,12 +1757,12 @@ void init_instruction_sorts() {
   SID_9_BIT_OFFSET = new_bitvec(9, "9-bit offset sort");
 
   NID_1_BIT_OFFSET_0 = NID_FALSE;
-  NID_2_BIT_OFFSET_1 = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, 2, "register s0 offset");
+  NID_2_BIT_OFFSET_1 = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, 2, "01000 s0 offset");
 
   // RVC instruction switches
 
-  NID_C_BEQZ = NID_FALSE;
-  NID_C_BNEZ = NID_FALSE;
+  NID_C_BEQZ = NID_TRUE;
+  NID_C_BNEZ = NID_TRUE;
 }
 
 // -----------------------------------------------------------------
@@ -5005,7 +5010,8 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_n
   if (RVC)
     return new_ternary(OP_ITE, SID_MACHINE_WORD,
       is_compressed_instruction(c_ir_nid),
-      get_pc_value_plus_2(pc_nid),
+      compressed_branch_control_flow(pc_nid, c_ir_nid,
+        get_pc_value_plus_2(pc_nid)),
       control_flow_nid,
       "compressed and uncompressed instruction control flow");
   else
@@ -5021,14 +5027,14 @@ uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid) {
 uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid) {
   return new_slice(SID_FUNCT3, c_ir_nid, 15, 13, "get compressed funct3");
 }
-/*
+
 uint64_t* get_compressed_instruction_rs1_shift(uint64_t* c_ir_nid) {
   return new_binary(OP_CONCAT, SID_REGISTER_ADDRESS,
-    NID_C_REGISTER_OFFSET,
-    new_slice(SID_C_REGISTER_ADDRESS, c_ir_nid, 9, 7, "get rs1'"),
-    "");
+    NID_2_BIT_OFFSET_1,
+    new_slice(SID_COMPRESSED_REGISTER_ADDRESS, c_ir_nid, 9, 7, "get rs1'"),
+    "01000 s0 offset + 3-bit compressed register address");
 }
-*/
+
 uint64_t* sign_extend_CB_offset(uint64_t* offset_nid) {
   return new_ext(OP_SEXT, SID_MACHINE_WORD, offset_nid, WORDSIZEINBITS - 9, "sign-extend");
 }
@@ -5124,14 +5130,26 @@ uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
 }
 
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
-  return new_ternary(OP_ITE, SID_BOOLEAN,
-    is_compressed_instruction(c_ir_nid),
-    decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
-      NID_C_BEQZ, NID_C_BNEZ,
-      NID_TRUE, NID_FALSE, "known?", NID_FALSE,
-      NID_FALSE),
-    NID_TRUE,
-    "compressed instruction known?");
+  if (RVC)
+    return new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
+        NID_C_BEQZ, NID_C_BNEZ,
+        NID_TRUE, NID_FALSE, "known?", NID_FALSE,
+        NID_FALSE),
+      NID_TRUE,
+      "compressed instruction known?");
+  else
+    return new_unary_boolean(OP_NOT,
+      is_compressed_instruction(c_ir_nid),
+      "is uncompressed instruction?");
+}
+
+uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    get_compressed_instruction_CB_offset(c_ir_nid),
+    "pc value + CB-offset");
 }
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
@@ -5139,6 +5157,21 @@ uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
     pc_nid,
     NID_MACHINE_WORD_2,
     "pc value + 2");
+}
+
+uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
+  uint64_t* rs1_value_nid;
+
+  rs1_value_nid = load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value");
+
+  return decode_compressed_branch(SID_MACHINE_WORD, c_ir_nid,
+    new_binary_boolean(OP_EQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?"),
+    new_binary_boolean(OP_NEQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?"),
+    get_pc_value_plus_CB_offset(pc_nid, c_ir_nid),
+    get_pc_value_plus_2(pc_nid),
+    "pc-relative control flow",
+    pc_nid,
+    other_control_flow_nid);
 }
 
 // -----------------------------------------------------------------
@@ -5824,11 +5857,9 @@ void output_model() {
 
   print_line(is_instruction_known_nid);
 
-  if (RVC) {
-    print_break("\n");
+  print_break("\n");
 
-    print_line(is_compressed_instruction_known_nid);
-  }
+  print_line(is_compressed_instruction_known_nid);
 
   print_break("\n");
 
