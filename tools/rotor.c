@@ -1084,7 +1084,7 @@ uint64_t* jal_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_c
 
 uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_control_flow_nid);
 
-uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_nid);
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
 // compressed instructions
 
@@ -1120,7 +1120,7 @@ uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* other_c_funct3_nid);
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid);
-uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid);
+uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_known_instructions_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
@@ -1129,7 +1129,7 @@ uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, u
 uint64_t* get_pc_value_plus_CJ_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* compressed_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
-uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid);
+uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1452,7 +1452,10 @@ uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
 void init_instruction_sorts() {
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
-  NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
+  if (RVC)
+    NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_1;
+  else
+    NID_INSTRUCTION_WORD_SIZE_MASK = NID_MACHINE_WORD_3;
 
   SID_OPCODE = new_bitvec(7, "opcode sort");
 
@@ -1866,17 +1869,16 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* is_instruction_known_nid            = (uint64_t*) 0;
-uint64_t* is_compressed_instruction_known_nid = (uint64_t*) 0;
-uint64_t* illegal_instruction_nid             = (uint64_t*) 0;
-uint64_t* next_fetch_unaligned_nid            = (uint64_t*) 0;
-uint64_t* next_fetch_seg_faulting_nid         = (uint64_t*) 0;
-uint64_t* load_seg_faulting_nid               = (uint64_t*) 0;
-uint64_t* store_seg_faulting_nid              = (uint64_t*) 0;
-uint64_t* stack_seg_faulting_nid              = (uint64_t*) 0;
-uint64_t* division_by_zero_nid                = (uint64_t*) 0;
-uint64_t* signed_division_overflow_nid        = (uint64_t*) 0;
-uint64_t* exclude_a0_from_rd_nid              = (uint64_t*) 0;
+uint64_t* is_instruction_known_nid     = (uint64_t*) 0;
+uint64_t* illegal_instruction_nid      = (uint64_t*) 0;
+uint64_t* next_fetch_unaligned_nid     = (uint64_t*) 0;
+uint64_t* next_fetch_seg_faulting_nid  = (uint64_t*) 0;
+uint64_t* load_seg_faulting_nid        = (uint64_t*) 0;
+uint64_t* store_seg_faulting_nid       = (uint64_t*) 0;
+uint64_t* stack_seg_faulting_nid       = (uint64_t*) 0;
+uint64_t* division_by_zero_nid         = (uint64_t*) 0;
+uint64_t* signed_division_overflow_nid = (uint64_t*) 0;
+uint64_t* exclude_a0_from_rd_nid       = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
@@ -4464,9 +4466,7 @@ uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_instruction(uint64_t* ir_nid) {
-  uint64_t* known_instructions_nid;
-
-  known_instructions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
+  return new_ternary(OP_ITE, SID_BOOLEAN,
     new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?"),
     NID_ECALL,
     decode_imm(SID_BOOLEAN, ir_nid,
@@ -4542,15 +4542,6 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
                       NID_AUIPC, "known?",
                       NID_FALSE))))))))),
     "ecall known?");
-
-  if (RVC)
-    return new_ternary(OP_ITE, SID_BOOLEAN,
-      is_compressed_instruction(ir_nid),
-      NID_TRUE,
-      known_instructions_nid,
-      "is uncompressed instruction?");
-  else
-    return known_instructions_nid;
 }
 
 uint64_t* get_rs1_value_plus_I_immediate(uint64_t* ir_nid) {
@@ -5048,23 +5039,12 @@ uint64_t* jalr_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* other_
     other_control_flow_nid);
 }
 
-uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* c_ir_nid) {
-  uint64_t* control_flow_nid;
-
-  control_flow_nid =
+uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid) {
+  return
     branch_control_flow(pc_nid, ir_nid,
       jal_control_flow(pc_nid, ir_nid,
         jalr_control_flow(pc_nid, ir_nid,
           get_pc_value_plus_4(pc_nid))));
-
-  if (RVC)
-    return new_ternary(OP_ITE, SID_MACHINE_WORD,
-      is_compressed_instruction(c_ir_nid),
-      core_compressed_control_flow(pc_nid, c_ir_nid),
-      control_flow_nid,
-      "compressed and uncompressed instruction control flow");
-  else
-    return control_flow_nid;
 }
 
 // compressed instructions
@@ -5219,7 +5199,7 @@ uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
     "is compressed instruction?");
 }
 
-uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
+uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_known_instructions_nid) {
   if (RVC)
     return new_ternary(OP_ITE, SID_BOOLEAN,
       is_compressed_instruction(c_ir_nid),
@@ -5233,12 +5213,10 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
             NID_FALSE)),
         "C1 instruction known?",
         NID_FALSE),
-      NID_TRUE,
-      "compressed instruction known?");
+      other_known_instructions_nid,
+      "instruction known?");
   else
-    return new_unary_boolean(OP_NOT,
-      is_compressed_instruction(c_ir_nid),
-      "is uncompressed instruction?");
+    return other_known_instructions_nid;
 }
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
@@ -5284,14 +5262,21 @@ uint64_t* compressed_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint
     other_control_flow_nid);
 }
 
-uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid) {
-  return decode_compressed_opcode(SID_MACHINE_WORD, c_ir_nid,
-    NID_OP_C1, "C1?",
-    compressed_branch_control_flow(pc_nid, c_ir_nid,
-      compressed_jal_control_flow(pc_nid, c_ir_nid,
-        get_pc_value_plus_2(pc_nid))),
-    "compressed instruction control flow",
-    get_pc_value_plus_2(pc_nid));
+uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
+  if (RVC)
+    return new_ternary(OP_ITE, SID_MACHINE_WORD,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_opcode(SID_MACHINE_WORD, c_ir_nid,
+        NID_OP_C1, "C1?",
+        compressed_branch_control_flow(pc_nid, c_ir_nid,
+          compressed_jal_control_flow(pc_nid, c_ir_nid,
+            get_pc_value_plus_2(pc_nid))),
+        "compressed instruction control flow",
+        get_pc_value_plus_2(pc_nid)),
+      other_control_flow_nid,
+      "compressed instruction and other control flow");
+  else
+    return other_control_flow_nid;
 }
 
 // -----------------------------------------------------------------
@@ -5730,7 +5715,6 @@ void rotor() {
   uint64_t* c_ir_nid;
 
   uint64_t* known_instructions_nid;
-  uint64_t* known_compressed_instructions_nid;
 
   new_segmentation();
 
@@ -5756,11 +5740,15 @@ void rotor() {
 
   // decode compressed
 
-  known_compressed_instructions_nid = decode_compressed_instruction(c_ir_nid);
+  known_instructions_nid = decode_compressed_instruction(c_ir_nid, known_instructions_nid);
 
   // non-kernel control flow
 
-  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid, c_ir_nid);
+  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid);
+
+  // non-kernel compressed control flow
+
+  eval_core_non_kernel_pc_nid = core_compressed_control_flow(state_core_pc_nid, c_ir_nid, eval_core_non_kernel_pc_nid);
 
   // non-kernel register data flow
 
@@ -5810,12 +5798,6 @@ void rotor() {
     "known-instructions",
     "known instructions");
 
-  is_compressed_instruction_known_nid = state_property(
-    known_compressed_instructions_nid,
-    UNUSED,
-    "known-compressed-instructions",
-    "known compressed instructions");
-
   next_fetch_unaligned_nid = state_property(
     new_binary_boolean(OP_EQ,
       new_binary(OP_AND, SID_MACHINE_WORD,
@@ -5847,10 +5829,7 @@ void rotor() {
     "store segmentation fault");
 
   stack_seg_faulting_nid = state_property(
-    new_binary_boolean(OP_OR,
-      new_binary_boolean(OP_NEQ, get_instruction_rd(ir_nid), NID_SP, "rd != sp?"),
-      is_address_in_stack_segment(eval_core_rd_value_nid),
-      "rd != sp or new sp value is in stack segment"),
+    is_address_in_stack_segment(load_register_value(NID_SP, "sp value")),
     UNUSED,
     "stack-seg-fault",
     "stack segmentation fault");
@@ -5976,10 +5955,6 @@ void output_model() {
   print_break("\n");
 
   print_line(is_instruction_known_nid);
-
-  print_break("\n");
-
-  print_line(is_compressed_instruction_known_nid);
 
   print_break("\n");
 
