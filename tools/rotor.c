@@ -1472,13 +1472,16 @@ uint64_t* NID_C_JALR = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t* eval_known_instructions_nid     = (uint64_t*) 0;
+uint64_t* eval_all_known_instructions_nid = (uint64_t*) 0;
+
 uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
 
-uint64_t* eval_core_rd_value_nid = (uint64_t*) 0;
+uint64_t* eval_core_instruction_register_data_flow_nid            = (uint64_t*) 0;
+uint64_t* eval_core_compressed_instruction_register_data_flow_nid = (uint64_t*) 0;
 
-uint64_t* eval_core_non_kernel_register_data_flow_nid = (uint64_t*) 0;
-uint64_t* eval_core_non_kernel_memory_data_flow_nid   = (uint64_t*) 0;
+uint64_t* eval_core_instruction_memory_data_flow_nid   = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1871,15 +1874,19 @@ void new_core_state();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t* eval_core_ir_nid   = (uint64_t*) 0;
+uint64_t* eval_core_c_ir_nid = (uint64_t*) 0;
+
 uint64_t* initial_core_pc_nid = (uint64_t*) 0;
 
 uint64_t* state_core_pc_nid = (uint64_t*) 0;
 uint64_t* init_core_pc_nid  = (uint64_t*) 0;
 
+uint64_t* eval_core_instruction_pc_nid            = (uint64_t*) 0;
+uint64_t* eval_core_compressed_instruction_pc_nid = (uint64_t*) 0;
+
 uint64_t* eval_core_pc_nid = (uint64_t*) 0;
 uint64_t* next_core_pc_nid = (uint64_t*) 0;
-
-uint64_t* eval_core_non_kernel_pc_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2272,13 +2279,13 @@ void print_line(uint64_t* line) {
 }
 
 void print_break(char* comment) {
-  uint64_t order_of_magnitude;
+  uint64_t remainder;
 
   w = w + dprintf(output_fd, comment);
 
-  order_of_magnitude = ten_to_the_power_of(log_ten(current_nid));
+  remainder = current_nid % ten_to_the_power_of(log_ten(current_nid));
 
-  current_nid = current_nid - current_nid % order_of_magnitude + order_of_magnitude;
+  current_nid = current_nid - remainder + ten_to_the_power_of(log_ten(remainder) + 1);
 }
 
 void print_aligned_break(char* comment, uint64_t alignment) {
@@ -4970,7 +4977,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
       "STORE or BRANCH"), // redundant
     "rd == zero register or STORE or BRANCH");
 
-  eval_core_rd_value_nid =
+  rd_value_nid =
     imm_data_flow(ir_nid,
       op_data_flow(ir_nid,
         load_data_flow(ir_nid, memory_nid,
@@ -4982,7 +4989,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
     register_file_nid,
-    store_register_value(rd_nid, eval_core_rd_value_nid, register_file_nid, "rd update"),
+    store_register_value(rd_nid, rd_value_nid, register_file_nid, "rd update"),
     "update non-zero register");
 }
 
@@ -5662,7 +5669,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         "increment bytes already read if read system call is active"),
       "bytes already read in active read system call");
 
-  // kernel and non-kernel control flow
+  // kernel and instruction control flow
 
   eval_core_pc_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
@@ -5676,7 +5683,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         "ongoing exit or read system call"),
       "active system call"),
     pc_nid,
-    eval_core_non_kernel_pc_nid,
+    eval_core_compressed_instruction_pc_nid,
     "update program counter unless in kernel mode");
 
   // kernel register data flow
@@ -5702,7 +5709,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     NID_MACHINE_WORD_0,
     "return 0 if a2 == 0");
 
-  // kernel and non-kernel register data flow
+  // kernel and instruction register data flow
 
   eval_core_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
     active_ecall_nid,
@@ -5744,14 +5751,14 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
           "read system call register data flow"),
         "openat system call register data flow"),
       "brk system call register data flow"),
-    eval_core_non_kernel_register_data_flow_nid,
+    eval_core_compressed_instruction_register_data_flow_nid,
     "register data flow");
 
   // system call ABI data flow
 
   a1_value_nid = load_register_value(NID_A1, "a1 value");
 
-  // kernel and non-kernel memory data flow
+  // kernel and instruction memory data flow
 
   eval_core_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     new_binary_boolean(OP_AND,
@@ -5764,7 +5771,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       "a1 + number of already read_bytes"),
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
       memory_nid),
-    eval_core_non_kernel_memory_data_flow_nid,
+    eval_core_instruction_memory_data_flow_nid,
     "main memory data flow");
 
   // kernel properties
@@ -5871,11 +5878,6 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 }
 
 void rotor() {
-  uint64_t* ir_nid;
-  uint64_t* c_ir_nid;
-
-  uint64_t* known_instructions_nid;
-
   new_segmentation();
 
   new_core_state();
@@ -5886,52 +5888,52 @@ void rotor() {
 
   new_kernel_state(1);
 
-  // fetch
+  // fetch instruction
 
-  ir_nid = fetch_instruction(state_core_pc_nid);
+  eval_core_ir_nid = fetch_instruction(state_core_pc_nid);
 
-  // fetch compressed
+  // fetch compressed instruction
 
-  c_ir_nid = fetch_compressed_instruction(state_core_pc_nid);
+  eval_core_c_ir_nid = fetch_compressed_instruction(state_core_pc_nid);
 
-  // decode
+  // decode instruction
 
-  known_instructions_nid = decode_instruction(ir_nid);
+  eval_known_instructions_nid = decode_instruction(eval_core_ir_nid);
 
-  // decode compressed
+  // decode compressed instruction
 
-  known_instructions_nid = decode_compressed_instruction(c_ir_nid, known_instructions_nid);
+  eval_all_known_instructions_nid = decode_compressed_instruction(eval_core_c_ir_nid, eval_known_instructions_nid);
 
-  // non-kernel control flow
+  // instruction control flow
 
-  eval_core_non_kernel_pc_nid = core_control_flow(state_core_pc_nid, ir_nid);
+  eval_core_instruction_pc_nid = core_control_flow(state_core_pc_nid, eval_core_ir_nid);
 
-  // non-kernel compressed control flow
+  // compressed instruction control flow
 
-  eval_core_non_kernel_pc_nid =
-    core_compressed_control_flow(state_core_pc_nid, c_ir_nid,
-      eval_core_non_kernel_pc_nid);
+  eval_core_compressed_instruction_pc_nid =
+    core_compressed_control_flow(state_core_pc_nid, eval_core_c_ir_nid,
+      eval_core_instruction_pc_nid);
 
-  // non-kernel register data flow
+  // instruction register data flow
 
-  eval_core_non_kernel_register_data_flow_nid =
-    core_register_data_flow(state_core_pc_nid, ir_nid,
+  eval_core_instruction_register_data_flow_nid =
+    core_register_data_flow(state_core_pc_nid, eval_core_ir_nid,
       state_register_file_nid, state_main_memory_nid);
 
-  // non-kernel compressed register data flow
+  // compressed instruction register data flow
 
-  eval_core_non_kernel_register_data_flow_nid =
-    core_compressed_register_data_flow(state_core_pc_nid, c_ir_nid,
-      eval_core_non_kernel_register_data_flow_nid, state_main_memory_nid);
+  eval_core_compressed_instruction_register_data_flow_nid =
+    core_compressed_register_data_flow(state_core_pc_nid, eval_core_c_ir_nid,
+      eval_core_instruction_register_data_flow_nid, state_main_memory_nid);
 
-  // non-kernel memory data flow
+  // instruction memory data flow
 
-  eval_core_non_kernel_memory_data_flow_nid =
-    core_memory_data_flow(ir_nid, state_main_memory_nid);
+  eval_core_instruction_memory_data_flow_nid =
+    core_memory_data_flow(eval_core_ir_nid, state_main_memory_nid);
 
   // kernel
 
-  kernel(state_core_pc_nid, ir_nid, state_main_memory_nid);
+  kernel(state_core_pc_nid, eval_core_ir_nid, state_main_memory_nid);
 
   // update control flow
 
@@ -5958,12 +5960,12 @@ void rotor() {
 
   illegal_instruction_nid = state_property(
     UNUSED,
-    decode_illegal_shift_imm(ir_nid),
+    decode_illegal_shift_imm(eval_core_ir_nid),
     "illegal-instruction",
     "illegal instruction");
 
   is_instruction_known_nid = state_property(
-    known_instructions_nid,
+    eval_all_known_instructions_nid,
     UNUSED,
     "known-instructions",
     "known instructions");
@@ -5987,13 +5989,13 @@ void rotor() {
     "imminent fetch segmentation fault");
 
   load_seg_faulting_nid = state_property(
-    load_no_seg_faults(ir_nid),
+    load_no_seg_faults(eval_core_ir_nid),
     UNUSED,
     "load-seg-fault",
     "load segmentation fault");
 
   store_seg_faulting_nid = state_property(
-    store_no_seg_faults(ir_nid),
+    store_no_seg_faults(eval_core_ir_nid),
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
@@ -6006,19 +6008,19 @@ void rotor() {
 
   division_by_zero_nid = state_property(
     UNUSED,
-    decode_division_remainder_by_zero(ir_nid),
+    decode_division_remainder_by_zero(eval_core_ir_nid),
     "division-by-zero",
     "division by zero");
 
   signed_division_overflow_nid = state_property(
     UNUSED,
-    decode_signed_division_remainder_overflow(ir_nid),
+    decode_signed_division_remainder_overflow(eval_core_ir_nid),
     "signed-division-overflow",
     "signed division overflow");
 
   exclude_a0_from_rd_nid = state_property(
     new_binary_boolean(OP_NEQ,
-      get_instruction_rd(ir_nid),
+      get_instruction_rd(eval_core_ir_nid),
       NID_A0,
       "rd != a0"),
     UNUSED,
@@ -6066,9 +6068,35 @@ void output_model() {
 
   print_line(init_read_bytes_nid);
 
-  print_break("\n; non-kernel control flow\n\n");
+  print_break("\n; fetch instruction\n\n");
 
-  print_line(eval_core_non_kernel_pc_nid);
+  print_line(eval_core_ir_nid);
+
+  if (RVC) {
+    print_break("\n; fetch compressed instruction\n\n");
+
+    print_line(eval_core_c_ir_nid);
+  }
+
+  print_break("\n; decode instruction\n\n");
+
+  print_line(eval_known_instructions_nid);
+
+  if (RVC) {
+    print_break("\n; decode compressed instruction\n\n");
+
+    print_line(eval_all_known_instructions_nid);
+  }
+
+  print_break("\n; instruction control flow\n\n");
+
+  print_line(eval_core_instruction_pc_nid);
+
+  if (RVC) {
+    print_break("\n; compressed instruction control flow\n\n");
+
+    print_line(eval_core_compressed_instruction_pc_nid);
+  }
 
   print_break("\n; update kernel state\n\n");
 
@@ -6086,7 +6114,7 @@ void output_model() {
 
   print_line(next_read_bytes_nid);
 
-  print_break("\n; kernel and non-kernel control flow\n\n");
+  print_break("\n; kernel and instruction control flow\n\n");
 
   print_line(eval_core_pc_nid);
 
@@ -6094,11 +6122,17 @@ void output_model() {
 
   print_line(next_core_pc_nid);
 
-  print_break("\n; non-kernel register data flow\n\n");
+  print_break("\n; instruction register data flow\n\n");
 
-  print_line(eval_core_non_kernel_register_data_flow_nid);
+  print_line(eval_core_instruction_register_data_flow_nid);
 
-  print_break("\n; kernel and non-kernel register data flow\n\n");
+  if (RVC) {
+    print_break("\n; compressed instruction register data flow\n\n");
+
+    print_line(eval_core_compressed_instruction_register_data_flow_nid);
+  }
+
+  print_break("\n; kernel and instruction register data flow\n\n");
 
   print_line(eval_core_register_data_flow_nid);
 
@@ -6106,11 +6140,11 @@ void output_model() {
 
   print_line(next_register_file_nid);
 
-  print_break("\n; non-kernel memory data flow\n\n");
+  print_break("\n; instruction memory data flow\n\n");
 
-  print_line(eval_core_non_kernel_memory_data_flow_nid);
+  print_line(eval_core_instruction_memory_data_flow_nid);
 
-  print_break("\n; kernel and non-kernel memory data flow\n\n");
+  print_break("\n; kernel and instruction memory data flow\n\n");
 
   print_line(eval_core_memory_data_flow_nid);
 
