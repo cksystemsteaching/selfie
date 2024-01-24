@@ -1115,19 +1115,26 @@ uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
   uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
   uint64_t* other_c_funct3_nid);
+uint64_t* decode_compressed_j(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_j_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_j_nid, uint64_t* c_jal_nid, char* comment,
-  uint64_t* other_c_funct3_nid);
+  uint64_t* c_jal_nid, char* comment, uint64_t* other_c_funct3_nid);
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid);
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_known_instructions_nid);
 
-uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
+uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jal_nid, char* comment, uint64_t* other_register_data_flow_nid);
+
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
+uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
+  uint64_t* register_file_nid, uint64_t* memory_nid);
+
+uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* get_pc_value_plus_CJ_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
-uint64_t* compressed_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
+uint64_t* compressed_j_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
@@ -4937,7 +4944,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
     no_register_data_flow_nid,
     register_file_nid,
-    store_register_value(rd_nid, eval_core_rd_value_nid, register_file_nid, "write rd"),
+    store_register_value(rd_nid, eval_core_rd_value_nid, register_file_nid, "rd update"),
     "update non-zero register");
 }
 
@@ -5177,19 +5184,23 @@ uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
       other_c_funct3_nid));
 }
 
-uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_j_nid, uint64_t* c_jal_nid, char* comment,
-  uint64_t* other_c_funct3_nid) {
-  if (IS64BITTARGET == 0)
-    other_c_funct3_nid = decode_compressed_funct3(sid, c_ir_nid,
-      NID_F3_C_JAL, "C.JAL?",
-      c_jal_nid, format_comment("c.jal %s", (uint64_t) comment),
-      other_c_funct3_nid);
-
+uint64_t* decode_compressed_j(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_j_nid, char* comment, uint64_t* other_c_funct3_nid) {
   return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_J, "C.J?",
     c_j_nid, format_comment("c.j %s", (uint64_t) comment),
     other_c_funct3_nid);
+}
+
+uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jal_nid, char* comment, uint64_t* other_c_funct3_nid) {
+  if (IS64BITTARGET)
+    return other_c_funct3_nid;
+  else
+    return decode_compressed_funct3(sid, c_ir_nid,
+      NID_F3_C_JAL, "C.JAL?",
+      c_jal_nid, format_comment("c.jal %s", (uint64_t) comment),
+      other_c_funct3_nid);
 }
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
@@ -5208,9 +5219,11 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
         decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
           NID_C_BEQZ, NID_C_BNEZ,
           NID_TRUE, NID_FALSE, "known?",
-          decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
-            NID_C_J, NID_C_JAL, "known?",
-            NID_FALSE)),
+          decode_compressed_j(SID_BOOLEAN, c_ir_nid,
+            NID_C_J, "known?",
+            decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
+              NID_C_JAL, "known?",
+              NID_FALSE))),
         "C1 instruction known?",
         NID_FALSE),
       other_known_instructions_nid,
@@ -5219,11 +5232,13 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
     return other_known_instructions_nid;
 }
 
-uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
-  return new_binary(OP_ADD, SID_MACHINE_WORD,
-    pc_nid,
-    get_compressed_instruction_CB_offset(c_ir_nid),
-    "pc value + CB-offset");
+uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jal_nid, char* comment, uint64_t* other_register_data_flow_nid) {
+  return decode_compressed_opcode(sid, c_ir_nid,
+    NID_OP_C1, "C1?",
+    decode_compressed_jal(sid, c_ir_nid, c_jal_nid, comment, other_register_data_flow_nid),
+    "compressed instruction register data flow",
+    other_register_data_flow_nid);
 }
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
@@ -5231,6 +5246,39 @@ uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
     pc_nid,
     NID_MACHINE_WORD_2,
     "pc value + 2");
+}
+
+uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
+  uint64_t* register_file_nid, uint64_t* memory_nid) {
+  uint64_t* rd_nid;
+  uint64_t* rd_value_nid;
+
+  rd_nid = decode_compressed_register_data_flow(SID_REGISTER_ADDRESS, c_ir_nid,
+    NID_RA,
+    "register destination",
+    NID_ZR);
+
+  rd_value_nid = decode_compressed_register_data_flow(SID_MACHINE_WORD, c_ir_nid,
+    get_pc_value_plus_2(pc_nid),
+    "register data flow",
+    load_register_value(rd_nid, "current rd value"));
+
+  if (RVC)
+    return new_ternary(OP_ITE, SID_REGISTER_STATE,
+      is_compressed_instruction(c_ir_nid),
+      store_register_value(rd_nid, rd_value_nid,
+        register_file_nid, "compressed instruction rd update"),
+      register_file_nid,
+      "compressed instruction and other register data flow");
+  else
+    return register_file_nid;
+}
+
+uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    pc_nid,
+    get_compressed_instruction_CB_offset(c_ir_nid),
+    "pc value + CB-offset");
 }
 
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
@@ -5254,12 +5302,14 @@ uint64_t* get_pc_value_plus_CJ_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
     "pc value + CJ-offset");
 }
 
-uint64_t* compressed_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
-  return decode_compressed_jal(SID_MACHINE_WORD, c_ir_nid,
+uint64_t* compressed_j_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
+  return decode_compressed_j(SID_MACHINE_WORD, c_ir_nid,
     get_pc_value_plus_CJ_offset(pc_nid, c_ir_nid),
-    get_pc_value_plus_CJ_offset(pc_nid, c_ir_nid),
-    "pc-relative compressed jal control flow",
-    other_control_flow_nid);
+    "pc-relative compressed jump control flow",
+    decode_compressed_jal(SID_MACHINE_WORD, c_ir_nid,
+      get_pc_value_plus_CJ_offset(pc_nid, c_ir_nid),
+      "pc-relative compressed jump control flow",
+      other_control_flow_nid));
 }
 
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
@@ -5269,7 +5319,7 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
       decode_compressed_opcode(SID_MACHINE_WORD, c_ir_nid,
         NID_OP_C1, "C1?",
         compressed_branch_control_flow(pc_nid, c_ir_nid,
-          compressed_jal_control_flow(pc_nid, c_ir_nid,
+          compressed_j_jal_control_flow(pc_nid, c_ir_nid,
             get_pc_value_plus_2(pc_nid))),
         "compressed instruction control flow",
         get_pc_value_plus_2(pc_nid)),
@@ -5748,16 +5798,26 @@ void rotor() {
 
   // non-kernel compressed control flow
 
-  eval_core_non_kernel_pc_nid = core_compressed_control_flow(state_core_pc_nid, c_ir_nid, eval_core_non_kernel_pc_nid);
+  eval_core_non_kernel_pc_nid =
+    core_compressed_control_flow(state_core_pc_nid, c_ir_nid,
+      eval_core_non_kernel_pc_nid);
 
   // non-kernel register data flow
 
   eval_core_non_kernel_register_data_flow_nid =
-    core_register_data_flow(state_core_pc_nid, ir_nid, state_register_file_nid, state_main_memory_nid);
+    core_register_data_flow(state_core_pc_nid, ir_nid,
+      state_register_file_nid, state_main_memory_nid);
+
+  // non-kernel compressed register data flow
+
+  eval_core_non_kernel_register_data_flow_nid =
+    core_compressed_register_data_flow(state_core_pc_nid, c_ir_nid,
+      eval_core_non_kernel_register_data_flow_nid, state_main_memory_nid);
 
   // non-kernel memory data flow
 
-  eval_core_non_kernel_memory_data_flow_nid = core_memory_data_flow(ir_nid, state_main_memory_nid);
+  eval_core_non_kernel_memory_data_flow_nid =
+    core_memory_data_flow(ir_nid, state_main_memory_nid);
 
   // kernel
 
