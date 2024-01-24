@@ -1090,6 +1090,7 @@ uint64_t* core_control_flow(uint64_t* pc_nid, uint64_t* ir_nid);
 
 uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid);
 
 uint64_t* get_compressed_instruction_rs1_shift(uint64_t* c_ir_nid);
 
@@ -1110,6 +1111,10 @@ uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid
   uint64_t* c_funct3_nid, char* c_funct3_comment,
   uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
   uint64_t* other_c_funct3_nid);
+uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct4_nid, char* c_funct4_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct4_nid);
 
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
@@ -1119,12 +1124,17 @@ uint64_t* decode_compressed_j(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_j_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jal_nid, char* comment, uint64_t* other_c_funct3_nid);
+uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jr_nid, char* comment, uint64_t* other_c_funct4_nid);
+uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid);
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid);
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_known_instructions_nid);
 
 uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_jal_nid, char* comment, uint64_t* other_register_data_flow_nid);
+  uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
+  uint64_t* other_register_data_flow_nid);
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
@@ -1135,6 +1145,9 @@ uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, u
 
 uint64_t* get_pc_value_plus_CJ_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* compressed_j_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
+
+uint64_t* get_rs1_value_CR_format(uint64_t* c_ir_nid);
+uint64_t* compressed_jr_jalr_control_flow(uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
 
@@ -1401,7 +1414,9 @@ uint64_t* NID_REMUW = (uint64_t*) 0;
 
 uint64_t* SID_OPCODE_C = (uint64_t*) 0;
 
+uint64_t* NID_OP_C0 = (uint64_t*) 0;
 uint64_t* NID_OP_C1 = (uint64_t*) 0;
+uint64_t* NID_OP_C2 = (uint64_t*) 0;
 uint64_t* NID_OP_C3 = (uint64_t*) 0;
 
 uint64_t F3_C_BEQZ = 6; // 110
@@ -1415,6 +1430,14 @@ uint64_t F3_C_JAL = 1; // 001
 
 uint64_t* NID_F3_C_J   = (uint64_t*) 0;
 uint64_t* NID_F3_C_JAL = (uint64_t*) 0;
+
+uint64_t* SID_FUNCT4 = (uint64_t*) 0;
+
+uint64_t F4_C_JR   = 8; // 1000
+uint64_t F4_C_JALR = 9; // 1001
+
+uint64_t* NID_F4_C_JR   = (uint64_t*) 0;
+uint64_t* NID_F4_C_JALR = (uint64_t*) 0;
 
 // offset sorts
 
@@ -1443,6 +1466,9 @@ uint64_t* NID_C_BNEZ = (uint64_t*) 0;
 
 uint64_t* NID_C_J   = (uint64_t*) 0;
 uint64_t* NID_C_JAL = (uint64_t*) 0;
+
+uint64_t* NID_C_JR   = (uint64_t*) 0;
+uint64_t* NID_C_JALR = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1774,7 +1800,9 @@ void init_instruction_sorts() {
 
   SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
 
+  NID_OP_C0 = new_constant(OP_CONST, SID_OPCODE_C, 0, 2, "OP_C0");
   NID_OP_C1 = new_constant(OP_CONST, SID_OPCODE_C, 1, 2, "OP_C1");
+  NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, 2, "OP_C2");
   NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
 
   NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, 3, "F3_C_BEQZ");
@@ -1782,6 +1810,11 @@ void init_instruction_sorts() {
 
   NID_F3_C_J   = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, 3, "F3_C_J");
   NID_F3_C_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_JAL, 3, "F3_C_JAL");
+
+  SID_FUNCT4 = new_bitvec(4, "compressed funct4 sort");
+
+  NID_F4_C_JR   = new_constant(OP_CONST, SID_FUNCT4, F4_C_JR, 4, "F4_C_JR");
+  NID_F4_C_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_JALR, 4, "F4_C_JALR");
 
   // offset sorts
 
@@ -1811,17 +1844,22 @@ void init_instruction_sorts() {
     NID_C_BNEZ = NID_TRUE;
 
     NID_C_J = NID_TRUE;
-
     if (IS64BITTARGET)
       NID_C_JAL = NID_FALSE;
     else
       NID_C_JAL = NID_TRUE;
+
+    NID_C_JR   = NID_TRUE;
+    NID_C_JALR = NID_TRUE;
   } else {
     NID_C_BEQZ = NID_FALSE;
     NID_C_BNEZ = NID_FALSE;
 
     NID_C_J   = NID_FALSE;
     NID_C_JAL = NID_FALSE;
+
+    NID_C_JR   = NID_FALSE;
+    NID_C_JALR = NID_FALSE;
   }
 }
 
@@ -5064,10 +5102,18 @@ uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid) {
   return new_slice(SID_FUNCT3, c_ir_nid, 15, 13, "get compressed funct3");
 }
 
+uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid) {
+  return new_slice(SID_FUNCT4, c_ir_nid, 15, 12, "get compressed funct4");
+}
+
+uint64_t* get_compressed_instruction_rs1(uint64_t* c_ir_nid) {
+  return get_instruction_rd(c_ir_nid);
+}
+
 uint64_t* get_compressed_instruction_rs1_shift(uint64_t* c_ir_nid) {
   return new_binary(OP_CONCAT, SID_REGISTER_ADDRESS,
     NID_2_BIT_OFFSET_1,
-    new_slice(SID_COMPRESSED_REGISTER_ADDRESS, c_ir_nid, 9, 7, "get rs1'"),
+    new_slice(SID_COMPRESSED_REGISTER_ADDRESS, c_ir_nid, 9, 7, "get compressed rs1'"),
     "01000 s0 offset + 3-bit compressed register address");
 }
 
@@ -5171,6 +5217,20 @@ uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid
     other_c_funct3_nid);
 }
 
+uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct4_nid, char* c_funct4_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct4_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_funct4(c_ir_nid),
+      c_funct4_nid,
+      format_comment("compressed funct4 == %s", (uint64_t) c_funct4_comment)),
+    execute_nid,
+    other_c_funct4_nid,
+    execute_comment);
+}
+
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
   uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
@@ -5203,6 +5263,22 @@ uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
       other_c_funct3_nid);
 }
 
+uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jr_nid, char* comment, uint64_t* other_c_funct4_nid) {
+  return decode_compressed_funct4(sid, c_ir_nid,
+    NID_F4_C_JR, "C.JR?",
+    c_jr_nid, format_comment("c.jr %s", (uint64_t) comment),
+    other_c_funct4_nid);
+}
+
+uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid) {
+  return decode_compressed_funct4(sid, c_ir_nid,
+    NID_F4_C_JALR, "C.JALR?",
+    c_jalr_nid, format_comment("c.jalr %s", (uint64_t) comment),
+    other_c_funct4_nid);
+}
+
 uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
   return new_binary_boolean(OP_NEQ,
     get_compressed_instruction_opcode(ir_nid),
@@ -5224,21 +5300,34 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
             decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
               NID_C_JAL, "known?",
               NID_FALSE))),
-        "C1 instruction known?",
-        NID_FALSE),
+        "C1 compressed instruction known?",
+        decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+          NID_OP_C2, "C2?",
+          decode_compressed_jr(SID_BOOLEAN, c_ir_nid,
+            NID_C_JR, "known?",
+            decode_compressed_jalr(SID_BOOLEAN, c_ir_nid,
+              NID_C_JALR, "known?",
+              NID_FALSE)),
+          "C2 compressed instruction known?",
+          NID_FALSE)),
       other_known_instructions_nid,
-      "instruction known?");
+      "compressed instruction known?");
   else
     return other_known_instructions_nid;
 }
 
 uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_jal_nid, char* comment, uint64_t* other_register_data_flow_nid) {
+  uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
+  uint64_t* other_register_data_flow_nid) {
   return decode_compressed_opcode(sid, c_ir_nid,
     NID_OP_C1, "C1?",
     decode_compressed_jal(sid, c_ir_nid, c_jal_nid, comment, other_register_data_flow_nid),
-    "compressed instruction register data flow",
-    other_register_data_flow_nid);
+    "C1 compressed instruction register data flow",
+    decode_compressed_opcode(sid, c_ir_nid,
+      NID_OP_C2, "C2?",
+      decode_compressed_jalr(sid, c_ir_nid, c_jalr_nid, comment, other_register_data_flow_nid),
+      "C2 compressed instruction register data flow",
+    other_register_data_flow_nid));
 }
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
@@ -5255,10 +5344,12 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
 
   rd_nid = decode_compressed_register_data_flow(SID_REGISTER_ADDRESS, c_ir_nid,
     NID_RA,
+    NID_RA,
     "register destination",
     NID_ZR);
 
   rd_value_nid = decode_compressed_register_data_flow(SID_MACHINE_WORD, c_ir_nid,
+    get_pc_value_plus_2(pc_nid),
     get_pc_value_plus_2(pc_nid),
     "register data flow",
     load_register_value(rd_nid, "current rd value"));
@@ -5312,6 +5403,20 @@ uint64_t* compressed_j_jal_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, ui
       other_control_flow_nid));
 }
 
+uint64_t* get_rs1_value_CR_format(uint64_t* c_ir_nid) {
+  return load_register_value(get_compressed_instruction_rs1(c_ir_nid), "compressed rs1 value");
+}
+
+uint64_t* compressed_jr_jalr_control_flow(uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
+  return decode_compressed_jr(SID_MACHINE_WORD, c_ir_nid,
+    get_rs1_value_CR_format(c_ir_nid),
+    "register-relative compressed jump control flow",
+    decode_compressed_jalr(SID_MACHINE_WORD, c_ir_nid,
+      get_rs1_value_CR_format(c_ir_nid),
+      "register-relative compressed jump control flow",
+      other_control_flow_nid));
+}
+
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
   if (RVC)
     return new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -5321,8 +5426,13 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
         compressed_branch_control_flow(pc_nid, c_ir_nid,
           compressed_j_jal_control_flow(pc_nid, c_ir_nid,
             get_pc_value_plus_2(pc_nid))),
-        "compressed instruction control flow",
-        get_pc_value_plus_2(pc_nid)),
+        "C1 compressed instruction control flow",
+        decode_compressed_opcode(SID_MACHINE_WORD, c_ir_nid,
+          NID_OP_C2, "C2?",
+          compressed_jr_jalr_control_flow(c_ir_nid,
+            get_pc_value_plus_2(pc_nid)),
+          "C2 compressed instruction control flow",
+          get_pc_value_plus_2(pc_nid))),
       other_control_flow_nid,
       "compressed instruction and other control flow");
   else
