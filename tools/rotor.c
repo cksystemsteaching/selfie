@@ -720,7 +720,9 @@ uint64_t* is_address_in_stack_segment(uint64_t* machine_word_nid);
 uint64_t* is_address_in_main_memory(uint64_t* machine_word_nid);
 
 uint64_t* is_range_in_heap_segment(uint64_t* machine_word_nid, uint64_t* range_nid);
-uint64_t* is_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* size_nid);
+
+uint64_t* is_sized_block_in_stack_segment(uint64_t* machine_word_nid, uint64_t* size_nid);
+uint64_t* is_sized_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* size_nid);
 
 uint64_t* fetch_instruction(uint64_t* pc_nid);
 uint64_t* fetch_compressed_instruction(uint64_t* pc_nid);
@@ -1163,6 +1165,7 @@ uint64_t* get_sp_value_plus_CSS32_offset(uint64_t* c_ir_nid);
 uint64_t* get_sp_value_plus_CSS64_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CS32_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid);
+uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_store_nid);
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
@@ -3669,7 +3672,21 @@ uint64_t* is_range_in_heap_segment(uint64_t* machine_word_nid, uint64_t* range_n
       "all virtual addresses in block in heap segment?"));
 }
 
-uint64_t* is_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* size_nid) {
+uint64_t* is_sized_block_in_stack_segment(uint64_t* machine_word_nid, uint64_t* size_nid) {
+  uint64_t* start_nid;
+  uint64_t* end_nid;
+
+  start_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+  end_nid   = new_binary(OP_ADD, SID_VIRTUAL_ADDRESS, start_nid, size_nid, "start of block + size");
+
+  return does_machine_word_work_as_virtual_address(machine_word_nid,
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_ULTE, start_nid, end_nid, "start of block <= end of block"),
+      is_block_in_stack_segment(start_nid, end_nid),
+      "all virtual addresses in block in stack segment?"));
+}
+
+uint64_t* is_sized_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* size_nid) {
   uint64_t* start_nid;
   uint64_t* end_nid;
 
@@ -4969,11 +4986,11 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* other
 
 uint64_t* load_no_seg_faults(uint64_t* ir_nid) {
   return decode_load(SID_BOOLEAN, ir_nid,
-    is_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
     is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
     is_address_in_main_memory(get_rs1_value_plus_I_immediate(ir_nid)),
     "no-seg-faults",
@@ -5094,9 +5111,9 @@ uint64_t* store_data_flow(uint64_t* ir_nid, uint64_t* memory_nid, uint64_t* othe
 
 uint64_t* store_no_seg_faults(uint64_t* ir_nid) {
   return decode_store(SID_BOOLEAN, ir_nid,
-    is_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
-    is_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+    is_sized_block_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid), NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1),
     is_address_in_main_memory(get_rs1_value_plus_S_immediate(ir_nid)),
     "no-seg-faults",
     NID_TRUE,
@@ -5581,6 +5598,23 @@ uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid) {
     load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value"),
     get_compressed_instruction_CS64_offset(c_ir_nid),
     "rs1' value plus CS64-offset");
+}
+
+uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_store_nid) {
+  if (RVC)
+    return new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_memory_data_flow(SID_BOOLEAN, c_ir_nid,
+        is_sized_block_in_stack_segment(get_sp_value_plus_CSS64_offset(c_ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_stack_segment(get_sp_value_plus_CSS32_offset(c_ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_main_memory(get_rs1_shift_value_plus_CS64_offset(c_ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_main_memory(get_rs1_shift_value_plus_CS32_offset(c_ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+        "no-seg-faults",
+        NID_TRUE),
+      other_store_nid,
+      "no compressed store and other store segmentation faults");
+  else
+    return other_store_nid;
 }
 
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid) {
@@ -6243,7 +6277,8 @@ void rotor() {
     "load segmentation fault");
 
   store_seg_faulting_nid = state_property(
-    store_no_seg_faults(eval_core_ir_nid),
+    compressed_store_no_seg_faults(eval_core_c_ir_nid,
+      store_no_seg_faults(eval_core_ir_nid)),
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
