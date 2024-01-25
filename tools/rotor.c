@@ -5189,7 +5189,7 @@ uint64_t* get_compressed_instruction_CB_offset(uint64_t* c_ir_nid) {
           new_binary(OP_CONCAT, SID_5_BIT_OFFSET,
             new_slice(SID_2_BIT_OFFSET, c_ir_nid, 11, 10, "get CB-offset[4:3]"),
             new_binary(OP_CONCAT, SID_3_BIT_OFFSET,
-              new_slice(SID_2_BIT_OFFSET, c_ir_nid, 3, 2, "get CB-offset[2:1]"),
+              new_slice(SID_2_BIT_OFFSET, c_ir_nid, 4, 3, "get CB-offset[2:1]"),
               NID_1_BIT_OFFSET_0,
               "get CB-offset[2:0]"),
             "get CB-offset[4:0]"),
