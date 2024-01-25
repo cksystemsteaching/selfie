@@ -1116,6 +1116,9 @@ uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_c_funct4_nid);
 
+uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* sd_nid, uint64_t* sw_nid, char* comment,
+  uint64_t* no_funct3_nid);
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
   uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
@@ -1139,6 +1142,13 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
+
+uint64_t* decode_compressed_memory_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_sdsp_nid, uint64_t* c_swsp_nid,
+  uint64_t* c_sd_nid, uint64_t* c_sw_nid, char* comment,
+  uint64_t* other_memory_data_flow_nid);
+
+uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid);
@@ -1419,6 +1429,12 @@ uint64_t* NID_OP_C1 = (uint64_t*) 0;
 uint64_t* NID_OP_C2 = (uint64_t*) 0;
 uint64_t* NID_OP_C3 = (uint64_t*) 0;
 
+uint64_t F3_C_SWSP_SW = 6; // 110
+uint64_t F3_C_SDSP_SD = 7; // 111
+
+uint64_t* NID_F3_C_SWSP_SW = (uint64_t*) 0;
+uint64_t* NID_F3_C_SDSP_SD = (uint64_t*) 0;
+
 uint64_t F3_C_BEQZ = 6; // 110
 uint64_t F3_C_BNEZ = 7; // 111
 
@@ -1461,6 +1477,12 @@ uint64_t* NID_2_BIT_OFFSET_1 = (uint64_t*) 0;
 
 uint64_t RVC = 1; // RVC support
 
+uint64_t* NID_C_SWSP = (uint64_t*) 0;
+uint64_t* NID_C_SW   = (uint64_t*) 0;
+
+uint64_t* NID_C_SDSP = (uint64_t*) 0;
+uint64_t* NID_C_SD   = (uint64_t*) 0;
+
 uint64_t* NID_C_BEQZ = (uint64_t*) 0;
 uint64_t* NID_C_BNEZ = (uint64_t*) 0;
 
@@ -1481,7 +1503,8 @@ uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
 uint64_t* eval_core_instruction_register_data_flow_nid            = (uint64_t*) 0;
 uint64_t* eval_core_compressed_instruction_register_data_flow_nid = (uint64_t*) 0;
 
-uint64_t* eval_core_instruction_memory_data_flow_nid   = (uint64_t*) 0;
+uint64_t* eval_core_instruction_memory_data_flow_nid            = (uint64_t*) 0;
+uint64_t* eval_core_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1808,6 +1831,9 @@ void init_instruction_sorts() {
   NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, 2, "OP_C2");
   NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
 
+  NID_F3_C_SWSP_SW = new_constant(OP_CONST, SID_FUNCT3, F3_C_SWSP_SW, 3, "F3_C_SWSP_SW");
+  NID_F3_C_SDSP_SD = new_constant(OP_CONST, SID_FUNCT3, F3_C_SDSP_SD, 3, "F3_C_SDSP_SD");
+
   NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, 3, "F3_C_BEQZ");
   NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, 3, "F3_C_BNEZ");
 
@@ -1843,6 +1869,14 @@ void init_instruction_sorts() {
     RVC = 0;
 
   if (RVC) {
+    NID_C_SWSP = NID_TRUE;
+    NID_C_SW   = NID_TRUE;
+
+    if (IS64BITTARGET) {
+      NID_C_SDSP = NID_TRUE;
+      NID_C_SD   = NID_TRUE;
+    }
+
     NID_C_BEQZ = NID_TRUE;
     NID_C_BNEZ = NID_TRUE;
 
@@ -1855,6 +1889,12 @@ void init_instruction_sorts() {
     NID_C_JR   = NID_TRUE;
     NID_C_JALR = NID_TRUE;
   } else {
+    NID_C_SWSP = NID_FALSE;
+    NID_C_SW   = NID_FALSE;
+
+    NID_C_SDSP = NID_FALSE;
+    NID_C_SD   = NID_FALSE;
+
     NID_C_BEQZ = NID_FALSE;
     NID_C_BNEZ = NID_FALSE;
 
@@ -5248,6 +5288,23 @@ uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
     execute_comment);
 }
 
+uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* ir_nid,
+  uint64_t* sd_nid, uint64_t* sw_nid, char* comment,
+  uint64_t* no_funct3_nid) {
+  no_funct3_nid = decode_funct3(sid, ir_nid,
+    NID_F3_C_SWSP_SW, "C.SWSP or C.SW?",
+    sw_nid, format_comment("c.swsp or c.sw %s", (uint64_t) comment),
+    no_funct3_nid);
+
+  if (IS64BITTARGET)
+    return decode_funct3(sid, ir_nid,
+      NID_F3_C_SDSP_SD, "C.SDSP or C.SD?",
+      sd_nid, format_comment("c.sdsp or c.sd %s", (uint64_t) comment),
+      no_funct3_nid);
+  else
+    return no_funct3_nid;
+}
+
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
   uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
@@ -5320,13 +5377,21 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
         "C1 compressed instruction known?",
         decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
           NID_OP_C2, "C2?",
-          decode_compressed_jr(SID_BOOLEAN, c_ir_nid,
-            NID_C_JR, "known?",
-            decode_compressed_jalr(SID_BOOLEAN, c_ir_nid,
-              NID_C_JALR, "known?",
-              NID_FALSE)),
+          decode_compressed_store(SID_BOOLEAN, c_ir_nid,
+            NID_C_SDSP, NID_C_SWSP, "known?",
+            decode_compressed_jr(SID_BOOLEAN, c_ir_nid,
+              NID_C_JR, "known?",
+              decode_compressed_jalr(SID_BOOLEAN, c_ir_nid,
+                NID_C_JALR, "known?",
+                NID_FALSE))),
           "C2 compressed instruction known?",
-          NID_FALSE)),
+          decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+            NID_OP_C0, "C0?",
+            decode_compressed_store(SID_BOOLEAN, c_ir_nid,
+              NID_C_SD, NID_C_SW, "known?",
+              NID_FALSE),
+            "C0 compressed instruction known?",
+            NID_FALSE))),
       other_known_instructions_nid,
       "compressed instruction known?");
   else
@@ -5380,6 +5445,38 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
       "compressed instruction and other register data flow");
   else
     return register_file_nid;
+}
+
+uint64_t* decode_compressed_memory_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_sdsp_nid, uint64_t* c_swsp_nid,
+  uint64_t* c_sd_nid, uint64_t* c_sw_nid, char* comment,
+  uint64_t* other_memory_data_flow_nid) {
+  return decode_compressed_opcode(sid, c_ir_nid,
+    NID_OP_C2, "C2?",
+    decode_compressed_store(sid, c_ir_nid, c_sdsp_nid, c_swsp_nid, comment, other_memory_data_flow_nid),
+    "C2 compressed instruction memory data flow",
+    decode_compressed_opcode(sid, c_ir_nid,
+      NID_OP_C0, "C0?",
+      decode_compressed_store(sid, c_ir_nid, c_sd_nid, c_sw_nid, comment, other_memory_data_flow_nid),
+      "C0 compressed instruction memory data flow",
+    other_memory_data_flow_nid));
+}
+
+uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid) {
+  if (RVC)
+    return new_ternary(OP_ITE, SID_MEMORY_STATE,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_memory_data_flow(SID_MEMORY_STATE, c_ir_nid,
+        memory_nid, // c_sdsp_nid,
+        memory_nid, // c_swsp_nid,
+        memory_nid, // c_sd_nid,
+        memory_nid, // c_sw_nid,
+        "compressed instruction memory data flow",
+        memory_nid),
+      memory_nid,
+      "compressed instruction and other memory data flow");
+  else
+    return memory_nid;
 }
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
@@ -5781,7 +5878,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       "a1 + number of already read_bytes"),
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
       memory_nid),
-    eval_core_instruction_memory_data_flow_nid,
+    eval_core_compressed_instruction_memory_data_flow_nid,
     "main memory data flow");
 
   // kernel properties
@@ -5940,6 +6037,12 @@ void rotor() {
 
   eval_core_instruction_memory_data_flow_nid =
     core_memory_data_flow(eval_core_ir_nid, state_main_memory_nid);
+
+  // compressed instruction memory data flow
+
+  eval_core_compressed_instruction_memory_data_flow_nid =
+    core_compressed_memory_data_flow(eval_core_c_ir_nid,
+      eval_core_instruction_memory_data_flow_nid);
 
   // kernel
 
@@ -6153,6 +6256,12 @@ void output_model() {
   print_break("\n; instruction memory data flow\n\n");
 
   print_line(eval_core_instruction_memory_data_flow_nid);
+
+  if (RVC) {
+    print_break("\n; compressed instruction memory data flow\n\n");
+
+    print_line(eval_core_compressed_instruction_memory_data_flow_nid);
+  }
 
   print_break("\n; kernel and instruction memory data flow\n\n");
 
