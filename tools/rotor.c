@@ -2283,9 +2283,19 @@ void print_break(char* comment) {
 
   w = w + dprintf(output_fd, comment);
 
-  remainder = current_nid % ten_to_the_power_of(log_ten(current_nid));
+  if (current_nid > 10) {
+    remainder = current_nid % ten_to_the_power_of(log_ten(current_nid));
 
-  current_nid = current_nid - remainder + ten_to_the_power_of(log_ten(remainder) + 1);
+    if (remainder > 0) {
+      if (remainder > 10)
+        current_nid = current_nid -
+          remainder % ten_to_the_power_of(log_ten(remainder)) +
+          ten_to_the_power_of(log_ten(remainder));
+      else
+        current_nid = current_nid - remainder + 10;
+    }
+  } else
+    current_nid = 10;
 }
 
 void print_aligned_break(char* comment, uint64_t alignment) {
