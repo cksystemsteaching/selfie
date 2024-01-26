@@ -1165,6 +1165,11 @@ uint64_t* get_sp_value_plus_CI32_offset(uint64_t* c_ir_nid);
 uint64_t* get_sp_value_plus_CI64_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CL32_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CL64_offset(uint64_t* c_ir_nid);
+uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
+  uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_opcode_nid);
+uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_load_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
@@ -5610,26 +5615,26 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
   uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
   uint64_t* other_register_data_flow_nid) {
   return decode_compressed_opcode(sid, c_ir_nid,
-      NID_OP_C2, "C2?",
+    NID_OP_C2, "C2?",
+    decode_compressed_load(sid, c_ir_nid,
+      c_ldsp_nid, c_lwsp_nid, comment,
+      decode_compressed_jalr(sid, c_ir_nid,
+        c_jalr_nid, comment,
+        other_register_data_flow_nid)),
+    "C2 compressed instruction register data flow",
+    decode_compressed_opcode(sid, c_ir_nid,
+      NID_OP_C0, "C0?",
       decode_compressed_load(sid, c_ir_nid,
-        c_ldsp_nid, c_lwsp_nid, comment,
-        decode_compressed_jalr(sid, c_ir_nid,
-          c_jalr_nid, comment,
-          other_register_data_flow_nid)),
-      "C2 compressed instruction register data flow",
+        c_ld_nid, c_lw_nid, comment,
+        other_register_data_flow_nid),
+      "C0 compressed instruction register data flow",
       decode_compressed_opcode(sid, c_ir_nid,
-        NID_OP_C0, "C0?",
-        decode_compressed_load(sid, c_ir_nid,
-          c_ld_nid, c_lw_nid, comment,
+        NID_OP_C1, "C1?",
+        decode_compressed_jal(sid, c_ir_nid,
+          c_jal_nid, comment,
           other_register_data_flow_nid),
-        "C0 compressed instruction register data flow",
-        decode_compressed_opcode(sid, c_ir_nid,
-          NID_OP_C1, "C1?",
-          decode_compressed_jal(sid, c_ir_nid,
-            c_jal_nid, comment,
-            other_register_data_flow_nid),
-          "C1 compressed instruction register data flow",
-          other_register_data_flow_nid)));
+        "C1 compressed instruction register data flow",
+        other_register_data_flow_nid)));
 }
 
 uint64_t* get_sp_value_plus_CI32_offset(uint64_t* c_ir_nid) {
@@ -5658,6 +5663,43 @@ uint64_t* get_rs1_shift_value_plus_CL64_offset(uint64_t* c_ir_nid) {
     load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value"),
     get_compressed_instruction_CL64_offset(c_ir_nid),
     "rs1' value plus CL64-offset");
+}
+
+uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
+  uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
+  uint64_t* no_funct3_nid, uint64_t* no_opcode_nid) {
+  return decode_compressed_opcode(sid, c_ir_nid,
+    NID_OP_C2, "C2?",
+    decode_compressed_load(sid, c_ir_nid,
+      c_ldsp_nid, c_lwsp_nid, comment,
+      no_funct3_nid),
+    "C2 compressed load instruction",
+    decode_compressed_opcode(sid, c_ir_nid,
+      NID_OP_C0, "C0?",
+      decode_compressed_load(sid, c_ir_nid,
+        c_ld_nid, c_lw_nid, comment,
+        no_funct3_nid),
+      "C0 compressed load instruction",
+      no_opcode_nid));
+}
+
+uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_load_nid) {
+  if (RVC)
+    return new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_load_with_opcode(SID_BOOLEAN, c_ir_nid,
+        is_sized_block_in_stack_segment(get_sp_value_plus_CI64_offset(c_ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_stack_segment(get_sp_value_plus_CI32_offset(c_ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_main_memory(get_rs1_shift_value_plus_CL64_offset(c_ir_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
+        is_sized_block_in_main_memory(get_rs1_shift_value_plus_CL32_offset(c_ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
+        "no-seg-faults",
+        NID_TRUE,
+        NID_TRUE),
+      other_load_nid,
+      "no compressed load and other load segmentation faults");
+  else
+    return other_load_nid;
 }
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
@@ -6422,7 +6464,8 @@ void rotor() {
     "imminent fetch segmentation fault");
 
   load_seg_faulting_nid = state_property(
-    load_no_seg_faults(eval_core_ir_nid),
+    compressed_load_no_seg_faults(eval_core_c_ir_nid,
+      load_no_seg_faults(eval_core_ir_nid)),
     UNUSED,
     "load-seg-fault",
     "load segmentation fault");
@@ -6433,6 +6476,8 @@ void rotor() {
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
+
+  // TODO: check stack pointer segfault earlier upon sp update
 
   stack_seg_faulting_nid = state_property(
     is_address_in_stack_segment(load_register_value(NID_SP, "sp value")),
