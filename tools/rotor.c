@@ -1094,17 +1094,21 @@ uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid);
 
+uint64_t* get_compressed_instruction_rd(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_rd_shift(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_rs1(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rs1_shift(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rs2(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rs2_shift(uint64_t* c_ir_nid);
 
-uint64_t* unsigned_extend_CSS32_offset(uint64_t* offset_nid);
+uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid);
+uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_CL32_offset(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_CL64_offset(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CSS32_offset(uint64_t* c_ir_nid);
-uint64_t* unsigned_extend_CSS64_offset(uint64_t* offset_nid);
 uint64_t* get_compressed_instruction_CSS64_offset(uint64_t* c_ir_nid);
-uint64_t* unsigned_extend_CS32_offset(uint64_t* offset_nid);
 uint64_t* get_compressed_instruction_CS32_offset(uint64_t* c_ir_nid);
-uint64_t* unsigned_extend_CS64_offset(uint64_t* offset_nid);
 uint64_t* get_compressed_instruction_CS64_offset(uint64_t* c_ir_nid);
 
 uint64_t* sign_extend_CB_offset(uint64_t* offset_nid);
@@ -1157,6 +1161,10 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
   uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
   uint64_t* other_register_data_flow_nid);
 
+uint64_t* get_sp_value_plus_CI32_offset(uint64_t* c_ir_nid);
+uint64_t* get_sp_value_plus_CI64_offset(uint64_t* c_ir_nid);
+uint64_t* get_rs1_shift_value_plus_CL32_offset(uint64_t* c_ir_nid);
+uint64_t* get_rs1_shift_value_plus_CL64_offset(uint64_t* c_ir_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
@@ -5092,8 +5100,8 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
     new_binary_boolean(OP_OR,
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE?"),
       new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH?"),
-      "STORE or BRANCH"), // redundant
-    "rd == zero register or STORE or BRANCH");
+      "STORE or BRANCH?"), // redundant
+    "rd == zero register or STORE or BRANCH?");
 
   rd_value_nid =
     imm_data_flow(ir_nid,
@@ -5231,6 +5239,17 @@ uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid) {
   return new_slice(SID_FUNCT4, c_ir_nid, 15, 12, "get compressed funct4");
 }
 
+uint64_t* get_compressed_instruction_rd(uint64_t* c_ir_nid) {
+  return get_instruction_rd(c_ir_nid);
+}
+
+uint64_t* get_compressed_instruction_rd_shift(uint64_t* c_ir_nid) {
+  return new_binary(OP_CONCAT, SID_REGISTER_ADDRESS,
+    NID_2_BIT_OFFSET_1,
+    new_slice(SID_COMPRESSED_REGISTER_ADDRESS, c_ir_nid, 4, 2, "get compressed rd' or rs2'"),
+    "01000 s0 offset + 3-bit compressed register address");
+}
+
 uint64_t* get_compressed_instruction_rs1(uint64_t* c_ir_nid) {
   return get_instruction_rd(c_ir_nid);
 }
@@ -5247,48 +5266,46 @@ uint64_t* get_compressed_instruction_rs2(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_rs2_shift(uint64_t* c_ir_nid) {
-  return new_binary(OP_CONCAT, SID_REGISTER_ADDRESS,
-    NID_2_BIT_OFFSET_1,
-    new_slice(SID_COMPRESSED_REGISTER_ADDRESS, c_ir_nid, 4, 2, "get compressed rs2'"),
-    "01000 s0 offset + 3-bit compressed register address");
+  return get_compressed_instruction_rd_shift(c_ir_nid);
 }
 
-uint64_t* unsigned_extend_CSS32_offset(uint64_t* offset_nid) {
-  return new_ext(OP_UEXT, SID_MACHINE_WORD, offset_nid, WORDSIZEINBITS - 8, "unsigned-extend");
+uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid) {
+  return new_ext(OP_UEXT, SID_MACHINE_WORD,
+    offset_nid,
+    WORDSIZEINBITS - bits,
+    format_comment("unsigned-extend %lu-bit offset", bits));
 }
 
-uint64_t* get_compressed_instruction_CSS32_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_CSS32_offset(
+uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(8,
     new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
-      new_slice(SID_2_BIT_OFFSET, c_ir_nid, 8, 7, "get CB-offset[7:6]"),
+      new_slice(SID_2_BIT_OFFSET, c_ir_nid, 3, 2, "get CB-offset[7:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
-        new_slice(SID_4_BIT_OFFSET, c_ir_nid, 12, 9, "get CB-offset[5:2]"),
-        NID_2_BIT_OFFSET_0,
+        new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CB-offset[5]"),
+        new_binary(OP_CONCAT, SID_5_BIT_OFFSET,
+          new_slice(SID_3_BIT_OFFSET, c_ir_nid, 6, 4, "get CB-offset[4:2]"),
+          NID_2_BIT_OFFSET_0,
+          "get CB-offset[4:0]"),
         "get CB-offset[5:0]"),
       "get CB-offset[7:0]"));
 }
 
-uint64_t* unsigned_extend_CSS64_offset(uint64_t* offset_nid) {
-  return new_ext(OP_UEXT, SID_MACHINE_WORD, offset_nid, WORDSIZEINBITS - 9, "unsigned-extend");
-}
-
-uint64_t* get_compressed_instruction_CSS64_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_CSS64_offset(
+uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(9,
     new_binary(OP_CONCAT, SID_9_BIT_OFFSET,
-      new_slice(SID_3_BIT_OFFSET, c_ir_nid, 9, 7, "get CB-offset[8:6]"),
+      new_slice(SID_3_BIT_OFFSET, c_ir_nid, 4, 2, "get CB-offset[8:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
-        new_slice(SID_3_BIT_OFFSET, c_ir_nid, 12, 10, "get CB-offset[5:3]"),
-        NID_3_BIT_OFFSET_0,
+        new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CB-offset[5]"),
+        new_binary(OP_CONCAT, SID_5_BIT_OFFSET,
+          new_slice(SID_2_BIT_OFFSET, c_ir_nid, 6, 5, "get CB-offset[4:3]"),
+          NID_3_BIT_OFFSET_0,
+          "get CB-offset[4:0]"),
         "get CB-offset[5:0]"),
-      "get CB-offset[8:0]"));
+      "get CB-offset[7:0]"));
 }
 
-uint64_t* unsigned_extend_CS32_offset(uint64_t* offset_nid) {
-  return new_ext(OP_UEXT, SID_MACHINE_WORD, offset_nid, WORDSIZEINBITS - 7, "unsigned-extend");
-}
-
-uint64_t* get_compressed_instruction_CS32_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_CS32_offset(
+uint64_t* get_compressed_instruction_CL32_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(7,
     new_binary(OP_CONCAT, SID_7_BIT_OFFSET,
       new_slice(SID_1_BIT_OFFSET, c_ir_nid, 5, 5, "get CB-offset[6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5301,12 +5318,8 @@ uint64_t* get_compressed_instruction_CS32_offset(uint64_t* c_ir_nid) {
       "get CB-offset[6:0]"));
 }
 
-uint64_t* unsigned_extend_CS64_offset(uint64_t* offset_nid) {
-  return unsigned_extend_CSS32_offset(offset_nid);
-}
-
-uint64_t* get_compressed_instruction_CS64_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_CS64_offset(
+uint64_t* get_compressed_instruction_CL64_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(8,
     new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
       new_slice(SID_2_BIT_OFFSET, c_ir_nid, 6, 5, "get CB-offset[7:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5314,6 +5327,36 @@ uint64_t* get_compressed_instruction_CS64_offset(uint64_t* c_ir_nid) {
         NID_3_BIT_OFFSET_0,
         "get CB-offset[5:0]"),
       "get CB-offset[7:0]"));
+}
+
+uint64_t* get_compressed_instruction_CSS32_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(8,
+    new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
+      new_slice(SID_2_BIT_OFFSET, c_ir_nid, 8, 7, "get CB-offset[7:6]"),
+      new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
+        new_slice(SID_4_BIT_OFFSET, c_ir_nid, 12, 9, "get CB-offset[5:2]"),
+        NID_2_BIT_OFFSET_0,
+        "get CB-offset[5:0]"),
+      "get CB-offset[7:0]"));
+}
+
+uint64_t* get_compressed_instruction_CSS64_offset(uint64_t* c_ir_nid) {
+  return unsigned_extend_offset(9,
+    new_binary(OP_CONCAT, SID_9_BIT_OFFSET,
+      new_slice(SID_3_BIT_OFFSET, c_ir_nid, 9, 7, "get CB-offset[8:6]"),
+      new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
+        new_slice(SID_3_BIT_OFFSET, c_ir_nid, 12, 10, "get CB-offset[5:3]"),
+        NID_3_BIT_OFFSET_0,
+        "get CB-offset[5:0]"),
+      "get CB-offset[8:0]"));
+}
+
+uint64_t* get_compressed_instruction_CS32_offset(uint64_t* c_ir_nid) {
+  return get_compressed_instruction_CL32_offset(c_ir_nid);
+}
+
+uint64_t* get_compressed_instruction_CS64_offset(uint64_t* c_ir_nid) {
+  return get_compressed_instruction_CL64_offset(c_ir_nid);
 }
 
 uint64_t* sign_extend_CB_offset(uint64_t* offset_nid) {
@@ -5589,6 +5632,34 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
           other_register_data_flow_nid)));
 }
 
+uint64_t* get_sp_value_plus_CI32_offset(uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    load_register_value(NID_SP, "sp value"),
+    get_compressed_instruction_CI32_offset(c_ir_nid),
+    "sp value plus CI32-offset");
+}
+
+uint64_t* get_sp_value_plus_CI64_offset(uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    load_register_value(NID_SP, "sp value"),
+    get_compressed_instruction_CI64_offset(c_ir_nid),
+    "sp value plus CI64-offset");
+}
+
+uint64_t* get_rs1_shift_value_plus_CL32_offset(uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value"),
+    get_compressed_instruction_CL32_offset(c_ir_nid),
+    "rs1' value plus CL32-offset");
+}
+
+uint64_t* get_rs1_shift_value_plus_CL64_offset(uint64_t* c_ir_nid) {
+  return new_binary(OP_ADD, SID_MACHINE_WORD,
+    load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value"),
+    get_compressed_instruction_CL64_offset(c_ir_nid),
+    "rs1' value plus CL64-offset");
+}
+
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
   return new_binary(OP_ADD, SID_MACHINE_WORD,
     pc_nid,
@@ -5602,20 +5673,22 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
   uint64_t* rd_value_nid;
 
   rd_nid = decode_compressed_register_data_flow(SID_REGISTER_ADDRESS, c_ir_nid,
-    NID_ZR,
-    NID_ZR,
-    NID_ZR,
-    NID_ZR,
+    get_compressed_instruction_rd(c_ir_nid),
+    get_compressed_instruction_rd(c_ir_nid),
+    get_compressed_instruction_rd_shift(c_ir_nid),
+    get_compressed_instruction_rd_shift(c_ir_nid),
     NID_RA,
     NID_RA,
     "register destination",
     NID_ZR);
 
   rd_value_nid = decode_compressed_register_data_flow(SID_MACHINE_WORD, c_ir_nid,
-    NID_MACHINE_WORD_0,
-    NID_MACHINE_WORD_0,
-    NID_MACHINE_WORD_0,
-    NID_MACHINE_WORD_0,
+    load_double_word(get_sp_value_plus_CI64_offset(c_ir_nid), memory_nid),
+    extend_single_word_to_machine_word(OP_SEXT,
+      load_single_word(get_sp_value_plus_CI32_offset(c_ir_nid), memory_nid)),
+    load_double_word(get_rs1_shift_value_plus_CL64_offset(c_ir_nid), memory_nid),
+    extend_single_word_to_machine_word(OP_SEXT,
+      load_single_word(get_rs1_shift_value_plus_CL32_offset(c_ir_nid), memory_nid)),
     get_pc_value_plus_2(pc_nid),
     get_pc_value_plus_2(pc_nid),
     "register data flow",
@@ -5623,7 +5696,10 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
 
   if (RVC)
     return new_ternary(OP_ITE, SID_REGISTER_STATE,
-      is_compressed_instruction(c_ir_nid),
+      new_binary_boolean(OP_AND,
+        is_compressed_instruction(c_ir_nid),
+        new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
+        "is compressed instruction and rd != register zero?"),
       store_register_value(rd_nid, rd_value_nid,
         register_file_nid, "compressed instruction rd update"),
       register_file_nid,
