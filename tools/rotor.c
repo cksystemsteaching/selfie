@@ -1157,6 +1157,11 @@ uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jr_nid, char* comment, uint64_t* other_c_funct4_nid);
 uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid);
+uint64_t* decode_compressed_jalr_nonzero_rs1(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid);
+uint64_t* decode_compressed_jr_jalr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jr_nid, uint64_t* c_jalr_nid, char* comment,
+  uint64_t* other_c_funct4_nid);
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid);
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_known_instructions_nid);
@@ -5679,17 +5684,41 @@ uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
 
 uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid) {
+  return decode_compressed_funct4(sid, c_ir_nid,
+    NID_F4_C_JALR, "C.JALR?",
+    c_jalr_nid, format_comment("c.jalr %s", (uint64_t) comment),
+    other_c_funct4_nid);
+}
+
+uint64_t* decode_compressed_jalr_nonzero_rs1(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid) {
   return new_ternary(OP_ITE, sid,
     new_binary_boolean(OP_NEQ,
       get_compressed_instruction_rs1(c_ir_nid),
       NID_ZR,
       "compressed rs1 != zero"),
-    decode_compressed_funct4(sid, c_ir_nid,
-      NID_F4_C_JALR, "C.JALR?",
-      c_jalr_nid, format_comment("funct4 c.jalr %s", (uint64_t) comment),
+    decode_compressed_jalr(sid, c_ir_nid,
+      c_jalr_nid, comment,
       other_c_funct4_nid),
     other_c_funct4_nid,
-    format_comment("c.jalr %s", (uint64_t) comment));
+    format_comment("c.jalr (rs1 != zero) %s", (uint64_t) comment));
+}
+
+uint64_t* decode_compressed_jr_jalr(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_jr_nid, uint64_t* c_jalr_nid, char* comment,
+  uint64_t* other_c_funct4_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_NEQ,
+      get_compressed_instruction_rs1(c_ir_nid),
+      NID_ZR,
+      "compressed rs1 != zero"),
+    decode_compressed_jr(sid, c_ir_nid,
+      c_jr_nid, comment,
+      decode_compressed_jalr(sid, c_ir_nid,
+        c_jalr_nid, comment,
+        other_c_funct4_nid)),
+    other_c_funct4_nid,
+    format_comment("c.jr or c.jalr %s", (uint64_t) comment));
 }
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
@@ -5709,11 +5738,9 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
             NID_C_LDSP, NID_C_LWSP, "known?",
             decode_compressed_store(SID_BOOLEAN, c_ir_nid,
               NID_C_SDSP, NID_C_SWSP, "known?",
-              decode_compressed_jr(SID_BOOLEAN, c_ir_nid,
-                NID_C_JR, "known?",
-                decode_compressed_jalr(SID_BOOLEAN, c_ir_nid,
-                  NID_C_JALR, "known?",
-                  NID_FALSE)))),
+              decode_compressed_jr_jalr(SID_BOOLEAN, c_ir_nid,
+                NID_C_JR, NID_C_JALR, "known?",
+                NID_FALSE))),
           "C2 compressed instruction known?",
           decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
             NID_OP_C0, "C0?",
@@ -5755,7 +5782,7 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
     NID_OP_C2, "C2?",
     decode_compressed_load(sid, c_ir_nid,
       c_ldsp_nid, c_lwsp_nid, comment,
-      decode_compressed_jalr(sid, c_ir_nid,
+      decode_compressed_jalr_nonzero_rs1(sid, c_ir_nid,
         c_jalr_nid, comment,
         other_register_data_flow_nid)),
     "C2 compressed instruction register data flow",
@@ -6034,13 +6061,11 @@ uint64_t* get_rs1_value_CR_format(uint64_t* c_ir_nid) {
 }
 
 uint64_t* compressed_jr_jalr_control_flow(uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
-  return decode_compressed_jr(SID_MACHINE_WORD, c_ir_nid,
-    get_rs1_value_CR_format(c_ir_nid), // TODO: check rs1 != zero
+  return decode_compressed_jr_jalr(SID_MACHINE_WORD, c_ir_nid,
+    get_rs1_value_CR_format(c_ir_nid),
+    get_rs1_value_CR_format(c_ir_nid),
     "register-relative compressed jump control flow",
-    decode_compressed_jalr(SID_MACHINE_WORD, c_ir_nid,
-      get_rs1_value_CR_format(c_ir_nid), // TODO: check rs1 != zero
-      "register-relative compressed jump control flow",
-      other_control_flow_nid));
+    other_control_flow_nid);
 }
 
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* other_control_flow_nid) {
