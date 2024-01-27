@@ -5679,10 +5679,17 @@ uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
 
 uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid) {
-  return decode_compressed_funct4(sid, c_ir_nid,
-    NID_F4_C_JALR, "C.JALR?",
-    c_jalr_nid, format_comment("c.jalr %s", (uint64_t) comment),
-    other_c_funct4_nid);
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_NEQ,
+      get_compressed_instruction_rs1(c_ir_nid),
+      NID_ZR,
+      "compressed rs1 != zero"),
+    decode_compressed_funct4(sid, c_ir_nid,
+      NID_F4_C_JALR, "C.JALR?",
+      c_jalr_nid, format_comment("funct4 c.jalr %s", (uint64_t) comment),
+      other_c_funct4_nid),
+    other_c_funct4_nid,
+    format_comment("c.jalr %s", (uint64_t) comment));
 }
 
 uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
