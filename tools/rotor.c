@@ -1478,19 +1478,53 @@ uint64_t* NID_OP_C1 = (uint64_t*) 0;
 uint64_t* NID_OP_C2 = (uint64_t*) 0;
 uint64_t* NID_OP_C3 = (uint64_t*) 0;
 
-uint64_t F3_C_LI  = 2; // 010
-uint64_t F3_C_LUI = 3; // 011
+uint64_t F3_C_LI           = 2; // 010
+uint64_t F3_C_LUI_ADDI16SP = 3; // 011
 
-uint64_t* NID_F3_C_LI  = (uint64_t*) 0;
-uint64_t* NID_F3_C_LUI = (uint64_t*) 0;
+uint64_t* NID_F3_C_LI           = (uint64_t*) 0;
+uint64_t* NID_F3_C_LUI_ADDI16SP = (uint64_t*) 0;
 
-uint64_t F3_C_ADDI     = 0; // 000
-uint64_t F3_C_ADDIW    = 1; // 001
-uint64_t F3_C_ADDI16SP = 3; // 011
+uint64_t F3_C_ADDI      = 0; // 000
+uint64_t F3_C_ADDIW_JAL = 1; // 001
 
-uint64_t* NID_F3_C_ADDI     = (uint64_t*) 0;
-uint64_t* NID_F3_C_ADDIW    = (uint64_t*) 0;
-uint64_t* NID_F3_C_ADDI16SP = (uint64_t*) 0;
+uint64_t* NID_F3_C_ADDI      = (uint64_t*) 0;
+uint64_t* NID_F3_C_ADDIW_JAL = (uint64_t*) 0;
+
+uint64_t F3_C_ADDI4SPN = 0; // 000
+
+uint64_t* NID_F3_C_ADDI4SPN = (uint64_t*) 0;
+
+uint64_t F3_C_SLLI           = 0; // 000
+uint64_t F3_C_SRLI_SRAI_ANDI = 4; // 100
+
+uint64_t* NID_F3_C_SLLI           = (uint64_t*) 0;
+uint64_t* NID_F3_C_SRLI_SRAI_ANDI = (uint64_t*) 0;
+
+uint64_t* SID_FUNCT2 = (uint64_t*) 0;
+
+uint64_t F2_C_SRLI = 0; // 00
+uint64_t F2_C_SRAI = 1; // 01
+uint64_t F2_C_ANDI = 2; // 10
+
+uint64_t* NID_F2_C_SRLI = (uint64_t*) 0;
+uint64_t* NID_F2_C_SRAI = (uint64_t*) 0;
+uint64_t* NID_F2_C_ANDI = (uint64_t*) 0;
+
+uint64_t F6_C_SUB_XOR_OR_AND = 35; // 100011
+uint64_t F6_C_SUBW_ADDW      = 39; // 100111
+
+uint64_t* NID_F6_C_SUB_XOR_OR_AND = (uint64_t*) 0;
+uint64_t* NID_F6_C_SUBW_ADDW      = (uint64_t*) 0;
+
+uint64_t F2_C_SUB_SUBW = 0; // 00
+uint64_t F2_C_XOR_ADDW = 1; // 01
+uint64_t F2_C_OR       = 2; // 10
+uint64_t F2_C_AND      = 3; // 11
+
+uint64_t* NID_F2_C_SUB_SUBW = (uint64_t*) 0;
+uint64_t* NID_F2_C_XOR_ADDW = (uint64_t*) 0;
+uint64_t* NID_F2_C_OR       = (uint64_t*) 0;
+uint64_t* NID_F2_C_AND      = (uint64_t*) 0;
 
 uint64_t F3_C_LWSP_LW = 2; // 010
 uint64_t F3_C_LDSP_LD = 3; // 011
@@ -1510,19 +1544,17 @@ uint64_t F3_C_BNEZ = 7; // 111
 uint64_t* NID_F3_C_BEQZ = (uint64_t*) 0;
 uint64_t* NID_F3_C_BNEZ = (uint64_t*) 0;
 
-uint64_t F3_C_J   = 5; // 101
-uint64_t F3_C_JAL = 1; // 001
+uint64_t F3_C_J = 5; // 101
 
-uint64_t* NID_F3_C_J   = (uint64_t*) 0;
-uint64_t* NID_F3_C_JAL = (uint64_t*) 0;
+uint64_t* NID_F3_C_J = (uint64_t*) 0;
 
 uint64_t* SID_FUNCT4 = (uint64_t*) 0;
 
-uint64_t F4_C_JR   = 8; // 1000
-uint64_t F4_C_JALR = 9; // 1001
+uint64_t F4_C_MV_JR    = 8; // 1000
+uint64_t F4_C_ADD_JALR = 9; // 1001
 
-uint64_t* NID_F4_C_JR   = (uint64_t*) 0;
-uint64_t* NID_F4_C_JALR = (uint64_t*) 0;
+uint64_t* NID_F4_C_MV_JR    = (uint64_t*) 0;
+uint64_t* NID_F4_C_ADD_JALR = (uint64_t*) 0;
 
 // offset sorts
 
@@ -1557,6 +1589,21 @@ uint64_t* NID_C_LUI = (uint64_t*) 0;
 uint64_t* NID_C_ADDI     = (uint64_t*) 0;
 uint64_t* NID_C_ADDIW    = (uint64_t*) 0;
 uint64_t* NID_C_ADDI16SP = (uint64_t*) 0;
+
+uint64_t* NID_C_ADDI4SPN = (uint64_t*) 0;
+
+uint64_t* NID_C_ANDI = (uint64_t*) 0;
+
+uint64_t* NID_C_SLLI = (uint64_t*) 0;
+uint64_t* NID_C_SRLI = (uint64_t*) 0;
+uint64_t* NID_C_SRAI = (uint64_t*) 0;
+
+uint64_t* NID_C_SUB  = (uint64_t*) 0;
+uint64_t* NID_C_XOR  = (uint64_t*) 0;
+uint64_t* NID_C_OR   = (uint64_t*) 0;
+uint64_t* NID_C_AND  = (uint64_t*) 0;
+uint64_t* NID_C_SUBW = (uint64_t*) 0;
+uint64_t* NID_C_ADDW = (uint64_t*) 0;
 
 uint64_t* NID_C_LWSP = (uint64_t*) 0;
 uint64_t* NID_C_LW   = (uint64_t*) 0;
@@ -1918,12 +1965,30 @@ void init_instruction_sorts() {
   NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, 2, "OP_C2");
   NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
 
-  NID_F3_C_LI  = new_constant(OP_CONST, SID_FUNCT3, F3_C_LI, 3, "F3_C_LI");
-  NID_F3_C_LUI = new_constant(OP_CONST, SID_FUNCT3, F3_C_LUI, 3, "F3_C_LUI");
+  NID_F3_C_LI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_LI, 3, "F3_C_LI");
+  NID_F3_C_LUI_ADDI16SP = new_constant(OP_CONST, SID_FUNCT3, F3_C_LUI_ADDI16SP, 3, "F3_C_LUI_ADDI16SP");
 
-  NID_F3_C_ADDI     = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI, 3, "F3_C_ADDI");
-  NID_F3_C_ADDIW    = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDIW, 3, "F3_C_ADDIW");
-  NID_F3_C_ADDI16SP = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI16SP, 3, "F3_C_ADDI16SP");
+  NID_F3_C_ADDI      = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI, 3, "F3_C_ADDI");
+  NID_F3_C_ADDIW_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDIW_JAL, 3, "F3_C_ADDIW_JAL");
+
+  NID_F3_C_ADDI4SPN = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI4SPN, 3, "F3_C_ADDI4SPN");
+
+  NID_F3_C_SLLI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_SLLI, 3, "F3_C_SLLI");
+  NID_F3_C_SRLI_SRAI_ANDI = new_constant(OP_CONST, SID_FUNCT3, F3_C_SRLI_SRAI_ANDI, 3, "F3_C_SRLI_SRAI_ANDI");
+
+  SID_FUNCT2 = new_bitvec(2, "compressed funct2 sort");
+
+  NID_F2_C_SRLI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRLI, 2, "F2_C_SRLI");
+  NID_F2_C_SRAI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRAI, 2, "F2_C_SRAI");
+  NID_F2_C_ANDI = new_constant(OP_CONST, SID_FUNCT2, F2_C_ANDI, 2, "F2_C_ANDI");
+
+  NID_F6_C_SUB_XOR_OR_AND = new_constant(OP_CONST, SID_FUNCT6, F6_C_SUB_XOR_OR_AND, 6, "F6_C_SUB_XOR_OR_AND");
+  NID_F6_C_SUBW_ADDW      = new_constant(OP_CONST, SID_FUNCT6, F6_C_SUBW_ADDW, 6, "F6_C_SUBW_ADDW");
+
+  NID_F2_C_SUB_SUBW = new_constant(OP_CONST, SID_FUNCT2, F2_C_SUB_SUBW, 2, "F2_C_SUB_SUBW");
+  NID_F2_C_XOR_ADDW = new_constant(OP_CONST, SID_FUNCT2, F2_C_XOR_ADDW, 2, "F2_C_XOR_ADDW");
+  NID_F2_C_OR       = new_constant(OP_CONST, SID_FUNCT2, F2_C_OR, 2, "F2_C_OR");
+  NID_F2_C_AND      = new_constant(OP_CONST, SID_FUNCT2, F2_C_AND, 2, "F2_C_AND");
 
   NID_F3_C_LWSP_LW = new_constant(OP_CONST, SID_FUNCT3, F3_C_LWSP_LW, 3, "F3_C_LWSP_LW");
   NID_F3_C_LDSP_LD = new_constant(OP_CONST, SID_FUNCT3, F3_C_LDSP_LD, 3, "F3_C_LDSP_LD");
@@ -1934,13 +1999,12 @@ void init_instruction_sorts() {
   NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, 3, "F3_C_BEQZ");
   NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, 3, "F3_C_BNEZ");
 
-  NID_F3_C_J   = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, 3, "F3_C_J");
-  NID_F3_C_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_JAL, 3, "F3_C_JAL");
+  NID_F3_C_J = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, 3, "F3_C_J");
 
   SID_FUNCT4 = new_bitvec(4, "compressed funct4 sort");
 
-  NID_F4_C_JR   = new_constant(OP_CONST, SID_FUNCT4, F4_C_JR, 4, "F4_C_JR");
-  NID_F4_C_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_JALR, 4, "F4_C_JALR");
+  NID_F4_C_MV_JR    = new_constant(OP_CONST, SID_FUNCT4, F4_C_MV_JR, 4, "F4_C_MV_JR");
+  NID_F4_C_ADD_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_ADD_JALR, 4, "F4_C_ADD_JALR");
 
   // offset sorts
 
@@ -1981,6 +2045,27 @@ void init_instruction_sorts() {
       NID_C_ADDIW = NID_FALSE;
     NID_C_ADDI16SP = NID_TRUE;
 
+    NID_C_ADDI4SPN = NID_TRUE;
+
+    NID_C_ANDI = NID_TRUE;
+
+    NID_C_SLLI = NID_TRUE;
+    NID_C_SRLI = NID_TRUE;
+    NID_C_SRAI = NID_TRUE;
+
+    NID_C_SUB  = NID_TRUE;
+    NID_C_XOR  = NID_TRUE;
+    NID_C_OR   = NID_TRUE;
+    NID_C_AND  = NID_TRUE;
+
+    if (IS64BITTARGET) {
+      NID_C_SUBW = NID_TRUE;
+      NID_C_ADDW = NID_TRUE;
+    } else {
+      NID_C_SUBW = NID_FALSE;
+      NID_C_ADDW = NID_FALSE;
+    }
+
     NID_C_LWSP = NID_TRUE;
     NID_C_LW   = NID_TRUE;
 
@@ -2019,6 +2104,22 @@ void init_instruction_sorts() {
     NID_C_ADDI     = NID_FALSE;
     NID_C_ADDIW    = NID_FALSE;
     NID_C_ADDI16SP = NID_FALSE;
+
+    NID_C_ADDI4SPN = NID_FALSE;
+
+    NID_C_ANDI = NID_FALSE;
+
+    NID_C_SLLI = NID_FALSE;
+    NID_C_SRLI = NID_FALSE;
+    NID_C_SRAI = NID_FALSE;
+
+    NID_C_SUB  = NID_FALSE;
+    NID_C_XOR  = NID_FALSE;
+    NID_C_OR   = NID_FALSE;
+    NID_C_AND  = NID_FALSE;
+
+    NID_C_SUBW = NID_FALSE;
+    NID_C_ADDW = NID_FALSE;
 
     NID_C_LWSP = NID_FALSE;
     NID_C_LW   = NID_FALSE;
@@ -5590,18 +5691,18 @@ uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
           NID_SP,
           "compressed rd != sp"),
         decode_funct3(sid, c_ir_nid,
-          NID_F3_C_LUI, "C.LUI?",
+          NID_F3_C_LUI_ADDI16SP, "C.LUI?",
           c_lui_nid, format_comment("c.lui %s", (uint64_t) comment),
           no_funct3_nid),
         decode_funct3(sid, c_ir_nid,
-          NID_F3_C_ADDI16SP, "C.ADDI16SP?",
+          NID_F3_C_LUI_ADDI16SP, "C.ADDI16SP?",
           c_addi16sp_nid, format_comment("c.addi16sp %s", (uint64_t) comment),
           no_funct3_nid),
         "C.LUI or C.ADDI16SP?")));
 
   if (IS64BITTARGET)
     return decode_funct3(sid, c_ir_nid,
-      NID_F3_C_ADDIW, "C.ADDIW?",
+      NID_F3_C_ADDIW_JAL, "C.ADDIW?",
       c_addiw_nid, format_comment("c.addiw %s", (uint64_t) comment),
       no_funct3_nid);
   else
@@ -5669,7 +5770,7 @@ uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
     return other_c_funct3_nid;
   else
     return decode_compressed_funct3(sid, c_ir_nid,
-      NID_F3_C_JAL, "C.JAL?",
+      NID_F3_C_ADDIW_JAL, "C.JAL?",
       c_jal_nid, format_comment("c.jal %s", (uint64_t) comment),
       other_c_funct3_nid);
 }
@@ -5677,7 +5778,7 @@ uint64_t* decode_compressed_jal(uint64_t* sid, uint64_t* c_ir_nid,
 uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jr_nid, char* comment, uint64_t* other_c_funct4_nid) {
   return decode_compressed_funct4(sid, c_ir_nid,
-    NID_F4_C_JR, "C.JR?",
+    NID_F4_C_MV_JR, "C.JR?",
     c_jr_nid, format_comment("c.jr %s", (uint64_t) comment),
     other_c_funct4_nid);
 }
@@ -5685,7 +5786,7 @@ uint64_t* decode_compressed_jr(uint64_t* sid, uint64_t* c_ir_nid,
 uint64_t* decode_compressed_jalr(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_jalr_nid, char* comment, uint64_t* other_c_funct4_nid) {
   return decode_compressed_funct4(sid, c_ir_nid,
-    NID_F4_C_JALR, "C.JALR?",
+    NID_F4_C_ADD_JALR, "C.JALR?",
     c_jalr_nid, format_comment("c.jalr %s", (uint64_t) comment),
     other_c_funct4_nid);
 }
