@@ -1108,6 +1108,7 @@ uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid);
 uint64_t* get_compressed_instruction_CI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_CIW_immediate(uint64_t* c_ir_nid);
 uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid);
 uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid);
@@ -5542,11 +5543,32 @@ uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid) {
       "get CI16SP-immediate[9:0]"));
 }
 
-uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid) {
+uint64_t* unsigned_extend_immediate(uint64_t bits, uint64_t* imm_nid) {
   return new_ext(OP_UEXT, SID_MACHINE_WORD,
-    offset_nid,
+    imm_nid,
     WORDSIZEINBITS - bits,
-    format_comment("unsigned-extend %lu-bit offset", bits));
+    format_comment("unsigned-extend %lu-bit immediate or offset", bits));
+}
+
+uint64_t* get_compressed_instruction_CIW_immediate(uint64_t* c_ir_nid) {
+  return unsigned_extend_immediate(10,
+    new_binary(OP_CONCAT, SID_10_BIT_OFFSET,
+      new_slice(SID_4_BIT_OFFSET, c_ir_nid, 10, 7, "get CIW-immediate[9:6]"),
+      new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
+        new_slice(SID_2_BIT_OFFSET, c_ir_nid, 12, 11, "get CIW-immediate[5:4]"),
+        new_binary(OP_CONCAT, SID_4_BIT_OFFSET,
+          new_slice(SID_1_BIT_OFFSET, c_ir_nid, 5, 5, "get CIW-immediate[3]"),
+          new_binary(OP_CONCAT, SID_3_BIT_OFFSET,
+            new_slice(SID_1_BIT_OFFSET, c_ir_nid, 6, 6, "get CIW-immediate[2]"),
+            NID_2_BIT_OFFSET_0,
+            "get CIW-immediate[2:0]"),
+          "get CIW-immediate[3:0]"),
+        "get CIW-immediate[5:0]"),
+      "get CIW-immediate[9:0]"));
+}
+
+uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid) {
+  return unsigned_extend_immediate(bits, offset_nid);
 }
 
 uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid) {
@@ -5858,7 +5880,15 @@ uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid) {
   return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI4SPN, "C.ADDI4SPN?",
-    c_addi4spn_nid, format_comment("c.addi4spn %s", (uint64_t) comment),
+    new_ternary(OP_ITE, sid,
+      new_binary_boolean(OP_NEQ,
+        get_compressed_instruction_CIW_immediate(c_ir_nid),
+        NID_MACHINE_WORD_0,
+        "CIW-immediate != 0?"),
+      c_addi4spn_nid,
+      other_c_funct3_nid,
+      "c.addi4spn (CIW-immediate != 0)?"),
+    format_comment("c.addi4spn %s", (uint64_t) comment),
     other_c_funct3_nid);
 }
 
