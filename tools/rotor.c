@@ -1094,6 +1094,8 @@ uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct2(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_funct6(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_funct(uint64_t* c_ir_nid);
 
 uint64_t* get_compressed_instruction_rd(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rd_shift(uint64_t* c_ir_nid);
@@ -1139,25 +1141,37 @@ uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct4_nid, char* c_funct4_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_c_funct4_nid);
+uint64_t* decode_compressed_funct6(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct6_nid, char* c_funct6_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct6_nid);
+uint64_t* decode_compressed_funct(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct_nid, char* c_funct_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct_nid);
 
 uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_li_nid, uint64_t* c_lui_nid,
   uint64_t* c_addi_nid, uint64_t* c_addiw_nid, uint64_t* c_addi16sp_nid,
   uint64_t* c_srli_nid, uint64_t* c_srai_nid, uint64_t* c_andi_nid, char* comment,
-  uint64_t* no_funct_nid);
+  uint64_t* other_c_funct_nid);
 uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_addi4spn_nid, char* comment, uint64_t* no_funct3_nid);
+  uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_slli_nid, char* comment, uint64_t* no_funct3_nid);
+  uint64_t* c_slli_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid, char* comment,
   uint64_t* other_c_funct4_nid);
+uint64_t* decode_compressed_op(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_sub_nid, uint64_t* c_xor_nid, uint64_t* c_or_nid, uint64_t* c_and_nid,
+  uint64_t* c_subw_nid, uint64_t* c_addw_nid, char* comment,
+  uint64_t* other_c_funct_nid);
 uint64_t* decode_compressed_load(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
-  uint64_t* no_funct3_nid);
+  uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_sd_nid, uint64_t* c_sw_nid, char* comment,
-  uint64_t* no_funct3_nid);
+  uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
   uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
@@ -1182,6 +1196,8 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
   uint64_t* c_addi16sp_nid, uint64_t* c_addi4spn_nid,
   uint64_t* c_slli_nid, uint64_t* c_srli_nid, uint64_t* c_srai_nid, uint64_t* c_andi_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid,
+  uint64_t* c_sub_nid, uint64_t* c_xor_nid, uint64_t* c_or_nid, uint64_t* c_and_nid,
+  uint64_t* c_subw_nid, uint64_t* c_addw_nid,
   uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid,
   uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
@@ -1876,17 +1892,15 @@ void init_instruction_sorts() {
 
   // RV64I codes missing in RISC-U
 
-  if (IS64BITTARGET) {
-    SID_FUNCT6 = new_bitvec(6, "funct6 sort");
+  SID_FUNCT6 = new_bitvec(6, "funct6 sort");
 
-    NID_F6_SLL_SRL = new_constant(OP_CONST, SID_FUNCT6, F6_SLL_SRL, 6, "F6_SLL_SRL");
-    NID_F6_SRA     = new_constant(OP_CONST, SID_FUNCT6, F6_SRA, 6, "F6_SRA");
+  NID_F6_SLL_SRL = new_constant(OP_CONST, SID_FUNCT6, F6_SLL_SRL, 6, "F6_SLL_SRL");
+  NID_F6_SRA     = new_constant(OP_CONST, SID_FUNCT6, F6_SRA, 6, "F6_SRA");
 
-    NID_OP_IMM_32 = new_constant(OP_CONST, SID_OPCODE, OP_IMM_32, 7, "OP_IMM_32");
-    NID_OP_OP_32  = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, 7, "OP_OP_32");
+  NID_OP_IMM_32 = new_constant(OP_CONST, SID_OPCODE, OP_IMM_32, 7, "OP_IMM_32");
+  NID_OP_OP_32  = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, 7, "OP_OP_32");
 
-    NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, 3, "F3_LWU");
-  }
+  NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, 3, "F3_LWU");
 
   // RV64I instruction switches
 
@@ -5441,6 +5455,14 @@ uint64_t* get_compressed_instruction_funct4(uint64_t* c_ir_nid) {
   return new_slice(SID_FUNCT4, c_ir_nid, 15, 12, "get compressed funct4");
 }
 
+uint64_t* get_compressed_instruction_funct6(uint64_t* c_ir_nid) {
+  return new_slice(SID_FUNCT6, c_ir_nid, 15, 10, "get compressed funct6");
+}
+
+uint64_t* get_compressed_instruction_funct(uint64_t* c_ir_nid) {
+  return new_slice(SID_FUNCT2, c_ir_nid, 6, 5, "get compressed funct");
+}
+
 uint64_t* get_compressed_instruction_rd(uint64_t* c_ir_nid) {
   return get_instruction_rd(c_ir_nid);
 }
@@ -5715,68 +5737,92 @@ uint64_t* decode_compressed_funct4(uint64_t* sid, uint64_t* c_ir_nid,
     execute_comment);
 }
 
+uint64_t* decode_compressed_funct6(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct6_nid, char* c_funct6_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct6_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_funct6(c_ir_nid),
+      c_funct6_nid,
+      format_comment("compressed funct6 == %s", (uint64_t) c_funct6_comment)),
+    execute_nid,
+    other_c_funct6_nid,
+    execute_comment);
+}
+
+uint64_t* decode_compressed_funct(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_funct_nid, char* c_funct_comment,
+  uint64_t* execute_nid, char* execute_comment,
+  uint64_t* other_c_funct_nid) {
+  return new_ternary(OP_ITE, sid,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_funct(c_ir_nid),
+      c_funct_nid,
+      format_comment("compressed funct == %s", (uint64_t) c_funct_comment)),
+    execute_nid,
+    other_c_funct_nid,
+    execute_comment);
+}
+
 uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_li_nid, uint64_t* c_lui_nid,
   uint64_t* c_addi_nid, uint64_t* c_addiw_nid, uint64_t* c_addi16sp_nid,
   uint64_t* c_srli_nid, uint64_t* c_srai_nid, uint64_t* c_andi_nid, char* comment,
-  uint64_t* no_funct_nid) {
-  no_funct_nid = decode_compressed_funct3(sid, c_ir_nid,
-    NID_F3_C_LUI_ADDI16SP, "C.LUI or C.ADDI16SP?",
-    new_ternary(OP_ITE, sid,
-      new_binary_boolean(OP_NEQ,
-        get_compressed_instruction_rd(c_ir_nid),
-        NID_SP,
-        "compressed rd != sp?"),
-      c_lui_nid,
-      c_addi16sp_nid,
-      "c.lui (rd != sp) or c.addi16sp (rd == sp)?"),
-    format_comment("c.lui or c.addi16sp %s", (uint64_t) comment),
-    no_funct_nid);
-
-  no_funct_nid = decode_compressed_funct3(sid, c_ir_nid,
+  uint64_t* other_c_funct_nid) {
+  other_c_funct_nid = decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI, "C.ADDI?",
     c_addi_nid, format_comment("c.addi %s", (uint64_t) comment),
     decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_LI, "C.LI?",
       c_li_nid, format_comment("c.li %s", (uint64_t) comment),
       decode_compressed_funct3(sid, c_ir_nid,
-        NID_F3_C_SRLI_SRAI_ANDI, "C.SRLI or C.SRAI or C.ANDI?",
-        decode_compressed_funct2(sid, c_ir_nid,
-          NID_F2_C_SRLI, "C.SRLI?",
-          c_srli_nid, format_comment("c.srli %s", (uint64_t) comment),
+        NID_F3_C_LUI_ADDI16SP, "C.LUI or C.ADDI16SP?",
+        new_ternary(OP_ITE, sid,
+          new_binary_boolean(OP_NEQ,
+            get_compressed_instruction_rd(c_ir_nid), NID_SP, "compressed rd != sp?"),
+          c_lui_nid,
+          c_addi16sp_nid,
+          "c.lui (rd != sp) or c.addi16sp (rd == sp)?"),
+        format_comment("c.lui or c.addi16sp %s", (uint64_t) comment),
+        decode_compressed_funct3(sid, c_ir_nid,
+          NID_F3_C_SRLI_SRAI_ANDI, "C.SRLI or C.SRAI or C.ANDI?",
           decode_compressed_funct2(sid, c_ir_nid,
-            NID_F2_C_SRAI, "C.SRAI?",
-            c_srai_nid, format_comment("c.srai %s", (uint64_t) comment),
+            NID_F2_C_SRLI, "C.SRLI?",
+            c_srli_nid, format_comment("c.srli %s", (uint64_t) comment),
             decode_compressed_funct2(sid, c_ir_nid,
-              NID_F2_C_ANDI, "C.ANDI?",
-              c_andi_nid, format_comment("c.andi %s", (uint64_t) comment),
-              no_funct_nid))),
-        format_comment("c.srli or c.srai or c.andi %s", (uint64_t) comment),
-        no_funct_nid)));
+              NID_F2_C_SRAI, "C.SRAI?",
+              c_srai_nid, format_comment("c.srai %s", (uint64_t) comment),
+              decode_compressed_funct2(sid, c_ir_nid,
+                NID_F2_C_ANDI, "C.ANDI?",
+                c_andi_nid, format_comment("c.andi %s", (uint64_t) comment),
+                other_c_funct_nid))),
+          format_comment("c.srli or c.srai or c.andi %s", (uint64_t) comment),
+          other_c_funct_nid))));
 
   if (IS64BITTARGET)
     return decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_ADDIW_JAL, "C.ADDIW?",
       c_addiw_nid, format_comment("c.addiw %s", (uint64_t) comment),
-      no_funct_nid);
+      other_c_funct_nid);
   else
-    return no_funct_nid;
+    return other_c_funct_nid;
 }
 
 uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_addi4spn_nid, char* comment, uint64_t* no_funct3_nid) {
+  uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid) {
   return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI4SPN, "C.ADDI4SPN?",
     c_addi4spn_nid, format_comment("c.addi4spn %s", (uint64_t) comment),
-    no_funct3_nid);
+    other_c_funct3_nid);
 }
 
 uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_slli_nid, char* comment, uint64_t* no_funct3_nid) {
+  uint64_t* c_slli_nid, char* comment, uint64_t* other_c_funct3_nid) {
   return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_SLLI, "C.SLLI?",
     c_slli_nid, format_comment("c.slli %s", (uint64_t) comment),
-    no_funct3_nid);
+    other_c_funct3_nid);
 }
 
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
@@ -5804,38 +5850,78 @@ uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
     format_comment("c.mv or c.add %s", (uint64_t) comment));
 }
 
+uint64_t* decode_compressed_op(uint64_t* sid, uint64_t* c_ir_nid,
+  uint64_t* c_sub_nid, uint64_t* c_xor_nid, uint64_t* c_or_nid, uint64_t* c_and_nid,
+  uint64_t* c_subw_nid, uint64_t* c_addw_nid, char* comment,
+  uint64_t* other_c_funct_nid) {
+  uint64_t* c_funct_nid;
+
+  c_funct_nid = decode_compressed_funct6(sid, c_ir_nid,
+    NID_F6_C_SUB_XOR_OR_AND, "C.SUB or C.XOR or C.OR or C.AND?",
+    decode_compressed_funct(sid, c_ir_nid,
+      NID_F2_C_SUB_SUBW, "C.SUB?",
+      c_sub_nid, format_comment("c.sub %s", (uint64_t) comment),
+      decode_compressed_funct(sid, c_ir_nid,
+        NID_F2_C_XOR_ADDW, "C.XOR?",
+        c_xor_nid, format_comment("c.xor %s", (uint64_t) comment),
+        decode_compressed_funct(sid, c_ir_nid,
+          NID_F2_C_OR, "C.OR?",
+          c_or_nid, format_comment("c.or %s", (uint64_t) comment),
+          decode_compressed_funct(sid, c_ir_nid,
+            NID_F2_C_AND, "C.AND?",
+            c_and_nid, format_comment("c.and %s", (uint64_t) comment),
+            other_c_funct_nid)))),
+    format_comment("c.sub or c.xor or c.or or c.and %s", (uint64_t) comment),
+    other_c_funct_nid);
+
+  if (IS64BITTARGET)
+    return decode_compressed_funct6(sid, c_ir_nid,
+      NID_F6_C_SUBW_ADDW, "C.SUBW or C.ADDW?",
+      decode_compressed_funct(sid, c_ir_nid,
+        NID_F2_C_SUB_SUBW, "C.SUBW?",
+        c_subw_nid, format_comment("c.subw %s", (uint64_t) comment),
+        decode_compressed_funct(sid, c_ir_nid,
+          NID_F2_C_XOR_ADDW, "C.ADDW?",
+          c_addw_nid, format_comment("c.addw %s", (uint64_t) comment),
+          other_c_funct_nid)),
+      format_comment("c.subw or c.addw %s", (uint64_t) comment),
+      c_funct_nid);
+  else
+    return c_funct_nid;
+}
+
 uint64_t* decode_compressed_load(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
-  uint64_t* no_funct3_nid) {
-  no_funct3_nid = decode_compressed_funct3(sid, c_ir_nid,
+  uint64_t* other_c_funct3_nid) {
+  other_c_funct3_nid = decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_LWSP_LW, "C.LWSP or C.LW?",
     c_lw_nid, format_comment("c.lwsp or c.lw %s", (uint64_t) comment),
-    no_funct3_nid);
+    other_c_funct3_nid);
 
   if (IS64BITTARGET)
     return decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_LDSP_LD, "C.LDSP or C.LD?",
       c_ld_nid, format_comment("c.ldsp or c.ld %s", (uint64_t) comment),
-      no_funct3_nid);
+      other_c_funct3_nid);
   else
-    return no_funct3_nid;
+    return other_c_funct3_nid;
 }
 
 uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_sd_nid, uint64_t* c_sw_nid, char* comment,
-  uint64_t* no_funct3_nid) {
-  no_funct3_nid = decode_compressed_funct3(sid, c_ir_nid,
+  uint64_t* other_c_funct3_nid) {
+  other_c_funct3_nid = decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_SWSP_SW, "C.SWSP or C.SW?",
     c_sw_nid, format_comment("c.swsp or c.sw %s", (uint64_t) comment),
-    no_funct3_nid);
+    other_c_funct3_nid);
 
   if (IS64BITTARGET)
     return decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_SDSP_SD, "C.SDSP or C.SD?",
       c_sd_nid, format_comment("c.sdsp or c.sd %s", (uint64_t) comment),
-      no_funct3_nid);
+      other_c_funct3_nid);
   else
-    return no_funct3_nid;
+    return other_c_funct3_nid;
 }
 
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
@@ -5949,14 +6035,17 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid, uint64_t* other_know
               NID_C_LI, NID_C_LUI,
               NID_C_ADDI, NID_C_ADDIW, NID_C_ADDI16SP,
               NID_C_SRLI, NID_C_SRAI, NID_C_ANDI, "known?",
-              decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
-                NID_C_BEQZ, NID_C_BNEZ,
-                NID_TRUE, NID_FALSE, "known?",
-                decode_compressed_j(SID_BOOLEAN, c_ir_nid,
-                  NID_C_J, "known?",
-                  decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
-                    NID_C_JAL, "known?",
-                    NID_FALSE)))),
+              decode_compressed_op(SID_BOOLEAN, c_ir_nid,
+                NID_C_SUB, NID_C_XOR, NID_C_OR, NID_C_AND,
+                NID_C_SUBW, NID_C_ADDW, "known?",
+                decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
+                  NID_C_BEQZ, NID_C_BNEZ,
+                  NID_TRUE, NID_FALSE, "known?",
+                  decode_compressed_j(SID_BOOLEAN, c_ir_nid,
+                    NID_C_J, "known?",
+                    decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
+                      NID_C_JAL, "known?",
+                      NID_FALSE))))),
             "C1 compressed instruction known?",
             NID_FALSE))),
       other_known_instructions_nid,
@@ -5971,6 +6060,8 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
   uint64_t* c_addi16sp_nid, uint64_t* c_addi4spn_nid,
   uint64_t* c_slli_nid, uint64_t* c_srli_nid, uint64_t* c_srai_nid, uint64_t* c_andi_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid,
+  uint64_t* c_sub_nid, uint64_t* c_xor_nid, uint64_t* c_or_nid, uint64_t* c_and_nid,
+  uint64_t* c_subw_nid, uint64_t* c_addw_nid,
   uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid,
   uint64_t* c_jal_nid, uint64_t* c_jalr_nid, char* comment,
@@ -6003,9 +6094,12 @@ uint64_t* decode_compressed_register_data_flow(uint64_t* sid, uint64_t* c_ir_nid
           c_li_nid, c_lui_nid,
           c_addi_nid, c_addiw_nid, c_addi16sp_nid,
           c_srli_nid, c_srai_nid, c_andi_nid, comment,
-          decode_compressed_jal(sid, c_ir_nid,
-            c_jal_nid, comment,
-            other_register_data_flow_nid)),
+          decode_compressed_op(sid, c_ir_nid,
+            c_sub_nid, c_xor_nid, c_or_nid, c_and_nid,
+            c_subw_nid, c_addw_nid, comment,
+            decode_compressed_jal(sid, c_ir_nid,
+              c_jal_nid, comment,
+              other_register_data_flow_nid))),
         "C1 compressed instruction register data flow",
         other_register_data_flow_nid)));
 }
@@ -6100,6 +6194,12 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
     NID_ZR,
     NID_ZR,
     NID_ZR,
+    NID_ZR,
+    NID_ZR,
+    NID_ZR,
+    NID_ZR,
+    NID_ZR,
+    NID_ZR,
     get_compressed_instruction_rd(c_ir_nid),
     get_compressed_instruction_rd(c_ir_nid),
     get_compressed_instruction_rd_shift(c_ir_nid),
@@ -6112,6 +6212,12 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
   rd_value_nid = decode_compressed_register_data_flow(SID_MACHINE_WORD, c_ir_nid,
     get_compressed_instruction_CI_immediate(c_ir_nid),
     get_compressed_instruction_CUI_immediate(c_ir_nid), // TODO: check immediate != 0
+    NID_MACHINE_WORD_0,
+    NID_MACHINE_WORD_0,
+    NID_MACHINE_WORD_0,
+    NID_MACHINE_WORD_0,
+    NID_MACHINE_WORD_0,
+    NID_MACHINE_WORD_0,
     NID_MACHINE_WORD_0,
     NID_MACHINE_WORD_0,
     NID_MACHINE_WORD_0,
