@@ -1105,6 +1105,7 @@ uint64_t* get_compressed_instruction_rs2(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rs2_shift(uint64_t* c_ir_nid);
 
 uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid);
+uint64_t* get_compressed_instruction_CI_shamt_5(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI_imm_shamt(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid);
@@ -1163,6 +1164,9 @@ uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_slli_nid, char* comment, uint64_t* other_c_funct3_nid);
+uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid);
+uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* c_ir_nid);
+
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid, char* comment,
   uint64_t* other_c_funct4_nid);
@@ -2241,16 +2245,17 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* is_instruction_known_nid     = (uint64_t*) 0;
-uint64_t* illegal_instruction_nid      = (uint64_t*) 0;
-uint64_t* next_fetch_unaligned_nid     = (uint64_t*) 0;
-uint64_t* next_fetch_seg_faulting_nid  = (uint64_t*) 0;
-uint64_t* load_seg_faulting_nid        = (uint64_t*) 0;
-uint64_t* store_seg_faulting_nid       = (uint64_t*) 0;
-uint64_t* stack_seg_faulting_nid       = (uint64_t*) 0;
-uint64_t* division_by_zero_nid         = (uint64_t*) 0;
-uint64_t* signed_division_overflow_nid = (uint64_t*) 0;
-uint64_t* exclude_a0_from_rd_nid       = (uint64_t*) 0;
+uint64_t* is_instruction_known_nid           = (uint64_t*) 0;
+uint64_t* illegal_instruction_nid            = (uint64_t*) 0;
+uint64_t* illegal_compressed_instruction_nid = (uint64_t*) 0;
+uint64_t* next_fetch_unaligned_nid           = (uint64_t*) 0;
+uint64_t* next_fetch_seg_faulting_nid        = (uint64_t*) 0;
+uint64_t* load_seg_faulting_nid              = (uint64_t*) 0;
+uint64_t* store_seg_faulting_nid             = (uint64_t*) 0;
+uint64_t* stack_seg_faulting_nid             = (uint64_t*) 0;
+uint64_t* division_by_zero_nid               = (uint64_t*) 0;
+uint64_t* signed_division_overflow_nid       = (uint64_t*) 0;
+uint64_t* exclude_a0_from_rd_nid             = (uint64_t*) 0;
 
 uint64_t* brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* openat_seg_faulting_nid = (uint64_t*) 0;
@@ -5506,9 +5511,13 @@ uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid) {
     format_comment("sign-extend %lu-bit immediate", bits));
 }
 
+uint64_t* get_compressed_instruction_CI_shamt_5(uint64_t* c_ir_nid) {
+  return new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI-shamt[5]");
+}
+
 uint64_t* get_compressed_instruction_CI_imm_shamt(uint64_t* c_ir_nid) {
   return new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
-    new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI-imm-shamt[5]"),
+    get_compressed_instruction_CI_shamt_5(c_ir_nid),
     new_slice(SID_5_BIT_OFFSET, c_ir_nid, 6, 2, "get CI-imm-shamt[4:0]"),
     "get CI-imm-shamt[5:0]");
 }
@@ -5819,15 +5828,7 @@ uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* other_c_funct_nid) {
   other_c_funct_nid = decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI, "C.ADDI?",
-    new_ternary(OP_ITE, sid,
-      new_binary_boolean(OP_NEQ,
-        get_compressed_instruction_CI_immediate(c_ir_nid),
-        NID_MACHINE_WORD_0,
-        "CI-immediate != 0?"),
-      c_addi_nid,
-      other_c_funct_nid,
-      "c.addi (CI-immediate != 0)?"),
-    format_comment("c.addi %s", (uint64_t) comment),
+    c_addi_nid, format_comment("c.addi %s", (uint64_t) comment),
     decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_LI, "C.LI?",
       c_li_nid, format_comment("c.li %s", (uint64_t) comment),
@@ -5836,23 +5837,9 @@ uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
         new_ternary(OP_ITE, sid,
           new_binary_boolean(OP_NEQ,
             get_compressed_instruction_rd(c_ir_nid), NID_SP, "compressed rd != sp?"),
-          new_ternary(OP_ITE, sid,
-            new_binary_boolean(OP_NEQ,
-              get_compressed_instruction_CUI_immediate(c_ir_nid),
-              NID_MACHINE_WORD_0,
-              "CUI-immediate != 0?"),
-            c_lui_nid,
-            other_c_funct_nid,
-            "c.lui (CUI-immediate != 0)?"),
-          new_ternary(OP_ITE, sid,
-            new_binary_boolean(OP_NEQ,
-              get_compressed_instruction_CI16SP_immediate(c_ir_nid),
-              NID_MACHINE_WORD_0,
-              "CI16SP-immediate != 0?"),
-            c_addi16sp_nid,
-            other_c_funct_nid,
-            "c.addi16sp (CI16SP-immediate != 0)?"),
-          "c.lui (rd != sp and CUI-immediate != 0) or c.addi16sp (rd == sp and CI16SP-immediate != 0)?"),
+          c_lui_nid,
+          c_addi16sp_nid,
+          "c.lui (rd != sp) or c.addi16sp (rd == sp)?"),
         format_comment("c.lui or c.addi16sp %s", (uint64_t) comment),
         decode_compressed_funct3(sid, c_ir_nid,
           NID_F3_C_SRLI_SRAI_ANDI, "C.SRLI or C.SRAI or C.ANDI?",
@@ -5882,15 +5869,7 @@ uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid) {
   return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI4SPN, "C.ADDI4SPN?",
-    new_ternary(OP_ITE, sid,
-      new_binary_boolean(OP_NEQ,
-        get_compressed_instruction_CIW_immediate(c_ir_nid),
-        NID_MACHINE_WORD_0,
-        "CIW-immediate != 0?"),
-      c_addi4spn_nid,
-      other_c_funct3_nid,
-      "c.addi4spn (CIW-immediate != 0)?"),
-    format_comment("c.addi4spn %s", (uint64_t) comment),
+    c_addi4spn_nid, format_comment("c.addi4spn %s", (uint64_t) comment),
     other_c_funct3_nid);
 }
 
@@ -5902,25 +5881,94 @@ uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
     other_c_funct3_nid);
 }
 
-uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* ir_nid) {
-  if (IS64BITTARGET)
-    return decode_opcode(SID_BOOLEAN, ir_nid,
-      NID_OP_IMM_32, "IMM-32?",
-      decode_shift_RV64I(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
-        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
-        NID_FALSE),
-      "illegal shamt there?",
-      NID_FALSE);
+uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid) {
+  uint64_t* illegal_shamt_nid;
+
+  illegal_shamt_nid = new_binary_boolean(OP_EQ,
+    get_compressed_instruction_CI_shamt(c_ir_nid),
+    NID_MACHINE_WORD_0,
+    "CI-shamt == 0?");
+
+  if (IS64BITTARGET == 0)
+    illegal_shamt_nid = new_binary_boolean(OP_OR,
+      get_compressed_instruction_CI_shamt_5(c_ir_nid),
+      illegal_shamt_nid,
+      "CI-shamt[5] == 1 or CI-shamt == 0?");
+
+  return new_binary_boolean(OP_AND,
+    illegal_shamt_nid,
+    c_shift_nid,
+    "compressed shift with illegal shamt?");
+}
+
+uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* c_ir_nid) {
+  uint64_t* c_lui_nid;
+  uint64_t* c_addi_nid;
+  uint64_t* c_addi16sp_nid;
+  uint64_t* c_addi4spn_nid;
+
+  c_lui_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_CUI_immediate(c_ir_nid),
+      NID_MACHINE_WORD_0,
+      "CUI-immediate == 0?"),
+    NID_C_LUI,
+    "c.lui with CUI-immediate == 0?");
+
+  c_addi_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_CI_immediate(c_ir_nid),
+      NID_MACHINE_WORD_0,
+      "CI-immediate == 0?"),
+    NID_C_ADDI,
+    "c.addi with CI-immediate == 0?");
+
+  c_addi16sp_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_CI16SP_immediate(c_ir_nid),
+      NID_MACHINE_WORD_0,
+      "CI16SP-immediate == 0?"),
+    NID_C_ADDI16SP,
+    "c.addi16sp with CI16SP-immediate == 0?");
+
+  c_addi4spn_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_EQ,
+      get_compressed_instruction_CIW_immediate(c_ir_nid),
+      NID_MACHINE_WORD_0,
+      "CIW-immediate == 0?"),
+    NID_C_ADDI4SPN,
+    "c.addi4spn with CIW-immediate == 0?");
+
+  if (RVC)
+    return new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(c_ir_nid),
+      decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+        NID_OP_C2, "C2?",
+        decode_compressed_slli(SID_BOOLEAN, c_ir_nid,
+          is_illegal_compressed_shift(c_ir_nid, NID_C_SLLI), "with illegal shamt?",
+          NID_FALSE),
+        "C2 compressed instruction with illegal shamt?",
+        decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+          NID_OP_C0, "C0?",
+          decode_compressed_addi4spn(SID_BOOLEAN, c_ir_nid,
+            c_addi4spn_nid, "with illegal immediate?",
+            NID_FALSE),
+          "C0 compressed instruction with illegal immediate?",
+          decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+            NID_OP_C1, "C1?",
+            decode_compressed_imm(SID_BOOLEAN, c_ir_nid,
+              NID_FALSE, c_lui_nid,
+              c_addi_nid, NID_FALSE, c_addi16sp_nid,
+              is_illegal_compressed_shift(c_ir_nid, NID_C_SRLI),
+              is_illegal_compressed_shift(c_ir_nid, NID_C_SRAI),
+              NID_FALSE, "with illegal immediate or shamt?",
+              NID_FALSE),
+            "C1 compressed instruction with illegal immediate or shamt?",
+            NID_FALSE))),
+      NID_FALSE,
+      "compressed instruction with illegal immediate or shamt?");
   else
-    return decode_opcode(SID_BOOLEAN, ir_nid,
-      NID_OP_IMM, "IMM?",
-      decode_shift_imm(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
-        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
-        NID_FALSE),
-      "illegal shamt there?",
-      NID_FALSE);
+    return NID_FALSE;
 }
 
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
@@ -7040,6 +7088,12 @@ void rotor() {
     "illegal-instruction",
     "illegal instruction");
 
+  illegal_compressed_instruction_nid = state_property(
+    UNUSED,
+    decode_illegal_compressed_imm_shamt(eval_core_ir_nid),
+    "compressed-illegal-instruction",
+    "compressed illegal instruction");
+
   is_instruction_known_nid = state_property(
     eval_all_known_instructions_nid,
     UNUSED,
@@ -7243,6 +7297,12 @@ void output_model() {
   print_line(illegal_instruction_nid);
 
   print_break("\n");
+
+  if (RVC) {
+    print_line(illegal_compressed_instruction_nid);
+
+    print_break("\n");
+  }
 
   print_line(is_instruction_known_nid);
 
