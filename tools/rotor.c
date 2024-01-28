@@ -1219,7 +1219,7 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_opcode_nid);
-uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_load_nid);
+uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
@@ -1233,7 +1233,7 @@ uint64_t* get_sp_value_plus_CSS32_offset(uint64_t* c_ir_nid);
 uint64_t* get_sp_value_plus_CSS64_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CS32_offset(uint64_t* c_ir_nid);
 uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid);
-uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_store_nid);
+uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid);
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
@@ -2252,6 +2252,8 @@ uint64_t* next_fetch_unaligned_nid           = (uint64_t*) 0;
 uint64_t* next_fetch_seg_faulting_nid        = (uint64_t*) 0;
 uint64_t* load_seg_faulting_nid              = (uint64_t*) 0;
 uint64_t* store_seg_faulting_nid             = (uint64_t*) 0;
+uint64_t* compressed_load_seg_faulting_nid   = (uint64_t*) 0;
+uint64_t* compressed_store_seg_faulting_nid  = (uint64_t*) 0;
 uint64_t* stack_seg_faulting_nid             = (uint64_t*) 0;
 uint64_t* division_by_zero_nid               = (uint64_t*) 0;
 uint64_t* signed_division_overflow_nid       = (uint64_t*) 0;
@@ -6297,7 +6299,7 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
       no_opcode_nid));
 }
 
-uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_load_nid) {
+uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid) {
   if (RVC)
     return new_ternary(OP_ITE, SID_BOOLEAN,
       is_compressed_instruction(c_ir_nid),
@@ -6309,10 +6311,10 @@ uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_load
         "no-seg-faults",
         NID_TRUE,
         NID_TRUE),
-      other_load_nid,
-      "no compressed load and other load segmentation faults");
+      NID_TRUE,
+      "no compressed load segmentation faults");
   else
-    return other_load_nid;
+    return NID_TRUE;
 }
 
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
@@ -6442,7 +6444,7 @@ uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid) {
     "rs1' value plus CS64-offset");
 }
 
-uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_store_nid) {
+uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid) {
   if (RVC)
     return new_ternary(OP_ITE, SID_BOOLEAN,
       is_compressed_instruction(c_ir_nid),
@@ -6453,10 +6455,10 @@ uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* other_sto
         is_sized_block_in_main_memory(get_rs1_shift_value_plus_CS32_offset(c_ir_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
         "no-seg-faults",
         NID_TRUE),
-      other_store_nid,
+      NID_TRUE,
       "no compressed store and other store segmentation faults");
   else
-    return other_store_nid;
+    return NID_TRUE;
 }
 
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* memory_nid) {
@@ -7119,18 +7121,28 @@ void rotor() {
     "imminent fetch segmentation fault");
 
   load_seg_faulting_nid = state_property(
-    compressed_load_no_seg_faults(eval_core_c_ir_nid,
-      load_no_seg_faults(eval_core_ir_nid)),
+    load_no_seg_faults(eval_core_ir_nid),
     UNUSED,
     "load-seg-fault",
     "load segmentation fault");
 
   store_seg_faulting_nid = state_property(
-    compressed_store_no_seg_faults(eval_core_c_ir_nid,
-      store_no_seg_faults(eval_core_ir_nid)),
+    store_no_seg_faults(eval_core_ir_nid),
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
+
+  compressed_load_seg_faulting_nid = state_property(
+    compressed_load_no_seg_faults(eval_core_c_ir_nid),
+    UNUSED,
+    "compressed-load-seg-fault",
+    "compressed load segmentation fault");
+
+  compressed_store_seg_faulting_nid = state_property(
+    compressed_store_no_seg_faults(eval_core_c_ir_nid),
+    UNUSED,
+    "compressed-store-seg-fault",
+    "compressed store segmentation fault");
 
   // TODO: check stack pointer segfault earlier upon sp update
 
@@ -7324,19 +7336,31 @@ void output_model() {
 
   print_break("\n");
 
-  print_line(stack_seg_faulting_nid);
+  if (RVC) {
+    print_line(compressed_load_seg_faulting_nid);
 
-  if (RISCU + RV32M + RV64M) {
     print_break("\n");
 
+    print_line(compressed_store_seg_faulting_nid);
+
+    print_break("\n");
+  }
+
+  print_line(stack_seg_faulting_nid);
+
+  print_break("\n");
+
+  if (RISCU + RV32M + RV64M) {
     print_line(division_by_zero_nid);
+
+    print_break("\n");
   }
 
   if (RISCU == 0)
     if (RV32M + RV64M) {
-      print_break("\n");
-
       print_line(signed_division_overflow_nid);
+
+      print_break("\n");
     }
 
   //print_break("\n");
