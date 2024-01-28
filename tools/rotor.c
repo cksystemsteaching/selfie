@@ -983,7 +983,7 @@ uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct_sll_srl_nid, uint64_t* slli_nid, uint64_t* srli_nid,
   uint64_t* funct_sra_nid, uint64_t* srai_nid, char* comment,
   uint64_t* no_funct_nid);
-uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid);
+uint64_t* decode_illegal_shamt(uint64_t* ir_nid);
 uint64_t* decode_imm_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
   uint64_t* no_funct_nid, uint64_t* other_opcode_nid);
@@ -1105,11 +1105,13 @@ uint64_t* get_compressed_instruction_rs2(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_rs2_shift(uint64_t* c_ir_nid);
 
 uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid);
+uint64_t* get_compressed_instruction_CI_imm_shamt(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid);
+uint64_t* unsigned_extend_imm_shamt_offset(uint64_t bits, uint64_t* imm_nid);
 uint64_t* get_compressed_instruction_CIW_immediate(uint64_t* c_ir_nid);
-uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid);
+uint64_t* get_compressed_instruction_CI_shamt(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CL32_offset(uint64_t* c_ir_nid);
@@ -4251,7 +4253,7 @@ uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
       no_funct_nid));
 }
 
-uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
+uint64_t* decode_illegal_shamt(uint64_t* ir_nid) {
   if (IS64BITTARGET)
     return decode_opcode(SID_BOOLEAN, ir_nid,
       NID_OP_IMM_32, "IMM-32?",
@@ -4259,7 +4261,7 @@ uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
         NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
         NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
         NID_FALSE),
-      "illegal shift imm-32 there?",
+      "illegal shamt there?",
       NID_FALSE);
   else
     return decode_opcode(SID_BOOLEAN, ir_nid,
@@ -4268,7 +4270,7 @@ uint64_t* decode_illegal_shift_imm(uint64_t* ir_nid) {
         NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
         NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
         NID_FALSE),
-      "illegal shift imm there?",
+      "illegal shamt there?",
       NID_FALSE);
 }
 
@@ -5504,23 +5506,23 @@ uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid) {
     format_comment("sign-extend %lu-bit immediate", bits));
 }
 
+uint64_t* get_compressed_instruction_CI_imm_shamt(uint64_t* c_ir_nid) {
+  return new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
+    new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI-imm-shamt[5]"),
+    new_slice(SID_5_BIT_OFFSET, c_ir_nid, 6, 2, "get CI-imm-shamt[4:0]"),
+    "get CI-imm-shamt[5:0]");
+}
+
 uint64_t* get_compressed_instruction_CI_immediate(uint64_t* c_ir_nid) {
-  return sign_extend_immediate(6,
-    new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
-      new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI-immediate[5]"),
-      new_slice(SID_5_BIT_OFFSET, c_ir_nid, 6, 2, "get CI-immediate[4:0]"),
-      "get CI-immediate[5:0]"));
+  return sign_extend_immediate(6, get_compressed_instruction_CI_imm_shamt(c_ir_nid));
 }
 
 uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid) {
   return sign_extend_immediate(18,
     new_binary(OP_CONCAT, SID_18_BIT_OFFSET,
-      new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI-immediate[17]"),
-      new_binary(OP_CONCAT, SID_17_BIT_OFFSET,
-        new_slice(SID_5_BIT_OFFSET, c_ir_nid, 6, 2, "get CI-immediate[16:12]"),
-        NID_12_BIT_OFFSET_0,
-        "get CI-immediate[16:0]"),
-      "get CI-immediate[17:0]"));
+      get_compressed_instruction_CI_imm_shamt(c_ir_nid),
+      NID_12_BIT_OFFSET_0,
+      "get CUI-immediate[17:0]"));
 }
 
 uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid) {
@@ -5543,15 +5545,15 @@ uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid) {
       "get CI16SP-immediate[9:0]"));
 }
 
-uint64_t* unsigned_extend_immediate(uint64_t bits, uint64_t* imm_nid) {
+uint64_t* unsigned_extend_imm_shamt_offset(uint64_t bits, uint64_t* imm_nid) {
   return new_ext(OP_UEXT, SID_MACHINE_WORD,
     imm_nid,
     WORDSIZEINBITS - bits,
-    format_comment("unsigned-extend %lu-bit immediate or offset", bits));
+    format_comment("unsigned-extend %lu-bit immediate or shamt or offset", bits));
 }
 
 uint64_t* get_compressed_instruction_CIW_immediate(uint64_t* c_ir_nid) {
-  return unsigned_extend_immediate(10,
+  return unsigned_extend_imm_shamt_offset(10,
     new_binary(OP_CONCAT, SID_10_BIT_OFFSET,
       new_slice(SID_4_BIT_OFFSET, c_ir_nid, 10, 7, "get CIW-immediate[9:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5567,12 +5569,12 @@ uint64_t* get_compressed_instruction_CIW_immediate(uint64_t* c_ir_nid) {
       "get CIW-immediate[9:0]"));
 }
 
-uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid) {
-  return unsigned_extend_immediate(bits, offset_nid);
+uint64_t* get_compressed_instruction_CI_shamt(uint64_t* c_ir_nid) {
+  return unsigned_extend_imm_shamt_offset(6, get_compressed_instruction_CI_imm_shamt(c_ir_nid));
 }
 
 uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(8,
+  return unsigned_extend_imm_shamt_offset(8,
     new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
       new_slice(SID_2_BIT_OFFSET, c_ir_nid, 3, 2, "get CI32-offset[7:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5586,7 +5588,7 @@ uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(9,
+  return unsigned_extend_imm_shamt_offset(9,
     new_binary(OP_CONCAT, SID_9_BIT_OFFSET,
       new_slice(SID_3_BIT_OFFSET, c_ir_nid, 4, 2, "get CI64-offset[8:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5600,7 +5602,7 @@ uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_CL32_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(7,
+  return unsigned_extend_imm_shamt_offset(7,
     new_binary(OP_CONCAT, SID_7_BIT_OFFSET,
       new_slice(SID_1_BIT_OFFSET, c_ir_nid, 5, 5, "get CL32-or-CS32-offset[6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5614,7 +5616,7 @@ uint64_t* get_compressed_instruction_CL32_offset(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_CL64_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(8,
+  return unsigned_extend_imm_shamt_offset(8,
     new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
       new_slice(SID_2_BIT_OFFSET, c_ir_nid, 6, 5, "get CL64-or-CS64-offset[7:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5625,7 +5627,7 @@ uint64_t* get_compressed_instruction_CL64_offset(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_CSS32_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(8,
+  return unsigned_extend_imm_shamt_offset(8,
     new_binary(OP_CONCAT, SID_8_BIT_OFFSET,
       new_slice(SID_2_BIT_OFFSET, c_ir_nid, 8, 7, "get CSS32-offset[7:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5636,7 +5638,7 @@ uint64_t* get_compressed_instruction_CSS32_offset(uint64_t* c_ir_nid) {
 }
 
 uint64_t* get_compressed_instruction_CSS64_offset(uint64_t* c_ir_nid) {
-  return unsigned_extend_offset(9,
+  return unsigned_extend_imm_shamt_offset(9,
     new_binary(OP_CONCAT, SID_9_BIT_OFFSET,
       new_slice(SID_3_BIT_OFFSET, c_ir_nid, 9, 7, "get CSS64-offset[8:6]"),
       new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
@@ -5898,6 +5900,27 @@ uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
     NID_F3_C_SLLI, "C.SLLI?",
     c_slli_nid, format_comment("c.slli %s", (uint64_t) comment),
     other_c_funct3_nid);
+}
+
+uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* ir_nid) {
+  if (IS64BITTARGET)
+    return decode_opcode(SID_BOOLEAN, ir_nid,
+      NID_OP_IMM_32, "IMM-32?",
+      decode_shift_RV64I(SID_BOOLEAN, ir_nid,
+        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
+        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
+        NID_FALSE),
+      "illegal shamt there?",
+      NID_FALSE);
+  else
+    return decode_opcode(SID_BOOLEAN, ir_nid,
+      NID_OP_IMM, "IMM?",
+      decode_shift_imm(SID_BOOLEAN, ir_nid,
+        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
+        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
+        NID_FALSE),
+      "illegal shamt there?",
+      NID_FALSE);
 }
 
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
@@ -7013,7 +7036,7 @@ void rotor() {
 
   illegal_instruction_nid = state_property(
     UNUSED,
-    decode_illegal_shift_imm(eval_core_ir_nid),
+    decode_illegal_shamt(eval_core_ir_nid),
     "illegal-instruction",
     "illegal instruction");
 
