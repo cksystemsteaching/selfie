@@ -1165,7 +1165,7 @@ uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
 uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_slli_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid);
-uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* c_ir_nid);
+uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid);
 
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid, char* comment,
@@ -5903,7 +5903,7 @@ uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid)
     "compressed shift with illegal shamt?");
 }
 
-uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* c_ir_nid) {
+uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
   uint64_t* c_lui_nid;
   uint64_t* c_addi_nid;
   uint64_t* c_addi16sp_nid;
@@ -5944,29 +5944,36 @@ uint64_t* decode_illegal_compressed_imm_shamt(uint64_t* c_ir_nid) {
   if (RVC)
     return new_ternary(OP_ITE, SID_BOOLEAN,
       is_compressed_instruction(c_ir_nid),
-      decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
-        NID_OP_C2, "C2?",
-        decode_compressed_slli(SID_BOOLEAN, c_ir_nid,
-          is_illegal_compressed_shift(c_ir_nid, NID_C_SLLI), "with illegal shamt?",
-          NID_FALSE),
-        "C2 compressed instruction with illegal shamt?",
+      new_ternary(OP_ITE, SID_BOOLEAN,
+        new_binary_boolean(OP_NEQ,
+          c_ir_nid,
+          NID_HALF_WORD_0,
+          "is not defined illegal compressed instruction?"),
         decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
-          NID_OP_C0, "C0?",
-          decode_compressed_addi4spn(SID_BOOLEAN, c_ir_nid,
-            c_addi4spn_nid, "with illegal immediate?",
+          NID_OP_C2, "C2?",
+          decode_compressed_slli(SID_BOOLEAN, c_ir_nid,
+            is_illegal_compressed_shift(c_ir_nid, NID_C_SLLI), "with illegal shamt?",
             NID_FALSE),
-          "C0 compressed instruction with illegal immediate?",
+          "C2 compressed instruction with illegal shamt?",
           decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
-            NID_OP_C1, "C1?",
-            decode_compressed_imm(SID_BOOLEAN, c_ir_nid,
-              NID_FALSE, c_lui_nid,
-              c_addi_nid, NID_FALSE, c_addi16sp_nid,
-              is_illegal_compressed_shift(c_ir_nid, NID_C_SRLI),
-              is_illegal_compressed_shift(c_ir_nid, NID_C_SRAI),
-              NID_FALSE, "with illegal immediate or shamt?",
+            NID_OP_C0, "C0?",
+            decode_compressed_addi4spn(SID_BOOLEAN, c_ir_nid,
+              c_addi4spn_nid, "with illegal immediate?",
               NID_FALSE),
-            "C1 compressed instruction with illegal immediate or shamt?",
-            NID_FALSE))),
+            "C0 compressed instruction with illegal immediate?",
+            decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+              NID_OP_C1, "C1?",
+              decode_compressed_imm(SID_BOOLEAN, c_ir_nid,
+                NID_FALSE, c_lui_nid,
+                c_addi_nid, NID_FALSE, c_addi16sp_nid,
+                is_illegal_compressed_shift(c_ir_nid, NID_C_SRLI),
+                is_illegal_compressed_shift(c_ir_nid, NID_C_SRAI),
+                NID_FALSE, "with illegal immediate or shamt?",
+                NID_FALSE),
+              "C1 compressed instruction with illegal immediate or shamt?",
+              NID_FALSE))),
+        NID_TRUE,
+        "is defined illegal compressed instruction or has illegal immediate or shamt?"),
       NID_FALSE,
       "compressed instruction with illegal immediate or shamt?");
   else
@@ -7092,7 +7099,7 @@ void rotor() {
 
   illegal_compressed_instruction_nid = state_property(
     UNUSED,
-    decode_illegal_compressed_imm_shamt(eval_core_ir_nid),
+    decode_illegal_compressed_instruction_imm_shamt(eval_core_c_ir_nid),
     "compressed-illegal-instruction",
     "compressed illegal instruction");
 
