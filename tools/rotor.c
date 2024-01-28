@@ -1107,6 +1107,7 @@ uint64_t* get_compressed_instruction_rs2_shift(uint64_t* c_ir_nid);
 uint64_t* sign_extend_immediate(uint64_t bits, uint64_t* imm_nid);
 uint64_t* get_compressed_instruction_CI_immediate(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid);
+uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid);
 uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid);
 uint64_t* get_compressed_instruction_CI32_offset(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_CI64_offset(uint64_t* c_ir_nid);
@@ -1606,6 +1607,7 @@ uint64_t* NID_1_BIT_OFFSET_0  = (uint64_t*) 0;
 uint64_t* NID_2_BIT_OFFSET_0  = (uint64_t*) 0;
 uint64_t* NID_2_BIT_OFFSET_1  = (uint64_t*) 0;
 uint64_t* NID_3_BIT_OFFSET_0  = (uint64_t*) 0;
+uint64_t* NID_4_BIT_OFFSET_0  = (uint64_t*) 0;
 uint64_t* NID_12_BIT_OFFSET_0 = (uint64_t*) 0;
 
 // RVC instruction switches
@@ -2057,6 +2059,7 @@ void init_instruction_sorts() {
   NID_2_BIT_OFFSET_0  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 0, 2, "2-bit offset 0");
   NID_2_BIT_OFFSET_1  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, 2, "2-bit offset 1, 01000 s0");
   NID_3_BIT_OFFSET_0  = new_constant(OP_CONST, SID_3_BIT_OFFSET, 0, 3, "3-bit offset 0");
+  NID_4_BIT_OFFSET_0  = new_constant(OP_CONST, SID_4_BIT_OFFSET, 0, 4, "4-bit offset 0");
   NID_12_BIT_OFFSET_0 = new_constant(OP_CONST, SID_12_BIT_OFFSET, 0, 12, "12-bit offset 0");
 
   // RVC instruction switches
@@ -5519,6 +5522,26 @@ uint64_t* get_compressed_instruction_CUI_immediate(uint64_t* c_ir_nid) {
       "get CI-immediate[17:0]"));
 }
 
+uint64_t* get_compressed_instruction_CI16SP_immediate(uint64_t* c_ir_nid) {
+  return sign_extend_immediate(10,
+    new_binary(OP_CONCAT, SID_10_BIT_OFFSET,
+      new_slice(SID_1_BIT_OFFSET, c_ir_nid, 12, 12, "get CI16SP-immediate[9]"),
+      new_binary(OP_CONCAT, SID_9_BIT_OFFSET,
+        new_slice(SID_2_BIT_OFFSET, c_ir_nid, 4, 3, "get CI16SP-immediate[8:7]"),
+        new_binary(OP_CONCAT, SID_7_BIT_OFFSET,
+          new_slice(SID_1_BIT_OFFSET, c_ir_nid, 5, 5, "get CI16SP-immediate[6]"),
+          new_binary(OP_CONCAT, SID_6_BIT_OFFSET,
+            new_slice(SID_1_BIT_OFFSET, c_ir_nid, 2, 2, "get CI16SP-immediate[5]"),
+            new_binary(OP_CONCAT, SID_5_BIT_OFFSET,
+              new_slice(SID_1_BIT_OFFSET, c_ir_nid, 6, 6, "get CI16SP-immediate[4]"),
+              NID_4_BIT_OFFSET_0,
+              "get CI16SP-immediate[4:0]"),
+            "get CI16SP-immediate[5:0]"),
+          "get CI16SP-immediate[6:0]"),
+        "get CI16SP-immediate[8:0]"),
+      "get CI16SP-immediate[9:0]"));
+}
+
 uint64_t* unsigned_extend_offset(uint64_t bits, uint64_t* offset_nid) {
   return new_ext(OP_UEXT, SID_MACHINE_WORD,
     offset_nid,
@@ -5772,7 +5795,15 @@ uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* other_c_funct_nid) {
   other_c_funct_nid = decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_ADDI, "C.ADDI?",
-    c_addi_nid, format_comment("c.addi %s", (uint64_t) comment),
+    new_ternary(OP_ITE, sid,
+      new_binary_boolean(OP_NEQ,
+        get_compressed_instruction_CI_immediate(c_ir_nid),
+        NID_MACHINE_WORD_0,
+        "CI-immediate != 0?"),
+      c_addi_nid,
+      other_c_funct_nid,
+      "c.addi (CI-immediate != 0)?"),
+    format_comment("c.addi %s", (uint64_t) comment),
     decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_LI, "C.LI?",
       c_li_nid, format_comment("c.li %s", (uint64_t) comment),
@@ -5781,9 +5812,23 @@ uint64_t* decode_compressed_imm(uint64_t* sid, uint64_t* c_ir_nid,
         new_ternary(OP_ITE, sid,
           new_binary_boolean(OP_NEQ,
             get_compressed_instruction_rd(c_ir_nid), NID_SP, "compressed rd != sp?"),
-          c_lui_nid,
-          c_addi16sp_nid,
-          "c.lui (rd != sp) or c.addi16sp (rd == sp)?"),
+          new_ternary(OP_ITE, sid,
+            new_binary_boolean(OP_NEQ,
+              get_compressed_instruction_CUI_immediate(c_ir_nid),
+              NID_MACHINE_WORD_0,
+              "CUI-immediate != 0?"),
+            c_lui_nid,
+            other_c_funct_nid,
+            "c.lui (CUI-immediate != 0)?"),
+          new_ternary(OP_ITE, sid,
+            new_binary_boolean(OP_NEQ,
+              get_compressed_instruction_CI16SP_immediate(c_ir_nid),
+              NID_MACHINE_WORD_0,
+              "CI16SP-immediate != 0?"),
+            c_addi16sp_nid,
+            other_c_funct_nid,
+            "c.addi16sp (CI16SP-immediate != 0)?"),
+          "c.lui (rd != sp and CUI-immediate != 0) or c.addi16sp (rd == sp and CI16SP-immediate != 0)?"),
         format_comment("c.lui or c.addi16sp %s", (uint64_t) comment),
         decode_compressed_funct3(sid, c_ir_nid,
           NID_F3_C_SRLI_SRAI_ANDI, "C.SRLI or C.SRAI or C.ANDI?",
@@ -6211,7 +6256,7 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
 
   rd_value_nid = decode_compressed_register_data_flow(SID_MACHINE_WORD, c_ir_nid,
     get_compressed_instruction_CI_immediate(c_ir_nid),
-    get_compressed_instruction_CUI_immediate(c_ir_nid), // TODO: check immediate != 0
+    get_compressed_instruction_CUI_immediate(c_ir_nid),
     NID_MACHINE_WORD_0,
     NID_MACHINE_WORD_0,
     NID_MACHINE_WORD_0,
