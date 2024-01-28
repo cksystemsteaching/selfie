@@ -4263,8 +4263,8 @@ uint64_t* decode_illegal_shamt(uint64_t* ir_nid) {
     return decode_opcode(SID_BOOLEAN, ir_nid,
       NID_OP_IMM_32, "IMM-32?",
       decode_shift_RV64I(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
-        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
+        NID_F7_SLL_SRL_ILLEGAL, NID_SLLIW, NID_SRLIW,
+        NID_F7_SRA_ILLEGAL, NID_SRAIW, "there?",
         NID_FALSE),
       "illegal shamt there?",
       NID_FALSE);
@@ -4272,8 +4272,8 @@ uint64_t* decode_illegal_shamt(uint64_t* ir_nid) {
     return decode_opcode(SID_BOOLEAN, ir_nid,
       NID_OP_IMM, "IMM?",
       decode_shift_imm(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_TRUE, NID_TRUE,
-        NID_F7_SRA_ILLEGAL, NID_TRUE, "there?",
+        NID_F7_SLL_SRL_ILLEGAL, NID_C_SLLI, NID_SRLI,
+        NID_F7_SRA_ILLEGAL, NID_SRAI, "there?",
         NID_FALSE),
       "illegal shamt there?",
       NID_FALSE);
