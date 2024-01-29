@@ -7421,9 +7421,6 @@ uint64_t validate_elf_header(uint64_t fd, uint64_t* header) {
   // must match binary bootstrapping
   data_start = round_up(code_start + code_size, p_align);
 
-  printf("%s: code_start = 0x%lx\tcode_size = 0x%lx\n", selfie_name, code_start, code_size);
-  printf("%s: data_start = 0x%lx, data_size = 0x%lx\n", selfie_name, data_start, data_size);
-
   if (code_size > MAX_CODE_SIZE)
     return 0;
 
