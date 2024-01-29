@@ -807,9 +807,9 @@ uint64_t stack_start     = 0;
 uint64_t stack_size      = 0;
 uint64_t stack_allowance = 0;
 
-uint64_t* zeroed_code_segment_nid       = (uint64_t*) 0;
-uint64_t* initial_code_segment_nid      = (uint64_t*) 0;
-uint64_t* half_initial_code_segment_nid = (uint64_t*) 0;
+uint64_t* zeroed_code_segment_nid   = (uint64_t*) 0;
+uint64_t* initial_code_segment_nid  = (uint64_t*) 0;
+uint64_t* initial_code_segment_nids = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
@@ -3066,6 +3066,8 @@ void new_code_segment() {
 
     initial_code_segment_nid = state_code_segment_nid;
 
+    initial_code_segment_nids = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t*));
+
     REUSE_LINES = 0; // TODO: turn on via console argument
 
     pc = code_start;
@@ -3085,12 +3087,10 @@ void new_code_segment() {
           format_comment("code 0x%04lX", ir));
         initial_code_segment_nid =
           store_single_word_at_virtual_address(vaddr_nid, ir_nid, initial_code_segment_nid);
-      }
 
-      // print code segment in two halfs to avoid stack overflow in recursion
-      if (pc - code_start == code_size / 2)
-        // TODO: scale up
-        half_initial_code_segment_nid = initial_code_segment_nid;
+        // for printing initial code segment iteratively to avoid stack overflow in recursion
+        *(initial_code_segment_nids + (pc - code_start) / INSTRUCTIONSIZE) = (uint64_t) initial_code_segment_nid;
+      }
 
       pc = pc + INSTRUCTIONSIZE;
     }
@@ -3112,6 +3112,8 @@ void new_code_segment() {
 }
 
 void print_code_segment() {
+  uint64_t i;
+
   if (SYNTHESIZE) {
     print_break("\n; uninitialized code segment\n\n");
 
@@ -3125,9 +3127,14 @@ void print_code_segment() {
       print_aligned_break("\n; loading code\n\n",
         log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
-      print_line(half_initial_code_segment_nid);
+      i = 0;
 
-      print_line(initial_code_segment_nid);
+      while (i < code_size / INSTRUCTIONSIZE) {
+        if (*(initial_code_segment_nids + i) != 0)
+          print_line((uint64_t*) *(initial_code_segment_nids + i));
+
+        i = i + 1;
+      }
 
       print_break("\n; loaded code segment\n\n");
 
