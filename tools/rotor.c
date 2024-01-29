@@ -7561,9 +7561,12 @@ uint64_t selfie_model() {
 
       rotor();
 
-      if (SYNTHESIZE)
-        model_name = "riscv-machine.btor2";
-      else
+      if (SYNTHESIZE) {
+        if (IS64BITTARGET)
+          model_name = "64-bit-riscv-machine.btor2";
+        else
+          model_name = "32-bit-riscv-machine.btor2";
+      } else
         model_name = replace_extension(binary_name, "-rotorized", "btor2");
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH

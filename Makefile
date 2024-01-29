@@ -55,7 +55,7 @@ selfie-gc-nomain.h: selfie-gc.h
 		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu overhead \
 		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
-		sat brr bzz mon smt beat rot btor2 all
+		sat brr bzz mon smt beat rot synthesize btor2 all
 
 # Run everything that only requires standard tools and is not too slow
 all: self self-self self-self-check 64-to-32-bit \
@@ -63,7 +63,7 @@ all: self self-self self-self-check 64-to-32-bit \
 		emu emu-emu emu-vmm-emu os-emu os-vmm-emu \
 		self-emu self-os-emu self-os-vmm-emu min mob \
 		gib gclib giblib gclibtest boehmgc cache \
-		sat brr bzz mon smt beat rot btor2
+		sat brr bzz mon smt beat rot synthesize btor2
 
 # Self-compile selfie
 self: selfie
@@ -291,10 +291,15 @@ rotor: tools/rotor.c selfie.h
 
 # Run rotor, the RISC-V symbolic model generator, natively on itself and as RISC-U executable
 rot: rotor selfie.h selfie
+	./rotor -c selfie.h tools/rotor.c - 0
 	./selfie -c selfie.h tools/rotor.c -m 1
-#./rotor -c selfie.h tools/rotor.c - 0
 # RISC-U executable also works on itself but output differs slightly
 # because of different filenames and values of a6 register
+
+# Run rotor to generate 64-bit and 32-bit RISC-V machine models for synthesizing exit(1) system call
+synthesize: rotor
+	./rotor - 1
+	./rotor -m32 - 1
 
 # Prevent make from deleting intermediate target rotor
 .SECONDARY: rotor
