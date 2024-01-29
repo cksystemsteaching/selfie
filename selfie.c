@@ -7563,8 +7563,7 @@ void selfie_load() {
 
         if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
-          number_of_read_bytes = read(fd, binary_buffer, sizeof(uint64_t));
-          if (number_of_read_bytes == 0) {
+          if (read(fd, binary_buffer, sizeof(uint64_t)) == 0) {
             printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_SIZE + code_size + data_size,
@@ -7576,6 +7575,13 @@ void selfie_load() {
             return;
           } else {
             printf("%s: binary loaded, but not at the end of file. Binary not produced by selfie?\n", selfie_name);
+            printf("%s: %lu bytes with (approx.) %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
+              selfie_name,
+              ELF_HEADER_SIZE + code_size + data_size,
+              code_size / INSTRUCTIONSIZE,
+              WORDSIZEINBITS,
+              data_size,
+              binary_name);
 
             return;
           }
