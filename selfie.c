@@ -1090,7 +1090,8 @@ void finalize_data_segment();
 
 uint64_t* touch(uint64_t* memory, uint64_t bytes);
 
-uint64_t* allocate_elf_header();
+uint64_t* allocate_elf_header(uint64_t with_page_header_table);
+uint64_t* allocate_elf_ph_table(uint64_t e_phentsize, uint64_t c);
 
 uint64_t* encode_elf_header();
 void      decode_elf_header(uint64_t* header);
@@ -1098,8 +1099,12 @@ void      decode_elf_header(uint64_t* header);
 uint64_t get_elf_program_header_offset(uint64_t ph_index);
 void     encode_elf_program_header(uint64_t* header, uint64_t ph_index);
 void     decode_elf_program_header(uint64_t* header, uint64_t ph_index);
+uint64_t decode_elf_program_header_type(uint64_t* header, uint64_t ph_index);
+uint64_t decode_elf_program_header_flags(uint64_t* header, uint64_t ph_index);
+uint64_t decode_elf_program_header_offset(uint64_t* header, uint64_t ph_index);
+uint64_t elf_program_header_contains_flag(uint64_t p_flags, uint64_t expected);
 
-uint64_t validate_elf_header(uint64_t* header);
+uint64_t validate_elf_header(uint64_t fd, uint64_t* header);
 
 uint64_t open_write_only(char* name, uint64_t mode);
 
@@ -1109,7 +1114,7 @@ void selfie_load();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // page-aligned ELF header size for storing file header, program header, code size
-uint64_t ELF_HEADER_SIZE = 4096;
+uint64_t ELF_HEADER_SIZE = 64;
 
 uint64_t ELFCLASS64 = 2;
 uint64_t ELFCLASS32 = 1;
@@ -1156,6 +1161,12 @@ uint64_t e_shnum     = 0; // number of section header entries
 uint64_t e_shstrndx  = 0; // section header offset
 
 // ELF program header
+
+uint64_t P_TYPE_LOAD   = 1; // 0x00000001 	PT_LOAD 	Loadable segment. 
+
+uint64_t P_FLAG_PROT_E = 1; // Segment is Executable
+uint64_t P_FLAG_PROT_W = 2; // Segment is Writable
+uint64_t P_FLAG_PROT_R = 4; // Segment is Readable
 
 uint64_t p_type  = 1; // type of segment is PT_LOAD
 uint64_t p_flags = 0; // segment attributes
@@ -7185,16 +7196,27 @@ uint64_t* touch(uint64_t* memory, uint64_t bytes) {
   return memory;
 }
 
-uint64_t* allocate_elf_header() {
+uint64_t* allocate_elf_header(uint64_t with_page_header_table) {
+  uint64_t size;
+  size = ELF_HEADER_SIZE;
+
+  if (with_page_header_table)
+    // when generating binary allocate space for page headers as well
+    size = size + e_phnum * e_phentsize;
+
   // allocate and map (on all boot levels) zeroed memory for ELF header preparing
   // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
-  return touch(zmalloc(ELF_HEADER_SIZE), ELF_HEADER_SIZE);
+  return touch(zmalloc(size), size);
+}
+
+uint64_t* allocate_elf_ph_table(uint64_t e_phentsize, uint64_t c) {
+  return touch(zmalloc(e_phentsize * c), e_phentsize * c);
 }
 
 uint64_t* encode_elf_header() {
   uint64_t* header;
 
-  header = allocate_elf_header();
+  header = allocate_elf_header(1);
 
   // store all data necessary for creating a minimal and valid file and program header
 
@@ -7238,16 +7260,16 @@ uint64_t* encode_elf_header() {
 
   // assert: ELF_HEADER_SIZE % p_align == 0
 
-  p_flags  = 5; // code segment attributes are RE
-  p_offset = ELF_HEADER_SIZE; // must match binary format
+  p_flags  = P_FLAG_PROT_R + P_FLAG_PROT_E; // code segment attributes are RE
+  p_offset = round_up(ELF_HEADER_SIZE, p_align); // must match binary format
   p_vaddr  = code_start;
   p_filesz = code_size;
   p_memsz  = code_size;
 
   encode_elf_program_header(header, 0);
 
-  p_flags  = 6; // data segment attributes are RW
-  p_offset = ELF_HEADER_SIZE + round_up(code_size, p_align); // must match binary format
+  p_flags  = P_FLAG_PROT_R + P_FLAG_PROT_W; // data segment attributes are RW
+  p_offset = round_up(ELF_HEADER_SIZE, p_align) + round_up(code_size, p_align); // must match binary format
   p_vaddr  = data_start;
   p_filesz = data_size;
   p_memsz  = data_size;
@@ -7260,20 +7282,27 @@ uint64_t* encode_elf_header() {
 void decode_elf_header(uint64_t* header) {
   EI_CLASS = get_bits(load_word(header, 4, 0), 0, 8);
 
-  if (EI_CLASS == ELFCLASS64)
+  if (EI_CLASS == ELFCLASS64) {
     IS64BITTARGET = 1;
-  else
+    e_phentsize = get_bits(load_word(header, 54, 0), 16, 32);
+    e_phnum = get_bits(load_word(header, 56, 0), 0, 16);
+    e_entry = get_bits(load_word(header, 24, 1), 0, 64);
+  } else {
     IS64BITTARGET = 0;
+    e_phentsize = get_bits(load_word(header, 42, 0), 0, 16);
+    e_phnum = get_bits(load_word(header, 44, 0), 0, 16);
+    e_entry = get_bits(load_word(header, 24, 0), 0, 32);
+  }
 }
 
 uint64_t get_elf_program_header_offset(uint64_t ph_index) {
-  return e_ehsize + e_phentsize * ph_index;
+  return e_phentsize * ph_index;
 }
 
 void encode_elf_program_header(uint64_t* header, uint64_t ph_index) {
   uint64_t ph_offset;
 
-  ph_offset = get_elf_program_header_offset(ph_index);
+  ph_offset = ELF_HEADER_SIZE + get_elf_program_header_offset(ph_index);
 
   if (EI_CLASS == ELFCLASS64) {
     // RISC-U ELF64 program header
@@ -7304,25 +7333,96 @@ void decode_elf_program_header(uint64_t* header, uint64_t ph_index) {
     p_filesz = load_word(header, get_elf_program_header_offset(ph_index) + 16, 0);
 }
 
-uint64_t validate_elf_header(uint64_t* header) {
-  uint64_t* valid_header;
+uint64_t decode_elf_program_header_type(uint64_t* header, uint64_t ph_index) {
+  return get_bits(load_word(header, get_elf_program_header_offset(ph_index) + 0, 0), 0, 32);
+}
+
+uint64_t decode_elf_program_header_flags(uint64_t* header, uint64_t ph_index) {
+  if (EI_CLASS == ELFCLASS64)
+    return get_bits(load_word(header, get_elf_program_header_offset(ph_index) + 4, 0), 0, 32);
+  else
+    return get_bits(load_word(header, get_elf_program_header_offset(ph_index) + 24, 0), 0, 32);
+}
+
+uint64_t decode_elf_program_header_offset(uint64_t* header, uint64_t ph_index) {
+  if (EI_CLASS == ELFCLASS64) {
+    return get_bits(load_word(header, get_elf_program_header_offset(ph_index) + 8, 1), 0, 64);
+  } else
+    return get_bits(load_word(header, get_elf_program_header_offset(ph_index) + 4, 0), 0, 32);
+}
+
+uint64_t elf_program_header_contains_flag(uint64_t p_flags, uint64_t expected) {
+  uint64_t msb_i;
   uint64_t i;
+
+  msb_i = log_two(expected);
+
+  i = 0;
+
+  while (i <= msb_i) {
+    if (get_bits(expected, i, 1) > get_bits(p_flags, i, 1)) {
+      // expected flag contains bit, but passed flags does not
+      return 0;
+    }
+
+    i = i + 1;
+  }
+
+  return 1;
+}
+
+uint64_t validate_elf_header(uint64_t fd, uint64_t* header) {
+  // uint64_t* valid_header; TODO: figure out elf header validation
+  uint64_t* ph_table;
+  uint64_t p_type;
+  uint64_t p_flags;
+  uint64_t i;
+  uint64_t number_of_read_bytes;
 
   decode_elf_header(header);
 
-  // must match binary bootstrapping
-  code_start = PK_CODE_START;
+  // assert: e_phnum is decoded
+  // assert: e_phentsize is decoded
 
-  decode_elf_program_header(header, 0);
+  ph_table = allocate_elf_ph_table(e_phentsize, e_phnum);
 
-  code_size = p_filesz;
+  number_of_read_bytes = read(fd, ph_table, e_phentsize * e_phnum);
 
-  decode_elf_program_header(header, 1);
+  if (number_of_read_bytes != e_phentsize * e_phnum) 
+    return 0;
 
-  data_size = p_filesz;
+  i = 0;
+
+  while (i < e_phnum) {
+    p_type = decode_elf_program_header_type(ph_table, i);
+
+    // only load segments that have type P_LOAD
+    if (p_type == P_TYPE_LOAD) {
+      p_flags = decode_elf_program_header_flags(ph_table, i);
+
+      if (elf_program_header_contains_flag(p_flags, P_FLAG_PROT_R)) {
+        decode_elf_program_header(ph_table, i);
+
+        if (elf_program_header_contains_flag(p_flags, P_FLAG_PROT_E)) {
+          p_offset = decode_elf_program_header_offset(ph_table, i);
+          code_start = PK_CODE_START;
+          code_size = p_filesz;
+        } 
+
+        if (elf_program_header_contains_flag(p_flags, P_FLAG_PROT_W)) {
+          data_size = p_filesz;
+        }
+      }
+    }
+
+    i = i + 1;
+  }
 
   // must match binary bootstrapping
   data_start = round_up(code_start + code_size, p_align);
+
+  printf("%s: code_start = 0x%lx\tcode_size = 0x%lx\n", selfie_name, code_start, code_size);
+  printf("%s: data_start = 0x%lx, data_size = 0x%lx\n", selfie_name, data_start, data_size);
 
   if (code_size > MAX_CODE_SIZE)
     return 0;
@@ -7330,16 +7430,17 @@ uint64_t validate_elf_header(uint64_t* header) {
   if (data_size > MAX_DATA_SIZE)
     return 0;
 
-  valid_header = encode_elf_header();
-
-  i = 0;
-
-  while (i < ELF_HEADER_SIZE / sizeof(uint64_t)) {
-    if (*(header + i) != *(valid_header + i))
-      return 0;
-
-    i = i + 1;
-  }
+  // TODO: header validation independent of encoding style possible? 
+  // valid_header = encode_elf_header();
+  //
+  // i = 0;
+  //
+  // while (i < ELF_HEADER_SIZE / sizeof(uint64_t)) {
+  //   if (*(header + i) != *(valid_header + i))
+  //     return 0;
+  //
+  //   i = i + 1;
+  // }
 
   return 1;
 }
@@ -7376,7 +7477,7 @@ void selfie_output(char* filename) {
   // assert: ELF_header is mapped
 
   // first write ELF header
-  if (write(fd, ELF_header, ELF_HEADER_SIZE) != ELF_HEADER_SIZE) {
+  if (write(fd, ELF_header, round_up(ELF_HEADER_SIZE, p_align)) != round_up(ELF_HEADER_SIZE, p_align)) {
     printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -7417,6 +7518,7 @@ void selfie_load() {
   uint64_t* ELF_header;
   uint64_t number_of_read_bytes;
   uint64_t code_size_with_padding;
+  uint64_t* dummy;
 
   binary_name = get_argument();
 
@@ -7434,7 +7536,7 @@ void selfie_load() {
   reset_binary();
 
   // this call makes sure ELF_header is mapped for reading into it
-  ELF_header = allocate_elf_header();
+  ELF_header = allocate_elf_header(0);
 
   // make sure code and data binaries are also mapped for reading into them
   code_binary = touch(smalloc(MAX_CODE_SIZE), MAX_CODE_SIZE);
@@ -7443,7 +7545,14 @@ void selfie_load() {
   number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_SIZE);
 
   if (number_of_read_bytes == ELF_HEADER_SIZE) {
-    if (validate_elf_header(ELF_header)) {
+    if (validate_elf_header(fd, ELF_header)) {
+      // assert: p_offset is init, and is offset into file where code starts
+      // use dummy to seek into file where code segment begins
+      dummy = (uint64_t*) malloc(p_offset);
+
+      fd = open_read_only(binary_name);
+      number_of_read_bytes = read(fd, dummy, p_offset);
+
       init_target();
 
       reset_disassembler();
@@ -7457,7 +7566,8 @@ void selfie_load() {
 
         if (number_of_read_bytes == data_size) {
           // check if we are really at EOF
-          if (read(fd, binary_buffer, sizeof(uint64_t)) == 0) {
+          number_of_read_bytes = read(fd, binary_buffer, sizeof(uint64_t));
+          if (number_of_read_bytes == 0) {
             printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
               selfie_name,
               ELF_HEADER_SIZE + code_size + data_size,
@@ -7465,6 +7575,10 @@ void selfie_load() {
               WORDSIZEINBITS,
               data_size,
               binary_name);
+
+            return;
+          } else {
+            printf("%s: binary loaded, but not at the end of file. Binary not produced by selfie?\n", selfie_name);
 
             return;
           }
@@ -11698,6 +11812,13 @@ uint64_t handle_exception(uint64_t* context) {
     printf("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
     print_exception(exception, get_fault(context));
     println();
+
+    if (exception == EXCEPTION_UNKNOWNINSTRUCTION) {
+      // TODO: for debugging purposes, delete later
+      printf("%s: instruction: ", selfie_name);
+      print_binary(ir, 8);
+      printf("\n");
+    }
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
 
