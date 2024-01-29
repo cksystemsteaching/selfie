@@ -3023,7 +3023,7 @@ uint64_t* is_block_in_heap_segment(uint64_t* start_nid, uint64_t* end_nid) {
 
 uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid) {
   // assert: start <= end
-  if (get_arg1(NID_STACK_END) > 0)
+  if ((uint64_t) get_arg1(NID_STACK_END) > 0)
     return is_block_in_segment(start_nid, end_nid, NID_STACK_START, NID_STACK_END);
   else
     // comparing with end of stack segment is unnecessary since end wrapped around to zero
@@ -6823,7 +6823,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     new_binary_boolean(OP_AND,
       more_bytes_to_read_nid,
       more_readable_bytes_nid,
-      "can and still would like to read more bytes"),
+      "can and still would like to read more bytes");
 
   next_readable_bytes_nid =
     new_binary(OP_NEXT, SID_MACHINE_WORD,
