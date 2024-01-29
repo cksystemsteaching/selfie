@@ -3498,7 +3498,7 @@ uint64_t selfie_model() {
       }
 
       // use extension ".btor2" in name of SMT-LIB file
-      model_name = replace_extension(binary_name, "btor2");
+      model_name = replace_extension(binary_name, "-beaten", "btor2");
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 

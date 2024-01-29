@@ -1881,7 +1881,7 @@ uint64_t selfie_run_symbolically() {
       }
 
       // use extension ".smt" in name of SMT-LIB file
-      smt_name = replace_extension(binary_name, "smt");
+      smt_name = replace_extension(binary_name, "", "smt");
 
       // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
 

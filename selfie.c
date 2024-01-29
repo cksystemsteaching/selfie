@@ -2361,7 +2361,7 @@ void up_load_binary(uint64_t* context);
 uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP);
 void     up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 
-char* replace_extension(char* filename, char* extension);
+char* replace_extension(char* filename, char* suffix, char* extension);
 
 char* boot_level_prefix(char* s);
 char* increment_boot_level_prefix(char* s, char* t);
@@ -11493,15 +11493,15 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   *(get_regs(context) + REG_S0) = 0;
 }
 
-char* replace_extension(char* filename, char* extension) {
+char* replace_extension(char* filename, char* suffix, char* extension) {
   char* s;
   uint64_t i;
   uint64_t c;
   char* filename_without_extension;
 
-  // assert: string_length(filename) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
+  // assert: string_length(filename) + string_length(suffix) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
 
-  s = string_alloc(string_length(filename) + 1 + string_length(extension));
+  s = string_alloc(string_length(filename) + string_length(suffix) + 1 + string_length(extension));
 
   // start reading at end of filename
   i = string_length(filename);
@@ -11537,8 +11537,8 @@ char* replace_extension(char* filename, char* extension) {
     }
   }
 
-  // writing filename_without_extension plus extension into s
-  sprintf(s, "%s.%s", filename_without_extension, extension);
+  // writing filename_without_extension with suffix dot extension into s
+  sprintf(s, "%s%s.%s", filename_without_extension, suffix, extension);
 
   return s;
 }

@@ -3065,7 +3065,7 @@ void new_code_segment() {
 
     initial_code_segment_nid = state_code_segment_nid;
 
-    REUSE_LINES = 1; // TODO: turn off via console argument
+    REUSE_LINES = 0; // TODO: turn on via console argument
 
     pc = code_start;
 
@@ -3151,7 +3151,7 @@ void new_memory_state() {
 
     initial_main_memory_nid = state_main_memory_nid;
 
-    REUSE_LINES = 1; // TODO: turn off via console argument
+    REUSE_LINES = 0; // TODO: turn on via console argument
 
     vaddr = data_start;
 
@@ -7546,8 +7546,10 @@ uint64_t selfie_model() {
 
       rotor();
 
-      // use extension ".btor2" in name of SMT-LIB file
-      model_name = "riscu-machine.btor2";
+      if (SYNTHESIZE)
+        model_name = "riscv-machine.btor2";
+      else
+        model_name = replace_extension(binary_name, "-rotorized", "btor2");
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
