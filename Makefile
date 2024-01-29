@@ -291,8 +291,8 @@ rotor: tools/rotor.c selfie.h
 
 # Run rotor, the RISC-V symbolic model generator, natively on itself and as RISC-U executable
 rot: rotor selfie.h selfie
-	./rotor -c selfie.h tools/rotor.c - 0
 	./selfie -c selfie.h tools/rotor.c -m 1
+#./rotor -c selfie.h tools/rotor.c - 0
 # RISC-U executable also works on itself but output differs slightly
 # because of different filenames and values of a6 register
 
