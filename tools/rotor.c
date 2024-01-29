@@ -835,7 +835,7 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   VIRTUAL_ADDRESS_SPACE = number_of_virtual_address_bits;
 
-  if (IS64BITSYSTEM * IS64BITTARGET) {
+  if (IS64BITSYSTEM * IS64BITTARGET > 0) {
     if (VIRTUAL_ADDRESS_SPACE > DOUBLEWORDSIZEINBITS)
       VIRTUAL_ADDRESS_SPACE = DOUBLEWORDSIZEINBITS;
   } else if (VIRTUAL_ADDRESS_SPACE > SINGLEWORDSIZEINBITS)
@@ -6346,7 +6346,6 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
   uint64_t* rd_shift_nid;
-  uint64_t* rd_shift_value_nid;
   uint64_t* rs1_shift_nid;
   uint64_t* rs1_shift_value_nid;
   uint64_t* rs2_value_nid;
@@ -6355,8 +6354,7 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
   rd_nid       = get_compressed_instruction_rd(c_ir_nid);
   rd_value_nid = load_register_value(rd_nid, "compressed rd value");
 
-  rd_shift_nid       = get_compressed_instruction_rd_shift(c_ir_nid);
-  rd_shift_value_nid = load_register_value(rd_shift_nid, "compressed rd' value");
+  rd_shift_nid = get_compressed_instruction_rd_shift(c_ir_nid);
 
   rs1_shift_nid       = get_compressed_instruction_rs1_shift(c_ir_nid);
   rs1_shift_value_nid = load_register_value(rs1_shift_nid, "compressed rs1' or rd' value");
