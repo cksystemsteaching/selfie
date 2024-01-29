@@ -2448,11 +2448,11 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
       w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), (uint64_t) get_arg1(line));
   } else if (get_op(line) == OP_CONST)
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa((uint64_t) get_arg1(line), integer_buffer, 2, 0, (uint64_t) get_arg2(line)));
+      itoa((uint64_t) get_arg1(line), string_buffer, 2, 0, (uint64_t) get_arg2(line)));
   else
     // assert: get_op(line) == OP_CONSTH
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa((uint64_t) get_arg1(line), integer_buffer, 16, 0, (uint64_t) get_arg2(line)));
+      itoa((uint64_t) get_arg1(line), string_buffer, 16, 0, (uint64_t) get_arg2(line)));
   return nid;
 }
 
@@ -2639,7 +2639,7 @@ char* format_comment(char* comment, uint64_t value) {
 }
 
 char* format_binary(uint64_t value, uint64_t alignment) {
-  return string_copy(itoa(value, integer_buffer, 2, 0, alignment));
+  return string_copy(itoa(value, string_buffer, 2, 0, alignment));
 }
 
 char* format_decimal(uint64_t value) {
