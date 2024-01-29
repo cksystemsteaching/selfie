@@ -7449,7 +7449,10 @@ uint64_t open_write_only(char* name, uint64_t mode) {
 void selfie_output(char* filename) {
   uint64_t fd;
   uint64_t* ELF_header;
+  uint64_t ELF_header_size;
   uint64_t code_size_with_padding;
+  uint64_t padding_size;
+  uint64_t* zeros;
 
   binary_name = filename;
 
@@ -7471,11 +7474,27 @@ void selfie_output(char* filename) {
 
   ELF_header = encode_elf_header();
 
+  // assert: e_ehsize    = 64
+  // assert: e_phnum     = 2
+  // assert: e_phentsize = 56
+
+  ELF_header_size = e_ehsize + e_phnum * e_phentsize;
+
   // assert: ELF_header is mapped
 
   // first write ELF header
-  if (write(fd, ELF_header, round_up(ELF_HEADER_SIZE, p_align)) != round_up(ELF_HEADER_SIZE, p_align)) {
+  if (write(fd, ELF_header, ELF_header_size) != ELF_header_size) {
     printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  // assert: p_offset = 0x1000 = 4096
+  // pad until code segment start
+  padding_size = round_up(ELF_header_size, p_align) - ELF_header_size;
+  zeros = zmalloc(padding_size);
+  if (write(fd, zeros, padding_size) != padding_size) {
+    printf("%s: could not write padding after ELF header into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
