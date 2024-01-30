@@ -89,9 +89,13 @@ uint64_t is_unary_op(char* op);
 uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
 
 void print_line(uint64_t* line);
-void print_break(char* comment);
-void print_break_line(char* comment, uint64_t* line);
-void print_aligned_break(char* comment, uint64_t alignment);
+
+void print_break();
+void print_break_line(uint64_t* line);
+void print_break_comment(char* comment);
+void print_break_comment_line(char* comment, uint64_t* line);
+
+void print_aligned_break_comment(char* comment, uint64_t alignment);
 
 char* format_comment(char* comment, uint64_t value);
 
@@ -2620,10 +2624,8 @@ void print_line(uint64_t* line) {
     current_nid = print_referenced_line(current_nid, line);
 }
 
-void print_break(char* comment) {
+void print_break() {
   uint64_t remainder;
-
-  w = w + dprintf(output_fd, comment);
 
   if (current_nid > 10) {
     remainder = current_nid % ten_to_the_power_of(log_ten(current_nid));
@@ -2638,18 +2640,31 @@ void print_break(char* comment) {
     }
   } else
     current_nid = 10;
+
+  w = w + dprintf(output_fd, "\n");
 }
 
-void print_break_line(char* comment, uint64_t* line) {
-  if (line != UNUSED)
-    if (get_nid(line) == 0) {
-      print_break(comment);
-      print_line(line);
-    }
+void print_break_line(uint64_t* line) {
+  if (line != UNUSED) {
+    print_break();
+    print_line(line);
+  }
 }
 
-void print_aligned_break(char* comment, uint64_t alignment) {
-  print_break(comment);
+void print_break_comment(char* comment) {
+  print_break();
+  w = w + dprintf(output_fd, "; %s\n\n", comment);
+}
+
+void print_break_comment_line(char* comment, uint64_t* line) {
+  if (line != UNUSED) {
+    print_break_comment(comment);
+    print_line(line);
+  }
+}
+
+void print_aligned_break_comment(char* comment, uint64_t alignment) {
+  print_break_comment(comment);
 
   if (log_ten(current_nid) < alignment)
     current_nid = ten_to_the_power_of(alignment);
@@ -2691,22 +2706,22 @@ void print_interface_sorts() {
   print_line(SID_SINGLE_WORD);
   print_line(SID_DOUBLE_WORD);
 
-  print_break("\n; machine constants\n\n");
+  print_break_comment("machine constants");
 
   print_line(NID_FALSE);
   print_line(NID_TRUE);
 
-  print_break("\n");
+  print_break();
 
   print_line(NID_BYTE_0);
   print_line(NID_BYTE_3);
 
-  print_break("\n");
+  print_break();
 
   print_line(NID_HALF_WORD_0);
   print_line(NID_HALF_WORD_1);
 
-  print_break("\n");
+  print_break();
 
   print_line(NID_SINGLE_WORD_0);
   print_line(NID_SINGLE_WORD_1);
@@ -2720,7 +2735,7 @@ void print_interface_sorts() {
 
   print_line(NID_SINGLE_WORD_MINUS_1);
 
-  print_break("\n");
+  print_break();
 
   print_line(NID_DOUBLE_WORD_0);
   print_line(NID_DOUBLE_WORD_1);
@@ -2740,7 +2755,7 @@ void print_interface_sorts() {
 // -----------------------------------------------------------------
 
 void print_interface_kernel() {
-  print_break("\n; kernel interface\n\n");
+  print_break_comment("kernel interface");
 
   print_line(NID_EXIT_SYSCALL_ID);
   print_line(NID_BRK_SYSCALL_ID);
@@ -2783,7 +2798,7 @@ void new_kernel_state(uint64_t bytes_to_read) {
 // -----------------------------------------------------------------
 
 void print_register_sorts() {
-  print_break("\n; register sorts\n\n");
+  print_break_comment("register sorts");
 
   print_line(SID_REGISTER_ADDRESS);
   print_line(SID_REGISTER_STATE);
@@ -2873,19 +2888,19 @@ void new_register_file_state() {
 }
 
 void print_register_file_state() {
-  print_break("\n; zeroed register file\n\n");
+  print_break_comment("zeroed register file");
 
   print_line(zeroed_register_file_nid);
 
   if (init_register_file_nid != zeroed_register_file_nid) {
     if (get_core_flag(SYNTHESIZE, 0))
-      print_break("\n; initializing sp\n\n");
+      print_break_comment("initializing sp");
     else
-      print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
+      print_aligned_break_comment("initializing registers", log_ten(32 * 3 + 1) + 1);
 
     print_line(initial_register_file_nid);
 
-    print_break("\n; initialized register file\n\n");
+    print_break_comment("initialized register file");
 
     print_line(init_register_file_nid);
   }
@@ -2896,16 +2911,16 @@ void print_register_file_state() {
 // -----------------------------------------------------------------
 
 void print_memory_sorts() {
-  print_break("\n; memory sorts\n\n");
+  print_break_comment("memory sorts");
 
   print_line(SID_VIRTUAL_ADDRESS);
 
-  print_break("\n");
+  print_break();
 
   print_line(SID_CODE_ADDRESS);
   print_line(SID_CODE_STATE);
 
-  print_break("\n");
+  print_break();
 
   print_line(SID_MEMORY_ADDRESS);
   print_line(SID_MEMORY_STATE);
@@ -3056,7 +3071,7 @@ uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid) {
 }
 
 void print_segmentation() {
-  print_break("\n; segmentation\n\n");
+  print_break_comment("segmentation");
 
   print_line(NID_CODE_START);
   print_line(NID_CODE_END);
@@ -3136,16 +3151,16 @@ void print_code_segment() {
   uint64_t i;
 
   if (get_core_flag(SYNTHESIZE, 0)) {
-    print_break("\n; uninitialized code segment\n\n");
+    print_break_comment("uninitialized code segment");
 
     print_line(state_code_segment_nid);
   } else {
-    print_break("\n; zeroed code segment\n\n");
+    print_break_comment("zeroed code segment");
 
     print_line(zeroed_code_segment_nid);
 
     if (initial_code_segment_nid != state_code_segment_nid) {
-      print_aligned_break("\n; loading code\n\n",
+      print_aligned_break_comment("loading code",
         log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
 
       i = 0;
@@ -3157,7 +3172,7 @@ void print_code_segment() {
         i = i + 1;
       }
 
-      print_break("\n; loaded code segment\n\n");
+      print_break_comment("loaded code segment");
 
       print_line(init_code_segment_nid);
     }
@@ -3240,7 +3255,7 @@ void new_memory_state() {
 }
 
 void print_memory_state() {
-  print_break("\n; zeroed main memory\n\n");
+  print_break_comment("zeroed main memory");
 
   print_line(zeroed_main_memory_nid);
 
@@ -3249,24 +3264,24 @@ void print_memory_state() {
       // assert: data_size > 0 and non-zero data in data segment
 
       // conservatively estimating number of lines needed to store one byte
-      print_aligned_break("\n; loaded data segment\n\n",
+      print_aligned_break_comment("loaded data segment",
         log_ten((data_size + heap_size + stack_size) * 5) + 1);
 
       print_line(initial_data_segment_nid);
 
       if (initial_heap_segment_nid != initial_data_segment_nid) {
-        print_break("\n; loaded heap segment\n\n");
+        print_break_comment("loaded heap segment");
 
         print_line(initial_heap_segment_nid);
       }
 
       if (initial_main_memory_nid != initial_heap_segment_nid) {
-        print_break("\n; loaded stack segment\n\n");
+        print_break_comment("loaded stack segment");
 
         print_line(initial_main_memory_nid);
       }
 
-      print_break("\n; loaded main memory\n\n");
+      print_break_comment("loaded main memory");
 
       print_line(init_main_memory_nid);
     }
@@ -7324,7 +7339,7 @@ void output_model() {
 
   print_segmentation();
 
-  print_break("\n; program counter\n\n");
+  print_break_comment("program counter");
 
   print_line(initial_core_pc_nid);
   print_line(init_core_pc_nid);
@@ -7334,113 +7349,103 @@ void output_model() {
   print_code_segment();
   print_memory_state();
 
-  print_break_line("\n; kernel state\n\n",
-    init_program_break_nid);
+  print_break_comment_line("kernel state", init_program_break_nid);
 
-  print_break_line("\n", init_file_descriptor_nid);
+  print_break_line(init_file_descriptor_nid);
 
-  print_break_line("\n", init_readable_bytes_nid);
+  print_break_line(init_readable_bytes_nid);
 
-  print_break_line("\n", init_read_bytes_nid);
+  print_break_line(init_read_bytes_nid);
 
-  print_break_line("\n; fetch instruction\n\n",
-    eval_core_ir_nid);
+  print_break_comment_line("fetch instruction", eval_core_ir_nid);
 
-  print_break_line("\n; fetch compressed instruction\n\n",
-    eval_core_c_ir_nid);
+  print_break_comment_line("fetch compressed instruction", eval_core_c_ir_nid);
 
-  print_break_line("\n; decode instruction\n\n",
-    eval_known_instructions_nid);
+  print_break_comment_line("decode instruction", eval_known_instructions_nid);
 
-  print_break_line("\n; decode compressed instruction\n\n",
+  print_break_comment_line("decode compressed instruction",
     eval_known_compressed_instructions_nid);
 
-  print_break_line("\n; instruction control flow\n\n",
-    eval_core_instruction_pc_nid);
+  print_break_comment_line("instruction control flow", eval_core_instruction_pc_nid);
 
-  print_break_line("\n; compressed instruction control flow\n\n",
+  print_break_comment_line("compressed instruction control flow",
     eval_core_compressed_instruction_pc_nid);
 
-  print_break_line("\n; update kernel state\n\n",
-    next_program_break_nid);
+  print_break_comment_line("update kernel state", next_program_break_nid);
 
-  print_break_line("\n", next_file_descriptor_nid);
+  print_break_line(next_file_descriptor_nid);
 
-  print_break_line("\n", next_readable_bytes_nid);
+  print_break_line(next_readable_bytes_nid);
 
-  print_break_line("\n", next_read_bytes_nid);
+  print_break_line(next_read_bytes_nid);
 
-  print_break_line("\n; kernel and instruction control flow\n\n",
-    eval_core_pc_nid);
+  print_break_comment_line("kernel and instruction control flow", eval_core_pc_nid);
 
-  print_break_line("\n; update program counter\n\n",
-    next_core_pc_nid);
+  print_break_comment_line("update program counter", next_core_pc_nid);
 
-  print_break_line("\n; instruction register data flow\n\n",
+  print_break_comment_line("instruction register data flow",
     eval_core_instruction_register_data_flow_nid);
 
-  print_break_line("\n; compressed instruction register data flow\n\n",
+  print_break_comment_line("compressed instruction register data flow",
     eval_core_compressed_instruction_register_data_flow_nid);
 
-  print_break_line("\n; kernel and instruction register data flow\n\n",
+  print_break_comment_line("kernel and instruction register data flow",
     eval_core_register_data_flow_nid);
 
-  print_break_line("\n; update register data flow\n\n",
-    next_register_file_nid);
+  print_break_comment_line("update register data flow", next_register_file_nid);
 
-  print_break_line("\n; instruction memory data flow\n\n",
+  print_break_comment_line("instruction memory data flow",
     eval_core_instruction_memory_data_flow_nid);
 
-  print_break_line("\n; compressed instruction memory data flow\n\n",
+  print_break_comment_line("compressed instruction memory data flow",
     eval_core_compressed_instruction_memory_data_flow_nid);
 
-  print_break_line("\n; kernel and instruction memory data flow\n\n",
+  print_break_comment_line("kernel and instruction memory data flow",
     eval_core_memory_data_flow_nid);
 
-  print_break_line("\n; update memory data flow\n\n",
-    next_main_memory_nid);
+  print_break_comment_line("update memory data flow", next_main_memory_nid);
 
-  print_break("\n; state properties\n");
+  print_break_comment("state properties");
 
-  print_break_line("\n", prop_illegal_instruction_nid);
+  print_line(prop_illegal_instruction_nid);
 
-  print_break_line("\n", prop_illegal_compressed_instruction_nid);
+  print_break_line(prop_illegal_compressed_instruction_nid);
 
-  print_break_line("\n", prop_is_instruction_known_nid);
+  print_break_line(prop_is_instruction_known_nid);
 
-  print_break_line("\n", prop_is_compressed_instruction_known_nid);
+  print_break_line(prop_is_compressed_instruction_known_nid);
 
-  print_break_line("\n", prop_next_fetch_unaligned_nid);
+  print_break_line(prop_next_fetch_unaligned_nid);
 
-  print_break_line("\n", prop_next_fetch_seg_faulting_nid);
+  print_break_line(prop_next_fetch_seg_faulting_nid);
 
-  print_break_line("\n", prop_load_seg_faulting_nid);
+  print_break_line(prop_load_seg_faulting_nid);
 
-  print_break_line("\n", prop_store_seg_faulting_nid);
+  print_break_line(prop_store_seg_faulting_nid);
 
-  print_break_line("\n", prop_compressed_load_seg_faulting_nid);
+  print_break_line(prop_compressed_load_seg_faulting_nid);
 
-  print_break_line("\n", prop_compressed_store_seg_faulting_nid);
+  print_break_line(prop_compressed_store_seg_faulting_nid);
 
-  print_break_line("\n", prop_stack_seg_faulting_nid);
+  print_break_line(prop_stack_seg_faulting_nid);
 
-  print_break_line("\n", prop_division_by_zero_nid);
+  print_break_line(prop_division_by_zero_nid);
 
-  print_break_line("\n", prop_signed_division_overflow_nid);
+  print_break_line(prop_signed_division_overflow_nid);
 
-  //print_break_line("\n", prop_exclude_a0_from_rd_nid);
+  //print_break_line(prop_exclude_a0_from_rd_nid);
 
-  print_break_line("\n", prop_brk_seg_faulting_nid);
+  print_break_line(prop_brk_seg_faulting_nid);
 
-  print_break_line("\n", prop_openat_seg_faulting_nid);
+  print_break_line(prop_openat_seg_faulting_nid);
 
-  print_break_line("\n", prop_read_seg_faulting_nid);
+  print_break_line(prop_read_seg_faulting_nid);
 
-  print_break_line("\n", prop_write_seg_faulting_nid);
+  print_break_line(prop_write_seg_faulting_nid);
 
-  print_break_line("\n", prop_is_syscall_id_known_nid);
+  print_break_line(prop_is_syscall_id_known_nid);
 
-  print_break_line("\n", prop_bad_exit_code_nid);
+  print_break_line(prop_bad_exit_code_nid);
 }
 
 uint64_t selfie_model() {
