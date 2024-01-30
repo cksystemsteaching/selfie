@@ -7492,7 +7492,7 @@ void selfie_output(char* filename) {
   // assert: p_offset = 0x1000 = 4096
   // pad until code segment start
   padding_size = round_up(ELF_header_size, p_align) - ELF_header_size;
-  zeros = zmalloc(padding_size);
+  zeros = touch(zmalloc(padding_size), padding_size);
   if (write(fd, zeros, padding_size) != padding_size) {
     printf("%s: could not write padding after ELF header into binary output file %s\n", selfie_name, binary_name);
 
@@ -7534,7 +7534,7 @@ void selfie_load() {
   uint64_t* ELF_header;
   uint64_t number_of_read_bytes;
   uint64_t code_size_with_padding;
-  uint64_t* dummy;
+  uint64_t* drain;
 
   binary_name = get_argument();
 
@@ -7564,10 +7564,10 @@ void selfie_load() {
     if (validate_elf_header(fd, ELF_header)) {
       // assert: p_offset is init, and is offset into file where code starts
       // use dummy to seek into file where code segment begins
-      dummy = (uint64_t*) malloc(p_offset);
+      drain = touch(zmalloc(p_offset), p_offset);
 
       fd = open_read_only(binary_name);
-      number_of_read_bytes = read(fd, dummy, p_offset);
+      number_of_read_bytes = read(fd, drain, p_offset);
 
       init_target();
 
