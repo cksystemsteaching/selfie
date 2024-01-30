@@ -7339,6 +7339,14 @@ void output_model() {
 
   print_segmentation();
 
+  print_break_comment_line("kernel state", init_program_break_nid);
+
+  print_break_line(init_file_descriptor_nid);
+
+  print_break_line(init_readable_bytes_nid);
+
+  print_break_line(init_read_bytes_nid);
+
   print_break_comment("program counter");
 
   print_line(initial_core_pc_nid);
@@ -7348,14 +7356,6 @@ void output_model() {
 
   print_code_segment();
   print_memory_state();
-
-  print_break_comment_line("kernel state", init_program_break_nid);
-
-  print_break_line(init_file_descriptor_nid);
-
-  print_break_line(init_readable_bytes_nid);
-
-  print_break_line(init_read_bytes_nid);
 
   print_break_comment_line("fetch instruction", eval_core_ir_nid);
 
