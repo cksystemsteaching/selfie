@@ -2198,6 +2198,19 @@ void init_instruction_sorts() {
 
 void new_core_state();
 
+uint64_t get_core_flag(uint64_t* cores, uint64_t core) { return *(cores + core); }
+void     set_core_flag(uint64_t* cores, uint64_t core, uint64_t flag) { *(cores + core) = flag; }
+
+uint64_t* get_core_nid(uint64_t* cores, uint64_t core) { return (uint64_t*) *(cores + core); }
+void      set_core_nid(uint64_t* cores, uint64_t core, uint64_t* nid) { *(cores + core) = (uint64_t) nid; }
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t CORES = 1; // number of cores
+
+uint64_t* new_core_flags() { return zmalloc(CORES * sizeof(uint64_t)); }
+uint64_t* new_core_nids()  { return zmalloc(CORES * sizeof(uint64_t*)); }
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* eval_core_ir_nid   = (uint64_t*) 0;
@@ -2236,7 +2249,7 @@ uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYNTHESIZE = 1; // flag for synthesizing versus analyzing code
+uint64_t* SYNTHESIZE = (uint64_t*) 0; // per-core flags for synthesizing versus analyzing code
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2806,7 +2819,7 @@ void new_register_file_state() {
   zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  if (SYNTHESIZE)
+  if (get_core_flag(SYNTHESIZE, 0))
     initial_register_file_nid =
       store_register_value(
         NID_SP,
@@ -2858,7 +2871,7 @@ void print_register_file_state() {
   print_line(zeroed_register_file_nid);
 
   if (init_register_file_nid != zeroed_register_file_nid) {
-    if (SYNTHESIZE)
+    if (get_core_flag(SYNTHESIZE, 0))
       print_break("\n; initializing sp\n\n");
     else
       print_aligned_break("\n; initializing registers\n\n", log_ten(32 * 3 + 1) + 1);
@@ -3059,7 +3072,7 @@ void new_code_segment() {
   state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
     "code-segment", "code segment");
 
-  if (SYNTHESIZE == 0) {
+  if (get_core_flag(SYNTHESIZE, 0) == 0) {
     zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
       state_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
@@ -3115,7 +3128,7 @@ void new_code_segment() {
 void print_code_segment() {
   uint64_t i;
 
-  if (SYNTHESIZE) {
+  if (get_core_flag(SYNTHESIZE, 0)) {
     print_break("\n; uninitialized code segment\n\n");
 
     print_line(state_code_segment_nid);
@@ -3159,7 +3172,7 @@ void new_memory_state() {
   zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
-  if (SYNTHESIZE == 0) {
+  if (get_core_flag(SYNTHESIZE, 0) == 0) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
     initial_data_segment_nid = state_main_memory_nid;
@@ -3224,7 +3237,7 @@ void print_memory_state() {
 
   print_line(zeroed_main_memory_nid);
 
-  if (SYNTHESIZE == 0)
+  if (get_core_flag(SYNTHESIZE, 0) == 0)
     if (initial_main_memory_nid != state_main_memory_nid) {
       // assert: data_size > 0 and non-zero data in data segment
 
@@ -6673,7 +6686,7 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
 // -----------------------------------------------------------------
 
 void new_core_state() {
-  if (SYNTHESIZE)
+  if (get_core_flag(SYNTHESIZE, 0))
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
   else
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
@@ -6693,7 +6706,7 @@ void new_core_state() {
 // -----------------------------------------------------------------
 
 uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment) {
-  if (SYNTHESIZE) {
+  if (get_core_flag(SYNTHESIZE, 0)) {
     if (good_nid == UNUSED)
       good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
@@ -7549,7 +7562,12 @@ uint64_t selfie_model() {
 
         // assert: stack_start >= heap_start + heap_size > 0
 
-        SYNTHESIZE = 0;
+        SYNTHESIZE = new_core_flags();
+
+        set_core_flag(SYNTHESIZE, 0, 0);
+
+        if (CORES == 2)
+          set_core_flag(SYNTHESIZE, 1, 1);
       } else {
         code_start = 4096;
         code_size  = 7 * 4;
@@ -7567,20 +7585,23 @@ uint64_t selfie_model() {
 
         // assert: stack_start >= heap_start + heap_size > 0
 
-        SYNTHESIZE = 1;
+        CORES = 1;
+
+        SYNTHESIZE = new_core_flags();
+
+        set_core_flag(SYNTHESIZE, 0, 1);
       }
 
       init_model_generator();
 
       rotor();
 
-      if (SYNTHESIZE) {
-        if (IS64BITTARGET)
-          model_name = "64-bit-riscv-machine.btor2";
-        else
-          model_name = "32-bit-riscv-machine.btor2";
-      } else
+      if (code_size > 0)
         model_name = replace_extension(binary_name, "-rotorized", "btor2");
+      else if (IS64BITTARGET)
+        model_name = "64-bit-riscv-machine.btor2";
+      else
+        model_name = "32-bit-riscv-machine.btor2";
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
