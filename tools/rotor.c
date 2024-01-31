@@ -430,10 +430,12 @@ uint64_t* NID_WRITE_SYSCALL_ID  = (uint64_t*) 0;
 
 uint64_t* state_program_break_nid = (uint64_t*) 0;
 uint64_t* init_program_break_nid  = (uint64_t*) 0;
+uint64_t* eval_program_break_nid  = (uint64_t*) 0;
 uint64_t* next_program_break_nid  = (uint64_t*) 0;
 
 uint64_t* state_file_descriptor_nid = (uint64_t*) 0;
 uint64_t* init_file_descriptor_nid  = (uint64_t*) 0;
+uint64_t* eval_file_descriptor_nid  = (uint64_t*) 0;
 uint64_t* next_file_descriptor_nid  = (uint64_t*) 0;
 
 uint64_t* param_readable_bytes_nid = (uint64_t*) 0;
@@ -442,9 +444,13 @@ uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_readable_bytes_nid  = (uint64_t*) 0;
 
+uint64_t* eval_still_reading_active_read_nid = (uint64_t*) 0;
+
 uint64_t* state_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
 uint64_t* next_read_bytes_nid  = (uint64_t*) 0;
+
+uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2244,9 +2250,14 @@ uint64_t* next_core_pc_nid = (uint64_t*) 0;
 
 uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
 
-void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid);
+void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+void kernel_sequential(uint64_t* ir_nid);
+void kernel_properties(uint64_t* ir_nid);
 
-void rotor();
+void rotor_header();
+void rotor_combinational(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+void rotor_sequential(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+void rotor_properties(uint64_t* register_file_nid);
 
 void output_model();
 
@@ -6750,7 +6761,7 @@ uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, ch
   }
 }
 
-void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
+void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
@@ -6771,20 +6782,13 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   uint64_t* active_write_nid;
 
   uint64_t* a0_value_nid;
-
-  uint64_t* new_program_break_nid;
-  uint64_t* new_file_descriptor_nid;
-
   uint64_t* a2_value_nid;
 
-  uint64_t* more_bytes_to_read_nid;
   uint64_t* more_readable_bytes_nid;
-  uint64_t* more_readable_bytes_to_read_nid;
 
   uint64_t* incremented_read_bytes_nid;
   uint64_t* more_than_one_byte_to_read_nid;
   uint64_t* more_than_one_readable_byte_nid;
-  uint64_t* more_than_one_readable_byte_to_read_nid;
 
   uint64_t* read_return_value_nid;
 
@@ -6815,9 +6819,9 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
 
   a0_value_nid = load_register_value(NID_A0, "a0 value");
 
-  // update brk kernel state
+  // new brk kernel state
 
-  new_program_break_nid =
+  eval_program_break_nid =
     new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
       new_binary_boolean(OP_AND,
         new_binary_boolean(OP_UGTE,
@@ -6833,43 +6837,17 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       state_program_break_nid,
       "update a0 if new program break is in heap segment");
 
-  next_program_break_nid =
-    new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
-      state_program_break_nid,
-      new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
-        active_brk_nid,
-        new_program_break_nid,
-        state_program_break_nid,
-        "new program break"),
-      "new program break");
+  // new openat kernel state
 
-  // update openat kernel state
-
-  new_file_descriptor_nid = new_unary(OP_INC, SID_MACHINE_WORD,
+  eval_file_descriptor_nid = new_unary(OP_INC, SID_MACHINE_WORD,
     state_file_descriptor_nid,
     "increment file descriptor");
-
-  next_file_descriptor_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
-      state_file_descriptor_nid,
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        active_openat_nid,
-        new_file_descriptor_nid,
-        state_file_descriptor_nid,
-        "new file descriptor"),
-      "new file descriptor");
 
   // system call ABI data flow
 
   a2_value_nid = load_register_value(NID_A2, "a2 value");
 
-  // update read kernel state
-
-  more_bytes_to_read_nid =
-    new_binary_boolean(OP_ULT,
-      state_read_bytes_nid,
-      a2_value_nid,
-      "more bytes to read as requested in a2");
+  // new read kernel state
 
   more_readable_bytes_nid =
     new_binary_boolean(OP_UGT,
@@ -6877,26 +6855,17 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       NID_MACHINE_WORD_0,
       "more readable bytes");
 
-  more_readable_bytes_to_read_nid =
+  eval_still_reading_active_read_nid =
     new_binary_boolean(OP_AND,
-      more_bytes_to_read_nid,
-      more_readable_bytes_nid,
-      "can and still would like to read more bytes");
-
-  next_readable_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
-      state_readable_bytes_nid,
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        new_binary_boolean(OP_AND,
-          active_read_nid,
-          more_readable_bytes_to_read_nid,
-          "still reading system call"),
-        new_unary(OP_DEC, SID_MACHINE_WORD,
-          state_readable_bytes_nid,
-          "decrement readable bytes"),
-        state_readable_bytes_nid,
-        "decrement readable bytes if system call is still reading"),
-      "readable bytes");
+      active_read_nid,
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_ULT,
+          state_read_bytes_nid,
+          a2_value_nid,
+          "more bytes to read as requested in a2"),
+        more_readable_bytes_nid,
+        "can and still would like to read more bytes"),
+      "still reading active read system call");
 
   incremented_read_bytes_nid =
     new_unary(OP_INC,
@@ -6916,24 +6885,11 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       NID_MACHINE_WORD_1,
       "more than one readable byte");
 
-  more_than_one_readable_byte_to_read_nid =
+  eval_more_than_one_readable_byte_to_read_nid =
     new_binary_boolean(OP_AND,
       more_than_one_byte_to_read_nid,
       more_than_one_readable_byte_nid,
       "can and still would like to read more than one byte");
-
-  next_read_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
-      state_read_bytes_nid,
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        new_binary_boolean(OP_AND,
-          active_read_nid,
-          more_than_one_readable_byte_to_read_nid,
-          "active read system call"),
-        incremented_read_bytes_nid,
-        NID_MACHINE_WORD_0,
-        "increment bytes already read if read system call is active"),
-      "bytes already read in active read system call");
 
   // kernel and instruction control flow
 
@@ -6944,7 +6900,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
         exit_syscall_nid,
         new_binary_boolean(OP_AND,
           read_syscall_nid,
-          more_than_one_readable_byte_to_read_nid,
+          eval_more_than_one_readable_byte_to_read_nid,
           "ongoing read system call"),
         "ongoing exit or read system call"),
       "active system call"),
@@ -6983,36 +6939,36 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       brk_syscall_nid,
       store_register_value(
         NID_A0,
-        cast_virtual_address_to_machine_word(new_program_break_nid),
-        state_register_file_nid,
+        cast_virtual_address_to_machine_word(eval_program_break_nid),
+        register_file_nid,
         "store new program break in a0"),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
         openat_syscall_nid,
         store_register_value(
           NID_A0,
-          new_file_descriptor_nid,
-          state_register_file_nid,
+          eval_file_descriptor_nid,
+          register_file_nid,
           "store new file descriptor in a0"),
         new_ternary(OP_ITE, SID_REGISTER_STATE,
           new_binary_boolean(OP_AND,
             read_syscall_nid,
             new_unary_boolean(OP_NOT,
-              more_than_one_readable_byte_to_read_nid,
+              eval_more_than_one_readable_byte_to_read_nid,
               "read system call returns if there is at most one more byte to read"),
             "update a0 when read system call returns"),
           store_register_value(
             NID_A0,
             read_return_value_nid,
-            state_register_file_nid,
+            register_file_nid,
             "store read return value in a0"),
           new_ternary(OP_ITE, SID_REGISTER_STATE,
             write_syscall_nid,
             store_register_value(
               NID_A0,
               a2_value_nid,
-              state_register_file_nid,
+              register_file_nid,
               "store write return value in a0"),
-            state_register_file_nid,
+            register_file_nid,
             "write system call register data flow"),
           "read system call register data flow"),
         "openat system call register data flow"),
@@ -7027,10 +6983,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
   // kernel and instruction memory data flow
 
   eval_core_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
-    new_binary_boolean(OP_AND,
-      active_read_nid,
-      more_readable_bytes_to_read_nid,
-      "more input bytes to read"),
+    eval_still_reading_active_read_nid,
     store_byte(new_binary(OP_ADD, SID_MACHINE_WORD,
       a1_value_nid,
       state_read_bytes_nid,
@@ -7039,6 +6992,142 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
       memory_nid),
     eval_core_compressed_instruction_memory_data_flow_nid,
     "main memory data flow");
+}
+
+void kernel_sequential(uint64_t* ir_nid) {
+  uint64_t* active_ecall_nid;
+
+  uint64_t* a7_value_nid;
+
+  uint64_t* brk_syscall_nid;
+  uint64_t* active_brk_nid;
+
+  uint64_t* openat_syscall_nid;
+  uint64_t* active_openat_nid;
+
+  uint64_t* read_syscall_nid;
+  uint64_t* active_read_nid;
+
+  // system call ABI control flow
+
+  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+
+  a7_value_nid = load_register_value(NID_A7, "a7 value");
+
+  brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
+  active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
+
+  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
+  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
+
+  read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
+  active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+
+  // update brk kernel state
+
+  next_program_break_nid =
+    new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
+      state_program_break_nid,
+      new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
+        active_brk_nid,
+        eval_program_break_nid,
+        state_program_break_nid,
+        "new program break"),
+      "new program break");
+
+  // update openat kernel state
+
+  next_file_descriptor_nid =
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_file_descriptor_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        active_openat_nid,
+        eval_file_descriptor_nid,
+        state_file_descriptor_nid,
+        "new file descriptor"),
+      "new file descriptor");
+
+  // update read kernel state
+
+  next_readable_bytes_nid =
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_readable_bytes_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        eval_still_reading_active_read_nid,
+        new_unary(OP_DEC, SID_MACHINE_WORD,
+          state_readable_bytes_nid,
+          "decrement readable bytes"),
+        state_readable_bytes_nid,
+        "decrement readable bytes if system call is still reading"),
+      "readable bytes");
+
+  next_read_bytes_nid =
+    new_binary(OP_NEXT, SID_MACHINE_WORD,
+      state_read_bytes_nid,
+      new_ternary(OP_ITE, SID_MACHINE_WORD,
+        new_binary_boolean(OP_AND,
+          active_read_nid,
+          eval_more_than_one_readable_byte_to_read_nid,
+          "more than one byte to read by active read system call"),
+        new_unary(OP_INC,
+          SID_MACHINE_WORD,
+          state_read_bytes_nid,
+          "increment bytes already read by read system call"),
+        NID_MACHINE_WORD_0,
+        "increment bytes already read if read system call is active"),
+      "bytes already read in active read system call");
+}
+
+void kernel_properties(uint64_t* ir_nid) {
+  uint64_t* active_ecall_nid;
+
+  uint64_t* a7_value_nid;
+
+  uint64_t* exit_syscall_nid;
+  uint64_t* active_exit_nid;
+
+  uint64_t* brk_syscall_nid;
+  uint64_t* active_brk_nid;
+
+  uint64_t* openat_syscall_nid;
+  uint64_t* active_openat_nid;
+
+  uint64_t* read_syscall_nid;
+  uint64_t* active_read_nid;
+
+  uint64_t* write_syscall_nid;
+  uint64_t* active_write_nid;
+
+  uint64_t* a0_value_nid;
+  uint64_t* a1_value_nid;
+  uint64_t* a2_value_nid;
+
+  // system call ABI control flow
+
+  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+
+  a7_value_nid = load_register_value(NID_A7, "a7 value");
+
+  exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
+  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
+
+  brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
+  active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
+
+  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
+  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
+
+  read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
+  active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
+
+  write_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 == write syscall ID?");
+  active_write_nid  = new_binary_boolean(OP_AND, active_ecall_nid, write_syscall_nid, "active write system call");
+
+  // system call ABI data flow
+
+  a0_value_nid = load_register_value(NID_A0, "a0 value");
+  a1_value_nid = load_register_value(NID_A1, "a1 value");
+  a2_value_nid = load_register_value(NID_A2, "a2 value");
 
   // kernel properties
 
@@ -7143,7 +7232,7 @@ void kernel(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* memory_nid) {
     "b3", format_comment("exit(%ld)", bad_exit_code));
 }
 
-void rotor() {
+void rotor_header() {
   new_segmentation();
 
   new_core_state();
@@ -7153,14 +7242,16 @@ void rotor() {
   new_memory_state();
 
   new_kernel_state(1);
+}
 
+void rotor_combinational(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   // fetch instruction
 
-  eval_core_ir_nid = fetch_instruction(state_core_pc_nid);
+  eval_core_ir_nid = fetch_instruction(pc_nid);
 
   // fetch compressed instruction
 
-  eval_core_c_ir_nid = fetch_compressed_instruction(state_core_pc_nid);
+  eval_core_c_ir_nid = fetch_compressed_instruction(pc_nid);
 
   // decode instruction
 
@@ -7172,62 +7263,60 @@ void rotor() {
 
   // instruction control flow
 
-  eval_core_instruction_pc_nid = core_control_flow(state_core_pc_nid, eval_core_ir_nid);
+  eval_core_instruction_pc_nid = core_control_flow(pc_nid, eval_core_ir_nid);
 
   // compressed instruction control flow
 
   eval_core_compressed_instruction_pc_nid =
-    core_compressed_control_flow(state_core_pc_nid, eval_core_c_ir_nid,
-      eval_core_instruction_pc_nid);
+    core_compressed_control_flow(pc_nid, eval_core_c_ir_nid, eval_core_instruction_pc_nid);
 
   // instruction register data flow
 
   eval_core_instruction_register_data_flow_nid =
-    core_register_data_flow(state_core_pc_nid, eval_core_ir_nid,
-      state_register_file_nid, state_main_memory_nid);
+    core_register_data_flow(pc_nid, eval_core_ir_nid, register_file_nid, memory_nid);
 
   // compressed instruction register data flow
 
   eval_core_compressed_instruction_register_data_flow_nid =
-    core_compressed_register_data_flow(state_core_pc_nid, eval_core_c_ir_nid,
-      eval_core_instruction_register_data_flow_nid, state_main_memory_nid);
+    core_compressed_register_data_flow(pc_nid, eval_core_c_ir_nid,
+      eval_core_instruction_register_data_flow_nid, memory_nid);
 
   // instruction memory data flow
 
   eval_core_instruction_memory_data_flow_nid =
-    core_memory_data_flow(eval_core_ir_nid, state_main_memory_nid);
+    core_memory_data_flow(eval_core_ir_nid, memory_nid);
 
   // compressed instruction memory data flow
 
   eval_core_compressed_instruction_memory_data_flow_nid =
     core_compressed_memory_data_flow(eval_core_c_ir_nid,
       eval_core_instruction_memory_data_flow_nid);
+}
 
-  // kernel
-
-  kernel(state_core_pc_nid, eval_core_ir_nid, state_main_memory_nid);
-
+void rotor_sequential(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   // update control flow
 
   next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
-    state_core_pc_nid,
+    pc_nid,
     eval_core_pc_nid,
     "program counter");
 
   // update register data flow
 
   next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
-    state_register_file_nid,
+    register_file_nid,
     eval_core_register_data_flow_nid,
     "register file");
 
   // update memory data flow
 
   next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
-    state_main_memory_nid,
+    memory_nid,
     eval_core_memory_data_flow_nid,
     "main memory");
+}
 
+void rotor_properties(uint64_t* register_file_nid) {
   // state properties
 
   prop_illegal_instruction_nid = state_property(
@@ -7530,7 +7619,19 @@ uint64_t selfie_model() {
 
       init_model_generator();
 
-      rotor();
+      rotor_header();
+
+      rotor_combinational(state_core_pc_nid,
+        state_register_file_nid, state_main_memory_nid);
+      kernel_combinational(state_core_pc_nid, eval_core_ir_nid,
+        state_register_file_nid, state_main_memory_nid);
+
+      rotor_sequential(state_core_pc_nid,
+        state_register_file_nid, state_main_memory_nid);
+      kernel_sequential(eval_core_ir_nid);
+
+      rotor_properties(state_register_file_nid);
+      kernel_properties(eval_core_ir_nid);
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
