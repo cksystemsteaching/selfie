@@ -2373,6 +2373,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   else
     new_line = allocate_line();
 
+  set_nid(new_line, 0);
   set_op(new_line, op);
   set_sid(new_line, sid);
   set_arg1(new_line, arg1);
