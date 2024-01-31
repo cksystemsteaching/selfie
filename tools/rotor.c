@@ -414,7 +414,8 @@ void init_interface_sorts() {
 
 void print_interface_kernel();
 
-void new_kernel_state(uint64_t core, uint64_t bytes_to_read);
+void new_system_kernel_state();
+void new_core_kernel_state(uint64_t core, uint64_t bytes_to_read);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -602,9 +603,9 @@ uint64_t* is_block_in_heap_segment(uint64_t* start_nid, uint64_t* end_nid);
 uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid);
 
 void new_code_segment(uint64_t core);
-void print_code_segment();
+void print_code_segment(uint64_t core);
 
-void new_memory_state(uint64_t core);
+void new_memory_state();
 void print_memory_state();
 
 uint64_t get_number_of_bits(uint64_t* bitvec);
@@ -2210,18 +2211,9 @@ void init_instruction_sorts() {
 
 void new_core_state(uint64_t core);
 
-uint64_t get_core_flag(uint64_t* cores, uint64_t core) { return *(cores + core); }
-void     set_core_flag(uint64_t* cores, uint64_t core, uint64_t flag) { *(cores + core) = flag; }
-
-uint64_t* get_core_nid(uint64_t* cores, uint64_t core) { return (uint64_t*) *(cores + core); }
-void      set_core_nid(uint64_t* cores, uint64_t core, uint64_t* nid) { *(cores + core) = (uint64_t) nid; }
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CORES = 1; // number of cores
-
-uint64_t* new_core_flags() { return zmalloc(CORES * sizeof(uint64_t)); }
-uint64_t* new_core_nids()  { return zmalloc(CORES * sizeof(uint64_t*)); }
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2249,35 +2241,35 @@ uint64_t* eval_core_compressed_instruction_control_flow_nid = (uint64_t*) 0;
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
+uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
 
 void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid);
-void kernel_sequential(uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
+void kernel_sequential(uint64_t core,
+  uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* new_program_break_nid, uint64_t* new_file_descriptor_nid,
   uint64_t* still_reading_active_read_nid, uint64_t* more_than_one_readable_byte_to_read_nid,
   uint64_t* ir_nid, uint64_t* register_file_nid);
-void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid);
+void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid);
 
-void rotor_header(uint64_t core);
 void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
-void rotor_sequential(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
+void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
-void rotor_properties(uint64_t* ir_nid, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* known_instructions_nid, uint64_t* known_compressed_instructions_nid,
   uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
-void output_model();
+void output_model(uint64_t core);
 
 uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t* SYNTHESIZE = (uint64_t*) 0; // per-core flags for synthesizing versus analyzing code
+uint64_t SYNTHESIZE = 0; // flag for synthesizing versus analyzing code
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2788,21 +2780,19 @@ void print_interface_kernel() {
   print_line(NID_WRITE_SYSCALL_ID);
 }
 
-void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
-  state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS,
-    format_comment("core-%lu-program-break", core), "program break");
+void new_system_kernel_state() {
+  state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS, "program-break", "program break");
   init_program_break_nid  = new_binary(OP_INIT, SID_VIRTUAL_ADDRESS, state_program_break_nid,
     NID_HEAP_START, "initial program break is start of heap segment");
 
-  state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD,
-    format_comment("core-%lu-file-descriptor", core), "file descriptor");
+  state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
   init_file_descriptor_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_file_descriptor_nid,
     NID_MACHINE_WORD_0, "initial file descriptor is zero");
+}
 
+void new_core_kernel_state(uint64_t core, uint64_t bytes_to_read) {
   param_readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    bytes_to_read,
-    0,
-    "read capacity in bytes");
+    bytes_to_read, 0, "read capacity in bytes");
 
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-readable-bytes", core), "readable bytes");
@@ -2869,7 +2859,7 @@ void new_register_file_state(uint64_t core) {
   zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  if (get_core_flag(SYNTHESIZE, 0))
+  if ((SYNTHESIZE * (CORES == 1)) == 1)
     initial_register_file_nid =
       store_register_value(
         NID_SP,
@@ -2921,7 +2911,7 @@ void print_register_file_state() {
   print_line(zeroed_register_file_nid);
 
   if (init_register_file_nid != zeroed_register_file_nid) {
-    if (get_core_flag(SYNTHESIZE, 0))
+    if ((SYNTHESIZE * (CORES == 1)) == 1)
       print_break_comment("initializing sp");
     else
       print_aligned_break_comment("initializing registers", log_ten(32 * 3 + 1) + 1);
@@ -3119,7 +3109,7 @@ void new_code_segment(uint64_t core) {
   uint64_t* vaddr_nid;
   uint64_t* ir_nid;
 
-  if (get_core_flag(SYNTHESIZE, 0))
+  if (((SYNTHESIZE * ((CORES == 1) + (core > 0)))) == 1)
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
   else if (core == 0) {
@@ -3178,10 +3168,10 @@ void new_code_segment(uint64_t core) {
   }
 }
 
-void print_code_segment() {
+void print_code_segment(uint64_t core) {
   uint64_t i;
 
-  if (get_core_flag(SYNTHESIZE, 0)) {
+  if (((SYNTHESIZE * ((CORES == 1) + (core > 0)))) == 1) {
     print_break_comment("uninitialized code segment");
 
     print_line(state_code_segment_nid);
@@ -3212,7 +3202,7 @@ void print_code_segment() {
   }
 }
 
-void new_memory_state(uint64_t core) {
+void new_memory_state() {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
@@ -3220,12 +3210,12 @@ void new_memory_state(uint64_t core) {
   uint64_t* data_nid;
 
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
-    format_comment("core-%lu-zeroed-main-memory", core), "zeroed main memory");
+    "zeroed-main-memory", "zeroed main memory");
 
   zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
-  if (get_core_flag(SYNTHESIZE, 0) == 0) {
+  if ((SYNTHESIZE == 0) + (CORES > 1)) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
     initial_data_segment_nid = state_main_memory_nid;
@@ -3276,7 +3266,7 @@ void new_memory_state(uint64_t core) {
 
     if (initial_main_memory_nid != state_main_memory_nid) {
       state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
-        format_comment("core-%lu-loaded-main-memory", core), "loaded main memory");
+        "loaded-main-memory", "loaded main memory");
 
       init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
@@ -3290,7 +3280,7 @@ void print_memory_state() {
 
   print_line(zeroed_main_memory_nid);
 
-  if (get_core_flag(SYNTHESIZE, 0) == 0)
+  if ((SYNTHESIZE == 0) + (CORES > 1))
     if (initial_main_memory_nid != state_main_memory_nid) {
       // assert: data_size > 0 and non-zero data in data segment
 
@@ -6745,7 +6735,7 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
 // -----------------------------------------------------------------
 
 void new_core_state(uint64_t core) {
-  if (get_core_flag(SYNTHESIZE, 0))
+  if ((SYNTHESIZE * (CORES == 1)) == 1)
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
   else
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
@@ -6764,12 +6754,12 @@ void new_core_state(uint64_t core) {
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* state_property(uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment) {
+uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment) {
   if (good_nid == UNUSED)
     if (bad_nid == UNUSED)
       return UNUSED;
 
-  if (get_core_flag(SYNTHESIZE, 0)) {
+  if ((SYNTHESIZE * ((CORES == 1) + (core > 0))) == 1) {
     if (good_nid == UNUSED)
       good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
@@ -6792,19 +6782,13 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* a7_value_nid;
 
   uint64_t* exit_syscall_nid;
-  uint64_t* active_exit_nid;
-
   uint64_t* brk_syscall_nid;
-  uint64_t* active_brk_nid;
-
   uint64_t* openat_syscall_nid;
-  uint64_t* active_openat_nid;
 
   uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
 
   uint64_t* write_syscall_nid;
-  uint64_t* active_write_nid;
 
   uint64_t* a0_value_nid;
   uint64_t* a2_value_nid;
@@ -6825,20 +6809,14 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
 
   a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
 
-  exit_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
-  active_exit_nid  = new_binary_boolean(OP_AND, active_ecall_nid, exit_syscall_nid, "active exit system call");
-
-  brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
-  active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
-
+  exit_syscall_nid   = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
+  brk_syscall_nid    = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
   openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
-  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
 
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
 
   write_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 == write syscall ID?");
-  active_write_nid  = new_binary_boolean(OP_AND, active_ecall_nid, write_syscall_nid, "active write system call");
 
   // system call ABI data flow
 
@@ -7019,7 +6997,8 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
     "main memory data flow");
 }
 
-void kernel_sequential(uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
+void kernel_sequential(uint64_t core,
+  uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* new_program_break_nid, uint64_t* new_file_descriptor_nid,
   uint64_t* still_reading_active_read_nid, uint64_t* more_than_one_readable_byte_to_read_nid,
@@ -7055,26 +7034,34 @@ void kernel_sequential(uint64_t* program_break_nid, uint64_t* file_descriptor_ni
   // update brk kernel state
 
   next_program_break_nid =
-    new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
+    new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
+      active_brk_nid,
+      new_program_break_nid,
       program_break_nid,
-      new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
-        active_brk_nid,
-        new_program_break_nid,
-        program_break_nid,
-        "new program break"),
       "new program break");
+
+  if (core > 0)
+    next_program_break_nid =
+      new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
+        program_break_nid,
+        next_program_break_nid,
+        "new program break");
 
   // update openat kernel state
 
   next_file_descriptor_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
+    new_ternary(OP_ITE, SID_MACHINE_WORD,
+      active_openat_nid,
+      new_file_descriptor_nid,
       file_descriptor_nid,
-      new_ternary(OP_ITE, SID_MACHINE_WORD,
-        active_openat_nid,
-        new_file_descriptor_nid,
-        file_descriptor_nid,
-        "new file descriptor"),
       "new file descriptor");
+
+  if (core > 0)
+    next_file_descriptor_nid =
+      new_binary(OP_NEXT, SID_MACHINE_WORD,
+        file_descriptor_nid,
+        next_file_descriptor_nid,
+        "new file descriptor");
 
   // update read kernel state
 
@@ -7107,7 +7094,7 @@ void kernel_sequential(uint64_t* program_break_nid, uint64_t* file_descriptor_ni
       "bytes already read in active read system call");
 }
 
-void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid) {
+void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid) {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
@@ -7160,7 +7147,7 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
 
   // kernel properties
 
-  prop_brk_seg_faulting_nid = state_property(
+  prop_brk_seg_faulting_nid = state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       active_brk_nid,
@@ -7177,7 +7164,7 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
 
   // TODO: validate openat arguments other than filename
 
-  prop_openat_seg_faulting_nid = state_property(
+  prop_openat_seg_faulting_nid = state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       active_openat_nid,
@@ -7190,7 +7177,7 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
 
   // TODO: further validate read arguments
 
-  prop_read_seg_faulting_nid = state_property(
+  prop_read_seg_faulting_nid = state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       new_binary_boolean(OP_AND,
@@ -7212,7 +7199,7 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
 
   // TODO: further validate write arguments
 
-  prop_write_seg_faulting_nid = state_property(
+  prop_write_seg_faulting_nid = state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       active_write_nid,
@@ -7226,7 +7213,7 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
     "write-seg-fault",
     "possible write segmentation fault");
 
-  prop_is_syscall_id_known_nid = state_property(
+  prop_is_syscall_id_known_nid = state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       active_ecall_nid,
@@ -7259,16 +7246,6 @@ void kernel_properties(uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* reg
         "actual exit code == bad exit code?"),
       "active exit system call with bad exit code"),
     "b3", format_comment("exit(%ld)", bad_exit_code));
-}
-
-void rotor_header(uint64_t core) {
-  new_core_state(core);
-  new_register_file_state(core);
-
-  new_code_segment(core);
-  new_memory_state(core);
-
-  new_kernel_state(core, 1);
 }
 
 void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
@@ -7322,7 +7299,7 @@ void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t*
       eval_core_instruction_memory_data_flow_nid);
 }
 
-void rotor_sequential(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
+void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid) {
   // update control flow
 
@@ -7340,43 +7317,46 @@ void rotor_sequential(uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* m
 
   // update memory data flow
 
-  next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
-    memory_nid,
-    memory_data_flow_nid,
-    "main memory");
+  if (core == 0)
+    next_main_memory_nid = memory_data_flow_nid;
+  else
+    next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+      memory_nid,
+      memory_data_flow_nid,
+      "main memory");
 }
 
-void rotor_properties(uint64_t* ir_nid, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* known_instructions_nid, uint64_t* known_compressed_instructions_nid,
   uint64_t* control_flow_nid, uint64_t* register_file_nid) {
 
   // state properties
 
-  prop_illegal_instruction_nid = state_property(
+  prop_illegal_instruction_nid = state_property(core,
     UNUSED,
     decode_illegal_shamt(ir_nid),
     "illegal-instruction",
     "illegal instruction");
 
-  prop_illegal_compressed_instruction_nid = state_property(
+  prop_illegal_compressed_instruction_nid = state_property(core,
     UNUSED,
     decode_illegal_compressed_instruction_imm_shamt(c_ir_nid),
     "compressed-illegal-instruction",
     "compressed illegal instruction");
 
-  prop_is_instruction_known_nid = state_property(
+  prop_is_instruction_known_nid = state_property(core,
     known_instructions_nid,
     UNUSED,
     "known-instructions",
     "known instructions");
 
-  prop_is_compressed_instruction_known_nid = state_property(
+  prop_is_compressed_instruction_known_nid = state_property(core,
     known_compressed_instructions_nid,
     UNUSED,
     "known-compressed-instructions",
     "known compressed instructions");
 
-  prop_next_fetch_unaligned_nid = state_property(
+  prop_next_fetch_unaligned_nid = state_property(core,
     new_binary_boolean(OP_EQ,
       new_binary(OP_AND, SID_MACHINE_WORD,
         control_flow_nid,
@@ -7388,31 +7368,31 @@ void rotor_properties(uint64_t* ir_nid, uint64_t* c_ir_nid,
     "fetch-unaligned",
     "imminent unaligned fetch");
 
-  prop_next_fetch_seg_faulting_nid = state_property(
+  prop_next_fetch_seg_faulting_nid = state_property(core,
     is_address_in_code_segment(control_flow_nid),
     UNUSED,
     "fetch-seg-fault",
     "imminent fetch segmentation fault");
 
-  prop_load_seg_faulting_nid = state_property(
+  prop_load_seg_faulting_nid = state_property(core,
     load_no_seg_faults(ir_nid, register_file_nid),
     UNUSED,
     "load-seg-fault",
     "load segmentation fault");
 
-  prop_store_seg_faulting_nid = state_property(
+  prop_store_seg_faulting_nid = state_property(core,
     store_no_seg_faults(ir_nid, register_file_nid),
     UNUSED,
     "store-seg-fault",
     "store segmentation fault");
 
-  prop_compressed_load_seg_faulting_nid = state_property(
+  prop_compressed_load_seg_faulting_nid = state_property(core,
     compressed_load_no_seg_faults(c_ir_nid, register_file_nid),
     UNUSED,
     "compressed-load-seg-fault",
     "compressed load segmentation fault");
 
-  prop_compressed_store_seg_faulting_nid = state_property(
+  prop_compressed_store_seg_faulting_nid = state_property(core,
     compressed_store_no_seg_faults(c_ir_nid, register_file_nid),
     UNUSED,
     "compressed-store-seg-fault",
@@ -7420,25 +7400,25 @@ void rotor_properties(uint64_t* ir_nid, uint64_t* c_ir_nid,
 
   // TODO: check stack pointer segfault earlier upon sp update
 
-  prop_stack_seg_faulting_nid = state_property(
+  prop_stack_seg_faulting_nid = state_property(core,
     is_address_in_stack_segment(load_register_value(NID_SP, "sp value", register_file_nid)),
     UNUSED,
     "stack-seg-fault",
     "stack segmentation fault");
 
-  prop_division_by_zero_nid = state_property(
+  prop_division_by_zero_nid = state_property(core,
     UNUSED,
     decode_division_remainder_by_zero(ir_nid, register_file_nid),
     "division-by-zero",
     "division by zero");
 
-  prop_signed_division_overflow_nid = state_property(
+  prop_signed_division_overflow_nid = state_property(core,
     UNUSED,
     decode_signed_division_remainder_overflow(ir_nid, register_file_nid),
     "signed-division-overflow",
     "signed division overflow");
 
-  prop_exclude_a0_from_rd_nid = state_property(
+  prop_exclude_a0_from_rd_nid = state_property(core,
     new_binary_boolean(OP_NEQ,
       get_instruction_rd(ir_nid),
       NID_A0,
@@ -7469,45 +7449,70 @@ void rotor() {
 
   core = 0;
 
-  while (core < 1) {
-    rotor_header(core);
+  while (core < 2) {
+    new_core_state(core);
+    new_register_file_state(core);
+
+    new_code_segment(core);
+
+    if (core == 0) {
+      new_memory_state();
+
+      next_main_memory_nid = state_main_memory_nid;
+
+      new_system_kernel_state();
+
+      next_program_break_nid   = state_program_break_nid;
+      next_file_descriptor_nid = state_file_descriptor_nid;
+
+      new_core_kernel_state(core, 1);
+    } else {
+      next_main_memory_nid = eval_core_memory_data_flow_nid;
+
+      next_program_break_nid   = eval_program_break_nid;
+      next_file_descriptor_nid = eval_file_descriptor_nid;
+
+      new_core_kernel_state(core, 1);
+    }
 
     rotor_combinational(state_core_pc_nid, state_code_segment_nid,
-      state_register_file_nid, state_main_memory_nid);
+      state_register_file_nid, next_main_memory_nid);
     kernel_combinational(state_core_pc_nid, eval_core_ir_nid,
       eval_core_compressed_instruction_control_flow_nid,
       eval_core_compressed_instruction_register_data_flow_nid,
       eval_core_compressed_instruction_memory_data_flow_nid,
-      state_program_break_nid, state_file_descriptor_nid,
+      next_program_break_nid, next_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
-      state_register_file_nid, state_main_memory_nid);
+      state_register_file_nid, next_main_memory_nid);
 
-    rotor_sequential(state_core_pc_nid,
+    rotor_sequential(core, state_core_pc_nid,
       state_register_file_nid, state_main_memory_nid,
       eval_core_control_flow_nid,
       eval_core_register_data_flow_nid,
       eval_core_memory_data_flow_nid);
-    kernel_sequential(state_program_break_nid, state_file_descriptor_nid,
+    kernel_sequential(core,
+      state_program_break_nid, state_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
       eval_program_break_nid, eval_file_descriptor_nid,
       eval_still_reading_active_read_nid, eval_more_than_one_readable_byte_to_read_nid,
-      eval_core_ir_nid,
-      state_register_file_nid);
+      eval_core_ir_nid, state_register_file_nid);
 
-    rotor_properties(eval_core_ir_nid, eval_core_c_ir_nid,
+    rotor_properties(core,
+      eval_core_ir_nid, eval_core_c_ir_nid,
       eval_known_instructions_nid, eval_known_compressed_instructions_nid,
       eval_core_control_flow_nid, state_register_file_nid);
-    kernel_properties(eval_core_ir_nid,
+    kernel_properties(core,
+      eval_core_ir_nid,
       state_read_bytes_nid,
       state_register_file_nid);
 
-    output_model();
+    output_model(core);
 
     core = core + 1;
   }
 }
 
-void output_model() {
+void output_model(uint64_t core) {
   print_break_comment_line("kernel state", init_program_break_nid);
 
   print_break_line(init_file_descriptor_nid);
@@ -7523,7 +7528,7 @@ void output_model() {
 
   print_register_file_state();
 
-  print_code_segment();
+  print_code_segment(core);
   print_memory_state();
 
   print_break_comment_line("fetch instruction", eval_core_ir_nid);
@@ -7660,12 +7665,8 @@ uint64_t selfie_model() {
 
         // assert: stack_start >= heap_start + heap_size > 0
 
-        SYNTHESIZE = new_core_flags();
-
-        set_core_flag(SYNTHESIZE, 0, 0);
-
         if (CORES == 2)
-          set_core_flag(SYNTHESIZE, 1, 1);
+          SYNTHESIZE = 1;
 
         model_name = replace_extension(binary_name, "-rotorized", "btor2");
       } else {
@@ -7687,9 +7688,7 @@ uint64_t selfie_model() {
 
         CORES = 1;
 
-        SYNTHESIZE = new_core_flags();
-
-        set_core_flag(SYNTHESIZE, 0, 1);
+        SYNTHESIZE = 1;
 
         if (IS64BITTARGET)
           model_name = "64-bit-riscv-machine.btor2";
