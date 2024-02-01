@@ -7040,7 +7040,7 @@ void kernel_sequential(uint64_t core,
       program_break_nid,
       "new program break");
 
-  if (core > 0)
+  if (core == CORES - 1)
     next_program_break_nid =
       new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
         program_break_nid,
@@ -7056,7 +7056,7 @@ void kernel_sequential(uint64_t core,
       file_descriptor_nid,
       "new file descriptor");
 
-  if (core > 0)
+  if (core == CORES - 1)
     next_file_descriptor_nid =
       new_binary(OP_NEXT, SID_MACHINE_WORD,
         file_descriptor_nid,
@@ -7317,9 +7317,9 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
   // update memory data flow
 
-  if (core == 0)
-    next_main_memory_nid = memory_data_flow_nid;
-  else
+  next_main_memory_nid = memory_data_flow_nid;
+
+  if (core == CORES - 1)
     next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
       memory_nid,
       memory_data_flow_nid,
@@ -7449,7 +7449,7 @@ void rotor() {
 
   core = 0;
 
-  while (core < 2) {
+  while (core < CORES) {
     new_core_state(core);
     new_register_file_state(core);
 
@@ -7464,16 +7464,14 @@ void rotor() {
 
       next_program_break_nid   = state_program_break_nid;
       next_file_descriptor_nid = state_file_descriptor_nid;
-
-      new_core_kernel_state(core, 1);
     } else {
       next_main_memory_nid = eval_core_memory_data_flow_nid;
 
       next_program_break_nid   = eval_program_break_nid;
       next_file_descriptor_nid = eval_file_descriptor_nid;
-
-      new_core_kernel_state(core, 1);
     }
+
+    new_core_kernel_state(core, 1);
 
     rotor_combinational(state_core_pc_nid, state_code_segment_nid,
       state_register_file_nid, next_main_memory_nid);
