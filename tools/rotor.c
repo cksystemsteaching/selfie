@@ -3175,7 +3175,7 @@ void print_code_segment(uint64_t core) {
     print_break_comment("uninitialized code segment");
 
     print_line(state_code_segment_nid);
-  } else {
+  } else if (core == 0) {
     print_break_comment("zeroed code segment");
 
     print_line(zeroed_code_segment_nid);
