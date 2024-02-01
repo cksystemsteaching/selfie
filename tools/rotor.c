@@ -414,8 +414,8 @@ void init_interface_sorts() {
 
 void print_interface_kernel();
 
-void new_system_kernel_state();
-void new_core_kernel_state(uint64_t core, uint64_t bytes_to_read);
+void new_kernel_state(uint64_t core, uint64_t bytes_to_read);
+void print_kernel_state(uint64_t core);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -495,7 +495,7 @@ uint64_t* get_5_bit_shamt(uint64_t* value_nid);
 uint64_t* get_shamt(uint64_t* value_nid);
 
 void new_register_file_state(uint64_t core);
-void print_register_file_state();
+void print_register_file_state(uint64_t core);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -536,6 +536,9 @@ uint64_t* NID_T6  = (uint64_t*) 0;
 
 uint64_t* SID_REGISTER_STATE = (uint64_t*) 0;
 
+uint64_t SYNCHRONIZED_REGISTERS = 0; // flag for synchronized registers across cores
+uint64_t SHARED_REGISTERS       = 0; // flag for shared registers across cores
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* zeroed_register_file_nid  = (uint64_t*) 0;
@@ -544,6 +547,8 @@ uint64_t* initial_register_file_nid = (uint64_t*) 0;
 uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
 uint64_t* next_register_file_nid  = (uint64_t*) 0;
+
+uint64_t* eval_core_0_register_data_flow_nid  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -605,8 +610,8 @@ uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid);
 void new_code_segment(uint64_t core);
 void print_code_segment(uint64_t core);
 
-void new_memory_state();
-void print_memory_state();
+void new_memory_state(uint64_t core);
+void print_memory_state(uint64_t core);
 
 uint64_t get_number_of_bits(uint64_t* bitvec);
 uint64_t get_number_of_bytes(uint64_t* bitvec);
@@ -738,6 +743,9 @@ uint64_t* fetch_compressed_instruction(uint64_t* pc_nid, uint64_t* code_segment_
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t SYNCHRONIZED_MEMORY = 0; // flag for synchronized main memory across cores
+uint64_t SHARED_MEMORY = 0;       // flag for shared main memory across cores
+
 uint64_t VIRTUAL_ADDRESS_SPACE = 0; // number of bits in virtual addresses
 
 uint64_t* SID_VIRTUAL_ADDRESS = (uint64_t*) 0;
@@ -832,6 +840,8 @@ uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
 uint64_t* next_main_memory_nid  = (uint64_t*) 0;
+
+uint64_t* eval_core_0_memory_data_flow_nid  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2210,10 +2220,13 @@ void init_instruction_sorts() {
 // -----------------------------------------------------------------
 
 void new_core_state(uint64_t core);
+void print_core_state(uint64_t core);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CORES = 1; // number of cores
+
+uint64_t SYNCHRONIZED_PC = 0; // flag for synchronized program counters across cores
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2230,6 +2243,8 @@ uint64_t* eval_core_control_flow_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_instruction_control_flow_nid            = (uint64_t*) 0;
 uint64_t* eval_core_compressed_instruction_control_flow_nid = (uint64_t*) 0;
+
+uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2269,7 +2284,8 @@ uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYNTHESIZE = 0; // flag for synthesizing versus analyzing code
+uint64_t CODE_LOADED = 0; // flag for indicating if code is loaded
+uint64_t SYNTHESIZE  = 0; // flag for synthesizing versus analyzing code
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2780,17 +2796,23 @@ void print_interface_kernel() {
   print_line(NID_WRITE_SYSCALL_ID);
 }
 
-void new_system_kernel_state() {
-  state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS, "program-break", "program break");
-  init_program_break_nid  = new_binary(OP_INIT, SID_VIRTUAL_ADDRESS, state_program_break_nid,
-    NID_HEAP_START, "initial program break is start of heap segment");
+void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
+  if (core == 0) {
+    state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS, "program-break", "program break");
+    init_program_break_nid  = new_binary(OP_INIT, SID_VIRTUAL_ADDRESS, state_program_break_nid,
+      NID_HEAP_START, "initial program break is start of heap segment");
 
-  state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
-  init_file_descriptor_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_file_descriptor_nid,
-    NID_MACHINE_WORD_0, "initial file descriptor is zero");
-}
+    state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
+    init_file_descriptor_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_file_descriptor_nid,
+      NID_MACHINE_WORD_0, "initial file descriptor is zero");
 
-void new_core_kernel_state(uint64_t core, uint64_t bytes_to_read) {
+    next_program_break_nid   = state_program_break_nid;
+    next_file_descriptor_nid = state_file_descriptor_nid;
+  } else {
+    next_program_break_nid   = eval_program_break_nid;
+    next_file_descriptor_nid = eval_file_descriptor_nid;
+  }
+
   param_readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     bytes_to_read, 0, "read capacity in bytes");
 
@@ -2803,6 +2825,18 @@ void new_core_kernel_state(uint64_t core, uint64_t bytes_to_read) {
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
+}
+
+void print_kernel_state(uint64_t core) {
+  if (core == 0) {
+    print_break_comment_line("system kernel state", init_program_break_nid);
+
+    print_break_line(init_file_descriptor_nid);
+  }
+
+  print_break_comment_line(format_comment("core-%lu kernel state", core), init_readable_bytes_nid);
+
+  print_break_line(init_read_bytes_nid);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2853,16 +2887,22 @@ void new_register_file_state(uint64_t core) {
   uint64_t  value;
   uint64_t* value_nid;
 
+  if (SYNCHRONIZED_REGISTERS) {
+    if (core > 0)
+      return;
+  } else if (SHARED_REGISTERS)
+    if (core > 0)
+      return;
+
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
     format_comment("core-%lu-zeroed-register-file", core), "zeroed register file");
 
   zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  if ((SYNTHESIZE * (CORES == 1)) == 1)
+  if (CODE_LOADED == 0)
     initial_register_file_nid =
-      store_register_value(
-        NID_SP,
+      store_register_value(NID_SP,
         cast_virtual_address_to_machine_word(
           new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1")),
         "write initial sp value",
@@ -2905,13 +2945,20 @@ void new_register_file_state(uint64_t core) {
     init_register_file_nid = zeroed_register_file_nid;
 }
 
-void print_register_file_state() {
+void print_register_file_state(uint64_t core) {
+  if (SYNCHRONIZED_REGISTERS) {
+    if (core > 0)
+      return;
+  } else if (SHARED_REGISTERS)
+    if (core > 0)
+      return;
+
   print_break_comment("zeroed register file");
 
   print_line(zeroed_register_file_nid);
 
   if (init_register_file_nid != zeroed_register_file_nid) {
-    if ((SYNTHESIZE * (CORES == 1)) == 1)
+    if (CODE_LOADED == 0)
       print_break_comment("initializing sp");
     else
       print_aligned_break_comment("initializing registers", log_ten(32 * 3 + 1) + 1);
@@ -3109,10 +3156,18 @@ void new_code_segment(uint64_t core) {
   uint64_t* vaddr_nid;
   uint64_t* ir_nid;
 
-  if (((SYNTHESIZE * ((CORES == 1) + (core > 0)))) == 1)
+  if (core > 0) {
+    if (SYNTHESIZE)
+      state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
+        format_comment("core-%lu-code-segment", core), "code segment");
+
+    return;
+  }
+
+  if (CODE_LOADED == 0)
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
-  else if (core == 0) {
+  else {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       "code-segment", "code segment");
 
@@ -3171,11 +3226,21 @@ void new_code_segment(uint64_t core) {
 void print_code_segment(uint64_t core) {
   uint64_t i;
 
-  if (((SYNTHESIZE * ((CORES == 1) + (core > 0)))) == 1) {
+  if (core > 0) {
+    if (SYNTHESIZE) {
+      print_break_comment("uninitialized code segment");
+
+      print_line(state_code_segment_nid);
+    }
+
+    return;
+  }
+
+  if (CODE_LOADED == 0) {
     print_break_comment("uninitialized code segment");
 
     print_line(state_code_segment_nid);
-  } else if (core == 0) {
+  } else {
     print_break_comment("zeroed code segment");
 
     print_line(zeroed_code_segment_nid);
@@ -3202,20 +3267,27 @@ void print_code_segment(uint64_t core) {
   }
 }
 
-void new_memory_state() {
+void new_memory_state(uint64_t core) {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
   uint64_t* vaddr_nid;
   uint64_t* data_nid;
 
+  if (SYNCHRONIZED_MEMORY) {
+    if (core > 0)
+      return;
+  } else if (SHARED_MEMORY)
+    if (core > 0)
+      return;
+
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
-    "zeroed-main-memory", "zeroed main memory");
+    format_comment("core-%lu-zeroed-main-memory", core), "zeroed main memory");
 
   zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
-  if ((SYNTHESIZE == 0) + (CORES > 1)) {
+  if (CODE_LOADED) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
     initial_data_segment_nid = state_main_memory_nid;
@@ -3266,7 +3338,7 @@ void new_memory_state() {
 
     if (initial_main_memory_nid != state_main_memory_nid) {
       state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
-        "loaded-main-memory", "loaded main memory");
+        format_comment("core-%lu-loaded-main-memory", core), "loaded main memory");
 
       init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
@@ -3275,12 +3347,19 @@ void new_memory_state() {
   }
 }
 
-void print_memory_state() {
+void print_memory_state(uint64_t core) {
+  if (SYNCHRONIZED_MEMORY) {
+    if (core > 0)
+      return;
+  } else if (SHARED_MEMORY)
+    if (core > 0)
+      return;
+
   print_break_comment("zeroed main memory");
 
   print_line(zeroed_main_memory_nid);
 
-  if ((SYNTHESIZE == 0) + (CORES > 1))
+  if (CODE_LOADED)
     if (initial_main_memory_nid != state_main_memory_nid) {
       // assert: data_size > 0 and non-zero data in data segment
 
@@ -6735,13 +6814,28 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
 // -----------------------------------------------------------------
 
 void new_core_state(uint64_t core) {
-  if ((SYNTHESIZE * (CORES == 1)) == 1)
-    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
-  else
+  if (SYNCHRONIZED_PC)
+    if (core > 0)
+      return;
+
+  if (CODE_LOADED)
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
+  else
+    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
 
   state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
   init_core_pc_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
+}
+
+void print_core_state(uint64_t core) {
+  if (SYNCHRONIZED_PC)
+    if (core > 0)
+      return;
+
+  print_break_comment(format_comment("core-%lu program counter", core));
+
+  print_line(initial_core_pc_nid);
+  print_line(init_core_pc_nid);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -7303,27 +7397,75 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid) {
   // update control flow
 
-  next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
-    pc_nid,
-    control_flow_nid,
-    "program counter");
+  if (SYNCHRONIZED_PC)
+    if (core == 0) {
+      next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+        pc_nid, control_flow_nid, "program counter");
+
+      eval_core_0_control_flow_nid = control_flow_nid;
+    } else
+      next_core_pc_nid = new_property(OP_CONSTRAINT,
+        new_binary_boolean(OP_EQ,
+          control_flow_nid,
+          eval_core_0_control_flow_nid,
+          "new pc value == new core-0 pc value?"),
+        format_comment("new-core-%lu-pc-value", core),
+        "asserting new pc value == new core-0 pc value");
+  else
+    next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+      pc_nid, control_flow_nid, "program counter");
 
   // update register data flow
 
-  next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
-    register_file_nid,
-    register_data_flow_nid,
-    "register file");
+  if (SYNCHRONIZED_REGISTERS)
+    if (core == 0) {
+      next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+        register_file_nid, register_data_flow_nid, "register file");
+
+      eval_core_0_register_data_flow_nid = register_data_flow_nid;
+    } else
+      next_register_file_nid = new_property(OP_CONSTRAINT,
+        new_binary_boolean(OP_EQ,
+          register_data_flow_nid,
+          eval_core_0_register_data_flow_nid,
+          "new register data flow == new core-0 register data flow?"),
+        format_comment("new-core-%lu-register-data-flow", core),
+        "asserting new register data flow == new core-0 register data flow");
+  else if (SHARED_REGISTERS) {
+    if (core < CORES - 1)
+      state_register_file_nid = register_data_flow_nid;
+    else
+      next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+        register_file_nid, register_data_flow_nid, "register file");
+  } else
+    next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+      register_file_nid, register_data_flow_nid, "register file");
 
   // update memory data flow
 
-  next_main_memory_nid = memory_data_flow_nid;
+  if (SYNCHRONIZED_MEMORY)
+    if (core == 0) {
+      next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+        memory_nid, memory_data_flow_nid, "main memory");
 
-  if (core == CORES - 1)
+      eval_core_0_memory_data_flow_nid = memory_data_flow_nid;
+    } else
+      next_main_memory_nid = new_property(OP_CONSTRAINT,
+        new_binary_boolean(OP_EQ,
+          memory_data_flow_nid,
+          eval_core_0_memory_data_flow_nid,
+          "new memory data flow == new core-0 memory data flow?"),
+        format_comment("new-core-%lu-memory-data-flow", core),
+        "asserting new memory data flow == new core-0 memory data flow");
+  else if (SHARED_MEMORY) {
+    if (core < CORES - 1)
+      state_main_memory_nid = memory_data_flow_nid;
+    else
+      next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+        memory_nid, memory_data_flow_nid, "main memory");
+  } else
     next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
-      memory_nid,
-      memory_data_flow_nid,
-      "main memory");
+      memory_nid, memory_data_flow_nid, "main memory");
 }
 
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
@@ -7450,38 +7592,25 @@ void rotor() {
   core = 0;
 
   while (core < CORES) {
+    new_kernel_state(core, 1);
+
     new_core_state(core);
+
     new_register_file_state(core);
 
     new_code_segment(core);
 
-    if (core == 0) {
-      new_memory_state();
-
-      next_main_memory_nid = state_main_memory_nid;
-
-      new_system_kernel_state();
-
-      next_program_break_nid   = state_program_break_nid;
-      next_file_descriptor_nid = state_file_descriptor_nid;
-    } else {
-      next_main_memory_nid = eval_core_memory_data_flow_nid;
-
-      next_program_break_nid   = eval_program_break_nid;
-      next_file_descriptor_nid = eval_file_descriptor_nid;
-    }
-
-    new_core_kernel_state(core, 1);
+    new_memory_state(core);
 
     rotor_combinational(state_core_pc_nid, state_code_segment_nid,
-      state_register_file_nid, next_main_memory_nid);
+      state_register_file_nid, state_main_memory_nid);
     kernel_combinational(state_core_pc_nid, eval_core_ir_nid,
       eval_core_compressed_instruction_control_flow_nid,
       eval_core_compressed_instruction_register_data_flow_nid,
       eval_core_compressed_instruction_memory_data_flow_nid,
       next_program_break_nid, next_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
-      state_register_file_nid, next_main_memory_nid);
+      state_register_file_nid, state_main_memory_nid);
 
     rotor_sequential(core, state_core_pc_nid,
       state_register_file_nid, state_main_memory_nid,
@@ -7511,23 +7640,15 @@ void rotor() {
 }
 
 void output_model(uint64_t core) {
-  print_break_comment_line("kernel state", init_program_break_nid);
+  print_kernel_state(core);
 
-  print_break_line(init_file_descriptor_nid);
+  print_core_state(core);
 
-  print_break_line(init_readable_bytes_nid);
-
-  print_break_line(init_read_bytes_nid);
-
-  print_break_comment("program counter");
-
-  print_line(initial_core_pc_nid);
-  print_line(init_core_pc_nid);
-
-  print_register_file_state();
+  print_register_file_state(core);
 
   print_code_segment(core);
-  print_memory_state();
+
+  print_memory_state(core);
 
   print_break_comment_line("fetch instruction", eval_core_ir_nid);
 
@@ -7663,8 +7784,19 @@ uint64_t selfie_model() {
 
         // assert: stack_start >= heap_start + heap_size > 0
 
-        if (CORES == 2)
+        CODE_LOADED = 1;
+
+        if (CORES > 1) {
           SYNTHESIZE = 1;
+
+          SYNCHRONIZED_PC = 0;
+
+          SYNCHRONIZED_REGISTERS = 1;
+          SHARED_REGISTERS       = 0;
+
+          SYNCHRONIZED_MEMORY = 1;
+          SHARED_MEMORY       = 0;
+        }
 
         model_name = replace_extension(binary_name, "-rotorized", "btor2");
       } else {
@@ -7686,7 +7818,17 @@ uint64_t selfie_model() {
 
         CORES = 1;
 
+        CODE_LOADED = 0;
+
         SYNTHESIZE = 1;
+
+        SYNCHRONIZED_PC = 0;
+
+        SYNCHRONIZED_REGISTERS = 0;
+        SHARED_REGISTERS       = 0;
+
+        SYNCHRONIZED_MEMORY = 0;
+        SHARED_MEMORY       = 0;
 
         if (IS64BITTARGET)
           model_name = "64-bit-riscv-machine.btor2";
