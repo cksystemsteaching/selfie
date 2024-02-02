@@ -7337,7 +7337,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
       new_constant(OP_CONSTD, SID_MACHINE_WORD,
         bad_exit_code, 0, format_comment("bad exit code %ld", bad_exit_code)),
       "actual exit code == bad exit code?"),
-    "active exit system call with bad exit code");
+    format_comment("core-%lu active exit system call with bad exit code", core));
 
   if (core == 0)
     prop_bad_exit_code_nid = bad_exit_code_nid;
@@ -7345,7 +7345,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
     prop_bad_exit_code_nid = new_binary_boolean(OP_AND,
       prop_bad_exit_code_nid,
       bad_exit_code_nid,
-      "");
+      "and next bad exit");
 
   if (core == CORES - 1)
     prop_bad_exit_code_nid = new_property(OP_BAD,
