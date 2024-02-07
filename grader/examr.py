@@ -40,10 +40,12 @@ def formality(text):
     return len(re.findall(formal, text, re.IGNORECASE))
 
 class Student:
-    def __init__(self, firstname, lastname, q_total, q_length, q_formality, a_total, a_length, a_formality):
+    def __init__(self, firstname, lastname, studentID, email, q_total, q_length, q_formality, a_total, a_length, a_formality):
         self.number_of_qas = 1
         self.firstname     = firstname
         self.lastname      = lastname
+        self.studentID     = studentID
+        self.email         = email
         self.q_total       = q_total
         self.q_length      = q_length
         self.q_formality   = q_formality
@@ -53,7 +55,7 @@ class Student:
         self.a_formality   = a_formality
         self.a_similarity  = float(0)
 
-def compute_similarity(students, emails, row_num, message, strings, old_strings, old_emails, old_row_num, old_firstnames, old_lastnames):
+def compute_similarity(students, uniqueIDs, row_num, message, strings, old_strings, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames):
     all_strings = strings + old_strings
 
     vectors = get_vectors(all_strings)
@@ -68,11 +70,11 @@ def compute_similarity(students, emails, row_num, message, strings, old_strings,
 
                 if similarity[x][y] > 0.95:
                     print(f'{message} similarity {similarity[x][y]} at:')
-                    print(f'[{row_num[x]}]: {emails[x]} ({students[emails[x]].firstname} {students[emails[x]].lastname})')
+                    print(f'[{row_num[x]}]: {uniqueIDs[x]} ({students[uniqueIDs[x]].firstname} {students[uniqueIDs[x]].lastname})')
                     if y <= len(strings):
-                        print(f'[{row_num[y]}]: {emails[y]} ({students[emails[y]].firstname} {students[emails[y]].lastname})')
+                        print(f'[{row_num[y]}]: {uniqueIDs[y]} ({students[uniqueIDs[y]].firstname} {students[uniqueIDs[y]].lastname})')
                     else:
-                        print(f'[{old_row_num[y - len(strings)]}]: {old_emails[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
+                        print(f'[{old_row_num[y - len(strings)]}]: {old_uniqueIDs[y - len(strings)]} ({old_firstnames[y - len(strings)]} {old_lastnames[y - len(strings)]}) [old response]')
                     print(f'<<<\n{strings[x]}\n---\n{all_strings[y]}\n>>>\n')
             elif x > y:
                 similarity[x][y] = similarity[y][x]
@@ -81,26 +83,26 @@ def compute_similarity(students, emails, row_num, message, strings, old_strings,
 
     return similarity
 
-def assign_similarity(students, emails, old_emails, q_similarity, a_similarity):
-    all_emails = emails + old_emails
+def assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity):
+    all_uniqueIDs = uniqueIDs + old_uniqueIDs
 
-    for x in range(len(emails)):
-        student = students[emails[x]]
+    for x in range(len(uniqueIDs)):
+        student = students[uniqueIDs[x]]
 
-        for y in range(len(all_emails)):
+        for y in range(len(all_uniqueIDs)):
             if x != y:
                 student.q_similarity += q_similarity[x][y]
                 student.a_similarity += a_similarity[x][y]
 
-        if (len(all_emails) > 1):
+        if (len(all_uniqueIDs) > 1):
             # normalize again
-            student.q_similarity /= len(all_emails) - 1
-            student.a_similarity /= len(all_emails) - 1
+            student.q_similarity /= len(all_uniqueIDs) - 1
+            student.a_similarity /= len(all_uniqueIDs) - 1
 
 import csv
 
 def process_files(response_file, analysis_file, class_id, year, attempt):
-    old_emails     = []
+    old_uniqueIDs  = []
     old_row_num    = []
     old_firstnames = []
     old_lastnames  = []
@@ -109,7 +111,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     students = dict()
 
-    emails      = []
+    uniqueIDs   = []
     row_num     = []
     questions   = []
     answers     = []
@@ -122,7 +124,7 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     for i, row in enumerate(csv_reader, start=2):
         if (row['Class'] == class_id and row['Year'] == year and row['Attempt'] == attempt):
-            emails.append(row['Username'])
+            uniqueIDs.append(row['Unique ID'])
             row_num.append(i)
 
             questions.append(row['Ask Question'])
@@ -133,10 +135,12 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
             a_length    += len(row['Answer Question'])
             a_formality += formality(row['Answer Question'])
 
-            if row['Username'] not in students:
-                students[row['Username']] = Student(
+            if row['Unique ID'] not in students:
+                students[row['Unique ID']] = Student(
                     row['Firstname'],
                     row['Lastname'],
+                    row['Student ID'],
+                    row['Email'],
                     float(row['Grade Question']),
                     len(row['Ask Question']),
                     formality(row['Ask Question']),
@@ -144,27 +148,27 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
                     len(row['Answer Question']),
                     formality(row['Answer Question']))
             else:
-                students[row['Username']].number_of_qas += 1
-                students[row['Username']].q_total       += float(row['Grade Question'])
-                students[row['Username']].q_length      += len(row['Ask Question'])
-                students[row['Username']].q_formality   += formality(row['Ask Question'])
-                students[row['Username']].a_total       += float(row['Grade Answer'])
-                students[row['Username']].a_length      += len(row['Answer Question'])
-                students[row['Username']].a_formality   += formality(row['Answer Question'])
+                students[row['Unique ID']].number_of_qas += 1
+                students[row['Unique ID']].q_total       += float(row['Grade Question'])
+                students[row['Unique ID']].q_length      += len(row['Ask Question'])
+                students[row['Unique ID']].q_formality   += formality(row['Ask Question'])
+                students[row['Unique ID']].a_total       += float(row['Grade Answer'])
+                students[row['Unique ID']].a_length      += len(row['Answer Question'])
+                students[row['Unique ID']].a_formality   += formality(row['Answer Question'])
         else:
-            old_emails.append(row['Username'])
+            old_uniqueIDs.append(row['Unique ID'])
             old_row_num.append(i)
             old_firstnames.append(row['Firstname'])
             old_lastnames.append(row['Lastname'])
             old_questions.append(row['Ask Question'])
             old_answers.append(row['Answer Question'])
 
-    q_similarity = compute_similarity(students, emails, row_num, "Question", questions, old_questions, old_emails, old_row_num, old_firstnames, old_lastnames)
-    a_similarity = compute_similarity(students, emails, row_num, "Answer", answers, old_answers, old_emails, old_row_num, old_firstnames, old_lastnames)
+    q_similarity = compute_similarity(students, uniqueIDs, row_num, "Question", questions, old_questions, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
+    a_similarity = compute_similarity(students, uniqueIDs, row_num, "Answer", answers, old_answers, old_uniqueIDs, old_row_num, old_firstnames, old_lastnames)
 
-    assign_similarity(students, emails, old_emails, q_similarity, a_similarity)
+    assign_similarity(students, uniqueIDs, old_uniqueIDs, q_similarity, a_similarity)
 
-    fieldnames = 'Google Apps Email', 'Firstname', 'Lastname', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+    fieldnames = 'Unique ID', 'Firstname', 'Lastname', 'Student ID', 'Email', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(analysis_file, fieldnames=fieldnames)
 
@@ -172,9 +176,11 @@ def process_files(response_file, analysis_file, class_id, year, attempt):
 
     for student in students.items():
         csv_writer.writerow({
-            'Google Apps Email': student[0],
+            'Unique ID': student[0],
             'Firstname': student[1].firstname,
             'Lastname': student[1].lastname,
+            'Student ID': student[1].studentID,
+            'Email': student[1].email,
             'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
             'Number of Q&As': student[1].number_of_qas,
             'Length of Answers': student[1].a_length,
@@ -204,8 +210,8 @@ def main(argv):
     analysis_file = ''
 
     class_id = 'IOS'
-    year     = '2019'
-    attempt  = '2nd'
+    year     = '2023'
+    attempt  = '1st'
 
     try:
         opts, args = getopt.getopt(argv,'hr:a:c:y:t:',[])

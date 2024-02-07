@@ -8915,28 +8915,32 @@ void print_load_before() {
 
   printf(": ");
   print_register_hexadecimal(rs1);
+  printf(",");
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      if (is_system_register(rd))
-        printf(",mem[0x%lX]==0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
-      else
-        printf(",mem[0x%lX]==%ld |- ", vaddr, load_virtual_memory(pt, vaddr));
-      print_register_value(rd);
-
-      return;
-    }
-
-  printf(" |-");
+    if (is_valid_segment_read(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        if (is_system_register(rd))
+          printf("mem[0x%lX]==0x%lX |- ", vaddr, load_virtual_memory(pt, vaddr));
+        else
+          printf("mem[0x%lX]==%ld |- ", vaddr, load_virtual_memory(pt, vaddr));
+        print_register_value(rd);
+      } else
+        printf("0x%lX is unmapped (page fault)", vaddr);
+    else
+      printf("0x%lX is ill-segmented (segmentation fault)", vaddr);
+  else
+    printf("0x%lX is invalid", vaddr);
 }
 
 void print_load_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(" -> ");
-      print_register_value(rd);
-      printf("==mem[0x%lX]", vaddr);
-    }
+    if (is_valid_segment_read(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        printf(" -> ");
+        print_register_value(rd);
+        printf("==mem[0x%lX]", vaddr);
+      }
 }
 
 void record_load() {
@@ -8945,8 +8949,9 @@ void record_load() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr))
-      record_state(*(registers + rd));
+    if (is_valid_segment_read(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr))
+        record_state(*(registers + rd));
 }
 
 uint64_t do_load() {
@@ -9010,28 +9015,32 @@ void print_store_before() {
 
   printf(": ");
   print_register_hexadecimal(rs1);
+  printf(",");
+  print_register_value(rs2);
+  printf(" |- ");
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(",");
-      print_register_value(rs2);
-      if (is_system_register(rd))
-        printf(" |- mem[0x%lX]==0x%lX", vaddr, load_virtual_memory(pt, vaddr));
+    if (is_valid_segment_write(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr))
+        if (is_system_register(rs2))
+          printf("mem[0x%lX]==0x%lX", vaddr, load_virtual_memory(pt, vaddr));
+        else
+          printf("mem[0x%lX]==%ld", vaddr, load_virtual_memory(pt, vaddr));
       else
-        printf(" |- mem[0x%lX]==%ld", vaddr, load_virtual_memory(pt, vaddr));
-
-      return;
-    }
-
-  printf(" |-");
+        printf("0x%lX is unmapped (page fault)", vaddr);
+    else
+      printf("0x%lX is ill-segmented (segmentation fault)", vaddr);
+  else
+    printf("0x%lX is invalid", vaddr);
 }
 
 void print_store_after(uint64_t vaddr) {
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      printf(" -> mem[0x%lX]==", vaddr);
-      print_register_value(rs2);
-    }
+    if (is_valid_segment_write(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        printf(" -> mem[0x%lX]==", vaddr);
+        print_register_value(rs2);
+      }
 }
 
 void record_store() {
@@ -9040,8 +9049,9 @@ void record_store() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_virtual_address_valid(vaddr, WORDSIZE))
-    if (is_virtual_address_mapped(pt, vaddr))
-      record_state(load_virtual_memory(pt, vaddr));
+    if (is_valid_segment_write(vaddr))
+      if (is_virtual_address_mapped(pt, vaddr))
+        record_state(load_virtual_memory(pt, vaddr));
 }
 
 uint64_t do_store() {
