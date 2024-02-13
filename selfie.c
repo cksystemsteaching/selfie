@@ -1109,6 +1109,8 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t ELF_HEADER_SIZE = 4096; // for page-aligned code and data segments
+
 uint64_t ELFCLASS64 = 2;
 uint64_t ELFCLASS32 = 1;
 
@@ -1172,7 +1174,7 @@ uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
 uint64_t p_filesz = 0; // size of segment in file
 uint64_t p_memsz  = 0; // size of segment in memory
 
-uint64_t p_align = 0; // alignment of segment: p_vaddr % p_align == p_offset % p_align
+uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -7202,10 +7204,14 @@ uint64_t get_elf_header_size() {
 uint64_t* encode_elf_header() {
   uint64_t* header;
 
+  // entry point compatible with pk kernel
   e_entry = PK_CODE_START;
-  e_phnum = 2; // RISC-U binaries have two program header entries
 
-  header = allocate_elf_header(get_elf_header_size());
+  // RISC-U binaries have two program header entries
+  e_phnum = 2;
+
+  // allocate page for alignment of code and data segments
+  header = allocate_elf_header(ELF_HEADER_SIZE);
 
   // store all data necessary for creating a minimal and valid file and program header
 
@@ -7248,7 +7254,7 @@ uint64_t* encode_elf_header() {
   p_type = PT_LOAD;
 
   p_flags  = PF_RX;
-  p_offset = get_elf_header_size();
+  p_offset = ELF_HEADER_SIZE;
   p_vaddr  = code_start;
   p_paddr  = code_start;
   p_filesz = code_size;
@@ -7257,7 +7263,7 @@ uint64_t* encode_elf_header() {
   encode_elf_program_header(header, 0);
 
   p_flags  = PF_RW;
-  p_offset = get_elf_header_size() + round_up(code_size, PAGESIZE);
+  p_offset = ELF_HEADER_SIZE + round_up(code_size, PAGESIZE);
   p_vaddr  = data_start;
   p_paddr  = data_start;
   p_filesz = data_size;
@@ -7419,7 +7425,7 @@ void selfie_output(char* filename) {
   // assert: ELF_header is mapped
 
   // first write ELF header
-  if (write(fd, ELF_header, get_elf_header_size()) != get_elf_header_size()) {
+  if (write(fd, ELF_header, ELF_HEADER_SIZE) != ELF_HEADER_SIZE) {
     printf("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -7448,7 +7454,7 @@ void selfie_output(char* filename) {
   }
 
   printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
-    get_elf_header_size() + code_size_with_padding + data_size,
+    ELF_HEADER_SIZE + code_size_with_padding + data_size,
     code_size / INSTRUCTIONSIZE,
     WORDSIZEINBITS,
     data_size,
