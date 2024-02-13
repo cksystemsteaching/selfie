@@ -890,8 +890,10 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   // assert: code_size > 1 and code word size is a power of 2 >= 8 bits
 
-  code_size_in_code_words =
-    code_size / get_number_of_bytes(SID_CODE_WORD) + code_size % get_number_of_bytes(SID_CODE_WORD);
+  code_size_in_code_words = code_size / get_number_of_bytes(SID_CODE_WORD);
+
+  if (code_size % get_number_of_bytes(SID_CODE_WORD) > 0)
+    code_size_in_code_words = code_size_in_code_words + 1;
 
   CODE_ADDRESS_SPACE = log_two(code_size_in_code_words);
 
@@ -3003,7 +3005,7 @@ void new_segmentation() {
   NID_CODE_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start + code_size,
     round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
-    format_comment("end of code segment accommodating %lu instructions", code_size / INSTRUCTIONSIZE));
+    format_comment("end of code segment accommodating at least %lu instructions", code_size / INSTRUCTIONSIZE));
 
   // assert: data_start >= code_start + code_size > 0
 
@@ -3152,6 +3154,7 @@ void print_segmentation() {
 
 void new_code_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
+  uint64_t  code_size_in_instructions;
   uint64_t* vaddr_nid;
   uint64_t* ir_nid;
 
@@ -3177,7 +3180,12 @@ void new_code_segment(uint64_t core) {
 
     initial_code_segment_nid = state_code_segment_nid;
 
-    initial_code_segment_nids = zmalloc(code_size / INSTRUCTIONSIZE * sizeof(uint64_t*));
+    code_size_in_instructions = code_size / INSTRUCTIONSIZE;
+
+    if (code_size % INSTRUCTIONSIZE > 0)
+      code_size_in_instructions = code_size_in_instructions + 1;
+
+    initial_code_segment_nids = zmalloc(code_size_in_instructions * sizeof(uint64_t*));
 
     REUSE_LINES = 0; // TODO: turn on via console argument
 
@@ -3223,6 +3231,7 @@ void new_code_segment(uint64_t core) {
 }
 
 void print_code_segment(uint64_t core) {
+  uint64_t code_size_in_instructions;
   uint64_t i;
 
   if (core > 0) {
@@ -3245,12 +3254,17 @@ void print_code_segment(uint64_t core) {
     print_line(zeroed_code_segment_nid);
 
     if (initial_code_segment_nid != state_code_segment_nid) {
+      code_size_in_instructions = code_size / INSTRUCTIONSIZE;
+
+      if (code_size % INSTRUCTIONSIZE > 0)
+        code_size_in_instructions = code_size_in_instructions + 1;
+
       print_aligned_break_comment("loading code",
-        log_ten(code_size / INSTRUCTIONSIZE * 3 + 1) + 1);
+        log_ten(code_size_in_instructions * 3 + 1) + 1);
 
       i = 0;
 
-      while (i < code_size / INSTRUCTIONSIZE) {
+      while (i < code_size_in_instructions) {
         if (*(initial_code_segment_nids + i) != 0)
           print_line((uint64_t*) *(initial_code_segment_nids + i));
 
