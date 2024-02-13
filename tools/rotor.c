@@ -2296,20 +2296,19 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* prop_is_instruction_known_nid            = (uint64_t*) 0;
-uint64_t* prop_is_compressed_instruction_known_nid = (uint64_t*) 0;
-uint64_t* prop_illegal_instruction_nid             = (uint64_t*) 0;
-uint64_t* prop_illegal_compressed_instruction_nid  = (uint64_t*) 0;
-uint64_t* prop_next_fetch_unaligned_nid            = (uint64_t*) 0;
-uint64_t* prop_next_fetch_seg_faulting_nid         = (uint64_t*) 0;
-uint64_t* prop_load_seg_faulting_nid               = (uint64_t*) 0;
-uint64_t* prop_store_seg_faulting_nid              = (uint64_t*) 0;
-uint64_t* prop_compressed_load_seg_faulting_nid    = (uint64_t*) 0;
-uint64_t* prop_compressed_store_seg_faulting_nid   = (uint64_t*) 0;
-uint64_t* prop_stack_seg_faulting_nid              = (uint64_t*) 0;
-uint64_t* prop_division_by_zero_nid                = (uint64_t*) 0;
-uint64_t* prop_signed_division_overflow_nid        = (uint64_t*) 0;
-uint64_t* prop_exclude_a0_from_rd_nid              = (uint64_t*) 0;
+uint64_t* prop_is_instruction_known_nid           = (uint64_t*) 0;
+uint64_t* prop_illegal_instruction_nid            = (uint64_t*) 0;
+uint64_t* prop_illegal_compressed_instruction_nid = (uint64_t*) 0;
+uint64_t* prop_next_fetch_unaligned_nid           = (uint64_t*) 0;
+uint64_t* prop_next_fetch_seg_faulting_nid        = (uint64_t*) 0;
+uint64_t* prop_load_seg_faulting_nid              = (uint64_t*) 0;
+uint64_t* prop_store_seg_faulting_nid             = (uint64_t*) 0;
+uint64_t* prop_compressed_load_seg_faulting_nid   = (uint64_t*) 0;
+uint64_t* prop_compressed_store_seg_faulting_nid  = (uint64_t*) 0;
+uint64_t* prop_stack_seg_faulting_nid             = (uint64_t*) 0;
+uint64_t* prop_division_by_zero_nid               = (uint64_t*) 0;
+uint64_t* prop_signed_division_overflow_nid       = (uint64_t*) 0;
+uint64_t* prop_exclude_a0_from_rd_nid             = (uint64_t*) 0;
 
 uint64_t* prop_brk_seg_faulting_nid    = (uint64_t*) 0;
 uint64_t* prop_openat_seg_faulting_nid = (uint64_t*) 0;
@@ -6321,8 +6320,7 @@ uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
 
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
   if (RVC)
-    return new_ternary(OP_ITE, SID_BOOLEAN,
-      is_compressed_instruction(c_ir_nid),
+    return
       decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
         NID_OP_C2, "C2?",
         decode_compressed_mv_add(SID_BOOLEAN, c_ir_nid,
@@ -6369,9 +6367,7 @@ uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
                       NID_C_JAL, "known?",
                       NID_FALSE))))),
             "C1 compressed instruction known?",
-            NID_FALSE))),
-      NID_TRUE,
-      "compressed instruction known?");
+            NID_FALSE)));
   else
     return UNUSED;
 }
@@ -7498,17 +7494,18 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
     format_comment("core-%lu-compressed-illegal-instruction", core),
     format_comment("core-%lu compressed illegal instruction", core));
 
+  if (known_compressed_instructions_nid != UNUSED)
+    known_instructions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
+      is_compressed_instruction(ir_nid),
+      known_compressed_instructions_nid,
+      known_instructions_nid,
+      "is known uncompressed or compressed instruction?");
+
   prop_is_instruction_known_nid = state_property(core,
     known_instructions_nid,
     UNUSED,
     format_comment("core-%lu-known-instructions", core),
     format_comment("core-%lu known instructions", core));
-
-  prop_is_compressed_instruction_known_nid = state_property(core,
-    known_compressed_instructions_nid,
-    UNUSED,
-    format_comment("core-%lu-known-compressed-instructions", core),
-    format_comment("core-%lu known compressed instructions", core));
 
   prop_next_fetch_unaligned_nid = state_property(core,
     new_binary_boolean(OP_EQ,
@@ -7717,8 +7714,6 @@ void output_model(uint64_t core) {
   print_break_line(prop_illegal_compressed_instruction_nid);
 
   print_break_line(prop_is_instruction_known_nid);
-
-  print_break_line(prop_is_compressed_instruction_known_nid);
 
   print_break_line(prop_next_fetch_unaligned_nid);
 
