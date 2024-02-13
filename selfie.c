@@ -1112,6 +1112,8 @@ void selfie_load();
 uint64_t ELFCLASS64 = 2;
 uint64_t ELFCLASS32 = 1;
 
+uint64_t MAX_BINARY_SIZE = 1048576; // 1MB
+
 uint64_t MAX_CODE_SIZE = 524288; // 512KB
 uint64_t MAX_DATA_SIZE = 65536;  // 64KB
 
@@ -1170,7 +1172,7 @@ uint64_t p_paddr = 0; // start of segment in physical memory (ignored)
 uint64_t p_filesz = 0; // size of segment in file
 uint64_t p_memsz  = 0; // size of segment in memory
 
-uint64_t p_align = 4096; // alignment of segment: p_vaddr % p_align == p_offset % p_align
+uint64_t p_align = 0; // alignment of segment: p_vaddr % p_align == p_offset % p_align
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -7246,16 +7248,18 @@ uint64_t* encode_elf_header() {
   p_type = PT_LOAD;
 
   p_flags  = PF_RX;
-  p_offset = 0;
+  p_offset = get_elf_header_size();
   p_vaddr  = code_start;
+  p_paddr  = code_start;
   p_filesz = code_size;
   p_memsz  = code_size;
 
   encode_elf_program_header(header, 0);
 
   p_flags  = PF_RW;
-  p_offset = code_size;
+  p_offset = get_elf_header_size() + round_up(code_size, PAGESIZE);
   p_vaddr  = data_start;
+  p_paddr  = data_start;
   p_filesz = data_size;
   p_memsz  = data_size;
 
@@ -7340,37 +7344,44 @@ uint64_t decode_elf_file_header(uint64_t* header) {
 }
 
 uint64_t decode_elf_program_header(uint64_t* header) {
+  uint64_t vaddr;
   uint64_t filesz;
   uint64_t memsz;
 
   if (EI_CLASS == ELFCLASS64) {
+    vaddr  = load_word(header, 16, 1);
     filesz = load_word(header, 32, 1);
     memsz  = load_word(header, 40, 1);
 
-    if (filesz <= memsz) {
-      p_type   = get_bits(load_word(header, 0, 1), 0, 32);
-      p_flags  = get_bits(load_word(header, 0, 1), 32, 32);
-      p_offset = load_word(header, 8, 1);
-      p_vaddr  = load_word(header, 16, 1);
-      p_filesz = filesz;
-      p_memsz  = memsz;
+    if (vaddr == load_word(header, 24, 1))
+      // p_vaddr == p_paddr
+      if (filesz <= memsz) {
+        p_type   = get_bits(load_word(header, 0, 1), 0, 32);
+        p_flags  = get_bits(load_word(header, 0, 1), 32, 32);
+        p_offset = load_word(header, 8, 1);
+        p_vaddr  = vaddr;
+        p_filesz = filesz;
+        p_memsz  = memsz;
 
-      return 1;
-    }
+        return 1;
+      }
   } else if (EI_CLASS == ELFCLASS32) {
+    vaddr  = load_word(header, 8, 0);
     filesz = load_word(header, 16, 0);
     memsz  = load_word(header, 20, 0);
 
-    if (filesz <= memsz) {
-      p_type   = load_word(header, 0, 0);
-      p_offset = load_word(header, 4, 0);
-      p_vaddr  = load_word(header, 8, 0);
-      p_filesz = filesz;
-      p_memsz  = memsz;
-      p_flags  = load_word(header, 24, 0);
+    if (vaddr == load_word(header, 12, 0))
+      // p_vaddr == p_paddr
+      if (filesz <= memsz) {
+        p_type   = load_word(header, 0, 0);
+        p_offset = load_word(header, 4, 0);
+        p_vaddr  = vaddr;
+        p_filesz = filesz;
+        p_memsz  = memsz;
+        p_flags  = load_word(header, 24, 0);
 
-      return 1;
-    }
+        return 1;
+      }
   }
 
   return 0;
@@ -7383,6 +7394,7 @@ uint64_t open_write_only(char* name, uint64_t mode) {
 void selfie_output(char* filename) {
   uint64_t fd;
   uint64_t* ELF_header;
+  uint64_t code_size_with_padding;
 
   binary_name = filename;
 
@@ -7413,10 +7425,14 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
+  code_size_with_padding = round_up(code_size, PAGESIZE);
+
+  touch(code_binary, code_size_with_padding);
+
   // assert: code_binary is mapped
 
   // then write code with padding bytes
-  if (write(fd, code_binary, code_size) != code_size) {
+  if (write(fd, code_binary, code_size_with_padding) != code_size_with_padding) {
     printf("%s: could not write code into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -7432,7 +7448,7 @@ void selfie_output(char* filename) {
   }
 
   printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data written into %s\n", selfie_name,
-    get_elf_header_size() + code_size + data_size,
+    get_elf_header_size() + code_size_with_padding + data_size,
     code_size / INSTRUCTIONSIZE,
     WORDSIZEINBITS,
     data_size,
@@ -7441,17 +7457,16 @@ void selfie_output(char* filename) {
 
 void selfie_load() {
   uint64_t fd;
-  uint64_t* buffer;
-  uint64_t number_of_read_bytes;
   uint64_t* ELF_file_header;
-  uint64_t i;
-  uint64_t* ELF_program_header;
+  uint64_t number_of_read_bytes;
   uint64_t code_file_offset;
   uint64_t code_file_size;
   uint64_t data_file_offset;
   uint64_t data_file_size;
+  uint64_t* ELF_program_header;
+  uint64_t i;
+  uint64_t number_of_read_bytes_in_total;
   uint64_t to_be_read_bytes;
-  uint64_t to_be_allocated_bytes;
 
   binary_name = get_argument();
 
@@ -7468,35 +7483,30 @@ void selfie_load() {
   // no source line numbers in binaries
   reset_binary();
 
-  // this call makes sure buffer is mapped for reading into it
-  buffer = allocate_elf_header(8);
+  // allocate and map (on all boot levels) memory for reading into it
+  ELF_file_header = touch(smalloc(MAX_BINARY_SIZE), MAX_BINARY_SIZE);
 
-  number_of_read_bytes = read(fd, buffer, 8);
+  number_of_read_bytes = read(fd, ELF_file_header, 8);
 
   if (number_of_read_bytes == 8) {
-    if (validate_elf_file_header_top(buffer)) {
+    if (validate_elf_file_header_top(ELF_file_header)) {
       init_target();
       reset_disassembler();
-
-      // this call makes sure ELF_file_header is mapped for reading into it
-      ELF_file_header = allocate_elf_header(e_ehsize);
-
-      store_word(ELF_file_header, 0, 0, load_word(buffer, 0, 0));
-      store_word(ELF_file_header, 4, 0, load_word(buffer, 4, 0));
 
       number_of_read_bytes = read(fd, (uint64_t*) ((uint64_t) ELF_file_header + 8), e_ehsize - 8);
 
       if (number_of_read_bytes == e_ehsize - 8) {
         if (decode_elf_file_header(ELF_file_header)) {
           code_file_offset = 0;
+          code_file_size   = 0;
           data_file_offset = 0;
+          data_file_size   = 0;
+
+          ELF_program_header = (uint64_t*) ((uint64_t) ELF_file_header + e_ehsize);
 
           i = 0;
 
           while (i < e_phnum) {
-            // this call makes sure ELF_program_header is mapped for reading into it
-            ELF_program_header = allocate_elf_header(e_phentsize);
-
             number_of_read_bytes = read(fd, ELF_program_header, e_phentsize);
 
             if (number_of_read_bytes == e_phentsize) {
@@ -7521,54 +7531,59 @@ void selfie_load() {
               }
             }
 
+            ELF_program_header = (uint64_t*) ((uint64_t) ELF_program_header + e_phentsize);
+
             i = i + 1;
           }
 
-          if (code_size > 0) {
-            to_be_read_bytes = code_file_offset + code_file_size;
+          if (code_file_size > 0)
+            if (code_file_size == code_size)
+              if (data_file_size > 0)
+                if (code_file_offset + code_file_size <= data_file_offset) {
+                  code_binary = (uint64_t*) ((uint64_t) ELF_file_header + code_file_offset);
 
-            if (to_be_read_bytes <= data_file_offset) {
-              to_be_allocated_bytes = code_file_offset + code_size;
+                  number_of_read_bytes_in_total = get_elf_header_size();
 
-              // make sure code binary is zeroed and mapped for reading into it
-              code_binary = touch(zmalloc(to_be_allocated_bytes), to_be_allocated_bytes);
+                  to_be_read_bytes = code_file_offset + code_file_size - number_of_read_bytes_in_total;
 
-              // assert: to_be_read_bytes <= to_be_allocated_bytes
+                  if (to_be_read_bytes + number_of_read_bytes_in_total <= MAX_BINARY_SIZE) {
+                    number_of_read_bytes = sign_extend(
+                      read(fd,
+                        (uint64_t*) ((uint64_t) ELF_file_header + number_of_read_bytes_in_total),
+                        to_be_read_bytes),
+                      SYSCALL_BITWIDTH);
 
-              number_of_read_bytes = sign_extend(read(fd, code_binary, to_be_read_bytes), SYSCALL_BITWIDTH);
+                    if (number_of_read_bytes == to_be_read_bytes) {
+                      number_of_read_bytes_in_total = number_of_read_bytes_in_total + number_of_read_bytes;
 
-              if (number_of_read_bytes == to_be_read_bytes) {
-                code_binary = (uint64_t*) ((uint64_t) code_binary + (to_be_read_bytes - code_file_size));
+                      data_binary = (uint64_t*) ((uint64_t) ELF_file_header + data_file_offset);
 
-                if (data_size > 0) {
-                  to_be_allocated_bytes = data_file_offset - to_be_read_bytes + data_size;
+                      to_be_read_bytes = data_file_offset + data_file_size - number_of_read_bytes_in_total;
 
-                  // make sure data binary is zeroed and mapped for reading into it
-                  data_binary = touch(zmalloc(to_be_allocated_bytes), to_be_allocated_bytes);
+                      if (to_be_read_bytes + number_of_read_bytes_in_total <= MAX_BINARY_SIZE) {
+                        number_of_read_bytes = sign_extend(
+                          read(fd,
+                            (uint64_t*) ((uint64_t) ELF_file_header + number_of_read_bytes_in_total),
+                            to_be_read_bytes),
+                          SYSCALL_BITWIDTH);
 
-                  to_be_read_bytes = data_file_offset - to_be_read_bytes + data_file_size;
+                        if (number_of_read_bytes == to_be_read_bytes) {
+                          number_of_read_bytes_in_total = number_of_read_bytes_in_total + number_of_read_bytes;
 
-                  // assert: to_be_read_bytes <= to_be_allocated_bytes
+                          printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
+                            selfie_name,
+                            number_of_read_bytes_in_total,
+                            code_file_size / INSTRUCTIONSIZE,
+                            WORDSIZEINBITS,
+                            data_file_size,
+                            binary_name);
 
-                  number_of_read_bytes = sign_extend(read(fd, data_binary, to_be_read_bytes), SYSCALL_BITWIDTH);
-
-                  if (number_of_read_bytes == to_be_read_bytes) {
-                    data_binary = (uint64_t*) ((uint64_t) data_binary + (to_be_read_bytes - data_file_size));
-
-                    printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
-                      selfie_name,
-                      get_elf_header_size() + code_size + data_size,
-                      code_size / INSTRUCTIONSIZE,
-                      WORDSIZEINBITS,
-                      data_size,
-                      binary_name);
-
-                    return;
+                          return;
+                        }
+                      }
+                    }
                   }
                 }
-              }
-            }
-          }
         }
       }
     }
