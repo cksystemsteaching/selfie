@@ -368,9 +368,10 @@ void init_interface_sorts() {
   NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, 0, "double-word 8");
 
   NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, 0, "double-word -1");
-  NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, two_to_the_power_of(WORDSIZEINBITS - 1), 0, "double-word INT_MIN");
 
   if (IS64BITTARGET) {
+    NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, two_to_the_power_of(DOUBLEWORDSIZEINBITS - 1), 0, "double-word INT_MIN");
+
     SID_MACHINE_WORD = SID_DOUBLE_WORD;
 
     NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0;
