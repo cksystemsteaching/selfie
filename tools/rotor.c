@@ -2260,6 +2260,8 @@ uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 
 uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
 
+void output_model(uint64_t core);
+
 void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
@@ -2280,7 +2282,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* known_instructions_nid, uint64_t* known_compressed_instructions_nid,
   uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
-void output_model(uint64_t core);
+void rotor();
 
 uint64_t selfie_model();
 
@@ -2294,6 +2296,7 @@ char* no_exit_code_check_option      = (char*) 0;
 char* division_by_zero_check_option  = (char*) 0;
 char* division_overflow_check_option = (char*) 0;
 char* seg_faults_check_option        = (char*) 0;
+char* cores_option                   = (char*) 0;
 char* heap_allowance_option          = (char*) 0;
 char* stack_allowance_option         = (char*) 0;
 
@@ -6894,6 +6897,111 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
   }
 }
 
+void output_model(uint64_t core) {
+  print_kernel_state(core);
+
+  print_core_state(core);
+
+  print_register_file_state(core);
+
+  print_code_segment(core);
+
+  print_memory_state(core);
+
+  print_break_comment_line("fetch instruction", eval_core_ir_nid);
+
+  print_break_comment_line("fetch compressed instruction", eval_core_c_ir_nid);
+
+  print_break_comment_line("decode instruction", eval_known_instructions_nid);
+
+  print_break_comment_line("decode compressed instruction",
+    eval_known_compressed_instructions_nid);
+
+  print_break_comment_line("instruction control flow", eval_core_instruction_control_flow_nid);
+
+  print_break_comment_line("compressed instruction control flow",
+    eval_core_compressed_instruction_control_flow_nid);
+
+  print_break_comment_line("update kernel state", next_program_break_nid);
+
+  print_break_line(next_file_descriptor_nid);
+
+  print_break_line(next_readable_bytes_nid);
+
+  print_break_line(next_read_bytes_nid);
+
+  print_break_comment_line("kernel and instruction control flow", eval_core_control_flow_nid);
+
+  print_break_comment_line("update program counter", next_core_pc_nid);
+
+  print_break_comment_line("instruction register data flow",
+    eval_core_instruction_register_data_flow_nid);
+
+  print_break_comment_line("compressed instruction register data flow",
+    eval_core_compressed_instruction_register_data_flow_nid);
+
+  print_break_comment_line("kernel and instruction register data flow",
+    eval_core_register_data_flow_nid);
+
+  print_break_comment_line("update register data flow", next_register_file_nid);
+
+  print_break_comment_line("instruction memory data flow",
+    eval_core_instruction_memory_data_flow_nid);
+
+  print_break_comment_line("compressed instruction memory data flow",
+    eval_core_compressed_instruction_memory_data_flow_nid);
+
+  print_break_comment_line("kernel and instruction memory data flow",
+    eval_core_memory_data_flow_nid);
+
+  print_break_comment_line("update memory data flow", next_main_memory_nid);
+
+  print_break_comment("state properties");
+
+  print_line(prop_illegal_instruction_nid);
+
+  print_break_line(prop_illegal_compressed_instruction_nid);
+
+  print_break_line(prop_is_instruction_known_nid);
+
+  print_break_line(prop_next_fetch_unaligned_nid);
+
+  print_break_line(prop_next_fetch_seg_faulting_nid);
+
+  print_break_line(prop_is_syscall_id_known_nid);
+
+  // optional state properties
+
+  if (core == CORES - 1)
+    print_break_line(prop_bad_exit_code_nid);
+
+  print_break_line(prop_exclude_a0_from_rd_nid);
+
+  print_break_line(prop_division_by_zero_nid);
+
+  print_break_line(prop_signed_division_overflow_nid);
+
+  // segmentation faults in main memory
+
+  print_break_line(prop_load_seg_faulting_nid);
+
+  print_break_line(prop_store_seg_faulting_nid);
+
+  print_break_line(prop_compressed_load_seg_faulting_nid);
+
+  print_break_line(prop_compressed_store_seg_faulting_nid);
+
+  print_break_line(prop_stack_seg_faulting_nid);
+
+  print_break_line(prop_brk_seg_faulting_nid);
+
+  print_break_line(prop_openat_seg_faulting_nid);
+
+  print_break_line(prop_read_seg_faulting_nid);
+
+  print_break_line(prop_write_seg_faulting_nid);
+}
+
 void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
@@ -7641,6 +7749,7 @@ void rotor() {
     w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
   if (check_seg_faults)
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
+  w = w + dprintf(output_fd, "; with %s %lu\n", cores_option, CORES);
   w = w + dprintf(output_fd, "; with %s %lu\n", heap_allowance_option, heap_allowance);
   w = w + dprintf(output_fd, "; with %s %lu\n\n", stack_allowance_option, stack_allowance);
   if (binary_name) {
@@ -7715,111 +7824,6 @@ void rotor() {
   }
 }
 
-void output_model(uint64_t core) {
-  print_kernel_state(core);
-
-  print_core_state(core);
-
-  print_register_file_state(core);
-
-  print_code_segment(core);
-
-  print_memory_state(core);
-
-  print_break_comment_line("fetch instruction", eval_core_ir_nid);
-
-  print_break_comment_line("fetch compressed instruction", eval_core_c_ir_nid);
-
-  print_break_comment_line("decode instruction", eval_known_instructions_nid);
-
-  print_break_comment_line("decode compressed instruction",
-    eval_known_compressed_instructions_nid);
-
-  print_break_comment_line("instruction control flow", eval_core_instruction_control_flow_nid);
-
-  print_break_comment_line("compressed instruction control flow",
-    eval_core_compressed_instruction_control_flow_nid);
-
-  print_break_comment_line("update kernel state", next_program_break_nid);
-
-  print_break_line(next_file_descriptor_nid);
-
-  print_break_line(next_readable_bytes_nid);
-
-  print_break_line(next_read_bytes_nid);
-
-  print_break_comment_line("kernel and instruction control flow", eval_core_control_flow_nid);
-
-  print_break_comment_line("update program counter", next_core_pc_nid);
-
-  print_break_comment_line("instruction register data flow",
-    eval_core_instruction_register_data_flow_nid);
-
-  print_break_comment_line("compressed instruction register data flow",
-    eval_core_compressed_instruction_register_data_flow_nid);
-
-  print_break_comment_line("kernel and instruction register data flow",
-    eval_core_register_data_flow_nid);
-
-  print_break_comment_line("update register data flow", next_register_file_nid);
-
-  print_break_comment_line("instruction memory data flow",
-    eval_core_instruction_memory_data_flow_nid);
-
-  print_break_comment_line("compressed instruction memory data flow",
-    eval_core_compressed_instruction_memory_data_flow_nid);
-
-  print_break_comment_line("kernel and instruction memory data flow",
-    eval_core_memory_data_flow_nid);
-
-  print_break_comment_line("update memory data flow", next_main_memory_nid);
-
-  print_break_comment("state properties");
-
-  print_line(prop_illegal_instruction_nid);
-
-  print_break_line(prop_illegal_compressed_instruction_nid);
-
-  print_break_line(prop_is_instruction_known_nid);
-
-  print_break_line(prop_next_fetch_unaligned_nid);
-
-  print_break_line(prop_next_fetch_seg_faulting_nid);
-
-  print_break_line(prop_is_syscall_id_known_nid);
-
-  // optional state properties
-
-  if (core == CORES - 1)
-    print_break_line(prop_bad_exit_code_nid);
-
-  print_break_line(prop_exclude_a0_from_rd_nid);
-
-  print_break_line(prop_division_by_zero_nid);
-
-  print_break_line(prop_signed_division_overflow_nid);
-
-  // segmentation faults in main memory
-
-  print_break_line(prop_load_seg_faulting_nid);
-
-  print_break_line(prop_store_seg_faulting_nid);
-
-  print_break_line(prop_compressed_load_seg_faulting_nid);
-
-  print_break_line(prop_compressed_store_seg_faulting_nid);
-
-  print_break_line(prop_stack_seg_faulting_nid);
-
-  print_break_line(prop_brk_seg_faulting_nid);
-
-  print_break_line(prop_openat_seg_faulting_nid);
-
-  print_break_line(prop_read_seg_faulting_nid);
-
-  print_break_line(prop_write_seg_faulting_nid);
-}
-
 uint64_t selfie_model() {
   uint64_t model_arguments;
 
@@ -7832,6 +7836,7 @@ uint64_t selfie_model() {
       division_by_zero_check_option  = "-Pdivbyzero";
       division_overflow_check_option = "-Pdivoverflow";
       seg_faults_check_option        = "-Psegfaults";
+      cores_option                   = "-cores";
       heap_allowance_option          = "-heap";
       stack_allowance_option         = "-stack";
 
@@ -7865,6 +7870,15 @@ uint64_t selfie_model() {
             check_seg_faults = 1;
 
             get_argument();
+          } else if (string_compare(peek_argument(1), cores_option)) {
+            get_argument();
+
+            if (number_of_remaining_arguments() > 1) {
+              CORES = atoi(peek_argument(1));
+
+              get_argument();
+            } else
+              exit(EXITCODE_BADARGUMENTS);
           } else if (string_compare(peek_argument(1), heap_allowance_option)) {
             get_argument();
 
@@ -7924,8 +7938,6 @@ uint64_t selfie_model() {
 
         CODE_LOADED = 1;
 
-        CORES = 1;
-
         if (CORES > 1) {
           SYNTHESIZE = 1;
 
@@ -7953,8 +7965,6 @@ uint64_t selfie_model() {
         stack_size  = stack_allowance;
 
         // assert: stack_start >= heap_start + heap_size > 0
-
-        CORES = 1;
 
         CODE_LOADED = 0;
 
