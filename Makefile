@@ -291,15 +291,15 @@ rotor: tools/rotor.c selfie.h
 
 # Run rotor, the RISC-V symbolic model generator, natively on itself and as RISC-U executable
 rot: rotor selfie.h selfie
-	./rotor -c selfie.h tools/rotor.c - 0 -Pall
+	./rotor -c selfie.h tools/rotor.c - 0
 	./selfie -c selfie.h tools/rotor.c -m 1
 # RISC-U executable also works on itself but output differs slightly
 # because of different filenames and values of a6 register
 
 # Run rotor to generate 64-bit and 32-bit RISC-V machine models for synthesizing exit(1) system call
 synthesize: rotor
-	./rotor - 1 -Pall
-	./rotor -m32 - 1 -Pall
+	./rotor - 1
+	./rotor -m32 - 1
 
 # Prevent make from deleting intermediate target rotor
 .SECONDARY: rotor
@@ -310,7 +310,7 @@ synthesize: rotor
 
 # Translate *.c including selfie.c into BTOR2 model using rotor
 %-rotorized.btor2: %.c rotor
-	./rotor -c $< - 0 -Pall
+	./rotor -c $< - 0
 
 # Gather symbolic execution example files as .btor2 files
 beators := $(patsubst %.c,%-beaten.btor2,$(wildcard examples/symbolic/*.c))
