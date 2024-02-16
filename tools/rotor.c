@@ -7638,8 +7638,8 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   prop_illegal_compressed_instruction_nid = state_property(core,
     UNUSED,
     decode_illegal_compressed_instruction_imm_shamt(c_ir_nid),
-    format_comment("core-%lu-compressed-illegal-instruction", core),
-    format_comment("core-%lu compressed illegal instruction", core));
+    format_comment("core-%lu-illegal-compressed-instruction", core),
+    format_comment("core-%lu illegal compressed instruction", core));
 
   if (known_compressed_instructions_nid != UNUSED)
     known_instructions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
@@ -7868,7 +7868,7 @@ uint64_t selfie_model() {
 
               get_argument();
             } else
-              exit(EXITCODE_BADARGUMENTS);
+              return EXITCODE_BADARGUMENTS;
           } else if (string_compare(peek_argument(1), heap_allowance_option)) {
             get_argument();
 
@@ -7877,7 +7877,7 @@ uint64_t selfie_model() {
 
               get_argument();
             } else
-              exit(EXITCODE_BADARGUMENTS);
+              return EXITCODE_BADARGUMENTS;
           } else if (string_compare(peek_argument(1), stack_allowance_option)) {
             get_argument();
 
@@ -7886,9 +7886,13 @@ uint64_t selfie_model() {
 
               get_argument();
             } else
-              exit(EXITCODE_BADARGUMENTS);
-          } else
+              return EXITCODE_BADARGUMENTS;
+          } else if (string_compare(peek_argument(1), "-")) {
+            get_argument();
+
             model_arguments = 1;
+          } else
+            return EXITCODE_BADARGUMENTS;
         } else
           model_arguments = 1;
       }
