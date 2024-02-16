@@ -6113,35 +6113,41 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
 
   if (RVC) {
     c_lui_nid = new_binary_boolean(OP_AND,
+      NID_C_LUI,
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CUI_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
         "CUI-immediate == 0?"),
-      NID_C_LUI,
       "c.lui with CUI-immediate == 0?");
 
     c_addi_nid = new_binary_boolean(OP_AND,
-      new_binary_boolean(OP_EQ,
-        get_compressed_instruction_CI_immediate(c_ir_nid),
-        NID_MACHINE_WORD_0,
-        "CI-immediate == 0?"),
       NID_C_ADDI,
-      "c.addi with CI-immediate == 0?");
+      new_binary_boolean(OP_AND,
+        new_binary_boolean(OP_NEQ,
+          get_compressed_instruction_rd(c_ir_nid),
+          NID_ZR,
+          "compressed rd != zero?"),
+        new_binary_boolean(OP_EQ,
+          get_compressed_instruction_CI_immediate(c_ir_nid),
+          NID_MACHINE_WORD_0,
+          "CI-immediate == 0?"),
+        "compressed rd != zero and CI-immediate == 0?"),
+      "c.addi with compressed rd != zero and CI-immediate == 0?");
 
     c_addi16sp_nid = new_binary_boolean(OP_AND,
+      NID_C_ADDI16SP,
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CI16SP_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
         "CI16SP-immediate == 0?"),
-      NID_C_ADDI16SP,
       "c.addi16sp with CI16SP-immediate == 0?");
 
     c_addi4spn_nid = new_binary_boolean(OP_AND,
+      NID_C_ADDI4SPN,
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CIW_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
         "CIW-immediate == 0?"),
-      NID_C_ADDI4SPN,
       "c.addi4spn with CIW-immediate == 0?");
 
     return new_ternary(OP_ITE, SID_BOOLEAN,
