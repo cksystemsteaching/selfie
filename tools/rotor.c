@@ -259,8 +259,18 @@ void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
 
 void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
 
-uint64_t  eval_constant(uint64_t* line);
+uint64_t eval_bitvec_size(uint64_t* line);
+uint64_t eval_array_size(uint64_t* line);
+uint64_t eval_array_element_size(uint64_t* line);
+
+uint64_t eval_constant_value(uint64_t* line);
+uint64_t eval_constant_digits(uint64_t* line);
+
+uint64_t eval_slice_u(uint64_t* line);
+uint64_t eval_slice_l(uint64_t* line);
+
 uint64_t  eval_input(uint64_t* line);
+uint64_t  eval_slice(uint64_t* line);
 uint64_t* eval_write(uint64_t* line);
 uint64_t  eval_binary_op(uint64_t* line);
 
@@ -639,8 +649,7 @@ void print_code_segment(uint64_t core);
 void new_memory_state(uint64_t core);
 void print_memory_state(uint64_t core);
 
-uint64_t get_number_of_bits(uint64_t* bitvec);
-uint64_t get_number_of_bytes(uint64_t* bitvec);
+uint64_t get_power_of_two_size_in_bytes(uint64_t size);
 
 uint64_t* get_memory_address_sort(uint64_t* memory_nid);
 uint64_t* get_memory_word_sort(uint64_t* memory_nid);
@@ -920,9 +929,9 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   // assert: code_size > 1 and code word size is a power of 2 >= 8 bits
 
-  code_size_in_code_words = code_size / get_number_of_bytes(SID_CODE_WORD);
+  code_size_in_code_words = code_size / get_power_of_two_size_in_bytes(eval_bitvec_size(SID_CODE_WORD));
 
-  if (code_size % get_number_of_bytes(SID_CODE_WORD) > 0)
+  if (code_size % get_power_of_two_size_in_bytes(eval_bitvec_size(SID_CODE_WORD)) > 0)
     code_size_in_code_words = code_size_in_code_words + 1;
 
   CODE_ADDRESS_SPACE = log_two(code_size_in_code_words);
@@ -943,7 +952,8 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   // assert: memory word size is a power of 2 >= 8 bits
 
-  MEMORY_ADDRESS_SPACE = VIRTUAL_ADDRESS_SPACE - (get_number_of_bytes(memory_word_sort_nid) - 1);
+  MEMORY_ADDRESS_SPACE =
+    VIRTUAL_ADDRESS_SPACE - (get_power_of_two_size_in_bytes(eval_bitvec_size(SID_MEMORY_WORD)) - 1);
 
   SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE,
     format_comment("%lu-bit physical memory address", MEMORY_ADDRESS_SPACE));
@@ -2535,7 +2545,7 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s", OP_SORT);
   if ((char*) get_arg1(line) == BITVEC)
-    w = w + dprintf(output_fd, " %s %lu", BITVEC, (uint64_t) get_arg2(line));
+    w = w + dprintf(output_fd, " %s %lu", BITVEC, eval_bitvec_size(line));
   else
     // assert: theory of bitvector arrays
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
@@ -2543,22 +2553,24 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_constant(uint64_t nid, uint64_t* line) {
+  uint64_t value;
   nid = print_referenced_line(nid, get_sid(line));
   print_nid(nid, line);
+  value = eval_constant_value(line);
   if (get_op(line) == OP_CONSTD) {
-    if ((uint64_t) get_arg1(line) == 0)
+    if (value == 0)
       w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
-    else if ((uint64_t) get_arg1(line) == 1)
+    else if (value == 1)
       w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
     else
-      w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), (uint64_t) get_arg1(line));
+      w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
   } else if (get_op(line) == OP_CONST)
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa((uint64_t) get_arg1(line), string_buffer, 2, 0, (uint64_t) get_arg2(line)));
+      itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
   else
     // assert: get_op(line) == OP_CONSTH
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa((uint64_t) get_arg1(line), string_buffer, 16, 0, (uint64_t) get_arg2(line)));
+      itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
   return nid;
 }
 
@@ -2583,7 +2595,7 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   nid = print_referenced_line(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line), (uint64_t) get_arg3(line));
+    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
   return nid;
 }
 
@@ -2794,7 +2806,6 @@ void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
 
 void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
   uint64_t* array;
-  uint64_t array_address_space;
 
   array = (uint64_t*) get_state(array_nid);
 
@@ -2804,11 +2815,9 @@ void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
     exit(EXITCODE_SYSTEMERROR);
   }
 
-  array_address_space = (uint64_t) get_arg2(get_arg2(get_sid(array_nid)));
-
-  if (index >= two_to_the_power_of(array_address_space)) {
+  if (index >= two_to_the_power_of(eval_array_size(get_sid(array_nid)))) {
     printf("%s: write out-of-bound array error @ 0x%lX in %lu-bit address space\n", selfie_name,
-     index, array_address_space);
+     index, eval_array_size(get_sid(array_nid)));
 
     exit(EXITCODE_SYSTEMERROR);
   }
@@ -2816,8 +2825,50 @@ void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
   *(array + index) = value;
 }
 
-uint64_t eval_constant(uint64_t* line) {
+uint64_t eval_bitvec_size(uint64_t* line) {
+  if ((char*) get_arg1(line) != BITVEC) {
+    printf("%s: evaluate size of non-bitvector error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  return (uint64_t) get_arg2(line);
+}
+
+uint64_t eval_array_size(uint64_t* line) {
+  if ((char*) get_arg1(line) != ARRAY) {
+    printf("%s: evaluate size of non-array error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  return eval_bitvec_size(get_arg2(line));
+}
+
+uint64_t eval_array_element_size(uint64_t* line) {
+  if ((char*) get_arg1(line) != ARRAY) {
+    printf("%s: evaluate element size of non-array error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  return eval_bitvec_size(get_arg3(line));
+}
+
+uint64_t eval_constant_value(uint64_t* line) {
   return (uint64_t) get_arg1(line);
+}
+
+uint64_t eval_constant_digits(uint64_t* line) {
+  return (uint64_t) get_arg2(line);
+}
+
+uint64_t eval_slice_u(uint64_t* line) {
+  return (uint64_t) get_arg2(line);
+}
+
+uint64_t eval_slice_l(uint64_t* line) {
+  return (uint64_t) get_arg3(line);
 }
 
 uint64_t eval_input(uint64_t* line) {
@@ -2836,6 +2887,33 @@ uint64_t eval_input(uint64_t* line) {
 
     exit(EXITCODE_SYSTEMERROR);
   }
+}
+
+uint64_t eval_slice(uint64_t* line) {
+  uint64_t* value_nid;
+  uint64_t n;
+  uint64_t u;
+  uint64_t l;
+
+  value_nid = get_arg1(line);
+
+  n = eval_bitvec_size(get_sid(value_nid));
+
+  u = eval_slice_u(line);
+  l = eval_slice_l(line);
+
+  if (n > u)
+    if (u >= l)
+      if (eval_bitvec_size(get_sid(line)) == u - l + 1) {
+        set_state(value_nid, get_bits(eval_line(value_nid), l, u - l + 1));
+
+        return get_state(value_nid);
+      }
+
+  printf("%s: slice sort error: n==%lu, u==%lu, l==%lu, m==%lu\n", selfie_name,
+    n, u, l, eval_bitvec_size(get_sid(line)));
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t* eval_write(uint64_t* line) {
@@ -2868,14 +2946,18 @@ uint64_t* eval_write(uint64_t* line) {
 
 uint64_t eval_binary_op(uint64_t* line) {
   char* op;
+  uint64_t* left_nid;
+  uint64_t* right_nid;
   uint64_t* state_nid;
   uint64_t* value_nid;
-  uint64_t state_address_space;
 
   op = get_op(line);
 
+  left_nid  = get_arg1(line);
+  right_nid = get_arg2(line);
+
   if (op == OP_INIT) {
-    state_nid = get_arg1(line);
+    state_nid = left_nid;
 
     if (get_op(state_nid) != OP_STATE) {
       printf("%s: init %s error\n", selfie_name, get_op(state_nid));
@@ -2885,7 +2967,7 @@ uint64_t eval_binary_op(uint64_t* line) {
 
     match_sorts(get_sid(line), get_sid(state_nid), "init state");
 
-    value_nid = get_arg2(line);
+    value_nid = right_nid;
 
     if ((char*) get_arg1(get_sid(state_nid)) == BITVEC) {
       match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
@@ -2902,11 +2984,9 @@ uint64_t eval_binary_op(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
 
-        state_address_space = (uint64_t) get_arg2(get_arg2(get_sid(state_nid)));
-
         // assert: element size of state address space <= sizeof(uint64_t)
 
-        set_state(state_nid, (uint64_t) zmalloc(two_to_the_power_of(state_address_space) * sizeof(uint64_t)));
+        set_state(state_nid, (uint64_t) zmalloc(two_to_the_power_of(eval_array_size(get_sid(state_nid))) * sizeof(uint64_t)));
       } else {
         // assert: sid of value line is ARRAY
         match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
@@ -2923,6 +3003,13 @@ uint64_t eval_binary_op(uint64_t* line) {
     }
 
     return get_state(state_nid);
+  } if (op == OP_SUB) {
+    match_sorts(get_sid(line), get_sid(left_nid), "sub left operand");
+    match_sorts(get_sid(line), get_sid(right_nid), "sub right operand");
+
+    set_state(line, eval_line(left_nid) - eval_line(right_nid));
+
+    return get_state(line);
   } else {
     printf("%s: unknown line operator %s\n", selfie_name, op);
 
@@ -2936,9 +3023,11 @@ uint64_t eval_line(uint64_t* line) {
   op = get_op(line);
 
   if (is_constant_op(op))
-    return eval_constant(line);
+    return eval_constant_value(line);
   else if (is_input_op(op))
     return eval_input(line);
+  else if (op == OP_SLICE)
+    return eval_slice(line);
   else if (op == OP_WRITE)
     return (uint64_t) eval_write(line);
   else
@@ -3639,13 +3728,19 @@ void print_memory_state(uint64_t core) {
     }
 }
 
-uint64_t get_number_of_bits(uint64_t* bitvec) {
-  return (uint64_t) get_arg2(bitvec);
-}
+uint64_t get_power_of_two_size_in_bytes(uint64_t size) {
+  // constraining: size is a power of 2 >= 8 bits
 
-uint64_t get_number_of_bytes(uint64_t* bitvec) {
-  // assert: bitvec size is a power of 2 >= 8 bits
-  return get_number_of_bits(bitvec) / 8;
+  if (size % 8 == 0) {
+    size = size / 8;
+
+    if (size == two_to_the_power_of(log_two(size)))
+      return size;
+  }
+
+  printf("%s: power of two size in bytes error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t* get_memory_address_sort(uint64_t* memory_nid) {
@@ -3657,41 +3752,42 @@ uint64_t* get_memory_word_sort(uint64_t* memory_nid) {
 }
 
 uint64_t is_byte_memory(uint64_t* memory_nid) {
-  return get_number_of_bits(get_memory_word_sort(memory_nid)) == 8;
+  return eval_array_element_size(get_sid(memory_nid)) == 8;
 }
 
 uint64_t is_half_word_memory(uint64_t* memory_nid) {
-  return get_number_of_bits(get_memory_word_sort(memory_nid)) == HALFWORDSIZEINBITS;
+  return eval_array_element_size(get_sid(memory_nid)) == HALFWORDSIZEINBITS;
 }
 
 uint64_t is_single_word_memory(uint64_t* memory_nid) {
-  return get_number_of_bits(get_memory_word_sort(memory_nid)) == SINGLEWORDSIZEINBITS;
+  return eval_array_element_size(get_sid(memory_nid)) == SINGLEWORDSIZEINBITS;
 }
 
 uint64_t is_double_word_memory(uint64_t* memory_nid) {
-  return get_number_of_bits(get_memory_word_sort(memory_nid)) == DOUBLEWORDSIZEINBITS;
+  return eval_array_element_size(get_sid(memory_nid)) == DOUBLEWORDSIZEINBITS;
 }
 
 uint64_t* vaddr_to_paddr(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   uint64_t memory_address_space;
-  uint64_t memory_word_size;
+  uint64_t memory_word_size_in_bytes;
 
   if (get_sid(memory_nid) == SID_CODE_STATE)
     if (code_start > 0)
       vaddr_nid = new_binary(OP_SUB, SID_VIRTUAL_ADDRESS,
         vaddr_nid, NID_CODE_START, "offset non-zero start of code segment");
 
-  memory_address_space = get_number_of_bits(get_memory_address_sort(memory_nid));
+  memory_address_space = eval_array_size(get_sid(memory_nid));
 
   if (memory_address_space == VIRTUAL_ADDRESS_SPACE)
     if (is_byte_memory(memory_nid))
       return vaddr_nid;
 
-  memory_word_size = get_number_of_bytes(get_memory_word_sort(memory_nid));
+  memory_word_size_in_bytes =
+    get_power_of_two_size_in_bytes(eval_array_element_size(get_sid(memory_nid)));
 
   return new_slice(get_memory_address_sort(memory_nid), vaddr_nid,
-    memory_address_space - 1 + log_two(memory_word_size),
-    log_two(memory_word_size),
+    memory_address_space - 1 + log_two(memory_word_size_in_bytes),
+    log_two(memory_word_size_in_bytes),
     format_comment("map virtual address to %lu-bit physical address", memory_address_space));
 }
 
@@ -3711,13 +3807,13 @@ uint64_t* store_aligned_memory_word(uint64_t* vaddr_nid, uint64_t* word_nid, uin
 }
 
 uint64_t* cast_virtual_address_to_word(uint64_t* vaddr_nid, uint64_t* sid_word) {
-  if (get_number_of_bits(sid_word) < VIRTUAL_ADDRESS_SPACE)
+  if (eval_bitvec_size(sid_word) < VIRTUAL_ADDRESS_SPACE)
     return new_slice(sid_word, vaddr_nid,
-      get_number_of_bits(sid_word) - 1, 0, "slice word from virtual address");
-  else if (get_number_of_bits(sid_word) > VIRTUAL_ADDRESS_SPACE)
+      eval_bitvec_size(sid_word) - 1, 0, "slice word from virtual address");
+  else if (eval_bitvec_size(sid_word) > VIRTUAL_ADDRESS_SPACE)
     return new_ext(OP_UEXT, sid_word,
       vaddr_nid,
-      get_number_of_bits(sid_word) - VIRTUAL_ADDRESS_SPACE,
+      eval_bitvec_size(sid_word) - VIRTUAL_ADDRESS_SPACE,
       "unsigned extension of virtual address to word");
   else
     return vaddr_nid;
