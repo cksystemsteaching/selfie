@@ -271,10 +271,13 @@ uint64_t eval_array_element_size(uint64_t* line);
 uint64_t eval_constant_value(uint64_t* line);
 uint64_t eval_constant_digits(uint64_t* line);
 
+uint64_t eval_ext_w(uint64_t* line);
+
 uint64_t eval_slice_u(uint64_t* line);
 uint64_t eval_slice_l(uint64_t* line);
 
 uint64_t  eval_input(uint64_t* line);
+uint64_t  eval_ext(uint64_t* line);
 uint64_t  eval_slice(uint64_t* line);
 uint64_t* eval_write(uint64_t* line);
 uint64_t  eval_binary_op(uint64_t* line);
@@ -2455,6 +2458,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg2(new_line, arg2);
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
+  set_state(new_line, 0);
   set_reuse(new_line, 0);
 
   if (reuse_lines)
@@ -2591,7 +2595,7 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
   nid = print_referenced_line(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), (uint64_t) get_arg2(line));
+    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
   return nid;
 }
 
@@ -2892,10 +2896,18 @@ void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
 }
 
 uint64_t eval_bitvec_size(uint64_t* line) {
-  if ((char*) get_arg1(line) == BITVEC)
-    return (uint64_t) get_arg2(line);
+  uint64_t size;
 
-  printf("%s: evaluate size of non-bitvector error\n", selfie_name);
+  if ((char*) get_arg1(line) == BITVEC) {
+    size = (uint64_t) get_arg2(line);
+
+    if (size > 0)
+      if (size <= SIZEOFUINT64INBITS)
+        return size;
+
+    printf("%s: evaluate unsupported %lu-bit bitvector error\n", selfie_name, size);
+  } else
+    printf("%s: evaluate size of non-bitvector error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -2945,6 +2957,10 @@ uint64_t eval_constant_digits(uint64_t* line) {
   return (uint64_t) get_arg2(line);
 }
 
+uint64_t eval_ext_w(uint64_t* line) {
+  return (uint64_t) get_arg2(line);
+}
+
 uint64_t eval_slice_u(uint64_t* line) {
   return (uint64_t) get_arg2(line);
 }
@@ -2971,6 +2987,33 @@ uint64_t eval_input(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_ext(uint64_t* line) {
+  uint64_t* value_nid;
+  uint64_t n;
+  uint64_t w;
+
+  value_nid = get_arg1(line);
+
+  n = eval_bitvec_size(get_sid(value_nid));
+
+  w = eval_ext_w(line);
+
+  if (eval_bitvec_size(get_sid(line)) == n + w) {
+    if (get_op(line) == OP_SEXT)
+      set_state(line, sign_shrink(sign_extend(eval_line(value_nid), n), n + w));
+    else
+      // assert: unsigned extension
+      set_state(line, eval_line(value_nid));
+
+    return get_state(line);
+  }
+
+  printf("%s: ext sort error: n==%lu, w==%lu, m==%lu\n", selfie_name,
+    n, w, eval_bitvec_size(get_sid(line)));
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_slice(uint64_t* line) {
   uint64_t* value_nid;
   uint64_t n;
@@ -2987,9 +3030,9 @@ uint64_t eval_slice(uint64_t* line) {
   if (n > u)
     if (u >= l)
       if (eval_bitvec_size(get_sid(line)) == u - l + 1) {
-        set_state(value_nid, get_bits(eval_line(value_nid), l, u - l + 1));
+        set_state(line, get_bits(eval_line(value_nid), l, u - l + 1));
 
-        return get_state(value_nid);
+        return get_state(line);
       }
 
   printf("%s: slice sort error: n==%lu, u==%lu, l==%lu, m==%lu\n", selfie_name,
@@ -3116,6 +3159,10 @@ uint64_t eval_line(uint64_t* line) {
     return eval_constant_value(line);
   else if (is_input_op(op))
     return eval_input(line);
+  else if (op == OP_SEXT)
+    return eval_ext(line);
+  else if (op == OP_UEXT)
+    return eval_ext(line);
   else if (op == OP_SLICE)
     return eval_slice(line);
   else if (op == OP_WRITE)
