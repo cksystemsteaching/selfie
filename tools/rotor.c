@@ -20,7 +20,7 @@ using BTOR2 as intermediate modeling format.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(5 * sizeof(uint64_t*) + 2 * sizeof(char*) + 2 * sizeof(uint64_t));
+  return smalloc(5 * sizeof(uint64_t*) + 2 * sizeof(char*) + 3 * sizeof(uint64_t));
 }
 
 uint64_t  get_nid(uint64_t* line)     { return *line; }
@@ -30,8 +30,9 @@ uint64_t* get_arg1(uint64_t* line)    { return (uint64_t*) *(line + 3); }
 uint64_t* get_arg2(uint64_t* line)    { return (uint64_t*) *(line + 4); }
 uint64_t* get_arg3(uint64_t* line)    { return (uint64_t*) *(line + 5); }
 char*     get_comment(uint64_t* line) { return (char*)     *(line + 6); }
-uint64_t  get_reuse(uint64_t* line)   { return (uint64_t)  *(line + 7); }
-uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 8); }
+uint64_t  get_state(uint64_t* line)   { return *(line + 7); }
+uint64_t  get_reuse(uint64_t* line)   { return *(line + 8); }
+uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 9); }
 
 void set_nid(uint64_t* line, uint64_t nid)      { *line       = nid; }
 void set_op(uint64_t* line, char* op)           { *(line + 1) = (uint64_t) op; }
@@ -40,8 +41,9 @@ void set_arg1(uint64_t* line, uint64_t* arg1)   { *(line + 3) = (uint64_t) arg1;
 void set_arg2(uint64_t* line, uint64_t* arg2)   { *(line + 4) = (uint64_t) arg2; }
 void set_arg3(uint64_t* line, uint64_t* arg3)   { *(line + 5) = (uint64_t) arg3; }
 void set_comment(uint64_t* line, char* comment) { *(line + 6) = (uint64_t) comment; }
-void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 7) = reuse; }
-void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 8) = (uint64_t) pred; }
+void set_state(uint64_t* line, uint64_t state)  { *(line + 7) = state; }
+void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 8) = reuse; }
+void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 9) = (uint64_t) pred; }
 
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
@@ -64,46 +66,6 @@ uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, 
 uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment);
 
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment);
-
-void print_nid(uint64_t nid, uint64_t* line);
-
-uint64_t print_sort(uint64_t nid, uint64_t* line);
-uint64_t print_constant(uint64_t nid, uint64_t* line);
-uint64_t print_input(uint64_t nid, uint64_t* line);
-
-uint64_t print_ext(uint64_t nid, uint64_t* line);
-uint64_t print_slice(uint64_t nid, uint64_t* line);
-
-uint64_t print_unary_op(uint64_t nid, uint64_t* line);
-uint64_t print_binary_op(uint64_t nid, uint64_t* line);
-uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
-
-uint64_t print_constraint(uint64_t nid, uint64_t* line);
-
-void print_comment(uint64_t* line);
-
-uint64_t is_constant_op(char* op);
-uint64_t is_input_op(char* op);
-uint64_t is_unary_op(char* op);
-
-uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
-
-void print_line(uint64_t* line);
-
-void print_break();
-void print_break_line(uint64_t* line);
-void print_break_comment(char* comment);
-void print_break_comment_line(char* comment, uint64_t* line);
-
-void print_aligned_break_comment(char* comment, uint64_t alignment);
-
-char* format_comment(char* comment, uint64_t value);
-
-char* format_binary(uint64_t value, uint64_t alignment);
-char* format_decimal(uint64_t value);
-char* format_hexadecimal(uint64_t value);
-
-char* format_comment_binary(char* comment, uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -169,16 +131,14 @@ char* OP_WRITE = (char*) 0;
 char* OP_BAD        = (char*) 0;
 char* OP_CONSTRAINT = (char*) 0;
 
-uint64_t REUSE_LINES = 1; // flag for reusing lines
-
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t reuse_lines = 1; // flag for reusing lines
 
 uint64_t* last_line   = (uint64_t*) 0;
 uint64_t* unused_line = (uint64_t*) 0;
 
 uint64_t number_of_lines = 0;
-
-uint64_t current_nid = 1; // first nid is 1
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -242,6 +202,69 @@ void init_model() {
   OP_BAD        = "bad";
   OP_CONSTRAINT = "constraint";
 }
+
+// -----------------------------------------------------------------
+// ---------------------------- SYNTAX -----------------------------
+// -----------------------------------------------------------------
+
+void print_nid(uint64_t nid, uint64_t* line);
+
+uint64_t print_sort(uint64_t nid, uint64_t* line);
+uint64_t print_constant(uint64_t nid, uint64_t* line);
+uint64_t print_input(uint64_t nid, uint64_t* line);
+
+uint64_t print_ext(uint64_t nid, uint64_t* line);
+uint64_t print_slice(uint64_t nid, uint64_t* line);
+
+uint64_t print_unary_op(uint64_t nid, uint64_t* line);
+uint64_t print_binary_op(uint64_t nid, uint64_t* line);
+uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
+
+uint64_t print_constraint(uint64_t nid, uint64_t* line);
+
+void print_comment(uint64_t* line);
+
+uint64_t is_constant_op(char* op);
+uint64_t is_input_op(char* op);
+uint64_t is_unary_op(char* op);
+
+uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
+
+void print_line(uint64_t* line);
+
+void print_break();
+void print_break_line(uint64_t* line);
+void print_break_comment(char* comment);
+void print_break_comment_line(char* comment, uint64_t* line);
+
+void print_aligned_break_comment(char* comment, uint64_t alignment);
+
+char* format_comment(char* comment, uint64_t value);
+
+char* format_binary(uint64_t value, uint64_t alignment);
+char* format_decimal(uint64_t value);
+char* format_hexadecimal(uint64_t value);
+
+char* format_comment_binary(char* comment, uint64_t value);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t current_nid = 1; // first nid is 1
+
+// -----------------------------------------------------------------
+// -------------------------- SEMANTICS ----------------------------
+// -----------------------------------------------------------------
+
+void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
+
+void store_value(uint64_t index, uint64_t value, uint64_t* array);
+
+uint64_t  eval_constant(uint64_t* line);
+uint64_t  eval_input(uint64_t* line);
+uint64_t* eval_write(uint64_t* line);
+uint64_t  eval_binary_op(uint64_t* line);
+
+uint64_t eval_line(uint64_t* line);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -925,14 +948,14 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
   SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE,
     format_comment("%lu-bit physical memory address", MEMORY_ADDRESS_SPACE));
 
-  saved_reuse_lines = REUSE_LINES;
+  saved_reuse_lines = reuse_lines;
 
   // distinguish from code segment
-  REUSE_LINES = 0;
+  reuse_lines = 0;
 
   SID_MEMORY_STATE = new_array(SID_MEMORY_ADDRESS, SID_MEMORY_WORD, "main memory state");
 
-  REUSE_LINES = saved_reuse_lines;
+  reuse_lines = saved_reuse_lines;
 
   // bit masks and factors
 
@@ -2419,7 +2442,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_comment(new_line, comment);
   set_reuse(new_line, 0);
 
-  if (REUSE_LINES)
+  if (reuse_lines)
     old_line = find_equal_line(new_line);
   else
     old_line = (uint64_t*) 0;
@@ -2494,6 +2517,10 @@ uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* se
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment) {
   return new_line(op, UNUSED, condition_nid, (uint64_t*) symbol, UNUSED, comment);
 }
+
+// -----------------------------------------------------------------
+// ---------------------------- SYNTAX -----------------------------
+// -----------------------------------------------------------------
 
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
@@ -2753,6 +2780,157 @@ char* format_comment_binary(char* comment, uint64_t value) {
   return string_copy(string_buffer);
 }
 
+// -----------------------------------------------------------------
+// -------------------------- SEMANTICS ----------------------------
+// -----------------------------------------------------------------
+
+void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
+  if (sid1 != sid2) {
+    printf("%s: %s sort error\n", selfie_name, comment);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+}
+
+void store_value(uint64_t index, uint64_t value, uint64_t* array) {
+  *(array + index) = value;
+}
+
+uint64_t eval_constant(uint64_t* line) {
+  return (uint64_t) get_arg1(line);
+}
+
+uint64_t eval_input(uint64_t* line) {
+  char* op;
+
+  op = get_op(line);
+
+  if (op == OP_STATE) {
+    if ((char*) get_arg1(get_sid(line)) == BITVEC)
+      return get_state(line);
+    else
+      // assert: sid of line is ARRAY
+      return (uint64_t) line;
+  } else {
+    printf("%s: unknown line operator %s\n", selfie_name, op);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+}
+
+uint64_t* eval_write(uint64_t* line) {
+  uint64_t* array_nid;
+  uint64_t index;
+  uint64_t value;
+
+  if ((char*) get_arg1(get_sid(line)) != ARRAY) {
+    printf("%s: write non-array error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  array_nid = get_arg1(line);
+
+  match_sorts(get_sid(line), get_sid(array_nid), "write array");
+
+  array_nid = (uint64_t*) eval_line(array_nid);
+
+  if ((uint64_t*) get_state(array_nid) == (uint64_t*) 0) {
+    printf("%s: write uninitialized array error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  match_sorts(get_sid(get_arg2(line)), get_arg2(get_sid(array_nid)), "write array size");
+  match_sorts(get_sid(get_arg3(line)), get_arg3(get_sid(array_nid)), "write array element");
+
+  index = eval_line(get_arg2(line));
+  value = eval_line(get_arg3(line));
+
+  store_value(index, value, (uint64_t*) get_state(array_nid));
+
+  return array_nid;
+}
+
+uint64_t eval_binary_op(uint64_t* line) {
+  char* op;
+  uint64_t* state_nid;
+  uint64_t* value_nid;
+  uint64_t state_address_space;
+
+  op = get_op(line);
+
+  if (op == OP_INIT) {
+    state_nid = get_arg1(line);
+
+    if (get_op(state_nid) != OP_STATE) {
+      printf("%s: init %s error\n", selfie_name, get_op(state_nid));
+
+      exit(EXITCODE_SYSTEMERROR);
+    }
+
+    match_sorts(get_sid(line), get_sid(state_nid), "init state");
+
+    value_nid = get_arg2(line);
+
+    if ((char*) get_arg1(get_sid(state_nid)) == BITVEC) {
+      match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
+
+      set_state(state_nid, eval_line(value_nid));
+    } else {
+      // assert: sid of state line is ARRAY
+      if ((char*) get_arg1(get_sid(value_nid)) == BITVEC) {
+        match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+
+        if (eval_line(value_nid) != 0) {
+          printf("%s: init non-zero array element error\n", selfie_name);
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
+
+        state_address_space = two_to_the_power_of((uint64_t) get_arg2(get_arg2(get_sid(state_nid))));
+
+        // assert: element size of state address space <= sizeof(uint64_t)
+
+        set_state(state_nid, (uint64_t) zmalloc(state_address_space * sizeof(uint64_t)));
+      } else {
+        // assert: sid of value line is ARRAY
+        match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
+
+        value_nid = (uint64_t*) eval_line(value_nid);
+
+        if (get_state(state_nid) != get_state(value_nid)) {
+          set_state(state_nid, get_state(value_nid));
+
+          // TODO: reinitialize state
+          set_state(value_nid, 0);
+        }
+      }
+    }
+
+    return get_state(state_nid);
+  } else {
+    printf("%s: unknown line operator %s\n", selfie_name, op);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+}
+
+uint64_t eval_line(uint64_t* line) {
+  char* op;
+
+  op = get_op(line);
+
+  if (is_constant_op(op))
+    return eval_constant(line);
+  else if (is_input_op(op))
+    return eval_input(line);
+  else if (op == OP_WRITE)
+    return (uint64_t) eval_write(line);
+  else
+    return eval_binary_op(line);
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -------------------     I N T E R F A C E     -------------------
@@ -2965,6 +3143,8 @@ void new_register_file_state(uint64_t core) {
   }
 
   if (initial_register_file_nid != state_register_file_nid) {
+    eval_line(init_zeroed_register_file_nid);
+
     next_zeroed_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
       state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
 
@@ -2975,6 +3155,8 @@ void new_register_file_state(uint64_t core) {
       state_register_file_nid, initial_register_file_nid, "initializing registers");
   } else
     init_register_file_nid = init_zeroed_register_file_nid;
+
+  eval_line(init_register_file_nid);
 }
 
 void print_register_file_state(uint64_t core) {
@@ -3220,7 +3402,7 @@ void new_code_segment(uint64_t core) {
 
     initial_code_segment_nids = zmalloc(code_size_in_instructions * sizeof(uint64_t*));
 
-    REUSE_LINES = 0; // TODO: turn on via console argument
+    reuse_lines = 0; // TODO: turn on via console argument
 
     pc = code_start;
 
@@ -3247,7 +3429,7 @@ void new_code_segment(uint64_t core) {
       pc = pc + INSTRUCTIONSIZE;
     }
 
-    REUSE_LINES = 1;
+    reuse_lines = 1;
 
     if (initial_code_segment_nid != state_code_segment_nid) {
       next_zeroed_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
@@ -3346,7 +3528,7 @@ void new_memory_state(uint64_t core) {
 
     initial_main_memory_nid = state_main_memory_nid;
 
-    REUSE_LINES = 0; // TODO: turn on via console argument
+    reuse_lines = 0; // TODO: turn on via console argument
 
     vaddr = data_start;
 
@@ -3385,7 +3567,7 @@ void new_memory_state(uint64_t core) {
       vaddr = vaddr + WORDSIZE;
     }
 
-    REUSE_LINES = 1;
+    reuse_lines = 1;
 
     if (initial_main_memory_nid != state_main_memory_nid) {
       next_zeroed_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
