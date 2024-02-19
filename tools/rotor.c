@@ -542,7 +542,9 @@ uint64_t SHARED_REGISTERS       = 0; // flag for shared registers across cores
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* zeroed_register_file_nid  = (uint64_t*) 0;
+uint64_t* zeroed_register_file_nid      = (uint64_t*) 0;
+uint64_t* next_zeroed_register_file_nid = (uint64_t*) 0;
+
 uint64_t* initial_register_file_nid = (uint64_t*) 0;
 
 uint64_t* state_register_file_nid = (uint64_t*) 0;
@@ -825,7 +827,9 @@ uint64_t stack_start     = 0;
 uint64_t stack_size      = 0;
 uint64_t stack_allowance = 4096; // stack allowance must be multiple of WORDSIZE > 0
 
-uint64_t* zeroed_code_segment_nid   = (uint64_t*) 0;
+uint64_t* zeroed_code_segment_nid      = (uint64_t*) 0;
+uint64_t* next_zeroed_code_segment_nid = (uint64_t*) 0;
+
 uint64_t* initial_code_segment_nid  = (uint64_t*) 0;
 uint64_t* initial_code_segment_nids = (uint64_t*) 0;
 
@@ -833,7 +837,9 @@ uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
-uint64_t* zeroed_main_memory_nid   = (uint64_t*) 0;
+uint64_t* zeroed_main_memory_nid      = (uint64_t*) 0;
+uint64_t* next_zeroed_main_memory_nid = (uint64_t*) 0;
+
 uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
 uint64_t* initial_data_segment_nid = (uint64_t*) 0;
 uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
@@ -2959,6 +2965,9 @@ void new_register_file_state(uint64_t core) {
   }
 
   if (initial_register_file_nid != state_register_file_nid) {
+    next_zeroed_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+      state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
+
     state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
       format_comment("core-%lu-initialized-register-file", core), "initialized register file");
 
@@ -2981,6 +2990,8 @@ void print_register_file_state(uint64_t core) {
   print_line(zeroed_register_file_nid);
 
   if (init_register_file_nid != zeroed_register_file_nid) {
+    print_line(next_zeroed_register_file_nid);
+
     if (CODE_LOADED == 0)
       print_break_comment("initializing sp");
     else
@@ -3239,6 +3250,9 @@ void new_code_segment(uint64_t core) {
     REUSE_LINES = 1;
 
     if (initial_code_segment_nid != state_code_segment_nid) {
+      next_zeroed_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
+        state_code_segment_nid, state_code_segment_nid, "read-only zeroed code segment");
+
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
         "loaded-code-segment", "loaded code segment");
 
@@ -3276,6 +3290,8 @@ void print_code_segment(uint64_t core) {
     print_line(zeroed_code_segment_nid);
 
     if (initial_code_segment_nid != state_code_segment_nid) {
+      print_line(next_zeroed_code_segment_nid);
+
       code_size_in_instructions = code_size / INSTRUCTIONSIZE;
 
       if (code_size % INSTRUCTIONSIZE > 0)
@@ -3372,6 +3388,9 @@ void new_memory_state(uint64_t core) {
     REUSE_LINES = 1;
 
     if (initial_main_memory_nid != state_main_memory_nid) {
+      next_zeroed_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+        state_main_memory_nid, state_main_memory_nid, "read-only zeroed main memory");
+
       state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
         format_comment("core-%lu-loaded-main-memory", core), "loaded main memory");
 
@@ -3396,6 +3415,8 @@ void print_memory_state(uint64_t core) {
 
   if (CODE_LOADED)
     if (initial_main_memory_nid != state_main_memory_nid) {
+      print_line(next_zeroed_main_memory_nid);
+
       // assert: data_size > 0 and non-zero data in data segment
 
       // conservatively estimating number of lines needed to store one byte
