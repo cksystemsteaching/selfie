@@ -257,6 +257,11 @@ uint64_t current_nid = 1; // first nid is 1
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
 
+void fit_bitvec_sort(uint64_t value, uint64_t* sid);
+void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid);
+
+void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid);
+
 void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
 
 uint64_t eval_bitvec_size(uint64_t* line);
@@ -2797,11 +2802,75 @@ char* format_comment_binary(char* comment, uint64_t value) {
 // -----------------------------------------------------------------
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
-  if (sid1 != sid2) {
-    printf("%s: %s sort error\n", selfie_name, comment);
+  if (sid1 == sid2)
+    return;
 
-    exit(EXITCODE_SYSTEMERROR);
+  printf("%s: %s sort error\n", selfie_name, comment);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+  uint64_t size;
+
+  size = eval_bitvec_size(sid);
+
+  if (size > 0) {
+    if (size == SIZEOFUINT64INBITS)
+      return;
+    else if (size < SIZEOFUINT64INBITS) {
+      if (value < two_to_the_power_of(size))
+        return;
+      else {
+        printf("%s: %lu does not fit %lu-bit bitvector\n", selfie_name, value, size);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    }
   }
+
+  printf("%s: unsupported %lu-bit bitvector\n", selfie_name, size);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+  uint64_t size;
+
+  size = eval_bitvec_size(sid);
+
+  if (size > 0) {
+    if (size == SIZEOFUINT64INBITS)
+      return;
+    else if (size < SIZEOFUINT64INBITS) {
+      if (value < two_to_the_power_of(size - 1))
+        return;
+      else if (value >= -two_to_the_power_of(size - 1))
+        return;
+      else {
+        printf("%s: %ld does not fit %lu-bit bitvector\n", selfie_name, value, size);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    }
+  }
+
+  printf("%s: unsupported %lu-bit bitvector\n", selfie_name, size);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
+  if ((char*) get_arg1(sid) == ARRAY) {
+    fit_bitvec_sort(index, get_arg2(sid));
+    fit_bitvec_sort(value, get_arg3(sid));
+
+    return;
+  }
+
+  printf("%s: fit non-array error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
@@ -2809,54 +2878,67 @@ void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
 
   array = (uint64_t*) get_state(array_nid);
 
-  if (array == (uint64_t*) 0) {
-    printf("%s: write uninitialized array error\n", selfie_name);
+  if (array != (uint64_t*) 0) {
+    fit_array_sort(index, value, array_nid);
 
-    exit(EXITCODE_SYSTEMERROR);
+    *(array + index) = value;
+
+    return;
   }
 
-  if (index >= two_to_the_power_of(eval_array_size(get_sid(array_nid)))) {
-    printf("%s: write out-of-bound array error @ 0x%lX in %lu-bit address space\n", selfie_name,
-     index, eval_array_size(get_sid(array_nid)));
+  printf("%s: write uninitialized array error\n", selfie_name);
 
-    exit(EXITCODE_SYSTEMERROR);
-  }
-
-  *(array + index) = value;
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_bitvec_size(uint64_t* line) {
-  if ((char*) get_arg1(line) != BITVEC) {
-    printf("%s: evaluate size of non-bitvector error\n", selfie_name);
+  if ((char*) get_arg1(line) == BITVEC)
+    return (uint64_t) get_arg2(line);
 
-    exit(EXITCODE_SYSTEMERROR);
-  }
+  printf("%s: evaluate size of non-bitvector error\n", selfie_name);
 
-  return (uint64_t) get_arg2(line);
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_array_size(uint64_t* line) {
-  if ((char*) get_arg1(line) != ARRAY) {
-    printf("%s: evaluate size of non-array error\n", selfie_name);
+  if ((char*) get_arg1(line) == ARRAY)
+    return eval_bitvec_size(get_arg2(line));
 
-    exit(EXITCODE_SYSTEMERROR);
-  }
+  printf("%s: evaluate size of non-array error\n", selfie_name);
 
-  return eval_bitvec_size(get_arg2(line));
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_array_element_size(uint64_t* line) {
-  if ((char*) get_arg1(line) != ARRAY) {
-    printf("%s: evaluate element size of non-array error\n", selfie_name);
+  if ((char*) get_arg1(line) == ARRAY)
+    return eval_bitvec_size(get_arg3(line));
 
-    exit(EXITCODE_SYSTEMERROR);
-  }
+  printf("%s: evaluate element size of non-array error\n", selfie_name);
 
-  return eval_bitvec_size(get_arg3(line));
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_constant_value(uint64_t* line) {
-  return (uint64_t) get_arg1(line);
+  uint64_t* sid;
+  uint64_t value;
+
+  sid   = get_sid(line);
+  value = (uint64_t) get_arg1(line);
+
+  if (get_op(line) == OP_CONSTD) {
+    if (value <= 1)
+      fit_bitvec_sort(value, sid);
+    else {
+      signed_fit_bitvec_sort(value, sid);
+
+      value = sign_shrink(value, eval_bitvec_size(sid));
+    }
+  } else
+    fit_bitvec_sort(value, sid);
+
+  set_state(line, value);
+
+  return value;
 }
 
 uint64_t eval_constant_digits(uint64_t* line) {
@@ -2882,11 +2964,11 @@ uint64_t eval_input(uint64_t* line) {
     else
       // assert: sid of line is ARRAY
       return (uint64_t) line;
-  } else {
-    printf("%s: unknown line operator %s\n", selfie_name, op);
-
-    exit(EXITCODE_SYSTEMERROR);
   }
+
+  printf("%s: unknown line operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_slice(uint64_t* line) {
@@ -2921,33 +3003,36 @@ uint64_t* eval_write(uint64_t* line) {
   uint64_t index;
   uint64_t value;
 
-  if ((char*) get_arg1(get_sid(line)) != ARRAY) {
-    printf("%s: write non-array error\n", selfie_name);
+  if ((char*) get_arg1(get_sid(line)) == ARRAY) {
+    array_nid = get_arg1(line);
 
-    exit(EXITCODE_SYSTEMERROR);
+    match_sorts(get_sid(line), get_sid(array_nid), "write array");
+
+    array_nid = (uint64_t*) eval_line(array_nid);
+
+    match_sorts(get_sid(get_arg2(line)), get_arg2(get_sid(array_nid)), "write array size");
+    match_sorts(get_sid(get_arg3(line)), get_arg3(get_sid(array_nid)), "write array element");
+
+    index = eval_line(get_arg2(line));
+    value = eval_line(get_arg3(line));
+
+    write_value(index, value, array_nid);
+
+    return array_nid;
   }
 
-  array_nid = get_arg1(line);
+  printf("%s: write non-array error\n", selfie_name);
 
-  match_sorts(get_sid(line), get_sid(array_nid), "write array");
-
-  array_nid = (uint64_t*) eval_line(array_nid);
-
-  match_sorts(get_sid(get_arg2(line)), get_arg2(get_sid(array_nid)), "write array size");
-  match_sorts(get_sid(get_arg3(line)), get_arg3(get_sid(array_nid)), "write array element");
-
-  index = eval_line(get_arg2(line));
-  value = eval_line(get_arg3(line));
-
-  write_value(index, value, array_nid);
-
-  return array_nid;
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_binary_op(uint64_t* line) {
   char* op;
   uint64_t* left_nid;
   uint64_t* right_nid;
+  uint64_t size;
+  uint64_t left_value;
+  uint64_t right_value;
   uint64_t* state_nid;
   uint64_t* value_nid;
 
@@ -2956,7 +3041,19 @@ uint64_t eval_binary_op(uint64_t* line) {
   left_nid  = get_arg1(line);
   right_nid = get_arg2(line);
 
-  if (op == OP_INIT) {
+  if (op == OP_SUB) {
+    size = eval_bitvec_size(get_sid(line));
+
+    match_sorts(get_sid(line), get_sid(left_nid), "sub left operand");
+    match_sorts(get_sid(line), get_sid(right_nid), "sub right operand");
+
+    left_value  = sign_extend(eval_line(left_nid), size);
+    right_value = sign_extend(eval_line(right_nid), size);
+
+    set_state(line, sign_shrink(left_value - right_value, size));
+
+    return get_state(line);
+  } else if (op == OP_INIT) {
     state_nid = left_nid;
 
     if (get_op(state_nid) != OP_STATE) {
@@ -3003,18 +3100,11 @@ uint64_t eval_binary_op(uint64_t* line) {
     }
 
     return get_state(state_nid);
-  } if (op == OP_SUB) {
-    match_sorts(get_sid(line), get_sid(left_nid), "sub left operand");
-    match_sorts(get_sid(line), get_sid(right_nid), "sub right operand");
-
-    set_state(line, eval_line(left_nid) - eval_line(right_nid));
-
-    return get_state(line);
-  } else {
-    printf("%s: unknown line operator %s\n", selfie_name, op);
-
-    exit(EXITCODE_SYSTEMERROR);
   }
+
+  printf("%s: unknown line operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_line(uint64_t* line) {
