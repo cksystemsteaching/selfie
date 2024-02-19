@@ -257,7 +257,7 @@ uint64_t current_nid = 1; // first nid is 1
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
 
-void store_value(uint64_t index, uint64_t value, uint64_t* array);
+void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
 
 uint64_t  eval_constant(uint64_t* line);
 uint64_t  eval_input(uint64_t* line);
@@ -2792,7 +2792,27 @@ void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
   }
 }
 
-void store_value(uint64_t index, uint64_t value, uint64_t* array) {
+void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
+  uint64_t* array;
+  uint64_t array_address_space;
+
+  array = (uint64_t*) get_state(array_nid);
+
+  if (array == (uint64_t*) 0) {
+    printf("%s: write uninitialized array error\n", selfie_name);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
+  array_address_space = (uint64_t) get_arg2(get_arg2(get_sid(array_nid)));
+
+  if (index >= two_to_the_power_of(array_address_space)) {
+    printf("%s: write out-of-bound array error @ 0x%lX in %lu-bit address space\n", selfie_name,
+     index, array_address_space);
+
+    exit(EXITCODE_SYSTEMERROR);
+  }
+
   *(array + index) = value;
 }
 
@@ -2835,19 +2855,13 @@ uint64_t* eval_write(uint64_t* line) {
 
   array_nid = (uint64_t*) eval_line(array_nid);
 
-  if ((uint64_t*) get_state(array_nid) == (uint64_t*) 0) {
-    printf("%s: write uninitialized array error\n", selfie_name);
-
-    exit(EXITCODE_SYSTEMERROR);
-  }
-
   match_sorts(get_sid(get_arg2(line)), get_arg2(get_sid(array_nid)), "write array size");
   match_sorts(get_sid(get_arg3(line)), get_arg3(get_sid(array_nid)), "write array element");
 
   index = eval_line(get_arg2(line));
   value = eval_line(get_arg3(line));
 
-  store_value(index, value, (uint64_t*) get_state(array_nid));
+  write_value(index, value, array_nid);
 
   return array_nid;
 }
@@ -2888,11 +2902,11 @@ uint64_t eval_binary_op(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
 
-        state_address_space = two_to_the_power_of((uint64_t) get_arg2(get_arg2(get_sid(state_nid))));
+        state_address_space = (uint64_t) get_arg2(get_arg2(get_sid(state_nid)));
 
         // assert: element size of state address space <= sizeof(uint64_t)
 
-        set_state(state_nid, (uint64_t) zmalloc(state_address_space * sizeof(uint64_t)));
+        set_state(state_nid, (uint64_t) zmalloc(two_to_the_power_of(state_address_space) * sizeof(uint64_t)));
       } else {
         // assert: sid of value line is ARRAY
         match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
