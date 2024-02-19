@@ -542,7 +542,7 @@ uint64_t SHARED_REGISTERS       = 0; // flag for shared registers across cores
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* zeroed_register_file_nid      = (uint64_t*) 0;
+uint64_t* init_zeroed_register_file_nid = (uint64_t*) 0;
 uint64_t* next_zeroed_register_file_nid = (uint64_t*) 0;
 
 uint64_t* initial_register_file_nid = (uint64_t*) 0;
@@ -827,7 +827,7 @@ uint64_t stack_start     = 0;
 uint64_t stack_size      = 0;
 uint64_t stack_allowance = 4096; // stack allowance must be multiple of WORDSIZE > 0
 
-uint64_t* zeroed_code_segment_nid      = (uint64_t*) 0;
+uint64_t* init_zeroed_code_segment_nid = (uint64_t*) 0;
 uint64_t* next_zeroed_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* initial_code_segment_nid  = (uint64_t*) 0;
@@ -837,7 +837,7 @@ uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
-uint64_t* zeroed_main_memory_nid      = (uint64_t*) 0;
+uint64_t* init_zeroed_main_memory_nid = (uint64_t*) 0;
 uint64_t* next_zeroed_main_memory_nid = (uint64_t*) 0;
 
 uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
@@ -2926,7 +2926,7 @@ void new_register_file_state(uint64_t core) {
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
     format_comment("core-%lu-zeroed-register-file", core), "zeroed register file");
 
-  zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+  init_zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
   if (CODE_LOADED == 0)
@@ -2974,7 +2974,7 @@ void new_register_file_state(uint64_t core) {
     init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
       state_register_file_nid, initial_register_file_nid, "initializing registers");
   } else
-    init_register_file_nid = zeroed_register_file_nid;
+    init_register_file_nid = init_zeroed_register_file_nid;
 }
 
 void print_register_file_state(uint64_t core) {
@@ -2987,9 +2987,9 @@ void print_register_file_state(uint64_t core) {
 
   print_break_comment("zeroed register file");
 
-  print_line(zeroed_register_file_nid);
+  print_line(init_zeroed_register_file_nid);
 
-  if (init_register_file_nid != zeroed_register_file_nid) {
+  if (init_register_file_nid != init_zeroed_register_file_nid) {
     print_line(next_zeroed_register_file_nid);
 
     if (CODE_LOADED == 0)
@@ -3206,7 +3206,7 @@ void new_code_segment(uint64_t core) {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       "code-segment", "code segment");
 
-    zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+    init_zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
       state_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
@@ -3259,7 +3259,7 @@ void new_code_segment(uint64_t core) {
       init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
     } else
-      init_code_segment_nid = zeroed_code_segment_nid;
+      init_code_segment_nid = init_zeroed_code_segment_nid;
 
     next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only code segment");
@@ -3287,7 +3287,7 @@ void print_code_segment(uint64_t core) {
   } else {
     print_break_comment("zeroed code segment");
 
-    print_line(zeroed_code_segment_nid);
+    print_line(init_zeroed_code_segment_nid);
 
     if (initial_code_segment_nid != state_code_segment_nid) {
       print_line(next_zeroed_code_segment_nid);
@@ -3335,7 +3335,7 @@ void new_memory_state(uint64_t core) {
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
     format_comment("core-%lu-zeroed-main-memory", core), "zeroed main memory");
 
-  zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+  init_zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
   if (CODE_LOADED) {
@@ -3397,7 +3397,7 @@ void new_memory_state(uint64_t core) {
       init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
     } else
-      init_main_memory_nid = zeroed_main_memory_nid;
+      init_main_memory_nid = init_zeroed_main_memory_nid;
   }
 }
 
@@ -3411,7 +3411,7 @@ void print_memory_state(uint64_t core) {
 
   print_break_comment("zeroed main memory");
 
-  print_line(zeroed_main_memory_nid);
+  print_line(init_zeroed_main_memory_nid);
 
   if (CODE_LOADED)
     if (initial_main_memory_nid != state_main_memory_nid) {
