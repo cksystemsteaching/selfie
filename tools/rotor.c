@@ -279,6 +279,7 @@ uint64_t eval_slice_l(uint64_t* line);
 uint64_t  eval_input(uint64_t* line);
 uint64_t  eval_ext(uint64_t* line);
 uint64_t  eval_slice(uint64_t* line);
+uint64_t  eval_unary_op(uint64_t* line);
 uint64_t* eval_write(uint64_t* line);
 uint64_t  eval_binary_op(uint64_t* line);
 
@@ -2872,7 +2873,7 @@ void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
     return;
   }
 
-  printf("%s: fit non-array error\n", selfie_name);
+  printf("%s: fit %lu @ 0x%lX non-array error\n", selfie_name, value, index);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -2880,11 +2881,11 @@ void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
 void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
   uint64_t* array;
 
+  fit_array_sort(index, value, get_sid(array_nid));
+
   array = (uint64_t*) get_state(array_nid);
 
   if (array != (uint64_t*) 0) {
-    fit_array_sort(index, value, array_nid);
-
     *(array + index) = value;
 
     return;
@@ -2904,6 +2905,10 @@ uint64_t eval_bitvec_size(uint64_t* line) {
     if (size > 0)
       if (size <= SIZEOFUINT64INBITS)
         return size;
+
+    if (size == 2 * DOUBLEWORDSIZEINBITS)
+      // TODO: tolerating but not yet supporting 128-bit bitvectors
+      return size;
 
     printf("%s: evaluate unsupported %lu-bit bitvector error\n", selfie_name, size);
   } else
@@ -3041,6 +3046,33 @@ uint64_t eval_slice(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_unary_op(uint64_t* line) {
+  char* op;
+  uint64_t* value_nid;
+  uint64_t size;
+  uint64_t value;
+
+  op = get_op(line);
+
+  size = eval_bitvec_size(get_sid(line));
+
+  value_nid = get_arg1(line);
+
+  if (op == OP_DEC) {
+    match_sorts(get_sid(line), get_sid(value_nid), "dec operand");
+
+    value = sign_extend(eval_line(value_nid), size);
+
+    set_state(line, sign_shrink(value - 1, size));
+
+    return get_state(line);
+  }
+
+  printf("%s: unknown unary operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t* eval_write(uint64_t* line) {
   uint64_t* array_nid;
   uint64_t index;
@@ -3145,7 +3177,7 @@ uint64_t eval_binary_op(uint64_t* line) {
     return get_state(state_nid);
   }
 
-  printf("%s: unknown line operator %s\n", selfie_name, op);
+  printf("%s: unknown binary operator %s\n", selfie_name, op);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -3165,6 +3197,8 @@ uint64_t eval_line(uint64_t* line) {
     return eval_ext(line);
   else if (op == OP_SLICE)
     return eval_slice(line);
+  else if (is_unary_op(op))
+    return eval_unary_op(line);
   else if (op == OP_WRITE)
     return (uint64_t) eval_write(line);
   else
@@ -3672,6 +3706,8 @@ void new_code_segment(uint64_t core) {
     reuse_lines = 1;
 
     if (initial_code_segment_nid != state_code_segment_nid) {
+      //eval_line(init_zeroed_code_segment_nid);
+
       next_zeroed_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
         state_code_segment_nid, state_code_segment_nid, "read-only zeroed code segment");
 
@@ -3682,6 +3718,8 @@ void new_code_segment(uint64_t core) {
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
     } else
       init_code_segment_nid = init_zeroed_code_segment_nid;
+
+    //eval_line(init_code_segment_nid);
 
     next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only code segment");
