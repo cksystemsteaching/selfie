@@ -2915,8 +2915,8 @@ uint64_t eval_bitvec_size(uint64_t* line) {
       if (size <= SIZEOFUINT64INBITS)
         return size;
 
-    if (size == 2 * DOUBLEWORDSIZEINBITS)
-      // TODO: tolerating but not yet supporting 128-bit bitvectors
+    if (size == 2 * WORDSIZEINBITS)
+      // TODO: tolerating but not yet supporting double machine word bitvectors
       return size;
 
     printf("%s: evaluate unsupported %lu-bit bitvector error\n", selfie_name, size);
