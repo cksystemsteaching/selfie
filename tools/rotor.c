@@ -2986,8 +2986,15 @@ uint64_t eval_input(uint64_t* line) {
 
   op = get_op(line);
 
-  if (op == OP_STATE)
-    return get_cached_state(line);
+  if (op == OP_STATE) {
+    if (get_step(line) == current_step)
+      return get_cached_state(line);
+    else {
+      printf("%s: uninitialized state access\n", selfie_name);
+
+      exit(EXITCODE_SYSTEMERROR);
+    }
+  }
 
   printf("%s: unknown line operator %s\n", selfie_name, op);
 
@@ -3723,9 +3730,10 @@ void new_code_segment(uint64_t core) {
         initial_code_segment_nid =
           store_single_word_at_virtual_address(vaddr_nid, ir_nid, initial_code_segment_nid);
 
+        // evaluate on-the-fly to avoid stack overflow later
         eval_line(initial_code_segment_nid);
 
-        // for printing initial code segment iteratively to avoid stack overflow in recursion
+        // for printing initial code segment iteratively, again to avoid stack overflow later
         *(initial_code_segment_nids + (pc - code_start) / INSTRUCTIONSIZE) = (uint64_t) initial_code_segment_nid;
       }
 
@@ -3743,10 +3751,10 @@ void new_code_segment(uint64_t core) {
 
       init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
+
+      eval_line(init_code_segment_nid);
     } else
       init_code_segment_nid = init_zeroed_code_segment_nid;
-
-    eval_line(init_code_segment_nid);
 
     next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only code segment");
@@ -3824,6 +3832,8 @@ void new_memory_state(uint64_t core) {
 
   init_zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
+
+  eval_line(init_zeroed_main_memory_nid);
 
   if (CODE_LOADED) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
