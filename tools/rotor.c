@@ -257,18 +257,19 @@ uint64_t current_nid = 1; // first nid is 1
 // -------------------------- SEMANTICS ----------------------------
 // -----------------------------------------------------------------
 
-void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
+uint64_t eval_bitvec_size(uint64_t* line);
 
 void fit_bitvec_sort(uint64_t value, uint64_t* sid);
 void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid);
 
-void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid);
-
-void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
-
-uint64_t eval_bitvec_size(uint64_t* line);
 uint64_t eval_array_size(uint64_t* line);
 uint64_t eval_array_element_size(uint64_t* line);
+
+void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid);
+
+void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
+
+void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
 
 uint64_t eval_constant_value(uint64_t* line);
 uint64_t eval_constant_digits(uint64_t* line);
@@ -2815,96 +2816,6 @@ char* format_comment_binary(char* comment, uint64_t value) {
 // -------------------------- SEMANTICS ----------------------------
 // -----------------------------------------------------------------
 
-void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
-  if (sid1 == sid2)
-    return;
-
-  printf("%s: %s sort error\n", selfie_name, comment);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-void fit_bitvec_sort(uint64_t value, uint64_t* sid) {
-  uint64_t size;
-
-  size = eval_bitvec_size(sid);
-
-  if (size > 0) {
-    if (size == SIZEOFUINT64INBITS)
-      return;
-    else if (size < SIZEOFUINT64INBITS) {
-      if (value < two_to_the_power_of(size))
-        return;
-      else {
-        printf("%s: %lu does not fit %lu-bit bitvector\n", selfie_name, value, size);
-
-        exit(EXITCODE_SYSTEMERROR);
-      }
-    }
-  }
-
-  printf("%s: unsupported %lu-bit bitvector\n", selfie_name, size);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid) {
-  uint64_t size;
-
-  size = eval_bitvec_size(sid);
-
-  if (size > 0) {
-    if (size == SIZEOFUINT64INBITS)
-      return;
-    else if (size < SIZEOFUINT64INBITS) {
-      if (value < two_to_the_power_of(size - 1))
-        return;
-      else if (value >= -two_to_the_power_of(size - 1))
-        return;
-      else {
-        printf("%s: %ld does not fit %lu-bit bitvector\n", selfie_name, value, size);
-
-        exit(EXITCODE_SYSTEMERROR);
-      }
-    }
-  }
-
-  printf("%s: unsupported %lu-bit bitvector\n", selfie_name, size);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
-  if ((char*) get_arg1(sid) == ARRAY) {
-    fit_bitvec_sort(index, get_arg2(sid));
-    fit_bitvec_sort(value, get_arg3(sid));
-
-    return;
-  }
-
-  printf("%s: fit %lu @ 0x%lX non-array error\n", selfie_name, value, index);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
-  uint64_t* array;
-
-  fit_array_sort(index, value, get_sid(array_nid));
-
-  array = (uint64_t*) get_state(array_nid);
-
-  if (array != (uint64_t*) 0) {
-    *(array + index) = value;
-
-    return;
-  }
-
-  printf("%s: write uninitialized array error\n", selfie_name);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
 uint64_t eval_bitvec_size(uint64_t* line) {
   uint64_t size;
 
@@ -2926,6 +2837,40 @@ uint64_t eval_bitvec_size(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+void fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+  uint64_t size;
+
+  size = eval_bitvec_size(sid);
+
+  if (size >= SIZEOFUINT64INBITS)
+    // TODO: support of bitvectors larger than machine words
+    return;
+  else if (value < two_to_the_power_of(size))
+    return;
+
+  printf("%s: %lu does not fit %lu-bit bitvector\n", selfie_name, value, size);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+  uint64_t size;
+
+  size = eval_bitvec_size(sid);
+
+  if (size >= SIZEOFUINT64INBITS)
+    // TODO: support of bitvectors larger than machine words
+    return;
+  else if (value < two_to_the_power_of(size - 1))
+    return;
+  else if (value >= -two_to_the_power_of(size - 1))
+    return;
+
+  printf("%s: %ld does not fit %lu-bit bitvector\n", selfie_name, value, size);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_array_size(uint64_t* line) {
   if ((char*) get_arg1(line) == ARRAY)
     return eval_bitvec_size(get_arg2(line));
@@ -2940,6 +2885,46 @@ uint64_t eval_array_element_size(uint64_t* line) {
     return eval_bitvec_size(get_arg3(line));
 
   printf("%s: evaluate element size of non-array error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
+  if ((char*) get_arg1(sid) == ARRAY) {
+    fit_bitvec_sort(index, get_arg2(sid));
+    fit_bitvec_sort(value, get_arg3(sid));
+
+    return;
+  }
+
+  printf("%s: fit %lu @ 0x%lX non-array error\n", selfie_name, value, index);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
+  if (sid1 == sid2)
+    return;
+
+  printf("%s: %s sort mismatch error\n", selfie_name, comment);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
+  uint64_t* array;
+
+  fit_array_sort(index, value, get_sid(array_nid));
+
+  array = (uint64_t*) get_state(array_nid);
+
+  if (array != (uint64_t*) 0) {
+    *(array + index) = value;
+
+    return;
+  }
+
+  printf("%s: write uninitialized array error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
