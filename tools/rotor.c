@@ -259,15 +259,16 @@ uint64_t current_nid = 1; // first nid is 1
 
 uint64_t eval_bitvec_size(uint64_t* line);
 
-void fit_bitvec_sort(uint64_t value, uint64_t* sid);
-void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid);
+void fit_bitvec_sort(uint64_t* sid, uint64_t value);
+void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value);
 
 uint64_t eval_array_size(uint64_t* line);
 uint64_t eval_element_size(uint64_t* line);
 
-void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid);
+void fit_array_sort(uint64_t* array_sid, uint64_t index, uint64_t value);
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
+void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value_sid);
 
 uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size);
 
@@ -289,7 +290,7 @@ uint64_t is_virtual_address_in_stack_segment(uint64_t vaddr);
 uint64_t vaddr_to_index(uint64_t vaddr, uint64_t* sid);
 uint64_t index_to_vaddr(uint64_t index, uint64_t* sid);
 
-void write_value(uint64_t index, uint64_t value, uint64_t* array_nid);
+void write_value(uint64_t* array_nid, uint64_t index, uint64_t value);
 
 uint64_t get_cached_state(uint64_t* line);
 
@@ -2847,7 +2848,7 @@ uint64_t eval_bitvec_size(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-void fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+void fit_bitvec_sort(uint64_t* sid, uint64_t value) {
   uint64_t size;
 
   size = eval_bitvec_size(sid);
@@ -2863,7 +2864,7 @@ void fit_bitvec_sort(uint64_t value, uint64_t* sid) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-void signed_fit_bitvec_sort(uint64_t value, uint64_t* sid) {
+void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value) {
   uint64_t size;
 
   size = eval_bitvec_size(sid);
@@ -2913,10 +2914,10 @@ uint64_t eval_element_size(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-void fit_array_sort(uint64_t index, uint64_t value, uint64_t* sid) {
-  if ((char*) get_arg1(sid) == ARRAY) {
-    fit_bitvec_sort(index, get_arg2(sid));
-    fit_bitvec_sort(value, get_arg3(sid));
+void fit_array_sort(uint64_t* array_sid, uint64_t index, uint64_t value) {
+  if ((char*) get_arg1(array_sid) == ARRAY) {
+    fit_bitvec_sort(get_arg2(array_sid), index);
+    fit_bitvec_sort(get_arg3(array_sid), value);
 
     return;
   }
@@ -2933,6 +2934,11 @@ void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment) {
   printf("%s: %s sort mismatch error\n", selfie_name, comment);
 
   exit(EXITCODE_SYSTEMERROR);
+}
+
+void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value_sid) {
+  match_sorts(get_arg2(array_sid), index_sid, "array size");
+  match_sorts(get_arg3(array_sid), value_sid, "array element");
 }
 
 uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size) {
@@ -3015,11 +3021,11 @@ uint64_t index_to_vaddr(uint64_t index, uint64_t* sid) {
   return left_shift(index, log_two(get_power_of_two_size_in_bytes(eval_element_size(sid))));
 }
 
-void write_value(uint64_t index, uint64_t value, uint64_t* array_nid) {
+void write_value(uint64_t* array_nid, uint64_t index, uint64_t value) {
   uint64_t* array;
   uint64_t vaddr;
 
-  fit_array_sort(index, value, get_sid(array_nid));
+  fit_array_sort(get_sid(array_nid), index, value);
 
   array = (uint64_t*) get_state(array_nid);
 
@@ -3071,14 +3077,14 @@ uint64_t eval_constant_value(uint64_t* line) {
 
     if (get_op(line) == OP_CONSTD) {
       if (value <= 1)
-        fit_bitvec_sort(value, sid);
+        fit_bitvec_sort(sid, value);
       else {
-        signed_fit_bitvec_sort(value, sid);
+        signed_fit_bitvec_sort(sid, value);
 
         value = sign_shrink(value, eval_bitvec_size(sid));
       }
     } else
-      fit_bitvec_sort(value, sid);
+      fit_bitvec_sort(sid, value);
 
     set_state(line, value);
   } else
@@ -3224,23 +3230,26 @@ uint64_t eval_unary_op(uint64_t* line) {
 
 uint64_t eval_write(uint64_t* line) {
   uint64_t* array_nid;
+  uint64_t* index_nid;
+  uint64_t* value_nid;
   uint64_t index;
   uint64_t value;
 
   if ((char*) get_arg1(get_sid(line)) == ARRAY) {
     array_nid = get_arg1(line);
+    index_nid = get_arg2(line);
+    value_nid = get_arg3(line);
 
     match_sorts(get_sid(line), get_sid(array_nid), "write array");
 
+    match_array_sorts(get_sid(array_nid), get_sid(index_nid), get_sid(value_nid));
+
     array_nid = (uint64_t*) eval_line(array_nid);
 
-    match_sorts(get_sid(get_arg2(line)), get_arg2(get_sid(array_nid)), "write array size");
-    match_sorts(get_sid(get_arg3(line)), get_arg3(get_sid(array_nid)), "write array element");
+    index = eval_line(index_nid);
+    value = eval_line(value_nid);
 
-    index = eval_line(get_arg2(line));
-    value = eval_line(get_arg3(line));
-
-    write_value(index, value, array_nid);
+    write_value(array_nid, index, value);
 
     set_state(line, (uint64_t) array_nid);
 
