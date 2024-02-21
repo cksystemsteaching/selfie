@@ -300,6 +300,11 @@ void write_value(uint64_t* array_nid, uint64_t index, uint64_t value);
 uint64_t is_n_times_n_to_n_operator(char* op);
 uint64_t is_n_times_n_operator(char* op);
 
+uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor);
+uint64_t bitwise_and(uint64_t a, uint64_t b);
+uint64_t bitwise_or(uint64_t a, uint64_t b);
+uint64_t bitwise_xor(uint64_t a, uint64_t b);
+
 uint64_t get_cached_state(uint64_t* line);
 
 uint64_t eval_constant_value(uint64_t* line);
@@ -3077,7 +3082,23 @@ void write_value(uint64_t* array_nid, uint64_t index, uint64_t value) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t is_n_times_n_to_n_operator(char* op) {
+uint64_t is_comparison_operator(char* op) {
+  if (op == OP_ULTE)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_bitwise_operator(char* op) {
+  if (op == OP_AND)
+    return 1;
+  else if (op == OP_SRL)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_arithmetic_operator(char* op) {
   if (op == OP_ADD)
     return 1;
   else if (op == OP_SUB)
@@ -3086,11 +3107,75 @@ uint64_t is_n_times_n_to_n_operator(char* op) {
     return 0;
 }
 
+uint64_t is_n_times_n_to_n_operator(char* op) {
+  if (is_bitwise_operator(op))
+    return 1;
+  else if (is_arithmetic_operator(op))
+    return 1;
+  else
+    return 0;
+}
+
 uint64_t is_n_times_n_operator(char* op) {
-  if (op == OP_ULTE)
+  if (is_comparison_operator(op))
     return 1;
   else
     return is_n_times_n_to_n_operator(op);
+}
+
+uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor) {
+  uint64_t r;
+  uint64_t i;
+
+  if (a == b)
+    return a;
+  else if (a < b)
+    r = b;
+  else {
+    r = a;
+
+    a = b;
+    b = r;
+  }
+
+  // assert: a < b and r == b
+
+  i = 0;
+
+  while (i < SIZEOFUINT64INBITS) {
+    if (a == 0) {
+      if (or_xor)
+        return r;
+      else
+        return r % two_to_the_power_of(i);
+    }
+
+    if (a % 2 == or_xor) {
+      if (b % 2)
+        r = r - and_xor * two_to_the_power_of(i);
+      else
+        r = r + or_xor * two_to_the_power_of(i);
+    }
+
+    a = a / 2;
+    b = b / 2;
+
+    i = i + 1;
+  }
+
+  return r;
+}
+
+uint64_t bitwise_and(uint64_t a, uint64_t b) {
+  return bitwise(a, b, 1, 0);
+}
+
+uint64_t bitwise_or(uint64_t a, uint64_t b) {
+  return bitwise(a, b, 0, 1);
+}
+
+uint64_t bitwise_xor(uint64_t a, uint64_t b) {
+  return bitwise(a, b, 1, 1);
 }
 
 uint64_t get_cached_state(uint64_t* line) {
@@ -3337,22 +3422,36 @@ uint64_t eval_binary_op(uint64_t* line) {
   if (is_n_times_n_operator(op)) {
     match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
-    size = eval_bitvec_size(get_sid(left_nid));
+    left_value  = eval_line(left_nid);
+    right_value = eval_line(right_nid);
 
-    left_value  = sign_extend(eval_line(left_nid), size);
-    right_value = sign_extend(eval_line(right_nid), size);
+    if (is_bitwise_operator(op)) {
+      match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
 
-    if (is_n_times_n_to_n_operator(op)) {
-      match_sorts(get_sid(line), get_sid(left_nid), "operator");
+      if (op == OP_AND)
+        set_state(line, bitwise_and(left_value, right_value));
+      else if (op == OP_SRL)
+        set_state(line, right_shift(left_value, right_value));
+    } else {
+      size = eval_bitvec_size(get_sid(left_nid));
 
-      if (op == OP_ADD)
-        set_state(line, sign_shrink(left_value + right_value, size));
-      else if (op == OP_SUB)
-        set_state(line, sign_shrink(left_value - right_value, size));
-    } else if (op == OP_ULTE) {
-      match_sorts(get_sid(line), SID_BOOLEAN, "Boolean operator");
+      left_value  = sign_extend(left_value, size);
+      right_value = sign_extend(right_value, size);
 
-      set_state(line, left_value <= right_value);
+      if (is_arithmetic_operator(op)) {
+        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+
+        if (op == OP_ADD)
+          set_state(line, sign_shrink(left_value + right_value, size));
+        else if (op == OP_SUB)
+          set_state(line, sign_shrink(left_value - right_value, size));
+      } else if (is_comparison_operator(op)) {
+        if (op == OP_ULTE) {
+          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+
+          set_state(line, left_value <= right_value);
+        }
+      }
     }
 
     set_step(line, current_step);
