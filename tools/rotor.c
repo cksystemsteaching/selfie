@@ -297,6 +297,9 @@ uint64_t index_to_vaddr(uint64_t index, uint64_t* sid);
 
 void write_value(uint64_t* array_nid, uint64_t index, uint64_t value);
 
+uint64_t is_n_times_n_to_n_operator(char* op);
+uint64_t is_n_times_n_operator(char* op);
+
 uint64_t get_cached_state(uint64_t* line);
 
 uint64_t eval_constant_value(uint64_t* line);
@@ -3074,6 +3077,22 @@ void write_value(uint64_t* array_nid, uint64_t index, uint64_t value) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t is_n_times_n_to_n_operator(char* op) {
+  if (op == OP_ADD)
+    return 1;
+  else if (op == OP_SUB)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_n_times_n_operator(char* op) {
+  if (op == OP_ULTE)
+    return 1;
+  else
+    return is_n_times_n_to_n_operator(op);
+}
+
 uint64_t get_cached_state(uint64_t* line) {
   if (get_op(line) == OP_STATE)
     if ((char*) get_arg1(get_sid(line)) == ARRAY)
@@ -3315,27 +3334,35 @@ uint64_t eval_binary_op(uint64_t* line) {
   left_nid  = get_arg1(line);
   right_nid = get_arg2(line);
 
-  size = eval_bitvec_size(get_sid(line));
+  if (is_n_times_n_operator(op)) {
+    match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
-  match_sorts(get_sid(line), get_sid(left_nid), "left operand");
-  match_sorts(get_sid(line), get_sid(right_nid), "right operand");
+    size = eval_bitvec_size(get_sid(left_nid));
 
-  left_value  = sign_extend(eval_line(left_nid), size);
-  right_value = sign_extend(eval_line(right_nid), size);
+    left_value  = sign_extend(eval_line(left_nid), size);
+    right_value = sign_extend(eval_line(right_nid), size);
 
-  if (op == OP_ADD)
-    set_state(line, sign_shrink(left_value + right_value, size));
-  else if (op == OP_SUB)
-    set_state(line, sign_shrink(left_value - right_value, size));
-  else {
-    printf("%s: unknown binary operator %s\n", selfie_name, op);
+    if (is_n_times_n_to_n_operator(op)) {
+      match_sorts(get_sid(line), get_sid(left_nid), "operator");
 
-    exit(EXITCODE_SYSTEMERROR);
+      if (op == OP_ADD)
+        set_state(line, sign_shrink(left_value + right_value, size));
+      else if (op == OP_SUB)
+        set_state(line, sign_shrink(left_value - right_value, size));
+    } else if (op == OP_ULTE) {
+      match_sorts(get_sid(line), SID_BOOLEAN, "Boolean operator");
+
+      set_state(line, left_value <= right_value);
+    }
+
+    set_step(line, current_step);
+
+    return get_state(line);
   }
 
-  set_step(line, current_step);
+  printf("%s: unknown binary operator %s\n", selfie_name, op);
 
-  return get_state(line);
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_init(uint64_t* line) {
