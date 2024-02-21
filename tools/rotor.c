@@ -67,6 +67,9 @@ uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* righ
 uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment);
 
+uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
+uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment);
+
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -311,6 +314,7 @@ uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_ite(uint64_t* line);
 uint64_t eval_write(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
+uint64_t eval_init(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
 
@@ -2558,6 +2562,14 @@ uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* se
   return new_line(op, sid, first_nid, second_nid, third_nid, comment);
 }
 
+uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
+  return new_binary(OP_INIT, sid, state_nid, value_nid, comment);
+}
+
+uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
+  return new_binary(OP_NEXT, sid, state_nid, value_nid, comment);
+}
+
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment) {
   return new_line(op, UNUSED, condition_nid, (uint64_t*) symbol, UNUSED, comment);
 }
@@ -3297,101 +3309,92 @@ uint64_t eval_binary_op(uint64_t* line) {
   uint64_t size;
   uint64_t left_value;
   uint64_t right_value;
-  uint64_t* state_nid;
-  uint64_t* value_nid;
 
   op = get_op(line);
 
   left_nid  = get_arg1(line);
   right_nid = get_arg2(line);
 
-  if (op == OP_ADD) {
-    size = eval_bitvec_size(get_sid(line));
+  size = eval_bitvec_size(get_sid(line));
 
-    match_sorts(get_sid(line), get_sid(left_nid), "add left operand");
-    match_sorts(get_sid(line), get_sid(right_nid), "add right operand");
+  match_sorts(get_sid(line), get_sid(left_nid), "left operand");
+  match_sorts(get_sid(line), get_sid(right_nid), "right operand");
 
-    left_value  = sign_extend(eval_line(left_nid), size);
-    right_value = sign_extend(eval_line(right_nid), size);
+  left_value  = sign_extend(eval_line(left_nid), size);
+  right_value = sign_extend(eval_line(right_nid), size);
 
+  if (op == OP_ADD)
     set_state(line, sign_shrink(left_value + right_value, size));
-
-    set_step(line, current_step);
-
-    return get_state(line);
-  } else if (op == OP_SUB) {
-    size = eval_bitvec_size(get_sid(line));
-
-    match_sorts(get_sid(line), get_sid(left_nid), "sub left operand");
-    match_sorts(get_sid(line), get_sid(right_nid), "sub right operand");
-
-    left_value  = sign_extend(eval_line(left_nid), size);
-    right_value = sign_extend(eval_line(right_nid), size);
-
+  else if (op == OP_SUB)
     set_state(line, sign_shrink(left_value - right_value, size));
+  else {
+    printf("%s: unknown binary operator %s\n", selfie_name, op);
 
-    set_step(line, current_step);
+    exit(EXITCODE_SYSTEMERROR);
+  }
 
-    return get_state(line);
-  } else if (op == OP_INIT) {
-    state_nid = left_nid;
+  set_step(line, current_step);
 
-    if (get_op(state_nid) != OP_STATE) {
-      printf("%s: init %s error\n", selfie_name, get_op(state_nid));
+  return get_state(line);
+}
 
-      exit(EXITCODE_SYSTEMERROR);
-    }
+uint64_t eval_init(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t* value_nid;
 
-    match_sorts(get_sid(line), get_sid(state_nid), "init state");
+  state_nid = get_arg1(line);
 
-    value_nid = right_nid;
+  if (get_op(state_nid) != OP_STATE) {
+    printf("%s: init %s error\n", selfie_name, get_op(state_nid));
 
-    if ((char*) get_arg1(get_sid(state_nid)) == BITVEC) {
-      match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
+    exit(EXITCODE_SYSTEMERROR);
+  }
 
-      set_state(state_nid, eval_line(value_nid));
+  match_sorts(get_sid(line), get_sid(state_nid), "init state");
+
+  value_nid = get_arg2(line);
+
+  if ((char*) get_arg1(get_sid(state_nid)) == BITVEC) {
+    match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
+
+    set_state(state_nid, eval_line(value_nid));
+
+    set_step(state_nid, current_step);
+  } else {
+    // assert: sid of state line is ARRAY
+    if ((char*) get_arg1(get_sid(value_nid)) == BITVEC) {
+      match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+
+      if (eval_line(value_nid) != 0) {
+        printf("%s: init non-zero array element error\n", selfie_name);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+
+      set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
 
       set_step(state_nid, current_step);
     } else {
-      // assert: sid of state line is ARRAY
-      if ((char*) get_arg1(get_sid(value_nid)) == BITVEC) {
-        match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+      // assert: sid of value line is ARRAY
+      match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
 
-        if (eval_line(value_nid) != 0) {
-          printf("%s: init non-zero array element error\n", selfie_name);
+      value_nid = (uint64_t*) eval_line(value_nid);
 
-          exit(EXITCODE_SYSTEMERROR);
-        }
-
-        set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+      if (get_state(state_nid) != get_state(value_nid)) {
+        set_state(state_nid, get_state(value_nid));
 
         set_step(state_nid, current_step);
-      } else {
-        // assert: sid of value line is ARRAY
-        match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
 
-        value_nid = (uint64_t*) eval_line(value_nid);
-
-        if (get_state(state_nid) != get_state(value_nid)) {
-          set_state(state_nid, get_state(value_nid));
-
-          set_step(state_nid, current_step);
-
-          // TODO: reinitialize state
-          set_state(value_nid, 0);
-        }
+        // TODO: reinitialize state
+        set_state(value_nid, 0);
       }
     }
-
-    set_step(line, current_step);
-
-    // assert: return value is never used
-    return (uint64_t) state_nid;
   }
 
-  printf("%s: unknown binary operator %s\n", selfie_name, op);
+  set_step(line, current_step);
 
-  exit(EXITCODE_SYSTEMERROR);
+  // assert: return value is never used
+  return (uint64_t) state_nid;
 }
 
 uint64_t eval_line(uint64_t* line) {
@@ -3417,6 +3420,8 @@ uint64_t eval_line(uint64_t* line) {
     return eval_ite(line);
   else if (op == OP_WRITE)
     return eval_write(line);
+  else if (op == OP_INIT)
+    return eval_init(line);
   else
     return eval_binary_op(line);
 }
@@ -3496,11 +3501,11 @@ void print_interface_kernel() {
 void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
   if (core == 0) {
     state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS, "program-break", "program break");
-    init_program_break_nid  = new_binary(OP_INIT, SID_VIRTUAL_ADDRESS, state_program_break_nid,
+    init_program_break_nid  = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
       NID_HEAP_START, "initial program break is start of heap segment");
 
     state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
-    init_file_descriptor_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_file_descriptor_nid,
+    init_file_descriptor_nid  = new_init(SID_MACHINE_WORD, state_file_descriptor_nid,
       NID_MACHINE_WORD_0, "initial file descriptor is zero");
 
     next_program_break_nid   = state_program_break_nid;
@@ -3515,12 +3520,12 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
 
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-readable-bytes", core), "readable bytes");
-  init_readable_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_readable_bytes_nid,
+  init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     param_readable_bytes_nid, "number of readable bytes");
 
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
-  init_read_bytes_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_read_bytes_nid,
+  init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
 }
 
@@ -3594,7 +3599,7 @@ void new_register_file_state(uint64_t core) {
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
     format_comment("core-%lu-zeroed-register-file", core), "zeroed register file");
 
-  init_zeroed_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+  init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
   if (CODE_LOADED == 0)
@@ -3635,13 +3640,13 @@ void new_register_file_state(uint64_t core) {
   if (initial_register_file_nid != state_register_file_nid) {
     eval_line(init_zeroed_register_file_nid);
 
-    next_zeroed_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+    next_zeroed_register_file_nid = new_next(SID_REGISTER_STATE,
       state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
 
     state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
       format_comment("core-%lu-initialized-register-file", core), "initialized register file");
 
-    init_register_file_nid = new_binary(OP_INIT, SID_REGISTER_STATE,
+    init_register_file_nid = new_init(SID_REGISTER_STATE,
       state_register_file_nid, initial_register_file_nid, "initializing registers");
   } else
     init_register_file_nid = init_zeroed_register_file_nid;
@@ -3878,7 +3883,7 @@ void new_code_segment(uint64_t core) {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       "code-segment", "code segment");
 
-    init_zeroed_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+    init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
       state_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     eval_line(init_zeroed_code_segment_nid);
@@ -3927,20 +3932,20 @@ void new_code_segment(uint64_t core) {
     reuse_lines = 1;
 
     if (initial_code_segment_nid != state_code_segment_nid) {
-      next_zeroed_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
+      next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
         state_code_segment_nid, state_code_segment_nid, "read-only zeroed code segment");
 
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
         "loaded-code-segment", "loaded code segment");
 
-      init_code_segment_nid = new_binary(OP_INIT, SID_CODE_STATE,
+      init_code_segment_nid = new_init(SID_CODE_STATE,
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
 
       eval_line(init_code_segment_nid);
     } else
       init_code_segment_nid = init_zeroed_code_segment_nid;
 
-    next_code_segment_nid = new_binary(OP_NEXT, SID_CODE_STATE,
+    next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only code segment");
   }
 }
@@ -4014,7 +4019,7 @@ void new_memory_state(uint64_t core) {
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
     format_comment("core-%lu-zeroed-main-memory", core), "zeroed main memory");
 
-  init_zeroed_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+  init_zeroed_main_memory_nid = new_init(SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
   eval_line(init_zeroed_main_memory_nid);
@@ -4072,13 +4077,13 @@ void new_memory_state(uint64_t core) {
     reuse_lines = 1;
 
     if (initial_main_memory_nid != state_main_memory_nid) {
-      next_zeroed_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+      next_zeroed_main_memory_nid = new_next(SID_MEMORY_STATE,
         state_main_memory_nid, state_main_memory_nid, "read-only zeroed main memory");
 
       state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
         format_comment("core-%lu-loaded-main-memory", core), "loaded main memory");
 
-      init_main_memory_nid = new_binary(OP_INIT, SID_MEMORY_STATE,
+      init_main_memory_nid = new_init(SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
 
       eval_line(init_main_memory_nid);
@@ -7572,7 +7577,7 @@ void new_core_state(uint64_t core) {
     initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
 
   state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
-  init_core_pc_nid  = new_binary(OP_INIT, SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
+  init_core_pc_nid  = new_init(SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
 }
 
 void print_core_state(uint64_t core) {
@@ -7989,7 +7994,7 @@ void kernel_sequential(uint64_t core,
 
   if (core == CORES - 1)
     next_program_break_nid =
-      new_binary(OP_NEXT, SID_VIRTUAL_ADDRESS,
+      new_next(SID_VIRTUAL_ADDRESS,
         program_break_nid,
         next_program_break_nid,
         "new program break");
@@ -8005,7 +8010,7 @@ void kernel_sequential(uint64_t core,
 
   if (core == CORES - 1)
     next_file_descriptor_nid =
-      new_binary(OP_NEXT, SID_MACHINE_WORD,
+      new_next(SID_MACHINE_WORD,
         file_descriptor_nid,
         next_file_descriptor_nid,
         "new file descriptor");
@@ -8013,7 +8018,7 @@ void kernel_sequential(uint64_t core,
   // update read kernel state
 
   next_readable_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
+    new_next(SID_MACHINE_WORD,
       readable_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
         still_reading_active_read_nid,
@@ -8025,7 +8030,7 @@ void kernel_sequential(uint64_t core,
       "readable bytes");
 
   next_read_bytes_nid =
-    new_binary(OP_NEXT, SID_MACHINE_WORD,
+    new_next(SID_MACHINE_WORD,
       read_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
         new_binary_boolean(OP_AND,
@@ -8270,7 +8275,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
   if (SYNCHRONIZED_PC)
     if (core == 0) {
-      next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+      next_core_pc_nid = new_next(SID_MACHINE_WORD,
         pc_nid, control_flow_nid, "program counter");
 
       eval_core_0_control_flow_nid = control_flow_nid;
@@ -8283,14 +8288,14 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-pc-value", core),
         "asserting new pc value == new core-0 pc value");
   else
-    next_core_pc_nid = new_binary(OP_NEXT, SID_MACHINE_WORD,
+    next_core_pc_nid = new_next(SID_MACHINE_WORD,
       pc_nid, control_flow_nid, "program counter");
 
   // update register data flow
 
   if (SYNCHRONIZED_REGISTERS)
     if (core == 0) {
-      next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+      next_register_file_nid = new_next(SID_REGISTER_STATE,
         register_file_nid, register_data_flow_nid, "register file");
 
       eval_core_0_register_data_flow_nid = register_data_flow_nid;
@@ -8306,17 +8311,17 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < CORES - 1)
       state_register_file_nid = register_data_flow_nid;
     else
-      next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+      next_register_file_nid = new_next(SID_REGISTER_STATE,
         register_file_nid, register_data_flow_nid, "register file");
   } else
-    next_register_file_nid = new_binary(OP_NEXT, SID_REGISTER_STATE,
+    next_register_file_nid = new_next(SID_REGISTER_STATE,
       register_file_nid, register_data_flow_nid, "register file");
 
   // update memory data flow
 
   if (SYNCHRONIZED_MEMORY)
     if (core == 0) {
-      next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+      next_main_memory_nid = new_next(SID_MEMORY_STATE,
         memory_nid, memory_data_flow_nid, "main memory");
 
       eval_core_0_memory_data_flow_nid = memory_data_flow_nid;
@@ -8332,10 +8337,10 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < CORES - 1)
       state_main_memory_nid = memory_data_flow_nid;
     else
-      next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+      next_main_memory_nid = new_next(SID_MEMORY_STATE,
         memory_nid, memory_data_flow_nid, "main memory");
   } else
-    next_main_memory_nid = new_binary(OP_NEXT, SID_MEMORY_STATE,
+    next_main_memory_nid = new_next(SID_MEMORY_STATE,
       memory_nid, memory_data_flow_nid, "main memory");
 }
 
