@@ -306,6 +306,7 @@ uint64_t eval_input(uint64_t* line);
 uint64_t eval_ext(uint64_t* line);
 uint64_t eval_slice(uint64_t* line);
 uint64_t eval_unary_op(uint64_t* line);
+uint64_t eval_ite(uint64_t* line);
 uint64_t eval_write(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
 
@@ -3228,6 +3229,30 @@ uint64_t eval_unary_op(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_ite(uint64_t* line) {
+  uint64_t* if_nid;
+  uint64_t* then_nid;
+  uint64_t* else_nid;
+
+  if_nid   = get_arg1(line);
+  then_nid = get_arg2(line);
+  else_nid = get_arg3(line);
+
+  match_sorts(get_sid(if_nid), SID_BOOLEAN, "ite if");
+
+  match_sorts(get_sid(line), get_sid(then_nid), "ite then");
+  match_sorts(get_sid(line), get_sid(else_nid), "ite else");
+
+  if (eval_line(if_nid))
+    set_state(line, eval_line(then_nid));
+  else
+    set_state(line, eval_line(else_nid));
+
+  set_step(line, current_step);
+
+  return get_state(line);
+}
+
 uint64_t eval_write(uint64_t* line) {
   uint64_t* array_nid;
   uint64_t* index_nid;
@@ -3386,6 +3411,8 @@ uint64_t eval_line(uint64_t* line) {
     return eval_slice(line);
   else if (is_unary_op(op))
     return eval_unary_op(line);
+  else if (op == OP_ITE)
+    return eval_ite(line);
   else if (op == OP_WRITE)
     return eval_write(line);
   else
