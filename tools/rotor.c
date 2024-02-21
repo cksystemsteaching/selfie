@@ -971,7 +971,8 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
   // assert: memory word size is a power of 2 >= 8 bits
 
   MEMORY_ADDRESS_SPACE =
-    VIRTUAL_ADDRESS_SPACE - (get_power_of_two_size_in_bytes(eval_bitvec_size(SID_MEMORY_WORD)) - 1);
+    VIRTUAL_ADDRESS_SPACE -
+      log_two(get_power_of_two_size_in_bytes(eval_bitvec_size(SID_MEMORY_WORD)));
 
   SID_MEMORY_ADDRESS = new_bitvec(MEMORY_ADDRESS_SPACE,
     format_comment("%lu-bit physical memory address", MEMORY_ADDRESS_SPACE));
