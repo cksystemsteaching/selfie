@@ -7,7 +7,7 @@ Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
 in Austria. For further information and code please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 Monster is a hybrid symbolic execution and bounded model checking
 engine that implements a sound and (up to a given bound) complete
@@ -1881,7 +1881,7 @@ uint64_t selfie_run_symbolically() {
       }
 
       // use extension ".smt" in name of SMT-LIB file
-      smt_name = replace_extension(binary_name, "smt");
+      smt_name = replace_extension(binary_name, "", "smt");
 
       // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
 

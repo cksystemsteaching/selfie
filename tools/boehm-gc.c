@@ -7,7 +7,7 @@ Selfie is a project of the Computational Systems Group at the
 Department of Computer Sciences of the University of Salzburg
 in Austria. For further information and code please refer to:
 
-http://selfie.cs.uni-salzburg.at
+selfie.cs.uni-salzburg.at
 
 Boehm GC is a selfie implementation of a conservative mark-and-sweep
 garbage collector developed by Hans Boehm, Alan Demers, and Mark Weiser.
