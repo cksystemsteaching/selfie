@@ -97,16 +97,17 @@ char* OP_INC = (char*) 0;
 char* OP_DEC = (char*) 0;
 char* OP_NEG = (char*) 0;
 
-char* OP_EQ   = (char*) 0;
-char* OP_NEQ  = (char*) 0;
-char* OP_SGT  = (char*) 0;
-char* OP_UGT  = (char*) 0;
-char* OP_SGTE = (char*) 0;
-char* OP_UGTE = (char*) 0;
-char* OP_SLT  = (char*) 0;
-char* OP_ULT  = (char*) 0;
-char* OP_SLTE = (char*) 0;
-char* OP_ULTE = (char*) 0;
+char* OP_IMPLIES = (char*) 0;
+char* OP_EQ      = (char*) 0;
+char* OP_NEQ     = (char*) 0;
+char* OP_SGT     = (char*) 0;
+char* OP_UGT     = (char*) 0;
+char* OP_SGTE    = (char*) 0;
+char* OP_UGTE    = (char*) 0;
+char* OP_SLT     = (char*) 0;
+char* OP_ULT     = (char*) 0;
+char* OP_SLTE    = (char*) 0;
+char* OP_ULTE    = (char*) 0;
 
 char* OP_AND = (char*) 0;
 char* OP_OR  = (char*) 0;
@@ -168,16 +169,17 @@ void init_model() {
   OP_DEC = "dec";
   OP_NEG = "neg";
 
-  OP_EQ   = "eq";
-  OP_NEQ  = "neq";
-  OP_SGT  = "sgt";
-  OP_UGT  = "ugt";
-  OP_SGTE = "sgte";
-  OP_UGTE = "ugte";
-  OP_SLT  = "slt";
-  OP_ULT  = "ult";
-  OP_SLTE = "slte";
-  OP_ULTE = "ulte";
+  OP_IMPLIES = "implies";
+  OP_EQ      = "eq";
+  OP_NEQ     = "neq";
+  OP_SGT     = "sgt";
+  OP_UGT     = "ugt";
+  OP_SGTE    = "sgte";
+  OP_UGTE    = "ugte";
+  OP_SLT     = "slt";
+  OP_ULT     = "ult";
+  OP_SLTE    = "slte";
+  OP_ULTE    = "ulte";
 
   OP_AND = "and";
   OP_OR  = "or";
@@ -6862,9 +6864,9 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
         "CIW-immediate == 0?"),
       "c.addi4spn with CIW-immediate == 0?");
 
-    return new_ternary(OP_ITE, SID_BOOLEAN,
+    return new_binary_boolean(OP_AND,
       is_compressed_instruction(c_ir_nid),
-      new_ternary(OP_ITE, SID_BOOLEAN,
+      new_binary_boolean(OP_IMPLIES,
         new_binary_boolean(OP_NEQ,
           c_ir_nid,
           NID_HALF_WORD_0,
@@ -6892,9 +6894,7 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
                 NID_FALSE),
               "C1 compressed instruction with illegal immediate or shamt?",
               NID_FALSE))),
-        NID_TRUE,
-        "is defined illegal compressed instruction or has illegal immediate or shamt?"),
-      NID_FALSE,
+        "is either defined illegal compressed instruction or else has illegal immediate or shamt?"),
       "compressed instruction with illegal immediate or shamt?");
   } else
     return UNUSED;
@@ -7225,7 +7225,7 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
 
 uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid) {
   if (RVC)
-    return new_ternary(OP_ITE, SID_BOOLEAN,
+    return new_binary_boolean(OP_IMPLIES,
       is_compressed_instruction(c_ir_nid),
       decode_compressed_load_with_opcode(SID_BOOLEAN, c_ir_nid,
         is_sized_block_in_stack_segment(get_sp_value_plus_CI64_offset(c_ir_nid, register_file_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
@@ -7235,7 +7235,6 @@ uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_f
         "no-seg-faults",
         NID_TRUE,
         NID_TRUE),
-      NID_TRUE,
       "no compressed load segmentation faults");
   else
     return UNUSED;
@@ -7435,7 +7434,7 @@ uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid, uint64_t* reg
 
 uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid) {
   if (RVC)
-    return new_ternary(OP_ITE, SID_BOOLEAN,
+    return new_binary_boolean(OP_IMPLIES,
       is_compressed_instruction(c_ir_nid),
       decode_compressed_memory_data_flow(SID_BOOLEAN, c_ir_nid,
         is_sized_block_in_stack_segment(get_sp_value_plus_CSS64_offset(c_ir_nid, register_file_nid), NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1),
@@ -7444,7 +7443,6 @@ uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_
         is_sized_block_in_main_memory(get_rs1_shift_value_plus_CS32_offset(c_ir_nid, register_file_nid), NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1),
         "no-seg-faults",
         NID_TRUE),
-      NID_TRUE,
       "no compressed store and other store segmentation faults");
   else
     return UNUSED;
