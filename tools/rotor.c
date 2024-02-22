@@ -217,6 +217,10 @@ void init_model() {
 uint64_t is_bitvector(uint64_t* line);
 uint64_t is_array(uint64_t* line);
 
+uint64_t is_constant_op(char* op);
+uint64_t is_input_op(char* op);
+uint64_t is_unary_op(char* op);
+
 void print_nid(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
@@ -233,10 +237,6 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
-
-uint64_t is_constant_op(char* op);
-uint64_t is_input_op(char* op);
-uint64_t is_unary_op(char* op);
 
 uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
 
@@ -273,7 +273,7 @@ void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value);
 uint64_t eval_array_size(uint64_t* line);
 uint64_t eval_element_size(uint64_t* line);
 
-void fit_array_sort(uint64_t* array_sid, uint64_t index, uint64_t value);
+void fit_array_sorts(uint64_t* array_sid, uint64_t index, uint64_t value);
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
 void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value_sid);
@@ -295,11 +295,14 @@ uint64_t is_virtual_address_in_data_segment(uint64_t vaddr);
 uint64_t is_virtual_address_in_heap_segment(uint64_t vaddr);
 uint64_t is_virtual_address_in_stack_segment(uint64_t vaddr);
 
-uint64_t vaddr_to_index(uint64_t vaddr, uint64_t* sid);
-uint64_t index_to_vaddr(uint64_t index, uint64_t* sid);
+uint64_t vaddr_to_index(uint64_t vaddr);
+uint64_t index_to_vaddr(uint64_t index);
 
-void write_value(uint64_t* array_nid, uint64_t index, uint64_t value);
+uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t read);
 
+uint64_t is_comparison_operator(char* op);
+uint64_t is_bitwise_operator(char* op);
+uint64_t is_arithmetic_operator(char* op);
 uint64_t is_n_times_n_to_n_operator(char* op);
 uint64_t is_n_times_n_operator(char* op);
 
@@ -321,12 +324,13 @@ uint64_t eval_slice_l(uint64_t* line);
 uint64_t eval_input(uint64_t* line);
 uint64_t eval_ext(uint64_t* line);
 uint64_t eval_slice(uint64_t* line);
-uint64_t eval_unary_op(uint64_t* line);
-uint64_t eval_ite(uint64_t* line);
-uint64_t eval_write(uint64_t* line);
 uint64_t eval_concat(uint64_t* line);
-uint64_t eval_binary_op(uint64_t* line);
+uint64_t eval_ite(uint64_t* line);
+uint64_t eval_read(uint64_t* line);
+uint64_t eval_write(uint64_t* line);
 uint64_t eval_init(uint64_t* line);
+uint64_t eval_unary_op(uint64_t* line);
+uint64_t eval_binary_op(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
 
@@ -2602,6 +2606,39 @@ uint64_t is_array(uint64_t* line) {
   return (char*) get_arg1(line) == ARRAY;
 }
 
+uint64_t is_constant_op(char* op) {
+  if (op == OP_CONSTD)
+    return 1;
+  else if (op == OP_CONST)
+    return 1;
+  else if (op == OP_CONSTH)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_input_op(char* op) {
+  if (op == OP_INPUT)
+    return 1;
+  else if (op == OP_STATE)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_unary_op(char* op) {
+  if (op == OP_NOT)
+    return 1;
+  else if (op == OP_INC)
+    return 1;
+  else if (op == OP_DEC)
+    return 1;
+  else if (op == OP_NEG)
+    return 1;
+  else
+    return 0;
+}
+
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
   w = w + dprintf(output_fd, "%lu", nid);
@@ -2715,39 +2752,6 @@ void print_comment(uint64_t* line) {
   } else if (get_reuse(line) > 0)
     w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
   w = w + dprintf(output_fd, "\n");
-}
-
-uint64_t is_constant_op(char* op) {
-  if (op == OP_CONSTD)
-    return 1;
-  else if (op == OP_CONST)
-    return 1;
-  else if (op == OP_CONSTH)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_input_op(char* op) {
-  if (op == OP_INPUT)
-    return 1;
-  else if (op == OP_STATE)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_unary_op(char* op) {
-  if (op == OP_NOT)
-    return 1;
-  else if (op == OP_INC)
-    return 1;
-  else if (op == OP_DEC)
-    return 1;
-  else if (op == OP_NEG)
-    return 1;
-  else
-    return 0;
 }
 
 uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
@@ -2953,7 +2957,7 @@ uint64_t eval_element_size(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-void fit_array_sort(uint64_t* array_sid, uint64_t index, uint64_t value) {
+void fit_array_sorts(uint64_t* array_sid, uint64_t index, uint64_t value) {
   if (is_array(array_sid)) {
     fit_bitvec_sort(get_arg2(array_sid), index);
     fit_bitvec_sort(get_arg3(array_sid), value);
@@ -3052,34 +3056,36 @@ uint64_t is_virtual_address_in_stack_segment(uint64_t vaddr) {
   return 0;
 }
 
-uint64_t vaddr_to_index(uint64_t vaddr, uint64_t* sid) {
-  return right_shift(vaddr, log_two(get_power_of_two_size_in_bytes(eval_element_size(sid))));
+uint64_t vaddr_to_index(uint64_t vaddr) {
+  return right_shift(vaddr,
+    log_two(get_power_of_two_size_in_bytes(eval_element_size(SID_MEMORY_STATE))));
 }
 
-uint64_t index_to_vaddr(uint64_t index, uint64_t* sid) {
-  return left_shift(index, log_two(get_power_of_two_size_in_bytes(eval_element_size(sid))));
+uint64_t index_to_vaddr(uint64_t index) {
+  return left_shift(index,
+    log_two(get_power_of_two_size_in_bytes(eval_element_size(SID_MEMORY_STATE))));
 }
 
-void write_value(uint64_t* array_nid, uint64_t index, uint64_t value) {
+uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t read) {
   uint64_t* array;
   uint64_t vaddr;
 
-  fit_array_sort(get_sid(array_nid), index, value);
+  fit_array_sorts(get_sid(state_nid), index, value);
 
-  array = (uint64_t*) get_state(array_nid);
+  array = (uint64_t*) get_state(state_nid);
 
   if (array != (uint64_t*) 0) {
-    if (get_sid(array_nid) == SID_MEMORY_STATE) {
-      vaddr = index_to_vaddr(index, get_sid(array_nid));
+    if (get_sid(state_nid) == SID_MEMORY_STATE) {
+      vaddr = index_to_vaddr(index);
 
       if (is_virtual_address_in_data_segment(vaddr)) {
-        index = vaddr_to_index(vaddr - data_start, get_sid(array_nid));
+        index = vaddr_to_index(vaddr - data_start);
         array = get_data_array(array);
       } else if (is_virtual_address_in_heap_segment(vaddr)) {
-        index = vaddr_to_index(vaddr - heap_start, get_sid(array_nid));
+        index = vaddr_to_index(vaddr - heap_start);
         array = get_heap_array(array);
       } else if (is_virtual_address_in_stack_segment(vaddr)) {
-        index = vaddr_to_index(vaddr - stack_start, get_sid(array_nid));
+        index = vaddr_to_index(vaddr - stack_start);
         array = get_stack_array(array);
       } else {
         printf("%s: segmentation fault with index %lu @ 0x%lX\n", selfie_name, index, vaddr);
@@ -3088,12 +3094,16 @@ void write_value(uint64_t* array_nid, uint64_t index, uint64_t value) {
       }
     }
 
-    *(array + index) = value;
+    if (read)
+      value = *(array + index);
+    else
+      // TODO: log writes and only apply with next
+      *(array + index) = value;
 
-    return;
+    return value;
   }
 
-  printf("%s: write uninitialized array error\n", selfie_name);
+  printf("%s: uninitialized state access error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -3107,6 +3117,8 @@ uint64_t is_comparison_operator(char* op) {
 
 uint64_t is_bitwise_operator(char* op) {
   if (op == OP_AND)
+    return 1;
+  else if (op == OP_SLL)
     return 1;
   else if (op == OP_SRL)
     return 1;
@@ -3323,102 +3335,6 @@ uint64_t eval_slice(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t eval_unary_op(uint64_t* line) {
-  char* op;
-  uint64_t* value_nid;
-  uint64_t size;
-  uint64_t value;
-
-  op = get_op(line);
-
-  size = eval_bitvec_size(get_sid(line));
-
-  value_nid = get_arg1(line);
-
-  if (op == OP_INC) {
-    match_sorts(get_sid(line), get_sid(value_nid), "inc operand");
-
-    value = sign_extend(eval_line(value_nid), size);
-
-    set_state(line, sign_shrink(value + 1, size));
-
-    set_step(line, current_step);
-
-    return get_state(line);
-  } else if (op == OP_DEC) {
-    match_sorts(get_sid(line), get_sid(value_nid), "dec operand");
-
-    value = sign_extend(eval_line(value_nid), size);
-
-    set_state(line, sign_shrink(value - 1, size));
-
-    set_step(line, current_step);
-
-    return get_state(line);
-  }
-
-  printf("%s: unknown unary operator %s\n", selfie_name, op);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-uint64_t eval_ite(uint64_t* line) {
-  uint64_t* if_nid;
-  uint64_t* then_nid;
-  uint64_t* else_nid;
-
-  if_nid   = get_arg1(line);
-  then_nid = get_arg2(line);
-  else_nid = get_arg3(line);
-
-  match_sorts(get_sid(if_nid), SID_BOOLEAN, "ite if");
-
-  match_sorts(get_sid(line), get_sid(then_nid), "ite then");
-  match_sorts(get_sid(line), get_sid(else_nid), "ite else");
-
-  if (eval_line(if_nid))
-    set_state(line, eval_line(then_nid));
-  else
-    set_state(line, eval_line(else_nid));
-
-  set_step(line, current_step);
-
-  return get_state(line);
-}
-
-uint64_t eval_write(uint64_t* line) {
-  uint64_t* array_nid;
-  uint64_t* index_nid;
-  uint64_t* value_nid;
-  uint64_t index;
-  uint64_t value;
-
-  if (is_array(get_sid(line))) {
-    array_nid = get_arg1(line);
-    index_nid = get_arg2(line);
-    value_nid = get_arg3(line);
-
-    match_sorts(get_sid(line), get_sid(array_nid), "write array");
-    match_array_sorts(get_sid(array_nid), get_sid(index_nid), get_sid(value_nid));
-
-    array_nid = (uint64_t*) eval_line(array_nid);
-    index     = eval_line(index_nid);
-    value     = eval_line(value_nid);
-
-    write_value(array_nid, index, value);
-
-    set_state(line, (uint64_t) array_nid);
-
-    set_step(line, current_step);
-
-    return get_state(line);
-  }
-
-  printf("%s: write non-array error\n", selfie_name);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
 uint64_t eval_concat(uint64_t* line) {
   uint64_t size;
   uint64_t* left_nid;
@@ -3453,60 +3369,94 @@ uint64_t eval_concat(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t eval_binary_op(uint64_t* line) {
-  char* op;
-  uint64_t* left_nid;
-  uint64_t* right_nid;
-  uint64_t size;
-  uint64_t left_value;
-  uint64_t right_value;
+uint64_t eval_ite(uint64_t* line) {
+  uint64_t* if_nid;
+  uint64_t* then_nid;
+  uint64_t* else_nid;
 
-  op = get_op(line);
+  if_nid   = get_arg1(line);
+  then_nid = get_arg2(line);
+  else_nid = get_arg3(line);
 
-  left_nid  = get_arg1(line);
-  right_nid = get_arg2(line);
+  match_sorts(get_sid(if_nid), SID_BOOLEAN, "ite if");
 
-  if (is_n_times_n_operator(op)) {
-    match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
+  match_sorts(get_sid(line), get_sid(then_nid), "ite then");
+  match_sorts(get_sid(line), get_sid(else_nid), "ite else");
 
-    left_value  = eval_line(left_nid);
-    right_value = eval_line(right_nid);
+  if (eval_line(if_nid))
+    set_state(line, eval_line(then_nid));
+  else
+    set_state(line, eval_line(else_nid));
 
-    if (is_bitwise_operator(op)) {
-      match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
+  set_step(line, current_step);
 
-      if (op == OP_AND)
-        set_state(line, bitwise_and(left_value, right_value));
-      else if (op == OP_SRL)
-        set_state(line, right_shift(left_value, right_value));
-    } else {
-      size = eval_bitvec_size(get_sid(left_nid));
+  return get_state(line);
+}
 
-      left_value  = sign_extend(left_value, size);
-      right_value = sign_extend(right_value, size);
+uint64_t eval_read(uint64_t* line) {
+  uint64_t* read_nid;
+  uint64_t* index_nid;
+  uint64_t* state_nid;
+  uint64_t index;
 
-      if (is_arithmetic_operator(op)) {
-        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+  read_nid = get_arg1(line);
 
-        if (op == OP_ADD)
-          set_state(line, sign_shrink(left_value + right_value, size));
-        else if (op == OP_SUB)
-          set_state(line, sign_shrink(left_value - right_value, size));
-      } else if (is_comparison_operator(op)) {
-        if (op == OP_ULTE) {
-          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+  if (is_array(get_sid(read_nid))) {
+    index_nid = get_arg2(line);
 
-          set_state(line, left_value <= right_value);
-        }
-      }
+    match_array_sorts(get_sid(read_nid), get_sid(index_nid), get_sid(line));
+
+    state_nid = (uint64_t*) eval_line(read_nid);
+
+    if (get_op(state_nid) == OP_STATE) {
+      index = eval_line(index_nid);
+
+      set_state(line, read_or_write(state_nid, index, 0, 1));
+
+      set_step(line, current_step);
+
+      return get_state(line);
     }
-
-    set_step(line, current_step);
-
-    return get_state(line);
   }
 
-  printf("%s: unknown binary operator %s\n", selfie_name, op);
+  printf("%s: read error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t eval_write(uint64_t* line) {
+  uint64_t* write_nid;
+  uint64_t* index_nid;
+  uint64_t* value_nid;
+  uint64_t* state_nid;
+  uint64_t index;
+  uint64_t value;
+
+  if (is_array(get_sid(line))) {
+    write_nid = get_arg1(line);
+    index_nid = get_arg2(line);
+    value_nid = get_arg3(line);
+
+    match_sorts(get_sid(line), get_sid(write_nid), "write");
+    match_array_sorts(get_sid(write_nid), get_sid(index_nid), get_sid(value_nid));
+
+    state_nid = (uint64_t*) eval_line(write_nid);
+
+    if (get_op(state_nid) == OP_STATE) {
+      index = eval_line(index_nid);
+      value = eval_line(value_nid);
+
+      read_or_write(state_nid, index, value, 0);
+
+      set_state(line, (uint64_t) state_nid);
+
+      set_step(line, current_step);
+
+      return get_state(line);
+    }
+  }
+
+  printf("%s: write error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -3570,6 +3520,105 @@ uint64_t eval_init(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_unary_op(uint64_t* line) {
+  char* op;
+  uint64_t* value_nid;
+  uint64_t size;
+  uint64_t value;
+
+  op = get_op(line);
+
+  size = eval_bitvec_size(get_sid(line));
+
+  value_nid = get_arg1(line);
+
+  if (op == OP_INC) {
+    match_sorts(get_sid(line), get_sid(value_nid), "inc operand");
+
+    value = sign_extend(eval_line(value_nid), size);
+
+    set_state(line, sign_shrink(value + 1, size));
+
+    set_step(line, current_step);
+
+    return get_state(line);
+  } else if (op == OP_DEC) {
+    match_sorts(get_sid(line), get_sid(value_nid), "dec operand");
+
+    value = sign_extend(eval_line(value_nid), size);
+
+    set_state(line, sign_shrink(value - 1, size));
+
+    set_step(line, current_step);
+
+    return get_state(line);
+  }
+
+  printf("%s: unknown unary operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t eval_binary_op(uint64_t* line) {
+  char* op;
+  uint64_t* left_nid;
+  uint64_t* right_nid;
+  uint64_t left_value;
+  uint64_t right_value;
+  uint64_t size;
+
+  op = get_op(line);
+
+  left_nid  = get_arg1(line);
+  right_nid = get_arg2(line);
+
+  if (is_n_times_n_operator(op)) {
+    match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
+
+    left_value  = eval_line(left_nid);
+    right_value = eval_line(right_nid);
+
+    size = eval_bitvec_size(get_sid(left_nid));
+
+    if (is_bitwise_operator(op)) {
+      match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
+
+      if (op == OP_AND)
+        set_state(line, bitwise_and(left_value, right_value));
+      else if (op == OP_SLL)
+        set_state(line, sign_shrink(left_shift(left_value, right_value), size));
+      else if (op == OP_SRL)
+        set_state(line, right_shift(left_value, right_value));
+    } else {
+      left_value  = sign_extend(left_value, size);
+      right_value = sign_extend(right_value, size);
+
+      if (is_arithmetic_operator(op)) {
+        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+
+        if (op == OP_ADD)
+          set_state(line, sign_shrink(left_value + right_value, size));
+        else if (op == OP_SUB)
+          set_state(line, sign_shrink(left_value - right_value, size));
+      } else if (is_comparison_operator(op)) {
+        if (op == OP_ULTE) {
+          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+
+          set_state(line, left_value <= right_value);
+        }
+      }
+    }
+
+    set_step(line, current_step);
+
+    return get_state(line);
+  }
+
+  printf("%s: unknown binary operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_line(uint64_t* line) {
   char* op;
 
@@ -3587,16 +3636,18 @@ uint64_t eval_line(uint64_t* line) {
     return eval_ext(line);
   else if (op == OP_SLICE)
     return eval_slice(line);
-  else if (is_unary_op(op))
-    return eval_unary_op(line);
-  else if (op == OP_ITE)
-    return eval_ite(line);
-  else if (op == OP_WRITE)
-    return eval_write(line);
   else if (op == OP_CONCAT)
     return eval_concat(line);
+  else if (op == OP_ITE)
+    return eval_ite(line);
+  else if (op == OP_READ)
+    return eval_read(line);
+  else if (op == OP_WRITE)
+    return eval_write(line);
   else if (op == OP_INIT)
     return eval_init(line);
+  else if (is_unary_op(op))
+    return eval_unary_op(line);
   else
     return eval_binary_op(line);
 }
@@ -3777,14 +3828,20 @@ void new_register_file_state(uint64_t core) {
   init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  if (CODE_LOADED == 0)
+  eval_line(init_zeroed_register_file_nid);
+
+  if (CODE_LOADED == 0) {
+    value_nid = cast_virtual_address_to_machine_word(
+      new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
     initial_register_file_nid =
-      store_register_value(NID_SP,
-        cast_virtual_address_to_machine_word(
-          new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1")),
-        "write initial sp value",
-        state_register_file_nid);
-  else {
+      store_register_value(NID_SP, value_nid, "write initial sp value", state_register_file_nid);
+
+    if (eval_line(load_register_value(NID_SP, "read initial sp value", initial_register_file_nid)) != eval_line(value_nid)) {
+      printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(REG_SP));
+
+      exit(EXITCODE_SYSTEMERROR);
+    }
+  } else {
     initial_register_file_nid = state_register_file_nid;
 
     reg = 0;
@@ -3806,6 +3863,12 @@ void new_register_file_state(uint64_t core) {
         initial_register_file_nid =
           store_register_value(reg_nid, value_nid,
             "write initial register value", initial_register_file_nid);
+
+        if (eval_line(load_register_value(reg_nid, "read initial register value", initial_register_file_nid)) != value) {
+          printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(reg));
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
       }
 
       reg = reg + 1;
@@ -3813,8 +3876,6 @@ void new_register_file_state(uint64_t core) {
   }
 
   if (initial_register_file_nid != state_register_file_nid) {
-    eval_line(init_zeroed_register_file_nid);
-
     next_zeroed_register_file_nid = new_next(SID_REGISTER_STATE,
       state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
 
@@ -4095,7 +4156,11 @@ void new_code_segment(uint64_t core) {
           store_single_word_at_virtual_address(vaddr_nid, ir_nid, initial_code_segment_nid);
 
         // evaluate on-the-fly to avoid stack overflow later
-        eval_line(initial_code_segment_nid);
+        if (eval_line(load_single_word_at_virtual_address(vaddr_nid, initial_code_segment_nid)) != ir) {
+          printf("%s: initial code segment value mismatch @ 0x%lX\n", selfie_name, pc);
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
 
         // for printing initial code segment iteratively, again to avoid stack overflow later
         *(initial_code_segment_nids + (pc - code_start) / INSTRUCTIONSIZE) = (uint64_t) initial_code_segment_nid;
@@ -4242,7 +4307,11 @@ void new_memory_state(uint64_t core) {
             store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_main_memory_nid);
 
           // evaluate on-the-fly to avoid stack overflow later
-          eval_line(initial_main_memory_nid);
+          if (eval_line(load_machine_word_at_virtual_address(vaddr_nid, initial_main_memory_nid)) != data) {
+            printf("%s: initial main memory value mismatch @ 0x%lX\n", selfie_name, vaddr);
+
+            exit(EXITCODE_SYSTEMERROR);
+          }
         }
       }
 
