@@ -848,7 +848,7 @@ uint64_t* fetch_compressed_instruction(uint64_t* pc_nid, uint64_t* code_segment_
 uint64_t SYNCHRONIZED_MEMORY = 0; // flag for synchronized main memory across cores
 uint64_t SHARED_MEMORY = 0;       // flag for shared main memory across cores
 
-uint64_t VIRTUAL_ADDRESS_SPACE = 0; // number of bits in virtual addresses
+uint64_t VIRTUAL_ADDRESS_SPACE = 32; // number of bits in virtual addresses
 
 uint64_t* SID_VIRTUAL_ADDRESS = (uint64_t*) 0;
 
@@ -870,6 +870,8 @@ uint64_t* NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1   = (uint64_t*) 0;
 uint64_t* NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = (uint64_t*) 0;
 uint64_t* NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = (uint64_t*) 0;
 
+uint64_t CODEWORDSIZEINBITS = 32;
+
 uint64_t* SID_CODE_WORD = (uint64_t*) 0;
 
 uint64_t* NID_CODE_WORD_0 = (uint64_t*) 0;
@@ -881,6 +883,8 @@ uint64_t* SID_CODE_STATE   = (uint64_t*) 0;
 
 uint64_t* NID_CODE_START = (uint64_t*) 0;
 uint64_t* NID_CODE_END   = (uint64_t*) 0;
+
+uint64_t MEMORYWORDSIZEINBITS = 64;
 
 uint64_t* SID_MEMORY_WORD = (uint64_t*) 0;
 
@@ -951,20 +955,11 @@ uint64_t* eval_core_0_memory_data_flow_nid  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_word_sort_nid, uint64_t* memory_word_sort_nid) {
+void init_memory_sorts() {
   uint64_t saved_reuse_lines;
 
-  // byte-addressed virtual memory
-
-  // assert: number of virtual address bits is a power of 2 >= 8 bits
-
-  VIRTUAL_ADDRESS_SPACE = number_of_virtual_address_bits;
-
-  if (IS64BITSYSTEM * IS64BITTARGET > 0) {
-    if (VIRTUAL_ADDRESS_SPACE > DOUBLEWORDSIZEINBITS)
-      VIRTUAL_ADDRESS_SPACE = DOUBLEWORDSIZEINBITS;
-  } else if (VIRTUAL_ADDRESS_SPACE > SINGLEWORDSIZEINBITS)
-      VIRTUAL_ADDRESS_SPACE = SINGLEWORDSIZEINBITS;
+  if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
+    VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
 
   SID_VIRTUAL_ADDRESS = new_bitvec(VIRTUAL_ADDRESS_SPACE,
     format_comment("%lu-bit virtual address", VIRTUAL_ADDRESS_SPACE));
@@ -989,7 +984,11 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   // code segment
 
-  SID_CODE_WORD = code_word_sort_nid;
+  if (CODEWORDSIZEINBITS > WORDSIZEINBITS)
+    CODEWORDSIZEINBITS = WORDSIZEINBITS;
+
+  SID_CODE_WORD = new_bitvec(CODEWORDSIZEINBITS,
+    format_comment("%lu-bit code word", CODEWORDSIZEINBITS));
 
   NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, 0, "code word 0");
 
@@ -1002,7 +1001,11 @@ void init_memory_sorts(uint64_t number_of_virtual_address_bits, uint64_t* code_w
 
   // main memory
 
-  SID_MEMORY_WORD = memory_word_sort_nid;
+  if (MEMORYWORDSIZEINBITS > WORDSIZEINBITS)
+    MEMORYWORDSIZEINBITS = WORDSIZEINBITS;
+
+  SID_MEMORY_WORD = new_bitvec(MEMORYWORDSIZEINBITS,
+    format_comment("%lu-bit memory word", MEMORYWORDSIZEINBITS));
 
   NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
 
@@ -2393,9 +2396,12 @@ char* division_by_zero_check_option  = (char*) 0;
 char* division_overflow_check_option = (char*) 0;
 char* seg_faults_check_option        = (char*) 0;
 
-char* cores_option           = (char*) 0;
-char* heap_allowance_option  = (char*) 0;
-char* stack_allowance_option = (char*) 0;
+char* cores_option                 = (char*) 0;
+char* virtual_address_space_option = (char*) 0;
+char* code_word_size_option        = (char*) 0;
+char* memory_word_size_option      = (char*) 0;
+char* heap_allowance_option        = (char*) 0;
+char* stack_allowance_option       = (char*) 0;
 
 uint64_t check_exit_code         = 1;
 uint64_t check_division_by_zero  = 1;
@@ -2447,10 +2453,7 @@ void init_model_generator() {
 
   init_register_file_sorts();
 
-  if (IS64BITTARGET)
-    init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_DOUBLE_WORD);
-  else
-    init_memory_sorts(SINGLEWORDSIZEINBITS, SID_SINGLE_WORD, SID_SINGLE_WORD);
+  init_memory_sorts();
 
   init_instruction_sorts();
 }
@@ -3744,9 +3747,13 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
     init_program_break_nid  = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
       NID_HEAP_START, "initial program break is start of heap segment");
 
+    eval_line(init_program_break_nid);
+
     state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
     init_file_descriptor_nid  = new_init(SID_MACHINE_WORD, state_file_descriptor_nid,
       NID_MACHINE_WORD_0, "initial file descriptor is zero");
+
+    eval_line(init_file_descriptor_nid);
 
     next_program_break_nid   = state_program_break_nid;
     next_file_descriptor_nid = state_file_descriptor_nid;
@@ -3763,10 +3770,14 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     param_readable_bytes_nid, "number of readable bytes");
 
+  eval_line(init_readable_bytes_nid);
+
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
+
+  eval_line(init_read_bytes_nid);
 }
 
 void print_kernel_state(uint64_t core) {
@@ -7836,6 +7847,8 @@ void new_core_state(uint64_t core) {
 
   state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
   init_core_pc_nid  = new_init(SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
+
+  eval_line(init_core_pc_nid);
 }
 
 void print_core_state(uint64_t core) {
@@ -8730,6 +8743,12 @@ void rotor() {
   if (check_seg_faults == 0)
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
   w = w + dprintf(output_fd, "; with %s %lu\n", cores_option, CORES);
+  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
+    virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE);
+  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
+    code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS);
+  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
+    memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS);
   w = w + dprintf(output_fd, "; with %s %lu\n", heap_allowance_option, heap_allowance);
   w = w + dprintf(output_fd, "; with %s %lu\n\n", stack_allowance_option, stack_allowance);
   if (binary_name) {
@@ -8816,6 +8835,9 @@ uint64_t selfie_model() {
       division_overflow_check_option = "-Pnodivoverflow";
       seg_faults_check_option        = "-Pnosegfaults";
       cores_option                   = "-cores";
+      virtual_address_space_option   = "-virtualaddressspace";
+      code_word_size_option          = "-codewordsize";
+      memory_word_size_option        = "-memorywordsize";
       heap_allowance_option          = "-heap";
       stack_allowance_option         = "-stack";
 
@@ -8844,6 +8866,33 @@ uint64_t selfie_model() {
 
             if (number_of_remaining_arguments() > 1) {
               CORES = atoi(peek_argument(1));
+
+              get_argument();
+            } else
+              return EXITCODE_BADARGUMENTS;
+          } else if (string_compare(peek_argument(1), virtual_address_space_option)) {
+            get_argument();
+
+            if (number_of_remaining_arguments() > 1) {
+              VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
+
+              get_argument();
+            } else
+              return EXITCODE_BADARGUMENTS;
+          } else if (string_compare(peek_argument(1), code_word_size_option)) {
+            get_argument();
+
+            if (number_of_remaining_arguments() > 1) {
+              CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+              get_argument();
+            } else
+              return EXITCODE_BADARGUMENTS;
+          } else if (string_compare(peek_argument(1), memory_word_size_option)) {
+            get_argument();
+
+            if (number_of_remaining_arguments() > 1) {
+              MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
 
               get_argument();
             } else
