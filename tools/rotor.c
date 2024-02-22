@@ -214,6 +214,9 @@ void init_model() {
 // ---------------------------- SYNTAX -----------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_bitvector(uint64_t* line);
+uint64_t is_array(uint64_t* line);
+
 void print_nid(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
@@ -325,6 +328,10 @@ uint64_t eval_binary_op(uint64_t* line);
 uint64_t eval_init(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t UNINITIALIZED = -1; // uninitialized state
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2495,7 +2502,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
   set_state(new_line, 0);
-  set_step(new_line, -1);
+  set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
 
   if (reuse_lines)
@@ -2586,22 +2593,30 @@ uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* co
 // ---------------------------- SYNTAX -----------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_bitvector(uint64_t* line) {
+  return (char*) get_arg1(line) == BITVEC;
+}
+
+uint64_t is_array(uint64_t* line) {
+  return (char*) get_arg1(line) == ARRAY;
+}
+
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
   w = w + dprintf(output_fd, "%lu", nid);
 }
 
 uint64_t print_sort(uint64_t nid, uint64_t* line) {
-  if ((char*) get_arg1(line) == ARRAY) {
+  if (is_array(line)) {
     nid = print_referenced_line(nid, get_arg2(line));
     nid = print_referenced_line(nid, get_arg3(line));
   }
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s", OP_SORT);
-  if ((char*) get_arg1(line) == BITVEC)
+  if (is_bitvector(line))
     w = w + dprintf(output_fd, " %s %lu", BITVEC, eval_bitvec_size(line));
   else
-    // assert: theory of bitvector arrays
+    // assert: array
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
   return nid;
 }
@@ -2853,7 +2868,7 @@ char* format_comment_binary(char* comment, uint64_t value) {
 uint64_t eval_bitvec_size(uint64_t* line) {
   uint64_t size;
 
-  if ((char*) get_arg1(line) == BITVEC) {
+  if (is_bitvector(line)) {
     size = (uint64_t) get_arg2(line);
 
     if (size > 0)
@@ -2908,7 +2923,7 @@ void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value) {
 uint64_t eval_array_size(uint64_t* line) {
   uint64_t size;
 
-  if ((char*) get_arg1(line) == ARRAY) {
+  if (is_array(line)) {
     size = eval_bitvec_size(get_arg2(line));
 
     if (size <= VIRTUAL_ADDRESS_SPACE)
@@ -2924,7 +2939,7 @@ uint64_t eval_array_size(uint64_t* line) {
 uint64_t eval_element_size(uint64_t* line) {
   uint64_t size;
 
-  if ((char*) get_arg1(line) == ARRAY) {
+  if (is_array(line)) {
     size = eval_bitvec_size(get_arg3(line));
 
     if (size <= SIZEOFUINT64INBITS)
@@ -2938,7 +2953,7 @@ uint64_t eval_element_size(uint64_t* line) {
 }
 
 void fit_array_sort(uint64_t* array_sid, uint64_t index, uint64_t value) {
-  if ((char*) get_arg1(array_sid) == ARRAY) {
+  if (is_array(array_sid)) {
     fit_bitvec_sort(get_arg2(array_sid), index);
     fit_bitvec_sort(get_arg3(array_sid), value);
 
@@ -3179,18 +3194,24 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 }
 
 uint64_t get_cached_state(uint64_t* line) {
-  if (get_op(line) == OP_STATE)
-    if ((char*) get_arg1(get_sid(line)) == ARRAY)
+  if (get_step(line) == current_step) {
+    if (is_bitvector(get_sid(line)))
+      return get_state(line);
+    else
+      // assert: array
       return (uint64_t) line;
+  }
 
-  return get_state(line);
+  printf("%s: uninitialized cache access\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_constant_value(uint64_t* line) {
   uint64_t* sid;
   uint64_t value;
 
-  if (get_step(line) == (uint64_t) -1) {
+  if (get_step(line) == UNINITIALIZED) {
     sid   = get_sid(line);
     value = (uint64_t) get_arg1(line);
 
@@ -3235,15 +3256,8 @@ uint64_t eval_input(uint64_t* line) {
 
   op = get_op(line);
 
-  if (op == OP_STATE) {
-    if (get_step(line) == current_step)
-      return get_cached_state(line);
-    else {
-      printf("%s: uninitialized state access\n", selfie_name);
-
-      exit(EXITCODE_SYSTEMERROR);
-    }
-  }
+  if (op == OP_STATE)
+    return get_cached_state(line);
 
   printf("%s: unknown line operator %s\n", selfie_name, op);
 
@@ -3378,19 +3392,17 @@ uint64_t eval_write(uint64_t* line) {
   uint64_t index;
   uint64_t value;
 
-  if ((char*) get_arg1(get_sid(line)) == ARRAY) {
+  if (is_array(get_sid(line))) {
     array_nid = get_arg1(line);
     index_nid = get_arg2(line);
     value_nid = get_arg3(line);
 
     match_sorts(get_sid(line), get_sid(array_nid), "write array");
-
     match_array_sorts(get_sid(array_nid), get_sid(index_nid), get_sid(value_nid));
 
     array_nid = (uint64_t*) eval_line(array_nid);
-
-    index = eval_line(index_nid);
-    value = eval_line(value_nid);
+    index     = eval_line(index_nid);
+    value     = eval_line(value_nid);
 
     write_value(array_nid, index, value);
 
@@ -3470,57 +3482,57 @@ uint64_t eval_init(uint64_t* line) {
 
   state_nid = get_arg1(line);
 
-  if (get_op(state_nid) != OP_STATE) {
-    printf("%s: init %s error\n", selfie_name, get_op(state_nid));
+  if (get_op(state_nid) == OP_STATE) {
+    match_sorts(get_sid(line), get_sid(state_nid), "init state");
 
-    exit(EXITCODE_SYSTEMERROR);
-  }
+    value_nid = get_arg2(line);
 
-  match_sorts(get_sid(line), get_sid(state_nid), "init state");
+    if (is_bitvector(get_sid(state_nid))) {
+      match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
 
-  value_nid = get_arg2(line);
-
-  if ((char*) get_arg1(get_sid(state_nid)) == BITVEC) {
-    match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
-
-    set_state(state_nid, eval_line(value_nid));
-
-    set_step(state_nid, current_step);
-  } else {
-    // assert: sid of state line is ARRAY
-    if ((char*) get_arg1(get_sid(value_nid)) == BITVEC) {
-      match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
-
-      if (eval_line(value_nid) != 0) {
-        printf("%s: init non-zero array element error\n", selfie_name);
-
-        exit(EXITCODE_SYSTEMERROR);
-      }
-
-      set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+      set_state(state_nid, eval_line(value_nid));
 
       set_step(state_nid, current_step);
     } else {
-      // assert: sid of value line is ARRAY
-      match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
+      // assert: sid of state line is ARRAY
+      if (is_bitvector(get_sid(value_nid))) {
+        match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
 
-      value_nid = (uint64_t*) eval_line(value_nid);
+        if (eval_line(value_nid) != 0) {
+          printf("%s: init non-zero array element error\n", selfie_name);
 
-      if (get_state(state_nid) != get_state(value_nid)) {
-        set_state(state_nid, get_state(value_nid));
+          exit(EXITCODE_SYSTEMERROR);
+        }
+
+        set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
 
         set_step(state_nid, current_step);
+      } else {
+        // assert: sid of value line is ARRAY
+        match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
 
-        // TODO: reinitialize state
-        set_state(value_nid, 0);
+        value_nid = (uint64_t*) eval_line(value_nid);
+
+        if (get_state(state_nid) != get_state(value_nid)) {
+          set_state(state_nid, get_state(value_nid));
+
+          set_step(state_nid, current_step);
+
+          // TODO: reinitialize state
+          set_state(value_nid, 0);
+        }
       }
     }
+
+    set_step(line, current_step);
+
+    // assert: return value is never used
+    return (uint64_t) state_nid;
   }
 
-  set_step(line, current_step);
+  printf("%s: init %s error\n", selfie_name, get_op(state_nid));
 
-  // assert: return value is never used
-  return (uint64_t) state_nid;
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t eval_line(uint64_t* line) {
