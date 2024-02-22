@@ -3196,11 +3196,11 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 
 uint64_t get_cached_state(uint64_t* line) {
   if (get_step(line) == current_step) {
-    if (is_bitvector(get_sid(line)))
-      return get_state(line);
-    else
-      // assert: array
-      return (uint64_t) line;
+    if (get_op(line) == OP_STATE)
+      if (is_array(get_sid(line)))
+        return (uint64_t) line;
+
+    return get_state(line);
   }
 
   printf("%s: uninitialized cache access\n", selfie_name);
