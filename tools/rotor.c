@@ -324,6 +324,7 @@ uint64_t eval_slice(uint64_t* line);
 uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_ite(uint64_t* line);
 uint64_t eval_write(uint64_t* line);
+uint64_t eval_concat(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
 uint64_t eval_init(uint64_t* line);
 
@@ -3418,6 +3419,40 @@ uint64_t eval_write(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_concat(uint64_t* line) {
+  uint64_t size;
+  uint64_t* left_nid;
+  uint64_t* right_nid;
+  uint64_t left_size;
+  uint64_t right_size;
+  uint64_t left_value;
+  uint64_t right_value;
+
+  size = eval_bitvec_size(get_sid(line));
+
+  left_nid  = get_arg1(line);
+  right_nid = get_arg2(line);
+
+  left_size  = eval_bitvec_size(get_sid(left_nid));
+  right_size = eval_bitvec_size(get_sid(right_nid));
+
+  if (size == left_size + right_size) {
+    left_value  = eval_line(left_nid);
+    right_value = eval_line(right_nid);
+
+    set_state(line, left_shift(left_value, right_size) + right_value);
+
+    set_step(line, current_step);
+
+    return get_state(line);
+  }
+
+  printf("%s: concat %lu-bit and %lu-bit bitvectors to missorted %lu-bit bitvector\n", selfie_name,
+    left_size, right_size, size);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_binary_op(uint64_t* line) {
   char* op;
   uint64_t* left_nid;
@@ -3558,6 +3593,8 @@ uint64_t eval_line(uint64_t* line) {
     return eval_ite(line);
   else if (op == OP_WRITE)
     return eval_write(line);
+  else if (op == OP_CONCAT)
+    return eval_concat(line);
   else if (op == OP_INIT)
     return eval_init(line);
   else
