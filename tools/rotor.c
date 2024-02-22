@@ -3113,7 +3113,9 @@ uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint
 }
 
 uint64_t is_comparison_operator(char* op) {
-  if (op == OP_ULTE)
+  if (op == OP_EQ)
+    return 1;
+  else if (op == OP_ULTE)
     return 1;
   else
     return 0;
@@ -3618,11 +3620,12 @@ uint64_t eval_binary_op(uint64_t* line) {
         else if (op == OP_SUB)
           set_state(line, sign_shrink(left_value - right_value, size));
       } else if (is_comparison_operator(op)) {
-        if (op == OP_ULTE) {
-          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+        match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
 
+        if (op == OP_EQ)
+          set_state(line, left_value == right_value);
+        else if (op == OP_ULTE)
           set_state(line, left_value <= right_value);
-        }
       }
     }
 
