@@ -341,6 +341,7 @@ uint64_t UNINITIALIZED = -1; // uninitialized state
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t current_step = 0; // first step in evaluation is 0
+uint64_t next_step    = 0; // initial next step in evaluation is 0
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3207,15 +3208,22 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 }
 
 uint64_t get_cached_state(uint64_t* line) {
-  if (get_step(line) == current_step) {
+  if (get_step(line) != UNINITIALIZED) {
     if (get_op(line) == OP_STATE)
-      if (is_array(get_sid(line)))
-        return (uint64_t) line;
-
-    return get_state(line);
+      if (is_bitvector(get_sid(line))) {
+        if (get_step(line) == current_step)
+          return get_state(line);
+      } else {
+        // assert: array
+        if (get_step(line) >= current_step)
+          // TODO: log writes and only apply with next
+          return (uint64_t) line;
+      }
+    else if (get_step(line) == next_step)
+      return get_state(line);
   }
 
-  printf("%s: uninitialized cache access\n", selfie_name);
+  printf("%s: cache miss\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -3243,7 +3251,7 @@ uint64_t eval_constant_value(uint64_t* line) {
   } else
     value = get_state(line);
 
-  set_step(line, current_step);
+  set_step(line, next_step);
 
   return value;
 }
@@ -3295,7 +3303,7 @@ uint64_t eval_ext(uint64_t* line) {
       // assert: unsigned extension
       set_state(line, eval_line(value_nid));
 
-    set_step(line, current_step);
+    set_step(line, next_step);
 
     return get_state(line);
   }
@@ -3324,7 +3332,7 @@ uint64_t eval_slice(uint64_t* line) {
       if (eval_bitvec_size(get_sid(line)) == u - l + 1) {
         set_state(line, get_bits(eval_line(value_nid), l, u - l + 1));
 
-        set_step(line, current_step);
+        set_step(line, next_step);
 
         return get_state(line);
       }
@@ -3358,7 +3366,7 @@ uint64_t eval_concat(uint64_t* line) {
 
     set_state(line, left_shift(left_value, right_size) + right_value);
 
-    set_step(line, current_step);
+    set_step(line, next_step);
 
     return get_state(line);
   }
@@ -3388,7 +3396,7 @@ uint64_t eval_ite(uint64_t* line) {
   else
     set_state(line, eval_line(else_nid));
 
-  set_step(line, current_step);
+  set_step(line, next_step);
 
   return get_state(line);
 }
@@ -3408,15 +3416,16 @@ uint64_t eval_read(uint64_t* line) {
 
     state_nid = (uint64_t*) eval_line(read_nid);
 
-    if (get_op(state_nid) == OP_STATE) {
-      index = eval_line(index_nid);
+    if (get_op(state_nid) == OP_STATE)
+      if (get_step(state_nid) == current_step) {
+        index = eval_line(index_nid);
 
-      set_state(line, read_or_write(state_nid, index, 0, 1));
+        set_state(line, read_or_write(state_nid, index, 0, 1));
 
-      set_step(line, current_step);
+        set_step(line, next_step);
 
-      return get_state(line);
-    }
+        return get_state(line);
+      }
   }
 
   printf("%s: read error\n", selfie_name);
@@ -3442,18 +3451,23 @@ uint64_t eval_write(uint64_t* line) {
 
     state_nid = (uint64_t*) eval_line(write_nid);
 
-    if (get_op(state_nid) == OP_STATE) {
-      index = eval_line(index_nid);
-      value = eval_line(value_nid);
+    if (get_op(state_nid) == OP_STATE)
+      if (get_step(state_nid) != UNINITIALIZED)
+        if (get_step(state_nid) >= current_step) {
+          index = eval_line(index_nid);
+          value = eval_line(value_nid);
 
-      read_or_write(state_nid, index, value, 0);
+          read_or_write(state_nid, index, value, 0);
 
-      set_state(line, (uint64_t) state_nid);
+          // TODO: log writes and only apply with next
+          set_step(state_nid, next_step);
 
-      set_step(line, current_step);
+          set_state(line, (uint64_t) state_nid);
 
-      return get_state(line);
-    }
+          set_step(line, next_step);
+
+          return get_state(line);
+        }
   }
 
   printf("%s: write error\n", selfie_name);
@@ -3473,7 +3487,7 @@ uint64_t eval_init(uint64_t* line) {
     value_nid = get_arg2(line);
 
     if (is_bitvector(get_sid(state_nid))) {
-      match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvec");
+      match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
 
       set_state(state_nid, eval_line(value_nid));
 
@@ -3539,7 +3553,7 @@ uint64_t eval_unary_op(uint64_t* line) {
 
     set_state(line, sign_shrink(value + 1, size));
 
-    set_step(line, current_step);
+    set_step(line, next_step);
 
     return get_state(line);
   } else if (op == OP_DEC) {
@@ -3549,7 +3563,7 @@ uint64_t eval_unary_op(uint64_t* line) {
 
     set_state(line, sign_shrink(value - 1, size));
 
-    set_step(line, current_step);
+    set_step(line, next_step);
 
     return get_state(line);
   }
@@ -3609,7 +3623,7 @@ uint64_t eval_binary_op(uint64_t* line) {
       }
     }
 
-    set_step(line, current_step);
+    set_step(line, next_step);
 
     return get_state(line);
   }
@@ -3624,7 +3638,7 @@ uint64_t eval_line(uint64_t* line) {
 
   op = get_op(line);
 
-  if (get_step(line) == current_step)
+  if (get_step(line) == next_step)
     return get_cached_state(line);
   else if (is_constant_op(op))
     return eval_constant_value(line);
