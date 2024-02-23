@@ -328,15 +328,17 @@ uint64_t eval_concat(uint64_t* line);
 uint64_t eval_ite(uint64_t* line);
 uint64_t eval_read(uint64_t* line);
 uint64_t eval_write(uint64_t* line);
-uint64_t eval_init(uint64_t* line);
 uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
+uint64_t eval_init(uint64_t* line);
+uint64_t eval_next(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t UNINITIALIZED = -1; // uninitialized state
+uint64_t INITIALIZED = 0;    // initialized state
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -3219,14 +3221,16 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 uint64_t get_cached_state(uint64_t* line) {
   if (get_step(line) != UNINITIALIZED) {
     if (get_op(line) == OP_STATE) {
-      if (is_bitvector(get_sid(line))) {
-        if (get_step(line) == current_step)
-          return get_state(line);
-      } else {
-        // assert: array
-        if (get_step(line) >= current_step)
-          // TODO: log writes and only apply with init and next
-          return (uint64_t) line;
+      if (get_step(line) >= current_step) {
+        if (is_bitvector(get_sid(line))) {
+          if (get_step(line) == current_step)
+            return get_state(line);
+        } else {
+          // assert: array
+          if (get_step(line) <= next_step)
+            // TODO: log writes and only apply with init and next
+            return (uint64_t) line;
+        }
       }
 
       printf("%s: non-current state access\n", selfie_name);
@@ -3666,6 +3670,151 @@ uint64_t eval_binary_op(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_init(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t* value_nid;
+
+  if (current_step == INITIALIZED)
+    if (current_step == next_step) {
+      if (get_step(line) == UNINITIALIZED) {
+        state_nid = get_arg1(line);
+
+        if (get_op(state_nid) == OP_STATE) {
+          if (get_step(state_nid) == UNINITIALIZED) {
+            match_sorts(get_sid(line), get_sid(state_nid), "init state");
+
+            value_nid = get_arg2(line);
+
+            if (is_bitvector(get_sid(state_nid))) {
+              match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
+
+              set_state(state_nid, eval_line(value_nid));
+
+              set_step(state_nid, INITIALIZED);
+            } else {
+              // assert: sid of state line is ARRAY
+              if (is_bitvector(get_sid(value_nid))) {
+                match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+
+                if (eval_line(value_nid) != 0) {
+                  printf("%s: init non-zero array element error\n", selfie_name);
+
+                  exit(EXITCODE_SYSTEMERROR);
+                }
+
+                set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+
+                set_step(state_nid, INITIALIZED);
+              } else {
+                // assert: sid of value line is ARRAY
+                match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
+
+                value_nid = (uint64_t*) eval_line(value_nid);
+
+                if (get_state(state_nid) != get_state(value_nid)) {
+                  set_state(state_nid, get_state(value_nid));
+
+                  set_step(state_nid, INITIALIZED);
+
+                  // TODO: reinitialize state
+                  set_state(value_nid, 0);
+                } else {
+                  printf("%s: init reinitializing array error\n", selfie_name);
+
+                  exit(EXITCODE_SYSTEMERROR);
+                }
+              }
+            }
+
+            set_step(line, INITIALIZED);
+
+            // assert: return value is never used
+            return (uint64_t) state_nid;
+          } else
+            printf("%s: init reinitializing state error\n", selfie_name);
+        } else
+          printf("%s: init %s error\n", selfie_name, get_op(state_nid));
+      } else
+        printf("%s: init reinitializing init error\n", selfie_name);
+
+      exit(EXITCODE_SYSTEMERROR);
+    }
+
+  printf("%s: init error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t eval_next(uint64_t* line) {
+  uint64_t current_next;
+  uint64_t* state_nid;
+  uint64_t* value_nid;
+
+  if (current_step < next_step)
+    if (current_step + 1 == next_step) {
+      current_next = current_step;
+
+      if (current_next == 0)
+        current_next = UNINITIALIZED;
+
+      if (get_step(line) == current_next) {
+        state_nid = get_arg1(line);
+
+        if (get_op(state_nid) == OP_STATE) {
+          if (get_step(state_nid) >= current_step) {
+            match_sorts(get_sid(line), get_sid(state_nid), "next state");
+
+            value_nid = get_arg2(line);
+
+            match_sorts(get_sid(state_nid), get_sid(value_nid), "next state and value");
+
+            if (is_bitvector(get_sid(state_nid))) {
+              if (get_step(state_nid) == current_step) {
+                set_state(state_nid, eval_line(value_nid));
+
+                set_step(state_nid, next_step);
+              } else {
+                printf("%s: next reupdating bitvector state error\n", selfie_name);
+
+                exit(EXITCODE_SYSTEMERROR);
+              }
+            } else {
+              // assert: sid of state line is ARRAY
+              value_nid = (uint64_t*) eval_line(value_nid);
+
+              if (get_step(state_nid) <= next_step)
+                if (get_state(state_nid) == get_state(value_nid))
+                  set_step(state_nid, next_step);
+                else {
+                  printf("%s: next reupdating state array error\n", selfie_name);
+
+                  exit(EXITCODE_SYSTEMERROR);
+                }
+              else {
+                printf("%s: next reupdating array state error\n", selfie_name);
+
+                exit(EXITCODE_SYSTEMERROR);
+              }
+            }
+
+            set_step(line, next_step);
+
+            // assert: return value is never used
+            return (uint64_t) state_nid;
+          } else
+            printf("%s: next non-current state error\n", selfie_name);
+        } else
+          printf("%s: next %s error\n", selfie_name, get_op(state_nid));
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    }
+
+  printf("%s: next error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_line(uint64_t* line) {
   char* op;
 
@@ -3693,6 +3842,8 @@ uint64_t eval_line(uint64_t* line) {
     return eval_write(line);
   else if (op == OP_INIT)
     return eval_init(line);
+  else if (op == OP_NEXT)
+    return eval_next(line);
   else if (is_unary_op(op))
     return eval_unary_op(line);
   else
