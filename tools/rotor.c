@@ -3101,7 +3101,7 @@ uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint
     if (read)
       value = *(array + index);
     else
-      // TODO: log writes and only apply with next
+      // TODO: log writes and only apply with init and next
       *(array + index) = value;
 
     return value;
@@ -3225,7 +3225,7 @@ uint64_t get_cached_state(uint64_t* line) {
       } else {
         // assert: array
         if (get_step(line) >= current_step)
-          // TODO: log writes and only apply with next
+          // TODO: log writes and only apply with init and next
           return (uint64_t) line;
       }
 
@@ -3429,6 +3429,7 @@ uint64_t eval_read(uint64_t* line) {
     state_nid = (uint64_t*) eval_line(read_nid);
 
     if (get_op(state_nid) == OP_STATE) {
+      // TODO: if current_step == next_step (during init) read after write is not detected
       if (get_step(state_nid) == current_step) {
         index = eval_line(index_nid);
 
@@ -3473,7 +3474,7 @@ uint64_t eval_write(uint64_t* line) {
 
           read_or_write(state_nid, index, value, 0);
 
-          // TODO: log writes and only apply with next
+          // TODO: log writes and only apply with init and next
           set_step(state_nid, next_step);
 
           set_state(line, (uint64_t) state_nid);
@@ -3539,6 +3540,10 @@ uint64_t eval_init(uint64_t* line) {
 
               // TODO: reinitialize state
               set_state(value_nid, 0);
+            } else {
+              printf("%s: init reinitialization array error\n", selfie_name);
+
+              exit(EXITCODE_SYSTEMERROR);
             }
           }
         }
