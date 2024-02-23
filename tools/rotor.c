@@ -3218,7 +3218,7 @@ uint64_t bitwise_xor(uint64_t a, uint64_t b) {
 
 uint64_t get_cached_state(uint64_t* line) {
   if (get_step(line) != UNINITIALIZED) {
-    if (get_op(line) == OP_STATE)
+    if (get_op(line) == OP_STATE) {
       if (is_bitvector(get_sid(line))) {
         if (get_step(line) == current_step)
           return get_state(line);
@@ -3228,11 +3228,14 @@ uint64_t get_cached_state(uint64_t* line) {
           // TODO: log writes and only apply with next
           return (uint64_t) line;
       }
-    else if (get_step(line) == next_step)
-      return get_state(line);
-  }
 
-  printf("%s: cache miss\n", selfie_name);
+      printf("%s: stale state access\n", selfie_name);
+    } else if (get_step(line) == next_step)
+      return get_state(line);
+    else
+      printf("%s: cache miss\n", selfie_name);
+  } else
+    printf("%s: uninitialized state or cache access\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
 }
