@@ -3115,6 +3115,8 @@ uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint
 uint64_t is_comparison_operator(char* op) {
   if (op == OP_EQ)
     return 1;
+  else if (op == OP_NEQ)
+    return 1;
   else if (op == OP_ULTE)
     return 1;
   else
@@ -3123,6 +3125,8 @@ uint64_t is_comparison_operator(char* op) {
 
 uint64_t is_bitwise_operator(char* op) {
   if (op == OP_AND)
+    return 1;
+  else if (op == OP_OR)
     return 1;
   else if (op == OP_SLL)
     return 1;
@@ -3604,6 +3608,8 @@ uint64_t eval_binary_op(uint64_t* line) {
 
       if (op == OP_AND)
         set_state(line, bitwise_and(left_value, right_value));
+      else if (op == OP_OR)
+        set_state(line, bitwise_or(left_value, right_value));
       else if (op == OP_SLL)
         set_state(line, sign_shrink(left_shift(left_value, right_value), size));
       else if (op == OP_SRL)
@@ -3624,6 +3630,8 @@ uint64_t eval_binary_op(uint64_t* line) {
 
         if (op == OP_EQ)
           set_state(line, left_value == right_value);
+        else if (op == OP_NEQ)
+          set_state(line, left_value != right_value);
         else if (op == OP_ULTE)
           set_state(line, left_value <= right_value);
       }
