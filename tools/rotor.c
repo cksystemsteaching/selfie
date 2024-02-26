@@ -20,7 +20,7 @@ using BTOR2 as intermediate modeling format.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(5 * sizeof(uint64_t*) + 2 * sizeof(char*) + 4 * sizeof(uint64_t));
+  return smalloc(6 * sizeof(uint64_t*) + 2 * sizeof(char*) + 4 * sizeof(uint64_t));
 }
 
 uint64_t  get_nid(uint64_t* line)     { return *line; }
@@ -34,6 +34,7 @@ uint64_t  get_state(uint64_t* line)   { return *(line + 7); }
 uint64_t  get_step(uint64_t* line)    { return *(line + 8); }
 uint64_t  get_reuse(uint64_t* line)   { return *(line + 9); }
 uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 10); }
+uint64_t* get_succ(uint64_t* line)    { return (uint64_t*) *(line + 11); }
 
 void set_nid(uint64_t* line, uint64_t nid)      { *line        = nid; }
 void set_op(uint64_t* line, char* op)           { *(line + 1)  = (uint64_t) op; }
@@ -46,6 +47,7 @@ void set_state(uint64_t* line, uint64_t state)  { *(line + 7)  = state; }
 void set_step(uint64_t* line, uint64_t step)    { *(line + 8)  = step; }
 void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 9)  = reuse; }
 void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 10) = (uint64_t) pred; }
+void set_succ(uint64_t* line, uint64_t* succ)   { *(line + 11) = (uint64_t) succ; }
 
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
@@ -924,19 +926,25 @@ uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t heap_start     = 0;
-uint64_t heap_size      = 0;
-uint64_t heap_allowance = 4096; // must be multiple of WORDSIZE
+uint64_t heap_initial_size = 0;
+uint64_t heap_allowance    = 4096; // must be multiple of WORDSIZE
 
-uint64_t stack_start     = 0;
-uint64_t stack_size      = 0;
-uint64_t stack_allowance = 4096; // must be multiple of WORDSIZE > 0
+uint64_t heap_start = 0;
+uint64_t heap_size  = 0;
 
-uint64_t* init_zeroed_code_segment_nid = (uint64_t*) 0;
-uint64_t* next_zeroed_code_segment_nid = (uint64_t*) 0;
+uint64_t stack_initial_size = 0;
+uint64_t stack_allowance    = 4096; // must be multiple of WORDSIZE > 0
 
-uint64_t* initial_code_segment_nid  = (uint64_t*) 0;
-uint64_t* initial_code_segment_nids = (uint64_t*) 0;
+uint64_t stack_start = 0;
+uint64_t stack_size  = 0;
+
+uint64_t* state_zeroed_code_segment_nid = (uint64_t*) 0;
+uint64_t* init_zeroed_code_segment_nid  = (uint64_t*) 0;
+uint64_t* next_zeroed_code_segment_nid  = (uint64_t*) 0;
+
+uint64_t* initial_code_nid = (uint64_t*) 0;
+
+uint64_t* initial_code_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
@@ -945,9 +953,11 @@ uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 uint64_t* init_zeroed_main_memory_nid = (uint64_t*) 0;
 uint64_t* next_zeroed_main_memory_nid = (uint64_t*) 0;
 
-uint64_t* initial_main_memory_nid  = (uint64_t*) 0;
-uint64_t* initial_data_segment_nid = (uint64_t*) 0;
-uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
+uint64_t* initial_data_nid  = (uint64_t*) 0;
+uint64_t* initial_heap_nid  = (uint64_t*) 0;
+uint64_t* initial_stack_nid = (uint64_t*) 0;
+
+uint64_t* initial_main_memory_nid = (uint64_t*) 0;
 
 uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
@@ -2515,11 +2525,13 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_state(new_line, 0);
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
+  set_pred(new_line, UNUSED);
+  set_succ(new_line, UNUSED);
 
   if (reuse_lines)
     old_line = find_equal_line(new_line);
   else
-    old_line = (uint64_t*) 0;
+    old_line = UNUSED;
 
   if (old_line) {
     unused_line = new_line;
@@ -4246,9 +4258,9 @@ void print_segmentation() {
 
 void new_code_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
-  uint64_t  code_size_in_instructions;
   uint64_t* vaddr_nid;
   uint64_t* ir_nid;
+  uint64_t* code_segment_nid;
 
   if (core > 0) {
     if (SYNTHESIZE)
@@ -4262,24 +4274,19 @@ void new_code_segment(uint64_t core) {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
   else {
-    state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
+    state_zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       "code-segment", "code segment");
 
     init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
-      state_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
+      state_zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     eval_line(init_zeroed_code_segment_nid);
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
-    initial_code_segment_nid = state_code_segment_nid;
+    initial_code_nid = UNUSED;
 
-    code_size_in_instructions = code_size / INSTRUCTIONSIZE;
-
-    if (code_size % INSTRUCTIONSIZE > 0)
-      code_size_in_instructions = code_size_in_instructions + 1;
-
-    initial_code_segment_nids = zmalloc(code_size_in_instructions * sizeof(uint64_t*));
+    initial_code_segment_nid = state_zeroed_code_segment_nid;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
@@ -4291,25 +4298,29 @@ void new_code_segment(uint64_t core) {
       if (ir != 0) {
         // skipping zero as instruction
         vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          pc,
-          number_of_hex_digits,
-          format_comment("vaddr 0x%lX", pc));
+          pc, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
+
         ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
-          ir,
-          32,
-          format_comment("code 0x%04lX", ir));
-        initial_code_segment_nid =
+          ir, 32, format_comment("code 0x%04lX", ir));
+
+        code_segment_nid =
           store_single_word_at_virtual_address(vaddr_nid, ir_nid, initial_code_segment_nid);
 
-        // evaluate on-the-fly to avoid stack overflow later
+        if (initial_code_nid == UNUSED)
+          initial_code_nid = code_segment_nid;
+
+        if (initial_code_segment_nid != state_zeroed_code_segment_nid)
+          // set successor for printing initial code segment iteratively to avoid stack overflow
+          set_succ(initial_code_segment_nid, code_segment_nid);
+
+        initial_code_segment_nid = code_segment_nid;
+
+        // evaluate on-the-fly to avoid stack overflow
         if (eval_line(load_single_word_at_virtual_address(vaddr_nid, initial_code_segment_nid)) != ir) {
           printf("%s: initial code segment value mismatch @ 0x%lX\n", selfie_name, pc);
 
           exit(EXITCODE_SYSTEMERROR);
         }
-
-        // for printing initial code segment iteratively, again to avoid stack overflow later
-        *(initial_code_segment_nids + (pc - code_start) / INSTRUCTIONSIZE) = (uint64_t) initial_code_segment_nid;
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -4317,9 +4328,9 @@ void new_code_segment(uint64_t core) {
 
     reuse_lines = 1;
 
-    if (initial_code_segment_nid != state_code_segment_nid) {
+    if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
       next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
-        state_code_segment_nid, state_code_segment_nid, "read-only zeroed code segment");
+        state_zeroed_code_segment_nid, state_zeroed_code_segment_nid, "read-only zeroed code segment");
 
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
         "loaded-code-segment", "loaded code segment");
@@ -4328,18 +4339,18 @@ void new_code_segment(uint64_t core) {
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
 
       eval_line(init_code_segment_nid);
-    } else
-      init_code_segment_nid = init_zeroed_code_segment_nid;
 
-    next_code_segment_nid = new_next(SID_CODE_STATE,
-      state_code_segment_nid, state_code_segment_nid, "read-only code segment");
+      next_code_segment_nid = new_next(SID_CODE_STATE,
+        state_code_segment_nid, state_code_segment_nid, "read-only code segment");
+    } else {
+      state_code_segment_nid = state_zeroed_code_segment_nid;
+      init_code_segment_nid  = init_zeroed_code_segment_nid;
+      next_code_segment_nid  = next_zeroed_code_segment_nid;
+    }
   }
 }
 
 void print_code_segment(uint64_t core) {
-  uint64_t code_size_in_instructions;
-  uint64_t i;
-
   if (core > 0) {
     if (SYNTHESIZE) {
       print_break_comment("uninitialized code segment");
@@ -4359,24 +4370,16 @@ void print_code_segment(uint64_t core) {
 
     print_line(init_zeroed_code_segment_nid);
 
-    if (initial_code_segment_nid != state_code_segment_nid) {
+    if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
       print_line(next_zeroed_code_segment_nid);
 
-      code_size_in_instructions = code_size / INSTRUCTIONSIZE;
+      // conservatively estimating number of lines needed to store one byte
+      print_aligned_break_comment("loading code", log_ten(code_size * 3) + 1);
 
-      if (code_size % INSTRUCTIONSIZE > 0)
-        code_size_in_instructions = code_size_in_instructions + 1;
+      while (initial_code_nid != UNUSED) {
+        print_line(initial_code_nid);
 
-      print_aligned_break_comment("loading code",
-        log_ten(code_size_in_instructions * 3 + 1) + 1);
-
-      i = 0;
-
-      while (i < code_size_in_instructions) {
-        if (*(initial_code_segment_nids + i) != 0)
-          print_line((uint64_t*) *(initial_code_segment_nids + i));
-
-        i = i + 1;
+        initial_code_nid = get_succ(initial_code_nid);
       }
 
       print_break_comment("loaded code segment");
@@ -4394,6 +4397,7 @@ void new_memory_state(uint64_t core) {
   uint64_t  data;
   uint64_t* vaddr_nid;
   uint64_t* data_nid;
+  uint64_t* main_memory_nid;
 
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
@@ -4413,8 +4417,9 @@ void new_memory_state(uint64_t core) {
   if (CODE_LOADED) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
-    initial_data_segment_nid = state_main_memory_nid;
-    initial_heap_segment_nid = state_main_memory_nid;
+    initial_data_nid  = UNUSED;
+    initial_heap_nid  = UNUSED;
+    initial_stack_nid = UNUSED;
 
     initial_main_memory_nid = state_main_memory_nid;
 
@@ -4423,17 +4428,11 @@ void new_memory_state(uint64_t core) {
     vaddr = data_start;
 
     while (vaddr < VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
-      if (vaddr == data_start + data_size) {
-        initial_data_segment_nid = initial_main_memory_nid;
-
+      if (vaddr == data_start + data_size)
         vaddr = heap_start;
-      }
 
-      if (vaddr == heap_start + heap_size) {
-        initial_heap_segment_nid = initial_data_segment_nid;
-
+      if (vaddr == heap_start + heap_size)
         vaddr = stack_start;
-      }
 
       if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
         // memory allocated but not yet mapped is assumed to be zeroed
@@ -4442,15 +4441,31 @@ void new_memory_state(uint64_t core) {
         if (data != 0) {
           // skipping zero as initial value
           vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr,
-            number_of_hex_digits,
-            format_comment("vaddr 0x%lX", vaddr));
+            vaddr, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+
           data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data,
-            0,
-            format_comment("data 0x%lX", data));
-          initial_main_memory_nid =
-            store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_main_memory_nid);
+            data, 0, format_comment("data 0x%lX", data));
+
+          main_memory_nid = store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_main_memory_nid);
+
+          if (is_virtual_address_in_data_segment(vaddr)) {
+            if (initial_data_nid == UNUSED)
+              initial_data_nid = main_memory_nid;
+          } else if (is_virtual_address_in_heap_segment(vaddr)) {
+            if (initial_heap_nid == UNUSED)
+              initial_heap_nid = main_memory_nid;
+          } else if (is_virtual_address_in_stack_segment(vaddr)) {
+            if (initial_stack_nid == UNUSED)
+              initial_stack_nid = main_memory_nid;
+          }
+
+          if (initial_main_memory_nid != state_main_memory_nid)
+            if (main_memory_nid != initial_data_nid)
+              if (main_memory_nid != initial_heap_nid)
+                if (main_memory_nid != initial_stack_nid)
+                  set_succ(initial_main_memory_nid, main_memory_nid);
+
+          initial_main_memory_nid = main_memory_nid;
 
           // evaluate on-the-fly to avoid stack overflow later
           if (eval_line(load_machine_word_at_virtual_address(vaddr_nid, initial_main_memory_nid)) != data) {
@@ -4498,24 +4513,35 @@ void print_memory_state(uint64_t core) {
     if (initial_main_memory_nid != state_main_memory_nid) {
       print_line(next_zeroed_main_memory_nid);
 
-      // assert: data_size > 0 and non-zero data in data segment
+      if (initial_data_nid != UNUSED) {
+        // conservatively estimating number of lines needed to store one byte
+        print_aligned_break_comment("loaded data segment", log_ten(data_size * 3) + 1);
 
-      // conservatively estimating number of lines needed to store one byte
-      print_aligned_break_comment("loaded data segment",
-        log_ten((data_size + heap_size + stack_size) * 5) + 1);
+        while (initial_data_nid != UNUSED) {
+          print_line(initial_data_nid);
 
-      print_line(initial_data_segment_nid);
-
-      if (initial_heap_segment_nid != initial_data_segment_nid) {
-        print_break_comment("loaded heap segment");
-
-        print_line(initial_heap_segment_nid);
+          initial_data_nid = get_succ(initial_data_nid);
+        }
       }
 
-      if (initial_main_memory_nid != initial_heap_segment_nid) {
-        print_break_comment("loaded stack segment");
+      if (initial_heap_nid != UNUSED) {
+        print_aligned_break_comment("loaded heap segment", log_ten(heap_initial_size * 3) + 1);
 
-        print_line(initial_main_memory_nid);
+        while (initial_heap_nid != UNUSED) {
+          print_line(initial_heap_nid);
+
+          initial_heap_nid = get_succ(initial_heap_nid);
+        }
+      }
+
+      if (initial_stack_nid != UNUSED) {
+        print_aligned_break_comment("loaded stack segment", log_ten(stack_initial_size * 3) + 1);
+
+        while (initial_stack_nid != UNUSED) {
+          print_line(initial_stack_nid);
+
+          initial_stack_nid = get_succ(initial_stack_nid);
+        }
       }
 
       print_break_comment("loaded main memory");
@@ -8870,10 +8896,14 @@ void rotor() {
     code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS);
   w = w + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
     memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS);
-  w = w + dprintf(output_fd, "; with %s %lu\n", heap_allowance_option, heap_allowance);
-  w = w + dprintf(output_fd, "; with %s %lu\n\n", stack_allowance_option, stack_allowance);
+  w = w + dprintf(output_fd, "; with %s %lu (%lu bytes initial heap size)\n",
+    heap_allowance_option, heap_allowance, heap_initial_size);
+  w = w + dprintf(output_fd, "; with %s %lu (%lu bytes initial stack size)\n\n",
+    stack_allowance_option, stack_allowance, stack_initial_size);
   if (binary_name) {
-    w = w + dprintf(output_fd, "; RISC-V code obtained from %s and invoked as:", binary_name);
+    w = w + dprintf(output_fd, "; for RISC-V executable obtained from %s\n", binary_name);
+    w = w + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data invoked as:\n;",
+      code_size, data_size);
     i = 0;
     while (i < number_of_remaining_arguments()) {
       w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
@@ -8959,8 +8989,8 @@ uint64_t selfie_model() {
       virtual_address_space_option   = "-virtualaddressspace";
       code_word_size_option          = "-codewordsize";
       memory_word_size_option        = "-memorywordsize";
-      heap_allowance_option          = "-heap";
-      stack_allowance_option         = "-stack";
+      heap_allowance_option          = "-heapallowance";
+      stack_allowance_option         = "-stackallowance";
 
       model_arguments = 0;
 
@@ -9065,14 +9095,18 @@ uint64_t selfie_model() {
 
         // assert: allowances are multiples of word size
 
-        if (get_program_break(current_context) - get_heap_seg_start(current_context) > heap_allowance)
-          heap_allowance = round_up(get_program_break(current_context) - get_heap_seg_start(current_context), PAGESIZE);
+        heap_initial_size = get_program_break(current_context) - get_heap_seg_start(current_context);
+
+        if (heap_initial_size > heap_allowance)
+          heap_allowance = round_up(heap_initial_size, PAGESIZE);
 
         heap_start = get_heap_seg_start(current_context);
         heap_size  = heap_allowance;
 
-        if (VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP) > stack_allowance)
-          stack_allowance = round_up(VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP), PAGESIZE);
+        stack_initial_size = VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP);
+
+        if (stack_initial_size > stack_allowance)
+          stack_allowance = round_up(stack_initial_size, PAGESIZE);
 
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
         stack_size  = stack_allowance;
@@ -9101,8 +9135,12 @@ uint64_t selfie_model() {
         data_start = 8192;
         data_size  = 0;
 
+        heap_initial_size = 0;
+
         heap_start = 12288;
         heap_size  = heap_allowance;
+
+        stack_initial_size = 0;
 
         stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
         stack_size  = stack_allowance;
