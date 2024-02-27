@@ -3,89 +3,102 @@
 # selfie.cs.uni-salzburg.at #
 #############################
 
+#####################################
+# RISCV gnu toolchain builder image #
+#####################################
+FROM ubuntu:latest AS riscvgnutoolchainbuilder
+
+ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
+WORKDIR $TOP
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        autoconf automake autotools-dev curl python3 python3-pip libmpc-dev libmpfr-dev \
+        libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc \
+        zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev \
+    && apt clean
+
+RUN git clone https://github.com/riscv/riscv-gnu-toolchain
+
+ENV MAKEFLAGS=-j4
+
+RUN cd riscv-gnu-toolchain \
+    && ./configure --prefix=$RISCV --enable-multilib \
+    && make
+
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
 FROM ubuntu:latest AS pkbuilder
 
-# specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
-# install tools to build pk
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       ca-certificates \
-       make git \
-       gcc-riscv64-linux-gnu libc-dev-riscv64-cross \
-  && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        make git \
+        gcc-riscv64-linux-gnu libc-dev-riscv64-cross \
+    && apt clean
 
-# get sources from HEAD
 RUN git clone https://github.com/riscv/riscv-pk
 
-# set build flags compatible with Ubuntu's riscv64-* build flags,
-# otherwise compilation fails with linker errors related to stack protection
-# also, use multiple cores to speed up compilation
-ENV CFLAGS="-fstack-protector -fstack-protector-explicit -U_FORTIFY_SOURCE" \
-  CPPFLAGS="-fstack-protector -fstack-protector-explicit -U_FORTIFY_SOURCE" \
-  MAKEFLAGS=-j4
+# COPY --from=riscvgnutoolchainbuilder $RISCV/ $RISCV/
 
-# build proxy kernel
-# note that at the end, we move the compiled binaries from riscv64-linux-gnu to riscv64-unknown-elf,
-# because when running the proxy kernel with 'spike pk', it looks at that path by default
-RUN mkdir -p $RISCV \
-  && mkdir -p riscv-pk/build \
-  && cd riscv-pk/build \
-  && ../configure --prefix=$RISCV --host=riscv64-linux-gnu --with-arch=rv64gc --with-abi=lp64d \
-  && make \
-  && make install \
-  && mv $RISCV/riscv64-linux-gnu $RISCV/riscv64-unknown-elf
+ENV MAKEFLAGS=-j4
+
+# moving the compiled binaries from riscv64-linux-gnu to riscv64-unknown-elf
+# because spike looks for riscv64-unknown-elf by default when running pk
+RUN mkdir -p riscv-pk/build \
+    && cd riscv-pk/build \
+    && ../configure --prefix=$RISCV --host=riscv64-linux-gnu --with-arch=rv64gc --with-abi=lp64d \
+    && make \
+    && make install \
+    && mv $RISCV/riscv64-linux-gnu $RISCV/riscv64-unknown-elf
 
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
 FROM ubuntu:latest AS spikebuilder
 
-# specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
-# install tools to build RISC-V spike
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
        make git \
        g++ device-tree-compiler \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
-# get sources from HEAD
-RUN git clone https://github.com/riscv/riscv-isa-sim.git
+RUN git clone https://github.com/riscv/riscv-isa-sim
 
-# use multiple cores to speed up compilation
 ENV MAKEFLAGS=-j4
 
-# build spike ISA simulator
-RUN mkdir -p $RISCV \
-  && mkdir -p riscv-isa-sim/build \
-  && cd riscv-isa-sim/build \
-  && ../configure --prefix=$RISCV \
-  && make \
-  && make install
+RUN mkdir -p riscv-isa-sim/build \
+    && cd riscv-isa-sim/build \
+    && ../configure --prefix=$RISCV \
+    && make \
+    && make install
 
 ######################
 # QEMU builder image #
 ######################
 FROM ubuntu:latest AS qemubuilder
 
-# specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
 # install statically linked QEMU (so it's easier to move it to another image)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        qemu-user-static qemu-system-misc \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
 # copy QEMU RISC-V statically linked binary to common output folder
 RUN mkdir -p $RISCV/bin \
@@ -99,8 +112,8 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 FROM ubuntu:latest AS boolectorbuilder
 
-# specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
 # Setting non-interactive mode
@@ -113,12 +126,10 @@ RUN apt-get update \
        make git \
        g++ \
        curl cmake \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
-# get sources from HEAD
 RUN git clone https://github.com/Boolector/boolector
 
-# use multiple cores to speed up compilation
 ENV MAKEFLAGS=-j4
 
 # build boolector and dependencies
@@ -137,6 +148,7 @@ RUN mkdir -p $RISCV \
 FROM ubuntu:latest AS openocdbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
 # install tools to build OpenOCD
@@ -146,11 +158,10 @@ RUN apt-get update \
        make git \
        gcc libtool libusb-dev \
        automake pkg-config \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
 RUN git clone https://github.com/riscv/riscv-openocd.git
 
-# use multiple cores to speed up compilation
 ENV MAKEFLAGS=-j4
 
 RUN mkdir -p $RISCV \
@@ -167,8 +178,8 @@ RUN mkdir -p $RISCV \
 ############################
 FROM ubuntu:latest AS selfieall
 
-# specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
 WORKDIR $TOP
 
 # Setting non-interactive mode
@@ -187,7 +198,7 @@ RUN apt-get update \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
        xxd gettext curl \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
 # copy spike, pk, qemu and boolector from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/
@@ -219,7 +230,7 @@ FROM selfieall AS selfieeverything
 # install tools for 32-bit selfie
 RUN apt-get update \
   && apt-get install -y --no-install-recommends lib32gcc-11-dev \
-  && rm -rf /var/lib/apt/lists/*
+  && apt clean
 
 # specify user work directory
 WORKDIR /opt/selfie

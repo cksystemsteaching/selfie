@@ -54,16 +54,14 @@ selfie-gc-nomain.h: selfie-gc.h
 		whitespace quine escape debug replay \
 		emu emu-emu emu-emu-emu emu-vmm-emu os-emu os-vmm-emu overhead \
 		self-emu self-os-emu self-os-vmm-emu min mob \
-		gib gclib giblib gclibtest boehmgc cache \
-		sat brr bzz mon smt beat rot synthesize btor2 all
+		gib gclib giblib gclibtest boehmgc cache less
 
-# Run everything that only requires standard tools and is not too slow
-all: self self-self self-self-check 64-to-32-bit \
+# Run less that only requires standard tools and is not too slow
+less: self self-self self-self-check 64-to-32-bit \
 		whitespace quine escape debug replay \
 		emu emu-emu emu-vmm-emu os-emu os-vmm-emu \
 		self-emu self-os-emu self-os-vmm-emu min mob \
-		gib gclib giblib gclibtest boehmgc cache \
-		sat brr bzz mon smt beat rot synthesize btor2
+		gib gclib giblib gclibtest boehmgc cache
 
 # Self-compile selfie
 self: selfie
@@ -208,6 +206,15 @@ cache: selfie selfie.m selfie.s examples/cache/dcache-access-[01].c
 	diff -q selfie.s selfie-L1.s
 	./selfie -c examples/cache/dcache-access-0.c -L1 32
 	./selfie -c examples/cache/dcache-access-1.c -L1 32
+
+# Consider these targets as targets, not files
+.PHONY: sat brr bzz mon smt beat rot synthesize btor2 more all
+
+# Run more that only requires standard tools and is not too slow
+more: sat brr bzz mon smt beat rot synthesize btor2
+
+# Run all that only requires standard tools and is not too slow
+all: less more
 
 # Compile babysat.c with selfie.h as library into babysat executable
 babysat: tools/babysat.c selfie.h
