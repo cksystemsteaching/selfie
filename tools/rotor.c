@@ -3132,6 +3132,8 @@ uint64_t is_comparison_operator(char* op) {
     return 1;
   else if (op == OP_UGT)
     return 1;
+  else if (op == OP_UGTE)
+    return 1;
   else if (op == OP_ULT)
     return 1;
   else if (op == OP_ULTE)
@@ -3610,6 +3612,8 @@ uint64_t eval_binary_op(uint64_t* line) {
             set_state(line, left_value != right_value);
           else if (op == OP_UGT)
             set_state(line, left_value > right_value);
+          else if (op == OP_UGTE)
+            set_state(line, left_value >= right_value);
           else if (op == OP_ULT)
             set_state(line, left_value < right_value);
           else if (op == OP_ULTE)
