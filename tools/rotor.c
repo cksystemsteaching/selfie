@@ -339,10 +339,12 @@ uint64_t eval_line(uint64_t* line);
 
 uint64_t eval_optional_line(uint64_t* line);
 
+void apply_next(uint64_t* line);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t UNINITIALIZED = -1; // uninitialized state
-uint64_t INITIALIZED = 0;    // initialized state
+uint64_t INITIALIZED   = 0;  // initialized state
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2398,6 +2400,10 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
 void rotor();
 
+uint64_t eval_sequential();
+void     apply_sequential();
+uint64_t eval_properties();
+
 uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -3596,6 +3602,7 @@ uint64_t eval_binary_op(uint64_t* line) {
         else if (op == OP_SRL)
           set_state(line, right_shift(left_value, right_value));
       } else {
+        // TODO: necessary?
         left_value  = sign_extend(left_value, size);
         right_value = sign_extend(right_value, size);
 
@@ -3714,6 +3721,8 @@ uint64_t eval_next(uint64_t* line) {
   uint64_t current_next;
   uint64_t* state_nid;
   uint64_t* value_nid;
+  uint64_t value;
+  uint64_t no_update;
 
   if (current_step < next_step)
     if (current_step + 1 == next_step) {
@@ -3735,9 +3744,12 @@ uint64_t eval_next(uint64_t* line) {
 
             if (is_bitvector(get_sid(state_nid))) {
               if (get_step(state_nid) == current_step) {
-                set_state(state_nid, eval_line(value_nid));
+                value = eval_line(value_nid);
 
-                set_step(state_nid, next_step);
+                no_update = get_state(state_nid) == value;
+
+                // cache state in next
+                set_state(line, value);
               } else {
                 printf("%s: next reupdating bitvector state error\n", selfie_name);
 
@@ -3745,27 +3757,27 @@ uint64_t eval_next(uint64_t* line) {
               }
             } else {
               // assert: sid of state line is ARRAY
-              value_nid = (uint64_t*) eval_line(value_nid);
+              if (get_step(state_nid) <= next_step) {
+                value_nid = (uint64_t*) eval_line(value_nid);
 
-              if (get_step(state_nid) <= next_step)
-                if (get_state(state_nid) == get_state(value_nid))
-                  set_step(state_nid, next_step);
-                else {
+                if (get_state(state_nid) == get_state(value_nid)) {
+                  no_update = state_nid == value_nid;
+
+                  // cache state in next
+                  set_state(line, get_state(value_nid));
+                } else {
                   printf("%s: next reupdating state array error\n", selfie_name);
 
                   exit(EXITCODE_SYSTEMERROR);
                 }
-              else {
+              } else {
                 printf("%s: next reupdating array state error\n", selfie_name);
 
                 exit(EXITCODE_SYSTEMERROR);
               }
             }
 
-            set_step(line, next_step);
-
-            // assert: return value is never used
-            return (uint64_t) state_nid;
+            return no_update;
           } else
             printf("%s: next non-current state error\n", selfie_name);
         } else
@@ -3795,7 +3807,7 @@ uint64_t eval_property(uint64_t* line) {
 
   if (op == OP_BAD) {
     if (condition != 0)
-      printf("%s: bad %s satisfied @ step %lu", selfie_name, symbol, current_step);
+      printf("%s: bad %s satisfied @ step %lu\n", selfie_name, symbol, current_step);
 
     set_state(line, condition != 0);
     set_step(line, next_step);
@@ -3803,7 +3815,7 @@ uint64_t eval_property(uint64_t* line) {
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0)
-      printf("%s: constraint %s violated @ step %lu", selfie_name, symbol, current_step);
+      printf("%s: constraint %s violated @ step %lu\n", selfie_name, symbol, current_step);
 
     set_state(line, condition == 0);
     set_step(line, next_step);
@@ -3860,6 +3872,20 @@ uint64_t eval_optional_line(uint64_t* line) {
     return 0;
   else
     return eval_line(line);
+}
+
+void apply_next(uint64_t* line) {
+  uint64_t* state_nid;
+
+  state_nid = get_arg1(line);
+
+  set_state(state_nid, get_state(line));
+
+  set_step(state_nid, next_step);
+
+  set_state(line, 0);
+
+  set_step(line, next_step);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -9032,6 +9058,63 @@ void rotor() {
 
     core = core + 1;
   }
+}
+
+uint64_t eval_sequential() {
+  uint64_t halt;
+
+  halt = 1;
+
+  halt = halt * eval_line(next_program_break_nid);
+  halt = halt * eval_line(next_file_descriptor_nid);
+  halt = halt * eval_line(next_readable_bytes_nid);
+  halt = halt * eval_line(next_read_bytes_nid);
+  halt = halt * eval_line(next_core_pc_nid);
+  halt = halt * eval_line(next_register_file_nid);
+  halt = halt * eval_line(next_code_segment_nid);
+  halt = halt * eval_line(next_main_memory_nid);
+
+  return halt != 0;
+}
+
+void apply_sequential() {
+  apply_next(next_program_break_nid);
+  apply_next(next_file_descriptor_nid);
+  apply_next(next_readable_bytes_nid);
+  apply_next(next_read_bytes_nid);
+  apply_next(next_core_pc_nid);
+  apply_next(next_register_file_nid);
+  apply_next(next_code_segment_nid);
+  apply_next(next_main_memory_nid);
+}
+
+uint64_t eval_properties() {
+  uint64_t halt;
+
+  halt = 0;
+
+  halt = halt + eval_optional_line(prop_illegal_instruction_nid);
+  halt = halt + eval_optional_line(prop_illegal_compressed_instruction_nid);
+  halt = halt + eval_optional_line(prop_is_instruction_known_nid);
+  halt = halt + eval_optional_line(prop_next_fetch_unaligned_nid);
+  halt = halt + eval_optional_line(prop_next_fetch_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_exclude_a0_from_rd_nid);
+  halt = halt + eval_optional_line(prop_division_by_zero_nid);
+  halt = halt + eval_optional_line(prop_signed_division_overflow_nid);
+  halt = halt + eval_optional_line(prop_load_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_store_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_compressed_load_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_compressed_store_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_stack_seg_faulting_nid);
+
+  halt = halt + eval_optional_line(prop_is_syscall_id_known_nid);
+  halt = halt + eval_optional_line(prop_brk_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_openat_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_read_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_write_seg_faulting_nid);
+  halt = halt + eval_optional_line(prop_bad_exit_code_nid);
+
+  return halt != 0;
 }
 
 uint64_t selfie_model() {
