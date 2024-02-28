@@ -305,8 +305,7 @@ uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint
 uint64_t is_comparison_operator(char* op);
 uint64_t is_bitwise_operator(char* op);
 uint64_t is_arithmetic_operator(char* op);
-uint64_t is_n_times_n_to_n_operator(char* op);
-uint64_t is_n_times_n_operator(char* op);
+uint64_t is_binary_operator(char* op);
 
 uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor);
 uint64_t bitwise_and(uint64_t a, uint64_t b);
@@ -3163,20 +3162,17 @@ uint64_t is_arithmetic_operator(char* op) {
     return 0;
 }
 
-uint64_t is_n_times_n_to_n_operator(char* op) {
-  if (is_bitwise_operator(op))
+uint64_t is_binary_operator(char* op) {
+  if (op == OP_IMPLIES)
+    return 1;
+  else if (is_comparison_operator(op))
+    return 1;
+  else if (is_bitwise_operator(op))
     return 1;
   else if (is_arithmetic_operator(op))
     return 1;
   else
     return 0;
-}
-
-uint64_t is_n_times_n_operator(char* op) {
-  if (is_comparison_operator(op))
-    return 1;
-  else
-    return is_n_times_n_to_n_operator(op);
 }
 
 uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor) {
@@ -3566,49 +3562,62 @@ uint64_t eval_binary_op(uint64_t* line) {
   left_nid  = get_arg1(line);
   right_nid = get_arg2(line);
 
-  if (is_n_times_n_operator(op)) {
+  if (is_binary_operator(op)) {
     match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
-    left_value  = eval_line(left_nid);
-    right_value = eval_line(right_nid);
+    if (op == OP_IMPLIES) {
+      left_value = eval_line(left_nid);
 
-    size = eval_bitvec_size(get_sid(left_nid));
+      if (left_value == 0)
+        set_state(line, left_value == 0);
+      else {
+        // lazy evaluation of right operand
+        right_value = eval_line(right_nid);
 
-    if (is_bitwise_operator(op)) {
-      match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
-
-      if (op == OP_AND)
-        set_state(line, bitwise_and(left_value, right_value));
-      else if (op == OP_OR)
-        set_state(line, bitwise_or(left_value, right_value));
-      else if (op == OP_SLL)
-        set_state(line, sign_shrink(left_shift(left_value, right_value), size));
-      else if (op == OP_SRL)
-        set_state(line, right_shift(left_value, right_value));
+        set_state(line, right_value != 0);
+      }
     } else {
-      left_value  = sign_extend(left_value, size);
-      right_value = sign_extend(right_value, size);
+      left_value  = eval_line(left_nid);
+      right_value = eval_line(right_nid);
 
-      if (is_arithmetic_operator(op)) {
-        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+      size = eval_bitvec_size(get_sid(left_nid));
 
-        if (op == OP_ADD)
-          set_state(line, sign_shrink(left_value + right_value, size));
-        else if (op == OP_SUB)
-          set_state(line, sign_shrink(left_value - right_value, size));
-      } else if (is_comparison_operator(op)) {
-        match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+      if (is_bitwise_operator(op)) {
+        match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
 
-        if (op == OP_EQ)
-          set_state(line, left_value == right_value);
-        else if (op == OP_NEQ)
-          set_state(line, left_value != right_value);
-        else if (op == OP_UGT)
-          set_state(line, left_value > right_value);
-        else if (op == OP_ULT)
-          set_state(line, left_value < right_value);
-        else if (op == OP_ULTE)
-          set_state(line, left_value <= right_value);
+        if (op == OP_AND)
+          set_state(line, bitwise_and(left_value, right_value));
+        else if (op == OP_OR)
+          set_state(line, bitwise_or(left_value, right_value));
+        else if (op == OP_SLL)
+          set_state(line, sign_shrink(left_shift(left_value, right_value), size));
+        else if (op == OP_SRL)
+          set_state(line, right_shift(left_value, right_value));
+      } else {
+        left_value  = sign_extend(left_value, size);
+        right_value = sign_extend(right_value, size);
+
+        if (is_arithmetic_operator(op)) {
+          match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+
+          if (op == OP_ADD)
+            set_state(line, sign_shrink(left_value + right_value, size));
+          else if (op == OP_SUB)
+            set_state(line, sign_shrink(left_value - right_value, size));
+        } else if (is_comparison_operator(op)) {
+          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+
+          if (op == OP_EQ)
+            set_state(line, left_value == right_value);
+          else if (op == OP_NEQ)
+            set_state(line, left_value != right_value);
+          else if (op == OP_UGT)
+            set_state(line, left_value > right_value);
+          else if (op == OP_ULT)
+            set_state(line, left_value < right_value);
+          else if (op == OP_ULTE)
+            set_state(line, left_value <= right_value);
+        }
       }
     }
 
