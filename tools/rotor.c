@@ -3513,31 +3513,28 @@ uint64_t eval_write(uint64_t* line) {
 uint64_t eval_unary_op(uint64_t* line) {
   char* op;
   uint64_t* value_nid;
-  uint64_t size;
   uint64_t value;
+  uint64_t size;
 
   op = get_op(line);
 
-  size = eval_bitvec_size(get_sid(line));
+  if (is_unary_op(op)) {
+    value_nid = get_arg1(line);
 
-  value_nid = get_arg1(line);
+    match_sorts(get_sid(line), get_sid(value_nid), "unary operand");
 
-  if (op == OP_INC) {
-    match_sorts(get_sid(line), get_sid(value_nid), "inc operand");
+    value = eval_line(value_nid);
 
-    value = sign_extend(eval_line(value_nid), size);
+    size = eval_bitvec_size(get_sid(value_nid));
 
-    set_state(line, sign_shrink(value + 1, size));
-
-    set_step(line, next_step);
-
-    return get_state(line);
-  } else if (op == OP_DEC) {
-    match_sorts(get_sid(line), get_sid(value_nid), "dec operand");
-
-    value = sign_extend(eval_line(value_nid), size);
-
-    set_state(line, sign_shrink(value - 1, size));
+    if (op == OP_NOT)
+      set_state(line, sign_shrink(-value - 1, size));
+    else if (op == OP_INC)
+      set_state(line, sign_shrink(value + 1, size));
+    else if (op == OP_DEC)
+      set_state(line, sign_shrink(value - 1, size));
+    else if (op == OP_NEG)
+      set_state(line, sign_shrink(-value, size));
 
     set_step(line, next_step);
 
@@ -3559,10 +3556,10 @@ uint64_t eval_binary_op(uint64_t* line) {
 
   op = get_op(line);
 
-  left_nid  = get_arg1(line);
-  right_nid = get_arg2(line);
-
   if (is_binary_operator(op)) {
+    left_nid  = get_arg1(line);
+    right_nid = get_arg2(line);
+
     match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
     if (op == OP_IMPLIES) {
