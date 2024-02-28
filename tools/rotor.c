@@ -333,8 +333,11 @@ uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
 uint64_t eval_init(uint64_t* line);
 uint64_t eval_next(uint64_t* line);
+uint64_t eval_property(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
+
+uint64_t eval_optional_line(uint64_t* line);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -3777,6 +3780,42 @@ uint64_t eval_next(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_property(uint64_t* line) {
+  char* op;
+  uint64_t* condition_nid;
+  char* symbol;
+  uint64_t condition;
+
+  op = get_op(line);
+
+  condition_nid = get_arg1(line);
+  symbol        = (char*) get_arg2(line);
+
+  condition = eval_line(condition_nid);
+
+  if (op == OP_BAD) {
+    if (condition != 0)
+      printf("%s: bad %s satisfied @ step %lu", selfie_name, symbol, current_step);
+
+    set_state(line, condition != 0);
+    set_step(line, next_step);
+
+    return condition != 0;
+  } else if (op == OP_CONSTRAINT) {
+    if (condition == 0)
+      printf("%s: constraint %s violated @ step %lu", selfie_name, symbol, current_step);
+
+    set_state(line, condition == 0);
+    set_step(line, next_step);
+
+    return condition == 0;
+  }
+
+  printf("%s: unknown property operator %s\n", selfie_name, op);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
 uint64_t eval_line(uint64_t* line) {
   char* op;
 
@@ -3806,10 +3845,21 @@ uint64_t eval_line(uint64_t* line) {
     return eval_init(line);
   else if (op == OP_NEXT)
     return eval_next(line);
+  else if (op == OP_BAD)
+    return eval_property(line);
+  else if (op == OP_CONSTRAINT)
+    return eval_property(line);
   else if (is_unary_op(op))
     return eval_unary_op(line);
   else
     return eval_binary_op(line);
+}
+
+uint64_t eval_optional_line(uint64_t* line) {
+  if (line == UNUSED)
+    return 0;
+  else
+    return eval_line(line);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
