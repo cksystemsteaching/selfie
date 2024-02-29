@@ -9359,6 +9359,26 @@ uint64_t selfie_model() {
 
       printf("%s: ################################################################################\n", selfie_name);
 
+      if (CODE_LOADED)
+        if (SYNTHESIZE == 0)
+          if (CORES == 1)
+            while (current_step < 100000) {
+              current_step = next_step;
+
+              next_step = next_step + 1;
+
+              if (eval_properties())
+                return EXITCODE_NOERROR;
+
+              if (eval_sequential()) {
+                printf("%s: %s exited after %lu steps\n", selfie_name, model_name, current_step);
+
+                return EXITCODE_NOERROR;
+              }
+
+              apply_sequential();
+            }
+
       return EXITCODE_NOERROR;
     } else
       return EXITCODE_BADARGUMENTS;
