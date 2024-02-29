@@ -3324,8 +3324,15 @@ uint64_t eval_input(uint64_t* line) {
 
   if (op == OP_STATE)
     return get_cached_state(line);
+  else if (op == OP_INPUT) {
+    set_state(line, 48);
 
-  printf("%s: unknown line operator %s\n", selfie_name, op);
+    set_step(line, next_step);
+
+    return get_state(line);
+  }
+
+  printf("%s: unknown operator %s\n", selfie_name, op);
 
   exit(EXITCODE_SYSTEMERROR);
 }
