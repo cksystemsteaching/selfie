@@ -2400,9 +2400,12 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
 void rotor();
 
-uint64_t eval_sequential();
-void     apply_sequential();
 uint64_t eval_properties();
+uint64_t eval_sequential();
+
+void apply_sequential();
+
+uint64_t rotor_arguments();
 
 uint64_t selfie_model();
 
@@ -9079,34 +9082,6 @@ void rotor() {
   }
 }
 
-uint64_t eval_sequential() {
-  uint64_t halt;
-
-  halt = 1;
-
-  halt = halt * eval_line(next_program_break_nid);
-  halt = halt * eval_line(next_file_descriptor_nid);
-  halt = halt * eval_line(next_readable_bytes_nid);
-  halt = halt * eval_line(next_read_bytes_nid);
-  halt = halt * eval_line(next_core_pc_nid);
-  halt = halt * eval_line(next_register_file_nid);
-  halt = halt * eval_line(next_code_segment_nid);
-  halt = halt * eval_line(next_main_memory_nid);
-
-  return halt != 0;
-}
-
-void apply_sequential() {
-  apply_next(next_program_break_nid);
-  apply_next(next_file_descriptor_nid);
-  apply_next(next_readable_bytes_nid);
-  apply_next(next_read_bytes_nid);
-  apply_next(next_core_pc_nid);
-  apply_next(next_register_file_nid);
-  apply_next(next_code_segment_nid);
-  apply_next(next_main_memory_nid);
-}
-
 uint64_t eval_properties() {
   uint64_t halt;
 
@@ -9136,107 +9111,140 @@ uint64_t eval_properties() {
   return halt != 0;
 }
 
+uint64_t eval_sequential() {
+  uint64_t halt;
+
+  halt = 1;
+
+  halt = halt * eval_line(next_program_break_nid);
+  halt = halt * eval_line(next_file_descriptor_nid);
+  halt = halt * eval_line(next_readable_bytes_nid);
+  halt = halt * eval_line(next_read_bytes_nid);
+  halt = halt * eval_line(next_core_pc_nid);
+  halt = halt * eval_line(next_register_file_nid);
+  halt = halt * eval_line(next_code_segment_nid);
+  halt = halt * eval_line(next_main_memory_nid);
+
+  return halt != 0;
+}
+
+void apply_sequential() {
+  apply_next(next_program_break_nid);
+  apply_next(next_file_descriptor_nid);
+  apply_next(next_readable_bytes_nid);
+  apply_next(next_read_bytes_nid);
+  apply_next(next_core_pc_nid);
+  apply_next(next_register_file_nid);
+  apply_next(next_code_segment_nid);
+  apply_next(next_main_memory_nid);
+}
+
+uint64_t rotor_arguments() {
+  exit_code_check_option         = "-Pnoexitcode";
+  division_by_zero_check_option  = "-Pnodivbyzero";
+  division_overflow_check_option = "-Pnodivoverflow";
+  seg_faults_check_option        = "-Pnosegfaults";
+  cores_option                   = "-cores";
+  virtual_address_space_option   = "-virtualaddressspace";
+  code_word_size_option          = "-codewordsize";
+  memory_word_size_option        = "-memorywordsize";
+  heap_allowance_option          = "-heapallowance";
+  stack_allowance_option         = "-stackallowance";
+
+  bad_exit_code = atoi(peek_argument(0));
+
+  while (1) {
+    if (number_of_remaining_arguments() > 1) {
+      if (string_compare(peek_argument(1), exit_code_check_option)) {
+        check_exit_code = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), division_by_zero_check_option)) {
+        check_division_by_zero = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), division_overflow_check_option)) {
+        check_division_overflow = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), seg_faults_check_option)) {
+        check_seg_faults = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), cores_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          CORES = atoi(peek_argument(1));
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), virtual_address_space_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), code_word_size_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), memory_word_size_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), heap_allowance_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), stack_allowance_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), "-")) {
+        get_argument();
+
+        return EXITCODE_NOERROR;
+      } else
+        return EXITCODE_BADARGUMENTS;
+    } else
+      return EXITCODE_NOERROR;
+  }
+}
+
 uint64_t selfie_model() {
-  uint64_t model_arguments;
+  uint64_t exit_code;
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      bad_exit_code = atoi(peek_argument(0));
+      exit_code = rotor_arguments();
 
-      exit_code_check_option         = "-Pnoexitcode";
-      division_by_zero_check_option  = "-Pnodivbyzero";
-      division_overflow_check_option = "-Pnodivoverflow";
-      seg_faults_check_option        = "-Pnosegfaults";
-      cores_option                   = "-cores";
-      virtual_address_space_option   = "-virtualaddressspace";
-      code_word_size_option          = "-codewordsize";
-      memory_word_size_option        = "-memorywordsize";
-      heap_allowance_option          = "-heapallowance";
-      stack_allowance_option         = "-stackallowance";
-
-      model_arguments = 0;
-
-      while (model_arguments == 0) {
-        if (number_of_remaining_arguments() > 1) {
-          if (string_compare(peek_argument(1), exit_code_check_option)) {
-            check_exit_code = 0;
-
-            get_argument();
-          } else if (string_compare(peek_argument(1), division_by_zero_check_option)) {
-            check_division_by_zero = 0;
-
-            get_argument();
-          } else if (string_compare(peek_argument(1), division_overflow_check_option)) {
-            check_division_overflow = 0;
-
-            get_argument();
-          } else if (string_compare(peek_argument(1), seg_faults_check_option)) {
-            check_seg_faults = 0;
-
-            get_argument();
-          } else if (string_compare(peek_argument(1), cores_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              CORES = atoi(peek_argument(1));
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), virtual_address_space_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), code_word_size_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), memory_word_size_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), heap_allowance_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), stack_allowance_option)) {
-            get_argument();
-
-            if (number_of_remaining_arguments() > 1) {
-              stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
-
-              get_argument();
-            } else
-              return EXITCODE_BADARGUMENTS;
-          } else if (string_compare(peek_argument(1), "-")) {
-            get_argument();
-
-            model_arguments = 1;
-          } else
-            return EXITCODE_BADARGUMENTS;
-        } else
-          model_arguments = 1;
-      }
+      if (exit_code != EXITCODE_NOERROR)
+        return exit_code;
 
       if (code_size > 0) {
         reset_interpreter();
