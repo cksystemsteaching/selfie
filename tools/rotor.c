@@ -3169,6 +3169,12 @@ uint64_t is_arithmetic_operator(char* op) {
     return 1;
   else if (op == OP_SUB)
     return 1;
+  else if (op == OP_MUL)
+    return 1;
+  else if (op == OP_UDIV)
+    return 1;
+  else if (op == OP_UREM)
+    return 1;
   else
     return 0;
 }
@@ -3613,6 +3619,12 @@ uint64_t eval_binary_op(uint64_t* line) {
             set_state(line, sign_shrink(left_value + right_value, size));
           else if (op == OP_SUB)
             set_state(line, sign_shrink(left_value - right_value, size));
+          else if (op == OP_MUL)
+            set_state(line, sign_shrink(left_value * right_value, size));
+          else if (op == OP_UDIV)
+            set_state(line, left_value / right_value);
+          else if (op == OP_UREM)
+            set_state(line, left_value % right_value);
         } else if (is_comparison_operator(op)) {
           match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
 
