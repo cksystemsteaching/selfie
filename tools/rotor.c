@@ -312,6 +312,8 @@ uint64_t bitwise_and(uint64_t a, uint64_t b);
 uint64_t bitwise_or(uint64_t a, uint64_t b);
 uint64_t bitwise_xor(uint64_t a, uint64_t b);
 
+uint64_t arithmetic_right_shift(uint64_t n, uint64_t b, uint64_t size);
+
 uint64_t get_cached_state(uint64_t* line);
 
 uint64_t eval_constant_value(uint64_t* line);
@@ -3146,6 +3148,8 @@ uint64_t is_comparison_operator(char* op) {
     return 1;
   else if (op == OP_UGTE)
     return 1;
+  else if (op == OP_SLT)
+    return 1;
   else if (op == OP_ULT)
     return 1;
   else if (op == OP_ULTE)
@@ -3162,6 +3166,8 @@ uint64_t is_bitwise_operator(char* op) {
   else if (op == OP_SLL)
     return 1;
   else if (op == OP_SRL)
+    return 1;
+  else if (op == OP_SRA)
     return 1;
   else
     return 0;
@@ -3248,6 +3254,15 @@ uint64_t bitwise_or(uint64_t a, uint64_t b) {
 
 uint64_t bitwise_xor(uint64_t a, uint64_t b) {
   return bitwise(a, b, 1, 1);
+}
+
+uint64_t arithmetic_right_shift(uint64_t n, uint64_t b, uint64_t size) {
+  if (b < size)
+    return sign_shrink(sign_extend(right_shift(n, b), size - b), size);
+  else if (signed_less_than(sign_extend(n, size), 0))
+    return sign_shrink(-1, size);
+  else
+    return 0;
 }
 
 uint64_t get_cached_state(uint64_t* line) {
@@ -3617,8 +3632,10 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, sign_shrink(left_shift(left_value, right_value), size));
         else if (op == OP_SRL)
           set_state(line, right_shift(left_value, right_value));
+        else if (op == OP_SRA)
+          set_state(line, arithmetic_right_shift(left_value, right_value, size));
       } else {
-        // TODO: necessary?
+        // redundant for unsigned arithmetic and comparison
         left_value  = sign_extend(left_value, size);
         right_value = sign_extend(right_value, size);
 
@@ -3646,6 +3663,8 @@ uint64_t eval_binary_op(uint64_t* line) {
             set_state(line, left_value > right_value);
           else if (op == OP_UGTE)
             set_state(line, left_value >= right_value);
+          else if (op == OP_SLT)
+            set_state(line, signed_less_than(left_value, right_value));
           else if (op == OP_ULT)
             set_state(line, left_value < right_value);
           else if (op == OP_ULTE)
