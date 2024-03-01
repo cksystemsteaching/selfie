@@ -3389,17 +3389,19 @@ uint64_t eval_ext(uint64_t* line) {
 
   w = eval_ext_w(line);
 
-  if (eval_bitvec_size(get_sid(line)) == n + w) {
-    if (get_op(line) == OP_SEXT)
-      set_state(line, sign_shrink(sign_extend(eval_line(value_nid), n), n + w));
-    else
-      // assert: unsigned extension
-      set_state(line, eval_line(value_nid));
+  if (n + w <= WORDSIZEINBITS)
+    // TODO: support of double machine words
+    if (eval_bitvec_size(get_sid(line)) == n + w) {
+      if (get_op(line) == OP_SEXT)
+        set_state(line, sign_shrink(sign_extend(eval_line(value_nid), n), n + w));
+      else
+        // assert: unsigned extension
+        set_state(line, eval_line(value_nid));
 
-    set_step(line, next_step);
+      set_step(line, next_step);
 
-    return get_state(line);
-  }
+      return get_state(line);
+    }
 
   printf("%s: ext sort error: n==%lu, w==%lu, m==%lu\n", selfie_name,
     n, w, eval_bitvec_size(get_sid(line)));
@@ -3628,6 +3630,9 @@ uint64_t eval_binary_op(uint64_t* line) {
     match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
     if (op == OP_IMPLIES) {
+      match_sorts(get_sid(left_nid), SID_BOOLEAN, "implication operator");
+      match_sorts(get_sid(line), SID_BOOLEAN, "implication operator");
+
       left_value = eval_line(left_nid);
 
       if (left_value == 0)
