@@ -2402,12 +2402,14 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* known_instructions_nid, uint64_t* known_compressed_instructions_nid,
   uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
-void rotor();
+void model_rotor();
 
 uint64_t eval_properties();
 uint64_t eval_sequential();
 
 void apply_sequential();
+
+void eval_rotor();
 
 uint64_t rotor_arguments();
 
@@ -3861,7 +3863,8 @@ uint64_t eval_property(uint64_t* line) {
 
   if (op == OP_BAD) {
     if (condition != 0)
-      printf("%s: bad %s satisfied @ step %lu\n", selfie_name, symbol, current_step);
+      printf("%s: bad %s satisfied @ 0x%lX in step %lu\n", selfie_name,
+        symbol, eval_line(state_core_pc_nid), current_step);
 
     set_state(line, condition != 0);
     set_step(line, next_step);
@@ -3869,7 +3872,8 @@ uint64_t eval_property(uint64_t* line) {
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0)
-      printf("%s: constraint %s violated @ step %lu\n", selfie_name, symbol, current_step);
+      printf("%s: constraint %s violated @ 0x%lX in step %lu\n", selfie_name,
+        symbol, eval_line(state_core_pc_nid), current_step);
 
     set_state(line, condition == 0);
     set_step(line, next_step);
@@ -9015,7 +9019,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   }
 }
 
-void rotor() {
+void model_rotor() {
   uint64_t i;
   uint64_t core;
 
@@ -9170,6 +9174,43 @@ void apply_sequential() {
   apply_next(next_register_file_nid);
   apply_next(next_code_segment_nid);
   apply_next(next_main_memory_nid);
+}
+
+void eval_rotor() {
+  if (CODE_LOADED)
+    if (SYNTHESIZE == 0)
+      if (CORES == 1) {
+        printf("%s: ********************************************************************************\n", selfie_name);
+
+        current_step = 0;
+        next_step    = 1;
+
+        while (current_step < 100000) {
+          if (eval_properties())
+            return;
+
+          if (eval_sequential()) {
+            printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps\n", selfie_name,
+              model_name,
+              eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
+              eval_line(state_core_pc_nid),
+              next_step);
+
+            return;
+          }
+
+          apply_sequential();
+
+          current_step = next_step;
+
+          next_step = next_step + 1;
+        }
+
+        printf("%s: terminating %s @ 0x%lX after %lu steps\n", selfie_name,
+          model_name,
+          eval_line(state_core_pc_nid),
+          current_step);
+      }
 }
 
 uint64_t rotor_arguments() {
@@ -9383,34 +9424,16 @@ uint64_t selfie_model() {
       output_name = model_name;
       output_fd   = model_fd;
 
-      rotor();
+      model_rotor();
 
       output_name = (char*) 0;
       output_fd   = 1;
 
       printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
 
+      eval_rotor();
+
       printf("%s: ################################################################################\n", selfie_name);
-
-      if (CODE_LOADED)
-        if (SYNTHESIZE == 0)
-          if (CORES == 1)
-            while (current_step < 100000) {
-              current_step = next_step;
-
-              next_step = next_step + 1;
-
-              if (eval_properties())
-                return EXITCODE_NOERROR;
-
-              if (eval_sequential()) {
-                printf("%s: %s exited after %lu steps\n", selfie_name, model_name, current_step);
-
-                return EXITCODE_NOERROR;
-              }
-
-              apply_sequential();
-            }
 
       return EXITCODE_NOERROR;
     } else
