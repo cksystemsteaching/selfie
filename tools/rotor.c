@@ -1363,7 +1363,7 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
 uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
-  uint64_t* register_file_nid, uint64_t* memory_nid);
+  uint64_t* register_file_nid, uint64_t* memory_nid, uint64_t* other_register_data_flow_nid);
 
 uint64_t* decode_compressed_memory_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_sdsp_nid, uint64_t* c_swsp_nid,
@@ -1375,7 +1375,8 @@ uint64_t* get_sp_value_plus_CSS64_offset(uint64_t* c_ir_nid, uint64_t* register_
 uint64_t* get_rs1_shift_value_plus_CS32_offset(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid);
-uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
+  uint64_t* register_file_nid, uint64_t* memory_nid, uint64_t* other_memory_data_flow_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
@@ -6768,20 +6769,20 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
 
-  uint64_t* no_register_data_flow_nid;
+  uint64_t* register_data_flow_nid;
 
   opcode_nid = get_instruction_opcode(ir_nid);
 
   rd_nid       = get_instruction_rd(ir_nid);
   rd_value_nid = load_register_value(rd_nid, "current rd value", register_file_nid);
 
-  no_register_data_flow_nid = new_binary_boolean(OP_OR,
-    new_binary_boolean(OP_EQ, rd_nid, NID_ZR, "rd == register zero?"),
-    new_binary_boolean(OP_OR,
-      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_STORE, "opcode == STORE?"),
-      new_binary_boolean(OP_EQ, opcode_nid, NID_OP_BRANCH, "opcode == BRANCH?"),
-      "STORE or BRANCH?"), // redundant
-    "rd == zero register or STORE or BRANCH?");
+  register_data_flow_nid = new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
+    new_binary_boolean(OP_AND,
+      new_binary_boolean(OP_NEQ, opcode_nid, NID_OP_STORE, "opcode != STORE?"),
+      new_binary_boolean(OP_NEQ, opcode_nid, NID_OP_BRANCH, "opcode != BRANCH?"),
+      "not STORE and not BRANCH?"), // redundant
+    "rd != zero register and not STORE and not BRANCH?");
 
   rd_value_nid =
     imm_data_flow(ir_nid, register_file_nid,
@@ -6793,10 +6794,10 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
                 auipc_data_flow(pc_nid, ir_nid, rd_value_nid)))))));
 
   return new_ternary(OP_ITE, SID_REGISTER_STATE,
-    no_register_data_flow_nid,
-    register_file_nid,
+    register_data_flow_nid,
     store_register_value(rd_nid, rd_value_nid, "rd update", register_file_nid),
-    "update non-zero register");
+    register_file_nid,
+    "register data flow");
 }
 
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid, uint64_t* register_file_nid) {
@@ -7796,7 +7797,7 @@ uint64_t* get_pc_value_plus_2(uint64_t* pc_nid) {
 }
 
 uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_nid,
-  uint64_t* register_file_nid, uint64_t* memory_nid) {
+  uint64_t* register_file_nid, uint64_t* memory_nid, uint64_t* other_register_data_flow_nid) {
   uint64_t* rd_nid;
   uint64_t* rd_value_nid;
   uint64_t* rd_shift_nid;
@@ -7814,8 +7815,7 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
     rs1_shift_nid       = get_compressed_instruction_rs1_shift(c_ir_nid);
     rs1_shift_value_nid = load_register_value(rs1_shift_nid, "compressed rs1' or rd' value", register_file_nid);
 
-    rs2_value_nid = load_register_value(get_compressed_instruction_rs2(c_ir_nid), "compressed rs2 value", register_file_nid);
-
+    rs2_value_nid       = load_register_value(get_compressed_instruction_rs2(c_ir_nid), "compressed rs2 value", register_file_nid);
     rs2_shift_value_nid = load_register_value(get_compressed_instruction_rs2_shift(c_ir_nid), "compressed rs2' value", register_file_nid);
 
     rd_nid = decode_compressed_register_data_flow(SID_REGISTER_ADDRESS, c_ir_nid,
@@ -7913,28 +7913,29 @@ uint64_t* core_compressed_register_data_flow(uint64_t* pc_nid, uint64_t* c_ir_ni
           slice_single_word_from_machine_word(rs1_shift_value_nid),
           slice_single_word_from_machine_word(rs2_shift_value_nid),
           "lower 32 bits of compressed rd' value - lower 32 bits of compressed rs2' value")),
-      load_double_word(get_sp_value_plus_CI64_offset(c_ir_nid, register_file_nid), memory_nid),
-      extend_single_word_to_machine_word(OP_SEXT,
+      load_double_word(get_sp_value_plus_CI64_offset(c_ir_nid, register_file_nid), memory_nid), // c.ldsp
+      extend_single_word_to_machine_word(OP_SEXT, // c.lwsp
         load_single_word(get_sp_value_plus_CI32_offset(c_ir_nid, register_file_nid), memory_nid)),
-      load_double_word(get_rs1_shift_value_plus_CL64_offset(c_ir_nid, register_file_nid), memory_nid),
-      extend_single_word_to_machine_word(OP_SEXT,
+      load_double_word(get_rs1_shift_value_plus_CL64_offset(c_ir_nid, register_file_nid), memory_nid), // c.ld
+      extend_single_word_to_machine_word(OP_SEXT, // c.lw
         load_single_word(get_rs1_shift_value_plus_CL32_offset(c_ir_nid, register_file_nid), memory_nid)),
-      get_pc_value_plus_2(pc_nid),
-      get_pc_value_plus_2(pc_nid),
+      get_pc_value_plus_2(pc_nid), // c.jal
+      get_pc_value_plus_2(pc_nid), // c.jalr
       "register data flow",
-      load_register_value(rd_nid, "current compressed rd value", register_file_nid));
+      NID_MACHINE_WORD_0);
 
     return new_ternary(OP_ITE, SID_REGISTER_STATE,
-      new_binary_boolean(OP_AND,
-        is_compressed_instruction(c_ir_nid),
+      is_compressed_instruction(c_ir_nid),
+      new_ternary(OP_ITE, SID_REGISTER_STATE,
         new_binary_boolean(OP_NEQ, rd_nid, NID_ZR, "rd != register zero?"),
-        "is compressed instruction and rd != register zero?"),
-      store_register_value(rd_nid, rd_value_nid,
-        "compressed instruction rd update", register_file_nid),
-      register_file_nid,
+        store_register_value(rd_nid, rd_value_nid,
+          "compressed instruction rd update", register_file_nid),
+        register_file_nid,
+        "compressed instruction register data flow"),
+      other_register_data_flow_nid,
       "compressed instruction and other register data flow");
   } else
-    return register_file_nid;
+    return other_register_data_flow_nid;
 }
 
 uint64_t* decode_compressed_memory_data_flow(uint64_t* sid, uint64_t* c_ir_nid,
@@ -7996,7 +7997,8 @@ uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_
     return UNUSED;
 }
 
-uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
+uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
+  uint64_t* register_file_nid, uint64_t* memory_nid, uint64_t* other_memory_data_flow_nid) {
   uint64_t* rs2_value_nid;
   uint64_t* rs2_shift_value_nid;
 
@@ -8021,10 +8023,10 @@ uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid, uint64_t* registe
           memory_nid),
         "compressed instruction memory data flow",
         memory_nid),
-      memory_nid,
+      other_memory_data_flow_nid,
       "compressed instruction and other memory data flow");
   } else
-    return memory_nid;
+    return other_memory_data_flow_nid;
 }
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
@@ -8491,7 +8493,7 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
       new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
       memory_nid),
     memory_data_flow_nid,
-    "main memory data flow");
+    "memory data flow");
 }
 
 void kernel_sequential(uint64_t core,
@@ -8788,8 +8790,8 @@ void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t*
   // compressed instruction control flow
 
   eval_core_compressed_instruction_control_flow_nid =
-    core_compressed_control_flow(pc_nid, eval_core_c_ir_nid, register_file_nid,
-      eval_core_instruction_control_flow_nid);
+    core_compressed_control_flow(pc_nid, eval_core_c_ir_nid,
+      register_file_nid, eval_core_instruction_control_flow_nid);
 
   // instruction register data flow
 
@@ -8800,7 +8802,7 @@ void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t*
 
   eval_core_compressed_instruction_register_data_flow_nid =
     core_compressed_register_data_flow(pc_nid, eval_core_c_ir_nid,
-      eval_core_instruction_register_data_flow_nid, memory_nid);
+      register_file_nid, memory_nid, eval_core_instruction_register_data_flow_nid);
 
   // instruction memory data flow
 
@@ -8810,8 +8812,8 @@ void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t*
   // compressed instruction memory data flow
 
   eval_core_compressed_instruction_memory_data_flow_nid =
-    core_compressed_memory_data_flow(eval_core_c_ir_nid, register_file_nid,
-      eval_core_instruction_memory_data_flow_nid);
+    core_compressed_memory_data_flow(eval_core_c_ir_nid,
+      register_file_nid, memory_nid, eval_core_instruction_memory_data_flow_nid);
 }
 
 void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
