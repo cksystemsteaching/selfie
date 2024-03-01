@@ -3169,6 +3169,8 @@ uint64_t is_bitwise_operator(char* op) {
     return 1;
   else if (op == OP_OR)
     return 1;
+  else if (op == OP_XOR)
+    return 1;
   else if (op == OP_SLL)
     return 1;
   else if (op == OP_SRL)
@@ -3641,6 +3643,8 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, bitwise_and(left_value, right_value));
         else if (op == OP_OR)
           set_state(line, bitwise_or(left_value, right_value));
+        else if (op == OP_XOR)
+          set_state(line, bitwise_xor(left_value, right_value));
         else if (op == OP_SLL)
           set_state(line, sign_shrink(left_shift(left_value, right_value), size));
         else if (op == OP_SRL)
