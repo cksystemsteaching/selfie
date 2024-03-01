@@ -313,6 +313,7 @@ uint64_t bitwise_or(uint64_t a, uint64_t b);
 uint64_t bitwise_xor(uint64_t a, uint64_t b);
 
 uint64_t arithmetic_right_shift(uint64_t n, uint64_t b, uint64_t size);
+uint64_t signed_less_than_or_equal_to(uint64_t a, uint64_t b);
 
 uint64_t get_cached_state(uint64_t* line);
 
@@ -3147,6 +3148,8 @@ uint64_t is_comparison_operator(char* op) {
     return 1;
   else if (op == OP_UGT)
     return 1;
+  else if (op == OP_SGTE)
+    return 1;
   else if (op == OP_UGTE)
     return 1;
   else if (op == OP_SLT)
@@ -3264,6 +3267,13 @@ uint64_t arithmetic_right_shift(uint64_t n, uint64_t b, uint64_t size) {
     return sign_shrink(-1, size);
   else
     return 0;
+}
+
+uint64_t signed_less_than_or_equal_to(uint64_t a, uint64_t b) {
+  if (a == b)
+    return 1;
+  else
+    return signed_less_than(a, b);
 }
 
 uint64_t get_cached_state(uint64_t* line) {
@@ -3662,6 +3672,8 @@ uint64_t eval_binary_op(uint64_t* line) {
             set_state(line, left_value != right_value);
           else if (op == OP_UGT)
             set_state(line, left_value > right_value);
+          else if (op == OP_SGTE)
+            set_state(line, signed_less_than_or_equal_to(right_value, left_value));
           else if (op == OP_UGTE)
             set_state(line, left_value >= right_value);
           else if (op == OP_SLT)
