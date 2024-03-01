@@ -3148,6 +3148,8 @@ uint64_t is_comparison_operator(char* op) {
     return 1;
   else if (op == OP_NEQ)
     return 1;
+  else if (op == OP_SGT)
+    return 1;
   else if (op == OP_UGT)
     return 1;
   else if (op == OP_SGTE)
@@ -3157,6 +3159,8 @@ uint64_t is_comparison_operator(char* op) {
   else if (op == OP_SLT)
     return 1;
   else if (op == OP_ULT)
+    return 1;
+  else if (op == OP_SLTE)
     return 1;
   else if (op == OP_ULTE)
     return 1;
@@ -3697,10 +3701,14 @@ uint64_t eval_binary_op(uint64_t* line) {
           left_value  = sign_extend(left_value, size);
           right_value = sign_extend(right_value, size);
 
-          if (op == OP_SGTE)
+          if (op == OP_SGT)
+            set_state(line, signed_less_than(right_value, left_value));
+          else if (op == OP_SGTE)
             set_state(line, signed_less_than_or_equal_to(right_value, left_value));
           else if (op == OP_SLT)
             set_state(line, signed_less_than(left_value, right_value));
+          else if (op == OP_SLTE)
+            set_state(line, signed_less_than_or_equal_to(left_value, right_value));
         }
       }
     }
