@@ -3188,7 +3188,11 @@ uint64_t is_arithmetic_operator(char* op) {
     return 1;
   else if (op == OP_MUL)
     return 1;
+  else if (op == OP_SDIV)
+    return 1;
   else if (op == OP_UDIV)
+    return 1;
+  else if (op == OP_SREM)
     return 1;
   else if (op == OP_UREM)
     return 1;
@@ -3651,43 +3655,52 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, right_shift(left_value, right_value));
         else if (op == OP_SRA)
           set_state(line, arithmetic_right_shift(left_value, right_value, size));
-      } else {
-        // redundant for unsigned arithmetic and comparison
-        left_value  = sign_extend(left_value, size);
-        right_value = sign_extend(right_value, size);
+      } else if (is_arithmetic_operator(op)) {
+        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
 
-        if (is_arithmetic_operator(op)) {
-          match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+        if (op == OP_ADD)
+          set_state(line, left_value + right_value);
+        else if (op == OP_SUB)
+          set_state(line, left_value - right_value);
+        else if (op == OP_MUL)
+          set_state(line, left_value * right_value);
+        else if (op == OP_UDIV)
+          set_state(line, left_value / right_value);
+        else if (op == OP_UREM)
+          set_state(line, left_value % right_value);
+        else {
+          left_value  = sign_extend(left_value, size);
+          right_value = sign_extend(right_value, size);
 
-          if (op == OP_ADD)
-            set_state(line, sign_shrink(left_value + right_value, size));
-          else if (op == OP_SUB)
-            set_state(line, sign_shrink(left_value - right_value, size));
-          else if (op == OP_MUL)
-            set_state(line, sign_shrink(left_value * right_value, size));
-          else if (op == OP_UDIV)
-            set_state(line, left_value / right_value);
-          else if (op == OP_UREM)
-            set_state(line, left_value % right_value);
-        } else if (is_comparison_operator(op)) {
-          match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+          if (op == OP_SDIV)
+            set_state(line, sign_shrink(signed_division(left_value, right_value), size));
+          else if (op == OP_SREM)
+            set_state(line,
+              sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+        }
+      } else if (is_comparison_operator(op)) {
+        match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
 
-          if (op == OP_EQ)
-            set_state(line, left_value == right_value);
-          else if (op == OP_NEQ)
-            set_state(line, left_value != right_value);
-          else if (op == OP_UGT)
-            set_state(line, left_value > right_value);
-          else if (op == OP_SGTE)
+        if (op == OP_EQ)
+          set_state(line, left_value == right_value);
+        else if (op == OP_NEQ)
+          set_state(line, left_value != right_value);
+        else if (op == OP_UGT)
+          set_state(line, left_value > right_value);
+        else if (op == OP_UGTE)
+          set_state(line, left_value >= right_value);
+        else if (op == OP_ULT)
+          set_state(line, left_value < right_value);
+        else if (op == OP_ULTE)
+          set_state(line, left_value <= right_value);
+        else {
+          left_value  = sign_extend(left_value, size);
+          right_value = sign_extend(right_value, size);
+
+          if (op == OP_SGTE)
             set_state(line, signed_less_than_or_equal_to(right_value, left_value));
-          else if (op == OP_UGTE)
-            set_state(line, left_value >= right_value);
           else if (op == OP_SLT)
             set_state(line, signed_less_than(left_value, right_value));
-          else if (op == OP_ULT)
-            set_state(line, left_value < right_value);
-          else if (op == OP_ULTE)
-            set_state(line, left_value <= right_value);
         }
       }
     }
