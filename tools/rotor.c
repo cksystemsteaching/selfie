@@ -344,6 +344,11 @@ uint64_t eval_optional_line(uint64_t* line);
 
 void apply_next(uint64_t* line);
 
+uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
+
+void save_state(uint64_t* line);
+void restore_state(uint64_t* line);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t UNINITIALIZED = -1; // uninitialized state
@@ -353,6 +358,20 @@ uint64_t INITIALIZED   = 0;  // initialized state
 
 uint64_t current_step = 0; // first step in evaluation is 0
 uint64_t next_step    = 0; // initial next step in evaluation is 0
+
+uint64_t current_offset = 0; // keeps track of absolute current step
+
+uint64_t input_steps = 0; // number of steps until most recent input has been consumed
+
+uint64_t current_input = 0; // current input byte value
+
+uint64_t any_input = 0; // indicates if any input has been consumed
+
+uint64_t min_steps = -1;
+uint64_t max_steps = 0;
+
+uint64_t min_input = 0;
+uint64_t max_input = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2409,6 +2428,11 @@ uint64_t eval_sequential();
 
 void apply_sequential();
 
+void save_states();
+void restore_states();
+
+void eval_states();
+
 void eval_rotor();
 
 uint64_t rotor_arguments();
@@ -3366,9 +3390,17 @@ uint64_t eval_input(uint64_t* line) {
   if (op == OP_STATE)
     return get_cached_state(line);
   else if (op == OP_INPUT) {
-    set_state(line, 48);
+    save_states();
+
+    if (input_steps == 0)
+      // TODO: input is consumed more than once
+      input_steps = current_step;
+
+    set_state(line, current_input);
 
     set_step(line, next_step);
+
+    any_input = 1;
 
     return get_state(line);
   }
@@ -3774,8 +3806,9 @@ uint64_t eval_init(uint64_t* line) {
 
                   set_step(state_nid, INITIALIZED);
 
-                  // TODO: reinitialize state
+                  // TODO: reinitialize value state
                   set_state(value_nid, 0);
+                  set_step(value_nid, UNINITIALIZED);
                 } else {
                   printf("%s: init reinitializing array error\n", selfie_name);
 
@@ -3833,9 +3866,6 @@ uint64_t eval_next(uint64_t* line) {
                 value = eval_line(value_nid);
 
                 no_update = get_state(state_nid) == value;
-
-                // cache state in next
-                set_state(line, value);
               } else {
                 printf("%s: next reupdating bitvector state error\n", selfie_name);
 
@@ -3846,12 +3876,9 @@ uint64_t eval_next(uint64_t* line) {
               if (get_step(state_nid) <= next_step) {
                 value_nid = (uint64_t*) eval_line(value_nid);
 
-                if (get_state(state_nid) == get_state(value_nid)) {
+                if (get_state(state_nid) == get_state(value_nid))
                   no_update = state_nid == value_nid;
-
-                  // cache state in next
-                  set_state(line, get_state(value_nid));
-                } else {
+                else {
                   printf("%s: next reupdating state array error\n", selfie_name);
 
                   exit(EXITCODE_SYSTEMERROR);
@@ -3862,6 +3889,8 @@ uint64_t eval_next(uint64_t* line) {
                 exit(EXITCODE_SYSTEMERROR);
               }
             }
+
+            set_step(line, next_step);
 
             return no_update;
           } else
@@ -3892,18 +3921,22 @@ uint64_t eval_property(uint64_t* line) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
-    if (condition != 0)
-      printf("%s: bad %s satisfied @ 0x%lX in step %lu\n", selfie_name,
-        symbol, eval_line(state_core_pc_nid), current_step);
+    if (condition != 0) {
+      printf("%s: bad %s satisfied @ 0x%lX after %lu steps", selfie_name,
+        symbol, eval_line(state_core_pc_nid), next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+    }
 
     set_state(line, condition != 0);
     set_step(line, next_step);
 
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
-    if (condition == 0)
-      printf("%s: constraint %s violated @ 0x%lX in step %lu\n", selfie_name,
-        symbol, eval_line(state_core_pc_nid), current_step);
+    if (condition == 0) {
+      printf("%s: constraint %s violated @ 0x%lX after %lu steps\n", selfie_name,
+        symbol, eval_line(state_core_pc_nid), next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+    }
 
     set_state(line, condition == 0);
     set_step(line, next_step);
@@ -3964,14 +3997,106 @@ uint64_t eval_optional_line(uint64_t* line) {
 
 void apply_next(uint64_t* line) {
   uint64_t* state_nid;
+  uint64_t* value_nid;
+
+  if (get_step(line) == next_step) {
+    state_nid = get_arg1(line);
+
+    if (is_bitvector(get_sid(state_nid))) {
+      value_nid = get_arg2(line);
+
+      set_state(state_nid, get_state(value_nid));
+    } // TODO: log writes and only apply with init and next
+
+    set_step(state_nid, next_step);
+
+    return;
+  }
+
+  printf("%s: apply error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes) {
+  uint64_t i;
+
+  // assert: bytes is multiple of sizeof(uint64_t)
+
+  bytes = bytes / sizeof(uint64_t);
+
+  i = 0;
+
+  while (i < bytes) {
+    *(destination + i) = *(source + i);
+
+    i = i + 1;
+  }
+
+  return destination;
+}
+
+void save_state(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t* sid;
+  uint64_t array_size;
+  uint64_t element_size;
+  uint64_t* source;
+  uint64_t* destination;
 
   state_nid = get_arg1(line);
 
-  set_state(state_nid, get_state(line));
+  sid = get_sid(state_nid);
+
+  if (is_bitvector(sid))
+    set_state(line, get_state(state_nid));
+  else if (sid != SID_CODE_STATE) {
+    // assert: array
+    array_size   = eval_array_size(sid);
+    element_size = eval_element_size(sid);
+
+    source      = (uint64_t*) get_state(state_nid);
+    destination = (uint64_t*) get_state(line);
+
+    if (destination == (uint64_t*) 0) {
+      destination = allocate_array(get_sid(state_nid));
+
+      set_state(line, (uint64_t) destination);
+    }
+
+    if (sid != SID_MEMORY_STATE)
+      // assert: register files
+      memcopy(destination, source, two_to_the_power_of(array_size) * sizeof(uint64_t));
+    else {
+      memcopy(get_data_array(destination),
+        get_data_array(source),
+        two_to_the_power_of(calculate_address_space(data_size, element_size)) * sizeof(uint64_t));
+      memcopy(get_heap_array(destination),
+        get_heap_array(source),
+        two_to_the_power_of(calculate_address_space(heap_size, element_size)) * sizeof(uint64_t));
+      memcopy(get_stack_array(destination),
+        get_stack_array(source),
+        two_to_the_power_of(calculate_address_space(stack_size, element_size)) * sizeof(uint64_t));
+    }
+  }
+}
+
+void restore_state(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t current_state;
+
+  state_nid = get_arg1(line);
+
+  if (get_sid(state_nid) != SID_CODE_STATE) {
+    current_state = get_state(state_nid);
+
+    set_state(state_nid, get_state(line));
+
+    // keep current state to avoid reallocating arrays
+    set_state(line, current_state);
+  }
 
   set_step(state_nid, next_step);
-
-  set_state(line, 0);
 
   set_step(line, next_step);
 }
@@ -9173,7 +9298,9 @@ uint64_t eval_properties() {
   halt = halt + eval_optional_line(prop_openat_seg_faulting_nid);
   halt = halt + eval_optional_line(prop_read_seg_faulting_nid);
   halt = halt + eval_optional_line(prop_write_seg_faulting_nid);
-  halt = halt + eval_optional_line(prop_bad_exit_code_nid);
+
+  // if satisfied rotor halts in current step
+  eval_optional_line(prop_bad_exit_code_nid);
 
   return halt != 0;
 }
@@ -9187,7 +9314,9 @@ uint64_t eval_sequential() {
   halt = halt * eval_line(next_file_descriptor_nid);
   halt = halt * eval_line(next_readable_bytes_nid);
   halt = halt * eval_line(next_read_bytes_nid);
+
   halt = halt * eval_line(next_core_pc_nid);
+
   halt = halt * eval_line(next_register_file_nid);
   halt = halt * eval_line(next_code_segment_nid);
   halt = halt * eval_line(next_main_memory_nid);
@@ -9206,40 +9335,108 @@ void apply_sequential() {
   apply_next(next_main_memory_nid);
 }
 
+void save_states() {
+  save_state(next_program_break_nid);
+  save_state(next_file_descriptor_nid);
+  save_state(next_readable_bytes_nid);
+  save_state(next_read_bytes_nid);
+
+  save_state(next_core_pc_nid);
+
+  save_state(next_register_file_nid);
+  save_state(next_code_segment_nid);
+  save_state(next_main_memory_nid);
+}
+
+void restore_states() {
+  restore_state(next_program_break_nid);
+  restore_state(next_file_descriptor_nid);
+  restore_state(next_readable_bytes_nid);
+  restore_state(next_read_bytes_nid);
+
+  restore_state(next_core_pc_nid);
+
+  restore_state(next_register_file_nid);
+  restore_state(next_code_segment_nid);
+  restore_state(next_main_memory_nid);
+}
+
+void eval_states() {
+  while (1) {
+    if (eval_properties())
+      return;
+
+    if (eval_sequential()) {
+      printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
+        model_name,
+        eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
+        eval_line(state_core_pc_nid),
+        next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+
+      if (min_steps > next_step - current_offset) {
+        min_steps = next_step - current_offset;
+
+        min_input = current_input;
+      }
+
+      if (max_steps < next_step - current_offset) {
+        max_steps = next_step - current_offset;
+
+        max_input = current_input;
+      }
+
+      return;
+    }
+
+    if (current_step - current_offset >= 100000 - 1) {
+      printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
+        model_name,
+        eval_line(state_core_pc_nid),
+        next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+
+      return;
+    }
+
+    apply_sequential();
+
+    current_step = next_step;
+
+    next_step = next_step + 1;
+  }
+}
+
 void eval_rotor() {
   if (CODE_LOADED)
     if (SYNTHESIZE == 0)
       if (CORES == 1) {
         printf("%s: ********************************************************************************\n", selfie_name);
 
-        current_step = 0;
-        next_step    = 1;
+        current_offset = 0;
+        current_step   = 0;
 
-        while (current_step < 100000) {
-          if (eval_properties())
-            return;
+        input_steps    = 0;
+        current_input  = 0;
 
-          if (eval_sequential()) {
-            printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps\n", selfie_name,
-              model_name,
-              eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
-              eval_line(state_core_pc_nid),
-              next_step);
+        save_states();
 
-            return;
-          }
-
-          apply_sequential();
-
-          current_step = next_step;
-
+        while (current_input < 256) {
           next_step = next_step + 1;
-        }
+          any_input = 0;
 
-        printf("%s: terminating %s @ 0x%lX after %lu steps\n", selfie_name,
-          model_name,
-          eval_line(state_core_pc_nid),
-          current_step);
+          eval_states();
+
+          if (any_input) {
+            restore_states();
+
+            current_offset = next_step - input_steps;
+            current_step   = next_step;
+
+            current_input = current_input + 1;
+          } else
+            return;
+        }
       }
 }
 
@@ -9462,6 +9659,9 @@ uint64_t selfie_model() {
       printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
 
       eval_rotor();
+
+      printf("%s: %lu steps with input %lu <= number of steps <= %lu steps with input %lu\n", selfie_name,
+        min_steps, min_input, max_steps, max_input);
 
       printf("%s: ################################################################################\n", selfie_name);
 
