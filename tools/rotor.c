@@ -367,12 +367,6 @@ uint64_t current_input = 0; // current input byte value
 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
-uint64_t min_steps = -1;
-uint64_t max_steps = 0;
-
-uint64_t min_input = 0;
-uint64_t max_input = 0;
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -------------------     I N T E R F A C E     -------------------
@@ -2423,22 +2417,6 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
 void model_rotor();
 
-uint64_t eval_properties();
-uint64_t eval_sequential();
-
-void apply_sequential();
-
-void save_states();
-void restore_states();
-
-void eval_states();
-
-void eval_rotor();
-
-uint64_t rotor_arguments();
-
-uint64_t selfie_model();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CODE_LOADED = 0; // flag for indicating if code is loaded
@@ -2510,6 +2488,34 @@ void init_model_generator() {
 
   init_instruction_sorts();
 }
+
+// -----------------------------------------------------------------
+// ---------------------------- EMULATOR ---------------------------
+// -----------------------------------------------------------------
+
+uint64_t eval_properties();
+uint64_t eval_sequential();
+
+void apply_sequential();
+
+void save_states();
+void restore_states();
+
+void eval_states();
+
+void eval_rotor();
+
+uint64_t rotor_arguments();
+
+uint64_t selfie_model();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t min_steps = -1;
+uint64_t max_steps = 0;
+
+uint64_t min_input = 0;
+uint64_t max_input = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -9274,6 +9280,10 @@ void model_rotor() {
   }
 }
 
+// -----------------------------------------------------------------
+// ---------------------------- EMULATOR ---------------------------
+// -----------------------------------------------------------------
+
 uint64_t eval_properties() {
   uint64_t halt;
 
@@ -9416,8 +9426,8 @@ void eval_rotor() {
         current_offset = 0;
         current_step   = 0;
 
-        input_steps    = 0;
-        current_input  = 0;
+        input_steps   = 0;
+        current_input = 0;
 
         save_states();
 
