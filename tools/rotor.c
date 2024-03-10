@@ -1110,10 +1110,6 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct3_nid, char* funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_funct3_nid);
-uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* funct3_nid, char* funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
-  uint64_t* other_funct3_nid);
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_nid, char* funct7_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -1137,7 +1133,10 @@ uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct_sll_srl_nid, uint64_t* slli_nid, uint64_t* srli_nid,
   uint64_t* funct_sra_nid, uint64_t* srai_nid, char* comment,
   uint64_t* no_funct_nid);
-uint64_t* decode_illegal_shamt(uint64_t* ir_nid);
+
+uint64_t* is_enabled(uint64_t* instruction_nid);
+uint64_t* is_illegal_shamt(uint64_t* ir_nid);
+
 uint64_t* decode_imm_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addiw_nid, uint64_t* slliw_nid, uint64_t* srliw_nid, uint64_t* sraiw_nid, char* comment,
   uint64_t* no_funct_nid, uint64_t* other_opcode_nid);
@@ -1167,8 +1166,10 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mulw_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
   uint64_t* no_funct_nid);
-uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register_file_nid);
-uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* register_file_nid);
+
+uint64_t* is_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register_file_nid);
+uint64_t* is_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* register_file_nid);
+
 uint64_t* decode_load_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid, uint64_t* lwu_nid, char* comment,
   uint64_t* no_funct3_nid);
@@ -1189,8 +1190,7 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* beq_nid, uint64_t* bne_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
-  uint64_t* bltu_nid, uint64_t* bgeu_nid,
-  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
+  uint64_t* bltu_nid, uint64_t* bgeu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid);
 
 uint64_t* decode_jal(uint64_t* sid, uint64_t* ir_nid,
@@ -1233,6 +1233,7 @@ uint64_t* store_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* core_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
 
 uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
+uint64_t* execute_branch(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* condition_nid);
 uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* get_pc_value_plus_UJ_immediate(uint64_t* pc_nid, uint64_t* ir_nid);
@@ -1319,8 +1320,9 @@ uint64_t* decode_compressed_addi4spn(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_addi4spn_nid, char* comment, uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_slli(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_slli_nid, char* comment, uint64_t* other_c_funct3_nid);
+
 uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid);
-uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid);
+uint64_t* is_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid);
 
 uint64_t* decode_compressed_mv_add(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_mv_nid, uint64_t* c_add_nid, char* comment,
@@ -1336,8 +1338,7 @@ uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_sd_nid, uint64_t* c_sw_nid, char* comment,
   uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
-  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
+  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid, char* comment,
   uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_j(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_j_nid, char* comment, uint64_t* other_c_funct3_nid);
@@ -1393,6 +1394,7 @@ uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
   uint64_t* register_file_nid, uint64_t* memory_nid, uint64_t* other_memory_data_flow_nid);
 
 uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
+uint64_t* execute_compressed_branch(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* condition_nid);
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
 
 uint64_t* get_pc_value_plus_CJ_offset(uint64_t* pc_nid, uint64_t* c_ir_nid);
@@ -1478,6 +1480,10 @@ uint64_t* NID_12_BIT_IMM_0 = (uint64_t*) 0;
 
 uint64_t RISCU = 0; // restrict to RISC-U
 
+uint64_t* SID_INSTRUCTION_ID = (uint64_t*) 0;
+
+uint64_t* NID_DISABLED = (uint64_t*) 0;
+
 uint64_t* NID_LUI  = (uint64_t*) 0;
 uint64_t* NID_ADDI = (uint64_t*) 0;
 
@@ -1493,8 +1499,7 @@ uint64_t* NID_SD = (uint64_t*) 0;
 uint64_t* NID_LW = (uint64_t*) 0;
 uint64_t* NID_SW = (uint64_t*) 0;
 
-uint64_t* NID_BEQ = (uint64_t*) 0;
-
+uint64_t* NID_BEQ  = (uint64_t*) 0;
 uint64_t* NID_JAL  = (uint64_t*) 0;
 uint64_t* NID_JALR = (uint64_t*) 0;
 
@@ -1918,38 +1923,41 @@ void init_instruction_sorts() {
 
   // RISC-U instructions
 
-  NID_LUI  = NID_TRUE;
-  NID_ADDI = NID_TRUE;
+  SID_INSTRUCTION_ID = new_bitvec(7, "7-bit instruction ID");
 
-  NID_ADD  = NID_TRUE;
-  NID_SUB  = NID_TRUE;
-  NID_MUL  = NID_TRUE;
-  NID_DIVU = NID_TRUE;
-  NID_REMU = NID_TRUE;
-  NID_SLTU = NID_TRUE;
+  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 0, 0, "unknown");
 
-  NID_LW = NID_TRUE;
-  NID_SW = NID_TRUE;
+  NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 1, 0, "lui");
+  NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 2, 0, "addi");
+
+  NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 3, 0, "add");
+  NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 4, 0, "sub");
+  NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 5, 0, "mul");
+  NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 6, 0, "divu");
+  NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 7, 0, "remu");
+  NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 8, 0, "sltu");
+
+  NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 9, 0, "lw");
+  NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 10, 0, "sw");
+
+  NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 11, 0, "ld");
+  NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 12, 0, "sd");
+
+  NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 13, 0, "beq");
+  NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 14, 0, "jal");
+  NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 15, 0, "jalr");
+
+  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 16, 0, "ecall");
 
   if (IS64BITTARGET) {
-    NID_LD = NID_TRUE;
-    NID_SD = NID_TRUE;
-
     if (RISCU) {
-      NID_LW = NID_FALSE;
-      NID_SW = NID_FALSE;
+      NID_LW = NID_DISABLED;
+      NID_SW = NID_DISABLED;
     }
   } else {
-    NID_LD = NID_FALSE;
-    NID_SD = NID_FALSE;
+    NID_LD = NID_DISABLED;
+    NID_SD = NID_DISABLED;
   }
-
-  NID_BEQ = NID_TRUE;
-
-  NID_JAL  = NID_TRUE;
-  NID_JALR = NID_TRUE;
-
-  NID_ECALL = NID_TRUE;
 
   // RV32I codes missing in RISC-U
 
@@ -1986,75 +1994,75 @@ void init_instruction_sorts() {
   // RV32I instruction switches
 
   if (RISCU) {
-    NID_AUIPC = NID_FALSE;
+    NID_AUIPC = NID_DISABLED;
 
-    NID_BNE  = NID_FALSE;
-    NID_BLT  = NID_FALSE;
-    NID_BGE  = NID_FALSE;
-    NID_BLTU = NID_FALSE;
-    NID_BGEU = NID_FALSE;
+    NID_BNE  = NID_DISABLED;
+    NID_BLT  = NID_DISABLED;
+    NID_BGE  = NID_DISABLED;
+    NID_BLTU = NID_DISABLED;
+    NID_BGEU = NID_DISABLED;
 
-    NID_LB  = NID_FALSE;
-    NID_LH  = NID_FALSE;
-    NID_LBU = NID_FALSE;
-    NID_LHU = NID_FALSE;
+    NID_LB  = NID_DISABLED;
+    NID_LH  = NID_DISABLED;
+    NID_LBU = NID_DISABLED;
+    NID_LHU = NID_DISABLED;
 
-    NID_SB = NID_FALSE;
-    NID_SH = NID_FALSE;
+    NID_SB = NID_DISABLED;
+    NID_SH = NID_DISABLED;
 
-    NID_SLTI  = NID_FALSE;
-    NID_SLTIU = NID_FALSE;
-    NID_XORI  = NID_FALSE;
-    NID_ORI   = NID_FALSE;
-    NID_ANDI  = NID_FALSE;
+    NID_SLTI  = NID_DISABLED;
+    NID_SLTIU = NID_DISABLED;
+    NID_XORI  = NID_DISABLED;
+    NID_ORI   = NID_DISABLED;
+    NID_ANDI  = NID_DISABLED;
 
-    NID_SLLI = NID_FALSE;
-    NID_SRLI = NID_FALSE;
-    NID_SRAI = NID_FALSE;
+    NID_SLLI = NID_DISABLED;
+    NID_SRLI = NID_DISABLED;
+    NID_SRAI = NID_DISABLED;
 
-    NID_SLL = NID_FALSE;
-    NID_SLT = NID_FALSE;
-    NID_XOR = NID_FALSE;
-    NID_SRL = NID_FALSE;
-    NID_SRA = NID_FALSE;
+    NID_SLL = NID_DISABLED;
+    NID_SLT = NID_DISABLED;
+    NID_XOR = NID_DISABLED;
+    NID_SRL = NID_DISABLED;
+    NID_SRA = NID_DISABLED;
 
-    NID_OR  = NID_FALSE;
-    NID_AND = NID_FALSE;
+    NID_OR  = NID_DISABLED;
+    NID_AND = NID_DISABLED;
   } else {
-    NID_AUIPC = NID_TRUE;
+    NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 17, 0, "auipc");
 
-    NID_BNE  = NID_TRUE;
-    NID_BLT  = NID_TRUE;
-    NID_BGE  = NID_TRUE;
-    NID_BLTU = NID_TRUE;
-    NID_BGEU = NID_TRUE;
+    NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 18, 0, "bne");
+    NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 19, 0, "blt");
+    NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 20, 0, "bge");
+    NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 21, 0, "bltu");
+    NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 22, 0, "bgeu");
 
-    NID_LB  = NID_TRUE;
-    NID_LH  = NID_TRUE;
-    NID_LBU = NID_TRUE;
-    NID_LHU = NID_TRUE;
+    NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 23, 0, "lb");
+    NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 24, 0, "lh");
+    NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 25, 0, "lbu");
+    NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 26, 0, "lhu");
 
-    NID_SB = NID_TRUE;
-    NID_SH = NID_TRUE;
+    NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 27, 0, "sb");
+    NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 28, 0, "sh");
 
-    NID_SLTI  = NID_TRUE;
-    NID_SLTIU = NID_TRUE;
-    NID_XORI  = NID_TRUE;
-    NID_ORI   = NID_TRUE;
-    NID_ANDI  = NID_TRUE;
+    NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 29, 0, "slti");
+    NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 30, 0, "sltiu");
+    NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 31, 0, "xori");
+    NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 32, 0, "ori");
+    NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 33, 0, "andi");
 
-    NID_SLLI = NID_TRUE;
-    NID_SRLI = NID_TRUE;
-    NID_SRAI = NID_TRUE;
+    NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 34, 0, "slli");
+    NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 35, 0, "srli");
+    NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 36, 0, "srai");
 
-    NID_SLL = NID_TRUE;
-    NID_SLT = NID_TRUE;
-    NID_XOR = NID_TRUE;
-    NID_SRL = NID_TRUE;
-    NID_SRA = NID_TRUE;
+    NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 37, 0, "sll");
+    NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 38, 0, "slt");
+    NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 39, 0, "xor");
+    NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 40, 0, "srl");
+    NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 41, 0, "sra");
 
-    NID_OR  = NID_TRUE;
-    NID_AND = NID_TRUE;
+    NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 42, 0, "or");
+    NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 43, 0, "and");
   }
 
   // RV64I codes missing in RISC-U
@@ -2071,33 +2079,33 @@ void init_instruction_sorts() {
 
   // RV64I instruction switches
 
-  NID_LWU = NID_FALSE;
+  NID_LWU = NID_DISABLED;
 
-  NID_ADDIW = NID_FALSE;
-  NID_SLLIW = NID_FALSE;
-  NID_SRLIW = NID_FALSE;
-  NID_SRAIW = NID_FALSE;
+  NID_ADDIW = NID_DISABLED;
+  NID_SLLIW = NID_DISABLED;
+  NID_SRLIW = NID_DISABLED;
+  NID_SRAIW = NID_DISABLED;
 
-  NID_ADDW = NID_FALSE;
-  NID_SUBW = NID_FALSE;
-  NID_SLLW = NID_FALSE;
-  NID_SRLW = NID_FALSE;
-  NID_SRAW = NID_FALSE;
+  NID_ADDW = NID_DISABLED;
+  NID_SUBW = NID_DISABLED;
+  NID_SLLW = NID_DISABLED;
+  NID_SRLW = NID_DISABLED;
+  NID_SRAW = NID_DISABLED;
 
   if (RISCU == 0)
     if (IS64BITTARGET) {
-      NID_LWU = NID_TRUE;
+      NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 44, 0, "lwu");
 
-      NID_ADDIW = NID_TRUE;
-      NID_SLLIW = NID_TRUE;
-      NID_SRLIW = NID_TRUE;
-      NID_SRAIW = NID_TRUE;
+      NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 45, 0, "addiw");
+      NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 46, 0, "slliw");
+      NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 47, 0, "srliw");
+      NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 48, 0, "sraiw");
 
-      NID_ADDW = NID_TRUE;
-      NID_SUBW = NID_TRUE;
-      NID_SLLW = NID_TRUE;
-      NID_SRLW = NID_TRUE;
-      NID_SRAW = NID_TRUE;
+      NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 49, 0, "addw");
+      NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 50, 0, "subw");
+      NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 51, 0, "sllw");
+      NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 52, 0, "srlw");
+      NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 53, 0, "sraw");
     }
 
   // RV32M codes missing in RISC-U
@@ -2113,22 +2121,25 @@ void init_instruction_sorts() {
   if (RISCU)
     RV32M = 1;
 
-  NID_MULH   = NID_FALSE;
-  NID_MULHSU = NID_FALSE;
-  NID_MULHU  = NID_FALSE;
-  NID_DIV    = NID_FALSE;
-  NID_REM    = NID_FALSE;
+  NID_MULH   = NID_DISABLED;
+  NID_MULHSU = NID_DISABLED;
+  NID_MULHU  = NID_DISABLED;
+  NID_DIV    = NID_DISABLED;
+  NID_REM    = NID_DISABLED;
 
   if (RISCU == 0) {
     if (RV32M) {
-      NID_MUL    = NID_TRUE;
-      NID_MULH   = NID_TRUE;
-      NID_MULHSU = NID_TRUE;
-      NID_MULHU  = NID_TRUE;
-      NID_DIV    = NID_TRUE;
-      NID_REM    = NID_TRUE;
-    } else
-      NID_MUL = NID_FALSE;
+      // MUL, DIVU, REMU already defined
+      NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 54, 0, "mulh");
+      NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 55, 0, "mulhsu");
+      NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 56, 0, "mulhu");
+      NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 57, 0, "div");
+      NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 58, 0, "rem");
+    } else {
+      NID_MUL  = NID_DISABLED;
+      NID_DIVU = NID_DISABLED;
+      NID_REMU = NID_DISABLED;
+    }
   }
 
   // RV64M instruction switches
@@ -2140,17 +2151,17 @@ void init_instruction_sorts() {
     RV64M = 0;
 
   if (RV64M) {
-    NID_MULW  = NID_TRUE;
-    NID_DIVW  = NID_TRUE;
-    NID_DIVUW = NID_TRUE;
-    NID_REMW  = NID_TRUE;
-    NID_REMUW = NID_TRUE;
+    NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 59, 0, "mulw");
+    NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 60, 0, "divw");
+    NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 61, 0, "divuw");
+    NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 62, 0, "remw");
+    NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 63, 0, "remuw");
   } else {
-    NID_MULW  = NID_FALSE;
-    NID_DIVW  = NID_FALSE;
-    NID_DIVUW = NID_FALSE;
-    NID_REMW  = NID_FALSE;
-    NID_REMUW = NID_FALSE;
+    NID_MULW  = NID_DISABLED;
+    NID_DIVW  = NID_DISABLED;
+    NID_DIVUW = NID_DISABLED;
+    NID_REMW  = NID_DISABLED;
+    NID_REMUW = NID_DISABLED;
   }
 
   // RVC codes
@@ -2235,118 +2246,118 @@ void init_instruction_sorts() {
     RVC = 0;
 
   if (RVC) {
-    NID_C_LI  = NID_TRUE;
-    NID_C_LUI = NID_TRUE;
+    NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 64, 0, "c.li");
+    NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 65, 0, "c.lui");
 
-    NID_C_ADDI = NID_TRUE;
+    NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 66, 0, "c.addi");
     if (IS64BITTARGET)
-      NID_C_ADDIW = NID_TRUE;
+      NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 67, 0, "c.addiw");
     else
-      NID_C_ADDIW = NID_FALSE;
-    NID_C_ADDI16SP = NID_TRUE;
+      NID_C_ADDIW = NID_DISABLED;
+    NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 68, 0, "c.addi16sp");
 
-    NID_C_ADDI4SPN = NID_TRUE;
+    NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 69, 0, "c.addi4spn");
 
-    NID_C_ANDI = NID_TRUE;
+    NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 70, 0, "c.andi");
 
-    NID_C_SLLI = NID_TRUE;
-    NID_C_SRLI = NID_TRUE;
-    NID_C_SRAI = NID_TRUE;
+    NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 71, 0, "c.slli");
+    NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 72, 0, "c.srli");
+    NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 73, 0, "c.srai");
 
-    NID_C_MV   = NID_TRUE;
-    NID_C_ADD  = NID_TRUE;
+    NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 74, 0, "c.mv");
+    NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 75, 0, "c.add");
 
-    NID_C_SUB  = NID_TRUE;
-    NID_C_XOR  = NID_TRUE;
-    NID_C_OR   = NID_TRUE;
-    NID_C_AND  = NID_TRUE;
+    NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 76, 0, "c.sub");
+    NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 77, 0, "c.xor");
+    NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 78, 0, "c.or");
+    NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 79, 0, "c.and");
 
     if (IS64BITTARGET) {
-      NID_C_ADDW = NID_TRUE;
-      NID_C_SUBW = NID_TRUE;
+      NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 80, 0, "c.addw");
+      NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 81, 0, "c.subw");
     } else {
-      NID_C_ADDW = NID_FALSE;
-      NID_C_SUBW = NID_FALSE;
+      NID_C_ADDW = NID_DISABLED;
+      NID_C_SUBW = NID_DISABLED;
     }
 
-    NID_C_LWSP = NID_TRUE;
-    NID_C_LW   = NID_TRUE;
+    NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 82, 0, "c.lwsp");
+    NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 83, 0, "c.lw");
 
-    NID_C_SWSP = NID_TRUE;
-    NID_C_SW   = NID_TRUE;
+    NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 84, 0, "c.swsp");
+    NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 85, 0, "c.sw");
 
     if (IS64BITTARGET) {
-      NID_C_LDSP = NID_TRUE;
-      NID_C_LD   = NID_TRUE;
+      NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 86, 0, "c.ldsp");
+      NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 87, 0, "c.ld");
 
-      NID_C_SDSP = NID_TRUE;
-      NID_C_SD   = NID_TRUE;
+      NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 88, 0, "c.sdsp");
+      NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 89, 0, "c.sd");
     } else {
-      NID_C_LDSP = NID_FALSE;
-      NID_C_LD   = NID_FALSE;
+      NID_C_LDSP = NID_DISABLED;
+      NID_C_LD   = NID_DISABLED;
 
-      NID_C_SDSP = NID_FALSE;
-      NID_C_SD   = NID_FALSE;
+      NID_C_SDSP = NID_DISABLED;
+      NID_C_SD   = NID_DISABLED;
     }
 
-    NID_C_BEQZ = NID_TRUE;
-    NID_C_BNEZ = NID_TRUE;
+    NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 90, 0, "c.beqz");
+    NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 91, 0, "c.bnez");
 
-    NID_C_J = NID_TRUE;
+    NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 92, 0, "c.j");
     if (IS64BITTARGET)
-      NID_C_JAL = NID_FALSE;
+      NID_C_JAL = NID_DISABLED;
     else
-      NID_C_JAL = NID_TRUE;
+      NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 93, 0, "c.jal");
 
-    NID_C_JR   = NID_TRUE;
-    NID_C_JALR = NID_TRUE;
+    NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 94, 0, "c.jr");
+    NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 95, 0, "c.jalr");
   } else {
-    NID_C_LI  = NID_FALSE;
-    NID_C_LUI = NID_FALSE;
+    NID_C_LI  = NID_DISABLED;
+    NID_C_LUI = NID_DISABLED;
 
-    NID_C_ADDI     = NID_FALSE;
-    NID_C_ADDIW    = NID_FALSE;
-    NID_C_ADDI16SP = NID_FALSE;
+    NID_C_ADDI     = NID_DISABLED;
+    NID_C_ADDIW    = NID_DISABLED;
+    NID_C_ADDI16SP = NID_DISABLED;
 
-    NID_C_ADDI4SPN = NID_FALSE;
+    NID_C_ADDI4SPN = NID_DISABLED;
 
-    NID_C_ANDI = NID_FALSE;
+    NID_C_ANDI = NID_DISABLED;
 
-    NID_C_SLLI = NID_FALSE;
-    NID_C_SRLI = NID_FALSE;
-    NID_C_SRAI = NID_FALSE;
+    NID_C_SLLI = NID_DISABLED;
+    NID_C_SRLI = NID_DISABLED;
+    NID_C_SRAI = NID_DISABLED;
 
-    NID_C_MV   = NID_FALSE;
-    NID_C_ADD  = NID_FALSE;
+    NID_C_MV   = NID_DISABLED;
+    NID_C_ADD  = NID_DISABLED;
 
-    NID_C_SUB  = NID_FALSE;
-    NID_C_XOR  = NID_FALSE;
-    NID_C_OR   = NID_FALSE;
-    NID_C_AND  = NID_FALSE;
+    NID_C_SUB  = NID_DISABLED;
+    NID_C_XOR  = NID_DISABLED;
+    NID_C_OR   = NID_DISABLED;
+    NID_C_AND  = NID_DISABLED;
 
-    NID_C_ADDW = NID_FALSE;
-    NID_C_SUBW = NID_FALSE;
+    NID_C_ADDW = NID_DISABLED;
+    NID_C_SUBW = NID_DISABLED;
 
-    NID_C_LWSP = NID_FALSE;
-    NID_C_LW   = NID_FALSE;
+    NID_C_LWSP = NID_DISABLED;
+    NID_C_LW   = NID_DISABLED;
 
-    NID_C_LDSP = NID_FALSE;
-    NID_C_LD   = NID_FALSE;
+    NID_C_LDSP = NID_DISABLED;
+    NID_C_LD   = NID_DISABLED;
 
-    NID_C_SWSP = NID_FALSE;
-    NID_C_SW   = NID_FALSE;
+    NID_C_SWSP = NID_DISABLED;
+    NID_C_SW   = NID_DISABLED;
 
-    NID_C_SDSP = NID_FALSE;
-    NID_C_SD   = NID_FALSE;
+    NID_C_SDSP = NID_DISABLED;
+    NID_C_SD   = NID_DISABLED;
 
-    NID_C_BEQZ = NID_FALSE;
-    NID_C_BNEZ = NID_FALSE;
+    NID_C_BEQZ = NID_DISABLED;
+    NID_C_BNEZ = NID_DISABLED;
 
-    NID_C_J   = NID_FALSE;
-    NID_C_JAL = NID_FALSE;
+    NID_C_J   = NID_DISABLED;
+    NID_C_JAL = NID_DISABLED;
 
-    NID_C_JR   = NID_FALSE;
-    NID_C_JALR = NID_FALSE;
+    NID_C_JR   = NID_DISABLED;
+    NID_C_JALR = NID_DISABLED;
   }
 }
 
@@ -2980,14 +2991,10 @@ void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value) {
   if (size >= SIZEOFUINT64INBITS)
     // TODO: support of bitvectors larger than machine words
     return;
-  else if (value < two_to_the_power_of(size - 1))
-    return;
-  else if (value >= -two_to_the_power_of(size - 1))
+  else if (is_signed_integer(value, size))
     return;
 
-  printf("%s: %ld does not fit %lu-bit bitvector\n", selfie_name, value, size);
-
-  exit(EXITCODE_SYSTEMERROR);
+  fit_bitvec_sort(sid, value);
 }
 
 uint64_t eval_array_size(uint64_t* line) {
@@ -3353,13 +3360,9 @@ uint64_t eval_constant_value(uint64_t* line) {
     value = (uint64_t) get_arg1(line);
 
     if (get_op(line) == OP_CONSTD) {
-      if (value <= 1)
-        fit_bitvec_sort(sid, value);
-      else {
-        signed_fit_bitvec_sort(sid, value);
+      signed_fit_bitvec_sort(sid, value);
 
-        value = sign_shrink(value, eval_bitvec_size(sid));
-      }
+      value = sign_shrink(value, eval_bitvec_size(sid));
     } else
       fit_bitvec_sort(sid, value);
 
@@ -5769,21 +5772,6 @@ uint64_t* decode_funct3(uint64_t* sid, uint64_t* ir_nid,
     execute_comment);
 }
 
-uint64_t* decode_funct3_conditional(uint64_t* sid, uint64_t* ir_nid,
-  uint64_t* funct3_nid, char* funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
-  uint64_t* other_funct3_nid) {
-  return decode_funct3(sid, ir_nid,
-    funct3_nid, funct3_comment,
-    new_ternary(OP_ITE, sid,
-      evaluate_nid,
-      branch_nid,
-      continue_nid,
-      branch_comment),
-    "evaluate branch condition if funct3 matches",
-    other_funct3_nid);
-}
-
 uint64_t* decode_funct7(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* funct7_nid, char* funct7_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -5891,13 +5879,20 @@ uint64_t* decode_shift_imm(uint64_t* sid, uint64_t* ir_nid,
       no_funct_nid));
 }
 
-uint64_t* decode_illegal_shamt(uint64_t* ir_nid) {
+uint64_t* is_enabled(uint64_t* instruction_nid) {
+  if (instruction_nid != NID_DISABLED)
+    return new_binary_boolean(OP_NEQ, instruction_nid, NID_DISABLED, "is instruction enabled?");
+  else
+    return NID_FALSE;
+}
+
+uint64_t* is_illegal_shamt(uint64_t* ir_nid) {
   if (IS64BITTARGET)
     return decode_opcode(SID_BOOLEAN, ir_nid,
       NID_OP_IMM_32, "IMM-32?",
       decode_shift_RV64I(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_SLLIW, NID_SRLIW,
-        NID_F7_SRA_ILLEGAL, NID_SRAIW, "there?",
+        NID_F7_SLL_SRL_ILLEGAL, is_enabled(NID_SLLIW), is_enabled(NID_SRLIW),
+        NID_F7_SRA_ILLEGAL, is_enabled(NID_SRAIW), "there?",
         NID_FALSE),
       "illegal shamt there?",
       NID_FALSE);
@@ -5905,8 +5900,8 @@ uint64_t* decode_illegal_shamt(uint64_t* ir_nid) {
     return decode_opcode(SID_BOOLEAN, ir_nid,
       NID_OP_IMM, "IMM?",
       decode_shift_imm(SID_BOOLEAN, ir_nid,
-        NID_F7_SLL_SRL_ILLEGAL, NID_C_SLLI, NID_SRLI,
-        NID_F7_SRA_ILLEGAL, NID_SRAI, "there?",
+        NID_F7_SLL_SRL_ILLEGAL, is_enabled(NID_SLLI), is_enabled(NID_SRLI),
+        NID_F7_SRA_ILLEGAL, is_enabled(NID_SRAI), "there?",
         NID_FALSE),
       "illegal shamt there?",
       NID_FALSE);
@@ -6190,7 +6185,7 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
     return no_funct_nid;
 }
 
-uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register_file_nid) {
+uint64_t* is_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register_file_nid) {
   uint64_t* RV64M_nid;
   uint64_t* RV32M_nid;
 
@@ -6200,7 +6195,8 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register
         NID_OP_OP, "OP?",
         decode_RV32M(SID_BOOLEAN, ir_nid,
           NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
-          NID_FALSE, NID_DIVU, NID_FALSE, NID_REMU, "active?",
+          NID_FALSE, is_enabled(NID_DIVU),
+          NID_FALSE, is_enabled(NID_REMU), "active?",
           NID_FALSE),
         "divu or remu active?",
         NID_FALSE);
@@ -6210,7 +6206,8 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register
           NID_OP_OP_32, "OP-32?",
           decode_RV64M(SID_BOOLEAN, ir_nid,
             NID_FALSE,
-            NID_DIVW, NID_DIVUW, NID_REMW, NID_REMUW, "active?",
+            is_enabled(NID_DIVW), is_enabled(NID_DIVUW),
+            is_enabled(NID_REMW), is_enabled(NID_REMUW), "active?",
             NID_FALSE),
           "divw or divuw or remw or remuw active?",
           NID_FALSE);
@@ -6222,7 +6219,8 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register
           NID_OP_OP, "OP?",
           decode_RV32M(SID_BOOLEAN, ir_nid,
             NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
-            NID_DIV, NID_DIVU, NID_REM, NID_REMU, "active?",
+            is_enabled(NID_DIV), is_enabled(NID_DIVU),
+            is_enabled(NID_REM), is_enabled(NID_REMU), "active?",
             NID_FALSE),
           "div or divu or rem or remu active?",
           RV64M_nid);
@@ -6241,7 +6239,7 @@ uint64_t* decode_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register
     return UNUSED;
 }
 
-uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* register_file_nid) {
+uint64_t* is_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* register_file_nid) {
   uint64_t* rs1_value_nid;
   uint64_t* rs2_value_nid;
 
@@ -6265,7 +6263,8 @@ uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* 
           new_binary_boolean(OP_AND,
             decode_RV64M(SID_BOOLEAN, ir_nid,
               NID_FALSE,
-              NID_DIVW, NID_FALSE, NID_REMW, NID_FALSE, "active?",
+              is_enabled(NID_DIVW), NID_FALSE,
+              is_enabled(NID_REMW), NID_FALSE, "active?",
               NID_FALSE),
             new_binary_boolean(OP_AND,
               new_binary_boolean(OP_EQ,
@@ -6289,7 +6288,8 @@ uint64_t* decode_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* 
           new_binary_boolean(OP_AND,
             decode_RV32M(SID_BOOLEAN, ir_nid,
               NID_FALSE, NID_FALSE, NID_FALSE, NID_FALSE,
-              NID_DIV, NID_FALSE, NID_REM, NID_FALSE, "active?",
+              is_enabled(NID_DIV), NID_FALSE,
+              is_enabled(NID_REM), NID_FALSE, "active?",
               NID_FALSE),
             new_binary_boolean(OP_AND,
               new_binary_boolean(OP_EQ,
@@ -6441,39 +6441,38 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* beq_nid, uint64_t* bne_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
-  uint64_t* bltu_nid, uint64_t* bgeu_nid,
-  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
+  uint64_t* bltu_nid, uint64_t* bgeu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
   if (RISCU)
     return decode_opcode(sid, ir_nid,
       NID_OP_BRANCH, "BRANCH?",
-      decode_funct3_conditional(sid, ir_nid,
+      decode_funct3(sid, ir_nid,
         NID_F3_BEQ, "BEQ?",
-        beq_nid, branch_nid, continue_nid, format_comment("beq %s", (uint64_t) comment),
+        beq_nid, format_comment("beq %s", (uint64_t) comment),
         no_funct3_nid),
       format_comment("branch %s", (uint64_t) comment),
       other_opcode_nid);
 
   return decode_opcode(sid, ir_nid,
     NID_OP_BRANCH, "BRANCH?",
-    decode_funct3_conditional(sid, ir_nid,
+    decode_funct3(sid, ir_nid,
       NID_F3_BEQ, "BEQ?",
-      beq_nid, branch_nid, continue_nid, format_comment("beq %s", (uint64_t) comment),
-      decode_funct3_conditional(sid, ir_nid,
+      beq_nid, format_comment("beq %s", (uint64_t) comment),
+      decode_funct3(sid, ir_nid,
         NID_F3_BNE, "BNE?",
-        bne_nid, branch_nid, continue_nid, format_comment("bne %s", (uint64_t) comment),
-        decode_funct3_conditional(sid, ir_nid,
+        bne_nid, format_comment("bne %s", (uint64_t) comment),
+        decode_funct3(sid, ir_nid,
           NID_F3_BLT, "BLT?",
-          blt_nid, branch_nid, continue_nid, format_comment("blt %s", (uint64_t) comment),
-          decode_funct3_conditional(sid, ir_nid,
+          blt_nid, format_comment("blt %s", (uint64_t) comment),
+          decode_funct3(sid, ir_nid,
             NID_F3_BGE, "BGE?",
-            bge_nid, branch_nid, continue_nid, format_comment("bge %s", (uint64_t) comment),
-            decode_funct3_conditional(sid, ir_nid,
+            bge_nid, format_comment("bge %s", (uint64_t) comment),
+            decode_funct3(sid, ir_nid,
               NID_F3_BLTU, "BLTU?",
-              bltu_nid, branch_nid, continue_nid, format_comment("bltu %s", (uint64_t) comment),
-              decode_funct3_conditional(sid, ir_nid,
+              bltu_nid, format_comment("bltu %s", (uint64_t) comment),
+              decode_funct3(sid, ir_nid,
                 NID_F3_BGEU, "BGEU?",
-                bgeu_nid, branch_nid, continue_nid, format_comment("bgeu %s", (uint64_t) comment),
+                bgeu_nid, format_comment("bgeu %s", (uint64_t) comment),
                 no_funct3_nid)))))),
     format_comment("branch %s", (uint64_t) comment),
     other_opcode_nid);
@@ -6502,10 +6501,10 @@ uint64_t* decode_jalr(uint64_t* sid, uint64_t* ir_nid,
 }
 
 uint64_t* decode_instruction(uint64_t* ir_nid) {
-  return new_ternary(OP_ITE, SID_BOOLEAN,
+  return new_ternary(OP_ITE, SID_INSTRUCTION_ID,
     new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?"),
     NID_ECALL,
-    decode_imm(SID_BOOLEAN, ir_nid,
+    decode_imm(SID_INSTRUCTION_ID, ir_nid,
       NID_ADDI,
       NID_SLTI,
       NID_SLTIU,
@@ -6519,8 +6518,8 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
       NID_SLLIW,
       NID_SRLIW,
       NID_SRAIW,
-      "known?", NID_FALSE,
-      decode_op(SID_BOOLEAN, ir_nid,
+      "known?", NID_DISABLED,
+      decode_op(SID_INSTRUCTION_ID, ir_nid,
         NID_ADD,
         NID_SUB,
         NID_SLT,
@@ -6536,8 +6535,8 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
         NID_SLLW,
         NID_SRLW,
         NID_SRAW,
-        "known?", NID_FALSE,
-        decode_RV32M(SID_BOOLEAN, ir_nid,
+        "known?", NID_DISABLED,
+        decode_RV32M(SID_INSTRUCTION_ID, ir_nid,
           NID_MUL,
           NID_MULH,
           NID_MULHSU,
@@ -6546,37 +6545,37 @@ uint64_t* decode_instruction(uint64_t* ir_nid) {
           NID_DIVU,
           NID_REM,
           NID_REMU,
-          "known?", NID_FALSE),
-        decode_RV64M(SID_BOOLEAN, ir_nid,
+          "known?", NID_DISABLED),
+        decode_RV64M(SID_INSTRUCTION_ID, ir_nid,
           NID_MULW,
           NID_DIVW,
           NID_DIVUW,
           NID_REMW,
           NID_REMUW,
-          "known?", NID_FALSE),
-        decode_load(SID_BOOLEAN, ir_nid,
+          "known?", NID_DISABLED),
+        decode_load(SID_INSTRUCTION_ID, ir_nid,
           NID_LD, NID_LWU,
           NID_LW,
           NID_LH, NID_LHU,
           NID_LB, NID_LBU,
-          "known?", NID_FALSE,
-          decode_store(SID_BOOLEAN, ir_nid,
+          "known?", NID_DISABLED,
+          decode_store(SID_INSTRUCTION_ID, ir_nid,
             NID_SD,
-            NID_SW, NID_SH, NID_SB, "known?", NID_FALSE,
-            decode_branch(SID_BOOLEAN, ir_nid,
+            NID_SW, NID_SH, NID_SB, "known?", NID_DISABLED,
+            decode_branch(SID_INSTRUCTION_ID, ir_nid,
               NID_BEQ, NID_BNE,
               NID_BLT, NID_BGE,
               NID_BLTU, NID_BGEU,
-              NID_TRUE, NID_FALSE, "known?", NID_FALSE,
-              decode_jal(SID_BOOLEAN, ir_nid,
+              "known?", NID_DISABLED,
+              decode_jal(SID_INSTRUCTION_ID, ir_nid,
                 NID_JAL, "known?",
-                decode_jalr(SID_BOOLEAN, ir_nid,
-                  NID_JALR, "known?", NID_FALSE,
-                  decode_lui(SID_BOOLEAN, ir_nid,
+                decode_jalr(SID_INSTRUCTION_ID, ir_nid,
+                  NID_JALR, "known?", NID_DISABLED,
+                  decode_lui(SID_INSTRUCTION_ID, ir_nid,
                     NID_LUI, "known?",
-                    decode_auipc(SID_BOOLEAN, ir_nid,
+                    decode_auipc(SID_INSTRUCTION_ID, ir_nid,
                       NID_AUIPC, "known?",
-                      NID_FALSE))))))))),
+                      NID_DISABLED))))))))),
     "ecall known?");
 }
 
@@ -7029,6 +7028,14 @@ uint64_t* get_pc_value_plus_SB_immediate(uint64_t* pc_nid, uint64_t* ir_nid) {
     "pc value + SB-immediate");
 }
 
+uint64_t* execute_branch(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* condition_nid) {
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    condition_nid,
+    get_pc_value_plus_SB_immediate(pc_nid, ir_nid),
+    get_pc_value_plus_4(pc_nid),
+    "evaluate branch condition");
+}
+
 uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid) {
   uint64_t* rs1_value_nid;
   uint64_t* rs2_value_nid;
@@ -7037,14 +7044,18 @@ uint64_t* branch_control_flow(uint64_t* pc_nid, uint64_t* ir_nid, uint64_t* regi
   rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
 
   return decode_branch(SID_MACHINE_WORD, ir_nid,
-    new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value?"),
-    new_binary_boolean(OP_NEQ, rs1_value_nid, rs2_value_nid, "rs1 value != rs2 value?"),
-    new_binary_boolean(OP_SLT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value?"),
-    new_binary_boolean(OP_SGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value?"),
-    new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?"),
-    new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)?"),
-    get_pc_value_plus_SB_immediate(pc_nid, ir_nid),
-    get_pc_value_plus_4(pc_nid),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_EQ, rs1_value_nid, rs2_value_nid, "rs1 value == rs2 value?")),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_NEQ, rs1_value_nid, rs2_value_nid, "rs1 value != rs2 value?")),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_SLT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value?")),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_SGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value?")),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_ULT, rs1_value_nid, rs2_value_nid, "rs1 value < rs2 value (unsigned)?")),
+    execute_branch(pc_nid, ir_nid,
+      new_binary_boolean(OP_UGTE, rs1_value_nid, rs2_value_nid, "rs1 value >= rs2 value (unsigned)?")),
     "pc-relative control flow",
     pc_nid,
     other_control_flow_nid);
@@ -7394,21 +7405,6 @@ uint64_t* decode_compressed_funct3(uint64_t* sid, uint64_t* c_ir_nid,
     execute_comment);
 }
 
-uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_funct3_nid, char* c_funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
-  uint64_t* other_c_funct3_nid) {
-  return decode_compressed_funct3(sid, c_ir_nid,
-    c_funct3_nid, c_funct3_comment,
-    new_ternary(OP_ITE, sid,
-      evaluate_nid,
-      branch_nid,
-      continue_nid,
-      branch_comment),
-    "evaluate branch condition if compressed funct3 matches",
-    other_c_funct3_nid);
-}
-
 uint64_t* decode_compressed_funct2(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct2_nid, char* c_funct2_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -7541,11 +7537,11 @@ uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid)
 
   return new_binary_boolean(OP_AND,
     illegal_shamt_nid,
-    c_shift_nid,
+    is_enabled(c_shift_nid),
     "compressed shift with illegal shamt?");
 }
 
-uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
+uint64_t* is_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
   uint64_t* c_lui_nid;
   uint64_t* c_addi_nid;
   uint64_t* c_addi16sp_nid;
@@ -7553,7 +7549,7 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
 
   if (RVC) {
     c_lui_nid = new_binary_boolean(OP_AND,
-      NID_C_LUI,
+      is_enabled(NID_C_LUI),
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CUI_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
@@ -7561,7 +7557,7 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
       "c.lui with CUI-immediate == 0?");
 
     c_addi_nid = new_binary_boolean(OP_AND,
-      NID_C_ADDI,
+      is_enabled(NID_C_ADDI),
       new_binary_boolean(OP_AND,
         new_binary_boolean(OP_NEQ,
           get_compressed_instruction_rd(c_ir_nid),
@@ -7575,7 +7571,7 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
       "c.addi with compressed rd != zero and CI-immediate == 0?");
 
     c_addi16sp_nid = new_binary_boolean(OP_AND,
-      NID_C_ADDI16SP,
+      is_enabled(NID_C_ADDI16SP),
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CI16SP_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
@@ -7583,7 +7579,7 @@ uint64_t* decode_illegal_compressed_instruction_imm_shamt(uint64_t* c_ir_nid) {
       "c.addi16sp with CI16SP-immediate == 0?");
 
     c_addi4spn_nid = new_binary_boolean(OP_AND,
-      NID_C_ADDI4SPN,
+      is_enabled(NID_C_ADDI4SPN),
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_CIW_immediate(c_ir_nid),
         NID_MACHINE_WORD_0,
@@ -7726,15 +7722,14 @@ uint64_t* decode_compressed_store(uint64_t* sid, uint64_t* c_ir_nid,
 }
 
 uint64_t* decode_compressed_branch(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid,
-  uint64_t* branch_nid, uint64_t* continue_nid, char* comment,
+  uint64_t* c_beqz_nid, uint64_t* c_bnez_nid, char* comment,
   uint64_t* other_c_funct3_nid) {
-  return decode_compressed_funct3_conditional(sid, c_ir_nid,
+  return decode_compressed_funct3(sid, c_ir_nid,
     NID_F3_C_BEQZ, "C.BEQZ?",
-    c_beqz_nid, branch_nid, continue_nid, format_comment("c.beqz %s", (uint64_t) comment),
-    decode_compressed_funct3_conditional(sid, c_ir_nid,
+    c_beqz_nid, format_comment("c.beqz %s", (uint64_t) comment),
+    decode_compressed_funct3(sid, c_ir_nid,
       NID_F3_C_BNEZ, "C.BNEZ?",
-      c_bnez_nid, branch_nid, continue_nid, format_comment("c.bnez %s", (uint64_t) comment),
+      c_bnez_nid, format_comment("c.bnez %s", (uint64_t) comment),
       other_c_funct3_nid));
 }
 
@@ -7801,53 +7796,52 @@ uint64_t* is_compressed_instruction(uint64_t* ir_nid) {
 uint64_t* decode_compressed_instruction(uint64_t* c_ir_nid) {
   if (RVC)
     return
-      decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+      decode_compressed_opcode(SID_INSTRUCTION_ID, c_ir_nid,
         NID_OP_C2, "C2?",
-        decode_compressed_mv_add(SID_BOOLEAN, c_ir_nid,
+        decode_compressed_mv_add(SID_INSTRUCTION_ID, c_ir_nid,
           NID_C_MV, NID_C_ADD, "known?",
-          decode_compressed_slli(SID_BOOLEAN, c_ir_nid,
+          decode_compressed_slli(SID_INSTRUCTION_ID, c_ir_nid,
             NID_C_SLLI, "known?",
-            decode_compressed_load(SID_BOOLEAN, c_ir_nid,
+            decode_compressed_load(SID_INSTRUCTION_ID, c_ir_nid,
               NID_C_LDSP, NID_C_LWSP, "known?",
-              decode_compressed_store(SID_BOOLEAN, c_ir_nid,
+              decode_compressed_store(SID_INSTRUCTION_ID, c_ir_nid,
                 NID_C_SDSP, NID_C_SWSP, "known?",
-                decode_compressed_nonzero_rs1_zero_rs2(SID_BOOLEAN, c_ir_nid,
-                  decode_compressed_jr(SID_BOOLEAN, c_ir_nid,
+                decode_compressed_nonzero_rs1_zero_rs2(SID_INSTRUCTION_ID, c_ir_nid,
+                  decode_compressed_jr(SID_INSTRUCTION_ID, c_ir_nid,
                     NID_C_JR, "known?",
-                    decode_compressed_jalr(SID_BOOLEAN, c_ir_nid,
+                    decode_compressed_jalr(SID_INSTRUCTION_ID, c_ir_nid,
                       NID_C_JALR, "known?",
-                      NID_FALSE)),
-                  NID_FALSE))))),
+                      NID_DISABLED)),
+                  NID_DISABLED))))),
         "C2 compressed instruction known?",
-        decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+        decode_compressed_opcode(SID_INSTRUCTION_ID, c_ir_nid,
           NID_OP_C0, "C0?",
-          decode_compressed_addi4spn(SID_BOOLEAN, c_ir_nid,
+          decode_compressed_addi4spn(SID_INSTRUCTION_ID, c_ir_nid,
             NID_C_ADDI4SPN, "known?",
-          decode_compressed_load(SID_BOOLEAN, c_ir_nid,
+          decode_compressed_load(SID_INSTRUCTION_ID, c_ir_nid,
             NID_C_LD, NID_C_LW, "known?",
-            decode_compressed_store(SID_BOOLEAN, c_ir_nid,
+            decode_compressed_store(SID_INSTRUCTION_ID, c_ir_nid,
               NID_C_SD, NID_C_SW, "known?",
-              NID_FALSE))),
+              NID_DISABLED))),
           "C0 compressed instruction known?",
-          decode_compressed_opcode(SID_BOOLEAN, c_ir_nid,
+          decode_compressed_opcode(SID_INSTRUCTION_ID, c_ir_nid,
             NID_OP_C1, "C1?",
-            decode_compressed_imm(SID_BOOLEAN, c_ir_nid,
+            decode_compressed_imm(SID_INSTRUCTION_ID, c_ir_nid,
               NID_C_LI, NID_C_LUI,
               NID_C_ADDI, NID_C_ADDIW, NID_C_ADDI16SP,
               NID_C_SRLI, NID_C_SRAI, NID_C_ANDI, "known?",
-              decode_compressed_op(SID_BOOLEAN, c_ir_nid,
+              decode_compressed_op(SID_INSTRUCTION_ID, c_ir_nid,
                 NID_C_SUB, NID_C_XOR, NID_C_OR, NID_C_AND,
                 NID_C_ADDW, NID_C_SUBW, "known?",
-                decode_compressed_branch(SID_BOOLEAN, c_ir_nid,
-                  NID_C_BEQZ, NID_C_BNEZ,
-                  NID_TRUE, NID_FALSE, "known?",
-                  decode_compressed_j(SID_BOOLEAN, c_ir_nid,
+                decode_compressed_branch(SID_INSTRUCTION_ID, c_ir_nid,
+                  NID_C_BEQZ, NID_C_BNEZ, "known?",
+                  decode_compressed_j(SID_INSTRUCTION_ID, c_ir_nid,
                     NID_C_J, "known?",
-                    decode_compressed_jal(SID_BOOLEAN, c_ir_nid,
+                    decode_compressed_jal(SID_INSTRUCTION_ID, c_ir_nid,
                       NID_C_JAL, "known?",
-                      NID_FALSE))))),
+                      NID_DISABLED))))),
             "C1 compressed instruction known?",
-            NID_FALSE)));
+            NID_DISABLED)));
   else
     return UNUSED;
 }
@@ -8213,16 +8207,24 @@ uint64_t* get_pc_value_plus_CB_offset(uint64_t* pc_nid, uint64_t* c_ir_nid) {
     "pc value + CB-offset");
 }
 
+uint64_t* execute_compressed_branch(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* condition_nid) {
+  return new_ternary(OP_ITE, SID_MACHINE_WORD,
+    condition_nid,
+    get_pc_value_plus_CB_offset(pc_nid, c_ir_nid),
+    get_pc_value_plus_2(pc_nid),
+    "evaluate compressed branch condition");
+}
+
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid) {
   uint64_t* rs1_value_nid;
 
   rs1_value_nid = load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value", register_file_nid);
 
   return decode_compressed_branch(SID_MACHINE_WORD, c_ir_nid,
-    new_binary_boolean(OP_EQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?"),
-    new_binary_boolean(OP_NEQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?"),
-    get_pc_value_plus_CB_offset(pc_nid, c_ir_nid),
-    get_pc_value_plus_2(pc_nid),
+    execute_compressed_branch(pc_nid, c_ir_nid,
+      new_binary_boolean(OP_EQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?")),
+    execute_compressed_branch(pc_nid, c_ir_nid,
+      new_binary_boolean(OP_NEQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?")),
     "pc-relative compressed branch control flow",
     other_control_flow_nid);
 }
@@ -9076,25 +9078,25 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
   prop_illegal_instruction_nid = state_property(core,
     UNUSED,
-    decode_illegal_shamt(ir_nid),
+    is_illegal_shamt(ir_nid),
     format_comment("core-%lu-illegal-instruction", core),
     format_comment("core-%lu illegal instruction", core));
 
   prop_illegal_compressed_instruction_nid = state_property(core,
     UNUSED,
-    decode_illegal_compressed_instruction_imm_shamt(c_ir_nid),
+    is_illegal_compressed_instruction_imm_shamt(c_ir_nid),
     format_comment("core-%lu-illegal-compressed-instruction", core),
     format_comment("core-%lu illegal compressed instruction", core));
 
   if (known_compressed_instructions_nid != UNUSED)
-    known_instructions_nid = new_ternary(OP_ITE, SID_BOOLEAN,
+    known_instructions_nid = new_ternary(OP_ITE, SID_INSTRUCTION_ID,
       is_compressed_instruction(ir_nid),
       known_compressed_instructions_nid,
       known_instructions_nid,
       "is known uncompressed or compressed instruction?");
 
   prop_is_instruction_known_nid = state_property(core,
-    known_instructions_nid,
+    is_enabled(known_instructions_nid),
     UNUSED,
     format_comment("core-%lu-known-instructions", core),
     format_comment("core-%lu known instructions", core));
@@ -9132,14 +9134,14 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   if (check_division_by_zero)
     prop_division_by_zero_nid = state_property(core,
       UNUSED,
-      decode_division_remainder_by_zero(ir_nid, register_file_nid),
+      is_division_remainder_by_zero(ir_nid, register_file_nid),
       format_comment("core-%lu-division-by-zero", core),
       format_comment("core-%lu division by zero", core));
 
   if (check_division_overflow)
     prop_signed_division_overflow_nid = state_property(core,
       UNUSED,
-      decode_signed_division_remainder_overflow(ir_nid, register_file_nid),
+      is_signed_division_remainder_overflow(ir_nid, register_file_nid),
       format_comment("core-%lu-signed-division-overflow", core),
       format_comment("core-%lu signed division overflow", core));
 
@@ -9444,8 +9446,12 @@ void eval_rotor() {
             current_step   = next_step;
 
             current_input = current_input + 1;
-          } else
+          } else {
+            printf("%s: %lu steps with input %lu <= number of steps <= %lu steps with input %lu\n", selfie_name,
+              min_steps, min_input, max_steps, max_input);
+
             return;
+          }
         }
       }
 }
@@ -9669,9 +9675,6 @@ uint64_t selfie_model() {
       printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
 
       eval_rotor();
-
-      printf("%s: %lu steps with input %lu <= number of steps <= %lu steps with input %lu\n", selfie_name,
-        min_steps, min_input, max_steps, max_input);
 
       printf("%s: ################################################################################\n", selfie_name);
 
