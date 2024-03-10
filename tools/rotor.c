@@ -1830,6 +1830,100 @@ uint64_t* NID_C_JAL = (uint64_t*) 0;
 uint64_t* NID_C_JR   = (uint64_t*) 0;
 uint64_t* NID_C_JALR = (uint64_t*) 0;
 
+// instruction IDs
+
+uint64_t ID_ECALL = 1;
+
+  // R-type
+
+uint64_t ID_ADD  = 2;
+uint64_t ID_SUB  = 3;
+uint64_t ID_SLL  = 4;
+uint64_t ID_SLT  = 5;
+uint64_t ID_SLTU = 6;
+uint64_t ID_XOR  = 7;
+uint64_t ID_SRL  = 8;
+uint64_t ID_SRA  = 9;
+uint64_t ID_OR   = 10;
+uint64_t ID_AND  = 11;
+
+uint64_t ID_ADDW = 12;
+uint64_t ID_SUBW = 13;
+uint64_t ID_SLLW = 14;
+uint64_t ID_SRLW = 15;
+uint64_t ID_SRAW = 16;
+
+uint64_t ID_MUL    = 17;
+uint64_t ID_MULH   = 18;
+uint64_t ID_MULHSU = 19;
+uint64_t ID_MULHU  = 20;
+uint64_t ID_DIV    = 21;
+uint64_t ID_DIVU   = 22;
+uint64_t ID_REM    = 23;
+uint64_t ID_REMU   = 24;
+
+uint64_t ID_MULW  = 25;
+uint64_t ID_DIVW  = 26;
+uint64_t ID_DIVUW = 27;
+uint64_t ID_REMW  = 28;
+uint64_t ID_REMUW = 29;
+
+  // I-type
+
+uint64_t ID_JALR = 30;
+
+uint64_t ID_LB  = 31;
+uint64_t ID_LH  = 32;
+uint64_t ID_LW  = 33;
+uint64_t ID_LBU = 34;
+uint64_t ID_LHU = 35;
+uint64_t ID_LWU = 36;
+uint64_t ID_LD  = 37;
+
+uint64_t ID_ADDI  = 38;
+uint64_t ID_SLTI  = 39;
+uint64_t ID_SLTIU = 40;
+uint64_t ID_XORI  = 41;
+uint64_t ID_ORI   = 42;
+uint64_t ID_ANDI  = 43;
+
+uint64_t ID_ADDIW = 44;
+
+uint64_t ID_SLLI = 45;
+uint64_t ID_SRLI = 46;
+uint64_t ID_SRAI = 47;
+
+uint64_t ID_SLLIW = 48;
+uint64_t ID_SRLIW = 49;
+uint64_t ID_SRAIW = 50;
+
+  // S-type
+
+uint64_t ID_SB = 51;
+uint64_t ID_SH = 52;
+uint64_t ID_SW = 53;
+uint64_t ID_SD = 54;
+
+  // SB-type
+
+uint64_t ID_BEQ  = 55;
+uint64_t ID_BNE  = 56;
+uint64_t ID_BLT  = 57;
+uint64_t ID_BGE  = 58;
+uint64_t ID_BLTU = 59;
+uint64_t ID_BGEU = 60;
+
+  // U-type
+
+uint64_t ID_LUI   = 61;
+uint64_t ID_AUIPC = 62;
+
+  // UJ-type
+
+uint64_t ID_JAL = 63;
+
+uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* eval_known_instructions_nid            = (uint64_t*) 0;
@@ -1845,6 +1939,100 @@ uint64_t* eval_core_instruction_memory_data_flow_nid            = (uint64_t*) 0;
 uint64_t* eval_core_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
+
+void init_instruction_mnemonics() {
+  RISC_V_MNEMONICS = smalloc((ID_JAL + 1) * sizeof(char*));
+
+  *(RISC_V_MNEMONICS + ID_ECALL) = (uint64_t) "ecall";
+
+  // R-type
+
+  *(RISC_V_MNEMONICS + ID_ADD)  = (uint64_t) "add";
+  *(RISC_V_MNEMONICS + ID_SUB)  = (uint64_t) "sub";
+  *(RISC_V_MNEMONICS + ID_SLL)  = (uint64_t) "sll";
+  *(RISC_V_MNEMONICS + ID_SLT)  = (uint64_t) "slt";
+  *(RISC_V_MNEMONICS + ID_SLTU) = (uint64_t) "sltu";
+  *(RISC_V_MNEMONICS + ID_XOR)  = (uint64_t) "xor";
+  *(RISC_V_MNEMONICS + ID_SRL)  = (uint64_t) "srl";
+  *(RISC_V_MNEMONICS + ID_SRA)  = (uint64_t) "sra";
+  *(RISC_V_MNEMONICS + ID_OR)   = (uint64_t) "or";
+  *(RISC_V_MNEMONICS + ID_AND)  = (uint64_t) "and";
+
+  *(RISC_V_MNEMONICS + ID_ADDW) = (uint64_t) "addw";
+  *(RISC_V_MNEMONICS + ID_SUBW) = (uint64_t) "subw";
+  *(RISC_V_MNEMONICS + ID_SLLW) = (uint64_t) "sllw";
+  *(RISC_V_MNEMONICS + ID_SRLW) = (uint64_t) "srlw";
+  *(RISC_V_MNEMONICS + ID_SRAW) = (uint64_t) "sraw";
+
+  *(RISC_V_MNEMONICS + ID_MUL)    = (uint64_t) "mul";
+  *(RISC_V_MNEMONICS + ID_MULH)   = (uint64_t) "mulh";
+  *(RISC_V_MNEMONICS + ID_MULHSU) = (uint64_t) "mulhsu";
+  *(RISC_V_MNEMONICS + ID_MULHU)  = (uint64_t) "mulhu";
+  *(RISC_V_MNEMONICS + ID_DIV)    = (uint64_t) "div";
+  *(RISC_V_MNEMONICS + ID_DIVU)   = (uint64_t) "divu";
+  *(RISC_V_MNEMONICS + ID_REM)    = (uint64_t) "rem";
+  *(RISC_V_MNEMONICS + ID_REMU)   = (uint64_t) "remu";
+
+  *(RISC_V_MNEMONICS + ID_MULW)  = (uint64_t) "mulw";
+  *(RISC_V_MNEMONICS + ID_DIVW)  = (uint64_t) "divw";
+  *(RISC_V_MNEMONICS + ID_DIVUW) = (uint64_t) "divuw";
+  *(RISC_V_MNEMONICS + ID_REMW)  = (uint64_t) "remw";
+  *(RISC_V_MNEMONICS + ID_REMUW) = (uint64_t) "remuw";
+
+  // I-type
+
+  *(RISC_V_MNEMONICS + ID_JALR) = (uint64_t) "jalr";
+
+  *(RISC_V_MNEMONICS + ID_LB)  = (uint64_t) "lb";
+  *(RISC_V_MNEMONICS + ID_LH)  = (uint64_t) "lh";
+  *(RISC_V_MNEMONICS + ID_LW)  = (uint64_t) "lw";
+  *(RISC_V_MNEMONICS + ID_LBU) = (uint64_t) "lbu";
+  *(RISC_V_MNEMONICS + ID_LHU) = (uint64_t) "lhu";
+  *(RISC_V_MNEMONICS + ID_LWU) = (uint64_t) "lwu";
+  *(RISC_V_MNEMONICS + ID_LD)  = (uint64_t) "ld";
+
+  *(RISC_V_MNEMONICS + ID_ADDI)  = (uint64_t) "addi";
+  *(RISC_V_MNEMONICS + ID_SLTI)  = (uint64_t) "slti";
+  *(RISC_V_MNEMONICS + ID_SLTIU) = (uint64_t) "sltiu";
+  *(RISC_V_MNEMONICS + ID_XORI)  = (uint64_t) "xori";
+  *(RISC_V_MNEMONICS + ID_ORI)   = (uint64_t) "ori";
+  *(RISC_V_MNEMONICS + ID_ANDI)  = (uint64_t) "andi";
+
+  *(RISC_V_MNEMONICS + ID_ADDIW) = (uint64_t) "addiw";
+
+  *(RISC_V_MNEMONICS + ID_SLLI) = (uint64_t) "slli";
+  *(RISC_V_MNEMONICS + ID_SRLI) = (uint64_t) "srli";
+  *(RISC_V_MNEMONICS + ID_SRAI) = (uint64_t) "srai";
+
+  *(RISC_V_MNEMONICS + ID_SLLIW) = (uint64_t) "slliw";
+  *(RISC_V_MNEMONICS + ID_SRLIW) = (uint64_t) "srliw";
+  *(RISC_V_MNEMONICS + ID_SRAIW) = (uint64_t) "sraiw";
+
+  // S-type
+
+  *(RISC_V_MNEMONICS + ID_SB) = (uint64_t) "sb";
+  *(RISC_V_MNEMONICS + ID_SH) = (uint64_t) "sh";
+  *(RISC_V_MNEMONICS + ID_SW) = (uint64_t) "sw";
+  *(RISC_V_MNEMONICS + ID_SD) = (uint64_t) "sd";
+
+  // SB-type
+
+  *(RISC_V_MNEMONICS + ID_BEQ)  = (uint64_t) "beq";
+  *(RISC_V_MNEMONICS + ID_BNE)  = (uint64_t) "bne";
+  *(RISC_V_MNEMONICS + ID_BLT)  = (uint64_t) "blt";
+  *(RISC_V_MNEMONICS + ID_BGE)  = (uint64_t) "bge";
+  *(RISC_V_MNEMONICS + ID_BLTU) = (uint64_t) "bltu";
+  *(RISC_V_MNEMONICS + ID_BGEU) = (uint64_t) "bgeu";
+
+  // U-type
+
+  *(RISC_V_MNEMONICS + ID_LUI)   = (uint64_t) "lui";
+  *(RISC_V_MNEMONICS + ID_AUIPC) = (uint64_t) "auipc";
+
+  // UJ-type
+
+  *(RISC_V_MNEMONICS + ID_JAL) = (uint64_t) "jal";
+}
 
 void init_instruction_sorts() {
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
@@ -1927,27 +2115,27 @@ void init_instruction_sorts() {
 
   NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 0, 0, "unknown");
 
-  NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 1, 0, "lui");
-  NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 2, 0, "addi");
+  NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, 0, "lui");
+  NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, 0, "addi");
 
-  NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 3, 0, "add");
-  NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 4, 0, "sub");
-  NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 5, 0, "mul");
-  NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 6, 0, "divu");
-  NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 7, 0, "remu");
-  NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 8, 0, "sltu");
+  NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADD, 0, "add");
+  NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUB, 0, "sub");
+  NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MUL, 0, "mul");
+  NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVU, 0, "divu");
+  NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMU, 0, "remu");
+  NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTU, 0, "sltu");
 
-  NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 9, 0, "lw");
-  NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 10, 0, "sw");
+  NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LW, 0, "lw");
+  NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SW, 0, "sw");
 
-  NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 11, 0, "ld");
-  NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 12, 0, "sd");
+  NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LD, 0, "ld");
+  NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SD, 0, "sd");
 
-  NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 13, 0, "beq");
-  NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 14, 0, "jal");
-  NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 15, 0, "jalr");
+  NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BEQ, 0, "beq");
+  NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JAL, 0, "jal");
+  NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JALR, 0, "jalr");
 
-  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 16, 0, "ecall");
+  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ECALL, 0, "ecall");
 
   if (IS64BITTARGET) {
     if (RISCU) {
@@ -2029,40 +2217,40 @@ void init_instruction_sorts() {
     NID_OR  = NID_DISABLED;
     NID_AND = NID_DISABLED;
   } else {
-    NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 17, 0, "auipc");
+    NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AUIPC, 0, "auipc");
 
-    NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 18, 0, "bne");
-    NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 19, 0, "blt");
-    NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 20, 0, "bge");
-    NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 21, 0, "bltu");
-    NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 22, 0, "bgeu");
+    NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BNE, 0, "bne");
+    NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLT, 0, "blt");
+    NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGE, 0, "bge");
+    NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLTU, 0, "bltu");
+    NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGEU, 0, "bgeu");
 
-    NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 23, 0, "lb");
-    NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 24, 0, "lh");
-    NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 25, 0, "lbu");
-    NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 26, 0, "lhu");
+    NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LB, 0, "lb");
+    NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LH, 0, "lh");
+    NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LBU, 0, "lbu");
+    NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LHU, 0, "lhu");
 
-    NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 27, 0, "sb");
-    NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 28, 0, "sh");
+    NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SB, 0, "sb");
+    NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SH, 0, "sh");
 
-    NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 29, 0, "slti");
-    NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 30, 0, "sltiu");
-    NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 31, 0, "xori");
-    NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 32, 0, "ori");
-    NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 33, 0, "andi");
+    NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTI, 0, "slti");
+    NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTIU, 0, "sltiu");
+    NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XORI, 0, "xori");
+    NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ORI, 0, "ori");
+    NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ANDI, 0, "andi");
 
-    NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 34, 0, "slli");
-    NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 35, 0, "srli");
-    NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 36, 0, "srai");
+    NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLI, 0, "slli");
+    NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLI, 0, "srli");
+    NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAI, 0, "srai");
 
-    NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 37, 0, "sll");
-    NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 38, 0, "slt");
-    NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 39, 0, "xor");
-    NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 40, 0, "srl");
-    NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 41, 0, "sra");
+    NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLL, 0, "sll");
+    NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLT, 0, "slt");
+    NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XOR, 0, "xor");
+    NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRL, 0, "srl");
+    NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRA, 0, "sra");
 
-    NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 42, 0, "or");
-    NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 43, 0, "and");
+    NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_OR, 0, "or");
+    NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AND, 0, "and");
   }
 
   // RV64I codes missing in RISC-U
@@ -2094,18 +2282,18 @@ void init_instruction_sorts() {
 
   if (RISCU == 0)
     if (IS64BITTARGET) {
-      NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 44, 0, "lwu");
+      NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, 0, "lwu");
 
-      NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 45, 0, "addiw");
-      NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 46, 0, "slliw");
-      NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 47, 0, "srliw");
-      NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 48, 0, "sraiw");
+      NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDIW, 0, "addiw");
+      NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLIW, 0, "slliw");
+      NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLIW, 0, "srliw");
+      NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAIW, 0, "sraiw");
 
-      NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 49, 0, "addw");
-      NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 50, 0, "subw");
-      NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 51, 0, "sllw");
-      NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 52, 0, "srlw");
-      NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 53, 0, "sraw");
+      NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDW, 0, "addw");
+      NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUBW, 0, "subw");
+      NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLW, 0, "sllw");
+      NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLW, 0, "srlw");
+      NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAW, 0, "sraw");
     }
 
   // RV32M codes missing in RISC-U
@@ -2130,11 +2318,11 @@ void init_instruction_sorts() {
   if (RISCU == 0) {
     if (RV32M) {
       // MUL, DIVU, REMU already defined
-      NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 54, 0, "mulh");
-      NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 55, 0, "mulhsu");
-      NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 56, 0, "mulhu");
-      NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 57, 0, "div");
-      NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 58, 0, "rem");
+      NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, 0, "mulh");
+      NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHSU, 0, "mulhsu");
+      NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHU, 0, "mulhu");
+      NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIV, 0, "div");
+      NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REM, 0, "rem");
     } else {
       NID_MUL  = NID_DISABLED;
       NID_DIVU = NID_DISABLED;
@@ -2151,11 +2339,11 @@ void init_instruction_sorts() {
     RV64M = 0;
 
   if (RV64M) {
-    NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 59, 0, "mulw");
-    NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 60, 0, "divw");
-    NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 61, 0, "divuw");
-    NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 62, 0, "remw");
-    NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 63, 0, "remuw");
+    NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULW, 0, "mulw");
+    NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVW, 0, "divw");
+    NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVUW, 0, "divuw");
+    NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMW, 0, "remw");
+    NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMUW, 0, "remuw");
   } else {
     NID_MULW  = NID_DISABLED;
     NID_DIVW  = NID_DISABLED;
@@ -9420,6 +9608,8 @@ void eval_states() {
 }
 
 void eval_rotor() {
+  init_instruction_mnemonics();
+
   if (CODE_LOADED)
     if (SYNTHESIZE == 0)
       if (CORES == 1) {
