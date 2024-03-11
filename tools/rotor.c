@@ -1260,6 +1260,10 @@ uint64_t is_compressed_instruction_ID(uint64_t instruction_ID);
 uint64_t is_CR_type(uint64_t instruction_ID);
 uint64_t is_jump_CR_type(uint64_t instruction_ID);
 uint64_t is_CI_type(uint64_t instruction_ID);
+uint64_t is_CL_type(uint64_t instruction_ID);
+uint64_t is_CS_type(uint64_t instruction_ID);
+uint64_t is_CB_type(uint64_t instruction_ID);
+uint64_t is_CJ_type(uint64_t instruction_ID);
 
 uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid);
 uint64_t* get_compressed_instruction_funct3(uint64_t* c_ir_nid);
@@ -7540,6 +7544,38 @@ uint64_t is_CI_type(uint64_t instruction_ID) {
   return 0;
 }
 
+uint64_t is_CL_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_C_LW)
+    if (instruction_ID <= ID_C_LD)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_CS_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_C_SW)
+    if (instruction_ID <= ID_C_SDSP)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_CB_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_C_BEQZ)
+    if (instruction_ID <= ID_C_SRAI)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_CJ_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_C_J)
+    if (instruction_ID <= ID_C_JAL)
+      return 1;
+
+  return 0;
+}
+
 uint64_t* get_compressed_instruction_opcode(uint64_t* c_ir_nid) {
   return new_slice(SID_OPCODE_C, c_ir_nid, 1, 0, "get compressed opcode");
 }
@@ -9770,21 +9806,34 @@ void print_assembly() {
     U_imm  = eval_line(get_instruction_U_immediate(eval_core_ir_nid));
     UJ_imm = eval_line(get_instruction_UJ_immediate(eval_core_ir_nid));
   } else {
-    rd = get_register_name(eval_line(get_compressed_instruction_rd(eval_core_c_ir_nid)));
+    rd  = get_register_name(eval_line(get_compressed_instruction_rd(eval_core_c_ir_nid)));
+    rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(eval_core_c_ir_nid)));
+    rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
+
+    I_imm        = eval_line(get_compressed_instruction_CI_immediate(eval_core_c_ir_nid));
+    I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_core_c_ir_nid));
+
+    shamt = eval_line(get_compressed_instruction_shamt(eval_core_c_ir_nid));
+
+    SB_imm = eval_line(get_compressed_instruction_CB_offset(eval_core_c_ir_nid));
+    UJ_imm = eval_line(get_compressed_instruction_CJ_offset(eval_core_c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
-        if (ID == ID_C_JR) rd = get_register_name(REG_ZR); else rd = get_register_name(REG_RA);
-        rs1   = get_register_name(eval_line(get_compressed_instruction_rs1(eval_core_c_ir_nid)));
+        if (ID == ID_C_JR)
+          rd = get_register_name(REG_ZR);
+        else if (ID == ID_C_JALR)
+          rd = get_register_name(REG_RA);
         I_imm = 0;
         ID    = ID_JALR;
       } else {
-        if (ID == ID_C_MV) rs1 = get_register_name(REG_ZR); else rs1 = rd;
-        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
-        ID  = ID_ADD;
+        if (ID == ID_C_MV)
+          rs1 = get_register_name(REG_ZR);
+        else if (ID == ID_C_ADD)
+          rs1 = rd;
+        ID = ID_ADD;
       }
     } else if (is_CI_type(ID)) {
-      rs1   = rd;
-      I_imm = eval_line(get_compressed_instruction_CI_immediate(eval_core_c_ir_nid));
+      rs1 = rd;
       if (ID == ID_C_LI) {
         rs1 = get_register_name(REG_ZR);
         ID  = ID_ADDI;
@@ -9793,10 +9842,9 @@ void print_assembly() {
         ID    = ID_LUI;
       } else if (ID == ID_C_ADDI)
         ID = ID_ADDI;
-      else if (ID == ID_C_ADDIW) {
-        I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_core_c_ir_nid));
-        ID           = ID_ADDIW;
-      } else if (ID == ID_C_ADDI16SP) {
+      else if (ID == ID_C_ADDIW)
+        ID = ID_ADDIW;
+      else if (ID == ID_C_ADDI16SP) {
         rd    = get_register_name(REG_SP);
         rs1   = rd;
         I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(eval_core_c_ir_nid));
@@ -9806,10 +9854,9 @@ void print_assembly() {
         rs1   = get_register_name(REG_SP);
         I_imm = eval_line(get_compressed_instruction_CIW_immediate(eval_core_c_ir_nid));
         ID    = ID_ADDI;
-      } else if (ID == ID_C_SLLI) {
-        shamt = eval_line(get_compressed_instruction_shamt(eval_core_c_ir_nid));
+      } else if (ID == ID_C_SLLI)
         ID    = ID_SLLI;
-      } else {
+      else {
         rs1 = get_register_name(REG_SP);
         if (ID == ID_C_LWSP) {
           I_imm = eval_line(get_compressed_instruction_CI32_offset(eval_core_c_ir_nid));
@@ -9819,6 +9866,40 @@ void print_assembly() {
           ID    = ID_LD;
         }
       }
+    } else if (is_CL_type(ID)) {
+      rd  = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_core_c_ir_nid)));
+      rs1 = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      if (ID == ID_C_LW) {
+        I_imm = eval_line(get_compressed_instruction_CL32_offset(eval_core_c_ir_nid));
+        ID    = ID_LW;
+      } else if (ID == ID_C_LD) {
+        I_imm = eval_line(get_compressed_instruction_CL64_offset(eval_core_c_ir_nid));
+        ID    = ID_LD;
+      }
+    } else if (is_CS_type(ID)) {
+      // TODO
+    } else if (is_CB_type(ID)) {
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      rs1 = rd;
+      rs2 = get_register_name(REG_ZR);
+
+      I_imm = eval_line(get_compressed_instruction_CB_offset(eval_core_c_ir_nid));
+      if (ID == ID_C_BEQZ)
+        ID = ID_BEQ;
+      else if (ID == ID_C_BNEZ)
+        ID = ID_BNE;
+      else if (ID == ID_C_ANDI)
+        ID = ID_ANDI;
+      else if (ID == ID_C_SRLI)
+        ID = ID_C_SRLI;
+      else if (ID == ID_C_SRAI)
+        ID = ID_SRAI;
+    } else if (is_CJ_type(ID)) {
+      if (ID == ID_C_J)
+        rd = get_register_name(REG_ZR);
+      else if (ID == ID_C_JAL)
+        rd = get_register_name(REG_RA);
+      ID = ID_JAL;
     }
   }
 
