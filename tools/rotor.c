@@ -1849,6 +1849,8 @@ uint64_t* NID_C_JALR = (uint64_t*) 0;
 
 // instruction IDs
 
+uint64_t ID_UNKOWN = 0;
+
 uint64_t ID_ECALL = 1;
 
 // R-type
@@ -2028,6 +2030,8 @@ uint64_t* eval_core_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
 
 void init_instruction_mnemonics() {
   RISC_V_MNEMONICS = smalloc((ID_C_JAL + 1) * sizeof(char*));
+
+  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unkown";
 
   *(RISC_V_MNEMONICS + ID_ECALL) = (uint64_t) "ecall";
 
@@ -2267,7 +2271,7 @@ void init_instruction_sorts() {
 
   SID_INSTRUCTION_ID = new_bitvec(7, "7-bit instruction ID");
 
-  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, 0, 0, "disabled");
+  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKOWN, 0, get_instruction_mnemonic(ID_UNKOWN));
 
   NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, 0, get_instruction_mnemonic(ID_LUI));
   NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, 0, get_instruction_mnemonic(ID_ADDI));
@@ -10142,6 +10146,36 @@ void eval_rotor() {
 
             return;
           }
+        }
+      }
+}
+
+void disassemble_rotor() {
+  if (CODE_LOADED)
+    if (SYNTHESIZE == 0)
+      if (CORES == 1) {
+        printf("%s: ********************************************************************************\n", selfie_name);
+
+        set_state(state_core_pc_nid, code_start);
+
+        current_step = 0;
+
+        while (get_state(state_core_pc_nid) < code_start + code_size) {
+          next_step = next_step + 1;
+
+          print_assembly();
+
+          if (eval_line(is_compressed_instruction(eval_core_ir_nid)))
+            set_state(state_core_pc_nid, get_state(state_core_pc_nid) + 2);
+          else
+            set_state(state_core_pc_nid, get_state(state_core_pc_nid) + 4);
+
+          set_step(state_core_pc_nid, next_step);
+
+          eval_line(next_code_segment_nid);
+          apply_next(next_code_segment_nid);
+
+          current_step = next_step;
         }
       }
 }
