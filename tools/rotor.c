@@ -1306,10 +1306,6 @@ uint64_t* decode_compressed_funct3(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct3_nid, char* c_funct3_comment,
   uint64_t* execute_nid, char* execute_comment,
   uint64_t* other_c_funct3_nid);
-uint64_t* decode_compressed_funct3_conditional(uint64_t* sid, uint64_t* c_ir_nid,
-  uint64_t* c_funct3_nid, char* c_funct3_comment,
-  uint64_t* evaluate_nid, uint64_t* branch_nid, uint64_t* continue_nid, char* branch_comment,
-  uint64_t* other_c_funct3_nid);
 uint64_t* decode_compressed_funct2(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_funct2_nid, char* c_funct2_comment,
   uint64_t* execute_nid, char* execute_comment,
@@ -1957,14 +1953,16 @@ uint64_t ID_C_ADDI     = 70; // "c.addi";
 uint64_t ID_C_ADDIW    = 71; // "c.addiw";
 uint64_t ID_C_ADDI16SP = 72; // "c.addi16sp";
 
-uint64_t ID_C_SLLI = 73; // "c.slli";
-
-uint64_t ID_C_LWSP = 74; // "c.lwsp";
-uint64_t ID_C_LDSP = 75; // "c.ldsp";
-
 // CIW-type
 
-uint64_t ID_C_ADDI4SPN = 76; // "c.addi4spn";
+uint64_t ID_C_ADDI4SPN = 73; // "c.addi4spn";
+
+// CI-type
+
+uint64_t ID_C_SLLI = 74; // "c.slli";
+
+uint64_t ID_C_LWSP = 75; // "c.lwsp";
+uint64_t ID_C_LDSP = 76; // "c.ldsp";
 
 // CL-type
 
@@ -2135,14 +2133,16 @@ void init_instruction_mnemonics() {
   *(RISC_V_MNEMONICS + ID_C_ADDIW)    = (uint64_t) "c.addiw";
   *(RISC_V_MNEMONICS + ID_C_ADDI16SP) = (uint64_t) "c.addi16sp";
 
+  // CIW-type
+
+  *(RISC_V_MNEMONICS + ID_C_ADDI4SPN) = (uint64_t) "c.addi4spn";
+
+  // CI-type
+
   *(RISC_V_MNEMONICS + ID_C_SLLI) = (uint64_t) "c.slli";
 
   *(RISC_V_MNEMONICS + ID_C_LWSP) = (uint64_t) "c.lwsp";
   *(RISC_V_MNEMONICS + ID_C_LDSP) = (uint64_t) "c.ldsp";
-
-  // CIW-type
-
-  *(RISC_V_MNEMONICS + ID_C_ADDI4SPN) = (uint64_t) "c.addi4spn";
 
   // CL-type
 
@@ -2184,8 +2184,6 @@ void init_instruction_mnemonics() {
 }
 
 void init_instruction_sorts() {
-  init_instruction_mnemonics();
-
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
   if (RVC)
@@ -2502,7 +2500,9 @@ void init_instruction_sorts() {
     NID_REMW  = NID_DISABLED;
     NID_REMUW = NID_DISABLED;
   }
+}
 
+void init_compressed_instruction_sorts() {
   // RVC codes
 
   SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
@@ -2584,120 +2584,122 @@ void init_instruction_sorts() {
   if (RISCU)
     RVC = 0;
 
-  if (RVC) {
-    NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LI, 0, get_instruction_mnemonic(ID_C_LI));
-    NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LUI, 0, get_instruction_mnemonic(ID_C_LUI));
+  NID_C_LI  = NID_DISABLED;
+  NID_C_LUI = NID_DISABLED;
 
-    NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI, 0, get_instruction_mnemonic(ID_C_ADDI));
-    if (IS64BITTARGET)
-      NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDIW, 0, get_instruction_mnemonic(ID_C_ADDIW));
-    else
-      NID_C_ADDIW = NID_DISABLED;
-    NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI16SP, 0, get_instruction_mnemonic(ID_C_ADDI16SP));
+  NID_C_ADDI     = NID_DISABLED;
+  NID_C_ADDIW    = NID_DISABLED;
+  NID_C_ADDI16SP = NID_DISABLED;
 
-    NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI4SPN, 0, get_instruction_mnemonic(ID_C_ADDI4SPN));
+  NID_C_ADDI4SPN = NID_DISABLED;
 
-    NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ANDI, 0, get_instruction_mnemonic(ID_C_ANDI));
+  NID_C_ANDI = NID_DISABLED;
 
-    NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SLLI, 0, get_instruction_mnemonic(ID_C_SLLI));
-    NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRLI, 0, get_instruction_mnemonic(ID_C_SRLI));
-    NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRAI, 0, get_instruction_mnemonic(ID_C_SRAI));
+  NID_C_SLLI = NID_DISABLED;
+  NID_C_SRLI = NID_DISABLED;
+  NID_C_SRAI = NID_DISABLED;
 
-    NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_MV, 0, get_instruction_mnemonic(ID_C_MV));
-    NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADD, 0, get_instruction_mnemonic(ID_C_ADD));
+  NID_C_MV  = NID_DISABLED;
+  NID_C_ADD = NID_DISABLED;
 
-    NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUB, 0, get_instruction_mnemonic(ID_C_SUB));
-    NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_XOR, 0, get_instruction_mnemonic(ID_C_XOR));
-    NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_OR, 0, get_instruction_mnemonic(ID_C_OR));
-    NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_AND, 0, get_instruction_mnemonic(ID_C_AND));
+  NID_C_SUB = NID_DISABLED;
+  NID_C_XOR = NID_DISABLED;
+  NID_C_OR  = NID_DISABLED;
+  NID_C_AND = NID_DISABLED;
 
-    if (IS64BITTARGET) {
-      NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDW, 0, get_instruction_mnemonic(ID_C_ADDW));
-      NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUBW, 0, get_instruction_mnemonic(ID_C_SUBW));
-    } else {
-      NID_C_ADDW = NID_DISABLED;
-      NID_C_SUBW = NID_DISABLED;
-    }
+  NID_C_ADDW = NID_DISABLED;
+  NID_C_SUBW = NID_DISABLED;
 
-    NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LWSP, 0, get_instruction_mnemonic(ID_C_LWSP));
-    NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LW, 0, get_instruction_mnemonic(ID_C_LW));
+  NID_C_LWSP = NID_DISABLED;
+  NID_C_LW   = NID_DISABLED;
 
-    NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SWSP, 0, get_instruction_mnemonic(ID_C_SWSP));
-    NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SW, 0, get_instruction_mnemonic(ID_C_SW));
+  NID_C_LDSP = NID_DISABLED;
+  NID_C_LD   = NID_DISABLED;
 
-    if (IS64BITTARGET) {
-      NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LDSP, 0, get_instruction_mnemonic(ID_C_LDSP));
-      NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LD, 0, get_instruction_mnemonic(ID_C_LD));
+  NID_C_SWSP = NID_DISABLED;
+  NID_C_SW   = NID_DISABLED;
 
-      NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SDSP, 0, get_instruction_mnemonic(ID_C_SDSP));
-      NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SD, 0, get_instruction_mnemonic(ID_C_SD));
-    } else {
-      NID_C_LDSP = NID_DISABLED;
-      NID_C_LD   = NID_DISABLED;
+  NID_C_SDSP = NID_DISABLED;
+  NID_C_SD   = NID_DISABLED;
 
-      NID_C_SDSP = NID_DISABLED;
-      NID_C_SD   = NID_DISABLED;
-    }
+  NID_C_BEQZ = NID_DISABLED;
+  NID_C_BNEZ = NID_DISABLED;
 
-    NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BEQZ, 0, get_instruction_mnemonic(ID_C_BEQZ));
-    NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BNEZ, 0, get_instruction_mnemonic(ID_C_BNEZ));
+  NID_C_J   = NID_DISABLED;
+  NID_C_JAL = NID_DISABLED;
 
-    NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_J, 0, get_instruction_mnemonic(ID_C_J));
-    if (IS64BITTARGET)
-      NID_C_JAL = NID_DISABLED;
-    else
-      NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JAL, 0, get_instruction_mnemonic(ID_C_JAL));
+  NID_C_JR   = NID_DISABLED;
+  NID_C_JALR = NID_DISABLED;
 
-    NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JR, 0, get_instruction_mnemonic(ID_C_JR));
-    NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, 0, get_instruction_mnemonic(ID_C_JALR));
+  if (RVC == 0)
+    // avoiding oversized then case
+    return;
+
+  NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LI, 0, get_instruction_mnemonic(ID_C_LI));
+  NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LUI, 0, get_instruction_mnemonic(ID_C_LUI));
+
+  NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI, 0, get_instruction_mnemonic(ID_C_ADDI));
+  if (IS64BITTARGET)
+    NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDIW, 0, get_instruction_mnemonic(ID_C_ADDIW));
+  else
+    NID_C_ADDIW = NID_DISABLED;
+  NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI16SP, 0, get_instruction_mnemonic(ID_C_ADDI16SP));
+
+  NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI4SPN, 0, get_instruction_mnemonic(ID_C_ADDI4SPN));
+
+  NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ANDI, 0, get_instruction_mnemonic(ID_C_ANDI));
+
+  NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SLLI, 0, get_instruction_mnemonic(ID_C_SLLI));
+  NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRLI, 0, get_instruction_mnemonic(ID_C_SRLI));
+  NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRAI, 0, get_instruction_mnemonic(ID_C_SRAI));
+
+  NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_MV, 0, get_instruction_mnemonic(ID_C_MV));
+  NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADD, 0, get_instruction_mnemonic(ID_C_ADD));
+
+  NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUB, 0, get_instruction_mnemonic(ID_C_SUB));
+  NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_XOR, 0, get_instruction_mnemonic(ID_C_XOR));
+  NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_OR, 0, get_instruction_mnemonic(ID_C_OR));
+  NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_AND, 0, get_instruction_mnemonic(ID_C_AND));
+
+  if (IS64BITTARGET) {
+    NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDW, 0, get_instruction_mnemonic(ID_C_ADDW));
+    NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUBW, 0, get_instruction_mnemonic(ID_C_SUBW));
   } else {
-    NID_C_LI  = NID_DISABLED;
-    NID_C_LUI = NID_DISABLED;
-
-    NID_C_ADDI     = NID_DISABLED;
-    NID_C_ADDIW    = NID_DISABLED;
-    NID_C_ADDI16SP = NID_DISABLED;
-
-    NID_C_ADDI4SPN = NID_DISABLED;
-
-    NID_C_ANDI = NID_DISABLED;
-
-    NID_C_SLLI = NID_DISABLED;
-    NID_C_SRLI = NID_DISABLED;
-    NID_C_SRAI = NID_DISABLED;
-
-    NID_C_MV   = NID_DISABLED;
-    NID_C_ADD  = NID_DISABLED;
-
-    NID_C_SUB  = NID_DISABLED;
-    NID_C_XOR  = NID_DISABLED;
-    NID_C_OR   = NID_DISABLED;
-    NID_C_AND  = NID_DISABLED;
-
     NID_C_ADDW = NID_DISABLED;
     NID_C_SUBW = NID_DISABLED;
+  }
 
-    NID_C_LWSP = NID_DISABLED;
-    NID_C_LW   = NID_DISABLED;
+  NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LWSP, 0, get_instruction_mnemonic(ID_C_LWSP));
+  NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LW, 0, get_instruction_mnemonic(ID_C_LW));
 
+  NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SWSP, 0, get_instruction_mnemonic(ID_C_SWSP));
+  NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SW, 0, get_instruction_mnemonic(ID_C_SW));
+
+  if (IS64BITTARGET) {
+    NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LDSP, 0, get_instruction_mnemonic(ID_C_LDSP));
+    NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LD, 0, get_instruction_mnemonic(ID_C_LD));
+
+    NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SDSP, 0, get_instruction_mnemonic(ID_C_SDSP));
+    NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SD, 0, get_instruction_mnemonic(ID_C_SD));
+  } else {
     NID_C_LDSP = NID_DISABLED;
     NID_C_LD   = NID_DISABLED;
 
-    NID_C_SWSP = NID_DISABLED;
-    NID_C_SW   = NID_DISABLED;
-
     NID_C_SDSP = NID_DISABLED;
     NID_C_SD   = NID_DISABLED;
-
-    NID_C_BEQZ = NID_DISABLED;
-    NID_C_BNEZ = NID_DISABLED;
-
-    NID_C_J   = NID_DISABLED;
-    NID_C_JAL = NID_DISABLED;
-
-    NID_C_JR   = NID_DISABLED;
-    NID_C_JALR = NID_DISABLED;
   }
+
+  NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BEQZ, 0, get_instruction_mnemonic(ID_C_BEQZ));
+  NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BNEZ, 0, get_instruction_mnemonic(ID_C_BNEZ));
+
+  NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_J, 0, get_instruction_mnemonic(ID_C_J));
+  if (IS64BITTARGET)
+    NID_C_JAL = NID_DISABLED;
+  else
+    NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JAL, 0, get_instruction_mnemonic(ID_C_JAL));
+
+  NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JR, 0, get_instruction_mnemonic(ID_C_JR));
+  NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, 0, get_instruction_mnemonic(ID_C_JALR));
 }
 
 // -----------------------------------------------------------------
@@ -2835,7 +2837,9 @@ void init_model_generator() {
 
   init_memory_sorts();
 
+  init_instruction_mnemonics();
   init_instruction_sorts();
+  init_compressed_instruction_sorts();
 }
 
 // -----------------------------------------------------------------
@@ -8656,15 +8660,15 @@ uint64_t* execute_compressed_branch(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64
 }
 
 uint64_t* compressed_branch_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid) {
-  uint64_t* rs1_value_nid;
+  uint64_t* rs1_shift_value_nid;
 
-  rs1_value_nid = load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value", register_file_nid);
+  rs1_shift_value_nid = load_register_value(get_compressed_instruction_rs1_shift(c_ir_nid), "rs1' value", register_file_nid);
 
   return decode_compressed_branch(SID_MACHINE_WORD, c_ir_nid,
     execute_compressed_branch(pc_nid, c_ir_nid,
-      new_binary_boolean(OP_EQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?")),
+      new_binary_boolean(OP_EQ, rs1_shift_value_nid, NID_MACHINE_WORD_0, "rs1' value == 0?")),
     execute_compressed_branch(pc_nid, c_ir_nid,
-      new_binary_boolean(OP_NEQ, rs1_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?")),
+      new_binary_boolean(OP_NEQ, rs1_shift_value_nid, NID_MACHINE_WORD_0, "rs1' value != 0?")),
     "pc-relative compressed branch control flow",
     other_control_flow_nid);
 }
@@ -9766,8 +9770,8 @@ void print_assembly() {
     U_imm  = eval_line(get_instruction_U_immediate(eval_core_ir_nid));
     UJ_imm = eval_line(get_instruction_UJ_immediate(eval_core_ir_nid));
   } else {
+    rd = get_register_name(eval_line(get_compressed_instruction_rd(eval_core_c_ir_nid)));
     if (is_CR_type(ID)) {
-      rd = get_register_name(eval_line(get_compressed_instruction_rd(eval_core_c_ir_nid)));
       if (is_jump_CR_type(ID)) {
         if (ID == ID_C_JR) rd = get_register_name(REG_ZR); else rd = get_register_name(REG_RA);
         rs1   = get_register_name(eval_line(get_compressed_instruction_rs1(eval_core_c_ir_nid)));
@@ -9777,6 +9781,43 @@ void print_assembly() {
         if (ID == ID_C_MV) rs1 = get_register_name(REG_ZR); else rs1 = rd;
         rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
         ID  = ID_ADD;
+      }
+    } else if (is_CI_type(ID)) {
+      rs1   = rd;
+      I_imm = eval_line(get_compressed_instruction_CI_immediate(eval_core_c_ir_nid));
+      if (ID == ID_C_LI) {
+        rs1 = get_register_name(REG_ZR);
+        ID  = ID_ADDI;
+      } else if (ID == ID_C_LUI) {
+        I_imm = eval_line(get_compressed_instruction_CUI_immediate(eval_core_c_ir_nid));
+        ID    = ID_LUI;
+      } else if (ID == ID_C_ADDI)
+        ID = ID_ADDI;
+      else if (ID == ID_C_ADDIW) {
+        I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_core_c_ir_nid));
+        ID           = ID_ADDIW;
+      } else if (ID == ID_C_ADDI16SP) {
+        rd    = get_register_name(REG_SP);
+        rs1   = rd;
+        I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(eval_core_c_ir_nid));
+        ID    = ID_ADDI;
+      } else if (ID == ID_C_ADDI4SPN) {
+        rd    = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_core_c_ir_nid)));
+        rs1   = get_register_name(REG_SP);
+        I_imm = eval_line(get_compressed_instruction_CIW_immediate(eval_core_c_ir_nid));
+        ID    = ID_ADDI;
+      } else if (ID == ID_C_SLLI) {
+        shamt = eval_line(get_compressed_instruction_shamt(eval_core_c_ir_nid));
+        ID    = ID_SLLI;
+      } else {
+        rs1 = get_register_name(REG_SP);
+        if (ID == ID_C_LWSP) {
+          I_imm = eval_line(get_compressed_instruction_CI32_offset(eval_core_c_ir_nid));
+          ID    = ID_LW;
+        } else if (ID == ID_C_LDSP) {
+          I_imm = eval_line(get_compressed_instruction_CI64_offset(eval_core_c_ir_nid));
+          ID    = ID_LD;
+        }
       }
     }
   }
