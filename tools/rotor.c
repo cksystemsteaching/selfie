@@ -1262,6 +1262,7 @@ uint64_t is_jump_CR_type(uint64_t instruction_ID);
 uint64_t is_CI_type(uint64_t instruction_ID);
 uint64_t is_CL_type(uint64_t instruction_ID);
 uint64_t is_CS_type(uint64_t instruction_ID);
+uint64_t is_register_CS_type(uint64_t instruction_ID);
 uint64_t is_CB_type(uint64_t instruction_ID);
 uint64_t is_CJ_type(uint64_t instruction_ID);
 
@@ -7560,6 +7561,14 @@ uint64_t is_CS_type(uint64_t instruction_ID) {
   return 0;
 }
 
+uint64_t is_register_CS_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_C_SUB)
+    if (instruction_ID <= ID_C_SUBW)
+      return 1;
+
+  return 0;
+}
+
 uint64_t is_CB_type(uint64_t instruction_ID) {
   if (instruction_ID >= ID_C_BEQZ)
     if (instruction_ID <= ID_C_SRAI)
@@ -9877,7 +9886,39 @@ void print_assembly() {
         ID    = ID_LD;
       }
     } else if (is_CS_type(ID)) {
-      // TODO
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      rs1 = rd;
+      rs2 = get_register_name(eval_line(get_compressed_instruction_rs2_shift(eval_core_c_ir_nid)));
+      if (ID == ID_C_SW) {
+        S_imm = eval_line(get_compressed_instruction_CS32_offset(eval_core_c_ir_nid));
+        ID    = ID_SW;
+      } else if (ID == ID_C_SD) {
+        S_imm = eval_line(get_compressed_instruction_CS64_offset(eval_core_c_ir_nid));
+        ID    = ID_SD;
+      } else if (is_register_CS_type(ID)) {
+        if (ID == ID_C_SUB)
+          ID = ID_SUB;
+        else if (ID == ID_C_XOR)
+          ID = ID_XOR;
+        else if (ID == ID_C_OR)
+          ID = ID_OR;
+        else if (ID == ID_C_AND)
+          ID = ID_AND;
+        else if (ID == ID_C_ADDW)
+          ID = ID_ADDW;
+        else if (ID == ID_C_SUBW)
+          ID = ID_SUBW;
+      } else {
+        rs1 = get_register_name(REG_SP);
+        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
+        if (ID == ID_C_SWSP) {
+          S_imm = eval_line(get_compressed_instruction_CSS32_offset(eval_core_c_ir_nid));
+          ID    = ID_SW;
+        } else if (ID == ID_C_SDSP) {
+          S_imm = eval_line(get_compressed_instruction_CSS64_offset(eval_core_c_ir_nid));
+          ID    = ID_SD;
+        }
+      }
     } else if (is_CB_type(ID)) {
       rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
       rs1 = rd;
