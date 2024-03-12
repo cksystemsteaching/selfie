@@ -10089,18 +10089,6 @@ void eval_states() {
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
-      if (min_steps > next_step - current_offset) {
-        min_steps = next_step - current_offset;
-
-        min_input = current_input;
-      }
-
-      if (max_steps < next_step - current_offset) {
-        max_steps = next_step - current_offset;
-
-        max_input = current_input;
-      }
-
       return;
     }
 
@@ -10142,6 +10130,18 @@ void eval_rotor() {
 
           eval_states();
 
+          if (min_steps > next_step - current_offset) {
+            min_steps = next_step - current_offset;
+
+            min_input = current_input;
+          }
+
+          if (max_steps < next_step - current_offset) {
+            max_steps = next_step - current_offset;
+
+            max_input = current_input;
+          }
+
           if (any_input) {
             restore_states();
 
@@ -10150,14 +10150,16 @@ void eval_rotor() {
 
             current_input = current_input + 1;
           } else {
-            printf("%s: %lu steps with input %lu <= number of steps <= %lu steps with input %lu\n", selfie_name,
-              min_steps, min_input, max_steps, max_input);
+            printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
 
             apply_sequential();
 
             return;
           }
         }
+
+        printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
+          min_steps, min_input, max_steps, max_input);
 
         apply_sequential();
       }
