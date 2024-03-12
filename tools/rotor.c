@@ -2794,6 +2794,10 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
+uint64_t evaluate_model    = 0;
+uint64_t output_assembly   = 0;
+uint64_t disassemble_model = 0;
+
 uint64_t check_exit_code         = 1;
 uint64_t check_division_by_zero  = 1;
 uint64_t check_division_overflow = 1;
@@ -2868,6 +2872,8 @@ void restore_states();
 void eval_states();
 
 void eval_rotor();
+
+void disassemble_rotor();
 
 uint64_t rotor_arguments();
 
@@ -10072,6 +10078,9 @@ void eval_states() {
     if (eval_properties())
       return;
 
+    if (output_assembly)
+      print_assembly();
+
     if (eval_sequential()) {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
@@ -10144,9 +10153,13 @@ void eval_rotor() {
             printf("%s: %lu steps with input %lu <= number of steps <= %lu steps with input %lu\n", selfie_name,
               min_steps, min_input, max_steps, max_input);
 
+            apply_sequential();
+
             return;
           }
         }
+
+        apply_sequential();
       }
 }
 
@@ -10158,7 +10171,7 @@ void disassemble_rotor() {
 
         set_state(state_core_pc_nid, code_start);
 
-        current_step = 0;
+        current_step = next_step;
 
         while (get_state(state_core_pc_nid) < code_start + code_size) {
           next_step = next_step + 1;
@@ -10196,7 +10209,20 @@ uint64_t rotor_arguments() {
 
   while (1) {
     if (number_of_remaining_arguments() > 1) {
-      if (string_compare(peek_argument(1), exit_code_check_option)) {
+      if (string_compare(peek_argument(1), "-m")) {
+        evaluate_model = 1;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), "-d")) {
+        evaluate_model  = 1;
+        output_assembly = 1;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), "-s")) {
+        disassemble_model = 1;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), exit_code_check_option)) {
         check_exit_code = 0;
 
         get_argument();
@@ -10398,7 +10424,11 @@ uint64_t selfie_model() {
 
       printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
 
-      eval_rotor();
+      if (evaluate_model)
+        eval_rotor();
+
+      if (disassemble_model)
+        disassemble_rotor();
 
       printf("%s: ################################################################################\n", selfie_name);
 
