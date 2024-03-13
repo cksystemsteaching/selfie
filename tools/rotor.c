@@ -334,14 +334,15 @@ uint64_t eval_read(uint64_t* line);
 uint64_t eval_write(uint64_t* line);
 uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
-uint64_t eval_init(uint64_t* line);
-uint64_t eval_next(uint64_t* line);
-uint64_t eval_property(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
 
-uint64_t eval_optional_line(uint64_t* line);
+uint64_t eval_property(uint64_t* line);
+uint64_t eval_optional_property(uint64_t* line);
 
+uint64_t eval_init(uint64_t* line);
+
+uint64_t eval_next(uint64_t* line);
 void apply_next(uint64_t* line);
 
 uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
@@ -4159,151 +4160,35 @@ uint64_t eval_binary_op(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t eval_init(uint64_t* line) {
-  uint64_t* state_nid;
-  uint64_t* value_nid;
+uint64_t eval_line(uint64_t* line) {
+  char* op;
 
-  if (current_step == INITIALIZED)
-    if (current_step == next_step) {
-      if (get_step(line) == UNINITIALIZED) {
-        state_nid = get_arg1(line);
+  op = get_op(line);
 
-        if (get_op(state_nid) == OP_STATE) {
-          if (get_step(state_nid) == UNINITIALIZED) {
-            match_sorts(get_sid(line), get_sid(state_nid), "init state");
-
-            value_nid = get_arg2(line);
-
-            if (is_bitvector(get_sid(state_nid))) {
-              match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
-
-              set_state(state_nid, eval_line(value_nid));
-
-              set_step(state_nid, INITIALIZED);
-            } else {
-              // assert: sid of state line is ARRAY
-              if (is_bitvector(get_sid(value_nid))) {
-                match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
-
-                if (eval_line(value_nid) != 0) {
-                  printf("%s: init non-zero array element error\n", selfie_name);
-
-                  exit(EXITCODE_SYSTEMERROR);
-                }
-
-                set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
-
-                set_step(state_nid, INITIALIZED);
-              } else {
-                // assert: sid of value line is ARRAY
-                match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
-
-                value_nid = (uint64_t*) eval_line(value_nid);
-
-                if (get_state(state_nid) != get_state(value_nid)) {
-                  set_state(state_nid, get_state(value_nid));
-
-                  set_step(state_nid, INITIALIZED);
-
-                  // TODO: reinitialize value state
-                  set_state(value_nid, 0);
-                  set_step(value_nid, UNINITIALIZED);
-                } else {
-                  printf("%s: init reinitializing array error\n", selfie_name);
-
-                  exit(EXITCODE_SYSTEMERROR);
-                }
-              }
-            }
-
-            set_step(line, INITIALIZED);
-
-            // assert: return value is never used
-            return (uint64_t) state_nid;
-          } else
-            printf("%s: init reinitializing state error\n", selfie_name);
-        } else
-          printf("%s: init %s error\n", selfie_name, get_op(state_nid));
-      } else
-        printf("%s: init reinitializing init error\n", selfie_name);
-
-      exit(EXITCODE_SYSTEMERROR);
-    }
-
-  printf("%s: init error\n", selfie_name);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-uint64_t eval_next(uint64_t* line) {
-  uint64_t current_next;
-  uint64_t* state_nid;
-  uint64_t* value_nid;
-  uint64_t value;
-  uint64_t no_update;
-
-  if (current_step < next_step)
-    if (current_step + 1 == next_step) {
-      current_next = current_step;
-
-      if (current_next == 0)
-        current_next = UNINITIALIZED;
-
-      if (get_step(line) == current_next) {
-        state_nid = get_arg1(line);
-
-        if (get_op(state_nid) == OP_STATE) {
-          if (get_step(state_nid) >= current_step) {
-            match_sorts(get_sid(line), get_sid(state_nid), "next state");
-
-            value_nid = get_arg2(line);
-
-            match_sorts(get_sid(state_nid), get_sid(value_nid), "next state and value");
-
-            if (is_bitvector(get_sid(state_nid))) {
-              if (get_step(state_nid) == current_step) {
-                value = eval_line(value_nid);
-
-                no_update = get_state(state_nid) == value;
-              } else {
-                printf("%s: next reupdating bitvector state error\n", selfie_name);
-
-                exit(EXITCODE_SYSTEMERROR);
-              }
-            } else {
-              // assert: sid of state line is ARRAY
-              if (get_step(state_nid) <= next_step) {
-                value_nid = (uint64_t*) eval_line(value_nid);
-
-                if (get_state(state_nid) == get_state(value_nid))
-                  no_update = state_nid == value_nid;
-                else {
-                  printf("%s: next reupdating state array error\n", selfie_name);
-
-                  exit(EXITCODE_SYSTEMERROR);
-                }
-              } else {
-                printf("%s: next reupdating array state error\n", selfie_name);
-
-                exit(EXITCODE_SYSTEMERROR);
-              }
-            }
-
-            set_step(line, next_step);
-
-            return no_update;
-          } else
-            printf("%s: next non-current state error\n", selfie_name);
-        } else
-          printf("%s: next %s error\n", selfie_name, get_op(state_nid));
-
-        exit(EXITCODE_SYSTEMERROR);
-      }
-    }
-
-  printf("%s: next error\n", selfie_name);
-
-  exit(EXITCODE_SYSTEMERROR);
+  if (get_step(line) == next_step)
+    return get_cached_state(line);
+  else if (is_constant_op(op))
+    return eval_constant_value(line);
+  else if (is_input_op(op))
+    return eval_input(line);
+  else if (op == OP_SEXT)
+    return eval_ext(line);
+  else if (op == OP_UEXT)
+    return eval_ext(line);
+  else if (op == OP_SLICE)
+    return eval_slice(line);
+  else if (op == OP_CONCAT)
+    return eval_concat(line);
+  else if (op == OP_ITE)
+    return eval_ite(line);
+  else if (op == OP_READ)
+    return eval_read(line);
+  else if (op == OP_WRITE)
+    return eval_write(line);
+  else if (is_unary_op(op))
+    return eval_unary_op(line);
+  else
+    return eval_binary_op(line);
 }
 
 uint64_t eval_property(uint64_t* line) {
@@ -4348,50 +4233,160 @@ uint64_t eval_property(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t eval_line(uint64_t* line) {
-  char* op;
-
-  op = get_op(line);
-
-  if (get_step(line) == next_step)
-    return get_cached_state(line);
-  else if (is_constant_op(op))
-    return eval_constant_value(line);
-  else if (is_input_op(op))
-    return eval_input(line);
-  else if (op == OP_SEXT)
-    return eval_ext(line);
-  else if (op == OP_UEXT)
-    return eval_ext(line);
-  else if (op == OP_SLICE)
-    return eval_slice(line);
-  else if (op == OP_CONCAT)
-    return eval_concat(line);
-  else if (op == OP_ITE)
-    return eval_ite(line);
-  else if (op == OP_READ)
-    return eval_read(line);
-  else if (op == OP_WRITE)
-    return eval_write(line);
-  else if (op == OP_INIT)
-    return eval_init(line);
-  else if (op == OP_NEXT)
-    return eval_next(line);
-  else if (op == OP_BAD)
-    return eval_property(line);
-  else if (op == OP_CONSTRAINT)
-    return eval_property(line);
-  else if (is_unary_op(op))
-    return eval_unary_op(line);
-  else
-    return eval_binary_op(line);
-}
-
-uint64_t eval_optional_line(uint64_t* line) {
+uint64_t eval_optional_property(uint64_t* line) {
   if (line == UNUSED)
     return 0;
   else
-    return eval_line(line);
+    return eval_property(line);
+}
+
+uint64_t eval_init(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t* value_nid;
+
+  if (get_op(line) == OP_INIT)
+    if (current_step == INITIALIZED)
+      if (current_step == next_step) {
+        if (get_step(line) == UNINITIALIZED) {
+          state_nid = get_arg1(line);
+
+          if (get_op(state_nid) == OP_STATE) {
+            if (get_step(state_nid) == UNINITIALIZED) {
+              match_sorts(get_sid(line), get_sid(state_nid), "init state");
+
+              value_nid = get_arg2(line);
+
+              if (is_bitvector(get_sid(state_nid))) {
+                match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
+
+                set_state(state_nid, eval_line(value_nid));
+
+                set_step(state_nid, INITIALIZED);
+              } else {
+                // assert: sid of state line is ARRAY
+                if (is_bitvector(get_sid(value_nid))) {
+                  match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+
+                  if (eval_line(value_nid) != 0) {
+                    printf("%s: init non-zero array element error\n", selfie_name);
+
+                    exit(EXITCODE_SYSTEMERROR);
+                  }
+
+                  set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+
+                  set_step(state_nid, INITIALIZED);
+                } else {
+                  // assert: sid of value line is ARRAY
+                  match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
+
+                  value_nid = (uint64_t*) eval_line(value_nid);
+
+                  if (get_state(state_nid) != get_state(value_nid)) {
+                    set_state(state_nid, get_state(value_nid));
+
+                    set_step(state_nid, INITIALIZED);
+
+                    // TODO: reinitialize value state
+                    set_state(value_nid, 0);
+                    set_step(value_nid, UNINITIALIZED);
+                  } else {
+                    printf("%s: init reinitializing array error\n", selfie_name);
+
+                    exit(EXITCODE_SYSTEMERROR);
+                  }
+                }
+              }
+
+              set_step(line, INITIALIZED);
+
+              // assert: return value is never used
+              return (uint64_t) state_nid;
+            } else
+              printf("%s: init reinitializing state error\n", selfie_name);
+          } else
+            printf("%s: init %s error\n", selfie_name, get_op(state_nid));
+        } else
+          printf("%s: init reinitializing init error\n", selfie_name);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+
+  printf("%s: init error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t eval_next(uint64_t* line) {
+  uint64_t current_next;
+  uint64_t* state_nid;
+  uint64_t* value_nid;
+  uint64_t value;
+  uint64_t no_update;
+
+  if (get_op(line) == OP_NEXT)
+    if (current_step < next_step)
+      if (current_step + 1 == next_step) {
+        current_next = current_step;
+
+        if (current_next == 0)
+          current_next = UNINITIALIZED;
+
+        if (get_step(line) == current_next) {
+          state_nid = get_arg1(line);
+
+          if (get_op(state_nid) == OP_STATE) {
+            if (get_step(state_nid) >= current_step) {
+              match_sorts(get_sid(line), get_sid(state_nid), "next state");
+
+              value_nid = get_arg2(line);
+
+              match_sorts(get_sid(state_nid), get_sid(value_nid), "next state and value");
+
+              if (is_bitvector(get_sid(state_nid))) {
+                if (get_step(state_nid) == current_step) {
+                  value = eval_line(value_nid);
+
+                  no_update = get_state(state_nid) == value;
+                } else {
+                  printf("%s: next reupdating bitvector state error\n", selfie_name);
+
+                  exit(EXITCODE_SYSTEMERROR);
+                }
+              } else {
+                // assert: sid of state line is ARRAY
+                if (get_step(state_nid) <= next_step) {
+                  value_nid = (uint64_t*) eval_line(value_nid);
+
+                  if (get_state(state_nid) == get_state(value_nid))
+                    no_update = state_nid == value_nid;
+                  else {
+                    printf("%s: next reupdating state array error\n", selfie_name);
+
+                    exit(EXITCODE_SYSTEMERROR);
+                  }
+                } else {
+                  printf("%s: next reupdating array state error\n", selfie_name);
+
+                  exit(EXITCODE_SYSTEMERROR);
+                }
+              }
+
+              set_step(line, next_step);
+
+              return no_update;
+            } else
+              printf("%s: next non-current state error\n", selfie_name);
+          } else
+            printf("%s: next %s error\n", selfie_name, get_op(state_nid));
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
+      }
+
+  printf("%s: next error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 void apply_next(uint64_t* line) {
@@ -4578,13 +4573,13 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
     init_program_break_nid  = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
       NID_HEAP_START, "initial program break is start of heap segment");
 
-    eval_line(init_program_break_nid);
+    eval_init(init_program_break_nid);
 
     state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
     init_file_descriptor_nid  = new_init(SID_MACHINE_WORD, state_file_descriptor_nid,
       NID_MACHINE_WORD_0, "initial file descriptor is zero");
 
-    eval_line(init_file_descriptor_nid);
+    eval_init(init_file_descriptor_nid);
 
     next_program_break_nid   = state_program_break_nid;
     next_file_descriptor_nid = state_file_descriptor_nid;
@@ -4601,14 +4596,14 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     param_readable_bytes_nid, "number of readable bytes");
 
-  eval_line(init_readable_bytes_nid);
+  eval_init(init_readable_bytes_nid);
 
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
 
-  eval_line(init_read_bytes_nid);
+  eval_init(init_read_bytes_nid);
 }
 
 void print_kernel_state(uint64_t core) {
@@ -4684,7 +4679,7 @@ void new_register_file_state(uint64_t core) {
   init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
-  eval_line(init_zeroed_register_file_nid);
+  eval_init(init_zeroed_register_file_nid);
 
   if (CODE_LOADED == 0) {
     value_nid = cast_virtual_address_to_machine_word(
@@ -4743,7 +4738,7 @@ void new_register_file_state(uint64_t core) {
   } else
     init_register_file_nid = init_zeroed_register_file_nid;
 
-  eval_line(init_register_file_nid);
+  eval_init(init_register_file_nid);
 }
 
 void print_register_file_state(uint64_t core) {
@@ -4978,7 +4973,7 @@ void new_code_segment(uint64_t core) {
     init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
       state_zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
-    eval_line(init_zeroed_code_segment_nid);
+    eval_init(init_zeroed_code_segment_nid);
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
@@ -5036,7 +5031,7 @@ void new_code_segment(uint64_t core) {
       init_code_segment_nid = new_init(SID_CODE_STATE,
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
 
-      eval_line(init_code_segment_nid);
+      eval_init(init_code_segment_nid);
 
       next_code_segment_nid = new_next(SID_CODE_STATE,
         state_code_segment_nid, state_code_segment_nid, "read-only code segment");
@@ -5110,7 +5105,7 @@ void new_memory_state(uint64_t core) {
   init_zeroed_main_memory_nid = new_init(SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
 
-  eval_line(init_zeroed_main_memory_nid);
+  eval_init(init_zeroed_main_memory_nid);
 
   if (CODE_LOADED) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
@@ -5189,7 +5184,7 @@ void new_memory_state(uint64_t core) {
       init_main_memory_nid = new_init(SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
 
-      eval_line(init_main_memory_nid);
+      eval_init(init_main_memory_nid);
     } else
       init_main_memory_nid = init_zeroed_main_memory_nid;
   }
@@ -8833,7 +8828,7 @@ void new_core_state(uint64_t core) {
   state_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
   init_pc_nid  = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
 
-  eval_line(init_pc_nid);
+  eval_init(init_pc_nid);
 }
 
 void print_core_state(uint64_t core) {
@@ -10022,28 +10017,28 @@ uint64_t eval_properties(uint64_t core) {
 
   halt = 0;
 
-  halt = halt + eval_optional_line(get_for(core, prop_illegal_instruction_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_illegal_compressed_instruction_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_is_instruction_known_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_next_fetch_unaligned_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_next_fetch_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_exclude_a0_from_rd_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_division_by_zero_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_signed_division_overflow_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_load_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_store_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_compressed_load_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_compressed_store_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_stack_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_illegal_instruction_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_illegal_compressed_instruction_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_is_instruction_known_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_next_fetch_unaligned_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_next_fetch_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_exclude_a0_from_rd_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_division_by_zero_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_signed_division_overflow_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_load_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_store_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_compressed_load_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_compressed_store_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_stack_seg_faulting_nid));
 
-  halt = halt + eval_optional_line(get_for(core, prop_is_syscall_id_known_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_brk_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_openat_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_read_seg_faulting_nid));
-  halt = halt + eval_optional_line(get_for(core, prop_write_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_is_syscall_id_known_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_brk_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_openat_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_read_seg_faulting_nid));
+  halt = halt + eval_optional_property(get_for(core, prop_write_seg_faulting_nid));
 
   // if satisfied rotor halts in current step
-  eval_optional_line(get_for(core, prop_bad_exit_code_nid));
+  eval_optional_property(get_for(core, prop_bad_exit_code_nid));
 
   return halt != 0;
 }
@@ -10053,16 +10048,16 @@ uint64_t eval_sequential() {
 
   halt = 1;
 
-  halt = halt * eval_line(next_program_break_nid);
-  halt = halt * eval_line(next_file_descriptor_nid);
-  halt = halt * eval_line(next_readable_bytes_nid);
-  halt = halt * eval_line(next_read_bytes_nid);
+  halt = halt * eval_next(next_program_break_nid);
+  halt = halt * eval_next(next_file_descriptor_nid);
+  halt = halt * eval_next(next_readable_bytes_nid);
+  halt = halt * eval_next(next_read_bytes_nid);
 
-  halt = halt * eval_line(next_pc_nid);
+  halt = halt * eval_next(next_pc_nid);
 
-  halt = halt * eval_line(next_register_file_nid);
-  halt = halt * eval_line(next_code_segment_nid);
-  halt = halt * eval_line(next_main_memory_nid);
+  halt = halt * eval_next(next_register_file_nid);
+  halt = halt * eval_next(next_code_segment_nid);
+  halt = halt * eval_next(next_main_memory_nid);
 
   return halt != 0;
 }
@@ -10220,7 +10215,7 @@ void disassemble_rotor() {
 
           set_step(state_pc_nid, next_step);
 
-          eval_line(next_code_segment_nid);
+          eval_next(next_code_segment_nid);
           apply_next(next_code_segment_nid);
 
           current_step = next_step;
