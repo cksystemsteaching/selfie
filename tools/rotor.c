@@ -2016,9 +2016,10 @@ uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_known_instructions_nid            = (uint64_t*) 0;
-uint64_t* eval_known_compressed_instructions_nid = (uint64_t*) 0;
-uint64_t* eval_all_known_instructions_nid        = (uint64_t*) 0;
+uint64_t* eval_instruction_ID_nid            = (uint64_t*) 0;
+uint64_t* eval_compressed_instruction_ID_nid = (uint64_t*) 0;
+
+uint64_t* eval_instruction_ID_nids = (uint64_t*) 0;
 
 uint64_t* eval_register_data_flow_nid = (uint64_t*) 0;
 uint64_t* eval_memory_data_flow_nid   = (uint64_t*) 0;
@@ -2714,6 +2715,10 @@ void init_compressed_instruction_sorts() {
   NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, 0, get_instruction_mnemonic(ID_C_JALR));
 }
 
+void init_instruction_ID_decoder(uint64_t number_of_cores) {
+  eval_instruction_ID_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
 // -----------------------------------------------------------------
@@ -2785,7 +2790,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
 void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
-  uint64_t* known_instructions_nid, uint64_t* control_flow_nid, uint64_t* register_file_nid);
+  uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
 void model_rotor();
 
@@ -2892,6 +2897,7 @@ void init_model_generator(uint64_t number_of_cores) {
   init_instruction_sorts();
   init_compressed_instruction_sorts();
 
+  init_instruction_ID_decoder(number_of_cores);
   init_cores(number_of_cores);
   init_properties(number_of_cores);
 }
@@ -8907,10 +8913,9 @@ void output_model(uint64_t core) {
 
   print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
 
-  print_break_comment_line("decode instruction", eval_known_instructions_nid);
+  print_break_comment_line("decode instruction", eval_instruction_ID_nid);
 
-  print_break_comment_line("decode compressed instruction",
-    eval_known_compressed_instructions_nid);
+  print_break_comment_line("decode compressed instruction", eval_compressed_instruction_ID_nid);
 
   print_break_comment_line("instruction control flow", eval_instruction_control_flow_nid);
 
@@ -9506,18 +9511,20 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
 
   // decode instruction
 
-  eval_known_instructions_nid = decode_instruction(eval_ir_nid);
+  eval_instruction_ID_nid = decode_instruction(eval_ir_nid);
 
   // decode compressed instruction
 
-  eval_known_compressed_instructions_nid = decode_compressed_instruction(eval_c_ir_nid);
+  eval_compressed_instruction_ID_nid = decode_compressed_instruction(eval_c_ir_nid);
 
-  if (eval_known_compressed_instructions_nid != UNUSED)
-    eval_all_known_instructions_nid = new_ternary(OP_ITE, SID_INSTRUCTION_ID,
+  if (eval_compressed_instruction_ID_nid == UNUSED)
+    set_for(core, eval_instruction_ID_nids, eval_instruction_ID_nid);
+  else
+    set_for(core, eval_instruction_ID_nids, new_ternary(OP_ITE, SID_INSTRUCTION_ID,
       is_compressed_instruction(eval_ir_nid),
-      eval_known_compressed_instructions_nid,
-      eval_known_instructions_nid,
-      "is known uncompressed or compressed instruction?");
+      eval_compressed_instruction_ID_nid,
+      eval_instruction_ID_nid,
+      "is known uncompressed or compressed instruction?"));
 
   // instruction control flow
 
@@ -9629,7 +9636,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_
 }
 
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
-  uint64_t* known_instructions_nid, uint64_t* control_flow_nid, uint64_t* register_file_nid) {
+  uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid) {
 
   // mandatory state properties
 
@@ -9646,7 +9653,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
     format_comment("core-%lu illegal compressed instruction", core)));
 
   set_for(core, prop_is_instruction_known_nids, state_property(core,
-    is_enabled(known_instructions_nid),
+    is_enabled(get_for(core, instruction_ID_nids)),
     UNUSED,
     format_comment("core-%lu-known-instructions", core),
     format_comment("core-%lu known instructions", core)));
@@ -9819,7 +9826,7 @@ void model_rotor() {
 
     rotor_properties(core,
       eval_ir_nid, eval_c_ir_nid,
-      eval_all_known_instructions_nid, eval_control_flow_nid,
+      eval_instruction_ID_nids, eval_control_flow_nid,
       state_register_file_nid);
     kernel_properties(core,
       eval_ir_nid,
@@ -9857,7 +9864,7 @@ void print_assembly(uint64_t core) {
 
   printf("0x%lX: ", pc);
 
-  ID = eval_line(eval_all_known_instructions_nid);
+  ID = eval_line_for(core, eval_instruction_ID_nids);
 
   mnemonic = get_instruction_mnemonic(ID);
 
