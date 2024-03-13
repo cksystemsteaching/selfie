@@ -336,9 +336,9 @@ uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
+uint64_t eval_lines_for(uint64_t core, uint64_t* lines);
 
-uint64_t eval_property(uint64_t* line);
-uint64_t eval_optional_property(uint64_t* line);
+uint64_t eval_property_for(uint64_t core, uint64_t* lines);
 
 uint64_t eval_init(uint64_t* line);
 
@@ -2746,6 +2746,12 @@ uint64_t* eval_compressed_instruction_control_flow_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 
+// ------------------------- INITIALIZATION ------------------------
+
+void init_cores(uint64_t number_of_cores) {
+  state_pc_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
+}
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ----------------------    R U N T I M E    ----------------------
@@ -2884,6 +2890,7 @@ void init_model_generator(uint64_t number_of_cores) {
   init_instruction_sorts();
   init_compressed_instruction_sorts();
 
+  init_cores(number_of_cores);
   init_properties(number_of_cores);
 }
 
@@ -2891,7 +2898,7 @@ void init_model_generator(uint64_t number_of_cores) {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
-void print_assembly();
+void print_assembly(uint64_t core);
 
 uint64_t eval_properties(uint64_t core);
 uint64_t eval_sequential();
@@ -4191,11 +4198,21 @@ uint64_t eval_line(uint64_t* line) {
     return eval_binary_op(line);
 }
 
-uint64_t eval_property(uint64_t* line) {
+uint64_t eval_lines_for(uint64_t core, uint64_t* lines) {
+  return eval_line(get_for(core, lines));
+}
+
+uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
+  uint64_t* line;
   char* op;
   uint64_t* condition_nid;
   char* symbol;
   uint64_t condition;
+
+  line = get_for(core, lines);
+
+  if (line == UNUSED)
+    return 0;
 
   op = get_op(line);
 
@@ -4207,7 +4224,7 @@ uint64_t eval_property(uint64_t* line) {
   if (op == OP_BAD) {
     if (condition != 0) {
       printf("%s: bad %s satisfied @ 0x%lX after %lu steps", selfie_name,
-        symbol, eval_line(state_pc_nid), next_step - current_offset);
+        symbol, eval_lines_for(core, state_pc_nid), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -4218,7 +4235,7 @@ uint64_t eval_property(uint64_t* line) {
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0) {
       printf("%s: constraint %s violated @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, eval_line(state_pc_nid), next_step - current_offset);
+        symbol, eval_lines_for(core, state_pc_nid), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -4231,13 +4248,6 @@ uint64_t eval_property(uint64_t* line) {
   printf("%s: unknown property operator %s\n", selfie_name, op);
 
   exit(EXITCODE_SYSTEMERROR);
-}
-
-uint64_t eval_optional_property(uint64_t* line) {
-  if (line == UNUSED)
-    return 0;
-  else
-    return eval_property(line);
 }
 
 uint64_t eval_init(uint64_t* line) {
@@ -8825,8 +8835,10 @@ void new_core_state(uint64_t core) {
   else
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
 
-  state_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
-  init_pc_nid  = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
+  set_for(core, state_pc_nid,
+    new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter"));
+
+  init_pc_nid = new_init(SID_MACHINE_WORD, get_for(core, state_pc_nid), initial_pc_nid, "initial value of pc");
 
   eval_init(init_pc_nid);
 }
@@ -9769,9 +9781,9 @@ void model_rotor() {
 
     new_memory_state(core);
 
-    rotor_combinational(state_pc_nid, state_code_segment_nid,
+    rotor_combinational(get_for(core, state_pc_nid), state_code_segment_nid,
       state_register_file_nid, state_main_memory_nid);
-    kernel_combinational(state_pc_nid, eval_ir_nid,
+    kernel_combinational(get_for(core, state_pc_nid), eval_ir_nid,
       eval_compressed_instruction_control_flow_nid,
       eval_compressed_instruction_register_data_flow_nid,
       eval_compressed_instruction_memory_data_flow_nid,
@@ -9779,7 +9791,7 @@ void model_rotor() {
       state_readable_bytes_nid, state_read_bytes_nid,
       state_register_file_nid, state_main_memory_nid);
 
-    rotor_sequential(core, state_pc_nid,
+    rotor_sequential(core, get_for(core, state_pc_nid),
       state_register_file_nid, state_main_memory_nid,
       eval_control_flow_nid,
       eval_register_data_flow_nid,
@@ -9810,7 +9822,7 @@ void model_rotor() {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
-void print_assembly() {
+void print_assembly(uint64_t core) {
   uint64_t pc;
   uint64_t ID;
   char* mnemonic;
@@ -9827,7 +9839,7 @@ void print_assembly() {
   uint64_t UJ_imm;
   uint64_t imm_shamt;
 
-  pc = eval_line(state_pc_nid);
+  pc = eval_lines_for(core, state_pc_nid);
 
   printf("0x%lX: ", pc);
 
@@ -10017,28 +10029,28 @@ uint64_t eval_properties(uint64_t core) {
 
   halt = 0;
 
-  halt = halt + eval_optional_property(get_for(core, prop_illegal_instruction_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_illegal_compressed_instruction_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_is_instruction_known_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_next_fetch_unaligned_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_next_fetch_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_exclude_a0_from_rd_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_division_by_zero_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_signed_division_overflow_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_load_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_store_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_compressed_load_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_compressed_store_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_stack_seg_faulting_nid));
+  halt = halt + eval_property_for(core, prop_illegal_instruction_nid);
+  halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nid);
+  halt = halt + eval_property_for(core, prop_is_instruction_known_nid);
+  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nid);
+  halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_exclude_a0_from_rd_nid);
+  halt = halt + eval_property_for(core, prop_division_by_zero_nid);
+  halt = halt + eval_property_for(core, prop_signed_division_overflow_nid);
+  halt = halt + eval_property_for(core, prop_load_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_store_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nid);
 
-  halt = halt + eval_optional_property(get_for(core, prop_is_syscall_id_known_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_brk_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_openat_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_read_seg_faulting_nid));
-  halt = halt + eval_optional_property(get_for(core, prop_write_seg_faulting_nid));
+  halt = halt + eval_property_for(core, prop_is_syscall_id_known_nid);
+  halt = halt + eval_property_for(core, prop_brk_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_openat_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_read_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_write_seg_faulting_nid);
 
   // if satisfied rotor halts in current step
-  eval_optional_property(get_for(core, prop_bad_exit_code_nid));
+  eval_property_for(core, prop_bad_exit_code_nid);
 
   return halt != 0;
 }
@@ -10107,13 +10119,13 @@ void eval_states() {
       return;
 
     if (output_assembly)
-      print_assembly();
+      print_assembly(0);
 
     if (eval_sequential()) {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
         eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
-        eval_line(state_pc_nid),
+        eval_lines_for(0, state_pc_nid),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10123,7 +10135,7 @@ void eval_states() {
     if (current_step - current_offset >= 100000 - 1) {
       printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
         model_name,
-        eval_line(state_pc_nid),
+        eval_lines_for(0, state_pc_nid),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10194,26 +10206,30 @@ void eval_rotor() {
 }
 
 void disassemble_rotor() {
+  uint64_t* pc_nid;
+
   if (CODE_LOADED)
     if (SYNTHESIZE == 0)
       if (CORES == 1) {
         printf("%s: ********************************************************************************\n", selfie_name);
 
-        set_state(state_pc_nid, code_start);
+        pc_nid = get_for(0, state_pc_nid);
+
+        set_state(pc_nid, code_start);
 
         current_step = next_step;
 
-        while (get_state(state_pc_nid) < code_start + code_size) {
+        while (get_state(pc_nid) < code_start + code_size) {
           next_step = next_step + 1;
 
-          print_assembly();
+          print_assembly(0);
 
           if (eval_line(is_compressed_instruction(eval_ir_nid)))
-            set_state(state_pc_nid, get_state(state_pc_nid) + 2);
+            set_state(pc_nid, get_state(pc_nid) + 2);
           else
-            set_state(state_pc_nid, get_state(state_pc_nid) + 4);
+            set_state(pc_nid, get_state(pc_nid) + 4);
 
-          set_step(state_pc_nid, next_step);
+          set_step(pc_nid, next_step);
 
           eval_next(next_code_segment_nid);
           apply_next(next_code_segment_nid);
