@@ -243,9 +243,11 @@ void print_comment(uint64_t* line);
 uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
 
 void print_line(uint64_t* line);
+void print_line_for(uint64_t core, uint64_t* lines);
 
 void print_break();
 void print_break_line(uint64_t* line);
+void print_break_line_for(uint64_t core, uint64_t* lines);
 void print_break_comment(char* comment);
 void print_break_comment_line(char* comment, uint64_t* line);
 
@@ -336,7 +338,7 @@ uint64_t eval_unary_op(uint64_t* line);
 uint64_t eval_binary_op(uint64_t* line);
 
 uint64_t eval_line(uint64_t* line);
-uint64_t eval_lines_for(uint64_t core, uint64_t* lines);
+uint64_t eval_line_for(uint64_t core, uint64_t* lines);
 
 uint64_t eval_property_for(uint64_t core, uint64_t* lines);
 
@@ -2735,9 +2737,9 @@ uint64_t* eval_c_ir_nid = (uint64_t*) 0;
 
 uint64_t* initial_pc_nid = (uint64_t*) 0;
 
-uint64_t* state_pc_nid = (uint64_t*) 0;
-uint64_t* init_pc_nid  = (uint64_t*) 0;
-uint64_t* next_pc_nid  = (uint64_t*) 0;
+uint64_t* state_pc_nids = (uint64_t*) 0;
+uint64_t* init_pc_nid   = (uint64_t*) 0;
+uint64_t* next_pc_nid   = (uint64_t*) 0;
 
 uint64_t* eval_control_flow_nid = (uint64_t*) 0;
 
@@ -2749,7 +2751,7 @@ uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_cores(uint64_t number_of_cores) {
-  state_pc_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2766,7 +2768,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
 
 void output_model(uint64_t core);
 
-void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
@@ -2779,8 +2781,8 @@ void kernel_sequential(uint64_t core,
   uint64_t* ir_nid, uint64_t* register_file_nid);
 void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid);
 
-void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
-void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
+void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
+void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* known_instructions_nid, uint64_t* control_flow_nid, uint64_t* register_file_nid);
@@ -2824,56 +2826,56 @@ uint64_t w = 0; // number of written characters
 
 uint64_t bad_exit_code = 0; // model for this exit code
 
-uint64_t* prop_is_instruction_known_nid           = (uint64_t*) 0;
-uint64_t* prop_illegal_instruction_nid            = (uint64_t*) 0;
-uint64_t* prop_illegal_compressed_instruction_nid = (uint64_t*) 0;
-uint64_t* prop_next_fetch_unaligned_nid           = (uint64_t*) 0;
-uint64_t* prop_next_fetch_seg_faulting_nid        = (uint64_t*) 0;
+uint64_t* prop_is_instruction_known_nids           = (uint64_t*) 0;
+uint64_t* prop_illegal_instruction_nids            = (uint64_t*) 0;
+uint64_t* prop_illegal_compressed_instruction_nids = (uint64_t*) 0;
+uint64_t* prop_next_fetch_unaligned_nids           = (uint64_t*) 0;
+uint64_t* prop_next_fetch_seg_faulting_nids        = (uint64_t*) 0;
 
-uint64_t* prop_is_syscall_id_known_nid = (uint64_t*) 0;
+uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
 
-uint64_t* prop_bad_exit_code_nid            = (uint64_t*) 0;
-uint64_t* prop_exclude_a0_from_rd_nid       = (uint64_t*) 0;
-uint64_t* prop_division_by_zero_nid         = (uint64_t*) 0;
-uint64_t* prop_signed_division_overflow_nid = (uint64_t*) 0;
+uint64_t* prop_bad_exit_code_nids            = (uint64_t*) 0;
+uint64_t* prop_exclude_a0_from_rd_nids       = (uint64_t*) 0;
+uint64_t* prop_division_by_zero_nids         = (uint64_t*) 0;
+uint64_t* prop_signed_division_overflow_nids = (uint64_t*) 0;
 
-uint64_t* prop_load_seg_faulting_nid             = (uint64_t*) 0;
-uint64_t* prop_store_seg_faulting_nid            = (uint64_t*) 0;
-uint64_t* prop_compressed_load_seg_faulting_nid  = (uint64_t*) 0;
-uint64_t* prop_compressed_store_seg_faulting_nid = (uint64_t*) 0;
-uint64_t* prop_stack_seg_faulting_nid            = (uint64_t*) 0;
+uint64_t* prop_load_seg_faulting_nids             = (uint64_t*) 0;
+uint64_t* prop_store_seg_faulting_nids            = (uint64_t*) 0;
+uint64_t* prop_compressed_load_seg_faulting_nids  = (uint64_t*) 0;
+uint64_t* prop_compressed_store_seg_faulting_nids = (uint64_t*) 0;
+uint64_t* prop_stack_seg_faulting_nids            = (uint64_t*) 0;
 
-uint64_t* prop_brk_seg_faulting_nid    = (uint64_t*) 0;
-uint64_t* prop_openat_seg_faulting_nid = (uint64_t*) 0;
-uint64_t* prop_read_seg_faulting_nid   = (uint64_t*) 0;
-uint64_t* prop_write_seg_faulting_nid  = (uint64_t*) 0;
+uint64_t* prop_brk_seg_faulting_nids    = (uint64_t*) 0;
+uint64_t* prop_openat_seg_faulting_nids = (uint64_t*) 0;
+uint64_t* prop_read_seg_faulting_nids   = (uint64_t*) 0;
+uint64_t* prop_write_seg_faulting_nids  = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void init_properties(uint64_t number_of_cores) {
-  prop_is_instruction_known_nid           = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_illegal_instruction_nid            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_illegal_compressed_instruction_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_next_fetch_unaligned_nid           = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_next_fetch_seg_faulting_nid        = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_is_instruction_known_nids           = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_illegal_instruction_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_illegal_compressed_instruction_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_next_fetch_unaligned_nids           = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_next_fetch_seg_faulting_nids        = zmalloc(number_of_cores * sizeof(uint64_t*));
 
-  prop_is_syscall_id_known_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_is_syscall_id_known_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
-  prop_bad_exit_code_nid            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_exclude_a0_from_rd_nid       = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_division_by_zero_nid         = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_signed_division_overflow_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_bad_exit_code_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_exclude_a0_from_rd_nids       = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_division_by_zero_nids         = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_signed_division_overflow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
-  prop_load_seg_faulting_nid             = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_store_seg_faulting_nid            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_compressed_load_seg_faulting_nid  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_compressed_store_seg_faulting_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_stack_seg_faulting_nid            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_load_seg_faulting_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_store_seg_faulting_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_compressed_load_seg_faulting_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_compressed_store_seg_faulting_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_stack_seg_faulting_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
 
-  prop_brk_seg_faulting_nid    = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_openat_seg_faulting_nid = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_read_seg_faulting_nid   = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_write_seg_faulting_nid  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_brk_seg_faulting_nids    = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_openat_seg_faulting_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_read_seg_faulting_nids   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_write_seg_faulting_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 void init_model_generator(uint64_t number_of_cores) {
@@ -3272,6 +3274,10 @@ void print_line(uint64_t* line) {
     current_nid = print_referenced_line(current_nid, line);
 }
 
+void print_line_for(uint64_t core, uint64_t* lines) {
+  print_line(get_for(core, lines));
+}
+
 void print_break() {
   uint64_t remainder;
 
@@ -3297,6 +3303,10 @@ void print_break_line(uint64_t* line) {
     print_break();
     print_line(line);
   }
+}
+
+void print_break_line_for(uint64_t core, uint64_t* lines) {
+  print_break_line(get_for(core, lines));
 }
 
 void print_break_comment(char* comment) {
@@ -4198,7 +4208,7 @@ uint64_t eval_line(uint64_t* line) {
     return eval_binary_op(line);
 }
 
-uint64_t eval_lines_for(uint64_t core, uint64_t* lines) {
+uint64_t eval_line_for(uint64_t core, uint64_t* lines) {
   return eval_line(get_for(core, lines));
 }
 
@@ -4224,7 +4234,7 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
   if (op == OP_BAD) {
     if (condition != 0) {
       printf("%s: bad %s satisfied @ 0x%lX after %lu steps", selfie_name,
-        symbol, eval_lines_for(core, state_pc_nid), next_step - current_offset);
+        symbol, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -4235,7 +4245,7 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0) {
       printf("%s: constraint %s violated @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, eval_lines_for(core, state_pc_nid), next_step - current_offset);
+        symbol, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -8835,10 +8845,10 @@ void new_core_state(uint64_t core) {
   else
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
 
-  set_for(core, state_pc_nid,
+  set_for(core, state_pc_nids,
     new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter"));
 
-  init_pc_nid = new_init(SID_MACHINE_WORD, get_for(core, state_pc_nid), initial_pc_nid, "initial value of pc");
+  init_pc_nid = new_init(SID_MACHINE_WORD, get_for(core, state_pc_nids), initial_pc_nid, "initial value of pc");
 
   eval_init(init_pc_nid);
 }
@@ -8943,51 +8953,51 @@ void output_model(uint64_t core) {
 
   print_break_comment("state properties");
 
-  print_line(get_for(core, prop_illegal_instruction_nid));
+  print_line_for(core, prop_illegal_instruction_nids);
 
-  print_break_line(get_for(core, prop_illegal_compressed_instruction_nid));
+  print_break_line_for(core, prop_illegal_compressed_instruction_nids);
 
-  print_break_line(get_for(core, prop_is_instruction_known_nid));
+  print_break_line_for(core, prop_is_instruction_known_nids);
 
-  print_break_line(get_for(core, prop_next_fetch_unaligned_nid));
+  print_break_line_for(core, prop_next_fetch_unaligned_nids);
 
-  print_break_line(get_for(core, prop_next_fetch_seg_faulting_nid));
+  print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_is_syscall_id_known_nid));
+  print_break_line_for(core, prop_is_syscall_id_known_nids);
 
   // optional state properties
 
   if (core == CORES - 1)
-    print_break_line(get_for(core, prop_bad_exit_code_nid));
+    print_break_line_for(core, prop_bad_exit_code_nids);
 
-  print_break_line(get_for(core, prop_exclude_a0_from_rd_nid));
+  print_break_line_for(core, prop_exclude_a0_from_rd_nids);
 
-  print_break_line(get_for(core, prop_division_by_zero_nid));
+  print_break_line_for(core, prop_division_by_zero_nids);
 
-  print_break_line(get_for(core, prop_signed_division_overflow_nid));
+  print_break_line_for(core, prop_signed_division_overflow_nids);
 
   // segmentation faults in main memory
 
-  print_break_line(get_for(core, prop_load_seg_faulting_nid));
+  print_break_line_for(core, prop_load_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_store_seg_faulting_nid));
+  print_break_line_for(core, prop_store_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_compressed_load_seg_faulting_nid));
+  print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_compressed_store_seg_faulting_nid));
+  print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_stack_seg_faulting_nid));
+  print_break_line_for(core, prop_stack_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_brk_seg_faulting_nid));
+  print_break_line_for(core, prop_brk_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_openat_seg_faulting_nid));
+  print_break_line_for(core, prop_openat_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_read_seg_faulting_nid));
+  print_break_line_for(core, prop_read_seg_faulting_nids);
 
-  print_break_line(get_for(core, prop_write_seg_faulting_nid));
+  print_break_line_for(core, prop_write_seg_faulting_nids);
 }
 
-void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
@@ -9122,7 +9132,7 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
           "ongoing read system call"),
         "ongoing exit or read system call"),
       "active system call"),
-    pc_nid,
+    get_for(core, pc_nids),
     control_flow_nid,
     "update program counter unless in kernel mode");
 
@@ -9364,7 +9374,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 
   // kernel properties
 
-  set_for(core, prop_is_syscall_id_known_nid, state_property(core,
+  set_for(core, prop_is_syscall_id_known_nids, state_property(core,
     UNUSED,
     new_binary_boolean(OP_AND,
       active_ecall_nid,
@@ -9386,7 +9396,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
     format_comment("core-%lu unknown syscall ID", core)));
 
   if (check_seg_faults)
-    set_for(core, prop_brk_seg_faulting_nid, state_property(core,
+    set_for(core, prop_brk_seg_faulting_nids, state_property(core,
       UNUSED,
       new_binary_boolean(OP_AND,
         active_brk_nid,
@@ -9404,7 +9414,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   // TODO: validate openat arguments other than filename
 
   if (check_seg_faults)
-    set_for(core, prop_openat_seg_faulting_nid, state_property(core,
+    set_for(core, prop_openat_seg_faulting_nids, state_property(core,
       UNUSED,
       new_binary_boolean(OP_AND,
         active_openat_nid,
@@ -9418,7 +9428,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   // TODO: further validate read arguments
 
   if (check_seg_faults)
-    set_for(core, prop_read_seg_faulting_nid, state_property(core,
+    set_for(core, prop_read_seg_faulting_nids, state_property(core,
       UNUSED,
       new_binary_boolean(OP_AND,
         new_binary_boolean(OP_AND,
@@ -9441,7 +9451,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   // TODO: further validate write arguments
 
   if (check_seg_faults)
-    set_for(core, prop_write_seg_faulting_nid, state_property(core,
+    set_for(core, prop_write_seg_faulting_nids, state_property(core,
       UNUSED,
       new_binary_boolean(OP_AND,
         active_write_nid,
@@ -9466,22 +9476,26 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
       format_comment("core-%lu active exit system call with bad exit code", core));
 
     if (core == 0)
-      set_for(0, prop_bad_exit_code_nid, bad_exit_code_nid);
+      set_for(0, prop_bad_exit_code_nids, bad_exit_code_nid);
     else
-      set_for(core, prop_bad_exit_code_nid, new_binary_boolean(OP_AND,
-        get_for(core - 1, prop_bad_exit_code_nid),
+      set_for(core, prop_bad_exit_code_nids, new_binary_boolean(OP_AND,
+        get_for(core - 1, prop_bad_exit_code_nids),
         bad_exit_code_nid,
         "and next bad exit"));
 
     if (core == CORES - 1)
-      set_for(core, prop_bad_exit_code_nid, new_property(OP_BAD,
-        get_for(core, prop_bad_exit_code_nid),
+      set_for(core, prop_bad_exit_code_nids, new_property(OP_BAD,
+        get_for(core, prop_bad_exit_code_nids),
         "bad-exit-code",
         format_comment("exit(%ld)", bad_exit_code)));
   }
 }
 
-void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
+void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
+  uint64_t* pc_nid;
+
+  pc_nid = get_for(core, pc_nids);
+
   // fetch instruction
 
   eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
@@ -9539,14 +9553,14 @@ void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t*
       register_file_nid, memory_nid, eval_instruction_memory_data_flow_nid);
 }
 
-void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
+void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid) {
   // update control flow
 
   if (SYNCHRONIZED_PC)
     if (core == 0) {
       next_pc_nid = new_next(SID_MACHINE_WORD,
-        pc_nid, control_flow_nid, "program counter");
+        get_for(core, pc_nids), control_flow_nid, "program counter");
 
       eval_core_0_control_flow_nid = control_flow_nid;
     } else
@@ -9559,7 +9573,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         "asserting new pc value == new core-0 pc value");
   else
     next_pc_nid = new_next(SID_MACHINE_WORD,
-      pc_nid, control_flow_nid, "program counter");
+      get_for(core, pc_nids), control_flow_nid, "program counter");
 
   // update register data flow
 
@@ -9619,25 +9633,25 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
   // mandatory state properties
 
-  set_for(core, prop_illegal_instruction_nid, state_property(core,
+  set_for(core, prop_illegal_instruction_nids, state_property(core,
     UNUSED,
     is_illegal_shamt(ir_nid),
     format_comment("core-%lu-illegal-instruction", core),
     format_comment("core-%lu illegal instruction", core)));
 
-  set_for(core, prop_illegal_compressed_instruction_nid, state_property(core,
+  set_for(core, prop_illegal_compressed_instruction_nids, state_property(core,
     UNUSED,
     is_illegal_compressed_instruction_imm_shamt(c_ir_nid),
     format_comment("core-%lu-illegal-compressed-instruction", core),
     format_comment("core-%lu illegal compressed instruction", core)));
 
-  set_for(core, prop_is_instruction_known_nid, state_property(core,
+  set_for(core, prop_is_instruction_known_nids, state_property(core,
     is_enabled(known_instructions_nid),
     UNUSED,
     format_comment("core-%lu-known-instructions", core),
     format_comment("core-%lu known instructions", core)));
 
-  set_for(core, prop_next_fetch_unaligned_nid, state_property(core,
+  set_for(core, prop_next_fetch_unaligned_nids, state_property(core,
     new_binary_boolean(OP_EQ,
       new_binary(OP_AND, SID_MACHINE_WORD,
         control_flow_nid,
@@ -9649,7 +9663,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
     format_comment("core-%lu-fetch-unaligned", core),
     format_comment("core-%lu imminent unaligned fetch", core)));
 
-  set_for(core, prop_next_fetch_seg_faulting_nid, state_property(core,
+  set_for(core, prop_next_fetch_seg_faulting_nids, state_property(core,
     is_address_in_machine_word_in_code_segment(control_flow_nid),
     UNUSED,
     format_comment("core-%lu-fetch-seg-fault", core),
@@ -9658,7 +9672,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   // optional state properties
 
   if (exclude_a0_from_rd)
-    set_for(core, prop_exclude_a0_from_rd_nid, state_property(core,
+    set_for(core, prop_exclude_a0_from_rd_nids, state_property(core,
       new_binary_boolean(OP_NEQ,
         get_instruction_rd(ir_nid),
         NID_A0,
@@ -9668,14 +9682,14 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
       format_comment("core-%lu only brk and read system call may update a0", core)));
 
   if (check_division_by_zero)
-    set_for(core, prop_division_by_zero_nid, state_property(core,
+    set_for(core, prop_division_by_zero_nids, state_property(core,
       UNUSED,
       is_division_remainder_by_zero(ir_nid, register_file_nid),
       format_comment("core-%lu-division-by-zero", core),
       format_comment("core-%lu division by zero", core)));
 
   if (check_division_overflow)
-    set_for(core, prop_signed_division_overflow_nid, state_property(core,
+    set_for(core, prop_signed_division_overflow_nids, state_property(core,
       UNUSED,
       is_signed_division_remainder_overflow(ir_nid, register_file_nid),
       format_comment("core-%lu-signed-division-overflow", core),
@@ -9684,25 +9698,25 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   // segmentation faults in main memory
 
   if (check_seg_faults) {
-    set_for(core, prop_load_seg_faulting_nid, state_property(core,
+    set_for(core, prop_load_seg_faulting_nids, state_property(core,
       load_no_seg_faults(ir_nid, register_file_nid),
       UNUSED,
       format_comment("core-%lu-load-seg-fault", core),
       format_comment("core-%lu load segmentation fault", core)));
 
-    set_for(core, prop_store_seg_faulting_nid, state_property(core,
+    set_for(core, prop_store_seg_faulting_nids, state_property(core,
       store_no_seg_faults(ir_nid, register_file_nid),
       UNUSED,
       format_comment("core-%lu-store-seg-fault", core),
       format_comment("core-%lu store segmentation fault", core)));
 
-    set_for(core, prop_compressed_load_seg_faulting_nid, state_property(core,
+    set_for(core, prop_compressed_load_seg_faulting_nids, state_property(core,
       compressed_load_no_seg_faults(c_ir_nid, register_file_nid),
       UNUSED,
       format_comment("core-%lu-compressed-load-seg-fault", core),
       format_comment("core-%lu compressed load segmentation fault", core)));
 
-    set_for(core, prop_compressed_store_seg_faulting_nid, state_property(core,
+    set_for(core, prop_compressed_store_seg_faulting_nids, state_property(core,
       compressed_store_no_seg_faults(c_ir_nid, register_file_nid),
       UNUSED,
       format_comment("core-%lu-compressed-store-seg-fault", core),
@@ -9710,7 +9724,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
     // TODO: check stack pointer segfault earlier upon sp update
 
-    set_for(core, prop_stack_seg_faulting_nid, state_property(core,
+    set_for(core, prop_stack_seg_faulting_nids, state_property(core,
       is_address_in_machine_word_in_stack_segment(load_register_value(NID_SP, "sp value", register_file_nid)),
       UNUSED,
       format_comment("core-%lu-stack-seg-fault", core),
@@ -9781,9 +9795,9 @@ void model_rotor() {
 
     new_memory_state(core);
 
-    rotor_combinational(get_for(core, state_pc_nid), state_code_segment_nid,
+    rotor_combinational(core, state_pc_nids, state_code_segment_nid,
       state_register_file_nid, state_main_memory_nid);
-    kernel_combinational(get_for(core, state_pc_nid), eval_ir_nid,
+    kernel_combinational(core, state_pc_nids, eval_ir_nid,
       eval_compressed_instruction_control_flow_nid,
       eval_compressed_instruction_register_data_flow_nid,
       eval_compressed_instruction_memory_data_flow_nid,
@@ -9791,7 +9805,7 @@ void model_rotor() {
       state_readable_bytes_nid, state_read_bytes_nid,
       state_register_file_nid, state_main_memory_nid);
 
-    rotor_sequential(core, get_for(core, state_pc_nid),
+    rotor_sequential(core, state_pc_nids,
       state_register_file_nid, state_main_memory_nid,
       eval_control_flow_nid,
       eval_register_data_flow_nid,
@@ -9839,7 +9853,7 @@ void print_assembly(uint64_t core) {
   uint64_t UJ_imm;
   uint64_t imm_shamt;
 
-  pc = eval_lines_for(core, state_pc_nid);
+  pc = eval_line_for(core, state_pc_nids);
 
   printf("0x%lX: ", pc);
 
@@ -10029,28 +10043,28 @@ uint64_t eval_properties(uint64_t core) {
 
   halt = 0;
 
-  halt = halt + eval_property_for(core, prop_illegal_instruction_nid);
-  halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nid);
-  halt = halt + eval_property_for(core, prop_is_instruction_known_nid);
-  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nid);
-  halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_exclude_a0_from_rd_nid);
-  halt = halt + eval_property_for(core, prop_division_by_zero_nid);
-  halt = halt + eval_property_for(core, prop_signed_division_overflow_nid);
-  halt = halt + eval_property_for(core, prop_load_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_store_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_illegal_instruction_nids);
+  halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nids);
+  halt = halt + eval_property_for(core, prop_is_instruction_known_nids);
+  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nids);
+  halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_exclude_a0_from_rd_nids);
+  halt = halt + eval_property_for(core, prop_division_by_zero_nids);
+  halt = halt + eval_property_for(core, prop_signed_division_overflow_nids);
+  halt = halt + eval_property_for(core, prop_load_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_store_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nids);
 
-  halt = halt + eval_property_for(core, prop_is_syscall_id_known_nid);
-  halt = halt + eval_property_for(core, prop_brk_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_openat_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_read_seg_faulting_nid);
-  halt = halt + eval_property_for(core, prop_write_seg_faulting_nid);
+  halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids);
+  halt = halt + eval_property_for(core, prop_brk_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_openat_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_read_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_write_seg_faulting_nids);
 
   // if satisfied rotor halts in current step
-  eval_property_for(core, prop_bad_exit_code_nid);
+  eval_property_for(core, prop_bad_exit_code_nids);
 
   return halt != 0;
 }
@@ -10125,7 +10139,7 @@ void eval_states() {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
         eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
-        eval_lines_for(0, state_pc_nid),
+        eval_line_for(0, state_pc_nids),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10135,7 +10149,7 @@ void eval_states() {
     if (current_step - current_offset >= 100000 - 1) {
       printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
         model_name,
-        eval_lines_for(0, state_pc_nid),
+        eval_line_for(0, state_pc_nids),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10213,7 +10227,7 @@ void disassemble_rotor() {
       if (CORES == 1) {
         printf("%s: ********************************************************************************\n", selfie_name);
 
-        pc_nid = get_for(0, state_pc_nid);
+        pc_nid = get_for(0, state_pc_nids);
 
         set_state(pc_nid, code_start);
 
