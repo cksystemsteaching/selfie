@@ -10232,16 +10232,12 @@ void eval_rotor() {
           } else {
             printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
 
-            apply_sequential();
-
             return;
           }
         }
 
         printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
           min_steps, min_input, max_steps, max_input);
-
-        apply_sequential();
       }
 }
 
@@ -10257,6 +10253,9 @@ void disassemble_rotor() {
         pc_nid = get_for(0, state_pc_nids);
 
         set_state(pc_nid, code_start);
+        set_step(pc_nid, next_step);
+
+        set_step(state_code_segment_nid, next_step);
 
         ir_nid = get_for(0, eval_ir_nids);
 
@@ -10274,8 +10273,7 @@ void disassemble_rotor() {
 
           set_step(pc_nid, next_step);
 
-          eval_next(next_code_segment_nid);
-          apply_next(next_code_segment_nid);
+          set_step(state_code_segment_nid, next_step);
 
           current_step = next_step;
         }
