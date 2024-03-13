@@ -2737,8 +2737,8 @@ uint64_t SYNCHRONIZED_PC = 0; // flag for synchronized program counters across c
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_ir_nids  = (uint64_t*) 0;
-uint64_t* eval_c_ir_nid = (uint64_t*) 0;
+uint64_t* eval_ir_nids   = (uint64_t*) 0;
+uint64_t* eval_c_ir_nids = (uint64_t*) 0;
 
 uint64_t* initial_pc_nid = (uint64_t*) 0;
 
@@ -2756,7 +2756,8 @@ uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_cores(uint64_t number_of_cores) {
-  eval_ir_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_ir_nids   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_c_ir_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
   state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
@@ -2791,7 +2792,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nids, uint64_t* read_bytes_ni
 void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
 void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
-void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nids,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
 void model_rotor();
@@ -8913,7 +8914,7 @@ void output_model(uint64_t core) {
 
   print_break_comment_line("fetch instruction", get_for(core, eval_ir_nids));
 
-  print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
+  print_break_comment_line("fetch compressed instruction", get_for(core, eval_c_ir_nids));
 
   print_break_comment_line("decode instruction", eval_instruction_ID_nid);
 
@@ -9501,6 +9502,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nids, uint64_t* read_bytes_ni
 void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* pc_nid;
   uint64_t* ir_nid;
+  uint64_t* c_ir_nid;
 
   pc_nid = get_for(core, pc_nids);
 
@@ -9512,7 +9514,9 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
 
   // fetch compressed instruction
 
-  eval_c_ir_nid = fetch_compressed_instruction(pc_nid, code_segment_nid);
+  c_ir_nid = fetch_compressed_instruction(pc_nid, code_segment_nid);
+
+  set_for(core, eval_c_ir_nids, c_ir_nid);
 
   // decode instruction
 
@@ -9520,7 +9524,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
 
   // decode compressed instruction
 
-  eval_compressed_instruction_ID_nid = decode_compressed_instruction(eval_c_ir_nid);
+  eval_compressed_instruction_ID_nid = decode_compressed_instruction(c_ir_nid);
 
   if (eval_compressed_instruction_ID_nid == UNUSED)
     set_for(core, eval_instruction_ID_nids, eval_instruction_ID_nid);
@@ -9539,7 +9543,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // compressed instruction control flow
 
   eval_compressed_instruction_control_flow_nid =
-    core_compressed_control_flow(pc_nid, eval_c_ir_nid,
+    core_compressed_control_flow(pc_nid, c_ir_nid,
       register_file_nid, eval_instruction_control_flow_nid);
 
   // instruction register data flow
@@ -9550,7 +9554,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // compressed instruction register data flow
 
   eval_compressed_instruction_register_data_flow_nid =
-    core_compressed_register_data_flow(pc_nid, eval_c_ir_nid,
+    core_compressed_register_data_flow(pc_nid, c_ir_nid,
       register_file_nid, memory_nid, eval_instruction_register_data_flow_nid);
 
   // instruction memory data flow
@@ -9561,7 +9565,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // compressed instruction memory data flow
 
   eval_compressed_instruction_memory_data_flow_nid =
-    core_compressed_memory_data_flow(eval_c_ir_nid,
+    core_compressed_memory_data_flow(c_ir_nid,
       register_file_nid, memory_nid, eval_instruction_memory_data_flow_nid);
 }
 
@@ -9640,11 +9644,13 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_
       memory_nid, memory_data_flow_nid, "main memory");
 }
 
-void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nids,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid) {
   uint64_t* ir_nid;
+  uint64_t* c_ir_nid;
 
-  ir_nid = get_for(core, ir_nids);
+  ir_nid   = get_for(core, ir_nids);
+  c_ir_nid = get_for(core, c_ir_nids);
 
   // mandatory state properties
 
@@ -9833,7 +9839,7 @@ void model_rotor() {
       eval_ir_nids, state_register_file_nid);
 
     rotor_properties(core,
-      eval_ir_nids, eval_c_ir_nid,
+      eval_ir_nids, eval_c_ir_nids,
       eval_instruction_ID_nids, eval_control_flow_nid,
       state_register_file_nid);
     kernel_properties(core,
@@ -9856,6 +9862,7 @@ void print_assembly(uint64_t core) {
   uint64_t ID;
   char* mnemonic;
   uint64_t* ir_nid;
+  uint64_t* c_ir_nid;
   char* rd;
   char* rs1;
   char* rs2;
@@ -9877,7 +9884,8 @@ void print_assembly(uint64_t core) {
 
   mnemonic = get_instruction_mnemonic(ID);
 
-  ir_nid = get_for(core, eval_ir_nids);
+  ir_nid   = get_for(core, eval_ir_nids);
+  c_ir_nid = get_for(core, eval_c_ir_nids);
 
   if (is_compressed_instruction_ID(ID) == 0) {
     rd  = get_register_name(eval_line(get_instruction_rd(ir_nid)));
@@ -9895,17 +9903,17 @@ void print_assembly(uint64_t core) {
     U_imm  = eval_line(get_instruction_U_immediate(ir_nid));
     UJ_imm = eval_line(get_instruction_UJ_immediate(ir_nid));
   } else {
-    rd  = get_register_name(eval_line(get_compressed_instruction_rd(eval_c_ir_nid)));
-    rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(eval_c_ir_nid)));
-    rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_c_ir_nid)));
+    rd  = get_register_name(eval_line(get_compressed_instruction_rd(c_ir_nid)));
+    rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(c_ir_nid)));
+    rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(c_ir_nid)));
 
-    I_imm        = eval_line(get_compressed_instruction_CI_immediate(eval_c_ir_nid));
-    I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_c_ir_nid));
+    I_imm        = eval_line(get_compressed_instruction_CI_immediate(c_ir_nid));
+    I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(c_ir_nid));
 
-    shamt = eval_line(get_compressed_instruction_shamt(eval_c_ir_nid));
+    shamt = eval_line(get_compressed_instruction_shamt(c_ir_nid));
 
-    SB_imm = eval_line(get_compressed_instruction_CB_offset(eval_c_ir_nid));
-    UJ_imm = eval_line(get_compressed_instruction_CJ_offset(eval_c_ir_nid));
+    SB_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
+    UJ_imm = eval_line(get_compressed_instruction_CJ_offset(c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
         if (ID == ID_C_JR)
@@ -9927,7 +9935,7 @@ void print_assembly(uint64_t core) {
         rs1 = get_register_name(REG_ZR);
         ID  = ID_ADDI;
       } else if (ID == ID_C_LUI) {
-        I_imm = eval_line(get_compressed_instruction_CUI_immediate(eval_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid));
         ID    = ID_LUI;
       } else if (ID == ID_C_ADDI)
         ID = ID_ADDI;
@@ -9936,44 +9944,44 @@ void print_assembly(uint64_t core) {
       else if (ID == ID_C_ADDI16SP) {
         rd    = get_register_name(REG_SP);
         rs1   = rd;
-        I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(eval_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(c_ir_nid));
         ID    = ID_ADDI;
       } else if (ID == ID_C_ADDI4SPN) {
-        rd    = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_c_ir_nid)));
+        rd    = get_register_name(eval_line(get_compressed_instruction_rd_shift(c_ir_nid)));
         rs1   = get_register_name(REG_SP);
-        I_imm = eval_line(get_compressed_instruction_CIW_immediate(eval_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CIW_immediate(c_ir_nid));
         ID    = ID_ADDI;
       } else if (ID == ID_C_SLLI)
         ID    = ID_SLLI;
       else {
         rs1 = get_register_name(REG_SP);
         if (ID == ID_C_LWSP) {
-          I_imm = eval_line(get_compressed_instruction_CI32_offset(eval_c_ir_nid));
+          I_imm = eval_line(get_compressed_instruction_CI32_offset(c_ir_nid));
           ID    = ID_LW;
         } else if (ID == ID_C_LDSP) {
-          I_imm = eval_line(get_compressed_instruction_CI64_offset(eval_c_ir_nid));
+          I_imm = eval_line(get_compressed_instruction_CI64_offset(c_ir_nid));
           ID    = ID_LD;
         }
       }
     } else if (is_CL_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_c_ir_nid)));
-      rs1 = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rd_shift(c_ir_nid)));
+      rs1 = get_register_name(eval_line(get_compressed_instruction_rs1_shift(c_ir_nid)));
       if (ID == ID_C_LW) {
-        I_imm = eval_line(get_compressed_instruction_CL32_offset(eval_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CL32_offset(c_ir_nid));
         ID    = ID_LW;
       } else if (ID == ID_C_LD) {
-        I_imm = eval_line(get_compressed_instruction_CL64_offset(eval_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CL64_offset(c_ir_nid));
         ID    = ID_LD;
       }
     } else if (is_CS_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(c_ir_nid)));
       rs1 = rd;
-      rs2 = get_register_name(eval_line(get_compressed_instruction_rs2_shift(eval_c_ir_nid)));
+      rs2 = get_register_name(eval_line(get_compressed_instruction_rs2_shift(c_ir_nid)));
       if (ID == ID_C_SW) {
-        S_imm = eval_line(get_compressed_instruction_CS32_offset(eval_c_ir_nid));
+        S_imm = eval_line(get_compressed_instruction_CS32_offset(c_ir_nid));
         ID    = ID_SW;
       } else if (ID == ID_C_SD) {
-        S_imm = eval_line(get_compressed_instruction_CS64_offset(eval_c_ir_nid));
+        S_imm = eval_line(get_compressed_instruction_CS64_offset(c_ir_nid));
         ID    = ID_SD;
       } else if (is_register_CS_type(ID)) {
         if (ID == ID_C_SUB)
@@ -9990,21 +9998,21 @@ void print_assembly(uint64_t core) {
           ID = ID_SUBW;
       } else {
         rs1 = get_register_name(REG_SP);
-        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_c_ir_nid)));
+        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(c_ir_nid)));
         if (ID == ID_C_SWSP) {
-          S_imm = eval_line(get_compressed_instruction_CSS32_offset(eval_c_ir_nid));
+          S_imm = eval_line(get_compressed_instruction_CSS32_offset(c_ir_nid));
           ID    = ID_SW;
         } else if (ID == ID_C_SDSP) {
-          S_imm = eval_line(get_compressed_instruction_CSS64_offset(eval_c_ir_nid));
+          S_imm = eval_line(get_compressed_instruction_CSS64_offset(c_ir_nid));
           ID    = ID_SD;
         }
       }
     } else if (is_CB_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(c_ir_nid)));
       rs1 = rd;
       rs2 = get_register_name(REG_ZR);
 
-      I_imm = eval_line(get_compressed_instruction_CB_offset(eval_c_ir_nid));
+      I_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
       if (ID == ID_C_BEQZ)
         ID = ID_BEQ;
       else if (ID == ID_C_BNEZ)
