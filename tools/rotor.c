@@ -675,7 +675,7 @@ uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
 uint64_t* next_register_file_nid  = (uint64_t*) 0;
 
-uint64_t* eval_core_0_register_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_core_0_register_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -983,7 +983,7 @@ uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
 uint64_t* next_main_memory_nid  = (uint64_t*) 0;
 
-uint64_t* eval_core_0_memory_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_core_0_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2017,14 +2017,14 @@ uint64_t* eval_known_instructions_nid            = (uint64_t*) 0;
 uint64_t* eval_known_compressed_instructions_nid = (uint64_t*) 0;
 uint64_t* eval_all_known_instructions_nid        = (uint64_t*) 0;
 
-uint64_t* eval_core_register_data_flow_nid = (uint64_t*) 0;
-uint64_t* eval_core_memory_data_flow_nid   = (uint64_t*) 0;
+uint64_t* eval_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_memory_data_flow_nid   = (uint64_t*) 0;
 
-uint64_t* eval_core_instruction_register_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_core_compressed_instruction_register_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_instruction_register_data_flow_nid            = (uint64_t*) 0;
+uint64_t* eval_compressed_instruction_register_data_flow_nid = (uint64_t*) 0;
 
-uint64_t* eval_core_instruction_memory_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_core_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_instruction_memory_data_flow_nid            = (uint64_t*) 0;
+uint64_t* eval_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2729,19 +2729,19 @@ uint64_t SYNCHRONIZED_PC = 0; // flag for synchronized program counters across c
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_core_ir_nid   = (uint64_t*) 0;
-uint64_t* eval_core_c_ir_nid = (uint64_t*) 0;
+uint64_t* eval_ir_nid   = (uint64_t*) 0;
+uint64_t* eval_c_ir_nid = (uint64_t*) 0;
 
-uint64_t* initial_core_pc_nid = (uint64_t*) 0;
+uint64_t* initial_pc_nid = (uint64_t*) 0;
 
-uint64_t* state_core_pc_nid = (uint64_t*) 0;
-uint64_t* init_core_pc_nid  = (uint64_t*) 0;
-uint64_t* next_core_pc_nid  = (uint64_t*) 0;
+uint64_t* state_pc_nid = (uint64_t*) 0;
+uint64_t* init_pc_nid  = (uint64_t*) 0;
+uint64_t* next_pc_nid  = (uint64_t*) 0;
 
-uint64_t* eval_core_control_flow_nid = (uint64_t*) 0;
+uint64_t* eval_control_flow_nid = (uint64_t*) 0;
 
-uint64_t* eval_core_instruction_control_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_core_compressed_instruction_control_flow_nid = (uint64_t*) 0;
+uint64_t* eval_instruction_control_flow_nid            = (uint64_t*) 0;
+uint64_t* eval_compressed_instruction_control_flow_nid = (uint64_t*) 0;
 
 uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 
@@ -4322,7 +4322,7 @@ uint64_t eval_property(uint64_t* line) {
   if (op == OP_BAD) {
     if (condition != 0) {
       printf("%s: bad %s satisfied @ 0x%lX after %lu steps", selfie_name,
-        symbol, eval_line(state_core_pc_nid), next_step - current_offset);
+        symbol, eval_line(state_pc_nid), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -4333,7 +4333,7 @@ uint64_t eval_property(uint64_t* line) {
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0) {
       printf("%s: constraint %s violated @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, eval_line(state_core_pc_nid), next_step - current_offset);
+        symbol, eval_line(state_pc_nid), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -8826,14 +8826,14 @@ void new_core_state(uint64_t core) {
       return;
 
   if (CODE_LOADED)
-    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
+    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
   else
-    initial_core_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
+    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
 
-  state_core_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
-  init_core_pc_nid  = new_init(SID_MACHINE_WORD, state_core_pc_nid, initial_core_pc_nid, "initial value of pc");
+  state_pc_nid = new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
+  init_pc_nid  = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
 
-  eval_line(init_core_pc_nid);
+  eval_line(init_pc_nid);
 }
 
 void print_core_state(uint64_t core) {
@@ -8843,8 +8843,8 @@ void print_core_state(uint64_t core) {
 
   print_break_comment(format_comment("core-%lu program counter", core));
 
-  print_line(initial_core_pc_nid);
-  print_line(init_core_pc_nid);
+  print_line(initial_pc_nid);
+  print_line(init_pc_nid);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -8886,19 +8886,19 @@ void output_model(uint64_t core) {
 
   print_memory_state(core);
 
-  print_break_comment_line("fetch instruction", eval_core_ir_nid);
+  print_break_comment_line("fetch instruction", eval_ir_nid);
 
-  print_break_comment_line("fetch compressed instruction", eval_core_c_ir_nid);
+  print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
 
   print_break_comment_line("decode instruction", eval_known_instructions_nid);
 
   print_break_comment_line("decode compressed instruction",
     eval_known_compressed_instructions_nid);
 
-  print_break_comment_line("instruction control flow", eval_core_instruction_control_flow_nid);
+  print_break_comment_line("instruction control flow", eval_instruction_control_flow_nid);
 
   print_break_comment_line("compressed instruction control flow",
-    eval_core_compressed_instruction_control_flow_nid);
+    eval_compressed_instruction_control_flow_nid);
 
   print_break_comment_line("update kernel state", next_program_break_nid);
 
@@ -8908,29 +8908,29 @@ void output_model(uint64_t core) {
 
   print_break_line(next_read_bytes_nid);
 
-  print_break_comment_line("kernel and instruction control flow", eval_core_control_flow_nid);
+  print_break_comment_line("kernel and instruction control flow", eval_control_flow_nid);
 
-  print_break_comment_line("update program counter", next_core_pc_nid);
+  print_break_comment_line("update program counter", next_pc_nid);
 
   print_break_comment_line("instruction register data flow",
-    eval_core_instruction_register_data_flow_nid);
+    eval_instruction_register_data_flow_nid);
 
   print_break_comment_line("compressed instruction register data flow",
-    eval_core_compressed_instruction_register_data_flow_nid);
+    eval_compressed_instruction_register_data_flow_nid);
 
   print_break_comment_line("kernel and instruction register data flow",
-    eval_core_register_data_flow_nid);
+    eval_register_data_flow_nid);
 
   print_break_comment_line("update register data flow", next_register_file_nid);
 
   print_break_comment_line("instruction memory data flow",
-    eval_core_instruction_memory_data_flow_nid);
+    eval_instruction_memory_data_flow_nid);
 
   print_break_comment_line("compressed instruction memory data flow",
-    eval_core_compressed_instruction_memory_data_flow_nid);
+    eval_compressed_instruction_memory_data_flow_nid);
 
   print_break_comment_line("kernel and instruction memory data flow",
-    eval_core_memory_data_flow_nid);
+    eval_memory_data_flow_nid);
 
   print_break_comment_line("update memory data flow", next_main_memory_nid);
 
@@ -9104,7 +9104,7 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
 
   // kernel and instruction control flow
 
-  eval_core_control_flow_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
+  eval_control_flow_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
     new_binary_boolean(OP_AND,
       active_ecall_nid,
       new_binary_boolean(OP_OR,
@@ -9144,7 +9144,7 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
 
   // kernel and instruction register data flow
 
-  eval_core_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
+  eval_register_data_flow_nid = new_ternary(OP_ITE, SID_REGISTER_STATE,
     active_ecall_nid,
     new_ternary(OP_ITE, SID_REGISTER_STATE,
       brk_syscall_nid,
@@ -9193,7 +9193,7 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
 
   // kernel and instruction memory data flow
 
-  eval_core_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
+  eval_memory_data_flow_nid = new_ternary(OP_ITE, SID_MEMORY_STATE,
     eval_still_reading_active_read_nid,
     store_byte(new_binary(OP_ADD, SID_MACHINE_WORD,
       a1_value_nid,
@@ -9477,59 +9477,59 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 void rotor_combinational(uint64_t* pc_nid, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   // fetch instruction
 
-  eval_core_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
+  eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
 
   // fetch compressed instruction
 
-  eval_core_c_ir_nid = fetch_compressed_instruction(pc_nid, code_segment_nid);
+  eval_c_ir_nid = fetch_compressed_instruction(pc_nid, code_segment_nid);
 
   // decode instruction
 
-  eval_known_instructions_nid = decode_instruction(eval_core_ir_nid);
+  eval_known_instructions_nid = decode_instruction(eval_ir_nid);
 
   // decode compressed instruction
 
-  eval_known_compressed_instructions_nid = decode_compressed_instruction(eval_core_c_ir_nid);
+  eval_known_compressed_instructions_nid = decode_compressed_instruction(eval_c_ir_nid);
 
   if (eval_known_compressed_instructions_nid != UNUSED)
     eval_all_known_instructions_nid = new_ternary(OP_ITE, SID_INSTRUCTION_ID,
-      is_compressed_instruction(eval_core_ir_nid),
+      is_compressed_instruction(eval_ir_nid),
       eval_known_compressed_instructions_nid,
       eval_known_instructions_nid,
       "is known uncompressed or compressed instruction?");
 
   // instruction control flow
 
-  eval_core_instruction_control_flow_nid =
-    core_control_flow(pc_nid, eval_core_ir_nid, register_file_nid);
+  eval_instruction_control_flow_nid =
+    core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
 
   // compressed instruction control flow
 
-  eval_core_compressed_instruction_control_flow_nid =
-    core_compressed_control_flow(pc_nid, eval_core_c_ir_nid,
-      register_file_nid, eval_core_instruction_control_flow_nid);
+  eval_compressed_instruction_control_flow_nid =
+    core_compressed_control_flow(pc_nid, eval_c_ir_nid,
+      register_file_nid, eval_instruction_control_flow_nid);
 
   // instruction register data flow
 
-  eval_core_instruction_register_data_flow_nid =
-    core_register_data_flow(pc_nid, eval_core_ir_nid, register_file_nid, memory_nid);
+  eval_instruction_register_data_flow_nid =
+    core_register_data_flow(pc_nid, eval_ir_nid, register_file_nid, memory_nid);
 
   // compressed instruction register data flow
 
-  eval_core_compressed_instruction_register_data_flow_nid =
-    core_compressed_register_data_flow(pc_nid, eval_core_c_ir_nid,
-      register_file_nid, memory_nid, eval_core_instruction_register_data_flow_nid);
+  eval_compressed_instruction_register_data_flow_nid =
+    core_compressed_register_data_flow(pc_nid, eval_c_ir_nid,
+      register_file_nid, memory_nid, eval_instruction_register_data_flow_nid);
 
   // instruction memory data flow
 
-  eval_core_instruction_memory_data_flow_nid =
-    core_memory_data_flow(eval_core_ir_nid, register_file_nid, memory_nid);
+  eval_instruction_memory_data_flow_nid =
+    core_memory_data_flow(eval_ir_nid, register_file_nid, memory_nid);
 
   // compressed instruction memory data flow
 
-  eval_core_compressed_instruction_memory_data_flow_nid =
-    core_compressed_memory_data_flow(eval_core_c_ir_nid,
-      register_file_nid, memory_nid, eval_core_instruction_memory_data_flow_nid);
+  eval_compressed_instruction_memory_data_flow_nid =
+    core_compressed_memory_data_flow(eval_c_ir_nid,
+      register_file_nid, memory_nid, eval_instruction_memory_data_flow_nid);
 }
 
 void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
@@ -9538,12 +9538,12 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
   if (SYNCHRONIZED_PC)
     if (core == 0) {
-      next_core_pc_nid = new_next(SID_MACHINE_WORD,
+      next_pc_nid = new_next(SID_MACHINE_WORD,
         pc_nid, control_flow_nid, "program counter");
 
       eval_core_0_control_flow_nid = control_flow_nid;
     } else
-      next_core_pc_nid = new_property(OP_CONSTRAINT,
+      next_pc_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           control_flow_nid,
           eval_core_0_control_flow_nid,
@@ -9551,7 +9551,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-pc-value", core),
         "asserting new pc value == new core-0 pc value");
   else
-    next_core_pc_nid = new_next(SID_MACHINE_WORD,
+    next_pc_nid = new_next(SID_MACHINE_WORD,
       pc_nid, control_flow_nid, "program counter");
 
   // update register data flow
@@ -9774,34 +9774,34 @@ void model_rotor() {
 
     new_memory_state(core);
 
-    rotor_combinational(state_core_pc_nid, state_code_segment_nid,
+    rotor_combinational(state_pc_nid, state_code_segment_nid,
       state_register_file_nid, state_main_memory_nid);
-    kernel_combinational(state_core_pc_nid, eval_core_ir_nid,
-      eval_core_compressed_instruction_control_flow_nid,
-      eval_core_compressed_instruction_register_data_flow_nid,
-      eval_core_compressed_instruction_memory_data_flow_nid,
+    kernel_combinational(state_pc_nid, eval_ir_nid,
+      eval_compressed_instruction_control_flow_nid,
+      eval_compressed_instruction_register_data_flow_nid,
+      eval_compressed_instruction_memory_data_flow_nid,
       next_program_break_nid, next_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
       state_register_file_nid, state_main_memory_nid);
 
-    rotor_sequential(core, state_core_pc_nid,
+    rotor_sequential(core, state_pc_nid,
       state_register_file_nid, state_main_memory_nid,
-      eval_core_control_flow_nid,
-      eval_core_register_data_flow_nid,
-      eval_core_memory_data_flow_nid);
+      eval_control_flow_nid,
+      eval_register_data_flow_nid,
+      eval_memory_data_flow_nid);
     kernel_sequential(core,
       state_program_break_nid, state_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
       eval_program_break_nid, eval_file_descriptor_nid,
       eval_still_reading_active_read_nid, eval_more_than_one_readable_byte_to_read_nid,
-      eval_core_ir_nid, state_register_file_nid);
+      eval_ir_nid, state_register_file_nid);
 
     rotor_properties(core,
-      eval_core_ir_nid, eval_core_c_ir_nid,
-      eval_all_known_instructions_nid, eval_core_control_flow_nid,
+      eval_ir_nid, eval_c_ir_nid,
+      eval_all_known_instructions_nid, eval_control_flow_nid,
       state_register_file_nid);
     kernel_properties(core,
-      eval_core_ir_nid,
+      eval_ir_nid,
       state_read_bytes_nid,
       state_register_file_nid);
 
@@ -9832,7 +9832,7 @@ void print_assembly() {
   uint64_t UJ_imm;
   uint64_t imm_shamt;
 
-  pc = eval_line(state_core_pc_nid);
+  pc = eval_line(state_pc_nid);
 
   printf("0x%lX: ", pc);
 
@@ -9841,32 +9841,32 @@ void print_assembly() {
   mnemonic = get_instruction_mnemonic(ID);
 
   if (is_compressed_instruction_ID(ID) == 0) {
-    rd  = get_register_name(eval_line(get_instruction_rd(eval_core_ir_nid)));
-    rs1 = get_register_name(eval_line(get_instruction_rs1(eval_core_ir_nid)));
-    rs2 = get_register_name(eval_line(get_instruction_rs2(eval_core_ir_nid)));
+    rd  = get_register_name(eval_line(get_instruction_rd(eval_ir_nid)));
+    rs1 = get_register_name(eval_line(get_instruction_rs1(eval_ir_nid)));
+    rs2 = get_register_name(eval_line(get_instruction_rs2(eval_ir_nid)));
 
-    I_imm        = eval_line(get_instruction_shamt(eval_core_ir_nid));
-    I_imm_32_bit = eval_line(get_instruction_I_32_bit_immediate(eval_core_ir_nid));
+    I_imm        = eval_line(get_instruction_shamt(eval_ir_nid));
+    I_imm_32_bit = eval_line(get_instruction_I_32_bit_immediate(eval_ir_nid));
 
-    shamt       = eval_line(get_instruction_shamt(eval_core_ir_nid));
-    shamt_5_bit = eval_line(get_instruction_5_bit_shamt(eval_core_ir_nid));
+    shamt       = eval_line(get_instruction_shamt(eval_ir_nid));
+    shamt_5_bit = eval_line(get_instruction_5_bit_shamt(eval_ir_nid));
 
-    S_imm  = eval_line(get_instruction_S_immediate(eval_core_ir_nid));
-    SB_imm = eval_line(get_instruction_SB_immediate(eval_core_ir_nid));
-    U_imm  = eval_line(get_instruction_U_immediate(eval_core_ir_nid));
-    UJ_imm = eval_line(get_instruction_UJ_immediate(eval_core_ir_nid));
+    S_imm  = eval_line(get_instruction_S_immediate(eval_ir_nid));
+    SB_imm = eval_line(get_instruction_SB_immediate(eval_ir_nid));
+    U_imm  = eval_line(get_instruction_U_immediate(eval_ir_nid));
+    UJ_imm = eval_line(get_instruction_UJ_immediate(eval_ir_nid));
   } else {
-    rd  = get_register_name(eval_line(get_compressed_instruction_rd(eval_core_c_ir_nid)));
-    rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(eval_core_c_ir_nid)));
-    rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
+    rd  = get_register_name(eval_line(get_compressed_instruction_rd(eval_c_ir_nid)));
+    rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(eval_c_ir_nid)));
+    rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_c_ir_nid)));
 
-    I_imm        = eval_line(get_compressed_instruction_CI_immediate(eval_core_c_ir_nid));
-    I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_core_c_ir_nid));
+    I_imm        = eval_line(get_compressed_instruction_CI_immediate(eval_c_ir_nid));
+    I_imm_32_bit = eval_line(get_compressed_instruction_CI_32_bit_immediate(eval_c_ir_nid));
 
-    shamt = eval_line(get_compressed_instruction_shamt(eval_core_c_ir_nid));
+    shamt = eval_line(get_compressed_instruction_shamt(eval_c_ir_nid));
 
-    SB_imm = eval_line(get_compressed_instruction_CB_offset(eval_core_c_ir_nid));
-    UJ_imm = eval_line(get_compressed_instruction_CJ_offset(eval_core_c_ir_nid));
+    SB_imm = eval_line(get_compressed_instruction_CB_offset(eval_c_ir_nid));
+    UJ_imm = eval_line(get_compressed_instruction_CJ_offset(eval_c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
         if (ID == ID_C_JR)
@@ -9888,7 +9888,7 @@ void print_assembly() {
         rs1 = get_register_name(REG_ZR);
         ID  = ID_ADDI;
       } else if (ID == ID_C_LUI) {
-        I_imm = eval_line(get_compressed_instruction_CUI_immediate(eval_core_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CUI_immediate(eval_c_ir_nid));
         ID    = ID_LUI;
       } else if (ID == ID_C_ADDI)
         ID = ID_ADDI;
@@ -9897,44 +9897,44 @@ void print_assembly() {
       else if (ID == ID_C_ADDI16SP) {
         rd    = get_register_name(REG_SP);
         rs1   = rd;
-        I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(eval_core_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CI16SP_immediate(eval_c_ir_nid));
         ID    = ID_ADDI;
       } else if (ID == ID_C_ADDI4SPN) {
-        rd    = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_core_c_ir_nid)));
+        rd    = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_c_ir_nid)));
         rs1   = get_register_name(REG_SP);
-        I_imm = eval_line(get_compressed_instruction_CIW_immediate(eval_core_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CIW_immediate(eval_c_ir_nid));
         ID    = ID_ADDI;
       } else if (ID == ID_C_SLLI)
         ID    = ID_SLLI;
       else {
         rs1 = get_register_name(REG_SP);
         if (ID == ID_C_LWSP) {
-          I_imm = eval_line(get_compressed_instruction_CI32_offset(eval_core_c_ir_nid));
+          I_imm = eval_line(get_compressed_instruction_CI32_offset(eval_c_ir_nid));
           ID    = ID_LW;
         } else if (ID == ID_C_LDSP) {
-          I_imm = eval_line(get_compressed_instruction_CI64_offset(eval_core_c_ir_nid));
+          I_imm = eval_line(get_compressed_instruction_CI64_offset(eval_c_ir_nid));
           ID    = ID_LD;
         }
       }
     } else if (is_CL_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_core_c_ir_nid)));
-      rs1 = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rd_shift(eval_c_ir_nid)));
+      rs1 = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
       if (ID == ID_C_LW) {
-        I_imm = eval_line(get_compressed_instruction_CL32_offset(eval_core_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CL32_offset(eval_c_ir_nid));
         ID    = ID_LW;
       } else if (ID == ID_C_LD) {
-        I_imm = eval_line(get_compressed_instruction_CL64_offset(eval_core_c_ir_nid));
+        I_imm = eval_line(get_compressed_instruction_CL64_offset(eval_c_ir_nid));
         ID    = ID_LD;
       }
     } else if (is_CS_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
       rs1 = rd;
-      rs2 = get_register_name(eval_line(get_compressed_instruction_rs2_shift(eval_core_c_ir_nid)));
+      rs2 = get_register_name(eval_line(get_compressed_instruction_rs2_shift(eval_c_ir_nid)));
       if (ID == ID_C_SW) {
-        S_imm = eval_line(get_compressed_instruction_CS32_offset(eval_core_c_ir_nid));
+        S_imm = eval_line(get_compressed_instruction_CS32_offset(eval_c_ir_nid));
         ID    = ID_SW;
       } else if (ID == ID_C_SD) {
-        S_imm = eval_line(get_compressed_instruction_CS64_offset(eval_core_c_ir_nid));
+        S_imm = eval_line(get_compressed_instruction_CS64_offset(eval_c_ir_nid));
         ID    = ID_SD;
       } else if (is_register_CS_type(ID)) {
         if (ID == ID_C_SUB)
@@ -9951,21 +9951,21 @@ void print_assembly() {
           ID = ID_SUBW;
       } else {
         rs1 = get_register_name(REG_SP);
-        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_core_c_ir_nid)));
+        rs2 = get_register_name(eval_line(get_compressed_instruction_rs2(eval_c_ir_nid)));
         if (ID == ID_C_SWSP) {
-          S_imm = eval_line(get_compressed_instruction_CSS32_offset(eval_core_c_ir_nid));
+          S_imm = eval_line(get_compressed_instruction_CSS32_offset(eval_c_ir_nid));
           ID    = ID_SW;
         } else if (ID == ID_C_SDSP) {
-          S_imm = eval_line(get_compressed_instruction_CSS64_offset(eval_core_c_ir_nid));
+          S_imm = eval_line(get_compressed_instruction_CSS64_offset(eval_c_ir_nid));
           ID    = ID_SD;
         }
       }
     } else if (is_CB_type(ID)) {
-      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_core_c_ir_nid)));
+      rd  = get_register_name(eval_line(get_compressed_instruction_rs1_shift(eval_c_ir_nid)));
       rs1 = rd;
       rs2 = get_register_name(REG_ZR);
 
-      I_imm = eval_line(get_compressed_instruction_CB_offset(eval_core_c_ir_nid));
+      I_imm = eval_line(get_compressed_instruction_CB_offset(eval_c_ir_nid));
       if (ID == ID_C_BEQZ)
         ID = ID_BEQ;
       else if (ID == ID_C_BNEZ)
@@ -10058,7 +10058,7 @@ uint64_t eval_sequential() {
   halt = halt * eval_line(next_readable_bytes_nid);
   halt = halt * eval_line(next_read_bytes_nid);
 
-  halt = halt * eval_line(next_core_pc_nid);
+  halt = halt * eval_line(next_pc_nid);
 
   halt = halt * eval_line(next_register_file_nid);
   halt = halt * eval_line(next_code_segment_nid);
@@ -10073,7 +10073,7 @@ void apply_sequential() {
   apply_next(next_readable_bytes_nid);
   apply_next(next_read_bytes_nid);
 
-  apply_next(next_core_pc_nid);
+  apply_next(next_pc_nid);
 
   apply_next(next_register_file_nid);
   apply_next(next_code_segment_nid);
@@ -10086,7 +10086,7 @@ void save_states() {
   save_state(next_readable_bytes_nid);
   save_state(next_read_bytes_nid);
 
-  save_state(next_core_pc_nid);
+  save_state(next_pc_nid);
 
   save_state(next_register_file_nid);
   save_state(next_code_segment_nid);
@@ -10099,7 +10099,7 @@ void restore_states() {
   restore_state(next_readable_bytes_nid);
   restore_state(next_read_bytes_nid);
 
-  restore_state(next_core_pc_nid);
+  restore_state(next_pc_nid);
 
   restore_state(next_register_file_nid);
   restore_state(next_code_segment_nid);
@@ -10118,7 +10118,7 @@ void eval_states() {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
         eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
-        eval_line(state_core_pc_nid),
+        eval_line(state_pc_nid),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10128,7 +10128,7 @@ void eval_states() {
     if (current_step - current_offset >= 100000 - 1) {
       printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
         model_name,
-        eval_line(state_core_pc_nid),
+        eval_line(state_pc_nid),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10204,21 +10204,21 @@ void disassemble_rotor() {
       if (CORES == 1) {
         printf("%s: ********************************************************************************\n", selfie_name);
 
-        set_state(state_core_pc_nid, code_start);
+        set_state(state_pc_nid, code_start);
 
         current_step = next_step;
 
-        while (get_state(state_core_pc_nid) < code_start + code_size) {
+        while (get_state(state_pc_nid) < code_start + code_size) {
           next_step = next_step + 1;
 
           print_assembly();
 
-          if (eval_line(is_compressed_instruction(eval_core_ir_nid)))
-            set_state(state_core_pc_nid, get_state(state_core_pc_nid) + 2);
+          if (eval_line(is_compressed_instruction(eval_ir_nid)))
+            set_state(state_pc_nid, get_state(state_pc_nid) + 2);
           else
-            set_state(state_core_pc_nid, get_state(state_core_pc_nid) + 4);
+            set_state(state_pc_nid, get_state(state_pc_nid) + 4);
 
-          set_step(state_core_pc_nid, next_step);
+          set_step(state_pc_nid, next_step);
 
           eval_line(next_code_segment_nid);
           apply_next(next_code_segment_nid);
