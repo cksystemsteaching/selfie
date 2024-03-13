@@ -2737,7 +2737,7 @@ uint64_t SYNCHRONIZED_PC = 0; // flag for synchronized program counters across c
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_ir_nid   = (uint64_t*) 0;
+uint64_t* eval_ir_nids  = (uint64_t*) 0;
 uint64_t* eval_c_ir_nid = (uint64_t*) 0;
 
 uint64_t* initial_pc_nid = (uint64_t*) 0;
@@ -2756,6 +2756,8 @@ uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_cores(uint64_t number_of_cores) {
+  eval_ir_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+
   state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
@@ -2773,7 +2775,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
 
 void output_model(uint64_t core);
 
-void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nids,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
@@ -2783,13 +2785,13 @@ void kernel_sequential(uint64_t core,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* new_program_break_nid, uint64_t* new_file_descriptor_nid,
   uint64_t* still_reading_active_read_nid, uint64_t* more_than_one_readable_byte_to_read_nid,
-  uint64_t* ir_nid, uint64_t* register_file_nid);
-void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid);
+  uint64_t* ir_nids, uint64_t* register_file_nid);
+void kernel_properties(uint64_t core, uint64_t* ir_nids, uint64_t* read_bytes_nid, uint64_t* register_file_nid);
 
 void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid);
 void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
-void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nid,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid);
 
 void model_rotor();
@@ -8909,7 +8911,7 @@ void output_model(uint64_t core) {
 
   print_memory_state(core);
 
-  print_break_comment_line("fetch instruction", eval_ir_nid);
+  print_break_comment_line("fetch instruction", get_for(core, eval_ir_nids));
 
   print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
 
@@ -9002,7 +9004,7 @@ void output_model(uint64_t core) {
   print_break_line_for(core, prop_write_seg_faulting_nids);
 }
 
-void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nids,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
@@ -9035,7 +9037,7 @@ void kernel_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* ir_nid,
 
   // system call ABI control flow
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+  active_ecall_nid = new_binary_boolean(OP_EQ, get_for(core, ir_nids), NID_ECALL_I, "ir == ECALL?");
 
   a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
 
@@ -9232,7 +9234,7 @@ void kernel_sequential(uint64_t core,
   uint64_t* readable_bytes_nid, uint64_t* read_bytes_nid,
   uint64_t* new_program_break_nid, uint64_t* new_file_descriptor_nid,
   uint64_t* still_reading_active_read_nid, uint64_t* more_than_one_readable_byte_to_read_nid,
-  uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* ir_nids, uint64_t* register_file_nid) {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
@@ -9248,7 +9250,7 @@ void kernel_sequential(uint64_t core,
 
   // system call ABI control flow
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+  active_ecall_nid = new_binary_boolean(OP_EQ, get_for(core, ir_nids), NID_ECALL_I, "ir == ECALL?");
 
   a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
 
@@ -9324,7 +9326,7 @@ void kernel_sequential(uint64_t core,
       "bytes already read in active read system call");
 }
 
-void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid, uint64_t* register_file_nid) {
+void kernel_properties(uint64_t core, uint64_t* ir_nids, uint64_t* read_bytes_nid, uint64_t* register_file_nid) {
   uint64_t* active_ecall_nid;
 
   uint64_t* a7_value_nid;
@@ -9352,7 +9354,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 
   // system call ABI control flow
 
-  active_ecall_nid = new_binary_boolean(OP_EQ, ir_nid, NID_ECALL_I, "ir == ECALL?");
+  active_ecall_nid = new_binary_boolean(OP_EQ, get_for(core, ir_nids), NID_ECALL_I, "ir == ECALL?");
 
   a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
 
@@ -9498,12 +9500,15 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 
 void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segment_nid, uint64_t* register_file_nid, uint64_t* memory_nid) {
   uint64_t* pc_nid;
+  uint64_t* ir_nid;
 
   pc_nid = get_for(core, pc_nids);
 
   // fetch instruction
 
-  eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
+  ir_nid = fetch_instruction(pc_nid, code_segment_nid);
+
+  set_for(core, eval_ir_nids, ir_nid);
 
   // fetch compressed instruction
 
@@ -9511,7 +9516,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
 
   // decode instruction
 
-  eval_instruction_ID_nid = decode_instruction(eval_ir_nid);
+  eval_instruction_ID_nid = decode_instruction(ir_nid);
 
   // decode compressed instruction
 
@@ -9521,7 +9526,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
     set_for(core, eval_instruction_ID_nids, eval_instruction_ID_nid);
   else
     set_for(core, eval_instruction_ID_nids, new_ternary(OP_ITE, SID_INSTRUCTION_ID,
-      is_compressed_instruction(eval_ir_nid),
+      is_compressed_instruction(ir_nid),
       eval_compressed_instruction_ID_nid,
       eval_instruction_ID_nid,
       "is known uncompressed or compressed instruction?"));
@@ -9529,7 +9534,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // instruction control flow
 
   eval_instruction_control_flow_nid =
-    core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
+    core_control_flow(pc_nid, ir_nid, register_file_nid);
 
   // compressed instruction control flow
 
@@ -9540,7 +9545,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // instruction register data flow
 
   eval_instruction_register_data_flow_nid =
-    core_register_data_flow(pc_nid, eval_ir_nid, register_file_nid, memory_nid);
+    core_register_data_flow(pc_nid, ir_nid, register_file_nid, memory_nid);
 
   // compressed instruction register data flow
 
@@ -9551,7 +9556,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nids, uint64_t* code_segmen
   // instruction memory data flow
 
   eval_instruction_memory_data_flow_nid =
-    core_memory_data_flow(eval_ir_nid, register_file_nid, memory_nid);
+    core_memory_data_flow(ir_nid, register_file_nid, memory_nid);
 
   // compressed instruction memory data flow
 
@@ -9635,8 +9640,11 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nids, uint64_t* register_file_
       memory_nid, memory_data_flow_nid, "main memory");
 }
 
-void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
+void rotor_properties(uint64_t core, uint64_t* ir_nids, uint64_t* c_ir_nid,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid) {
+  uint64_t* ir_nid;
+
+  ir_nid = get_for(core, ir_nids);
 
   // mandatory state properties
 
@@ -9804,7 +9812,7 @@ void model_rotor() {
 
     rotor_combinational(core, state_pc_nids, state_code_segment_nid,
       state_register_file_nid, state_main_memory_nid);
-    kernel_combinational(core, state_pc_nids, eval_ir_nid,
+    kernel_combinational(core, state_pc_nids, eval_ir_nids,
       eval_compressed_instruction_control_flow_nid,
       eval_compressed_instruction_register_data_flow_nid,
       eval_compressed_instruction_memory_data_flow_nid,
@@ -9822,14 +9830,14 @@ void model_rotor() {
       state_readable_bytes_nid, state_read_bytes_nid,
       eval_program_break_nid, eval_file_descriptor_nid,
       eval_still_reading_active_read_nid, eval_more_than_one_readable_byte_to_read_nid,
-      eval_ir_nid, state_register_file_nid);
+      eval_ir_nids, state_register_file_nid);
 
     rotor_properties(core,
-      eval_ir_nid, eval_c_ir_nid,
+      eval_ir_nids, eval_c_ir_nid,
       eval_instruction_ID_nids, eval_control_flow_nid,
       state_register_file_nid);
     kernel_properties(core,
-      eval_ir_nid,
+      eval_ir_nids,
       state_read_bytes_nid,
       state_register_file_nid);
 
@@ -9847,6 +9855,7 @@ void print_assembly(uint64_t core) {
   uint64_t pc;
   uint64_t ID;
   char* mnemonic;
+  uint64_t* ir_nid;
   char* rd;
   char* rs1;
   char* rs2;
@@ -9868,21 +9877,23 @@ void print_assembly(uint64_t core) {
 
   mnemonic = get_instruction_mnemonic(ID);
 
+  ir_nid = get_for(core, eval_ir_nids);
+
   if (is_compressed_instruction_ID(ID) == 0) {
-    rd  = get_register_name(eval_line(get_instruction_rd(eval_ir_nid)));
-    rs1 = get_register_name(eval_line(get_instruction_rs1(eval_ir_nid)));
-    rs2 = get_register_name(eval_line(get_instruction_rs2(eval_ir_nid)));
+    rd  = get_register_name(eval_line(get_instruction_rd(ir_nid)));
+    rs1 = get_register_name(eval_line(get_instruction_rs1(ir_nid)));
+    rs2 = get_register_name(eval_line(get_instruction_rs2(ir_nid)));
 
-    I_imm        = eval_line(get_instruction_shamt(eval_ir_nid));
-    I_imm_32_bit = eval_line(get_instruction_I_32_bit_immediate(eval_ir_nid));
+    I_imm        = eval_line(get_instruction_shamt(ir_nid));
+    I_imm_32_bit = eval_line(get_instruction_I_32_bit_immediate(ir_nid));
 
-    shamt       = eval_line(get_instruction_shamt(eval_ir_nid));
-    shamt_5_bit = eval_line(get_instruction_5_bit_shamt(eval_ir_nid));
+    shamt       = eval_line(get_instruction_shamt(ir_nid));
+    shamt_5_bit = eval_line(get_instruction_5_bit_shamt(ir_nid));
 
-    S_imm  = eval_line(get_instruction_S_immediate(eval_ir_nid));
-    SB_imm = eval_line(get_instruction_SB_immediate(eval_ir_nid));
-    U_imm  = eval_line(get_instruction_U_immediate(eval_ir_nid));
-    UJ_imm = eval_line(get_instruction_UJ_immediate(eval_ir_nid));
+    S_imm  = eval_line(get_instruction_S_immediate(ir_nid));
+    SB_imm = eval_line(get_instruction_SB_immediate(ir_nid));
+    U_imm  = eval_line(get_instruction_U_immediate(ir_nid));
+    UJ_imm = eval_line(get_instruction_UJ_immediate(ir_nid));
   } else {
     rd  = get_register_name(eval_line(get_compressed_instruction_rd(eval_c_ir_nid)));
     rs1 = get_register_name(eval_line(get_compressed_instruction_rs1(eval_c_ir_nid)));
@@ -10228,6 +10239,7 @@ void eval_rotor() {
 
 void disassemble_rotor() {
   uint64_t* pc_nid;
+  uint64_t* ir_nid;
 
   if (CODE_LOADED)
     if (SYNTHESIZE == 0)
@@ -10238,6 +10250,8 @@ void disassemble_rotor() {
 
         set_state(pc_nid, code_start);
 
+        ir_nid = get_for(0, eval_ir_nids);
+
         current_step = next_step;
 
         while (get_state(pc_nid) < code_start + code_size) {
@@ -10245,7 +10259,7 @@ void disassemble_rotor() {
 
           print_assembly(0);
 
-          if (eval_line(is_compressed_instruction(eval_ir_nid)))
+          if (eval_line(is_compressed_instruction(ir_nid)))
             set_state(pc_nid, get_state(pc_nid) + 2);
           else
             set_state(pc_nid, get_state(pc_nid) + 4);
