@@ -368,6 +368,8 @@ uint64_t input_steps = 0; // number of steps until most recent input has been co
 
 uint64_t current_input = 0; // current input byte value
 
+uint64_t recent_input = 0; // indicates if input has been consumed in most recent step
+
 uint64_t any_input = 0; // indicates if any input has been consumed
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2912,12 +2914,12 @@ void init_model_generator(uint64_t number_of_cores) {
 void print_assembly(uint64_t core);
 
 uint64_t eval_properties(uint64_t core);
-uint64_t eval_sequential();
+uint64_t eval_sequential(uint64_t core);
 
-void apply_sequential();
+void apply_sequential(uint64_t core);
 
-void save_states();
-void restore_states();
+void save_states(uint64_t core);
+void restore_states(uint64_t core);
 
 void eval_states();
 
@@ -3816,8 +3818,6 @@ uint64_t eval_input(uint64_t* line) {
   if (op == OP_STATE)
     return get_cached_state(line);
   else if (op == OP_INPUT) {
-    save_states();
-
     if (input_steps == 0)
       // TODO: input is consumed more than once
       input_steps = current_step;
@@ -3826,7 +3826,8 @@ uint64_t eval_input(uint64_t* line) {
 
     set_step(line, next_step);
 
-    any_input = 1;
+    recent_input = 1;
+    any_input    = 1;
 
     return get_state(line);
   }
@@ -10095,13 +10096,16 @@ uint64_t eval_properties(uint64_t core) {
   return halt != 0;
 }
 
-uint64_t eval_sequential() {
+uint64_t eval_sequential(uint64_t core) {
   uint64_t halt;
 
   halt = 1;
 
-  halt = halt * eval_next(next_program_break_nid);
-  halt = halt * eval_next(next_file_descriptor_nid);
+  if (core == CORES - 1) {
+    halt = halt * eval_next(next_program_break_nid);
+    halt = halt * eval_next(next_file_descriptor_nid);
+  }
+
   halt = halt * eval_next(next_readable_bytes_nid);
   halt = halt * eval_next(next_read_bytes_nid);
 
@@ -10114,9 +10118,12 @@ uint64_t eval_sequential() {
   return halt != 0;
 }
 
-void apply_sequential() {
-  apply_next(next_program_break_nid);
-  apply_next(next_file_descriptor_nid);
+void apply_sequential(uint64_t core) {
+  if (core == CORES - 1) {
+    apply_next(next_program_break_nid);
+    apply_next(next_file_descriptor_nid);
+  }
+
   apply_next(next_readable_bytes_nid);
   apply_next(next_read_bytes_nid);
 
@@ -10127,9 +10134,12 @@ void apply_sequential() {
   apply_next(next_main_memory_nid);
 }
 
-void save_states() {
-  save_state(next_program_break_nid);
-  save_state(next_file_descriptor_nid);
+void save_states(uint64_t core) {
+  if (core == CORES - 1) {
+    save_state(next_program_break_nid);
+    save_state(next_file_descriptor_nid);
+  }
+
   save_state(next_readable_bytes_nid);
   save_state(next_read_bytes_nid);
 
@@ -10140,9 +10150,12 @@ void save_states() {
   save_state(next_main_memory_nid);
 }
 
-void restore_states() {
-  restore_state(next_program_break_nid);
-  restore_state(next_file_descriptor_nid);
+void restore_states(uint64_t core) {
+  if (core == CORES - 1) {
+    restore_state(next_program_break_nid);
+    restore_state(next_file_descriptor_nid);
+  }
+
   restore_state(next_readable_bytes_nid);
   restore_state(next_read_bytes_nid);
 
@@ -10161,7 +10174,7 @@ void eval_states() {
     if (output_assembly)
       print_assembly(0);
 
-    if (eval_sequential()) {
+    if (eval_sequential(0)) {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
         eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
@@ -10182,7 +10195,13 @@ void eval_states() {
       return;
     }
 
-    apply_sequential();
+    if (recent_input) {
+      save_states(0);
+
+      recent_input = 0;
+    }
+
+    apply_sequential(0);
 
     current_step = next_step;
 
@@ -10202,11 +10221,13 @@ void eval_rotor() {
         input_steps   = 0;
         current_input = 0;
 
-        save_states();
+        save_states(0);
 
         while (current_input < 256) {
           next_step = next_step + 1;
-          any_input = 0;
+
+          recent_input = 0;
+          any_input    = 0;
 
           eval_states();
 
@@ -10223,7 +10244,7 @@ void eval_rotor() {
           }
 
           if (any_input) {
-            restore_states();
+            restore_states(0);
 
             current_offset = next_step - input_steps;
             current_step   = next_step;
