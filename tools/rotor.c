@@ -345,12 +345,16 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines);
 uint64_t eval_init(uint64_t* line);
 
 uint64_t eval_next(uint64_t* line);
+uint64_t eval_next_for(uint64_t core, uint64_t* lines);
 void apply_next(uint64_t* line);
+void apply_next_for(uint64_t core, uint64_t* lines);
 
 uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
 
 void save_state(uint64_t* line);
+void save_state_for(uint64_t core, uint64_t* lines);
 void restore_state(uint64_t* line);
+void restore_state_for(uint64_t core, uint64_t* lines);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -573,13 +577,13 @@ uint64_t* param_readable_bytes_nid = (uint64_t*) 0;
 
 uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
-uint64_t* next_readable_bytes_nid  = (uint64_t*) 0;
+uint64_t* next_readable_bytes_nids = (uint64_t*) 0;
 
 uint64_t* eval_still_reading_active_read_nid = (uint64_t*) 0;
 
 uint64_t* state_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
-uint64_t* next_read_bytes_nid  = (uint64_t*) 0;
+uint64_t* next_read_bytes_nids = (uint64_t*) 0;
 
 uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
 
@@ -604,6 +608,11 @@ void init_interface_kernel() {
   NID_WRITE_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_WRITE, 0,
     format_comment_binary("write syscall ID", SYSCALL_WRITE));
+}
+
+void init_kernel_state(uint64_t number_of_cores) {
+  next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_read_bytes_nids     = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2898,6 +2907,8 @@ void init_model_generator(uint64_t number_of_cores) {
 
   init_memory_sorts();
 
+  init_kernel_state(number_of_cores);
+
   init_instruction_mnemonics();
   init_instruction_sorts();
   init_compressed_instruction_sorts();
@@ -4419,6 +4430,10 @@ uint64_t eval_next(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+uint64_t eval_next_for(uint64_t core, uint64_t* lines) {
+  return eval_next(get_for(core, lines));
+}
+
 void apply_next(uint64_t* line) {
   uint64_t* state_nid;
   uint64_t* value_nid;
@@ -4440,6 +4455,10 @@ void apply_next(uint64_t* line) {
   printf("%s: apply error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
+}
+
+void apply_next_for(uint64_t core, uint64_t* lines) {
+  apply_next(get_for(core, lines));
 }
 
 uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes) {
@@ -4505,6 +4524,10 @@ void save_state(uint64_t* line) {
   }
 }
 
+void save_state_for(uint64_t core, uint64_t* lines) {
+  save_state(get_for(core, lines));
+}
+
 void restore_state(uint64_t* line) {
   uint64_t* state_nid;
   uint64_t current_state;
@@ -4523,6 +4546,10 @@ void restore_state(uint64_t* line) {
   set_step(state_nid, next_step);
 
   set_step(line, next_step);
+}
+
+void restore_state_for(uint64_t core, uint64_t* lines) {
+  restore_state(get_for(core, lines));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -8930,9 +8957,9 @@ void output_model(uint64_t core) {
 
   print_break_line(next_file_descriptor_nid);
 
-  print_break_line(next_readable_bytes_nid);
+  print_break_line_for(core, next_readable_bytes_nids);
 
-  print_break_line(next_read_bytes_nid);
+  print_break_line_for(core, next_read_bytes_nids);
 
   print_break_comment_line("kernel and instruction control flow", eval_control_flow_nid);
 
@@ -9299,7 +9326,7 @@ void kernel_sequential(uint64_t core,
 
   // update read kernel state
 
-  next_readable_bytes_nid =
+  set_for(core, next_readable_bytes_nids,
     new_next(SID_MACHINE_WORD,
       readable_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -9309,9 +9336,9 @@ void kernel_sequential(uint64_t core,
           "decrement readable bytes"),
         readable_bytes_nid,
         "decrement readable bytes if system call is still reading"),
-      "readable bytes");
+      "readable bytes"));
 
-  next_read_bytes_nid =
+  set_for(core, next_read_bytes_nids,
     new_next(SID_MACHINE_WORD,
       read_bytes_nid,
       new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -9325,7 +9352,7 @@ void kernel_sequential(uint64_t core,
           "increment bytes already read by read system call"),
         NID_MACHINE_WORD_0,
         "increment bytes already read if read system call is active"),
-      "bytes already read in active read system call");
+      "bytes already read in active read system call"));
 }
 
 void kernel_properties(uint64_t core, uint64_t* ir_nids, uint64_t* read_bytes_nid, uint64_t* register_file_nid) {
@@ -10106,8 +10133,8 @@ uint64_t eval_sequential(uint64_t core) {
     halt = halt * eval_next(next_file_descriptor_nid);
   }
 
-  halt = halt * eval_next(next_readable_bytes_nid);
-  halt = halt * eval_next(next_read_bytes_nid);
+  halt = halt * eval_next_for(core, next_readable_bytes_nids);
+  halt = halt * eval_next_for(core, next_read_bytes_nids);
 
   halt = halt * eval_next(next_pc_nid);
 
@@ -10124,8 +10151,8 @@ void apply_sequential(uint64_t core) {
     apply_next(next_file_descriptor_nid);
   }
 
-  apply_next(next_readable_bytes_nid);
-  apply_next(next_read_bytes_nid);
+  apply_next_for(core, next_readable_bytes_nids);
+  apply_next_for(core, next_read_bytes_nids);
 
   apply_next(next_pc_nid);
 
@@ -10140,8 +10167,8 @@ void save_states(uint64_t core) {
     save_state(next_file_descriptor_nid);
   }
 
-  save_state(next_readable_bytes_nid);
-  save_state(next_read_bytes_nid);
+  save_state_for(core, next_readable_bytes_nids);
+  save_state_for(core, next_read_bytes_nids);
 
   save_state(next_pc_nid);
 
@@ -10156,8 +10183,8 @@ void restore_states(uint64_t core) {
     restore_state(next_file_descriptor_nid);
   }
 
-  restore_state(next_readable_bytes_nid);
-  restore_state(next_read_bytes_nid);
+  restore_state_for(core, next_readable_bytes_nids);
+  restore_state_for(core, next_read_bytes_nids);
 
   restore_state(next_pc_nid);
 
