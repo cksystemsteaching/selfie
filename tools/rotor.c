@@ -610,7 +610,7 @@ void init_interface_kernel() {
     format_comment_binary("write syscall ID", SYSCALL_WRITE));
 }
 
-void init_kernel_state(uint64_t number_of_cores) {
+void init_kernel_states(uint64_t number_of_cores) {
   next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_read_bytes_nids     = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
@@ -689,6 +689,10 @@ uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
 uint64_t* next_register_file_nid  = (uint64_t*) 0;
 
+uint64_t* state_register_file_nids = (uint64_t*) 0;
+uint64_t* next_register_file_nids  = (uint64_t*) 0;
+uint64_t* sync_register_file_nids  = (uint64_t*) 0;
+
 uint64_t* eval_core_0_register_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -730,6 +734,12 @@ void init_register_file_sorts() {
   NID_T6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T6, 5, (char*) *(REGISTERS + REG_T6));
 
   SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
+}
+
+void init_register_file_states(uint64_t number_of_cores) {
+  state_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  sync_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // -----------------------------------------------------------------
@@ -2918,7 +2928,8 @@ void init_model_generator(uint64_t number_of_cores) {
 
   init_memory_sorts();
 
-  init_kernel_state(number_of_cores);
+  init_kernel_states(number_of_cores);
+  init_register_file_states(number_of_cores);
 
   init_instruction_mnemonics();
   init_instruction_sorts();
@@ -2943,7 +2954,7 @@ void apply_sequential(uint64_t core);
 void save_states(uint64_t core);
 void restore_states(uint64_t core);
 
-void eval_states();
+void eval_states(uint64_t core);
 
 void eval_rotor();
 
@@ -4748,6 +4759,8 @@ void new_register_file_state(uint64_t core) {
   uint64_t  value;
   uint64_t* value_nid;
 
+  set_for(core, state_register_file_nids, UNUSED);
+
   if (SYNCHRONIZED_REGISTERS) {
     if (core > 0)
       return;
@@ -4757,6 +4770,8 @@ void new_register_file_state(uint64_t core) {
 
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
     format_comment("core-%lu-zeroed-register-file", core), "zeroed register file");
+
+  set_for(core, state_register_file_nids, state_register_file_nid);
 
   init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
@@ -4814,6 +4829,8 @@ void new_register_file_state(uint64_t core) {
 
     state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
       format_comment("core-%lu-initialized-register-file", core), "initialized register file");
+
+    set_for(core, state_register_file_nids, state_register_file_nid);
 
     init_register_file_nid = new_init(SID_REGISTER_STATE,
       state_register_file_nid, initial_register_file_nid, "initializing registers");
@@ -9066,6 +9083,10 @@ void output_model(uint64_t core) {
   // synchronizing program counters
 
   print_break_line_for(core, sync_pc_nids);
+
+  // synchronizing register files
+
+  print_break_line_for(core, sync_register_file_nids);
 }
 
 void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
@@ -9629,9 +9650,11 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* code_segment
 void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid, uint64_t* memory_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid) {
   uint64_t* sync_pc_nid;
+  uint64_t* sync_register_file_nid;
 
   // update control flow
 
+  next_pc_nid = UNUSED;
   sync_pc_nid = UNUSED;
 
   if (SYNCHRONIZED_PC)
@@ -9639,9 +9662,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
       next_pc_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
 
       eval_core_0_control_flow_nid = control_flow_nid;
-    } else {
-      next_pc_nid = UNUSED;
-
+    } else
       sync_pc_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           control_flow_nid,
@@ -9649,7 +9670,6 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
           "new pc value == new core-0 pc value?"),
         format_comment("new-core-%lu-pc-value", core),
         "asserting new pc value == new core-0 pc value");
-    }
   else
     next_pc_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
 
@@ -9658,6 +9678,9 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
   // update register data flow
 
+  next_register_file_nid = UNUSED;
+  sync_register_file_nid = UNUSED;
+
   if (SYNCHRONIZED_REGISTERS)
     if (core == 0) {
       next_register_file_nid = new_next(SID_REGISTER_STATE,
@@ -9665,7 +9688,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
       eval_core_0_register_data_flow_nid = register_data_flow_nid;
     } else
-      next_register_file_nid = new_property(OP_CONSTRAINT,
+      sync_register_file_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           register_data_flow_nid,
           eval_core_0_register_data_flow_nid,
@@ -9673,14 +9696,19 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-register-data-flow", core),
         "asserting new register data flow == new core-0 register data flow");
   else if (SHARED_REGISTERS) {
-    if (core < CORES - 1)
+    if (core < CORES - 1) {
       state_register_file_nid = register_data_flow_nid;
-    else
+
+      set_for(core + 1, state_register_file_nids, state_register_file_nid);
+    } else
       next_register_file_nid = new_next(SID_REGISTER_STATE,
-        register_file_nid, register_data_flow_nid, "register file");
+        get_for(0, state_register_file_nids), register_data_flow_nid, "register file");
   } else
     next_register_file_nid = new_next(SID_REGISTER_STATE,
       register_file_nid, register_data_flow_nid, "register file");
+
+  set_for(core, next_register_file_nids, next_register_file_nid);
+  set_for(core, sync_register_file_nids, sync_register_file_nid);
 
   // update memory data flow
 
@@ -10183,7 +10211,7 @@ uint64_t eval_sequential(uint64_t core) {
 
   halt = halt * eval_next_for(core, next_pc_nids);
 
-  halt = halt * eval_next(next_register_file_nid);
+  halt = halt * eval_next_for(core, next_register_file_nids);
   halt = halt * eval_next(next_code_segment_nid);
   halt = halt * eval_next(next_main_memory_nid);
 
@@ -10201,7 +10229,7 @@ void apply_sequential(uint64_t core) {
 
   apply_next_for(core, next_pc_nids);
 
-  apply_next(next_register_file_nid);
+  apply_next_for(core, next_register_file_nids);
   apply_next(next_code_segment_nid);
   apply_next(next_main_memory_nid);
 }
@@ -10217,7 +10245,7 @@ void save_states(uint64_t core) {
 
   save_state_for(core, next_pc_nids);
 
-  save_state(next_register_file_nid);
+  save_state_for(core, next_register_file_nids);
   save_state(next_code_segment_nid);
   save_state(next_main_memory_nid);
 }
@@ -10233,24 +10261,24 @@ void restore_states(uint64_t core) {
 
   restore_state_for(core, next_pc_nids);
 
-  restore_state(next_register_file_nid);
+  restore_state_for(core, next_register_file_nids);
   restore_state(next_code_segment_nid);
   restore_state(next_main_memory_nid);
 }
 
-void eval_states() {
+void eval_states(uint64_t core) {
   while (1) {
-    if (eval_properties(0))
+    if (eval_properties(core))
       return;
 
     if (output_assembly)
-      print_assembly(0);
+      print_assembly(core);
 
-    if (eval_sequential(0)) {
+    if (eval_sequential(core)) {
       printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
         model_name,
-        eval_line(load_register_value(NID_A0, "exit code", state_register_file_nid)),
-        eval_line_for(0, state_pc_nids),
+        eval_line(load_register_value(NID_A0, "exit code", get_for(core, state_register_file_nids))),
+        eval_line_for(core, state_pc_nids),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10260,7 +10288,7 @@ void eval_states() {
     if (current_step - current_offset >= 100000 - 1) {
       printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
         model_name,
-        eval_line_for(0, state_pc_nids),
+        eval_line_for(core, state_pc_nids),
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
@@ -10268,12 +10296,12 @@ void eval_states() {
     }
 
     if (recent_input) {
-      save_states(0);
+      save_states(core);
 
       recent_input = 0;
     }
 
-    apply_sequential(0);
+    apply_sequential(core);
 
     current_step = next_step;
 
@@ -10301,7 +10329,7 @@ void eval_rotor() {
           recent_input = 0;
           any_input    = 0;
 
-          eval_states();
+          eval_states(0);
 
           if (min_steps > next_step - current_offset) {
             min_steps = next_step - current_offset;
