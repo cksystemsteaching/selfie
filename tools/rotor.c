@@ -4759,7 +4759,7 @@ void new_register_file_state(uint64_t core) {
   uint64_t  value;
   uint64_t* value_nid;
 
-  set_for(core, state_register_file_nids, UNUSED);
+  set_for(core, state_register_file_nids, state_register_file_nid);
 
   if (SYNCHRONIZED_REGISTERS) {
     if (core > 0)
@@ -8915,7 +8915,7 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
 // -----------------------------------------------------------------
 
 void new_core_state(uint64_t core) {
-  set_for(core, state_pc_nids, UNUSED);
+  set_for(core, state_pc_nids, state_pc_nid);
 
   if (SYNCHRONIZED_PC)
     if (core > 0)
@@ -9696,11 +9696,9 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-register-data-flow", core),
         "asserting new register data flow == new core-0 register data flow");
   else if (SHARED_REGISTERS) {
-    if (core < CORES - 1) {
+    if (core < CORES - 1)
       state_register_file_nid = register_data_flow_nid;
-
-      set_for(core + 1, state_register_file_nids, state_register_file_nid);
-    } else
+    else
       next_register_file_nid = new_next(SID_REGISTER_STATE,
         get_for(0, state_register_file_nids), register_data_flow_nid, "register file");
   } else
