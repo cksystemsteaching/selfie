@@ -748,8 +748,8 @@ void init_register_files(uint64_t number_of_cores) {
 
 void print_memory_sorts();
 
-void new_segmentation();
-void print_segmentation();
+void new_segmentation(uint64_t core);
+void print_segmentation(uint64_t core);
 
 uint64_t* is_block_in_segment(uint64_t* block_start_nid, uint64_t* block_end_nid,
   uint64_t* segment_start_nid, uint64_t* segment_end_nid);
@@ -4905,10 +4905,13 @@ void print_memory_sorts() {
   print_line(SID_MEMORY_STATE);
 }
 
-void new_segmentation() {
+void new_segmentation(uint64_t core) {
   uint64_t stack_end;
   uint64_t low_stack_address_space;
   uint64_t up_stack_address_space;
+
+  if (core > 0)
+    return;
 
   NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start,
@@ -5007,6 +5010,25 @@ void new_segmentation() {
   }
 }
 
+void print_segmentation(uint64_t core) {
+  if (core > 0)
+    return;
+
+  print_break_comment("segmentation");
+
+  print_line(NID_CODE_START);
+  print_line(NID_CODE_END);
+
+  print_line(NID_DATA_START);
+  print_line(NID_DATA_END);
+
+  print_line(NID_HEAP_START);
+  print_line(NID_HEAP_END);
+
+  print_line(NID_STACK_START);
+  print_line(NID_STACK_END);
+}
+
 uint64_t* is_block_in_segment(uint64_t* block_start_nid, uint64_t* block_end_nid,
   uint64_t* segment_start_nid, uint64_t* segment_end_nid) {
   // assert: block and segment start <= end
@@ -5047,22 +5069,6 @@ uint64_t* is_block_in_stack_segment(uint64_t* start_nid, uint64_t* end_nid) {
       start_nid,
       NID_STACK_START,
       "virtual address of start of block >= start of stack segment?");
-}
-
-void print_segmentation() {
-  print_break_comment("segmentation");
-
-  print_line(NID_CODE_START);
-  print_line(NID_CODE_END);
-
-  print_line(NID_DATA_START);
-  print_line(NID_DATA_END);
-
-  print_line(NID_HEAP_START);
-  print_line(NID_HEAP_END);
-
-  print_line(NID_STACK_START);
-  print_line(NID_STACK_END);
 }
 
 void new_code_segment(uint64_t core) {
@@ -9930,13 +9936,13 @@ void model_rotor() {
   print_register_sorts();
   print_memory_sorts();
 
-  new_segmentation();
-
-  print_segmentation();
-
   core = 0;
 
   while (core < CORES) {
+    new_segmentation(core);
+
+    print_segmentation(core);
+
     new_kernel_state(core, 1);
 
     new_core_state(core);
