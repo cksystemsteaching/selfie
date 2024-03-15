@@ -1007,6 +1007,10 @@ uint64_t* state_main_memory_nid = (uint64_t*) 0;
 uint64_t* init_main_memory_nid  = (uint64_t*) 0;
 uint64_t* next_main_memory_nid  = (uint64_t*) 0;
 
+uint64_t* state_main_memory_nids = (uint64_t*) 0;
+uint64_t* next_main_memory_nids  = (uint64_t*) 0;
+uint64_t* sync_main_memory_nids  = (uint64_t*) 0;
+
 uint64_t* eval_core_0_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1098,6 +1102,12 @@ void init_memory_sorts() {
   NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_DOUBLE_WORD_4;
 
   NID_BYTE_SIZE_IN_BASE_BITS = NID_BYTE_3;
+}
+
+void init_main_memory_states(uint64_t number_of_cores) {
+  state_main_memory_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_main_memory_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  sync_main_memory_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // -----------------------------------------------------------------
@@ -2930,6 +2940,7 @@ void init_model_generator(uint64_t number_of_cores) {
 
   init_kernel_states(number_of_cores);
   init_register_file_states(number_of_cores);
+  init_main_memory_states(number_of_cores);
 
   init_instruction_mnemonics();
   init_instruction_sorts();
@@ -5191,6 +5202,8 @@ void new_memory_state(uint64_t core) {
   uint64_t* data_nid;
   uint64_t* main_memory_nid;
 
+  set_for(core, state_main_memory_nids, state_main_memory_nid);
+
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
       return;
@@ -5200,6 +5213,8 @@ void new_memory_state(uint64_t core) {
 
   state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
     format_comment("core-%lu-zeroed-main-memory", core), "zeroed main memory");
+
+  set_for(core, state_main_memory_nids, state_main_memory_nid);
 
   init_zeroed_main_memory_nid = new_init(SID_MEMORY_STATE,
     state_main_memory_nid, NID_MEMORY_WORD_0, "zeroing memory");
@@ -5279,6 +5294,8 @@ void new_memory_state(uint64_t core) {
 
       state_main_memory_nid = new_input(OP_STATE, SID_MEMORY_STATE,
         format_comment("core-%lu-loaded-main-memory", core), "loaded main memory");
+
+      set_for(core, state_main_memory_nids, state_main_memory_nid);
 
       init_main_memory_nid = new_init(SID_MEMORY_STATE,
         state_main_memory_nid, initial_main_memory_nid, "loaded data");
@@ -9087,6 +9104,10 @@ void output_model(uint64_t core) {
   // synchronizing register files
 
   print_break_line_for(core, sync_register_file_nids);
+
+  // synchronizing main memories
+
+  print_break_line_for(core, sync_main_memory_nids);
 }
 
 void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
@@ -9651,6 +9672,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid) {
   uint64_t* sync_pc_nid;
   uint64_t* sync_register_file_nid;
+  uint64_t* sync_main_memory_nid;
 
   // update control flow
 
@@ -9710,6 +9732,9 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
   // update memory data flow
 
+  next_main_memory_nid = UNUSED;
+  sync_main_memory_nid = UNUSED;
+
   if (SYNCHRONIZED_MEMORY)
     if (core == 0) {
       next_main_memory_nid = new_next(SID_MEMORY_STATE,
@@ -9717,7 +9742,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
 
       eval_core_0_memory_data_flow_nid = memory_data_flow_nid;
     } else
-      next_main_memory_nid = new_property(OP_CONSTRAINT,
+      sync_main_memory_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           memory_data_flow_nid,
           eval_core_0_memory_data_flow_nid,
@@ -9729,10 +9754,13 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
       state_main_memory_nid = memory_data_flow_nid;
     else
       next_main_memory_nid = new_next(SID_MEMORY_STATE,
-        memory_nid, memory_data_flow_nid, "main memory");
+        get_for(0, state_main_memory_nids), memory_data_flow_nid, "main memory");
   } else
     next_main_memory_nid = new_next(SID_MEMORY_STATE,
       memory_nid, memory_data_flow_nid, "main memory");
+
+  set_for(core, next_main_memory_nids, next_main_memory_nid);
+  set_for(core, sync_main_memory_nids, sync_main_memory_nid);
 }
 
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
@@ -10211,7 +10239,7 @@ uint64_t eval_sequential(uint64_t core) {
 
   halt = halt * eval_next_for(core, next_register_file_nids);
   halt = halt * eval_next(next_code_segment_nid);
-  halt = halt * eval_next(next_main_memory_nid);
+  halt = halt * eval_next_for(core, next_main_memory_nids);
 
   return halt != 0;
 }
@@ -10229,7 +10257,7 @@ void apply_sequential(uint64_t core) {
 
   apply_next_for(core, next_register_file_nids);
   apply_next(next_code_segment_nid);
-  apply_next(next_main_memory_nid);
+  apply_next_for(core, next_main_memory_nids);
 }
 
 void save_states(uint64_t core) {
@@ -10245,7 +10273,7 @@ void save_states(uint64_t core) {
 
   save_state_for(core, next_register_file_nids);
   save_state(next_code_segment_nid);
-  save_state(next_main_memory_nid);
+  save_state_for(core, next_main_memory_nids);
 }
 
 void restore_states(uint64_t core) {
@@ -10261,7 +10289,7 @@ void restore_states(uint64_t core) {
 
   restore_state_for(core, next_register_file_nids);
   restore_state(next_code_segment_nid);
-  restore_state(next_main_memory_nid);
+  restore_state_for(core, next_main_memory_nids);
 }
 
 void eval_states(uint64_t core) {
