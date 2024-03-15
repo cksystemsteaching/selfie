@@ -610,7 +610,7 @@ void init_interface_kernel() {
     format_comment_binary("write syscall ID", SYSCALL_WRITE));
 }
 
-void init_kernel_states(uint64_t number_of_cores) {
+void init_kernels(uint64_t number_of_cores) {
   next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_read_bytes_nids     = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
@@ -736,7 +736,7 @@ void init_register_file_sorts() {
   SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
 }
 
-void init_register_file_states(uint64_t number_of_cores) {
+void init_register_files(uint64_t number_of_cores) {
   state_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   sync_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
@@ -994,6 +994,9 @@ uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
+uint64_t* state_code_segment_nids = (uint64_t*) 0;
+uint64_t* next_code_segment_nids  = (uint64_t*) 0;
+
 uint64_t* init_zeroed_main_memory_nid = (uint64_t*) 0;
 uint64_t* next_zeroed_main_memory_nid = (uint64_t*) 0;
 
@@ -1104,7 +1107,10 @@ void init_memory_sorts() {
   NID_BYTE_SIZE_IN_BASE_BITS = NID_BYTE_3;
 }
 
-void init_main_memory_states(uint64_t number_of_cores) {
+void init_memories(uint64_t number_of_cores) {
+  state_code_segment_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_code_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+
   state_main_memory_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_main_memory_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   sync_main_memory_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
@@ -2938,9 +2944,9 @@ void init_model_generator(uint64_t number_of_cores) {
 
   init_memory_sorts();
 
-  init_kernel_states(number_of_cores);
-  init_register_file_states(number_of_cores);
-  init_main_memory_states(number_of_cores);
+  init_kernels(number_of_cores);
+  init_register_files(number_of_cores);
+  init_memories(number_of_cores);
 
   init_instruction_mnemonics();
   init_instruction_sorts();
@@ -5065,10 +5071,19 @@ void new_code_segment(uint64_t core) {
   uint64_t* ir_nid;
   uint64_t* code_segment_nid;
 
+  set_for(core, state_code_segment_nids, state_code_segment_nid);
+
+  next_code_segment_nid = UNUSED;
+
+  set_for(core, next_code_segment_nids, next_code_segment_nid);
+
   if (core > 0) {
-    if (SYNTHESIZE)
+    if (SYNTHESIZE) {
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
         format_comment("core-%lu-code-segment", core), "code segment");
+
+      set_for(core, state_code_segment_nids, state_code_segment_nid);
+    }
 
     return;
   }
@@ -5151,6 +5166,9 @@ void new_code_segment(uint64_t core) {
       next_code_segment_nid  = next_zeroed_code_segment_nid;
     }
   }
+
+  set_for(core, state_code_segment_nids, state_code_segment_nid);
+  set_for(core, next_code_segment_nids, next_code_segment_nid);
 }
 
 void print_code_segment(uint64_t core) {
@@ -9003,7 +9021,7 @@ void output_model(uint64_t core) {
 
   print_memory_state(core);
 
-  print_break_comment_line("fetch instruction", eval_ir_nid); //
+  print_break_comment_line("fetch instruction", eval_ir_nid);
 
   print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
 
@@ -10238,7 +10256,7 @@ uint64_t eval_sequential(uint64_t core) {
   halt = halt * eval_next_for(core, next_pc_nids);
 
   halt = halt * eval_next_for(core, next_register_file_nids);
-  halt = halt * eval_next(next_code_segment_nid);
+  halt = halt * eval_next_for(core, next_code_segment_nids);
   halt = halt * eval_next_for(core, next_main_memory_nids);
 
   return halt != 0;
@@ -10256,7 +10274,7 @@ void apply_sequential(uint64_t core) {
   apply_next_for(core, next_pc_nids);
 
   apply_next_for(core, next_register_file_nids);
-  apply_next(next_code_segment_nid);
+  apply_next_for(core, next_code_segment_nids);
   apply_next_for(core, next_main_memory_nids);
 }
 
@@ -10272,7 +10290,7 @@ void save_states(uint64_t core) {
   save_state_for(core, next_pc_nids);
 
   save_state_for(core, next_register_file_nids);
-  save_state(next_code_segment_nid);
+  save_state_for(core, next_code_segment_nids);
   save_state_for(core, next_main_memory_nids);
 }
 
@@ -10288,7 +10306,7 @@ void restore_states(uint64_t core) {
   restore_state_for(core, next_pc_nids);
 
   restore_state_for(core, next_register_file_nids);
-  restore_state(next_code_segment_nid);
+  restore_state_for(core, next_code_segment_nids);
   restore_state_for(core, next_main_memory_nids);
 }
 
@@ -10402,7 +10420,7 @@ void disassemble_rotor() {
         set_state(pc_nid, code_start);
         set_step(pc_nid, next_step);
 
-        set_step(state_code_segment_nid, next_step);
+        set_step(get_for(0, state_code_segment_nids), next_step);
 
         ir_nid = get_for(0, eval_ir_nids);
 
@@ -10420,7 +10438,7 @@ void disassemble_rotor() {
 
           set_step(pc_nid, next_step);
 
-          set_step(state_code_segment_nid, next_step);
+          set_step(get_for(0, state_code_segment_nids), next_step);
 
           current_step = next_step;
         }
