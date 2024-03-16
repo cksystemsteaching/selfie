@@ -372,7 +372,7 @@ uint64_t input_steps = 0; // number of steps until most recent input has been co
 
 uint64_t current_input = 0; // current input byte value
 
-uint64_t recent_input = 0; // indicates if input has been consumed in most recent step
+uint64_t first_input = 0; // indicates if input has been consumed for the first time
 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
@@ -3884,8 +3884,10 @@ uint64_t eval_input(uint64_t* line) {
 
     set_step(line, next_step);
 
-    recent_input = 1;
-    any_input    = 1;
+    if (any_input == 0)
+      first_input = 1;
+
+    any_input = 1;
 
     return get_state(line);
   }
@@ -10447,10 +10449,10 @@ void eval_multicore_states() {
       return;
     }
 
-    if (recent_input) {
+    if (first_input) {
       save_multicore_states();
 
-      recent_input = 0;
+      first_input = 0;
     }
 
     apply_multicore_sequential();
@@ -10478,8 +10480,8 @@ void eval_rotor() {
         while (current_input < 256) {
           next_step = next_step + 1;
 
-          recent_input = 0;
-          any_input    = 0;
+          first_input = 0;
+          any_input   = 0;
 
           eval_multicore_states();
 
