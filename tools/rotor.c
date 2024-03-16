@@ -2962,16 +2962,24 @@ void init_model_generator(uint64_t number_of_cores) {
 // -----------------------------------------------------------------
 
 void print_assembly(uint64_t core);
+void print_multicore_assembly();
 
 uint64_t eval_properties(uint64_t core);
+uint64_t eval_multicore_properties();
+
 uint64_t eval_sequential(uint64_t core);
+uint64_t eval_multicore_sequential();
 
 void apply_sequential(uint64_t core);
+void apply_multicore_sequential();
 
 void save_states(uint64_t core);
-void restore_states(uint64_t core);
+void save_multicore_states();
 
-void eval_states(uint64_t core);
+void restore_states(uint64_t core);
+void restore_multicore_states();
+
+void eval_multicore_states();
 
 void eval_rotor();
 
@@ -4294,8 +4302,8 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
 
   if (op == OP_BAD) {
     if (condition != 0) {
-      printf("%s: bad %s satisfied @ 0x%lX after %lu steps", selfie_name,
-        symbol, eval_line_for(core, state_pc_nids), next_step - current_offset);
+      printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
+        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -4305,8 +4313,8 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
     if (condition == 0) {
-      printf("%s: constraint %s violated @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, eval_line_for(core, state_pc_nids), next_step - current_offset);
+      printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
+        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
@@ -10015,6 +10023,9 @@ void print_assembly(uint64_t core) {
 
   pc = eval_line_for(core, state_pc_nids);
 
+  if (CORES > 1)
+    printf("core-%lu: ", core);
+
   printf("0x%lX: ", pc);
 
   ID = eval_line_for(core, eval_instruction_ID_nids);
@@ -10197,6 +10208,21 @@ void print_assembly(uint64_t core) {
 
   if (mnemonic != get_instruction_mnemonic(ID))
     printf(" (%s)", mnemonic);
+}
+
+void print_multicore_assembly() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < CORES) {
+    print_assembly(core);
+
+    core = core + 1;
+
+    if (core < CORES)
+      printf("; ");
+  }
 
   printf("\n");
 }
@@ -10215,7 +10241,7 @@ uint64_t eval_properties(uint64_t core) {
   halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids);
   halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids);
 
-  // if satisfied rotor halts in current step
+  // if satisfied rotor reports exit in current step
   eval_property_for(core, prop_bad_exit_code_nids);
 
   // optional state properties
@@ -10246,6 +10272,23 @@ uint64_t eval_properties(uint64_t core) {
   return halt != 0;
 }
 
+uint64_t eval_multicore_properties() {
+  uint64_t halt;
+  uint64_t core;
+
+  halt = 0;
+
+  core = 0;
+
+  while (core < CORES) {
+    halt = halt + eval_properties(core);
+
+    core = core + 1;
+  }
+
+  return halt != 0;
+}
+
 uint64_t eval_sequential(uint64_t core) {
   uint64_t halt;
 
@@ -10268,6 +10311,32 @@ uint64_t eval_sequential(uint64_t core) {
   return halt != 0;
 }
 
+uint64_t eval_multicore_sequential() {
+  uint64_t halt;
+  uint64_t core;
+
+  halt = 1;
+
+  core = 0;
+
+  while (core < CORES) {
+    if (eval_sequential(core)) {
+      printf("%s: %s called exit(%lu) on core-%lu @ 0x%lX after %lu steps", selfie_name,
+        model_name,
+        eval_line(load_register_value(NID_A0, "exit code", get_for(core, state_register_file_nids))),
+        core,
+        eval_line_for(core, state_pc_nids),
+        next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+    } else
+      halt = 0;
+
+    core = core + 1;
+  }
+
+  return halt != 0;
+}
+
 void apply_sequential(uint64_t core) {
   if (core == CORES - 1) {
     apply_next(next_program_break_nid);
@@ -10282,6 +10351,18 @@ void apply_sequential(uint64_t core) {
   apply_next_for(core, next_register_file_nids);
   apply_next_for(core, next_code_segment_nids);
   apply_next_for(core, next_main_memory_nids);
+}
+
+void apply_multicore_sequential() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < CORES) {
+    apply_sequential(core);
+
+    core = core + 1;
+  }
 }
 
 void save_states(uint64_t core) {
@@ -10300,6 +10381,18 @@ void save_states(uint64_t core) {
   save_state_for(core, next_main_memory_nids);
 }
 
+void save_multicore_states() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < CORES) {
+    save_states(core);
+
+    core = core + 1;
+  }
+}
+
 void restore_states(uint64_t core) {
   if (core == CORES - 1) {
     restore_state(next_program_break_nid);
@@ -10316,42 +10409,51 @@ void restore_states(uint64_t core) {
   restore_state_for(core, next_main_memory_nids);
 }
 
-void eval_states(uint64_t core) {
+void restore_multicore_states() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < CORES) {
+    restore_states(core);
+
+    core = core + 1;
+  }
+}
+
+void eval_multicore_states() {
   while (1) {
-    if (eval_properties(core))
+    if (output_assembly)
+      print_multicore_assembly();
+
+    if (eval_multicore_properties())
       return;
 
-    if (output_assembly)
-      print_assembly(core);
-
-    if (eval_sequential(core)) {
-      printf("%s: %s called exit(%lu) @ 0x%lX after %lu steps", selfie_name,
-        model_name,
-        eval_line(load_register_value(NID_A0, "exit code", get_for(core, state_register_file_nids))),
-        eval_line_for(core, state_pc_nids),
-        next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+    if (eval_multicore_sequential()) {
+      if (CORES > 1) {
+        printf("%s: %s called exit on all cores after %lu steps", selfie_name,
+          model_name, next_step - current_offset);
+        if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+      }
 
       return;
     }
 
     if (current_step - current_offset >= 100000 - 1) {
-      printf("%s: terminating %s @ 0x%lX after %lu steps", selfie_name,
-        model_name,
-        eval_line_for(core, state_pc_nids),
-        next_step - current_offset);
+      printf("%s: terminating %s after %lu steps", selfie_name,
+        model_name, next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
       return;
     }
 
     if (recent_input) {
-      save_states(core);
+      save_multicore_states();
 
       recent_input = 0;
     }
 
-    apply_sequential(core);
+    apply_multicore_sequential();
 
     current_step = next_step;
 
@@ -10371,7 +10473,7 @@ void eval_rotor() {
         input_steps   = 0;
         current_input = 0;
 
-        save_states(0);
+        save_multicore_states();
 
         while (current_input < 256) {
           next_step = next_step + 1;
@@ -10379,7 +10481,7 @@ void eval_rotor() {
           recent_input = 0;
           any_input    = 0;
 
-          eval_states(0);
+          eval_multicore_states();
 
           if (min_steps > next_step - current_offset) {
             min_steps = next_step - current_offset;
@@ -10394,7 +10496,7 @@ void eval_rotor() {
           }
 
           if (any_input) {
-            restore_states(0);
+            restore_multicore_states();
 
             current_offset = next_step - input_steps;
             current_step   = next_step;
@@ -10436,6 +10538,7 @@ void disassemble_rotor() {
           next_step = next_step + 1;
 
           print_assembly(0);
+          printf("\n");
 
           if (eval_line(is_compressed_instruction(ir_nid)))
             set_state(pc_nid, get_state(pc_nid) + 2);
