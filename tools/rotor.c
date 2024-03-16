@@ -2770,7 +2770,7 @@ void print_core_state(uint64_t core);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CORES = 1; // number of cores
+uint64_t number_of_cores = 1; // number of cores
 
 uint64_t SYNCHRONIZED_PC = 0; // flag for synchronized program counters across cores
 
@@ -2847,8 +2847,9 @@ void model_rotor();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CODE_LOADED = 0; // flag for indicating if code is loaded
-uint64_t SYNTHESIZE  = 0; // flag for synthesizing versus analyzing code
+uint64_t number_of_binaries = 0; // number of loaded binaries
+
+uint64_t SYNTHESIZE = 0; // flag for synthesizing versus analyzing code
 
 char* exit_code_check_option         = (char*) 0;
 char* division_by_zero_check_option  = (char*) 0;
@@ -4820,7 +4821,7 @@ void new_register_file_state(uint64_t core) {
 
   eval_init(init_zeroed_register_file_nid);
 
-  if (CODE_LOADED == 0) {
+  if (number_of_binaries == 0) {
     value_nid = cast_virtual_address_to_machine_word(
       new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
     initial_register_file_nid =
@@ -4897,7 +4898,7 @@ void print_register_file_state(uint64_t core) {
   if (init_register_file_nid != init_zeroed_register_file_nid) {
     print_line(next_zeroed_register_file_nid);
 
-    if (CODE_LOADED == 0)
+    if (number_of_binaries == 0)
       print_break_comment("initializing sp");
     else
       print_aligned_break_comment("initializing registers", log_ten(32 * 3 + 1) + 1);
@@ -5119,7 +5120,7 @@ void new_code_segment(uint64_t core) {
     return;
   }
 
-  if (CODE_LOADED == 0)
+  if (number_of_binaries == 0)
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
   else {
@@ -5213,7 +5214,7 @@ void print_code_segment(uint64_t core) {
     return;
   }
 
-  if (CODE_LOADED == 0) {
+  if (number_of_binaries == 0) {
     print_break_comment_for(core, "uninitialized code segment");
 
     print_line(state_code_segment_nid);
@@ -5270,7 +5271,7 @@ void new_memory_state(uint64_t core) {
 
   eval_init(init_zeroed_main_memory_nid);
 
-  if (CODE_LOADED) {
+  if (number_of_binaries > 0) {
     number_of_hex_digits = round_up(MEMORY_ADDRESS_SPACE, 4) / 4;
 
     initial_data_nid  = UNUSED;
@@ -5367,7 +5368,7 @@ void print_memory_state(uint64_t core) {
 
   print_line(init_zeroed_main_memory_nid);
 
-  if (CODE_LOADED)
+  if (number_of_binaries > 0)
     if (initial_main_memory_nid != state_main_memory_nid) {
       print_line(next_zeroed_main_memory_nid);
 
@@ -8987,7 +8988,7 @@ void new_core_state(uint64_t core) {
     if (core > 0)
       return;
 
-  if (CODE_LOADED)
+  if (number_of_binaries > 0)
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
   else
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
@@ -9028,7 +9029,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
     if (bad_nid == UNUSED)
       return UNUSED;
 
-  if (((CODE_LOADED == 0) + (SYNTHESIZE * (core > 0))) > 0) {
+  if (((number_of_binaries == 0) + (SYNTHESIZE * (core > 0))) > 0) {
     if (good_nid == UNUSED)
       good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
@@ -9113,7 +9114,7 @@ void output_model(uint64_t core) {
 
   print_break_line_for(core, prop_is_syscall_id_known_nids);
 
-  if (core == CORES - 1)
+  if (core == number_of_cores - 1)
     print_break_line_for(core, prop_bad_exit_code_nids);
 
   // optional state properties
@@ -9427,7 +9428,7 @@ void kernel_sequential(uint64_t core,
       program_break_nid,
       "new program break");
 
-  if (core == CORES - 1)
+  if (core == number_of_cores - 1)
     next_program_break_nid =
       new_next(SID_VIRTUAL_ADDRESS,
         program_break_nid,
@@ -9443,7 +9444,7 @@ void kernel_sequential(uint64_t core,
       file_descriptor_nid,
       "new file descriptor");
 
-  if (core == CORES - 1)
+  if (core == number_of_cores - 1)
     next_file_descriptor_nid =
       new_next(SID_MACHINE_WORD,
         file_descriptor_nid,
@@ -9645,13 +9646,13 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
         bad_exit_code_nid,
         "and next bad exit");
 
-    if (core == CORES - 1)
+    if (core == number_of_cores - 1)
       prop_bad_exit_code_nid = new_property(OP_BAD,
         prop_bad_exit_code_nid,
         "bad-exit-code",
         format_comment("exit(%ld)", bad_exit_code));
 
-    if (core < CORES - 1)
+    if (core < number_of_cores - 1)
       set_for(core, prop_bad_exit_code_nids, UNUSED);
     else
       set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
@@ -9772,7 +9773,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-register-data-flow", core),
         "asserting new register data flow == new core-0 register data flow");
   else if (SHARED_REGISTERS) {
-    if (core < CORES - 1)
+    if (core < number_of_cores - 1)
       state_register_file_nid = register_data_flow_nid;
     else
       next_register_file_nid = new_next(SID_REGISTER_STATE,
@@ -9804,7 +9805,7 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-memory-data-flow", core),
         "asserting new memory data flow == new core-0 memory data flow");
   else if (SHARED_MEMORY) {
-    if (core < CORES - 1)
+    if (core < number_of_cores - 1)
       state_main_memory_nid = memory_data_flow_nid;
     else
       next_main_memory_nid = new_next(SID_MEMORY_STATE,
@@ -9935,7 +9936,7 @@ void model_rotor() {
     w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
   if (check_seg_faults == 0)
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
-  w = w + dprintf(output_fd, "; with %s %lu\n", cores_option, CORES);
+  w = w + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores);
   w = w + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
     virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE);
   w = w + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
@@ -9958,7 +9959,7 @@ void model_rotor() {
     w = w + dprintf(output_fd, "\n\n");
   }
 
-  init_model_generator(CORES);
+  init_model_generator(number_of_cores);
 
   print_interface_sorts();
   print_interface_kernel();
@@ -9968,7 +9969,7 @@ void model_rotor() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     new_segmentation(core);
 
     print_segmentation(core);
@@ -10045,7 +10046,7 @@ void print_assembly(uint64_t core) {
 
   pc = eval_line_for(core, state_pc_nids);
 
-  if (CORES > 1)
+  if (number_of_cores > 1)
     printf("core-%lu: ", core);
 
   printf("0x%lX: ", pc);
@@ -10237,12 +10238,12 @@ void print_multicore_assembly() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     print_assembly(core);
 
     core = core + 1;
 
-    if (core < CORES)
+    if (core < number_of_cores)
       printf("; ");
   }
 
@@ -10302,7 +10303,7 @@ uint64_t eval_multicore_properties() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     halt = halt + eval_properties(core);
 
     core = core + 1;
@@ -10316,7 +10317,7 @@ uint64_t eval_sequential(uint64_t core) {
 
   halt = 1;
 
-  if (core == CORES - 1) {
+  if (core == number_of_cores - 1) {
     halt = halt * eval_next(next_program_break_nid);
     halt = halt * eval_next(next_file_descriptor_nid);
   }
@@ -10341,7 +10342,7 @@ uint64_t eval_multicore_sequential() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     if (eval_sequential(core)) {
       printf("%s: %s called exit(%lu) on core-%lu @ 0x%lX after %lu steps", selfie_name,
         model_name,
@@ -10360,7 +10361,7 @@ uint64_t eval_multicore_sequential() {
 }
 
 void apply_sequential(uint64_t core) {
-  if (core == CORES - 1) {
+  if (core == number_of_cores - 1) {
     apply_next(next_program_break_nid);
     apply_next(next_file_descriptor_nid);
   }
@@ -10380,7 +10381,7 @@ void apply_multicore_sequential() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     apply_sequential(core);
 
     core = core + 1;
@@ -10388,7 +10389,7 @@ void apply_multicore_sequential() {
 }
 
 void save_states(uint64_t core) {
-  if (core == CORES - 1) {
+  if (core == number_of_cores - 1) {
     save_state(next_program_break_nid);
     save_state(next_file_descriptor_nid);
   }
@@ -10408,7 +10409,7 @@ void save_multicore_states() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     save_states(core);
 
     core = core + 1;
@@ -10416,7 +10417,7 @@ void save_multicore_states() {
 }
 
 void restore_states(uint64_t core) {
-  if (core == CORES - 1) {
+  if (core == number_of_cores - 1) {
     restore_state(next_program_break_nid);
     restore_state(next_file_descriptor_nid);
   }
@@ -10436,7 +10437,7 @@ void restore_multicore_states() {
 
   core = 0;
 
-  while (core < CORES) {
+  while (core < number_of_cores) {
     restore_states(core);
 
     core = core + 1;
@@ -10452,7 +10453,7 @@ void eval_multicore_states() {
       return;
 
     if (eval_multicore_sequential()) {
-      if (CORES > 1) {
+      if (number_of_cores > 1) {
         printf("%s: %s called exit on all cores after %lu steps", selfie_name,
           model_name, next_step - current_offset);
         if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
@@ -10484,7 +10485,7 @@ void eval_multicore_states() {
 }
 
 void eval_rotor() {
-  if (CODE_LOADED)
+  if (number_of_binaries > 0)
     if (SYNTHESIZE == 0) {
       printf("%s: ********************************************************************************\n", selfie_name);
 
@@ -10539,7 +10540,7 @@ void disassemble_rotor(uint64_t core) {
   uint64_t* pc_nid;
   uint64_t* ir_nid;
 
-  if (CODE_LOADED)
+  if (number_of_binaries > 0)
     if (SYNTHESIZE == 0) {
       printf("%s: ********************************************************************************\n", selfie_name);
 
@@ -10603,6 +10604,20 @@ uint64_t rotor_arguments() {
         disassemble_model = 1;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), "-l")) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          number_of_binaries = number_of_binaries + 1;
+
+          if (number_of_binaries > number_of_cores)
+            number_of_cores = number_of_binaries;
+
+          //binary_name = peek_argument(1);
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), exit_code_check_option)) {
         check_exit_code = 0;
 
@@ -10623,7 +10638,10 @@ uint64_t rotor_arguments() {
         get_argument();
 
         if (number_of_remaining_arguments() > 1) {
-          CORES = atoi(peek_argument(1));
+          number_of_cores = atoi(peek_argument(1));
+
+          if (number_of_cores < number_of_binaries)
+            number_of_cores = number_of_binaries;
 
           get_argument();
         } else
@@ -10689,12 +10707,17 @@ uint64_t selfie_model() {
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
+      if (code_size > 0)
+        number_of_binaries = 1;
+      else
+        number_of_binaries = 0;
+
       exit_code = rotor_arguments();
 
       if (exit_code != EXITCODE_NOERROR)
         return exit_code;
 
-      if (code_size > 0) {
+      if (number_of_binaries > 0) {
         reset_interpreter();
         reset_profiler();
         reset_microkernel();
@@ -10709,7 +10732,7 @@ uint64_t selfie_model() {
 
         restore_context(current_context);
 
-        do_switch(current_context, TIMEROFF);
+        //do_switch(current_context, TIMEROFF);
 
         // assert: allowances are multiples of word size
 
@@ -10731,9 +10754,7 @@ uint64_t selfie_model() {
 
         // assert: stack_start >= heap_start + heap_size > 0
 
-        CODE_LOADED = 1;
-
-        if (CORES > 1) {
+        if (number_of_cores > 1) {
           SYNTHESIZE = 1;
 
           SYNCHRONIZED_PC = 0;
@@ -10764,8 +10785,6 @@ uint64_t selfie_model() {
         stack_size  = stack_allowance;
 
         // assert: stack_start >= heap_start + heap_size > 0
-
-        CODE_LOADED = 0;
 
         SYNTHESIZE = 1;
 
