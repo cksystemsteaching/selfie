@@ -2983,7 +2983,7 @@ void eval_multicore_states();
 
 void eval_rotor();
 
-void disassemble_rotor();
+void disassemble_rotor(uint64_t core);
 
 uint64_t rotor_arguments();
 
@@ -10516,7 +10516,7 @@ void eval_rotor() {
       }
 }
 
-void disassemble_rotor() {
+void disassemble_rotor(uint64_t core) {
   uint64_t* pc_nid;
   uint64_t* ir_nid;
 
@@ -10525,21 +10525,21 @@ void disassemble_rotor() {
       if (CORES == 1) {
         printf("%s: ********************************************************************************\n", selfie_name);
 
-        pc_nid = get_for(0, state_pc_nids);
+        pc_nid = get_for(core, state_pc_nids);
 
         set_state(pc_nid, code_start);
         set_step(pc_nid, next_step);
 
-        set_step(get_for(0, state_code_segment_nids), next_step);
+        set_step(get_for(core, state_code_segment_nids), next_step);
 
-        ir_nid = get_for(0, eval_ir_nids);
+        ir_nid = get_for(core, eval_ir_nids);
 
         current_step = next_step;
 
         while (get_state(pc_nid) < code_start + code_size) {
           next_step = next_step + 1;
 
-          print_assembly(0);
+          print_assembly(core);
           printf("\n");
 
           if (eval_line(is_compressed_instruction(ir_nid)))
@@ -10549,7 +10549,7 @@ void disassemble_rotor() {
 
           set_step(pc_nid, next_step);
 
-          set_step(get_for(0, state_code_segment_nids), next_step);
+          set_step(get_for(core, state_code_segment_nids), next_step);
 
           current_step = next_step;
         }
@@ -10791,7 +10791,7 @@ uint64_t selfie_model() {
         eval_rotor();
 
       if (disassemble_model)
-        disassemble_rotor();
+        disassemble_rotor(0);
 
       printf("%s: ################################################################################\n", selfie_name);
 
