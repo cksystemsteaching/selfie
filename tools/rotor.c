@@ -249,7 +249,9 @@ void print_break();
 void print_break_line(uint64_t* line);
 void print_break_line_for(uint64_t core, uint64_t* lines);
 void print_break_comment(char* comment);
+void print_break_comment_for(uint64_t core, char* comment);
 void print_break_comment_line(char* comment, uint64_t* line);
+void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* line);
 
 void print_aligned_break_comment(char* comment, uint64_t alignment);
 
@@ -2888,6 +2890,7 @@ uint64_t* prop_next_fetch_seg_faulting_nids        = (uint64_t*) 0;
 
 uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
 
+uint64_t* prop_bad_exit_code_nid  = (uint64_t*) 0;
 uint64_t* prop_bad_exit_code_nids = (uint64_t*) 0;
 
 uint64_t* prop_exclude_a0_from_rd_nids       = (uint64_t*) 0;
@@ -3383,9 +3386,21 @@ void print_break_comment(char* comment) {
   w = w + dprintf(output_fd, "; %s\n\n", comment);
 }
 
+void print_break_comment_for(uint64_t core, char* comment) {
+  print_break();
+  w = w + dprintf(output_fd, "; core-%lu %s\n\n", core, comment);
+}
+
 void print_break_comment_line(char* comment, uint64_t* line) {
   if (line != UNUSED) {
     print_break_comment(comment);
+    print_line(line);
+  }
+}
+
+void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* line) {
+  if (line != UNUSED) {
+    print_break_comment_for(core, comment);
     print_line(line);
   }
 }
@@ -4733,7 +4748,7 @@ void print_kernel_state(uint64_t core) {
     print_break_line(init_file_descriptor_nid);
   }
 
-  print_break_comment_line(format_comment("core-%lu kernel state", core), init_readable_bytes_nid);
+  print_break_comment_line_for(core, "kernel state", init_readable_bytes_nid);
 
   print_break_line(init_read_bytes_nid);
 }
@@ -4875,7 +4890,7 @@ void print_register_file_state(uint64_t core) {
     if (core > 0)
       return;
 
-  print_break_comment("zeroed register file");
+  print_break_comment_for(core, "zeroed register file");
 
   print_line(init_zeroed_register_file_nid);
 
@@ -4889,7 +4904,7 @@ void print_register_file_state(uint64_t core) {
 
     print_line(initial_register_file_nid);
 
-    print_break_comment("initialized register file");
+    print_break_comment_for(core, "initialized register file");
 
     print_line(init_register_file_nid);
   }
@@ -5190,7 +5205,7 @@ void new_code_segment(uint64_t core) {
 void print_code_segment(uint64_t core) {
   if (core > 0) {
     if (SYNTHESIZE) {
-      print_break_comment("uninitialized code segment");
+      print_break_comment_for(core, "uninitialized code segment");
 
       print_line(state_code_segment_nid);
     }
@@ -5199,7 +5214,7 @@ void print_code_segment(uint64_t core) {
   }
 
   if (CODE_LOADED == 0) {
-    print_break_comment("uninitialized code segment");
+    print_break_comment_for(core, "uninitialized code segment");
 
     print_line(state_code_segment_nid);
   } else {
@@ -5219,7 +5234,7 @@ void print_code_segment(uint64_t core) {
         initial_code_nid = get_succ(initial_code_nid);
       }
 
-      print_break_comment("loaded code segment");
+      print_break_comment_for(core, "loaded code segment");
 
       print_line(init_code_segment_nid);
     }
@@ -5348,7 +5363,7 @@ void print_memory_state(uint64_t core) {
     if (core > 0)
       return;
 
-  print_break_comment("zeroed main memory");
+  print_break_comment_for(core, "zeroed main memory");
 
   print_line(init_zeroed_main_memory_nid);
 
@@ -5387,7 +5402,7 @@ void print_memory_state(uint64_t core) {
         }
       }
 
-      print_break_comment("loaded main memory");
+      print_break_comment_for(core, "loaded main memory");
 
       print_line(init_main_memory_nid);
     }
@@ -8992,7 +9007,7 @@ void print_core_state(uint64_t core) {
     if (core > 0)
       return;
 
-  print_break_comment(format_comment("core-%lu program counter", core));
+  print_break_comment_for(core, "program counter");
 
   print_line(initial_pc_nid);
   print_line(init_pc_nid);
@@ -9037,20 +9052,20 @@ void output_model(uint64_t core) {
 
   print_memory_state(core);
 
-  print_break_comment_line("fetch instruction", eval_ir_nid);
+  print_break_comment_line_for(core, "fetch instruction", eval_ir_nid);
 
-  print_break_comment_line("fetch compressed instruction", eval_c_ir_nid);
+  print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nid);
 
-  print_break_comment_line("decode instruction", eval_instruction_ID_nid);
+  print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nid);
 
-  print_break_comment_line("decode compressed instruction", eval_compressed_instruction_ID_nid);
+  print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nid);
 
-  print_break_comment_line("instruction control flow", eval_instruction_control_flow_nid);
+  print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nid);
 
-  print_break_comment_line("compressed instruction control flow",
+  print_break_comment_line_for(core, "compressed instruction control flow",
     eval_compressed_instruction_control_flow_nid);
 
-  print_break_comment_line("update kernel state", next_program_break_nid);
+  print_break_comment_line_for(core, "update kernel state", next_program_break_nid);
 
   print_break_line(next_file_descriptor_nid);
 
@@ -9058,33 +9073,33 @@ void output_model(uint64_t core) {
 
   print_break_line_for(core, next_read_bytes_nids);
 
-  print_break_comment_line("kernel and instruction control flow", eval_control_flow_nid);
+  print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nid);
 
-  print_break_comment_line("update program counter", next_pc_nid);
+  print_break_comment_line_for(core, "update program counter", next_pc_nid);
 
-  print_break_comment_line("instruction register data flow",
+  print_break_comment_line_for(core, "instruction register data flow",
     eval_instruction_register_data_flow_nid);
 
-  print_break_comment_line("compressed instruction register data flow",
+  print_break_comment_line_for(core, "compressed instruction register data flow",
     eval_compressed_instruction_register_data_flow_nid);
 
-  print_break_comment_line("kernel and instruction register data flow",
+  print_break_comment_line_for(core, "kernel and instruction register data flow",
     eval_register_data_flow_nid);
 
-  print_break_comment_line("update register data flow", next_register_file_nid);
+  print_break_comment_line_for(core, "update register data flow", next_register_file_nid);
 
-  print_break_comment_line("instruction memory data flow",
+  print_break_comment_line_for(core, "instruction memory data flow",
     eval_instruction_memory_data_flow_nid);
 
-  print_break_comment_line("compressed instruction memory data flow",
+  print_break_comment_line_for(core, "compressed instruction memory data flow",
     eval_compressed_instruction_memory_data_flow_nid);
 
-  print_break_comment_line("kernel and instruction memory data flow",
+  print_break_comment_line_for(core, "kernel and instruction memory data flow",
     eval_memory_data_flow_nid);
 
-  print_break_comment_line("update memory data flow", next_main_memory_nid);
+  print_break_comment_line_for(core, "update memory data flow", next_main_memory_nid);
 
-  print_break_comment("state properties");
+  print_break_comment_for(core, "state properties");
 
   print_line_for(core, prop_illegal_instruction_nids);
 
@@ -9623,18 +9638,23 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
       format_comment("core-%lu active exit system call with bad exit code", core));
 
     if (core == 0)
-      set_for(0, prop_bad_exit_code_nids, bad_exit_code_nid);
+      prop_bad_exit_code_nid = bad_exit_code_nid;
     else
-      set_for(core, prop_bad_exit_code_nids, new_binary_boolean(OP_AND,
-        get_for(core - 1, prop_bad_exit_code_nids),
+      prop_bad_exit_code_nid = new_binary_boolean(OP_AND,
+        prop_bad_exit_code_nid,
         bad_exit_code_nid,
-        "and next bad exit"));
+        "and next bad exit");
 
     if (core == CORES - 1)
-      set_for(core, prop_bad_exit_code_nids, new_property(OP_BAD,
-        get_for(core, prop_bad_exit_code_nids),
+      prop_bad_exit_code_nid = new_property(OP_BAD,
+        prop_bad_exit_code_nid,
         "bad-exit-code",
-        format_comment("exit(%ld)", bad_exit_code)));
+        format_comment("exit(%ld)", bad_exit_code));
+
+    if (core < CORES - 1)
+      set_for(core, prop_bad_exit_code_nids, UNUSED);
+    else
+      set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
   }
 }
 
@@ -10465,55 +10485,54 @@ void eval_multicore_states() {
 
 void eval_rotor() {
   if (CODE_LOADED)
-    if (SYNTHESIZE == 0)
-      if (CORES == 1) {
-        printf("%s: ********************************************************************************\n", selfie_name);
+    if (SYNTHESIZE == 0) {
+      printf("%s: ********************************************************************************\n", selfie_name);
 
-        current_offset = 0;
-        current_step   = 0;
+      current_offset = 0;
+      current_step   = 0;
 
-        input_steps   = 0;
-        current_input = 0;
+      input_steps   = 0;
+      current_input = 0;
 
-        save_multicore_states();
+      save_multicore_states();
 
-        while (current_input < 256) {
-          next_step = next_step + 1;
+      while (current_input < 256) {
+        next_step = next_step + 1;
 
-          first_input = 0;
-          any_input   = 0;
+        first_input = 0;
+        any_input   = 0;
 
-          eval_multicore_states();
+        eval_multicore_states();
 
-          if (min_steps > next_step - current_offset) {
-            min_steps = next_step - current_offset;
+        if (min_steps > next_step - current_offset) {
+          min_steps = next_step - current_offset;
 
-            min_input = current_input;
-          }
-
-          if (max_steps < next_step - current_offset) {
-            max_steps = next_step - current_offset;
-
-            max_input = current_input;
-          }
-
-          if (any_input) {
-            restore_multicore_states();
-
-            current_offset = next_step - input_steps;
-            current_step   = next_step;
-
-            current_input = current_input + 1;
-          } else {
-            printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
-
-            return;
-          }
+          min_input = current_input;
         }
 
-        printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
-          min_steps, min_input, max_steps, max_input);
+        if (max_steps < next_step - current_offset) {
+          max_steps = next_step - current_offset;
+
+          max_input = current_input;
+        }
+
+        if (any_input) {
+          restore_multicore_states();
+
+          current_offset = next_step - input_steps;
+          current_step   = next_step;
+
+          current_input = current_input + 1;
+        } else {
+          printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
+
+          return;
+        }
       }
+
+      printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
+        min_steps, min_input, max_steps, max_input);
+    }
 }
 
 void disassemble_rotor(uint64_t core) {
@@ -10521,39 +10540,38 @@ void disassemble_rotor(uint64_t core) {
   uint64_t* ir_nid;
 
   if (CODE_LOADED)
-    if (SYNTHESIZE == 0)
-      if (CORES == 1) {
-        printf("%s: ********************************************************************************\n", selfie_name);
+    if (SYNTHESIZE == 0) {
+      printf("%s: ********************************************************************************\n", selfie_name);
 
-        pc_nid = get_for(core, state_pc_nids);
+      pc_nid = get_for(core, state_pc_nids);
 
-        set_state(pc_nid, code_start);
+      set_state(pc_nid, code_start);
+      set_step(pc_nid, next_step);
+
+      set_step(get_for(core, state_code_segment_nids), next_step);
+
+      ir_nid = get_for(core, eval_ir_nids);
+
+      current_step = next_step;
+
+      while (get_state(pc_nid) < code_start + code_size) {
+        next_step = next_step + 1;
+
+        print_assembly(core);
+        printf("\n");
+
+        if (eval_line(is_compressed_instruction(ir_nid)))
+          set_state(pc_nid, get_state(pc_nid) + 2);
+        else
+          set_state(pc_nid, get_state(pc_nid) + 4);
+
         set_step(pc_nid, next_step);
 
         set_step(get_for(core, state_code_segment_nids), next_step);
 
-        ir_nid = get_for(core, eval_ir_nids);
-
         current_step = next_step;
-
-        while (get_state(pc_nid) < code_start + code_size) {
-          next_step = next_step + 1;
-
-          print_assembly(core);
-          printf("\n");
-
-          if (eval_line(is_compressed_instruction(ir_nid)))
-            set_state(pc_nid, get_state(pc_nid) + 2);
-          else
-            set_state(pc_nid, get_state(pc_nid) + 4);
-
-          set_step(pc_nid, next_step);
-
-          set_step(get_for(core, state_code_segment_nids), next_step);
-
-          current_step = next_step;
-        }
       }
+    }
 }
 
 uint64_t rotor_arguments() {
