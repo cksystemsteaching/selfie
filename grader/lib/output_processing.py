@@ -6,7 +6,7 @@ sys.setrecursionlimit(5000)
 STATUSMESSSAGE_START = r'([a-zA-Z]:\\|(>+ )?(./)?selfie)'
 
 def contains_name(output):
-    result = re.match(STATUSMESSSAGE_START + r'[^\n]*This is \S* \S*\'s Selfie![^\n]*\n', output) != None
+    result = re.match(STATUSMESSSAGE_START + r'[^\n]*This is(?: \S+){2,}\'s Selfie![^\n]*\n', output) != None
 
     return (result, 'The selfie output does not contain "<selfiename>: This is <firstname> <secondname>\'s Selfie!"')
 
