@@ -2965,6 +2965,9 @@ void init_model_generator(uint64_t number_of_cores) {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
+void save_binary(uint64_t binary);
+void restore_binary(uint64_t binary);
+
 void print_assembly(uint64_t core);
 void print_multicore_assembly();
 
@@ -2993,13 +2996,45 @@ uint64_t rotor_arguments();
 
 uint64_t selfie_model();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t MAX_BINARIES = 3;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* binary_names = (uint64_t*) 0;
+
+uint64_t* e_entries = (uint64_t*) 0;
+
+uint64_t* code_binaries = (uint64_t*) 0;
+uint64_t* data_binaries = (uint64_t*) 0;
+
+uint64_t* code_starts = (uint64_t*) 0;
+uint64_t* code_sizes  = (uint64_t*) 0;
+uint64_t* data_starts = (uint64_t*) 0;
+uint64_t* data_sizes  = (uint64_t*) 0;
 
 uint64_t min_steps = -1;
 uint64_t max_steps = 0;
 
 uint64_t min_input = 0;
 uint64_t max_input = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_binaries() {
+  binary_names = smalloc(MAX_BINARIES * sizeof(char*));
+
+  e_entries = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+
+  code_binaries = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+  data_binaries = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+
+  code_starts = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+  code_sizes  = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+  data_starts = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+  data_sizes  = smalloc(MAX_BINARIES * sizeof(uint64_t*));
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -10025,6 +10060,34 @@ void model_rotor() {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
+void save_binary(uint64_t binary) {
+  set_for(binary, binary_names, (uint64_t*) binary_name);
+
+  set_for(binary, e_entries, (uint64_t*) e_entry);
+
+  set_for(binary, code_binaries, (uint64_t*) code_binary);
+  set_for(binary, data_binaries, (uint64_t*) data_binary);
+
+  set_for(binary, code_starts, (uint64_t*) code_start);
+  set_for(binary, code_sizes, (uint64_t*) code_size);
+  set_for(binary, data_starts, (uint64_t*) data_start);
+  set_for(binary, data_sizes, (uint64_t*) data_size);
+}
+
+void restore_binary(uint64_t binary) {
+  binary_name = (char*) get_for(binary, binary_names);
+
+  e_entry = (uint64_t) get_for(binary, e_entries);
+
+  code_binary = get_for(binary, code_binaries);
+  data_binary = get_for(binary, data_binaries);
+
+  code_start = (uint64_t) get_for(binary, code_starts);
+  code_size  = (uint64_t) get_for(binary, code_sizes);
+  data_start = (uint64_t) get_for(binary, data_starts);
+  data_size  = (uint64_t) get_for(binary, data_sizes);
+}
+
 void print_assembly(uint64_t core) {
   uint64_t pc;
   uint64_t ID;
@@ -10608,14 +10671,19 @@ uint64_t rotor_arguments() {
         get_argument();
 
         if (number_of_remaining_arguments() > 1) {
-          number_of_binaries = number_of_binaries + 1;
+          if (number_of_binaries < MAX_BINARIES) {
+            selfie_load(peek_argument(1));
 
-          if (number_of_binaries > number_of_cores)
-            number_of_cores = number_of_binaries;
+            save_binary(number_of_binaries);
 
-          //binary_name = peek_argument(1);
+            number_of_binaries = number_of_binaries + 1;
 
-          get_argument();
+            if (number_of_binaries > number_of_cores)
+              number_of_cores = number_of_binaries;
+
+            get_argument();
+          } else
+          return EXITCODE_BADARGUMENTS;
         } else
           return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), exit_code_check_option)) {
@@ -10707,9 +10775,13 @@ uint64_t selfie_model() {
 
   if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      if (code_size > 0)
+      init_binaries();
+
+      if (code_size > 0) {
+        save_binary(0);
+
         number_of_binaries = 1;
-      else
+      } else
         number_of_binaries = 0;
 
       exit_code = rotor_arguments();
@@ -10718,6 +10790,8 @@ uint64_t selfie_model() {
         return exit_code;
 
       if (number_of_binaries > 0) {
+        restore_binary(0);
+
         reset_interpreter();
         reset_profiler();
         reset_microkernel();
