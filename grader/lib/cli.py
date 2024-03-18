@@ -277,7 +277,7 @@ def do_bulk_grading(assignment: Optional[Assignment], baseline: List[Assignment]
                     print_message('', loud=True)
             else:
                 print_message(
-                    'commit hash "{}" is not valid'.format(info['commit']))
+                    'commit hash "{}" is not valid'.format(info['commit']), loud=True)
 
             os.chdir(bulk_grade_directory)
 
