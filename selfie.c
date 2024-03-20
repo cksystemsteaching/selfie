@@ -8960,10 +8960,10 @@ void do_divu() {
     write_register(rd);
 
     pc = pc + INSTRUCTIONSIZE;
-
-    ic_divu = ic_divu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
+
+  ic_divu = ic_divu + 1;
 }
 
 void do_remu() {
@@ -8989,10 +8989,10 @@ void do_remu() {
     write_register(rd);
 
     pc = pc + INSTRUCTIONSIZE;
-
-    ic_remu = ic_remu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
+
+  ic_remu = ic_remu + 1;
 }
 
 void do_sltu() {
