@@ -10130,7 +10130,7 @@ void print_assembly(uint64_t core) {
     rs1 = get_register_name(eval_line(get_instruction_rs1(ir_nid)));
     rs2 = get_register_name(eval_line(get_instruction_rs2(ir_nid)));
 
-    I_imm        = eval_line(get_instruction_shamt(ir_nid));
+    I_imm        = eval_line(get_instruction_I_immediate(ir_nid));
     I_imm_32_bit = eval_line(get_instruction_I_32_bit_immediate(ir_nid));
 
     shamt       = eval_line(get_instruction_shamt(ir_nid));
