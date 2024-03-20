@@ -5319,7 +5319,7 @@ void new_memory_state(uint64_t core) {
 
     vaddr = data_start;
 
-    while (vaddr < VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
+    while (vaddr <= VIRTUALMEMORYSIZE * GIGABYTE - WORDSIZE) {
       if (vaddr == data_start + data_size)
         vaddr = heap_start;
 
@@ -5368,7 +5368,11 @@ void new_memory_state(uint64_t core) {
         }
       }
 
-      vaddr = vaddr + WORDSIZE;
+      if (vaddr + WORDSIZE == 0)
+        // check 32-bit overflow to terminate loop
+        vaddr = HIGHESTVIRTUALADDRESS;
+      else
+        vaddr = vaddr + WORDSIZE;
     }
 
     reuse_lines = 1;
