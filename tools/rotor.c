@@ -896,7 +896,7 @@ uint64_t* fetch_compressed_instruction(uint64_t* pc_nid, uint64_t* code_segment_
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t SYNCHRONIZED_MEMORY = 0; // flag for synchronized main memory across cores
-uint64_t SHARED_MEMORY = 0;       // flag for shared main memory across cores
+uint64_t SHARED_MEMORY       = 0; // flag for shared main memory across cores
 
 uint64_t VIRTUAL_ADDRESS_SPACE = 32; // number of bits in virtual addresses
 
@@ -1020,7 +1020,7 @@ uint64_t* eval_core_0_memory_data_flow_nid = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_memory_sorts() {
+void init_memory_sorts(uint64_t max_code_size) {
   uint64_t saved_reuse_lines;
 
   if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
@@ -1057,7 +1057,7 @@ void init_memory_sorts() {
 
   NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, 0, "code word 0");
 
-  CODE_ADDRESS_SPACE = calculate_address_space(code_size, eval_bitvec_size(SID_CODE_WORD));
+  CODE_ADDRESS_SPACE = calculate_address_space(max_code_size, eval_bitvec_size(SID_CODE_WORD));
 
   SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
     format_comment("%lu-bit code segment address", CODE_ADDRESS_SPACE));
@@ -2754,7 +2754,7 @@ void init_compressed_instruction_sorts() {
   NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, 0, get_instruction_mnemonic(ID_C_JALR));
 }
 
-void init_instruction_ID_decoder(uint64_t number_of_cores) {
+void init_decoders(uint64_t number_of_cores) {
   eval_instruction_ID_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
@@ -2842,6 +2842,8 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid, uint64_t* memory_data_flow_nid);
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   uint64_t* instruction_ID_nids, uint64_t* control_flow_nid, uint64_t* register_file_nid);
+
+void load_binary(uint64_t binary);
 
 void model_rotor();
 
@@ -2938,29 +2940,6 @@ void init_properties(uint64_t number_of_cores) {
   prop_write_seg_faulting_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
-void init_model_generator(uint64_t number_of_cores) {
-  init_model();
-
-  init_interface_sorts();
-  init_interface_kernel();
-
-  init_register_file_sorts();
-
-  init_memory_sorts();
-
-  init_kernels(number_of_cores);
-  init_register_files(number_of_cores);
-  init_memories(number_of_cores);
-
-  init_instruction_mnemonics();
-  init_instruction_sorts();
-  init_compressed_instruction_sorts();
-
-  init_instruction_ID_decoder(number_of_cores);
-  init_cores(number_of_cores);
-  init_properties(number_of_cores);
-}
-
 // -----------------------------------------------------------------
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
@@ -3013,6 +2992,8 @@ uint64_t* code_starts = (uint64_t*) 0;
 uint64_t* code_sizes  = (uint64_t*) 0;
 uint64_t* data_starts = (uint64_t*) 0;
 uint64_t* data_sizes  = (uint64_t*) 0;
+
+uint64_t max_code_size = 0;
 
 uint64_t min_steps = -1;
 uint64_t max_steps = 0;
@@ -4872,7 +4853,7 @@ void new_register_file_state(uint64_t core) {
 
     reg = 0;
 
-    while (reg < 32) {
+    while (reg < NUMBEROFREGISTERS) {
       value = *(get_regs(current_context) + reg);
 
       if (value != 0) {
@@ -4936,7 +4917,7 @@ void print_register_file_state(uint64_t core) {
     if (number_of_binaries == 0)
       print_break_comment("initializing sp");
     else
-      print_aligned_break_comment("initializing registers", log_ten(32 * 3 + 1) + 1);
+      print_aligned_break_comment("initializing registers", log_ten(NUMBEROFREGISTERS * 3 + 1) + 1);
 
     print_line(initial_register_file_nid);
 
@@ -5138,34 +5119,23 @@ void new_code_segment(uint64_t core) {
   uint64_t* ir_nid;
   uint64_t* code_segment_nid;
 
-  set_for(core, state_code_segment_nids, state_code_segment_nid);
-
-  next_code_segment_nid = UNUSED;
-
-  set_for(core, next_code_segment_nids, next_code_segment_nid);
-
-  if (core > 0) {
-    if (SYNTHESIZE) {
-      state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
-        format_comment("core-%lu-code-segment", core), "code segment");
-
-      set_for(core, state_code_segment_nids, state_code_segment_nid);
-    }
-
-    return;
-  }
-
-  if (number_of_binaries == 0)
+  if (core >= number_of_binaries) {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
-  else {
+
+    init_code_segment_nid = UNUSED;
+    next_code_segment_nid = UNUSED;
+  } else {
     state_zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
-      "code-segment", "code segment");
+      format_comment("core-%lu-code-segment", core), "code segment");
 
     init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
       state_zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     eval_init(init_zeroed_code_segment_nid);
+
+    next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
+      state_zeroed_code_segment_nid, state_zeroed_code_segment_nid, "read-only zeroed code segment");
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
@@ -5214,11 +5184,8 @@ void new_code_segment(uint64_t core) {
     reuse_lines = 1;
 
     if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
-      next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
-        state_zeroed_code_segment_nid, state_zeroed_code_segment_nid, "read-only zeroed code segment");
-
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
-        "loaded-code-segment", "loaded code segment");
+        format_comment("core-%lu-loaded-code-segment", core), "loaded code segment");
 
       init_code_segment_nid = new_init(SID_CODE_STATE,
         state_code_segment_nid, initial_code_segment_nid, "loaded code");
@@ -5239,17 +5206,7 @@ void new_code_segment(uint64_t core) {
 }
 
 void print_code_segment(uint64_t core) {
-  if (core > 0) {
-    if (SYNTHESIZE) {
-      print_break_comment_for(core, "uninitialized code segment");
-
-      print_line(state_code_segment_nid);
-    }
-
-    return;
-  }
-
-  if (number_of_binaries == 0) {
+  if (core >= number_of_binaries) {
     print_break_comment_for(core, "uninitialized code segment");
 
     print_line(state_code_segment_nid);
@@ -5257,10 +5214,9 @@ void print_code_segment(uint64_t core) {
     print_break_comment("zeroed code segment");
 
     print_line(init_zeroed_code_segment_nid);
+    print_line(next_zeroed_code_segment_nid);
 
     if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
-      print_line(next_zeroed_code_segment_nid);
-
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading code", log_ten(code_size * 3) + 1);
 
@@ -5273,9 +5229,8 @@ void print_code_segment(uint64_t core) {
       print_break_comment_for(core, "loaded code segment");
 
       print_line(init_code_segment_nid);
+      print_line(next_code_segment_nid);
     }
-
-    print_line(next_code_segment_nid);
   }
 }
 
@@ -9027,7 +8982,7 @@ void new_core_state(uint64_t core) {
     if (core > 0)
       return;
 
-  if (number_of_binaries > 0)
+  if (core < number_of_binaries)
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
   else
     initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
@@ -9082,6 +9037,8 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
 }
 
 void output_model(uint64_t core) {
+  print_segmentation(core);
+
   print_kernel_state(core);
 
   print_core_state(core);
@@ -9960,6 +9917,62 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
   }
 }
 
+void load_binary(uint64_t binary) {
+  if (binary < number_of_binaries) {
+    restore_binary(binary);
+
+    reset_interpreter();
+    reset_profiler();
+    reset_microkernel();
+
+    current_context = create_context(MY_CONTEXT, 0);
+
+    // assert: number_of_remaining_arguments() > 0
+
+    boot_loader(current_context);
+
+    restore_context(current_context);
+
+    // assert: allowances are multiples of word size
+
+    heap_initial_size = get_program_break(current_context) - get_heap_seg_start(current_context);
+
+    if (heap_initial_size > heap_allowance)
+      heap_allowance = round_up(heap_initial_size, PAGESIZE);
+
+    heap_start = get_heap_seg_start(current_context);
+    heap_size  = heap_allowance;
+
+    stack_initial_size = VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP);
+
+    if (stack_initial_size > stack_allowance)
+      stack_allowance = round_up(stack_initial_size, PAGESIZE);
+
+    stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+    stack_size  = stack_allowance;
+
+    // assert: stack_start >= heap_start + heap_size > 0
+  } else {
+    code_start = 4096;
+    code_size  = 7 * 4;
+
+    data_start = 8192;
+    data_size  = 0;
+
+    heap_initial_size = 0;
+
+    heap_start = 12288;
+    heap_size  = heap_allowance;
+
+    stack_initial_size = 0;
+
+    stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
+    stack_size  = stack_allowance;
+
+    // assert: stack_start >= heap_start + heap_size > 0
+  }
+}
+
 void model_rotor() {
   uint64_t i;
   uint64_t core;
@@ -9998,7 +10011,13 @@ void model_rotor() {
     w = w + dprintf(output_fd, "\n\n");
   }
 
-  init_model_generator(number_of_cores);
+  init_model();
+
+  init_interface_sorts();
+  init_interface_kernel();
+
+  init_register_file_sorts();
+  init_memory_sorts(max_code_size);
 
   print_interface_sorts();
   print_interface_kernel();
@@ -10006,12 +10025,25 @@ void model_rotor() {
   print_register_sorts();
   print_memory_sorts();
 
+  init_kernels(number_of_cores);
+  init_register_files(number_of_cores);
+  init_memories(number_of_cores);
+
+  init_instruction_mnemonics();
+  init_instruction_sorts();
+  init_compressed_instruction_sorts();
+
+  init_decoders(number_of_cores);
+  init_cores(number_of_cores);
+
+  init_properties(number_of_cores);
+
   core = 0;
 
   while (core < number_of_cores) {
-    new_segmentation(core);
+    load_binary(core);
 
-    print_segmentation(core);
+    new_segmentation(core);
 
     new_kernel_state(core, 1);
 
@@ -10685,6 +10717,9 @@ uint64_t rotor_arguments() {
             if (number_of_binaries > number_of_cores)
               number_of_cores = number_of_binaries;
 
+            if (code_size > max_code_size)
+              max_code_size = code_size;
+
             get_argument();
           } else
           return EXITCODE_BADARGUMENTS;
@@ -10785,8 +10820,13 @@ uint64_t selfie_model() {
         save_binary(0);
 
         number_of_binaries = 1;
-      } else
+
+        max_code_size = code_size;
+      } else {
         number_of_binaries = 0;
+
+        max_code_size = 7 * 4;
+      }
 
       exit_code = rotor_arguments();
 
@@ -10794,90 +10834,21 @@ uint64_t selfie_model() {
         return exit_code;
 
       if (number_of_binaries > 0) {
-        restore_binary(0);
+        init_memory(number_of_binaries);
 
-        reset_interpreter();
-        reset_profiler();
-        reset_microkernel();
-
-        init_memory(1);
-
-        current_context = create_context(MY_CONTEXT, 0);
-
-        // assert: number_of_remaining_arguments() > 0
-
-        boot_loader(current_context);
-
-        restore_context(current_context);
-
-        //do_switch(current_context, TIMEROFF);
-
-        // assert: allowances are multiples of word size
-
-        heap_initial_size = get_program_break(current_context) - get_heap_seg_start(current_context);
-
-        if (heap_initial_size > heap_allowance)
-          heap_allowance = round_up(heap_initial_size, PAGESIZE);
-
-        heap_start = get_heap_seg_start(current_context);
-        heap_size  = heap_allowance;
-
-        stack_initial_size = VIRTUALMEMORYSIZE * GIGABYTE - *(get_regs(current_context) + REG_SP);
-
-        if (stack_initial_size > stack_allowance)
-          stack_allowance = round_up(stack_initial_size, PAGESIZE);
-
-        stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
-        stack_size  = stack_allowance;
-
-        // assert: stack_start >= heap_start + heap_size > 0
-
-        if (number_of_cores > 1) {
+        if (number_of_binaries < number_of_cores) {
           SYNTHESIZE = 1;
-
-          SYNCHRONIZED_PC = 0;
-
-          SYNCHRONIZED_REGISTERS = 1;
-          SHARED_REGISTERS       = 0;
-
-          SYNCHRONIZED_MEMORY = 1;
-          SHARED_MEMORY       = 0;
+          model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
+        } else {
+          SYNTHESIZE = 0;
+          model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
         }
-
-        model_name = replace_extension(binary_name, "-rotorized", "btor2");
       } else {
-        code_start = 4096;
-        code_size  = 7 * 4;
-
-        data_start = 8192;
-        data_size  = 0;
-
-        heap_initial_size = 0;
-
-        heap_start = 12288;
-        heap_size  = heap_allowance;
-
-        stack_initial_size = 0;
-
-        stack_start = VIRTUALMEMORYSIZE * GIGABYTE - stack_allowance;
-        stack_size  = stack_allowance;
-
-        // assert: stack_start >= heap_start + heap_size > 0
-
         SYNTHESIZE = 1;
-
-        SYNCHRONIZED_PC = 0;
-
-        SYNCHRONIZED_REGISTERS = 0;
-        SHARED_REGISTERS       = 0;
-
-        SYNCHRONIZED_MEMORY = 0;
-        SHARED_MEMORY       = 0;
-
         if (IS64BITTARGET)
-          model_name = "64-bit-riscv-machine.btor2";
+          model_name = "64-bit-riscv-machine-synthesize.btor2";
         else
-          model_name = "32-bit-riscv-machine.btor2";
+          model_name = "32-bit-riscv-machine-synthesize.btor2";
       }
 
       // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
