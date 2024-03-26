@@ -2874,7 +2874,6 @@ uint64_t check_division_by_zero  = 1;
 uint64_t check_division_overflow = 1;
 uint64_t check_seg_faults        = 1;
 
-uint64_t exclude_a0_from_rd = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2896,7 +2895,6 @@ uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
 uint64_t* prop_bad_exit_code_nid  = (uint64_t*) 0;
 uint64_t* prop_bad_exit_code_nids = (uint64_t*) 0;
 
-uint64_t* prop_exclude_a0_from_rd_nids       = (uint64_t*) 0;
 uint64_t* prop_division_by_zero_nids         = (uint64_t*) 0;
 uint64_t* prop_signed_division_overflow_nids = (uint64_t*) 0;
 
@@ -2924,7 +2922,6 @@ void init_properties(uint64_t number_of_cores) {
 
   prop_bad_exit_code_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
-  prop_exclude_a0_from_rd_nids       = zmalloc(number_of_cores * sizeof(uint64_t*));
   prop_division_by_zero_nids         = zmalloc(number_of_cores * sizeof(uint64_t*));
   prop_signed_division_overflow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
@@ -9115,7 +9112,6 @@ void output_model(uint64_t core) {
 
   // optional state properties
 
-  print_break_line_for(core, prop_exclude_a0_from_rd_nids);
 
   print_break_line_for(core, prop_division_by_zero_nids);
 
@@ -9856,16 +9852,6 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
   // optional state properties
 
-  if (exclude_a0_from_rd)
-    set_for(core, prop_exclude_a0_from_rd_nids, state_property(core,
-      new_binary_boolean(OP_NEQ,
-        get_instruction_rd(ir_nid),
-        NID_A0,
-        "rd != a0"),
-      UNUSED,
-      format_comment("core-%lu-exclude-a0-from-rd", core),
-      format_comment("core-%lu only brk and read system call may update a0", core)));
-
   if (check_division_by_zero)
     set_for(core, prop_division_by_zero_nids, state_property(core,
       UNUSED,
@@ -10368,7 +10354,6 @@ uint64_t eval_properties(uint64_t core) {
 
   // optional state properties
 
-  halt = halt + eval_property_for(core, prop_exclude_a0_from_rd_nids);
   halt = halt + eval_property_for(core, prop_division_by_zero_nids);
   halt = halt + eval_property_for(core, prop_signed_division_overflow_nids);
 
