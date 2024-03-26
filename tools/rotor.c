@@ -342,6 +342,7 @@ uint64_t eval_binary_op(uint64_t* line);
 uint64_t eval_line(uint64_t* line);
 uint64_t eval_line_for(uint64_t core, uint64_t* lines);
 
+uint64_t eval_property(uint64_t core, uint64_t* line);
 uint64_t eval_property_for(uint64_t core, uint64_t* lines);
 
 uint64_t eval_init(uint64_t* line);
@@ -2851,12 +2852,13 @@ void model_rotor();
 
 uint64_t number_of_binaries = 0; // number of loaded binaries
 
-uint64_t SYNTHESIZE = 0; // flag for synthesizing versus analyzing code
+char* bad_exit_code_check_option = (char*) 0;
+char* exit_codes_compare_option  = (char*) 0;
 
-char* exit_code_check_option         = (char*) 0;
 char* division_by_zero_check_option  = (char*) 0;
 char* division_overflow_check_option = (char*) 0;
-char* seg_faults_check_option        = (char*) 0;
+
+char* seg_faults_check_option = (char*) 0;
 
 char* cores_option                 = (char*) 0;
 char* virtual_address_space_option = (char*) 0;
@@ -2865,15 +2867,17 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-uint64_t evaluate_model    = 0;
+uint64_t evaluate_model    = 1;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
 
-uint64_t check_exit_code         = 1;
+uint64_t check_bad_exit_code = 1;
+uint64_t compare_exit_codes  = 1;
+
 uint64_t check_division_by_zero  = 1;
 uint64_t check_division_overflow = 1;
-uint64_t check_seg_faults        = 1;
 
+uint64_t check_seg_faults = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2894,6 +2898,13 @@ uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
 
 uint64_t* prop_bad_exit_code_nid  = (uint64_t*) 0;
 uint64_t* prop_bad_exit_code_nids = (uint64_t*) 0;
+
+uint64_t* prop_active_exits_nid           = (uint64_t*) 0;
+uint64_t* prop_previous_core_a0_value_nid = (uint64_t*) 0;
+
+uint64_t* prop_exit_codes_nid = (uint64_t*) 0;
+
+uint64_t are_exit_codes_different = 0;
 
 uint64_t* prop_division_by_zero_nids         = (uint64_t*) 0;
 uint64_t* prop_signed_division_overflow_nids = (uint64_t*) 0;
@@ -4311,14 +4322,11 @@ uint64_t eval_line_for(uint64_t core, uint64_t* lines) {
   return eval_line(get_for(core, lines));
 }
 
-uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
-  uint64_t* line;
+uint64_t eval_property(uint64_t core, uint64_t* line) {
   char* op;
   uint64_t* condition_nid;
   char* symbol;
   uint64_t condition;
-
-  line = get_for(core, lines);
 
   if (line == UNUSED)
     // no property to evaluate: do not halt
@@ -4358,6 +4366,10 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
   printf("%s: unknown property operator %s\n", selfie_name, op);
 
   exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
+  return eval_property(core, get_for(core, lines));
 }
 
 uint64_t eval_init(uint64_t* line) {
@@ -9020,7 +9032,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
     if (bad_nid == UNUSED)
       return UNUSED;
 
-  if (((number_of_binaries == 0) + (SYNTHESIZE * (core > 0))) > 0) {
+  if (((number_of_binaries == 0) + ((number_of_binaries < number_of_cores) * (core > 0))) > 0) {
     if (good_nid == UNUSED)
       good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
@@ -9107,11 +9119,14 @@ void output_model(uint64_t core) {
 
   print_break_line_for(core, prop_is_syscall_id_known_nids);
 
+  // optional exit properties
+
+  print_break_line_for(core, prop_bad_exit_code_nids);
+
   if (core == number_of_cores - 1)
-    print_break_line_for(core, prop_bad_exit_code_nids);
+    print_break_line(prop_exit_codes_nid);
 
-  // optional state properties
-
+  // optional arithmetic properties
 
   print_break_line_for(core, prop_division_by_zero_nids);
 
@@ -9498,7 +9513,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   uint64_t* a1_value_nid;
   uint64_t* a2_value_nid;
 
-  uint64_t* bad_exit_code_nid;
+  uint64_t* equal_a0_values_nid;
 
   // system call ABI control flow
 
@@ -9620,34 +9635,58 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
       format_comment("core-%lu-write-seg-fault", core),
       format_comment("core-%lu possible write segmentation fault", core)));
 
-  if (check_exit_code) {
-    bad_exit_code_nid = new_binary_boolean(OP_AND,
-      active_exit_nid,
-      new_binary_boolean(OP_EQ,
+  if (check_bad_exit_code) {
+    prop_bad_exit_code_nid = new_property(OP_BAD,
+      new_binary_boolean(OP_AND,
+        active_exit_nid,
+        new_binary_boolean(OP_EQ,
+          a0_value_nid,
+          new_constant(OP_CONSTD, SID_MACHINE_WORD,
+            bad_exit_code, 0, format_comment("bad exit code %ld", bad_exit_code)),
+          "actual exit code == bad exit code?"),
+        "active exit system call with bad exit code"),
+      format_comment("core-%lu-bad-exit-code", core),
+      format_comment("exit(%ld)", bad_exit_code));
+
+    set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
+  }
+
+  if (compare_exit_codes) {
+    if (core == 0) {
+      prop_active_exits_nid = active_exit_nid;
+
+      prop_exit_codes_nid = UNUSED;
+    } else {
+      prop_active_exits_nid = new_binary_boolean(OP_AND,
+        prop_active_exits_nid,
+        active_exit_nid,
+        format_comment("up to core-%lu active exits?", core));
+
+      equal_a0_values_nid = new_binary_boolean(OP_EQ,
+        prop_previous_core_a0_value_nid,
         a0_value_nid,
-        new_constant(OP_CONSTD, SID_MACHINE_WORD,
-          bad_exit_code, 0, format_comment("bad exit code %ld", bad_exit_code)),
-        "actual exit code == bad exit code?"),
-      format_comment("core-%lu active exit system call with bad exit code", core));
+        format_comment("previous core exit code == core-%lu exit code?", core));
 
-    if (core == 0)
-      prop_bad_exit_code_nid = bad_exit_code_nid;
-    else
-      prop_bad_exit_code_nid = new_binary_boolean(OP_AND,
-        prop_bad_exit_code_nid,
-        bad_exit_code_nid,
-        "and next bad exit");
+      if (core == 1)
+        prop_exit_codes_nid = equal_a0_values_nid;
+      else
+        prop_exit_codes_nid = new_binary_boolean(OP_AND,
+          prop_exit_codes_nid,
+          equal_a0_values_nid,
+        format_comment("up to core-%lu same exit codes?", core));
 
-    if (core == number_of_cores - 1)
-      prop_bad_exit_code_nid = new_property(OP_BAD,
-        prop_bad_exit_code_nid,
-        "bad-exit-code",
-        format_comment("exit(%ld)", bad_exit_code));
+      if (core == number_of_cores - 1)
+        prop_exit_codes_nid = state_property(core,
+          new_binary_boolean(OP_IMPLIES,
+            prop_active_exits_nid,
+            prop_exit_codes_nid,
+            "all cores should exit with the same exit code"),
+          UNUSED,
+          "exit-codes",
+          "exit codes on all cores");
+    }
 
-    if (core < number_of_cores - 1)
-      set_for(core, prop_bad_exit_code_nids, UNUSED);
-    else
-      set_for(core, prop_bad_exit_code_nids, prop_bad_exit_code_nid);
+    prop_previous_core_a0_value_nid = a0_value_nid;
   }
 }
 
@@ -9850,7 +9889,7 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
     format_comment("core-%lu-fetch-seg-fault", core),
     format_comment("core-%lu imminent fetch segmentation fault", core)));
 
-  // optional state properties
+  // optional arithmetic properties
 
   if (check_division_by_zero)
     set_for(core, prop_division_by_zero_nids, state_property(core,
@@ -9966,8 +10005,10 @@ void model_rotor() {
   w = w
     + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
     + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
-  if (check_exit_code == 0)
-    w = w + dprintf(output_fd, "; with %s\n", exit_code_check_option);
+  if (check_bad_exit_code == 0)
+    w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
+  if (compare_exit_codes == 0)
+    w = w + dprintf(output_fd, "; with %s\n", exit_codes_compare_option);
   if (check_division_by_zero == 0)
     w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
   if (check_division_overflow == 0)
@@ -10349,10 +10390,15 @@ uint64_t eval_properties(uint64_t core) {
   halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids);
   halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids);
 
-  // if satisfied rotor reports exit in current step
-  eval_property_for(core, prop_bad_exit_code_nids);
+  // optional exit properties
 
-  // optional state properties
+  halt = halt + eval_property_for(core, prop_bad_exit_code_nids);
+
+  if (core == number_of_cores - 1)
+    // if falsified rotor reports exit in current step
+    are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid);
+
+  // optional arithmetic properties
 
   halt = halt + eval_property_for(core, prop_division_by_zero_nids);
   halt = halt + eval_property_for(core, prop_signed_division_overflow_nids);
@@ -10569,101 +10615,111 @@ void eval_multicore_states() {
 }
 
 void eval_rotor() {
-  if (number_of_binaries > 0)
-    if (SYNTHESIZE == 0) {
-      printf("%s: ********************************************************************************\n", selfie_name);
+  if (number_of_binaries == number_of_cores) {
+    printf("%s: ********************************************************************************\n", selfie_name);
 
-      current_offset = 0;
-      current_step   = 0;
+    current_offset = 0;
+    current_step   = 0;
 
-      input_steps   = 0;
-      current_input = 0;
+    input_steps   = 0;
+    current_input = 0;
 
-      save_multicore_states();
+    save_multicore_states();
 
-      while (current_input < 256) {
-        next_step = next_step + 1;
+    while (current_input < 256) {
+      next_step = next_step + 1;
 
-        first_input = 0;
-        any_input   = 0;
+      first_input = 0;
+      any_input   = 0;
 
-        eval_multicore_states();
+      eval_multicore_states();
 
-        if (min_steps > next_step - current_offset) {
-          min_steps = next_step - current_offset;
+      if (min_steps > next_step - current_offset) {
+        min_steps = next_step - current_offset;
 
-          min_input = current_input;
-        }
-
-        if (max_steps < next_step - current_offset) {
-          max_steps = next_step - current_offset;
-
-          max_input = current_input;
-        }
-
-        if (any_input) {
-          restore_multicore_states();
-
-          current_offset = next_step - input_steps;
-          current_step   = next_step;
-
-          current_input = current_input + 1;
-        } else {
-          printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
-
-          return;
-        }
+        min_input = current_input;
       }
 
-      printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
-        min_steps, min_input, max_steps, max_input);
+      if (max_steps < next_step - current_offset) {
+        max_steps = next_step - current_offset;
+
+        max_input = current_input;
+      }
+
+      if (any_input) {
+        restore_multicore_states();
+
+        current_offset = next_step - input_steps;
+        current_step   = next_step;
+
+        current_input = current_input + 1;
+      } else {
+        printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
+
+        return;
+      }
     }
+
+    printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
+      min_steps, min_input, max_steps, max_input);
+
+    if (compare_exit_codes)
+      if (number_of_binaries > 1) {
+        if (are_exit_codes_different)
+          printf("%s: exit codes are different for some input\n", selfie_name);
+        else
+          printf("%s: exit codes are equal for all considered inputs\n", selfie_name);
+      }
+  }
 }
 
 void disassemble_rotor(uint64_t core) {
   uint64_t* pc_nid;
   uint64_t* ir_nid;
 
-  if (number_of_binaries > 0)
-    if (SYNTHESIZE == 0) {
-      printf("%s: ********************************************************************************\n", selfie_name);
+  if (core < number_of_binaries) {
+    printf("%s: ********************************************************************************\n", selfie_name);
 
-      pc_nid = get_for(core, state_pc_nids);
+    pc_nid = get_for(core, state_pc_nids);
 
-      set_state(pc_nid, code_start);
+    set_state(pc_nid, code_start);
+    set_step(pc_nid, next_step);
+
+    set_step(get_for(core, state_code_segment_nids), next_step);
+
+    ir_nid = get_for(core, eval_ir_nids);
+
+    current_step = next_step;
+
+    while (get_state(pc_nid) < code_start + code_size) {
+      next_step = next_step + 1;
+
+      print_assembly(core);
+      printf("\n");
+
+      if (eval_line(is_compressed_instruction(ir_nid)))
+        set_state(pc_nid, get_state(pc_nid) + 2);
+      else
+        set_state(pc_nid, get_state(pc_nid) + 4);
+
       set_step(pc_nid, next_step);
 
       set_step(get_for(core, state_code_segment_nids), next_step);
 
-      ir_nid = get_for(core, eval_ir_nids);
-
       current_step = next_step;
-
-      while (get_state(pc_nid) < code_start + code_size) {
-        next_step = next_step + 1;
-
-        print_assembly(core);
-        printf("\n");
-
-        if (eval_line(is_compressed_instruction(ir_nid)))
-          set_state(pc_nid, get_state(pc_nid) + 2);
-        else
-          set_state(pc_nid, get_state(pc_nid) + 4);
-
-        set_step(pc_nid, next_step);
-
-        set_step(get_for(core, state_code_segment_nids), next_step);
-
-        current_step = next_step;
-      }
     }
+  }
 }
 
 uint64_t rotor_arguments() {
-  exit_code_check_option         = "-Pnoexitcode";
+  bad_exit_code_check_option = "-Pnobadexitcode";
+  exit_codes_compare_option  = "-Pnocompareexitcodes";
+
   division_by_zero_check_option  = "-Pnodivbyzero";
   division_overflow_check_option = "-Pnodivoverflow";
-  seg_faults_check_option        = "-Pnosegfaults";
+
+  seg_faults_check_option = "-Pnosegfaults";
+
   cores_option                   = "-cores";
   virtual_address_space_option   = "-virtualaddressspace";
   code_word_size_option          = "-codewordsize";
@@ -10710,8 +10766,12 @@ uint64_t rotor_arguments() {
           return EXITCODE_BADARGUMENTS;
         } else
           return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), exit_code_check_option)) {
-        check_exit_code = 0;
+      } else if (string_compare(peek_argument(1), bad_exit_code_check_option)) {
+        check_bad_exit_code = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), exit_codes_compare_option)) {
+        compare_exit_codes = 0;
 
         get_argument();
       } else if (string_compare(peek_argument(1), division_by_zero_check_option)) {
@@ -10821,15 +10881,11 @@ uint64_t selfie_model() {
       if (number_of_binaries > 0) {
         init_memory(number_of_binaries);
 
-        if (number_of_binaries < number_of_cores) {
-          SYNTHESIZE = 1;
+        if (number_of_binaries < number_of_cores)
           model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
-        } else {
-          SYNTHESIZE = 0;
+        else
           model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
-        }
       } else {
-        SYNTHESIZE = 1;
         if (IS64BITTARGET)
           model_name = "64-bit-riscv-machine-synthesize.btor2";
         else
