@@ -2902,7 +2902,8 @@ uint64_t* prop_bad_exit_code_nids = (uint64_t*) 0;
 uint64_t* prop_active_exits_nid           = (uint64_t*) 0;
 uint64_t* prop_previous_core_a0_value_nid = (uint64_t*) 0;
 
-uint64_t* prop_exit_codes_nid = (uint64_t*) 0;
+uint64_t* prop_exit_codes_nid       = (uint64_t*) 0;
+uint64_t* prop_all_cores_exited_nid = (uint64_t*) 0;
 
 uint64_t are_exit_codes_different = 0;
 
@@ -9032,7 +9033,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
     if (bad_nid == UNUSED)
       return UNUSED;
 
-  if (((number_of_binaries == 0) + ((number_of_binaries < number_of_cores) * (core > 0))) > 0) {
+  if (core >= number_of_binaries) {
     if (good_nid == UNUSED)
       good_nid = new_unary_boolean(OP_NOT, bad_nid, "asserting");
 
@@ -9123,8 +9124,11 @@ void output_model(uint64_t core) {
 
   print_break_line_for(core, prop_bad_exit_code_nids);
 
-  if (core == number_of_cores - 1)
+  if (core == number_of_cores - 1) {
     print_break_line(prop_exit_codes_nid);
+
+    print_break_line(prop_all_cores_exited_nid);
+  }
 
   // optional arithmetic properties
 
@@ -9655,7 +9659,8 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
     if (core == 0) {
       prop_active_exits_nid = active_exit_nid;
 
-      prop_exit_codes_nid = UNUSED;
+      prop_exit_codes_nid       = UNUSED;
+      prop_all_cores_exited_nid = UNUSED;
     } else {
       prop_active_exits_nid = new_binary_boolean(OP_AND,
         prop_active_exits_nid,
@@ -9675,7 +9680,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
           equal_a0_values_nid,
         format_comment("up to core-%lu same exit codes?", core));
 
-      if (core == number_of_cores - 1)
+      if (core == number_of_cores - 1) {
         prop_exit_codes_nid = state_property(core,
           new_binary_boolean(OP_IMPLIES,
             prop_active_exits_nid,
@@ -9684,6 +9689,13 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
           UNUSED,
           "exit-codes",
           "exit codes on all cores");
+
+        if (number_of_binaries < number_of_cores)
+          prop_all_cores_exited_nid = new_property(OP_BAD,
+            prop_active_exits_nid,
+            "all-cores-exited",
+            "all cores exited");
+      }
     }
 
     prop_previous_core_a0_value_nid = a0_value_nid;
@@ -10404,9 +10416,13 @@ uint64_t eval_properties(uint64_t core) {
 
   halt = halt + eval_property_for(core, prop_bad_exit_code_nids);
 
-  if (core == number_of_cores - 1)
-    // if falsified rotor reports exit in current step
+  if (core == number_of_cores - 1) {
+    // if property is falsified rotor terminates evaluation in current step
     are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid);
+
+    // if property is satisfied rotor terminates evaluation in current step
+    eval_property(core, prop_all_cores_exited_nid);
+  }
 
   // optional arithmetic properties
 
