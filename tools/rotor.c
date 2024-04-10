@@ -2867,7 +2867,7 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-uint64_t evaluate_model    = 1;
+uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
 
