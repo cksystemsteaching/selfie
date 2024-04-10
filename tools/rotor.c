@@ -10,7 +10,54 @@ in Austria. For further information and code please refer to:
 selfie.cs.uni-salzburg.at
 
 Rotor is a tool for bit-precise reasoning about RISC-V machines
-using BTOR2 as intermediate modeling format.
+and RISC-V code using BTOR2 as intermediate modeling format.
+
+Rotor generates models of 64-bit and 32-bit RISC-V machines
+supporting 64-bit and 32-bit integer arithmetic (RV64I, RV32I)
+with multiplication and division (RV64M, RV32M) as well as
+compressed instructions (RVC).
+
+Rotor generates models without RISC-V code (for code synthesis)
+and models with RISC-V code loaded from selfie- and gcc-generated
+RISC-V ELF binaries (for code analysis) in linear time and space
+in the size of the binaries.
+
+BTOR2 models feature combinational and seqential logic over
+bitvectors and arrays of bitvectors. The state space of BTOR2
+models evolves in steps through sequential logic and can be
+checked for safety and finite liveness properties with a
+bounded model checker using an SMT solver as backend.
+
+Given some k > 0, a BTOR2 model of size m with some state
+properties can be unrolled into an SMT formula of size O(k*m)
+that is satisfiable if and only if there is model input for
+which at least one state property holds in the model in no
+more than k steps. Model input is contained in satisfying
+assignments of the variables in the SMT formulae.
+
+Rotor essentially reduces reachability of machine and program
+states to satisfiability of SMT formulae. A rotor model encodes
+bit-precise RISC-V semantics such that:
+
+For all k > 0, the SMT formula unrolled from the model k times is
+satisfiable if and only if there is machine input (code synthesis)
+or program input (for code analysis) such that a machine state or
+program state is reached for which at least one state property of
+the model holds after executing k machine instructions.
+
+Rotor enables symbolic execution of selfie- and gcc-generated
+RISC-V ELF binaries using bounded model checkers and SMT solvers.
+Rotor also enables synthesizing executable RISC-V code as well as
+checking semantical equivalence of selfie- and gcc-generated RISC-V
+ELF binaries. Program input that leads to program errors as well as
+machine input representing synthesized code can be derived from the
+output of bounded model checkers and SMT solvers.
+
+Models for code synthesis and program equivalence essentially use
+multiple RISC-V cores that can be configured to share parts of the
+machine state (program counter, registers, memory). Full multicore
+support for reasoning about concurrent code is future work.
+
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
