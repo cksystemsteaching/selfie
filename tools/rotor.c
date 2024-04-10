@@ -41,9 +41,9 @@ bit-precise RISC-V semantics such that:
 
 For all k > 0, the SMT formula unrolled from the model k times is
 satisfiable if and only if there is machine input (code synthesis)
-or program input (for code analysis) such that a machine state or
-program state is reached for which at least one state property of
-the model holds after executing k machine instructions.
+or program input (code analysis) such that a machine or program
+state is reached for which at least one state property of the
+model holds after executing k machine instructions.
 
 Rotor enables symbolic execution of selfie- and gcc-generated
 RISC-V ELF binaries using bounded model checkers and SMT solvers.
