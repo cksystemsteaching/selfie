@@ -4792,9 +4792,6 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
 
     next_program_break_nid   = state_program_break_nid;
     next_file_descriptor_nid = state_file_descriptor_nid;
-  } else {
-    next_program_break_nid   = eval_program_break_nid;
-    next_file_descriptor_nid = eval_file_descriptor_nid;
   }
 
   param_readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
@@ -9483,7 +9480,7 @@ void kernel_sequential(uint64_t core,
     new_ternary(OP_ITE, SID_VIRTUAL_ADDRESS,
       active_brk_nid,
       new_program_break_nid,
-      program_break_nid,
+      next_program_break_nid,
       "new program break");
 
   if (core == number_of_cores - 1)
@@ -9499,7 +9496,7 @@ void kernel_sequential(uint64_t core,
     new_ternary(OP_ITE, SID_MACHINE_WORD,
       active_openat_nid,
       new_file_descriptor_nid,
-      file_descriptor_nid,
+      next_file_descriptor_nid,
       "new file descriptor");
 
   if (core == number_of_cores - 1)
