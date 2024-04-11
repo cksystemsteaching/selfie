@@ -2122,7 +2122,7 @@ uint64_t* eval_compressed_instruction_memory_data_flow_nid = (uint64_t*) 0;
 void init_instruction_mnemonics() {
   RISC_V_MNEMONICS = smalloc((ID_C_JAL + 1) * sizeof(char*));
 
-  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unkown";
+  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unknown";
 
   *(RISC_V_MNEMONICS + ID_ECALL) = (uint64_t) "ecall";
 
@@ -10279,6 +10279,7 @@ void print_assembly(uint64_t core) {
     shamt = eval_line(get_compressed_instruction_shamt(c_ir_nid));
 
     SB_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
+    U_imm  = eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid));
     UJ_imm = eval_line(get_compressed_instruction_CJ_offset(c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
@@ -10300,10 +10301,9 @@ void print_assembly(uint64_t core) {
       if (ID == ID_C_LI) {
         rs1 = get_register_name(REG_ZR);
         ID  = ID_ADDI;
-      } else if (ID == ID_C_LUI) {
-        I_imm = eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid));
-        ID    = ID_LUI;
-      } else if (ID == ID_C_ADDI)
+      } else if (ID == ID_C_LUI)
+        ID = ID_LUI;
+      else if (ID == ID_C_ADDI)
         ID = ID_ADDI;
       else if (ID == ID_C_ADDIW)
         ID = ID_ADDIW;
@@ -10318,7 +10318,7 @@ void print_assembly(uint64_t core) {
         I_imm = eval_line(get_compressed_instruction_CIW_immediate(c_ir_nid));
         ID    = ID_ADDI;
       } else if (ID == ID_C_SLLI)
-        ID    = ID_SLLI;
+        ID = ID_SLLI;
       else {
         rs1 = get_register_name(REG_SP);
         if (ID == ID_C_LWSP) {
