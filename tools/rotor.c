@@ -10750,6 +10750,8 @@ void disassemble_rotor(uint64_t core) {
   if (core < number_of_binaries) {
     printf("%s: ********************************************************************************\n", selfie_name);
 
+    restore_binary(core);
+
     pc_nid = get_for(core, state_pc_nids);
 
     set_state(pc_nid, code_start);
@@ -10759,9 +10761,9 @@ void disassemble_rotor(uint64_t core) {
 
     ir_nid = get_for(core, eval_ir_nids);
 
-    current_step = next_step;
-
     while (get_state(pc_nid) < code_start + code_size) {
+      current_step = next_step;
+
       next_step = next_step + 1;
 
       print_assembly(core);
@@ -10775,8 +10777,6 @@ void disassemble_rotor(uint64_t core) {
       set_step(pc_nid, next_step);
 
       set_step(get_for(core, state_code_segment_nids), next_step);
-
-      current_step = next_step;
     }
   }
 }
