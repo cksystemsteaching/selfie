@@ -918,8 +918,13 @@ uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid);
 uint64_t* load_byte(uint64_t* machine_word_nid, uint64_t* memory_nid);
 uint64_t* store_byte(uint64_t* machine_word_nid, uint64_t* byte_nid, uint64_t* memory_nid);
 
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid);
+uint64_t* load_half_word_from_segment(uint64_t* machine_word_nid, uint64_t* start_nid, uint64_t* segment_nid);
+
 uint64_t* load_half_word(uint64_t* machine_word_nid, uint64_t* memory_nid);
 uint64_t* store_half_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
+
+uint64_t* load_single_word_from_segment(uint64_t* machine_word_nid, uint64_t* start_nid, uint64_t* segment_nid);
 
 uint64_t* load_single_word(uint64_t* machine_word_nid, uint64_t* memory_nid);
 uint64_t* store_single_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
@@ -5023,9 +5028,6 @@ void new_segmentation(uint64_t core) {
   uint64_t low_stack_address_space;
   uint64_t up_stack_address_space;
 
-  if (core > 0)
-    return;
-
   NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
     code_start,
     round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
@@ -5124,10 +5126,7 @@ void new_segmentation(uint64_t core) {
 }
 
 void print_segmentation(uint64_t core) {
-  if (core > 0)
-    return;
-
-  print_break_comment("segmentation");
+  print_break_comment_for(core, "segmentation");
 
   print_line(NID_CODE_START);
   print_line(NID_CODE_END);
@@ -5224,7 +5223,7 @@ void new_code_segment(uint64_t core) {
       if (ir != 0) {
         // skipping zero as instruction
         vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          pc, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
+          pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
 
         ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
           ir, 32, format_comment("code 0x%04lX", ir));
@@ -5516,11 +5515,6 @@ uint64_t is_double_word_memory(uint64_t* memory_nid) {
 uint64_t* vaddr_to_paddr(uint64_t* vaddr_nid, uint64_t* memory_nid) {
   uint64_t memory_address_space;
   uint64_t memory_word_size_in_bytes;
-
-  if (get_sid(memory_nid) == SID_CODE_STATE)
-    if (code_start > 0)
-      vaddr_nid = new_binary(OP_SUB, SID_VIRTUAL_ADDRESS,
-        vaddr_nid, NID_CODE_START, "offset non-zero start of code segment");
 
   memory_address_space = eval_array_size(get_sid(memory_nid));
 
@@ -6071,6 +6065,17 @@ uint64_t* store_byte(uint64_t* machine_word_nid, uint64_t* byte_nid, uint64_t* m
     cast_machine_word_to_virtual_address(machine_word_nid), byte_nid, memory_nid);
 }
 
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid) {
+  // TODO: distinguish linear addresses from virtual addresses
+  return new_binary(OP_SUB, SID_VIRTUAL_ADDRESS, vaddr_nid, start_nid, "offset start of segment");
+}
+
+uint64_t* load_half_word_from_segment(uint64_t* machine_word_nid, uint64_t* start_nid, uint64_t* segment_nid) {
+  return load_half_word_at_virtual_address(
+    vaddr_to_laddr(cast_machine_word_to_virtual_address(machine_word_nid), start_nid),
+    segment_nid);
+}
+
 uint64_t* load_half_word(uint64_t* machine_word_nid, uint64_t* memory_nid) {
   return load_half_word_at_virtual_address(
     cast_machine_word_to_virtual_address(machine_word_nid), memory_nid);
@@ -6079,6 +6084,12 @@ uint64_t* load_half_word(uint64_t* machine_word_nid, uint64_t* memory_nid) {
 uint64_t* store_half_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid) {
   return store_half_word_at_virtual_address(
     cast_machine_word_to_virtual_address(machine_word_nid), word_nid, memory_nid);
+}
+
+uint64_t* load_single_word_from_segment(uint64_t* machine_word_nid, uint64_t* start_nid, uint64_t* segment_nid) {
+  return load_single_word_at_virtual_address(
+    vaddr_to_laddr(cast_machine_word_to_virtual_address(machine_word_nid), start_nid),
+    segment_nid);
 }
 
 uint64_t* load_single_word(uint64_t* machine_word_nid, uint64_t* memory_nid) {
@@ -6219,12 +6230,12 @@ uint64_t* is_sized_block_in_main_memory(uint64_t* machine_word_nid, uint64_t* si
 }
 
 uint64_t* fetch_instruction(uint64_t* pc_nid, uint64_t* code_segment_nid) {
-  return load_single_word(pc_nid, code_segment_nid);
+  return load_single_word_from_segment(pc_nid, NID_CODE_START, code_segment_nid);
 }
 
 uint64_t* fetch_compressed_instruction(uint64_t* pc_nid, uint64_t* code_segment_nid) {
   if (RVC)
-    return load_half_word(pc_nid, code_segment_nid);
+    return load_half_word_from_segment(pc_nid, NID_CODE_START, code_segment_nid);
   else
     return UNUSED;
 }
