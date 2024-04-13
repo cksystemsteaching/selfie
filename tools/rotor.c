@@ -815,6 +815,16 @@ uint64_t* is_virtual_address_in_data_segment(uint64_t* vaddr_nid);
 uint64_t* is_virtual_address_in_heap_segment(uint64_t* vaddr_nid);
 uint64_t* is_virtual_address_in_stack_segment(uint64_t* vaddr_nid);
 
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid);
+uint64_t* vaddr_to_code_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_data_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_heap_laddr(uint64_t* vaddr_nid);
+uint64_t* vaddr_to_stack_laddr(uint64_t* vaddr_nid);
+
+uint64_t* store_if_in_data_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
+uint64_t* store_if_in_heap_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
+uint64_t* store_if_in_stack_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
+
 void new_code_segment(uint64_t core);
 void print_code_segment(uint64_t core);
 
@@ -920,34 +930,40 @@ uint64_t* cast_virtual_address_to_machine_word(uint64_t* vaddr_nid);
 uint64_t* cast_machine_word_to_virtual_address(uint64_t* machine_word_nid);
 uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid);
 
-uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid);
-uint64_t* vaddr_to_code_laddr(uint64_t* vaddr_nid);
-uint64_t* vaddr_to_data_laddr(uint64_t* vaddr_nid);
-uint64_t* vaddr_to_heap_laddr(uint64_t* vaddr_nid);
-uint64_t* vaddr_to_stack_laddr(uint64_t* vaddr_nid);
-
 uint64_t* load_byte_from_segments(uint64_t* machine_word_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* store_byte_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_byte_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_byte_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
 uint64_t* store_byte(uint64_t* machine_word_nid, uint64_t* byte_nid, uint64_t* memory_nid);
 
 uint64_t* load_half_word_from_code_segment(uint64_t* machine_word_nid, uint64_t* segment_nid);
 uint64_t* load_half_word_from_segments(uint64_t* machine_word_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* store_half_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_half_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_half_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
 uint64_t* store_half_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* load_single_word_from_code_segment(uint64_t* machine_word_nid, uint64_t* segment_nid);
 uint64_t* load_single_word_from_stack_segment(uint64_t* machine_word_nid, uint64_t* segment_nid);
 uint64_t* load_single_word_from_segments(uint64_t* machine_word_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
-uint64_t* store_single_word_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
-uint64_t* store_single_word_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
 uint64_t* store_single_word_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_single_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_single_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_single_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
 
 uint64_t* store_single_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* load_double_word_from_stack_segment(uint64_t* machine_word_nid, uint64_t* segment_nid);
 uint64_t* load_double_word_from_segments(uint64_t* machine_word_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
+uint64_t* store_double_word_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_double_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_double_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+uint64_t* store_double_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid);
+
 uint64_t* store_double_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid);
 
 uint64_t* does_machine_word_work_as_virtual_address(uint64_t* machine_word_nid, uint64_t* property_nid);
@@ -5217,6 +5233,54 @@ uint64_t* is_virtual_address_in_stack_segment(uint64_t* vaddr_nid) {
   return is_block_in_stack_segment(vaddr_nid, vaddr_nid);
 }
 
+uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid) {
+  // TODO: distinguish linear addresses from virtual addresses
+  return new_binary(OP_SUB, SID_VIRTUAL_ADDRESS, vaddr_nid, start_nid, "offset start of segment");
+}
+
+uint64_t* vaddr_to_code_laddr(uint64_t* vaddr_nid) {
+  return vaddr_to_laddr(vaddr_nid, NID_CODE_START);
+}
+
+uint64_t* vaddr_to_data_laddr(uint64_t* vaddr_nid) {
+  //return vaddr_to_laddr(vaddr_nid, NID_DATA_START);
+  return vaddr_nid;
+}
+
+uint64_t* vaddr_to_heap_laddr(uint64_t* vaddr_nid) {
+  //return vaddr_to_laddr(vaddr_nid, NID_HEAP_START);
+  return vaddr_nid;
+}
+
+uint64_t* vaddr_to_stack_laddr(uint64_t* vaddr_nid) {
+  //return vaddr_to_laddr(vaddr_nid, NID_STACK_START);
+  return vaddr_nid;
+}
+
+uint64_t* store_if_in_data_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid) {
+  return new_ternary(OP_ITE, get_sid(segment_nid),
+    is_virtual_address_in_data_segment(vaddr_nid),
+    store_nid,
+    segment_nid,
+    "store at virtual address if in data segment");
+}
+
+uint64_t* store_if_in_heap_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid) {
+  return new_ternary(OP_ITE, get_sid(segment_nid),
+    is_virtual_address_in_heap_segment(vaddr_nid),
+    store_nid,
+    segment_nid,
+    "store at virtual address if in heap segment");
+}
+
+uint64_t* store_if_in_stack_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid) {
+  return new_ternary(OP_ITE, get_sid(segment_nid),
+    is_virtual_address_in_stack_segment(vaddr_nid),
+    store_nid,
+    segment_nid,
+    "store at virtual address if in stack segment");
+}
+
 void new_code_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
   uint64_t* vaddr_nid;
@@ -6089,30 +6153,6 @@ uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid) {
     return NID_TRUE;
 }
 
-uint64_t* vaddr_to_laddr(uint64_t* vaddr_nid, uint64_t* start_nid) {
-  // TODO: distinguish linear addresses from virtual addresses
-  return new_binary(OP_SUB, SID_VIRTUAL_ADDRESS, vaddr_nid, start_nid, "offset start of segment");
-}
-
-uint64_t* vaddr_to_code_laddr(uint64_t* vaddr_nid) {
-  return vaddr_to_laddr(vaddr_nid, NID_CODE_START);
-}
-
-uint64_t* vaddr_to_data_laddr(uint64_t* vaddr_nid) {
-  //return vaddr_to_laddr(vaddr_nid, NID_DATA_START);
-  return vaddr_nid;
-}
-
-uint64_t* vaddr_to_heap_laddr(uint64_t* vaddr_nid) {
-  //return vaddr_to_laddr(vaddr_nid, NID_HEAP_START);
-  return vaddr_nid;
-}
-
-uint64_t* vaddr_to_stack_laddr(uint64_t* vaddr_nid) {
-  //return vaddr_to_laddr(vaddr_nid, NID_STACK_START);
-  return vaddr_nid;
-}
-
 uint64_t* load_byte_from_segments(uint64_t* machine_word_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   uint64_t* vaddr_nid;
@@ -6128,6 +6168,36 @@ uint64_t* load_byte_from_segments(uint64_t* machine_word_nid,
       load_byte_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), data_segment_nid),
       "load byte from heap or data segment"),
     "load byte from stack, heap, or data segment");
+}
+
+uint64_t* store_byte_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_data_segment(vaddr_nid,
+    store_byte_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_byte_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_heap_segment(vaddr_nid,
+    store_byte_at_virtual_address(vaddr_to_heap_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_byte_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_stack_segment(vaddr_nid,
+    store_byte_at_virtual_address(vaddr_to_stack_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
 }
 
 uint64_t* store_byte(uint64_t* machine_word_nid, uint64_t* byte_nid, uint64_t* memory_nid) {
@@ -6155,6 +6225,36 @@ uint64_t* load_half_word_from_segments(uint64_t* machine_word_nid,
       load_half_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), data_segment_nid),
       "load half word from heap or data segment"),
     "load half word from stack, heap, or data segment");
+}
+
+uint64_t* store_half_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_data_segment(vaddr_nid,
+    store_half_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_half_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_heap_segment(vaddr_nid,
+    store_half_word_at_virtual_address(vaddr_to_heap_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_half_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_stack_segment(vaddr_nid,
+    store_half_word_at_virtual_address(vaddr_to_stack_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
 }
 
 uint64_t* store_half_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid) {
@@ -6189,40 +6289,35 @@ uint64_t* load_single_word_from_segments(uint64_t* machine_word_nid,
     "load single word from stack, heap, or data segment");
 }
 
-uint64_t* store_single_word_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
-  uint64_t* vaddr_nid;
-
-  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
-
-  return new_ternary(OP_ITE, get_sid(segment_nid),
-    is_virtual_address_in_data_segment(vaddr_nid),
-    store_single_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), word_nid, segment_nid),
-    segment_nid,
-    "store single word in data segment at virtual address if in data segment");
-}
-
-uint64_t* store_single_word_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
-  uint64_t* vaddr_nid;
-
-  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
-
-  return new_ternary(OP_ITE, get_sid(segment_nid),
-    is_virtual_address_in_heap_segment(vaddr_nid),
-    store_single_word_at_virtual_address(vaddr_to_heap_laddr(vaddr_nid), word_nid, segment_nid),
-    segment_nid,
-    "store single word in heap segment at virtual address if in heap segment");
-}
-
 uint64_t* store_single_word_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  return store_single_word_at_virtual_address(
+    vaddr_to_stack_laddr(cast_machine_word_to_virtual_address(machine_word_nid)), word_nid, segment_nid);
+}
+
+uint64_t* store_single_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
   uint64_t* vaddr_nid;
 
   vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
 
-  return new_ternary(OP_ITE, get_sid(segment_nid),
-    is_virtual_address_in_stack_segment(vaddr_nid),
-    store_single_word_at_virtual_address(vaddr_to_stack_laddr(vaddr_nid), word_nid, segment_nid),
-    segment_nid,
-    "store single word in stack segment at virtual address if in stack segment");
+  return store_if_in_data_segment(vaddr_nid,
+    store_single_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_single_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_heap_segment(vaddr_nid,
+    store_single_word_at_virtual_address(vaddr_to_heap_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_single_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  return store_if_in_stack_segment(cast_machine_word_to_virtual_address(machine_word_nid),
+    store_single_word_in_stack_segment(machine_word_nid, word_nid, segment_nid),
+    segment_nid);
 }
 
 uint64_t* store_single_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid) {
@@ -6250,6 +6345,37 @@ uint64_t* load_double_word_from_segments(uint64_t* machine_word_nid,
       load_double_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), data_segment_nid),
       "load double word from heap or data segment"),
     "load double word from stack, heap, or data segment");
+}
+
+uint64_t* store_double_word_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  return store_double_word_at_virtual_address(
+    vaddr_to_stack_laddr(cast_machine_word_to_virtual_address(machine_word_nid)), word_nid, segment_nid);
+}
+
+uint64_t* store_double_word_if_in_data_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_data_segment(vaddr_nid,
+    store_double_word_at_virtual_address(vaddr_to_data_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_double_word_if_in_heap_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  uint64_t* vaddr_nid;
+
+  vaddr_nid = cast_machine_word_to_virtual_address(machine_word_nid);
+
+  return store_if_in_heap_segment(vaddr_nid,
+    store_double_word_at_virtual_address(vaddr_to_heap_laddr(vaddr_nid), word_nid, segment_nid),
+    segment_nid);
+}
+
+uint64_t* store_double_word_if_in_stack_segment(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* segment_nid) {
+  return store_if_in_stack_segment(cast_machine_word_to_virtual_address(machine_word_nid),
+    store_double_word_in_stack_segment(machine_word_nid, word_nid, segment_nid),
+    segment_nid);
 }
 
 uint64_t* store_double_word(uint64_t* machine_word_nid, uint64_t* word_nid, uint64_t* memory_nid) {
@@ -9097,10 +9223,10 @@ uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
     return new_ternary(OP_ITE, SID_MEMORY_STATE,
       is_compressed_instruction(c_ir_nid),
       decode_compressed_memory_data_flow(SID_MEMORY_STATE, c_ir_nid,
-        store_double_word(get_sp_value_plus_CSS64_offset(c_ir_nid, register_file_nid),
+        store_double_word_in_stack_segment(get_sp_value_plus_CSS64_offset(c_ir_nid, register_file_nid),
           rs2_value_nid,
           memory_nid),
-        store_single_word(get_sp_value_plus_CSS32_offset(c_ir_nid, register_file_nid),
+        store_single_word_in_stack_segment(get_sp_value_plus_CSS32_offset(c_ir_nid, register_file_nid),
           slice_single_word_from_machine_word(rs2_value_nid),
           memory_nid),
         store_double_word(get_rs1_shift_value_plus_CS64_offset(c_ir_nid, register_file_nid),
