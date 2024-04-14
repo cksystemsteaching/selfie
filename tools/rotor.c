@@ -4870,12 +4870,20 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
 
 void print_kernel_state(uint64_t core) {
   if (core == 0) {
-    print_break_comment_line("system kernel state", init_program_break_nid);
+    print_break_comment("system kernel state");
+
+    if (SHARED_MEMORY)
+      print_break_line(init_program_break_nid);
 
     print_break_line(init_file_descriptor_nid);
   }
 
-  print_break_comment_line_for(core, "kernel state", init_readable_bytes_nid);
+  print_break_comment_for(core, "kernel state");
+
+  if (SHARED_MEMORY == 0)
+    print_break_line(init_program_break_nid);
+
+  print_break_line(init_readable_bytes_nid);
 
   print_break_line(init_read_bytes_nid);
 }
