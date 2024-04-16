@@ -1110,7 +1110,7 @@ uint64_t* eval_core_0_data_segment_data_flow_nid = (uint64_t*) 0;
 // heap segment
 
 uint64_t heap_initial_size = 0;
-uint64_t heap_allowance    = 4096; // must be multiple of WORDSIZE
+uint64_t heap_allowance    = 8; // must be multiple of WORDSIZE
 
 uint64_t heap_start = 0;
 uint64_t heap_size  = 0;
@@ -5557,7 +5557,7 @@ void print_data_segment(uint64_t core) {
 
       if (initial_data_nid != UNUSED) {
         // conservatively estimating number of lines needed to store one byte
-        print_aligned_break_comment("loaded data segment", log_ten(data_size * 3) + 1);
+        print_aligned_break_comment("loading data", log_ten(data_size * 3) + 1);
 
         while (initial_data_nid != UNUSED) {
           print_line(initial_data_nid);
@@ -5681,7 +5681,7 @@ void print_heap_segment(uint64_t core) {
   if (number_of_binaries > 0)
     if (initial_heap_segment_nid != state_heap_segment_nid) {
       if (initial_heap_nid != UNUSED) {
-        print_aligned_break_comment("loaded heap segment", log_ten(heap_initial_size * 3) + 1);
+        print_aligned_break_comment("loading heap", log_ten(heap_initial_size * 3) + 1);
 
         while (initial_heap_nid != UNUSED) {
           print_line(initial_heap_nid);
@@ -5805,7 +5805,7 @@ void print_stack_segment(uint64_t core) {
   if (number_of_binaries > 0)
     if (initial_stack_segment_nid != state_stack_segment_nid) {
       if (initial_stack_nid != UNUSED) {
-        print_aligned_break_comment("loaded stack segment", log_ten(stack_initial_size * 3) + 1);
+        print_aligned_break_comment("loading stack", log_ten(stack_initial_size * 3) + 1);
 
         while (initial_stack_nid != UNUSED) {
           print_line(initial_stack_nid);
