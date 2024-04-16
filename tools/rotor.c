@@ -1110,7 +1110,7 @@ uint64_t* eval_core_0_data_segment_data_flow_nid = (uint64_t*) 0;
 // heap segment
 
 uint64_t heap_initial_size = 0;
-uint64_t heap_allowance    = 8; // must be multiple of WORDSIZE
+uint64_t heap_allowance    = 4096; // must be multiple of WORDSIZE
 
 uint64_t heap_start = 0;
 uint64_t heap_size  = 0;
@@ -5327,7 +5327,7 @@ uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in
 
 void new_code_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
-  uint64_t* vaddr_nid;
+  uint64_t* laddr_nid;
   uint64_t* ir_nid;
   uint64_t* store_nid;
 
@@ -5359,18 +5359,18 @@ void new_code_segment(uint64_t core) {
 
     pc = code_start;
 
-    while (pc < code_start + code_size) {
+    while (pc - code_start < code_size) {
       fetch();
 
       if (ir != 0) {
         // skipping zero as instruction
-        vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
 
         ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
           ir, 32, format_comment("code 0x%04lX", ir));
 
-        store_nid = store_single_word_at_virtual_address(vaddr_nid, ir_nid, initial_code_segment_nid);
+        store_nid = store_single_word_at_virtual_address(laddr_nid, ir_nid, initial_code_segment_nid);
 
         if (initial_code_nid == UNUSED)
           initial_code_nid = store_nid;
@@ -5382,7 +5382,7 @@ void new_code_segment(uint64_t core) {
         initial_code_segment_nid = store_nid;
 
         // evaluate on-the-fly to avoid stack overflow
-        if (eval_line(load_single_word_at_virtual_address(vaddr_nid, store_nid)) != ir) {
+        if (eval_line(load_single_word_at_virtual_address(laddr_nid, store_nid)) != ir) {
           printf("%s: initial code segment value mismatch @ 0x%lX\n", selfie_name, pc);
 
           exit(EXITCODE_SYSTEMERROR);
@@ -5449,7 +5449,7 @@ void new_data_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
-  uint64_t* vaddr_nid;
+  uint64_t* laddr_nid;
   uint64_t* data_nid;
   uint64_t* store_nid;
 
@@ -5491,13 +5491,13 @@ void new_data_segment(uint64_t core) {
 
         if (data != 0) {
           // skipping zero as initial value
-          vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+            vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
           data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
             data, 0, format_comment("data 0x%lX", data));
 
-            store_nid = store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_data_segment_nid);
+            store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
 
             if (initial_data_nid == UNUSED)
               initial_data_nid = store_nid;
@@ -5508,7 +5508,7 @@ void new_data_segment(uint64_t core) {
             initial_data_segment_nid = store_nid;
 
           // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(vaddr_nid, store_nid)) != data) {
+          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
             printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
             exit(EXITCODE_SYSTEMERROR);
@@ -5576,7 +5576,7 @@ void new_heap_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
-  uint64_t* vaddr_nid;
+  uint64_t* laddr_nid;
   uint64_t* data_nid;
   uint64_t* store_nid;
 
@@ -5618,13 +5618,13 @@ void new_heap_segment(uint64_t core) {
 
         if (data != 0) {
           // skipping zero as initial value
-          vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+            vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
           data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
             data, 0, format_comment("data 0x%lX", data));
 
-          store_nid = store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_heap_segment_nid);
+          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
 
           if (initial_heap_nid == UNUSED)
             initial_heap_nid = store_nid;
@@ -5635,7 +5635,7 @@ void new_heap_segment(uint64_t core) {
           initial_heap_segment_nid = store_nid;
 
           // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(vaddr_nid, store_nid)) != data) {
+          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
             printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
             exit(EXITCODE_SYSTEMERROR);
@@ -5700,7 +5700,7 @@ void new_stack_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
   uint64_t  vaddr;
   uint64_t  data;
-  uint64_t* vaddr_nid;
+  uint64_t* laddr_nid;
   uint64_t* data_nid;
   uint64_t* store_nid;
 
@@ -5742,13 +5742,13 @@ void new_stack_segment(uint64_t core) {
 
         if (data != 0) {
           // skipping zero as initial value
-          vaddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+            vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
           data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
             data, 0, format_comment("data 0x%lX", data));
 
-          store_nid = store_machine_word_at_virtual_address(vaddr_nid, data_nid, initial_stack_segment_nid);
+          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
 
           if (initial_stack_nid == UNUSED)
             initial_stack_nid = store_nid;
@@ -5759,7 +5759,7 @@ void new_stack_segment(uint64_t core) {
           initial_stack_segment_nid = store_nid;
 
           // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(vaddr_nid, store_nid)) != data) {
+          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
             printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
             exit(EXITCODE_SYSTEMERROR);
