@@ -297,6 +297,7 @@ void print_break();
 void print_break_line(uint64_t* line);
 void print_break_line_for(uint64_t core, uint64_t* lines);
 void print_break_comment(char* comment);
+void print_nobreak_comment_for(uint64_t core, char* comment);
 void print_break_comment_for(uint64_t core, char* comment);
 void print_break_comment_line(char* comment, uint64_t* line);
 void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* line);
@@ -598,10 +599,11 @@ uint64_t* NID_WRITE_SYSCALL_ID  = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* state_program_break_nid = (uint64_t*) 0;
-uint64_t* init_program_break_nid  = (uint64_t*) 0;
-uint64_t* eval_program_break_nid  = (uint64_t*) 0;
-uint64_t* next_program_break_nid  = (uint64_t*) 0;
+uint64_t* state_program_break_nid  = (uint64_t*) 0;
+uint64_t* init_program_break_nid   = (uint64_t*) 0;
+uint64_t* eval_program_break_nid   = (uint64_t*) 0;
+uint64_t* next_program_break_nid   = (uint64_t*) 0;
+uint64_t* next_program_break_nids  = (uint64_t*) 0;
 
 uint64_t* state_file_descriptor_nid = (uint64_t*) 0;
 uint64_t* init_file_descriptor_nid  = (uint64_t*) 0;
@@ -646,6 +648,7 @@ void init_interface_kernel() {
 }
 
 void init_kernels(uint64_t number_of_cores) {
+  next_program_break_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_read_bytes_nids     = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
@@ -3593,9 +3596,13 @@ void print_break_comment(char* comment) {
   w = w + dprintf(output_fd, "; %s\n\n", comment);
 }
 
+void print_nobreak_comment_for(uint64_t core, char* comment) {
+  w = w + dprintf(output_fd, "\n; core-%lu %s\n", core, comment);
+}
+
 void print_break_comment_for(uint64_t core, char* comment) {
+  print_nobreak_comment_for(core, comment);
   print_break();
-  w = w + dprintf(output_fd, "; core-%lu %s\n\n", core, comment);
 }
 
 void print_break_comment_line(char* comment, uint64_t* line) {
@@ -4799,6 +4806,10 @@ void print_interface_kernel() {
 
 void new_program_break(uint64_t core) {
   if (SHARED_MEMORY)
+    if (core > 0)
+      return;
+
+  if (SHARED_MEMORY)
     state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS,
       "program-break", "program break");
   else
@@ -4814,11 +4825,7 @@ void new_program_break(uint64_t core) {
 }
 
 void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
-  if (SHARED_MEMORY) {
-    if (core == 0)
-      new_program_break(core);
-  } else
-    new_program_break(core);
+  new_program_break(core);
 
   if (core == 0) {
     state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
@@ -9747,7 +9754,9 @@ void output_model(uint64_t core) {
   print_break_comment_line_for(core, "compressed instruction control flow",
     eval_compressed_instruction_control_flow_nid);
 
-  print_break_comment_line_for(core, "update kernel state", next_program_break_nid);
+  print_nobreak_comment_for(core, "update kernel state");
+
+  print_break_line_for(core, next_program_break_nids);
 
   print_break_line(next_file_descriptor_nid);
 
@@ -10134,11 +10143,13 @@ void kernel_sequential(uint64_t core,
       "new program break");
 
   if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
-    next_program_break_nid =
+    set_for(core, next_program_break_nids,
       new_next(SID_VIRTUAL_ADDRESS,
         program_break_nid,
         next_program_break_nid,
-        "new program break");
+        "new program break"));
+  else
+    set_for(core, next_program_break_nids, UNUSED);
 
   // update openat kernel state
 
@@ -11275,8 +11286,7 @@ uint64_t eval_sequential(uint64_t core) {
 
   halt = 1;
 
-  if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
-    halt = halt * eval_next(next_program_break_nid);
+  halt = halt * eval_next_for(core, next_program_break_nids);
   if (core == number_of_cores - 1)
     halt = halt * eval_next(next_file_descriptor_nid);
   halt = halt * eval_next_for(core, next_readable_bytes_nids);
@@ -11320,8 +11330,7 @@ uint64_t eval_multicore_sequential() {
 }
 
 void apply_sequential(uint64_t core) {
-  if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
-    apply_next(next_program_break_nid);
+  apply_next_for(core, next_program_break_nids);
   if (core == number_of_cores - 1)
     apply_next(next_file_descriptor_nid);
   apply_next_for(core, next_readable_bytes_nids);
@@ -11349,8 +11358,7 @@ void apply_multicore_sequential() {
 }
 
 void save_states(uint64_t core) {
-  if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
-    save_state(next_program_break_nid);
+  save_state_for(core, next_program_break_nids);
   if (core == number_of_cores - 1)
     save_state(next_file_descriptor_nid);
   save_state_for(core, next_readable_bytes_nids);
@@ -11378,8 +11386,7 @@ void save_multicore_states() {
 }
 
 void restore_states(uint64_t core) {
-  if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
-    restore_state(next_program_break_nid);
+  restore_state_for(core, next_program_break_nids);
   if (core == number_of_cores - 1)
     restore_state(next_file_descriptor_nid);
   restore_state_for(core, next_readable_bytes_nids);
