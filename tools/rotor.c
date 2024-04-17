@@ -3058,6 +3058,7 @@ char* division_overflow_check_option = (char*) 0;
 
 char* seg_faults_check_option = (char*) 0;
 
+char* bytes_to_read_option         = (char*) 0;
 char* cores_option                 = (char*) 0;
 char* virtual_address_space_option = (char*) 0;
 char* code_word_size_option        = (char*) 0;
@@ -10906,23 +10907,26 @@ void model_rotor() {
     w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
   if (check_seg_faults == 0)
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
-  w = w + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores);
-  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
-    virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE);
-  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
-    code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS);
-  w = w + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
-    memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS);
-  w = w + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
-    heap_allowance_option, heap_allowance, heap_initial_size);
-  w = w + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
-    stack_allowance_option, stack_allowance, stack_initial_size);
+  w = w
+    + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
+    + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
+        virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
+        code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
+        memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
+        heap_allowance_option, heap_allowance, heap_initial_size)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
+        stack_allowance_option, stack_allowance, stack_initial_size);
   i = 0;
   while (i < number_of_binaries) {
-    w = w + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
-      get_for(i, binary_names));
-    w = w + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
-      get_for(i, code_sizes), get_for(i, data_sizes));
+    w = w
+      + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
+          get_for(i, binary_names))
+      + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
+          get_for(i, code_sizes), get_for(i, data_sizes));
     i = i + 1;
   }
   if (number_of_binaries > 0) {
@@ -11633,6 +11637,16 @@ void disassemble_rotor(uint64_t core) {
 }
 
 uint64_t rotor_arguments() {
+  char* evaluate_model_option;
+  char* debug_model_option;
+  char* disassemble_model_option;
+  char* load_code_option;
+
+  evaluate_model_option    = "-m";
+  debug_model_option       = "-d";
+  disassemble_model_option = "-s";
+  load_code_option         = "-l";
+
   bad_exit_code_check_option = "-Pnobadexitcode";
   exit_codes_check_option    = "-Pnoexitcodes";
 
@@ -11641,6 +11655,7 @@ uint64_t rotor_arguments() {
 
   seg_faults_check_option = "-Pnosegfaults";
 
+  bytes_to_read_option           = "-bytestoread";
   cores_option                   = "-cores";
   virtual_address_space_option   = "-virtualaddressspace";
   code_word_size_option          = "-codewordsize";
@@ -11652,20 +11667,20 @@ uint64_t rotor_arguments() {
 
   while (1) {
     if (number_of_remaining_arguments() > 1) {
-      if (string_compare(peek_argument(1), "-m")) {
+      if (string_compare(peek_argument(1), evaluate_model_option)) {
         evaluate_model = 1;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), "-d")) {
+      } else if (string_compare(peek_argument(1), debug_model_option)) {
         evaluate_model  = 1;
         output_assembly = 1;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), "-s")) {
+      } else if (string_compare(peek_argument(1), disassemble_model_option)) {
         disassemble_model = 1;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), "-l")) {
+      } else if (string_compare(peek_argument(1), load_code_option)) {
         get_argument();
 
         if (number_of_remaining_arguments() > 1) {
@@ -11710,6 +11725,15 @@ uint64_t rotor_arguments() {
         check_seg_faults = 0;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), bytes_to_read_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          BYTES_TO_READ = atoi(peek_argument(1));
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), cores_option)) {
         get_argument();
 
