@@ -4929,9 +4929,8 @@ void new_kernel_state(uint64_t core) {
     // initialize only for emulator
     eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
 
-    // next only for emulator
     next_input_buffer_nid = new_next(SID_INPUT_BUFFER,
-      state_input_buffer_nid, state_input_buffer_nid, "read-only zeroed input buffer");
+      state_input_buffer_nid, state_input_buffer_nid, "read-only uninitialized input buffer");
   }
 
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
@@ -4958,7 +4957,7 @@ void print_kernel_state(uint64_t core) {
 
     print_break_line(init_file_descriptor_nid);
 
-    print_break_line(state_input_buffer_nid);
+    print_break_line(next_input_buffer_nid);
   }
 
   print_nobreak_comment_for(core, "kernel state");
