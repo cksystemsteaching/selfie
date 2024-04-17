@@ -296,6 +296,7 @@ void print_line_for(uint64_t core, uint64_t* lines);
 void print_break();
 void print_break_line(uint64_t* line);
 void print_break_line_for(uint64_t core, uint64_t* lines);
+void print_nobreak_comment(char* comment);
 void print_break_comment(char* comment);
 void print_nobreak_comment_for(uint64_t core, char* comment);
 void print_break_comment_for(uint64_t core, char* comment);
@@ -582,9 +583,12 @@ void init_interface_sorts() {
 
 void print_interface_kernel();
 
+uint64_t get_power_of_two_size_in_bytes(uint64_t size_in_bits);
+uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in_bits);
+
 void new_program_break(uint64_t core);
 
-void new_kernel_state(uint64_t core, uint64_t bytes_to_read);
+void new_kernel_state(uint64_t core);
 void print_kernel_state(uint64_t core);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -596,6 +600,15 @@ uint64_t* NID_BRK_SYSCALL_ID    = (uint64_t*) 0;
 uint64_t* NID_OPENAT_SYSCALL_ID = (uint64_t*) 0;
 uint64_t* NID_READ_SYSCALL_ID   = (uint64_t*) 0;
 uint64_t* NID_WRITE_SYSCALL_ID  = (uint64_t*) 0;
+
+uint64_t BYTES_TO_READ = 1;
+
+uint64_t* NID_BYTES_TO_READ = (uint64_t*) 0;
+
+uint64_t INPUT_ADDRESS_SPACE = 1;
+
+uint64_t* SID_INPUT_ADDRESS = (uint64_t*) 0;
+uint64_t* SID_INPUT_BUFFER  = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -610,7 +623,8 @@ uint64_t* init_file_descriptor_nid  = (uint64_t*) 0;
 uint64_t* eval_file_descriptor_nid  = (uint64_t*) 0;
 uint64_t* next_file_descriptor_nid  = (uint64_t*) 0;
 
-uint64_t* param_readable_bytes_nid = (uint64_t*) 0;
+uint64_t* state_input_buffer_nid = (uint64_t*) 0;
+uint64_t* next_input_buffer_nid  = (uint64_t*) 0;
 
 uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
@@ -645,6 +659,16 @@ void init_interface_kernel() {
   NID_WRITE_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_WRITE, 0,
     format_comment_binary("write syscall ID", SYSCALL_WRITE));
+
+  NID_BYTES_TO_READ = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    BYTES_TO_READ, 0, "bytes to read");
+
+  INPUT_ADDRESS_SPACE = calculate_address_space(BYTES_TO_READ, 8);
+
+  SID_INPUT_ADDRESS = new_bitvec(INPUT_ADDRESS_SPACE,
+    format_comment("%lu-bit input address", INPUT_ADDRESS_SPACE));
+
+  SID_INPUT_BUFFER = new_array(SID_INPUT_ADDRESS, SID_BYTE, "input buffer");
 }
 
 void init_kernels(uint64_t number_of_cores) {
@@ -810,9 +834,6 @@ uint64_t* vaddr_to_stack_laddr(uint64_t* vaddr_nid);
 uint64_t* store_if_in_data_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
 uint64_t* store_if_in_heap_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
 uint64_t* store_if_in_stack_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t* segment_nid);
-
-uint64_t get_power_of_two_size_in_bytes(uint64_t size);
-uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in_bits);
 
 void new_code_segment(uint64_t core);
 void print_code_segment(uint64_t core);
@@ -3591,9 +3612,13 @@ void print_break_line_for(uint64_t core, uint64_t* lines) {
   print_break_line(get_for(core, lines));
 }
 
+void print_nobreak_comment(char* comment) {
+  w = w + dprintf(output_fd, "\n; %s\n", comment);
+}
+
 void print_break_comment(char* comment) {
+  print_nobreak_comment(comment);
   print_break();
-  w = w + dprintf(output_fd, "; %s\n\n", comment);
 }
 
 void print_nobreak_comment_for(uint64_t core, char* comment) {
@@ -4167,7 +4192,21 @@ uint64_t eval_read(uint64_t* line) {
       if (get_step(state_nid) == current_step) {
         index = eval_line(index_nid);
 
-        set_state(line, read_or_write(state_nid, index, 0, 1));
+        if (get_sid(state_nid) != SID_INPUT_BUFFER)
+          set_state(line, read_or_write(state_nid, index, 0, 1));
+        else {
+          // input buffer is uninitialized, generate input
+          if (input_steps == 0)
+            // TODO: input is consumed more than once
+            input_steps = current_step;
+
+          set_state(line, current_input);
+
+          if (any_input == 0)
+            first_input = 1;
+
+          any_input = 1;
+        }
 
         set_step(line, next_step);
 
@@ -4683,19 +4722,20 @@ void save_state(uint64_t* line) {
 
   if (is_bitvector(sid))
     set_state(line, state);
-  else if (sid != SID_CODE_STATE) {
-    // assert: array
-    source      = (uint64_t*) state;
-    destination = (uint64_t*) get_state(line);
+  else if (sid != SID_INPUT_BUFFER)
+    if (sid != SID_CODE_STATE) {
+      // assert: array
+      source      = (uint64_t*) state;
+      destination = (uint64_t*) get_state(line);
 
-    if (destination == (uint64_t*) 0) {
-      destination = allocate_array(sid);
+      if (destination == (uint64_t*) 0) {
+        destination = allocate_array(sid);
 
-      set_state(line, (uint64_t) destination);
+        set_state(line, (uint64_t) destination);
+      }
+
+      memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
     }
-
-    memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
-  }
 }
 
 void save_state_for(uint64_t core, uint64_t* lines) {
@@ -4707,18 +4747,22 @@ void save_state_for(uint64_t core, uint64_t* lines) {
 
 void restore_state(uint64_t* line) {
   uint64_t* state_nid;
+  uint64_t* sid;
   uint64_t current_state;
 
   state_nid = get_arg1(line);
 
-  if (get_sid(state_nid) != SID_CODE_STATE) {
-    current_state = get_state(state_nid);
+  sid = get_sid(state_nid);
 
-    set_state(state_nid, get_state(line));
+  if (sid != SID_INPUT_BUFFER)
+    if (sid != SID_CODE_STATE) {
+      current_state = get_state(state_nid);
 
-    // keep current state to avoid reallocating arrays
-    set_state(line, current_state);
-  }
+      set_state(state_nid, get_state(line));
+
+      // keep current state to avoid reallocating arrays
+      set_state(line, current_state);
+    }
 
   set_step(state_nid, next_step);
 
@@ -4802,6 +4846,48 @@ void print_interface_kernel() {
   print_line(NID_OPENAT_SYSCALL_ID);
   print_line(NID_READ_SYSCALL_ID);
   print_line(NID_WRITE_SYSCALL_ID);
+
+  print_break_line(NID_BYTES_TO_READ);
+
+  print_line(SID_INPUT_ADDRESS);
+  print_line(SID_INPUT_BUFFER);
+}
+
+uint64_t get_power_of_two_size_in_bytes(uint64_t size_in_bits) {
+  // constraining: size_in_bits is a power of 2 >= 8 bits
+
+  if (size_in_bits % 8 == 0) {
+    size_in_bits = size_in_bits / 8;
+
+    if (size_in_bits == two_to_the_power_of(log_two(size_in_bits)))
+      return size_in_bits;
+  }
+
+  printf("%s: power of two size in bytes error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in_bits) {
+  uint64_t size_in_words;
+  uint64_t address_space;
+
+  // assert: word_size_in_bits is a power of 2 >= 8 bits
+
+  if (number_of_bytes < 2 * get_power_of_two_size_in_bytes(word_size_in_bits))
+    number_of_bytes = 2 * get_power_of_two_size_in_bytes(word_size_in_bits);
+
+  size_in_words = number_of_bytes / get_power_of_two_size_in_bytes(word_size_in_bits);
+
+  if (number_of_bytes % get_power_of_two_size_in_bytes(word_size_in_bits) > 0)
+    size_in_words = size_in_words + 1;
+
+  address_space = log_two(size_in_words);
+
+  if (size_in_words > two_to_the_power_of(address_space))
+    address_space = address_space + 1;
+
+  return address_space;
 }
 
 void new_program_break(uint64_t core) {
@@ -4824,26 +4910,34 @@ void new_program_break(uint64_t core) {
   next_program_break_nid = state_program_break_nid;
 }
 
-void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
+void new_kernel_state(uint64_t core) {
   new_program_break(core);
 
   if (core == 0) {
-    state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD, "file-descriptor", "file descriptor");
+    state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD,
+      "file-descriptor", "file descriptor");
     init_file_descriptor_nid  = new_init(SID_MACHINE_WORD, state_file_descriptor_nid,
       NID_MACHINE_WORD_0, "initial file descriptor is zero");
 
     eval_init(init_file_descriptor_nid);
 
     next_file_descriptor_nid = state_file_descriptor_nid;
-  }
 
-  param_readable_bytes_nid = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    bytes_to_read, 0, "read capacity in bytes");
+    state_input_buffer_nid = new_input(OP_STATE, SID_INPUT_BUFFER,
+      "input-buffer", "uninitialized input buffer");
+
+    // initialize only for emulator
+    eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
+
+    // next only for emulator
+    next_input_buffer_nid = new_next(SID_INPUT_BUFFER,
+      state_input_buffer_nid, state_input_buffer_nid, "read-only zeroed input buffer");
+  }
 
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-readable-bytes", core), "readable bytes");
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
-    param_readable_bytes_nid, "number of readable bytes");
+    NID_BYTES_TO_READ, "number of readable bytes");
 
   eval_init(init_readable_bytes_nid);
 
@@ -4857,22 +4951,24 @@ void new_kernel_state(uint64_t core, uint64_t bytes_to_read) {
 
 void print_kernel_state(uint64_t core) {
   if (core == 0) {
-    print_break_comment("system kernel state");
+    print_nobreak_comment("system kernel state");
 
     if (SHARED_MEMORY)
-      print_line(init_program_break_nid);
+      print_break_line(init_program_break_nid);
 
-    print_line(init_file_descriptor_nid);
+    print_break_line(init_file_descriptor_nid);
+
+    print_break_line(state_input_buffer_nid);
   }
 
-  print_break_comment_for(core, "kernel state");
+  print_nobreak_comment_for(core, "kernel state");
 
   if (SHARED_MEMORY == 0)
-    print_line(init_program_break_nid);
+    print_break_line(init_program_break_nid);
 
-  print_line(init_readable_bytes_nid);
+  print_break_line(init_readable_bytes_nid);
 
-  print_line(init_read_bytes_nid);
+  print_break_line(init_read_bytes_nid);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5286,43 +5382,6 @@ uint64_t* store_if_in_stack_segment(uint64_t* vaddr_nid, uint64_t* store_nid, ui
     store_nid,
     segment_nid,
     "store at virtual address if in stack segment");
-}
-
-uint64_t get_power_of_two_size_in_bytes(uint64_t size) {
-  // constraining: size is a power of 2 >= 8 bits
-
-  if (size % 8 == 0) {
-    size = size / 8;
-
-    if (size == two_to_the_power_of(log_two(size)))
-      return size;
-  }
-
-  printf("%s: power of two size in bytes error\n", selfie_name);
-
-  exit(EXITCODE_SYSTEMERROR);
-}
-
-uint64_t calculate_address_space(uint64_t number_of_bytes, uint64_t word_size_in_bits) {
-  uint64_t size_in_words;
-  uint64_t address_space;
-
-  // assert: word_size_in_bits is a power of 2 >= 8 bits
-
-  if (number_of_bytes < 2 * get_power_of_two_size_in_bytes(word_size_in_bits))
-    number_of_bytes = 2 * get_power_of_two_size_in_bytes(word_size_in_bits);
-
-  size_in_words = number_of_bytes / get_power_of_two_size_in_bytes(word_size_in_bits);
-
-  if (number_of_bytes % get_power_of_two_size_in_bytes(word_size_in_bits) > 0)
-    size_in_words = size_in_words + 1;
-
-  address_space = log_two(size_in_words);
-
-  if (size_in_words > two_to_the_power_of(address_space))
-    address_space = address_space + 1;
-
-  return address_space;
 }
 
 void new_code_segment(uint64_t core) {
@@ -10091,13 +10150,23 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
 
   // kernel and instruction memory data flow
 
+  // TODO: also use new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
+
   eval_heap_segment_data_flow_nid = new_ternary(OP_ITE, SID_HEAP_STATE,
     eval_still_reading_active_read_nid,
     store_byte_in_heap_segment(new_binary(OP_ADD, SID_MACHINE_WORD,
       a1_value_nid,
       read_bytes_nid,
       "a1 + number of already read_bytes"),
-      new_input(OP_INPUT, SID_BYTE, "read-input-byte", "input byte by read system call"),
+      new_binary(OP_READ, SID_BYTE,
+        state_input_buffer_nid,
+        new_slice(SID_INPUT_ADDRESS,
+          new_binary(OP_SUB, SID_MACHINE_WORD,
+            NID_BYTES_TO_READ,
+            readable_bytes_nid,
+            "input address"),
+          INPUT_ADDRESS_SPACE - 1, 0, "get input address"),
+        "read input byte"),
       heap_segment_nid),
     heap_segment_data_flow_nid,
     "heap segment data flow");
@@ -10903,7 +10972,7 @@ void model_rotor() {
 
     new_segmentation();
 
-    new_kernel_state(core, 1);
+    new_kernel_state(core);
 
     new_core_state(core);
 
@@ -11291,8 +11360,10 @@ uint64_t eval_sequential(uint64_t core) {
   halt = 1;
 
   halt = halt * eval_next_for(core, next_program_break_nids);
-  if (core == number_of_cores - 1)
+  if (core == number_of_cores - 1) {
     halt = halt * eval_next(next_file_descriptor_nid);
+    eval_next(next_input_buffer_nid);
+  }
   halt = halt * eval_next_for(core, next_readable_bytes_nids);
   halt = halt * eval_next_for(core, next_read_bytes_nids);
 
@@ -11335,8 +11406,10 @@ uint64_t eval_multicore_sequential() {
 
 void apply_sequential(uint64_t core) {
   apply_next_for(core, next_program_break_nids);
-  if (core == number_of_cores - 1)
+  if (core == number_of_cores - 1) {
     apply_next(next_file_descriptor_nid);
+    apply_next(next_input_buffer_nid);
+  }
   apply_next_for(core, next_readable_bytes_nids);
   apply_next_for(core, next_read_bytes_nids);
 
@@ -11363,8 +11436,10 @@ void apply_multicore_sequential() {
 
 void save_states(uint64_t core) {
   save_state_for(core, next_program_break_nids);
-  if (core == number_of_cores - 1)
+  if (core == number_of_cores - 1) {
     save_state(next_file_descriptor_nid);
+    save_state(next_input_buffer_nid);
+  }
   save_state_for(core, next_readable_bytes_nids);
   save_state_for(core, next_read_bytes_nids);
 
@@ -11391,8 +11466,10 @@ void save_multicore_states() {
 
 void restore_states(uint64_t core) {
   restore_state_for(core, next_program_break_nids);
-  if (core == number_of_cores - 1)
+  if (core == number_of_cores - 1) {
     restore_state(next_file_descriptor_nid);
+    restore_state(next_input_buffer_nid);
+  }
   restore_state_for(core, next_readable_bytes_nids);
   restore_state_for(core, next_read_bytes_nids);
 
