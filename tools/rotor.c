@@ -5391,10 +5391,12 @@ void new_code_segment(uint64_t core) {
 
   if (core >= number_of_binaries) {
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
-      format_comment("core-%lu-code-segment", core), "code segment");
+      format_comment("core-%lu-code-segment", core), "uninitialized code segment");
 
     init_code_segment_nid = UNUSED;
-    next_code_segment_nid = UNUSED;
+
+    next_code_segment_nid = new_next(SID_CODE_STATE,
+      state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
   } else {
     state_zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
@@ -5478,7 +5480,7 @@ void print_code_segment(uint64_t core) {
   if (core >= number_of_binaries) {
     print_break_comment_for(core, "uninitialized code segment");
 
-    print_line(state_code_segment_nid);
+    print_line(next_code_segment_nid);
   } else {
     print_break_comment("zeroed code segment");
 
