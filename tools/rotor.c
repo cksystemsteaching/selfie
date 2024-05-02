@@ -5539,7 +5539,7 @@ void new_data_segment(uint64_t core) {
 
     reuse_lines = 1;
 
-    if (initial_data_segment_nid != state_data_segment_nid) {
+    if (initial_data_nid != UNUSED) {
       next_zeroed_data_segment_nid = new_next(SID_DATA_STATE,
         state_data_segment_nid, state_data_segment_nid, "read-only zeroed data segment");
 
@@ -5570,18 +5570,16 @@ void print_data_segment(uint64_t core) {
   print_line(init_zeroed_data_segment_nid);
 
   if (number_of_binaries > 0)
-    if (initial_data_segment_nid != state_data_segment_nid) {
+    if (initial_data_nid != UNUSED) {
       print_line(next_zeroed_data_segment_nid);
 
-      if (initial_data_nid != UNUSED) {
-        // conservatively estimating number of lines needed to store one byte
-        print_aligned_break_comment("loading data", log_ten(data_size * 3) + 1);
+      // conservatively estimating number of lines needed to store one byte
+      print_aligned_break_comment("loading data", log_ten(data_size * 3) + 1);
 
-        while (initial_data_nid != UNUSED) {
-          print_line(initial_data_nid);
+      while (initial_data_nid != UNUSED) {
+        print_line(initial_data_nid);
 
-          initial_data_nid = get_succ(initial_data_nid);
-        }
+        initial_data_nid = get_succ(initial_data_nid);
       }
 
       print_break_comment_for(core, "loaded data segment");
