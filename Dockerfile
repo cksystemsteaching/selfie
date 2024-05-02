@@ -6,7 +6,7 @@
 #####################################
 # RISCV gnu toolchain builder image #
 #####################################
-FROM ubuntu:latest AS riscvgnutoolchainbuilder
+FROM ubuntu:jammy AS riscvgnutoolchainbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -31,7 +31,7 @@ RUN cd riscv-gnu-toolchain \
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:latest AS pkbuilder
+FROM ubuntu:jammy AS pkbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -62,7 +62,7 @@ RUN mkdir -p riscv-pk/build \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:latest AS spikebuilder
+FROM ubuntu:jammy AS spikebuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -88,7 +88,7 @@ RUN mkdir -p riscv-isa-sim/build \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:latest AS qemubuilder
+FROM ubuntu:jammy AS qemubuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -110,7 +110,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:latest AS boolectorbuilder
+FROM ubuntu:jammy AS boolectorbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -145,7 +145,7 @@ RUN mkdir -p $RISCV \
 #########################
 # OpenOCD builder image #
 #########################
-FROM ubuntu:latest AS openocdbuilder
+FROM ubuntu:jammy AS openocdbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -176,7 +176,7 @@ RUN mkdir -p $RISCV \
 ############################
 # Selfie interactive image #
 ############################
-FROM ubuntu:latest AS selfieall
+FROM ubuntu:jammy AS selfieall
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
