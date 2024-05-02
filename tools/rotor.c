@@ -5343,6 +5343,7 @@ uint64_t* store_if_in_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t
 
 void new_code_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
+  uint64_t  saved_reuse_lines;
   uint64_t* laddr_nid;
   uint64_t* ir_nid;
   uint64_t* store_nid;
@@ -5372,6 +5373,8 @@ void new_code_segment(uint64_t core) {
     initial_code_nid = UNUSED;
 
     initial_code_segment_nid = state_zeroed_code_segment_nid;
+
+    saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
@@ -5409,7 +5412,7 @@ void new_code_segment(uint64_t core) {
       pc = pc + INSTRUCTIONSIZE;
     }
 
-    reuse_lines = 1;
+    reuse_lines = saved_reuse_lines;
 
     if (initial_code_nid != UNUSED) {
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
@@ -5464,6 +5467,7 @@ void print_code_segment(uint64_t core) {
 
 void new_data_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
+  uint64_t  saved_reuse_lines;
   uint64_t  vaddr;
   uint64_t  data;
   uint64_t* laddr_nid;
@@ -5495,6 +5499,8 @@ void new_data_segment(uint64_t core) {
     initial_data_nid = UNUSED;
 
     initial_data_segment_nid = state_data_segment_nid;
+
+    saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
@@ -5536,7 +5542,7 @@ void new_data_segment(uint64_t core) {
       vaddr = vaddr + WORDSIZE;
     }
 
-    reuse_lines = 1;
+    reuse_lines = saved_reuse_lines;
 
     if (initial_data_nid != UNUSED) {
       next_zeroed_data_segment_nid = new_next(SID_DATA_STATE,
@@ -5589,6 +5595,7 @@ void print_data_segment(uint64_t core) {
 
 void new_heap_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
+  uint64_t  saved_reuse_lines;
   uint64_t  vaddr;
   uint64_t  data;
   uint64_t* laddr_nid;
@@ -5620,6 +5627,8 @@ void new_heap_segment(uint64_t core) {
     initial_heap_nid = UNUSED;
 
     initial_heap_segment_nid = state_heap_segment_nid;
+
+    saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
@@ -5661,7 +5670,7 @@ void new_heap_segment(uint64_t core) {
       vaddr = vaddr + WORDSIZE;
     }
 
-    reuse_lines = 1;
+    reuse_lines = saved_reuse_lines;
 
     if (initial_heap_nid != UNUSED) {
       next_zeroed_heap_segment_nid = new_next(SID_HEAP_STATE,
@@ -5714,6 +5723,7 @@ void print_heap_segment(uint64_t core) {
 
 void new_stack_segment(uint64_t core) {
   uint64_t  number_of_hex_digits;
+  uint64_t  saved_reuse_lines;
   uint64_t  vaddr;
   uint64_t  data;
   uint64_t* laddr_nid;
@@ -5745,6 +5755,8 @@ void new_stack_segment(uint64_t core) {
     initial_stack_nid = UNUSED;
 
     initial_stack_segment_nid = state_stack_segment_nid;
+
+    saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
@@ -5786,7 +5798,7 @@ void new_stack_segment(uint64_t core) {
       vaddr = vaddr + WORDSIZE;
     }
 
-    reuse_lines = 1;
+    reuse_lines = saved_reuse_lines;
 
     if (initial_stack_nid != UNUSED) {
       next_zeroed_stack_segment_nid = new_next(SID_STACK_STATE,
