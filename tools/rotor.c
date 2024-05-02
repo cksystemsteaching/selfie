@@ -5392,8 +5392,7 @@ void new_code_segment(uint64_t core) {
 
         if (initial_code_nid == UNUSED)
           initial_code_nid = store_nid;
-
-        if (initial_code_segment_nid != state_zeroed_code_segment_nid)
+        else
           // set successor for printing initial code segment iteratively to avoid stack overflow
           set_succ(initial_code_segment_nid, store_nid);
 
@@ -5412,7 +5411,7 @@ void new_code_segment(uint64_t core) {
 
     reuse_lines = 1;
 
-    if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
+    if (initial_code_nid != UNUSED) {
       state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
         format_comment("core-%lu-loaded-code-segment", core), "loaded code segment");
 
@@ -5445,7 +5444,7 @@ void print_code_segment(uint64_t core) {
     print_line(init_zeroed_code_segment_nid);
     print_line(next_zeroed_code_segment_nid);
 
-    if (initial_code_segment_nid != state_zeroed_code_segment_nid) {
+    if (initial_code_nid != UNUSED) {
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading code", log_ten(code_size * 3) + 1);
 
@@ -5664,7 +5663,7 @@ void new_heap_segment(uint64_t core) {
 
     reuse_lines = 1;
 
-    if (initial_heap_segment_nid != state_heap_segment_nid) {
+    if (initial_heap_nid != UNUSED) {
       next_zeroed_heap_segment_nid = new_next(SID_HEAP_STATE,
         state_heap_segment_nid, state_heap_segment_nid, "read-only zeroed heap segment");
 
@@ -5695,17 +5694,16 @@ void print_heap_segment(uint64_t core) {
   print_line(init_zeroed_heap_segment_nid);
 
   if (number_of_binaries > 0)
-    if (initial_heap_segment_nid != state_heap_segment_nid) {
-      if (initial_heap_nid != UNUSED) {
-        print_line(next_zeroed_heap_segment_nid);
+    if (initial_heap_nid != UNUSED) {
+      print_line(next_zeroed_heap_segment_nid);
 
-        print_aligned_break_comment("loading heap", log_ten(heap_initial_size * 3) + 1);
+      // conservatively estimating number of lines needed to store one byte
+      print_aligned_break_comment("loading heap", log_ten(heap_initial_size * 3) + 1);
 
-        while (initial_heap_nid != UNUSED) {
-          print_line(initial_heap_nid);
+      while (initial_heap_nid != UNUSED) {
+        print_line(initial_heap_nid);
 
-          initial_heap_nid = get_succ(initial_heap_nid);
-        }
+        initial_heap_nid = get_succ(initial_heap_nid);
       }
 
       print_break_comment_for(core, "loaded heap segment");
@@ -5790,7 +5788,7 @@ void new_stack_segment(uint64_t core) {
 
     reuse_lines = 1;
 
-    if (initial_stack_segment_nid != state_stack_segment_nid) {
+    if (initial_stack_nid != UNUSED) {
       next_zeroed_stack_segment_nid = new_next(SID_STACK_STATE,
         state_stack_segment_nid, state_stack_segment_nid, "read-only zeroed stack segment");
 
@@ -5821,17 +5819,16 @@ void print_stack_segment(uint64_t core) {
   print_line(init_zeroed_stack_segment_nid);
 
   if (number_of_binaries > 0)
-    if (initial_stack_segment_nid != state_stack_segment_nid) {
+    if (initial_stack_nid != UNUSED) {
       print_line(next_zeroed_stack_segment_nid);
 
-      if (initial_stack_nid != UNUSED) {
-        print_aligned_break_comment("loading stack", log_ten(stack_initial_size * 3) + 1);
+      // conservatively estimating number of lines needed to store one byte
+      print_aligned_break_comment("loading stack", log_ten(stack_initial_size * 3) + 1);
 
-        while (initial_stack_nid != UNUSED) {
-          print_line(initial_stack_nid);
+      while (initial_stack_nid != UNUSED) {
+        print_line(initial_stack_nid);
 
-          initial_stack_nid = get_succ(initial_stack_nid);
-        }
+        initial_stack_nid = get_succ(initial_stack_nid);
       }
 
       print_break_comment_for(core, "loaded stack segment");
