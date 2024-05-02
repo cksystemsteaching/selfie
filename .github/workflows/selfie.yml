@@ -49,13 +49,13 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Make all
       run: make -j -O all
-    - name: Use Python 3.7.x
-      uses: actions/setup-python@v4
+    - name: Use Python 3.12.x
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.7.x"
+        python-version: "3.12.x"
     - name: Run autograder baseline
       run: make grade
 
@@ -66,13 +66,13 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Make all
       run: make -j all
-    - name: Use Python 3.7.x
-      uses: actions/setup-python@v4
+    - name: Use Python 3.12.x
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.7.x"
+        python-version: "3.12.x"
     - name: Run autograder baseline
       run: make grade
 
@@ -83,7 +83,7 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Use gcc from cygwin for LP64 data model (not LLP64 with mingw)
       run: |
         choco upgrade cygwin -y --no-progress
@@ -107,14 +107,14 @@ jobs:
 
     steps:
     - name: Checkout selfie
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
       with:
         platforms: all
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
     - name: Build docker images
       run: |
         # TODO: build single multi-platform image even though arm64 does not support 32-bit tools
