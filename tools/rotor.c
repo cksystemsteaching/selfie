@@ -301,7 +301,7 @@ void print_break_comment(char* comment);
 void print_nobreak_comment_for(uint64_t core, char* comment);
 void print_break_comment_for(uint64_t core, char* comment);
 void print_break_comment_line(char* comment, uint64_t* line);
-void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* line);
+void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* lines);
 
 void print_aligned_break_comment(char* comment, uint64_t alignment);
 
@@ -314,6 +314,8 @@ char* format_hexadecimal(uint64_t value);
 char* format_comment_binary(char* comment, uint64_t value);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
@@ -749,7 +751,6 @@ uint64_t* initial_register_file_nid = (uint64_t*) 0;
 
 uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
-uint64_t* next_register_file_nid  = (uint64_t*) 0;
 
 uint64_t* state_register_file_nids = (uint64_t*) 0;
 uint64_t* next_register_file_nids  = (uint64_t*) 0;
@@ -1103,7 +1104,6 @@ uint64_t* initial_data_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_data_segment_nid = (uint64_t*) 0;
 uint64_t* init_data_segment_nid  = (uint64_t*) 0;
-uint64_t* next_data_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_data_segment_nids = (uint64_t*) 0;
 uint64_t* next_data_segment_nids  = (uint64_t*) 0;
@@ -1128,7 +1128,6 @@ uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_heap_segment_nid = (uint64_t*) 0;
 uint64_t* init_heap_segment_nid  = (uint64_t*) 0;
-uint64_t* next_heap_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_heap_segment_nids = (uint64_t*) 0;
 uint64_t* next_heap_segment_nids  = (uint64_t*) 0;
@@ -1153,7 +1152,6 @@ uint64_t* initial_stack_segment_nid = (uint64_t*) 0;
 
 uint64_t* state_stack_segment_nid = (uint64_t*) 0;
 uint64_t* init_stack_segment_nid  = (uint64_t*) 0;
-uint64_t* next_stack_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_stack_segment_nids = (uint64_t*) 0;
 uint64_t* next_stack_segment_nids  = (uint64_t*) 0;
@@ -2232,25 +2230,9 @@ uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* eval_instruction_ID_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_ID_nid = (uint64_t*) 0;
-
-uint64_t* eval_instruction_ID_nids = (uint64_t*) 0;
-
-uint64_t* eval_register_data_flow_nid = (uint64_t*) 0;
-
-uint64_t* eval_instruction_register_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_register_data_flow_nid = (uint64_t*) 0;
-
-uint64_t* eval_instruction_data_segment_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_data_segment_data_flow_nid = (uint64_t*) 0;
-
-uint64_t* eval_instruction_heap_segment_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_heap_segment_data_flow_nid = (uint64_t*) 0;
-uint64_t* eval_heap_segment_data_flow_nid                        = (uint64_t*) 0;
-
-uint64_t* eval_instruction_stack_segment_data_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_stack_segment_data_flow_nid = (uint64_t*) 0;
+uint64_t* eval_instruction_ID_nids            = (uint64_t*) 0;
+uint64_t* eval_compressed_instruction_ID_nids = (uint64_t*) 0;
+uint64_t* eval_ID_nids                        = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2938,7 +2920,9 @@ void init_compressed_instruction_sorts() {
 }
 
 void init_decoders(uint64_t number_of_cores) {
-  eval_instruction_ID_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_ID_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_compressed_instruction_ID_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_ID_nids                        = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // -----------------------------------------------------------------
@@ -2969,18 +2953,46 @@ uint64_t* initial_pc_nid = (uint64_t*) 0;
 
 uint64_t* state_pc_nid = (uint64_t*) 0;
 uint64_t* init_pc_nid  = (uint64_t*) 0;
-uint64_t* next_pc_nid  = (uint64_t*) 0;
 
 uint64_t* state_pc_nids = (uint64_t*) 0;
 uint64_t* next_pc_nids  = (uint64_t*) 0;
 uint64_t* sync_pc_nids  = (uint64_t*) 0;
 
-uint64_t* eval_control_flow_nid = (uint64_t*) 0;
+uint64_t* eval_instruction_control_flow_nids = (uint64_t*) 0;
 
-uint64_t* eval_instruction_control_flow_nid            = (uint64_t*) 0;
-uint64_t* eval_compressed_instruction_control_flow_nid = (uint64_t*) 0;
+uint64_t* eval_non_kernel_control_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_non_kernel_control_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_control_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_control_flow_nids = (uint64_t*) 0;
 
 uint64_t* eval_core_0_control_flow_nid = (uint64_t*) 0;
+
+uint64_t* eval_instruction_register_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_non_kernel_register_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_non_kernel_register_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_register_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_register_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_instruction_data_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_data_segment_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_data_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_instruction_heap_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_non_kernel_heap_segment_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_non_kernel_heap_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_heap_segment_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_heap_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_instruction_stack_segment_data_flow_nids = (uint64_t*) 0;
+
+uint64_t* eval_stack_segment_data_flow_nid  = (uint64_t*) 0;
+uint64_t* eval_stack_segment_data_flow_nids = (uint64_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2991,6 +3003,24 @@ void init_cores(uint64_t number_of_cores) {
   state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   sync_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  eval_instruction_control_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_non_kernel_control_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_control_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  eval_instruction_register_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_non_kernel_register_data_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_register_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  eval_instruction_data_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_data_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  eval_instruction_heap_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_non_kernel_heap_segment_data_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_heap_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  eval_instruction_stack_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_stack_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2999,15 +3029,17 @@ void init_cores(uint64_t number_of_cores) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+void print_btor2_model_for(uint64_t core);
+
+void print_btor2_model();
+
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, char* symbol, char* comment);
 
-void output_model(uint64_t core);
-
-void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
   uint64_t* heap_segment_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
@@ -3559,7 +3591,7 @@ uint64_t print_any_line(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
-  if (get_nid(line) > 0)
+  if (get_nid(line) > last_nid)
     // print lines only once
     return nid;
   else
@@ -3567,7 +3599,7 @@ uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
 }
 
 void print_line(uint64_t* line) {
-  if (get_nid(line) > 0) {
+  if (get_nid(line) > last_nid) {
     // print lines only once but mention reuse at top level
     w = w + dprintf(output_fd, "; reusing ");
     print_any_line(get_nid(line), line);
@@ -3635,10 +3667,10 @@ void print_break_comment_line(char* comment, uint64_t* line) {
   }
 }
 
-void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* line) {
-  if (line != UNUSED) {
+void print_break_comment_line_for(uint64_t core, char* comment, uint64_t* lines) {
+  if (get_for(core, lines) != UNUSED) {
     print_break_comment_for(core, comment);
-    print_line(line);
+    print_line(get_for(core, lines));
   }
 }
 
@@ -9577,6 +9609,222 @@ void print_core_state(uint64_t core) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+void print_btor2_model_for(uint64_t core) {
+  print_segmentation(core);
+
+  print_kernel_state(core);
+  print_core_state(core);
+  print_register_file_state(core);
+
+  print_code_segment(core);
+  print_data_segment(core);
+  print_heap_segment(core);
+  print_stack_segment(core);
+
+  print_break_comment_line_for(core, "fetch instruction", eval_ir_nids);
+  print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nids);
+
+  print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nids);
+  print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nids);
+
+  print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction control flow",
+    eval_non_kernel_control_flow_nids);
+
+  print_nobreak_comment_for(core, "update kernel state");
+
+  print_break_line_for(core, next_program_break_nids);
+  if (core == number_of_cores - 1)
+    print_break_line(next_file_descriptor_nid);
+  print_break_line_for(core, next_readable_bytes_nids);
+  print_break_line_for(core, next_read_bytes_nids);
+
+  print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nids);
+  print_break_comment_line_for(core, "update program counter", next_pc_nids);
+
+  print_break_comment_line_for(core, "instruction register data flow",
+    eval_instruction_register_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction register data flow",
+    eval_non_kernel_register_data_flow_nids);
+  print_break_comment_line_for(core, "kernel and instruction register data flow",
+    eval_register_data_flow_nids);
+  print_break_comment_line_for(core, "update register data flow", next_register_file_nids);
+
+  print_break_comment_line_for(core, "instruction data segment data flow",
+    eval_instruction_data_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction data segment data flow",
+    eval_data_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update data segment data flow", next_data_segment_nids);
+
+  print_break_comment_line_for(core, "instruction heap segment data flow",
+    eval_instruction_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction heap segment data flow",
+    eval_non_kernel_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "kernel and instruction heap segment data flow",
+    eval_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update heap segment data flow", next_heap_segment_nids);
+
+  print_break_comment_line_for(core, "instruction stack segment data flow",
+    eval_instruction_stack_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction stack segment data flow",
+    eval_stack_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nids);
+
+  print_break_comment_for(core, "state properties");
+
+  print_line_for(core, prop_illegal_instruction_nids);
+  print_break_line_for(core, prop_illegal_compressed_instruction_nids);
+  print_break_line_for(core, prop_is_instruction_known_nids);
+  print_break_line_for(core, prop_next_fetch_unaligned_nids);
+  print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
+  print_break_line_for(core, prop_is_syscall_id_known_nids);
+
+  // optional exit properties
+
+  print_break_line_for(core, prop_bad_exit_code_nids);
+  print_break_line_for(core, prop_good_exit_code_nids);
+
+  if (core == number_of_cores - 1) {
+    print_break_line(prop_exit_codes_nid);
+    print_break_line(prop_all_cores_exited_nid);
+  }
+
+  // optional arithmetic properties
+
+  print_break_line_for(core, prop_division_by_zero_nids);
+  print_break_line_for(core, prop_signed_division_overflow_nids);
+
+  // optional user code segmentation fault checks
+
+  print_break_line_for(core, prop_load_seg_faulting_nids);
+  print_break_line_for(core, prop_store_seg_faulting_nids);
+  print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
+  print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
+  print_break_line_for(core, prop_stack_seg_faulting_nids);
+
+  // optional kernel segmentation fault checks
+
+  print_break_line_for(core, prop_brk_seg_faulting_nids);
+  print_break_line_for(core, prop_openat_seg_faulting_nids);
+  print_break_line_for(core, prop_read_seg_faulting_nids);
+  print_break_line_for(core, prop_write_seg_faulting_nids);
+
+  // synchronizing program counters
+
+  print_break_line_for(core, sync_pc_nids);
+
+  // synchronizing register files
+
+  print_break_line_for(core, sync_register_file_nids);
+
+  // synchronizing main memories
+
+  print_break_line_for(core, sync_data_segment_nids);
+  print_break_line_for(core, sync_heap_segment_nids);
+  print_break_line_for(core, sync_stack_segment_nids);
+}
+
+void print_btor2_model() {
+  uint64_t i;
+  uint64_t core;
+
+  if (number_of_binaries > 0) {
+    if (number_of_binaries < number_of_cores)
+      model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
+    else
+      model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
+  } else {
+    if (IS64BITTARGET)
+      model_name = "64-bit-riscv-machine-synthesize.btor2";
+    else
+      model_name = "32-bit-riscv-machine-synthesize.btor2";
+  }
+
+  // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  model_fd = open_write_only(model_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (signed_less_than(model_fd, 0)) {
+    printf("%s: could not create model file %s\n", selfie_name, model_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  reset_library();
+
+  output_name = model_name;
+  output_fd   = model_fd;
+
+  w = dprintf(output_fd, "; %s\n\n", SELFIE_URL)
+    + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
+  if (check_bad_exit_code == 0)
+    w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
+  if (check_good_exit_code)
+    w = w + dprintf(output_fd, "; with %s\n", good_exit_code_check_option);
+  if (check_exit_codes == 0)
+    w = w + dprintf(output_fd, "; with %s\n", exit_codes_check_option);
+  if (check_division_by_zero == 0)
+    w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
+  if (check_division_overflow == 0)
+    w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
+  if (check_seg_faults == 0)
+    w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
+  w = w
+    + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
+    + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
+        virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
+        code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
+        memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
+        heap_allowance_option, heap_allowance, heap_initial_size)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
+        stack_allowance_option, stack_allowance, stack_initial_size);
+  i = 0;
+  while (i < number_of_binaries) {
+    w = w
+      + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
+          get_for(i, binary_names))
+      + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
+          get_for(i, code_sizes), get_for(i, data_sizes));
+    i = i + 1;
+  }
+  if (number_of_binaries > 0) {
+    w = w + dprintf(output_fd, "; RISC-V code invoked ");
+    i = 1;
+    if (i < number_of_remaining_arguments()) {
+      w = w + dprintf(output_fd, "with console arguments:");
+      while (i < number_of_remaining_arguments()) {
+        w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
+        i = i + 1;
+      }
+    } else
+      w = w + dprintf(output_fd, "without console arguments");
+    w = w + dprintf(output_fd, "\n\n");
+  }
+
+  print_interface_sorts();
+  print_interface_kernel();
+
+  print_register_sorts();
+  print_memory_sorts();
+
+  core = 0;
+
+  while (core < number_of_cores) {
+    print_btor2_model_for(core);
+
+    core = core + 1;
+  }
+
+  output_name = (char*) 0;
+  output_fd   = 1;
+
+  printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
+}
+
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
@@ -9599,156 +9847,7 @@ uint64_t* state_property(uint64_t core, uint64_t* good_nid, uint64_t* bad_nid, c
   }
 }
 
-void output_model(uint64_t core) {
-  print_segmentation(core);
-
-  print_kernel_state(core);
-
-  print_core_state(core);
-
-  print_register_file_state(core);
-
-  print_code_segment(core);
-
-  print_data_segment(core);
-  print_heap_segment(core);
-  print_stack_segment(core);
-
-  print_break_comment_line_for(core, "fetch instruction", eval_ir_nid);
-
-  print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nid);
-
-  print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nid);
-
-  print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nid);
-
-  print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nid);
-
-  print_break_comment_line_for(core, "compressed instruction control flow",
-    eval_compressed_instruction_control_flow_nid);
-
-  print_nobreak_comment_for(core, "update kernel state");
-
-  print_break_line_for(core, next_program_break_nids);
-
-  print_break_line(next_file_descriptor_nid);
-
-  print_break_line_for(core, next_readable_bytes_nids);
-
-  print_break_line_for(core, next_read_bytes_nids);
-
-  print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nid);
-
-  print_break_comment_line_for(core, "update program counter", next_pc_nid);
-
-  print_break_comment_line_for(core, "instruction register data flow",
-    eval_instruction_register_data_flow_nid);
-
-  print_break_comment_line_for(core, "compressed instruction register data flow",
-    eval_compressed_instruction_register_data_flow_nid);
-
-  print_break_comment_line_for(core, "kernel and instruction register data flow",
-    eval_register_data_flow_nid);
-
-  print_break_comment_line_for(core, "update register data flow", next_register_file_nid);
-
-  print_break_comment_line_for(core, "instruction data segment data flow",
-    eval_instruction_data_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "compressed instruction data segment data flow",
-    eval_compressed_instruction_data_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "update data segment data flow", next_data_segment_nid);
-
-  print_break_comment_line_for(core, "instruction heap segment data flow",
-    eval_instruction_heap_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "compressed instruction heap segment data flow",
-    eval_compressed_instruction_heap_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "kernel and instruction heap segment data flow",
-    eval_heap_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "update heap segment data flow", next_heap_segment_nid);
-
-  print_break_comment_line_for(core, "instruction stack segment data flow",
-    eval_instruction_stack_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "compressed instruction stack segment data flow",
-    eval_compressed_instruction_stack_segment_data_flow_nid);
-
-  print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nid);
-
-  print_break_comment_for(core, "state properties");
-
-  print_line_for(core, prop_illegal_instruction_nids);
-
-  print_break_line_for(core, prop_illegal_compressed_instruction_nids);
-
-  print_break_line_for(core, prop_is_instruction_known_nids);
-
-  print_break_line_for(core, prop_next_fetch_unaligned_nids);
-
-  print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
-
-  print_break_line_for(core, prop_is_syscall_id_known_nids);
-
-  // optional exit properties
-
-  print_break_line_for(core, prop_bad_exit_code_nids);
-
-  print_break_line_for(core, prop_good_exit_code_nids);
-
-  if (core == number_of_cores - 1) {
-    print_break_line(prop_exit_codes_nid);
-
-    print_break_line(prop_all_cores_exited_nid);
-  }
-
-  // optional arithmetic properties
-
-  print_break_line_for(core, prop_division_by_zero_nids);
-
-  print_break_line_for(core, prop_signed_division_overflow_nids);
-
-  // optional user code segmentation fault checks
-
-  print_break_line_for(core, prop_load_seg_faulting_nids);
-
-  print_break_line_for(core, prop_store_seg_faulting_nids);
-
-  print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
-
-  print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
-
-  print_break_line_for(core, prop_stack_seg_faulting_nids);
-
-  // optional kernel segmentation fault checks
-
-  print_break_line_for(core, prop_brk_seg_faulting_nids);
-
-  print_break_line_for(core, prop_openat_seg_faulting_nids);
-
-  print_break_line_for(core, prop_read_seg_faulting_nids);
-
-  print_break_line_for(core, prop_write_seg_faulting_nids);
-
-  // synchronizing program counters
-
-  print_break_line_for(core, sync_pc_nids);
-
-  // synchronizing register files
-
-  print_break_line_for(core, sync_register_file_nids);
-
-  // synchronizing main memories
-
-  print_break_line_for(core, sync_data_segment_nids);
-  print_break_line_for(core, sync_heap_segment_nids);
-  print_break_line_for(core, sync_stack_segment_nids);
-}
-
-void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
+void kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
   uint64_t* heap_segment_data_flow_nid,
   uint64_t* program_break_nid, uint64_t* file_descriptor_nid,
@@ -9888,6 +9987,8 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
     control_flow_nid,
     "update program counter unless in kernel mode");
 
+  set_for(core, eval_control_flow_nids, eval_control_flow_nid);
+
   // kernel register data flow
 
   read_return_value_nid = new_ternary(OP_ITE, SID_MACHINE_WORD,
@@ -9956,6 +10057,8 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
     register_data_flow_nid,
     "register data flow");
 
+  set_for(core, eval_register_data_flow_nids, eval_register_data_flow_nid);
+
   // system call ABI data flow
 
   a1_value_nid = load_register_value(NID_A1, "a1 value", register_file_nid);
@@ -9982,6 +10085,8 @@ void kernel_combinational(uint64_t* pc_nid, uint64_t* ir_nid,
       heap_segment_nid),
     heap_segment_data_flow_nid,
     "heap segment data flow");
+
+  set_for(core, eval_heap_segment_data_flow_nids, eval_heap_segment_data_flow_nid);
 }
 
 void kernel_sequential(uint64_t core,
@@ -10312,6 +10417,12 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
 void rotor_combinational(uint64_t core, uint64_t* pc_nid,
   uint64_t* code_segment_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
+  uint64_t* instruction_ID_nid;
+  uint64_t* compressed_instruction_ID_nid;
+  uint64_t* instruction_control_flow_nid;
+  uint64_t* instruction_register_data_flow_nid;
+  uint64_t* instruction_data_flow_nid;
+
   // fetch instruction
 
   eval_ir_nid = fetch_instruction(pc_nid, code_segment_nid);
@@ -10326,99 +10437,123 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
 
   // decode instruction
 
-  eval_instruction_ID_nid = decode_instruction(eval_ir_nid);
+  instruction_ID_nid = decode_instruction(eval_ir_nid);
+
+  set_for(core, eval_instruction_ID_nids, instruction_ID_nid);
 
   // decode compressed instruction
 
-  eval_compressed_instruction_ID_nid = decode_compressed_instruction(eval_c_ir_nid);
+  compressed_instruction_ID_nid = decode_compressed_instruction(eval_c_ir_nid);
 
-  if (eval_compressed_instruction_ID_nid == UNUSED)
-    set_for(core, eval_instruction_ID_nids, eval_instruction_ID_nid);
+  set_for(core, eval_compressed_instruction_ID_nids, compressed_instruction_ID_nid);
+
+  if (compressed_instruction_ID_nid == UNUSED)
+    set_for(core, eval_ID_nids, instruction_ID_nid);
   else
-    set_for(core, eval_instruction_ID_nids, new_ternary(OP_ITE, SID_INSTRUCTION_ID,
+    set_for(core, eval_ID_nids, new_ternary(OP_ITE, SID_INSTRUCTION_ID,
       is_compressed_instruction(eval_ir_nid),
-      eval_compressed_instruction_ID_nid,
-      eval_instruction_ID_nid,
-      "is known uncompressed or compressed instruction?"));
+      compressed_instruction_ID_nid,
+      instruction_ID_nid,
+      "is known compressed or uncompressed instruction?"));
 
   // instruction control flow
 
-  eval_instruction_control_flow_nid =
-    core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
+  instruction_control_flow_nid = core_control_flow(pc_nid, eval_ir_nid, register_file_nid);
 
-  // compressed instruction control flow
+  set_for(core, eval_instruction_control_flow_nids, instruction_control_flow_nid);
 
-  eval_compressed_instruction_control_flow_nid =
+  // compressed and uncompressed instruction control flow
+
+  eval_non_kernel_control_flow_nid =
     core_compressed_control_flow(pc_nid, eval_c_ir_nid,
-      register_file_nid, eval_instruction_control_flow_nid);
+      register_file_nid, instruction_control_flow_nid);
+
+  set_for(core, eval_non_kernel_control_flow_nids, eval_non_kernel_control_flow_nid);
 
   // instruction register data flow
 
-  eval_instruction_register_data_flow_nid =
+  instruction_register_data_flow_nid =
     core_register_data_flow(pc_nid, eval_ir_nid,
       register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
 
-  // compressed instruction register data flow
+  set_for(core, eval_instruction_register_data_flow_nids,
+    instruction_register_data_flow_nid);
 
-  eval_compressed_instruction_register_data_flow_nid =
+  // compressed and uncompressed instruction register data flow
+
+  eval_non_kernel_register_data_flow_nid =
     core_compressed_register_data_flow(pc_nid, eval_c_ir_nid,
       register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid,
-      eval_instruction_register_data_flow_nid);
+      instruction_register_data_flow_nid);
+
+  set_for(core, eval_non_kernel_register_data_flow_nids,
+    eval_non_kernel_register_data_flow_nid);
 
   // instruction data segment data flow
 
-  eval_instruction_data_segment_data_flow_nid =
+  instruction_data_flow_nid =
     core_memory_data_flow(eval_ir_nid, register_file_nid, data_segment_nid);
 
-  // compressed instruction data segment data flow
+  set_for(core, eval_instruction_data_segment_data_flow_nids, instruction_data_flow_nid);
 
-  eval_compressed_instruction_data_segment_data_flow_nid =
+  // compressed and uncompressed instruction data segment data flow
+
+  eval_data_segment_data_flow_nid =
     core_compressed_memory_data_flow(eval_c_ir_nid, register_file_nid, data_segment_nid,
-      eval_instruction_data_segment_data_flow_nid);
+      instruction_data_flow_nid);
+
+  set_for(core, eval_data_segment_data_flow_nids, eval_data_segment_data_flow_nid);
 
   // instruction heap segment data flow
 
-  eval_instruction_heap_segment_data_flow_nid =
+  instruction_data_flow_nid =
     core_memory_data_flow(eval_ir_nid, register_file_nid, heap_segment_nid);
 
-  // compressed instruction heap segment data flow
+  set_for(core, eval_instruction_heap_segment_data_flow_nids, instruction_data_flow_nid);
 
-  eval_compressed_instruction_heap_segment_data_flow_nid =
+  // compressed and uncompressed instruction heap segment data flow
+
+  eval_non_kernel_heap_segment_data_flow_nid =
     core_compressed_memory_data_flow(eval_c_ir_nid, register_file_nid, heap_segment_nid,
-      eval_instruction_heap_segment_data_flow_nid);
+      instruction_data_flow_nid);
+
+  set_for(core, eval_non_kernel_heap_segment_data_flow_nids, eval_non_kernel_heap_segment_data_flow_nid);
 
   // instruction stack segment data flow
 
-  eval_instruction_stack_segment_data_flow_nid =
+  instruction_data_flow_nid =
     core_memory_data_flow(eval_ir_nid, register_file_nid, stack_segment_nid);
 
-  // compressed instruction stack segment data flow
+  set_for(core, eval_instruction_stack_segment_data_flow_nids, instruction_data_flow_nid);
 
-  eval_compressed_instruction_stack_segment_data_flow_nid =
+  // compressed and uncompressed instruction stack segment data flow
+
+  eval_stack_segment_data_flow_nid =
     core_compressed_memory_data_flow(eval_c_ir_nid, register_file_nid, stack_segment_nid,
-      eval_instruction_stack_segment_data_flow_nid);
+      instruction_data_flow_nid);
+
+  set_for(core, eval_stack_segment_data_flow_nids, eval_stack_segment_data_flow_nid);
 }
 
 void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid,
   uint64_t* control_flow_nid, uint64_t* register_data_flow_nid,
   uint64_t* data_segment_data_flow_nid, uint64_t* heap_segment_data_flow_nid, uint64_t* stack_segment_data_flow_nid) {
-  uint64_t* sync_pc_nid;
-  uint64_t* sync_register_file_nid;
-  uint64_t* sync_segment_nid;
+  uint64_t* next_nid;
+  uint64_t* sync_nid;
 
   // update control flow
 
-  next_pc_nid = UNUSED;
-  sync_pc_nid = UNUSED;
+  next_nid = UNUSED;
+  sync_nid = UNUSED;
 
   if (SYNCHRONIZED_PC)
     if (core == 0) {
-      next_pc_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
+      next_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
 
       eval_core_0_control_flow_nid = control_flow_nid;
     } else
-      sync_pc_nid = new_property(OP_CONSTRAINT,
+      sync_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           control_flow_nid,
           eval_core_0_control_flow_nid,
@@ -10426,24 +10561,24 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
         format_comment("new-core-%lu-pc-value", core),
         "asserting new pc value == new core-0 pc value");
   else
-    next_pc_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
+    next_nid = new_next(SID_MACHINE_WORD, pc_nid, control_flow_nid, "program counter");
 
-  set_for(core, next_pc_nids, next_pc_nid);
-  set_for(core, sync_pc_nids, sync_pc_nid);
+  set_for(core, next_pc_nids, next_nid);
+  set_for(core, sync_pc_nids, sync_nid);
 
   // update register data flow
 
-  next_register_file_nid = UNUSED;
-  sync_register_file_nid = UNUSED;
+  next_nid = UNUSED;
+  sync_nid = UNUSED;
 
   if (SYNCHRONIZED_REGISTERS)
     if (core == 0) {
-      next_register_file_nid = new_next(SID_REGISTER_STATE,
+      next_nid = new_next(SID_REGISTER_STATE,
         register_file_nid, register_data_flow_nid, "register file");
 
       eval_core_0_register_data_flow_nid = register_data_flow_nid;
     } else
-      sync_register_file_nid = new_property(OP_CONSTRAINT,
+      sync_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           register_data_flow_nid,
           eval_core_0_register_data_flow_nid,
@@ -10454,28 +10589,28 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < number_of_cores - 1)
       state_register_file_nid = register_data_flow_nid;
     else
-      next_register_file_nid = new_next(SID_REGISTER_STATE,
+      next_nid = new_next(SID_REGISTER_STATE,
         get_for(0, state_register_file_nids), register_data_flow_nid, "register file");
   } else
-    next_register_file_nid = new_next(SID_REGISTER_STATE,
+    next_nid = new_next(SID_REGISTER_STATE,
       register_file_nid, register_data_flow_nid, "register file");
 
-  set_for(core, next_register_file_nids, next_register_file_nid);
-  set_for(core, sync_register_file_nids, sync_register_file_nid);
+  set_for(core, next_register_file_nids, next_nid);
+  set_for(core, sync_register_file_nids, sync_nid);
 
   // update data segment data flow
 
-  next_data_segment_nid = UNUSED;
-  sync_segment_nid      = UNUSED;
+  next_nid = UNUSED;
+  sync_nid = UNUSED;
 
   if (SYNCHRONIZED_MEMORY)
     if (core == 0) {
-      next_data_segment_nid = new_next(SID_DATA_STATE,
+      next_nid = new_next(SID_DATA_STATE,
         data_segment_nid, data_segment_data_flow_nid, "data segment");
 
       eval_core_0_data_segment_data_flow_nid = data_segment_data_flow_nid;
     } else
-      sync_segment_nid = new_property(OP_CONSTRAINT,
+      sync_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           data_segment_data_flow_nid,
           eval_core_0_data_segment_data_flow_nid,
@@ -10486,28 +10621,28 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < number_of_cores - 1)
       state_data_segment_nid = data_segment_data_flow_nid;
     else
-      next_data_segment_nid = new_next(SID_DATA_STATE,
+      next_nid = new_next(SID_DATA_STATE,
         get_for(0, state_data_segment_nids), data_segment_data_flow_nid, "data segment");
   } else
-    next_data_segment_nid = new_next(SID_DATA_STATE,
+    next_nid = new_next(SID_DATA_STATE,
       data_segment_nid, data_segment_data_flow_nid, "data segment");
 
-  set_for(core, next_data_segment_nids, next_data_segment_nid);
-  set_for(core, sync_data_segment_nids, sync_segment_nid);
+  set_for(core, next_data_segment_nids, next_nid);
+  set_for(core, sync_data_segment_nids, sync_nid);
 
   // update heap segment data flow
 
-  next_heap_segment_nid = UNUSED;
-  sync_segment_nid      = UNUSED;
+  next_nid = UNUSED;
+  sync_nid = UNUSED;
 
   if (SYNCHRONIZED_MEMORY)
     if (core == 0) {
-      next_heap_segment_nid = new_next(SID_HEAP_STATE,
+      next_nid = new_next(SID_HEAP_STATE,
         heap_segment_nid, heap_segment_data_flow_nid, "heap segment");
 
       eval_core_0_heap_segment_data_flow_nid = heap_segment_data_flow_nid;
     } else
-      sync_segment_nid = new_property(OP_CONSTRAINT,
+      sync_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           heap_segment_data_flow_nid,
           eval_core_0_heap_segment_data_flow_nid,
@@ -10518,28 +10653,28 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < number_of_cores - 1)
       state_heap_segment_nid = heap_segment_data_flow_nid;
     else
-      next_heap_segment_nid = new_next(SID_HEAP_STATE,
+      next_nid = new_next(SID_HEAP_STATE,
         get_for(0, state_heap_segment_nids), heap_segment_data_flow_nid, "heap segment");
   } else
-    next_heap_segment_nid = new_next(SID_HEAP_STATE,
+    next_nid = new_next(SID_HEAP_STATE,
       heap_segment_nid, heap_segment_data_flow_nid, "heap segment");
 
-  set_for(core, next_heap_segment_nids, next_heap_segment_nid);
-  set_for(core, sync_heap_segment_nids, sync_segment_nid);
+  set_for(core, next_heap_segment_nids, next_nid);
+  set_for(core, sync_heap_segment_nids, sync_nid);
 
   // update stack segment data flow
 
-  next_stack_segment_nid = UNUSED;
-  sync_segment_nid       = UNUSED;
+  next_nid = UNUSED;
+  sync_nid = UNUSED;
 
   if (SYNCHRONIZED_MEMORY)
     if (core == 0) {
-      next_stack_segment_nid = new_next(SID_STACK_STATE,
+      next_nid = new_next(SID_STACK_STATE,
         stack_segment_nid, stack_segment_data_flow_nid, "stack segment");
 
       eval_core_0_stack_segment_data_flow_nid = stack_segment_data_flow_nid;
     } else
-      sync_segment_nid = new_property(OP_CONSTRAINT,
+      sync_nid = new_property(OP_CONSTRAINT,
         new_binary_boolean(OP_EQ,
           stack_segment_data_flow_nid,
           eval_core_0_stack_segment_data_flow_nid,
@@ -10550,14 +10685,14 @@ void rotor_sequential(uint64_t core, uint64_t* pc_nid, uint64_t* register_file_n
     if (core < number_of_cores - 1)
       state_stack_segment_nid = stack_segment_data_flow_nid;
     else
-      next_stack_segment_nid = new_next(SID_STACK_STATE,
+      next_nid = new_next(SID_STACK_STATE,
         get_for(0, state_stack_segment_nids), stack_segment_data_flow_nid, "stack segment");
   } else
-    next_stack_segment_nid = new_next(SID_STACK_STATE,
+    next_nid = new_next(SID_STACK_STATE,
       stack_segment_nid, stack_segment_data_flow_nid, "stack segment");
 
-  set_for(core, next_stack_segment_nids, next_stack_segment_nid);
-  set_for(core, sync_stack_segment_nids, sync_segment_nid);
+  set_for(core, next_stack_segment_nids, next_nid);
+  set_for(core, sync_stack_segment_nids, sync_nid);
 }
 
 void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
@@ -10726,59 +10861,12 @@ void load_binary(uint64_t binary) {
 }
 
 void model_rotor() {
-  uint64_t i;
   uint64_t core;
 
-  w = w
-    + dprintf(output_fd, "; %s\n\n", SELFIE_URL)
-    + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
-  if (check_bad_exit_code == 0)
-    w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
-  if (check_good_exit_code)
-    w = w + dprintf(output_fd, "; with %s\n", good_exit_code_check_option);
-  if (check_exit_codes == 0)
-    w = w + dprintf(output_fd, "; with %s\n", exit_codes_check_option);
-  if (check_division_by_zero == 0)
-    w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
-  if (check_division_overflow == 0)
-    w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
-  if (check_seg_faults == 0)
-    w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
-  w = w
-    + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
-    + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
-        virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
-        code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
-        memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS)
-    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
-        heap_allowance_option, heap_allowance, heap_initial_size)
-    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
-        stack_allowance_option, stack_allowance, stack_initial_size);
-  i = 0;
-  while (i < number_of_binaries) {
-    w = w
-      + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
-          get_for(i, binary_names))
-      + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
-          get_for(i, code_sizes), get_for(i, data_sizes));
-    i = i + 1;
-  }
-  if (number_of_binaries > 0) {
-    w = w + dprintf(output_fd, "; RISC-V code invoked ");
-    i = 1;
-    if (i < number_of_remaining_arguments()) {
-      w = w + dprintf(output_fd, "with console arguments:");
-      while (i < number_of_remaining_arguments()) {
-        w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
-        i = i + 1;
-      }
-    } else
-      w = w + dprintf(output_fd, "without console arguments");
-    w = w + dprintf(output_fd, "\n\n");
-  }
+  number_of_lines = 0;
+
+  if (number_of_binaries > 0)
+    init_memory(number_of_binaries);
 
   init_model();
 
@@ -10787,12 +10875,6 @@ void model_rotor() {
 
   init_register_file_sorts();
   init_memory_sorts(max_code_size, max_data_size);
-
-  print_interface_sorts();
-  print_interface_kernel();
-
-  print_register_sorts();
-  print_memory_sorts();
 
   init_kernels(number_of_cores);
   init_register_files(number_of_cores);
@@ -10815,13 +10897,10 @@ void model_rotor() {
     new_segmentation();
 
     new_kernel_state(core);
-
     new_core_state(core);
-
     new_register_file_state(core);
 
     new_code_segment(core);
-
     new_data_segment(core);
     new_heap_segment(core);
     new_stack_segment(core);
@@ -10829,10 +10908,10 @@ void model_rotor() {
     rotor_combinational(core, state_pc_nid,
       state_code_segment_nid, state_register_file_nid,
       state_data_segment_nid, state_heap_segment_nid, state_stack_segment_nid);
-    kernel_combinational(state_pc_nid, eval_ir_nid,
-      eval_compressed_instruction_control_flow_nid,
-      eval_compressed_instruction_register_data_flow_nid,
-      eval_compressed_instruction_heap_segment_data_flow_nid,
+    kernel_combinational(core, state_pc_nid, eval_ir_nid,
+      eval_non_kernel_control_flow_nid,
+      eval_non_kernel_register_data_flow_nid,
+      eval_non_kernel_heap_segment_data_flow_nid,
       next_program_break_nid, next_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
       state_register_file_nid, state_heap_segment_nid);
@@ -10844,9 +10923,9 @@ void model_rotor() {
       state_stack_segment_nid,
       eval_control_flow_nid,
       eval_register_data_flow_nid,
-      eval_compressed_instruction_data_segment_data_flow_nid,
+      eval_data_segment_data_flow_nid,
       eval_heap_segment_data_flow_nid,
-      eval_compressed_instruction_stack_segment_data_flow_nid);
+      eval_stack_segment_data_flow_nid);
     kernel_sequential(core,
       state_program_break_nid, state_file_descriptor_nid,
       state_readable_bytes_nid, state_read_bytes_nid,
@@ -10856,7 +10935,7 @@ void model_rotor() {
 
     rotor_properties(core,
       eval_ir_nid, eval_c_ir_nid,
-      eval_instruction_ID_nids,
+      eval_ID_nids,
       eval_control_flow_nid,
       state_register_file_nid,
       state_code_segment_nid,
@@ -10869,10 +10948,12 @@ void model_rotor() {
       state_register_file_nid,
       state_heap_segment_nid);
 
-    output_model(core);
-
     core = core + 1;
   }
+
+  printf("%s: %lu lines of model formulae generated\n", selfie_name, number_of_lines);
+
+  printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
 // -----------------------------------------------------------------
@@ -10933,7 +11014,7 @@ void print_assembly(uint64_t core) {
 
   printf("0x%lX: ", pc);
 
-  ID = eval_line_for(core, eval_instruction_ID_nids);
+  ID = eval_line_for(core, eval_ID_nids);
 
   mnemonic = get_instruction_mnemonic(ID);
 
@@ -11677,41 +11758,9 @@ uint64_t selfie_model() {
       if (exit_code != EXITCODE_NOERROR)
         return exit_code;
 
-      if (number_of_binaries > 0) {
-        init_memory(number_of_binaries);
-
-        if (number_of_binaries < number_of_cores)
-          model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
-        else
-          model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
-      } else {
-        if (IS64BITTARGET)
-          model_name = "64-bit-riscv-machine-synthesize.btor2";
-        else
-          model_name = "32-bit-riscv-machine-synthesize.btor2";
-      }
-
-      // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-      model_fd = open_write_only(model_name, S_IRUSR_IWUSR_IRGRP_IROTH);
-
-      if (signed_less_than(model_fd, 0)) {
-        printf("%s: could not create model file %s\n", selfie_name, model_name);
-
-        exit(EXITCODE_IOERROR);
-      }
-
-      reset_library();
-
-      output_name = model_name;
-      output_fd   = model_fd;
-
       model_rotor();
 
-      output_name = (char*) 0;
-      output_fd   = 1;
-
-      printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
+      print_btor2_model();
 
       if (evaluate_model)
         eval_rotor();
