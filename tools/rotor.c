@@ -622,6 +622,7 @@ uint64_t* SID_INPUT_BUFFER  = (uint64_t*) 0;
 
 uint64_t* state_program_break_nid  = (uint64_t*) 0;
 uint64_t* init_program_break_nid   = (uint64_t*) 0;
+uint64_t* init_program_break_nids  = (uint64_t*) 0;
 uint64_t* eval_program_break_nid   = (uint64_t*) 0;
 uint64_t* next_program_break_nid   = (uint64_t*) 0;
 uint64_t* next_program_break_nids  = (uint64_t*) 0;
@@ -636,12 +637,14 @@ uint64_t* next_input_buffer_nid  = (uint64_t*) 0;
 
 uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
+uint64_t* init_readable_bytes_nids = (uint64_t*) 0;
 uint64_t* next_readable_bytes_nids = (uint64_t*) 0;
 
 uint64_t* eval_still_reading_active_read_nid = (uint64_t*) 0;
 
 uint64_t* state_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
+uint64_t* init_read_bytes_nids = (uint64_t*) 0;
 uint64_t* next_read_bytes_nids = (uint64_t*) 0;
 
 uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
@@ -680,9 +683,14 @@ void init_interface_kernel() {
 }
 
 void init_kernels(uint64_t number_of_cores) {
-  next_program_break_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_program_break_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_program_break_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  init_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_read_bytes_nids     = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  init_read_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_read_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -817,7 +825,7 @@ void init_register_files(uint64_t number_of_cores) {
 
 void print_memory_sorts();
 
-void new_segmentation();
+void new_segmentation(uint64_t core);
 void print_segmentation(uint64_t core);
 
 uint64_t* select_segment_feature(uint64_t* segment_nid,
@@ -1026,6 +1034,9 @@ uint64_t* SID_CODE_STATE   = (uint64_t*) 0;
 uint64_t* NID_CODE_START = (uint64_t*) 0;
 uint64_t* NID_CODE_END   = (uint64_t*) 0;
 
+uint64_t* NID_CODE_STARTS = (uint64_t*) 0;
+uint64_t* NID_CODE_ENDS   = (uint64_t*) 0;
+
 // main memory
 
 uint64_t MEMORYWORDSIZEINBITS = 64;
@@ -1044,6 +1055,9 @@ uint64_t* SID_DATA_STATE   = (uint64_t*) 0;
 uint64_t* NID_DATA_START = (uint64_t*) 0;
 uint64_t* NID_DATA_END   = (uint64_t*) 0;
 
+uint64_t* NID_DATA_STARTS = (uint64_t*) 0;
+uint64_t* NID_DATA_ENDS   = (uint64_t*) 0;
+
 // heap segment
 
 uint64_t HEAP_ADDRESS_SPACE = 1; // number of bits in heap segment addresses
@@ -1054,6 +1068,9 @@ uint64_t* SID_HEAP_STATE   = (uint64_t*) 0;
 uint64_t* NID_HEAP_START = (uint64_t*) 0;
 uint64_t* NID_HEAP_END   = (uint64_t*) 0;
 
+uint64_t* NID_HEAP_STARTS = (uint64_t*) 0;
+uint64_t* NID_HEAP_ENDS   = (uint64_t*) 0;
+
 // stack segment
 
 uint64_t STACK_ADDRESS_SPACE = 1; // number of bits in stack segment addresses
@@ -1063,6 +1080,9 @@ uint64_t* SID_STACK_STATE   = (uint64_t*) 0;
 
 uint64_t* NID_STACK_START = (uint64_t*) 0;
 uint64_t* NID_STACK_END   = (uint64_t*) 0;
+
+uint64_t* NID_STACK_STARTS = (uint64_t*) 0;
+uint64_t* NID_STACK_ENDS   = (uint64_t*) 0;
 
 // bit masks and factors
 
@@ -1272,6 +1292,20 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   NID_DOUBLE_WORD_SIZE_MINUS_SINGLE_WORD_SIZE = NID_DOUBLE_WORD_4;
 
   NID_BYTE_SIZE_IN_BASE_BITS = NID_BYTE_3;
+}
+
+void init_segmentation(uint64_t number_of_cores) {
+  NID_CODE_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_CODE_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  NID_DATA_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_DATA_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  NID_HEAP_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_HEAP_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+
+  NID_STACK_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_STACK_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
 
 void init_memories(uint64_t number_of_cores) {
@@ -2961,6 +2995,7 @@ uint64_t* state_pc_nid = (uint64_t*) 0;
 uint64_t* init_pc_nid  = (uint64_t*) 0;
 
 uint64_t* state_pc_nids = (uint64_t*) 0;
+uint64_t* init_pc_nids  = (uint64_t*) 0;
 uint64_t* next_pc_nids  = (uint64_t*) 0;
 uint64_t* sync_pc_nids  = (uint64_t*) 0;
 
@@ -3007,6 +3042,7 @@ void init_cores(uint64_t number_of_cores) {
   eval_c_ir_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
 
   state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   sync_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 
@@ -4969,8 +5005,10 @@ void new_program_break(uint64_t core) {
     state_program_break_nid = new_input(OP_STATE, SID_VIRTUAL_ADDRESS,
       format_comment("core-%lu-program-break", core), "program break");
 
-  init_program_break_nid  = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
+  init_program_break_nid = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
     NID_HEAP_START, "initial program break is start of heap segment");
+
+  set_for(core, init_program_break_nids, init_program_break_nid);
 
   eval_init(init_program_break_nid);
 
@@ -5005,12 +5043,16 @@ void new_kernel_state(uint64_t core) {
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     NID_BYTES_TO_READ, "number of readable bytes");
 
+  set_for(core, init_readable_bytes_nids, init_readable_bytes_nid);
+
   eval_init(init_readable_bytes_nid);
 
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
+
+  set_for(core, init_read_bytes_nids, init_read_bytes_nid);
 
   eval_init(init_read_bytes_nid);
 }
@@ -5030,11 +5072,11 @@ void print_kernel_state(uint64_t core) {
   print_nobreak_comment_for(core, "kernel state");
 
   if (SHARED_MEMORY == 0)
-    print_break_line(init_program_break_nid);
+    print_break_line_for(core, init_program_break_nids);
 
-  print_break_line(init_readable_bytes_nid);
+  print_break_line_for(core, init_readable_bytes_nids);
 
-  print_break_line(init_read_bytes_nid);
+  print_break_line_for(core, init_read_bytes_nids);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5229,7 +5271,7 @@ void print_memory_sorts() {
   print_line(SID_STACK_STATE);
 }
 
-void new_segmentation() {
+void new_segmentation(uint64_t core) {
   uint64_t stack_end;
   uint64_t low_stack_address_space;
   uint64_t up_stack_address_space;
@@ -5329,22 +5371,31 @@ void new_segmentation() {
 
     exit(EXITCODE_SYSTEMERROR);
   }
+
+  set_for(core, NID_CODE_STARTS, NID_CODE_START);
+  set_for(core, NID_CODE_ENDS, NID_CODE_END);
+  set_for(core, NID_DATA_STARTS, NID_DATA_START);
+  set_for(core, NID_DATA_ENDS, NID_DATA_END);
+  set_for(core, NID_HEAP_STARTS, NID_HEAP_START);
+  set_for(core, NID_HEAP_ENDS, NID_HEAP_END);
+  set_for(core, NID_STACK_STARTS, NID_STACK_START);
+  set_for(core, NID_STACK_ENDS, NID_STACK_END);
 }
 
 void print_segmentation(uint64_t core) {
   print_break_comment_for(core, "segmentation");
 
-  print_line(NID_CODE_START);
-  print_line(NID_CODE_END);
+  print_line_for(core, NID_CODE_STARTS);
+  print_line_for(core, NID_CODE_ENDS);
 
-  print_line(NID_DATA_START);
-  print_line(NID_DATA_END);
+  print_line_for(core, NID_DATA_STARTS);
+  print_line_for(core, NID_DATA_ENDS);
 
-  print_line(NID_HEAP_START);
-  print_line(NID_HEAP_END);
+  print_line_for(core, NID_HEAP_STARTS);
+  print_line_for(core, NID_HEAP_ENDS);
 
-  print_line(NID_STACK_START);
-  print_line(NID_STACK_END);
+  print_line_for(core, NID_STACK_STARTS);
+  print_line_for(core, NID_STACK_ENDS);
 }
 
 uint64_t* select_segment_feature(uint64_t* segment_nid,
@@ -9626,6 +9677,8 @@ void new_core_state(uint64_t core) {
 
   init_pc_nid = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
 
+  set_for(core, init_pc_nids, init_pc_nid);
+
   eval_init(init_pc_nid);
 }
 
@@ -9636,8 +9689,7 @@ void print_core_state(uint64_t core) {
 
   print_break_comment_for(core, "program counter");
 
-  print_line(initial_pc_nid);
-  print_line(init_pc_nid);
+  print_line_for(core, init_pc_nids);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -10699,6 +10751,8 @@ void model_rotor() {
 
   init_kernels(number_of_cores);
   init_register_files(number_of_cores);
+
+  init_segmentation(number_of_cores);
   init_memories(number_of_cores);
 
   init_instruction_mnemonics();
@@ -10715,7 +10769,7 @@ void model_rotor() {
   while (core < number_of_cores) {
     load_binary(core);
 
-    new_segmentation();
+    new_segmentation(core);
 
     new_kernel_state(core);
     new_core_state(core);
