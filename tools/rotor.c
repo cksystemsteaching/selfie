@@ -383,7 +383,7 @@ uint64_t eval_line_for(uint64_t core, uint64_t* lines);
 uint64_t eval_property(uint64_t core, uint64_t* line);
 uint64_t eval_property_for(uint64_t core, uint64_t* lines);
 
-uint64_t eval_init(uint64_t* line);
+void eval_init(uint64_t* line);
 
 uint64_t eval_next(uint64_t* line);
 uint64_t eval_next_for(uint64_t core, uint64_t* lines);
@@ -3319,6 +3319,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg2(new_line, arg2);
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
+  set_symbolic_state(new_line, UNUSED);
   set_state(new_line, 0);
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
@@ -4094,8 +4095,8 @@ uint64_t eval_input(uint64_t* line) {
       // TODO: input is consumed more than once
       input_steps = current_step;
 
+    set_symbolic_state(line, line);
     set_state(line, current_input);
-
     set_step(line, next_step);
 
     if (any_input == 0)
@@ -4568,7 +4569,7 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
   return eval_property(core, get_for(core, lines));
 }
 
-uint64_t eval_init(uint64_t* line) {
+void eval_init(uint64_t* line) {
   uint64_t* state_nid;
   uint64_t* value_nid;
 
@@ -4590,8 +4591,6 @@ uint64_t eval_init(uint64_t* line) {
                 set_symbolic_state(state_nid, value_nid);
 
                 set_state(state_nid, eval_line(value_nid));
-
-                set_step(state_nid, INITIALIZED);
               } else {
                 // assert: sid of state line is ARRAY
                 if (is_bitvector(get_sid(value_nid))) {
@@ -4606,8 +4605,6 @@ uint64_t eval_init(uint64_t* line) {
                   set_symbolic_state(state_nid, value_nid);
 
                   set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
-
-                  set_step(state_nid, INITIALIZED);
                 } else {
                   // assert: sid of value line is ARRAY
                   match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
@@ -4618,8 +4615,6 @@ uint64_t eval_init(uint64_t* line) {
                     set_symbolic_state(state_nid, value_nid);
 
                     set_state(state_nid, get_state(value_nid));
-
-                    set_step(state_nid, INITIALIZED);
 
                     // TODO: reinitialize value state
                     set_state(value_nid, 0);
@@ -4632,10 +4627,11 @@ uint64_t eval_init(uint64_t* line) {
                 }
               }
 
+              set_step(state_nid, INITIALIZED);
+
               set_step(line, INITIALIZED);
 
-              // assert: return value is never used
-              return (uint64_t) state_nid;
+              return;
             } else
               printf("%s: init reinitializing state error\n", selfie_name);
           } else
