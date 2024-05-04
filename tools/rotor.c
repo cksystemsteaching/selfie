@@ -83,6 +83,8 @@ uint64_t  get_reuse(uint64_t* line)   { return *(line + 9); }
 uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 10); }
 uint64_t* get_succ(uint64_t* line)    { return (uint64_t*) *(line + 11); }
 
+uint64_t* get_symbolic_state(uint64_t* line) { return get_arg2(line); }
+
 void set_nid(uint64_t* line, uint64_t nid)      { *line        = nid; }
 void set_op(uint64_t* line, char* op)           { *(line + 1)  = (uint64_t) op; }
 void set_sid(uint64_t* line, uint64_t* sid)     { *(line + 2)  = (uint64_t) sid; }
@@ -95,6 +97,8 @@ void set_step(uint64_t* line, uint64_t step)    { *(line + 8)  = step; }
 void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 9)  = reuse; }
 void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 10) = (uint64_t) pred; }
 void set_succ(uint64_t* line, uint64_t* succ)   { *(line + 11) = (uint64_t) succ; }
+
+void set_symbolic_state(uint64_t* line, uint64_t* value_nid) { set_arg2(line, value_nid); }
 
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
@@ -287,8 +291,10 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
 
-uint64_t print_any_line(uint64_t nid, uint64_t* line);
-uint64_t print_referenced_line(uint64_t nid, uint64_t* line);
+uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
+uint64_t print_line_once(uint64_t nid, uint64_t* line);
+
+void print_line_advancing_nid(uint64_t* line);
 
 void print_line(uint64_t* line);
 void print_line_for(uint64_t core, uint64_t* lines);
@@ -412,6 +418,8 @@ uint64_t current_input = 0; // current input byte value
 uint64_t first_input = 0; // indicates if input has been consumed for the first time
 
 uint64_t any_input = 0; // indicates if any input has been consumed
+
+uint64_t printing_btor_model = 0; // indicates if BTOR model is printed during evaluation
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3029,10 +3037,6 @@ void init_cores(uint64_t number_of_cores) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-void print_btor2_model_for(uint64_t core);
-
-void print_btor2_model();
-
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
@@ -3070,6 +3074,12 @@ void load_binary(uint64_t binary);
 
 void model_rotor();
 
+void open_model_file();
+void close_model_file();
+
+void print_btor2_model_for(uint64_t core);
+void print_btor2_model();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t number_of_binaries = 0; // number of loaded binaries
@@ -3090,6 +3100,8 @@ char* code_word_size_option        = (char*) 0;
 char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
+
+uint64_t generate_btor_model = 0;
 
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
@@ -3207,6 +3219,8 @@ void eval_multicore_states();
 void eval_rotor();
 
 void disassemble_rotor(uint64_t core);
+
+void print_btor_model();
 
 uint64_t rotor_arguments();
 
@@ -3449,8 +3463,8 @@ void print_nid(uint64_t nid, uint64_t* line) {
 
 uint64_t print_sort(uint64_t nid, uint64_t* line) {
   if (is_array(line)) {
-    nid = print_referenced_line(nid, get_arg2(line));
-    nid = print_referenced_line(nid, get_arg3(line));
+    nid = print_line_once(nid, get_arg2(line));
+    nid = print_line_once(nid, get_arg3(line));
   }
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s", OP_SORT);
@@ -3464,7 +3478,7 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
 
 uint64_t print_constant(uint64_t nid, uint64_t* line) {
   uint64_t value;
-  nid = print_referenced_line(nid, get_sid(line));
+  nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   value = eval_constant_value(line);
   if (get_op(line) == OP_CONSTD) {
@@ -3485,15 +3499,22 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_input(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
+  if (printing_btor_model) {
+    if (get_op(line) == OP_STATE) {
+      nid = print_line_once(nid, get_symbolic_state(line));
+      set_nid(line, get_nid(get_symbolic_state(line)));
+    }
+  } else {
+    nid = print_line_once(nid, get_sid(line));
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
+  }
   return nid;
 }
 
 uint64_t print_ext(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_line_once(nid, get_sid(line));
+  nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
@@ -3501,8 +3522,8 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_slice(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_line_once(nid, get_sid(line));
+  nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
@@ -3510,8 +3531,8 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_line_once(nid, get_sid(line));
+  nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
@@ -3519,9 +3540,9 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  nid = print_referenced_line(nid, get_arg1(line));
-  nid = print_referenced_line(nid, get_arg2(line));
+  nid = print_line_once(nid, get_sid(line));
+  nid = print_line_once(nid, get_arg1(line));
+  nid = print_line_once(nid, get_arg2(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
@@ -3529,10 +3550,10 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_sid(line));
-  nid = print_referenced_line(nid, get_arg1(line));
-  nid = print_referenced_line(nid, get_arg2(line));
-  nid = print_referenced_line(nid, get_arg3(line));
+  nid = print_line_once(nid, get_sid(line));
+  nid = print_line_once(nid, get_arg1(line));
+  nid = print_line_once(nid, get_arg2(line));
+  nid = print_line_once(nid, get_arg3(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
@@ -3540,9 +3561,13 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_constraint(uint64_t nid, uint64_t* line) {
-  nid = print_referenced_line(nid, get_arg1(line));
+  nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
+  if (printing_btor_model)
+    // TODO: possibly negate constraint
+    w = w + dprintf(output_fd, " root %lu %lu", get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
+  else
+    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
   return nid;
 }
 
@@ -3557,7 +3582,7 @@ void print_comment(uint64_t* line) {
   w = w + dprintf(output_fd, "\n");
 }
 
-uint64_t print_any_line(uint64_t nid, uint64_t* line) {
+uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
   char* op;
 
   op = get_op(line);
@@ -3590,21 +3615,25 @@ uint64_t print_any_line(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_referenced_line(uint64_t nid, uint64_t* line) {
+uint64_t print_line_once(uint64_t nid, uint64_t* line) {
   if (get_nid(line) > last_nid)
     // print lines only once
     return nid;
   else
-    return print_any_line(nid, line) + 1;
+    return print_line_with_given_nid(nid, line) + 1;
+}
+
+void print_line_advancing_nid(uint64_t* line) {
+  current_nid = print_line_once(current_nid, line);
 }
 
 void print_line(uint64_t* line) {
   if (get_nid(line) > last_nid) {
     // print lines only once but mention reuse at top level
     w = w + dprintf(output_fd, "; reusing ");
-    print_any_line(get_nid(line), line);
+    print_line_with_given_nid(get_nid(line), line);
   } else
-    current_nid = print_referenced_line(current_nid, line);
+    print_line_advancing_nid(line);
 }
 
 void print_line_for(uint64_t core, uint64_t* lines) {
@@ -4450,33 +4479,39 @@ uint64_t eval_binary_op(uint64_t* line) {
 
 uint64_t eval_line(uint64_t* line) {
   char* op;
+  uint64_t value;
 
   op = get_op(line);
 
   if (get_step(line) == next_step)
-    return get_cached_state(line);
+    value = get_cached_state(line);
   else if (is_constant_op(op))
-    return eval_constant_value(line);
+    value = eval_constant_value(line);
   else if (is_input_op(op))
-    return eval_input(line);
+    value = eval_input(line);
   else if (op == OP_SEXT)
-    return eval_ext(line);
+    value = eval_ext(line);
   else if (op == OP_UEXT)
-    return eval_ext(line);
+    value = eval_ext(line);
   else if (op == OP_SLICE)
-    return eval_slice(line);
+    value = eval_slice(line);
   else if (op == OP_CONCAT)
-    return eval_concat(line);
+    value = eval_concat(line);
   else if (op == OP_ITE)
-    return eval_ite(line);
+    value = eval_ite(line);
   else if (op == OP_READ)
-    return eval_read(line);
+    value = eval_read(line);
   else if (op == OP_WRITE)
-    return eval_write(line);
+    value = eval_write(line);
   else if (is_unary_op(op))
-    return eval_unary_op(line);
+    value = eval_unary_op(line);
   else
-    return eval_binary_op(line);
+    value = eval_binary_op(line);
+
+  if (printing_btor_model)
+    print_line_advancing_nid(line);
+
+  return value;
 }
 
 uint64_t eval_line_for(uint64_t core, uint64_t* lines) {
@@ -4505,7 +4540,8 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
+    } else if (printing_btor_model)
+      print_line_advancing_nid(line);
 
     set_state(line, condition != 0);
     set_step(line, next_step);
@@ -4516,7 +4552,8 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
+    } else if (printing_btor_model)
+      print_line_advancing_nid(line);
 
     set_state(line, condition == 0);
     set_step(line, next_step);
@@ -4552,6 +4589,8 @@ uint64_t eval_init(uint64_t* line) {
               if (is_bitvector(get_sid(state_nid))) {
                 match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
 
+                set_symbolic_state(state_nid, value_nid);
+
                 set_state(state_nid, eval_line(value_nid));
 
                 set_step(state_nid, INITIALIZED);
@@ -4566,6 +4605,8 @@ uint64_t eval_init(uint64_t* line) {
                     exit(EXITCODE_SYSTEMERROR);
                   }
 
+                  set_symbolic_state(state_nid, value_nid);
+
                   set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
 
                   set_step(state_nid, INITIALIZED);
@@ -4576,6 +4617,8 @@ uint64_t eval_init(uint64_t* line) {
                   value_nid = (uint64_t*) eval_line(value_nid);
 
                   if (get_state(state_nid) != get_state(value_nid)) {
+                    set_symbolic_state(state_nid, value_nid);
+
                     set_state(state_nid, get_state(value_nid));
 
                     set_step(state_nid, INITIALIZED);
@@ -9609,222 +9652,6 @@ void print_core_state(uint64_t core) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-void print_btor2_model_for(uint64_t core) {
-  print_segmentation(core);
-
-  print_kernel_state(core);
-  print_core_state(core);
-  print_register_file_state(core);
-
-  print_code_segment(core);
-  print_data_segment(core);
-  print_heap_segment(core);
-  print_stack_segment(core);
-
-  print_break_comment_line_for(core, "fetch instruction", eval_ir_nids);
-  print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nids);
-
-  print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nids);
-  print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nids);
-
-  print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction control flow",
-    eval_non_kernel_control_flow_nids);
-
-  print_nobreak_comment_for(core, "update kernel state");
-
-  print_break_line_for(core, next_program_break_nids);
-  if (core == number_of_cores - 1)
-    print_break_line(next_file_descriptor_nid);
-  print_break_line_for(core, next_readable_bytes_nids);
-  print_break_line_for(core, next_read_bytes_nids);
-
-  print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nids);
-  print_break_comment_line_for(core, "update program counter", next_pc_nids);
-
-  print_break_comment_line_for(core, "instruction register data flow",
-    eval_instruction_register_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction register data flow",
-    eval_non_kernel_register_data_flow_nids);
-  print_break_comment_line_for(core, "kernel and instruction register data flow",
-    eval_register_data_flow_nids);
-  print_break_comment_line_for(core, "update register data flow", next_register_file_nids);
-
-  print_break_comment_line_for(core, "instruction data segment data flow",
-    eval_instruction_data_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction data segment data flow",
-    eval_data_segment_data_flow_nids);
-  print_break_comment_line_for(core, "update data segment data flow", next_data_segment_nids);
-
-  print_break_comment_line_for(core, "instruction heap segment data flow",
-    eval_instruction_heap_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction heap segment data flow",
-    eval_non_kernel_heap_segment_data_flow_nids);
-  print_break_comment_line_for(core, "kernel and instruction heap segment data flow",
-    eval_heap_segment_data_flow_nids);
-  print_break_comment_line_for(core, "update heap segment data flow", next_heap_segment_nids);
-
-  print_break_comment_line_for(core, "instruction stack segment data flow",
-    eval_instruction_stack_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction stack segment data flow",
-    eval_stack_segment_data_flow_nids);
-  print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nids);
-
-  print_break_comment_for(core, "state properties");
-
-  print_line_for(core, prop_illegal_instruction_nids);
-  print_break_line_for(core, prop_illegal_compressed_instruction_nids);
-  print_break_line_for(core, prop_is_instruction_known_nids);
-  print_break_line_for(core, prop_next_fetch_unaligned_nids);
-  print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
-  print_break_line_for(core, prop_is_syscall_id_known_nids);
-
-  // optional exit properties
-
-  print_break_line_for(core, prop_bad_exit_code_nids);
-  print_break_line_for(core, prop_good_exit_code_nids);
-
-  if (core == number_of_cores - 1) {
-    print_break_line(prop_exit_codes_nid);
-    print_break_line(prop_all_cores_exited_nid);
-  }
-
-  // optional arithmetic properties
-
-  print_break_line_for(core, prop_division_by_zero_nids);
-  print_break_line_for(core, prop_signed_division_overflow_nids);
-
-  // optional user code segmentation fault checks
-
-  print_break_line_for(core, prop_load_seg_faulting_nids);
-  print_break_line_for(core, prop_store_seg_faulting_nids);
-  print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
-  print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
-  print_break_line_for(core, prop_stack_seg_faulting_nids);
-
-  // optional kernel segmentation fault checks
-
-  print_break_line_for(core, prop_brk_seg_faulting_nids);
-  print_break_line_for(core, prop_openat_seg_faulting_nids);
-  print_break_line_for(core, prop_read_seg_faulting_nids);
-  print_break_line_for(core, prop_write_seg_faulting_nids);
-
-  // synchronizing program counters
-
-  print_break_line_for(core, sync_pc_nids);
-
-  // synchronizing register files
-
-  print_break_line_for(core, sync_register_file_nids);
-
-  // synchronizing main memories
-
-  print_break_line_for(core, sync_data_segment_nids);
-  print_break_line_for(core, sync_heap_segment_nids);
-  print_break_line_for(core, sync_stack_segment_nids);
-}
-
-void print_btor2_model() {
-  uint64_t i;
-  uint64_t core;
-
-  if (number_of_binaries > 0) {
-    if (number_of_binaries < number_of_cores)
-      model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
-    else
-      model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
-  } else {
-    if (IS64BITTARGET)
-      model_name = "64-bit-riscv-machine-synthesize.btor2";
-    else
-      model_name = "32-bit-riscv-machine-synthesize.btor2";
-  }
-
-  // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  model_fd = open_write_only(model_name, S_IRUSR_IWUSR_IRGRP_IROTH);
-
-  if (signed_less_than(model_fd, 0)) {
-    printf("%s: could not create model file %s\n", selfie_name, model_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  reset_library();
-
-  output_name = model_name;
-  output_fd   = model_fd;
-
-  w = dprintf(output_fd, "; %s\n\n", SELFIE_URL)
-    + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
-  if (check_bad_exit_code == 0)
-    w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
-  if (check_good_exit_code)
-    w = w + dprintf(output_fd, "; with %s\n", good_exit_code_check_option);
-  if (check_exit_codes == 0)
-    w = w + dprintf(output_fd, "; with %s\n", exit_codes_check_option);
-  if (check_division_by_zero == 0)
-    w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
-  if (check_division_overflow == 0)
-    w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
-  if (check_seg_faults == 0)
-    w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
-  w = w
-    + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
-    + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
-        virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
-        code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS)
-    + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
-        memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS)
-    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
-        heap_allowance_option, heap_allowance, heap_initial_size)
-    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
-        stack_allowance_option, stack_allowance, stack_initial_size);
-  i = 0;
-  while (i < number_of_binaries) {
-    w = w
-      + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
-          get_for(i, binary_names))
-      + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
-          get_for(i, code_sizes), get_for(i, data_sizes));
-    i = i + 1;
-  }
-  if (number_of_binaries > 0) {
-    w = w + dprintf(output_fd, "; RISC-V code invoked ");
-    i = 1;
-    if (i < number_of_remaining_arguments()) {
-      w = w + dprintf(output_fd, "with console arguments:");
-      while (i < number_of_remaining_arguments()) {
-        w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
-        i = i + 1;
-      }
-    } else
-      w = w + dprintf(output_fd, "without console arguments");
-    w = w + dprintf(output_fd, "\n\n");
-  }
-
-  print_interface_sorts();
-  print_interface_kernel();
-
-  print_register_sorts();
-  print_memory_sorts();
-
-  core = 0;
-
-  while (core < number_of_cores) {
-    print_btor2_model_for(core);
-
-    core = core + 1;
-  }
-
-  output_name = (char*) 0;
-  output_fd   = 1;
-
-  printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
-}
-
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
@@ -10956,6 +10783,231 @@ void model_rotor() {
   printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 }
 
+void open_model_file() {
+  uint64_t i;
+
+  if (number_of_binaries > 0) {
+    if (number_of_binaries < number_of_cores)
+      model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", "btor2");
+    else
+      model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", "btor2");
+  } else {
+    if (IS64BITTARGET)
+      model_name = "64-bit-riscv-machine-synthesize.btor2";
+    else
+      model_name = "32-bit-riscv-machine-synthesize.btor2";
+  }
+
+  // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  model_fd = open_write_only(model_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (signed_less_than(model_fd, 0)) {
+    printf("%s: could not create model file %s\n", selfie_name, model_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  reset_library();
+
+  output_name = model_name;
+  output_fd   = model_fd;
+
+  w = dprintf(output_fd, "; %s\n\n", SELFIE_URL)
+    + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
+  if (check_bad_exit_code == 0)
+    w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
+  if (check_good_exit_code)
+    w = w + dprintf(output_fd, "; with %s\n", good_exit_code_check_option);
+  if (check_exit_codes == 0)
+    w = w + dprintf(output_fd, "; with %s\n", exit_codes_check_option);
+  if (check_division_by_zero == 0)
+    w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
+  if (check_division_overflow == 0)
+    w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
+  if (check_seg_faults == 0)
+    w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
+  w = w
+    + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
+    + dprintf(output_fd, "; with %s %lu\n", cores_option, number_of_cores)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit virtual address space)\n",
+        virtual_address_space_option, VIRTUAL_ADDRESS_SPACE, VIRTUAL_ADDRESS_SPACE)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit code words)\n",
+        code_word_size_option, CODEWORDSIZEINBITS, CODEWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (%lu-bit memory words)\n",
+        memory_word_size_option, MEMORYWORDSIZEINBITS, MEMORYWORDSIZEINBITS)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial heap size)\n",
+        heap_allowance_option, heap_allowance, heap_initial_size)
+    + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
+        stack_allowance_option, stack_allowance, stack_initial_size);
+  i = 0;
+  while (i < number_of_binaries) {
+    w = w
+      + dprintf(output_fd, "; for RISC-V executable obtained from %s\n",
+          get_for(i, binary_names))
+      + dprintf(output_fd, "; with %lu bytes of code and %lu bytes of data\n\n",
+          get_for(i, code_sizes), get_for(i, data_sizes));
+    i = i + 1;
+  }
+  if (number_of_binaries > 0) {
+    w = w + dprintf(output_fd, "; RISC-V code invoked ");
+    i = 1;
+    if (i < number_of_remaining_arguments()) {
+      w = w + dprintf(output_fd, "with console arguments:");
+      while (i < number_of_remaining_arguments()) {
+        w = w + dprintf(output_fd, " %s", (char*) *(remaining_arguments() + i));
+        i = i + 1;
+      }
+    } else
+      w = w + dprintf(output_fd, "without console arguments");
+    w = w + dprintf(output_fd, "\n\n");
+  }
+}
+
+void close_model_file() {
+  output_name = (char*) 0;
+  output_fd   = 1;
+
+  printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
+}
+
+void print_btor2_model_for(uint64_t core) {
+  print_segmentation(core);
+
+  print_kernel_state(core);
+  print_core_state(core);
+  print_register_file_state(core);
+
+  print_code_segment(core);
+  print_data_segment(core);
+  print_heap_segment(core);
+  print_stack_segment(core);
+
+  print_break_comment_line_for(core, "fetch instruction", eval_ir_nids);
+  print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nids);
+
+  print_break_comment_line_for(core, "decode instruction", eval_instruction_ID_nids);
+  print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nids);
+
+  print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction control flow",
+    eval_non_kernel_control_flow_nids);
+
+  print_nobreak_comment_for(core, "update kernel state");
+
+  print_break_line_for(core, next_program_break_nids);
+  if (core == number_of_cores - 1)
+    print_break_line(next_file_descriptor_nid);
+  print_break_line_for(core, next_readable_bytes_nids);
+  print_break_line_for(core, next_read_bytes_nids);
+
+  print_break_comment_line_for(core, "kernel and instruction control flow", eval_control_flow_nids);
+  print_break_comment_line_for(core, "update program counter", next_pc_nids);
+
+  print_break_comment_line_for(core, "instruction register data flow",
+    eval_instruction_register_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction register data flow",
+    eval_non_kernel_register_data_flow_nids);
+  print_break_comment_line_for(core, "kernel and instruction register data flow",
+    eval_register_data_flow_nids);
+  print_break_comment_line_for(core, "update register data flow", next_register_file_nids);
+
+  print_break_comment_line_for(core, "instruction data segment data flow",
+    eval_instruction_data_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction data segment data flow",
+    eval_data_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update data segment data flow", next_data_segment_nids);
+
+  print_break_comment_line_for(core, "instruction heap segment data flow",
+    eval_instruction_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction heap segment data flow",
+    eval_non_kernel_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "kernel and instruction heap segment data flow",
+    eval_heap_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update heap segment data flow", next_heap_segment_nids);
+
+  print_break_comment_line_for(core, "instruction stack segment data flow",
+    eval_instruction_stack_segment_data_flow_nids);
+  print_break_comment_line_for(core, "compressed and uncompressed instruction stack segment data flow",
+    eval_stack_segment_data_flow_nids);
+  print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nids);
+
+  print_break_comment_for(core, "state properties");
+
+  print_line_for(core, prop_illegal_instruction_nids);
+  print_break_line_for(core, prop_illegal_compressed_instruction_nids);
+  print_break_line_for(core, prop_is_instruction_known_nids);
+  print_break_line_for(core, prop_next_fetch_unaligned_nids);
+  print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
+  print_break_line_for(core, prop_is_syscall_id_known_nids);
+
+  // optional exit properties
+
+  print_break_line_for(core, prop_bad_exit_code_nids);
+  print_break_line_for(core, prop_good_exit_code_nids);
+
+  if (core == number_of_cores - 1) {
+    print_break_line(prop_exit_codes_nid);
+    print_break_line(prop_all_cores_exited_nid);
+  }
+
+  // optional arithmetic properties
+
+  print_break_line_for(core, prop_division_by_zero_nids);
+  print_break_line_for(core, prop_signed_division_overflow_nids);
+
+  // optional user code segmentation fault checks
+
+  print_break_line_for(core, prop_load_seg_faulting_nids);
+  print_break_line_for(core, prop_store_seg_faulting_nids);
+  print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
+  print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
+  print_break_line_for(core, prop_stack_seg_faulting_nids);
+
+  // optional kernel segmentation fault checks
+
+  print_break_line_for(core, prop_brk_seg_faulting_nids);
+  print_break_line_for(core, prop_openat_seg_faulting_nids);
+  print_break_line_for(core, prop_read_seg_faulting_nids);
+  print_break_line_for(core, prop_write_seg_faulting_nids);
+
+  // synchronizing program counters
+
+  print_break_line_for(core, sync_pc_nids);
+
+  // synchronizing register files
+
+  print_break_line_for(core, sync_register_file_nids);
+
+  // synchronizing main memories
+
+  print_break_line_for(core, sync_data_segment_nids);
+  print_break_line_for(core, sync_heap_segment_nids);
+  print_break_line_for(core, sync_stack_segment_nids);
+}
+
+void print_btor2_model() {
+  uint64_t core;
+
+  open_model_file();
+
+  print_interface_sorts();
+  print_interface_kernel();
+
+  print_register_sorts();
+  print_memory_sorts();
+
+  core = 0;
+
+  while (core < number_of_cores) {
+    print_btor2_model_for(core);
+
+    core = core + 1;
+  }
+
+  close_model_file();
+}
+
 // -----------------------------------------------------------------
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
@@ -11561,6 +11613,30 @@ void disassemble_rotor(uint64_t core) {
   }
 }
 
+void print_btor_model() {
+  // TODO: finish
+  open_model_file();
+
+  current_offset = 0;
+  current_step   = 0;
+
+  input_steps   = 0;
+  current_input = 0;
+
+  save_multicore_states();
+
+  next_step = next_step + 1;
+
+  first_input = 0;
+  any_input   = 0;
+
+  printing_btor_model = 1;
+
+  eval_multicore_properties();
+
+  close_model_file();
+}
+
 uint64_t rotor_arguments() {
   char* evaluate_model_option;
   char* debug_model_option;
@@ -11760,13 +11836,17 @@ uint64_t selfie_model() {
 
       model_rotor();
 
-      print_btor2_model();
+      if (generate_btor_model)
+        print_btor_model();
+      else {
+        print_btor2_model();
 
-      if (evaluate_model)
-        eval_rotor();
+        if (evaluate_model)
+          eval_rotor();
 
-      if (disassemble_model)
-        disassemble_rotor(0);
+        if (disassemble_model)
+          disassemble_rotor(0);
+      }
 
       printf("%s: ################################################################################\n", selfie_name);
 
