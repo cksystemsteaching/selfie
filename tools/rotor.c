@@ -67,38 +67,36 @@ support for reasoning about concurrent code is future work.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(6 * sizeof(uint64_t*) + 2 * sizeof(char*) + 4 * sizeof(uint64_t));
+  return smalloc(7 * sizeof(uint64_t*) + 2 * sizeof(char*) + 4 * sizeof(uint64_t));
 }
 
-uint64_t  get_nid(uint64_t* line)     { return *line; }
-char*     get_op(uint64_t* line)      { return (char*)     *(line + 1); }
-uint64_t* get_sid(uint64_t* line)     { return (uint64_t*) *(line + 2); }
-uint64_t* get_arg1(uint64_t* line)    { return (uint64_t*) *(line + 3); }
-uint64_t* get_arg2(uint64_t* line)    { return (uint64_t*) *(line + 4); }
-uint64_t* get_arg3(uint64_t* line)    { return (uint64_t*) *(line + 5); }
-char*     get_comment(uint64_t* line) { return (char*)     *(line + 6); }
-uint64_t  get_state(uint64_t* line)   { return *(line + 7); }
-uint64_t  get_step(uint64_t* line)    { return *(line + 8); }
-uint64_t  get_reuse(uint64_t* line)   { return *(line + 9); }
-uint64_t* get_pred(uint64_t* line)    { return (uint64_t*) *(line + 10); }
-uint64_t* get_succ(uint64_t* line)    { return (uint64_t*) *(line + 11); }
+uint64_t  get_nid(uint64_t* line)            { return *line; }
+char*     get_op(uint64_t* line)             { return (char*)     *(line + 1); }
+uint64_t* get_sid(uint64_t* line)            { return (uint64_t*) *(line + 2); }
+uint64_t* get_arg1(uint64_t* line)           { return (uint64_t*) *(line + 3); }
+uint64_t* get_arg2(uint64_t* line)           { return (uint64_t*) *(line + 4); }
+uint64_t* get_arg3(uint64_t* line)           { return (uint64_t*) *(line + 5); }
+char*     get_comment(uint64_t* line)        { return (char*)     *(line + 6); }
+uint64_t* get_symbolic_state(uint64_t* line) { return (uint64_t*) *(line + 7); }
+uint64_t  get_state(uint64_t* line)          { return *(line + 8); }
+uint64_t  get_step(uint64_t* line)           { return *(line + 9); }
+uint64_t  get_reuse(uint64_t* line)          { return *(line + 10); }
+uint64_t* get_pred(uint64_t* line)           { return (uint64_t*) *(line + 11); }
+uint64_t* get_succ(uint64_t* line)           { return (uint64_t*) *(line + 12); }
 
-uint64_t* get_symbolic_state(uint64_t* line) { return get_arg2(line); }
-
-void set_nid(uint64_t* line, uint64_t nid)      { *line        = nid; }
-void set_op(uint64_t* line, char* op)           { *(line + 1)  = (uint64_t) op; }
-void set_sid(uint64_t* line, uint64_t* sid)     { *(line + 2)  = (uint64_t) sid; }
-void set_arg1(uint64_t* line, uint64_t* arg1)   { *(line + 3)  = (uint64_t) arg1; }
-void set_arg2(uint64_t* line, uint64_t* arg2)   { *(line + 4)  = (uint64_t) arg2; }
-void set_arg3(uint64_t* line, uint64_t* arg3)   { *(line + 5)  = (uint64_t) arg3; }
-void set_comment(uint64_t* line, char* comment) { *(line + 6)  = (uint64_t) comment; }
-void set_state(uint64_t* line, uint64_t state)  { *(line + 7)  = state; }
-void set_step(uint64_t* line, uint64_t step)    { *(line + 8)  = step; }
-void set_reuse(uint64_t* line, uint64_t reuse)  { *(line + 9)  = reuse; }
-void set_pred(uint64_t* line, uint64_t* pred)   { *(line + 10) = (uint64_t) pred; }
-void set_succ(uint64_t* line, uint64_t* succ)   { *(line + 11) = (uint64_t) succ; }
-
-void set_symbolic_state(uint64_t* line, uint64_t* value_nid) { set_arg2(line, value_nid); }
+void set_nid(uint64_t* line, uint64_t nid)             { *line        = nid; }
+void set_op(uint64_t* line, char* op)                  { *(line + 1)  = (uint64_t) op; }
+void set_sid(uint64_t* line, uint64_t* sid)            { *(line + 2)  = (uint64_t) sid; }
+void set_arg1(uint64_t* line, uint64_t* arg1)          { *(line + 3)  = (uint64_t) arg1; }
+void set_arg2(uint64_t* line, uint64_t* arg2)          { *(line + 4)  = (uint64_t) arg2; }
+void set_arg3(uint64_t* line, uint64_t* arg3)          { *(line + 5)  = (uint64_t) arg3; }
+void set_comment(uint64_t* line, char* comment)        { *(line + 6)  = (uint64_t) comment; }
+void set_symbolic_state(uint64_t* line, uint64_t* nid) { *(line + 7)  = (uint64_t) nid; }
+void set_state(uint64_t* line, uint64_t state)         { *(line + 8)  = state; }
+void set_step(uint64_t* line, uint64_t step)           { *(line + 9)  = step; }
+void set_reuse(uint64_t* line, uint64_t reuse)         { *(line + 10) = reuse; }
+void set_pred(uint64_t* line, uint64_t* pred)          { *(line + 11) = (uint64_t) pred; }
+void set_succ(uint64_t* line, uint64_t* succ)          { *(line + 12) = (uint64_t) succ; }
 
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
