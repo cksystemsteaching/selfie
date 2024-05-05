@@ -3132,8 +3132,8 @@ void model_rotor();
 void open_model_file();
 void close_model_file();
 
-void print_btor2_model_for(uint64_t core);
-void print_btor2_model();
+void print_model_for(uint64_t core);
+void print_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -3156,7 +3156,7 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-uint64_t generate_btor_model = 0;
+uint64_t generate_unrolled_model = 0;
 
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
@@ -3276,7 +3276,7 @@ void eval_rotor();
 
 void disassemble_rotor(uint64_t core);
 
-void print_btor_model();
+void print_unrolled_model();
 
 uint64_t rotor_arguments();
 
@@ -11054,7 +11054,7 @@ void close_model_file() {
   printf("%s: %lu characters of model formulae written into %s\n", selfie_name, w, model_name);
 }
 
-void print_btor2_model_for(uint64_t core) {
+void print_model_for(uint64_t core) {
   print_segmentation(core);
 
   print_kernel_state(core);
@@ -11169,7 +11169,7 @@ void print_btor2_model_for(uint64_t core) {
   print_break_line_for(core, sync_stack_segment_nids);
 }
 
-void print_btor2_model() {
+void print_model() {
   uint64_t core;
 
   open_model_file();
@@ -11183,7 +11183,7 @@ void print_btor2_model() {
   core = 0;
 
   while (core < number_of_cores) {
-    print_btor2_model_for(core);
+    print_model_for(core);
 
     core = core + 1;
   }
@@ -11796,7 +11796,7 @@ void disassemble_rotor(uint64_t core) {
   }
 }
 
-void print_btor_model() {
+void print_unrolled_model() {
   // TODO: finish
   open_model_file();
 
@@ -12019,10 +12019,10 @@ uint64_t selfie_model() {
 
       model_rotor();
 
-      if (generate_btor_model)
-        print_btor_model();
+      if (generate_unrolled_model)
+        print_unrolled_model();
       else {
-        print_btor2_model();
+        print_model();
 
         if (evaluate_model)
           eval_rotor();
