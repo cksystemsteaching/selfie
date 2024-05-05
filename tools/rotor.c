@@ -1146,17 +1146,15 @@ uint64_t heap_allowance    = 4096; // must be multiple of WORDSIZE
 uint64_t heap_start = 0;
 uint64_t heap_size  = 0;
 
-uint64_t* init_zeroed_heap_segment_nid = (uint64_t*) 0;
-uint64_t* next_zeroed_heap_segment_nid = (uint64_t*) 0;
-
-uint64_t* initial_heap_nid = (uint64_t*) 0;
-
-uint64_t* initial_heap_segment_nid = (uint64_t*) 0;
+uint64_t* init_zeroed_heap_segment_nids = (uint64_t*) 0;
+uint64_t* next_zeroed_heap_segment_nids = (uint64_t*) 0;
 
 uint64_t* state_heap_segment_nid = (uint64_t*) 0;
-uint64_t* init_heap_segment_nid  = (uint64_t*) 0;
+
+uint64_t* initial_heap_nids = (uint64_t*) 0;
 
 uint64_t* state_heap_segment_nids = (uint64_t*) 0;
+uint64_t* init_heap_segment_nids  = (uint64_t*) 0;
 uint64_t* next_heap_segment_nids  = (uint64_t*) 0;
 uint64_t* sync_heap_segment_nids  = (uint64_t*) 0;
 
@@ -1170,17 +1168,15 @@ uint64_t stack_allowance    = 4096; // must be multiple of WORDSIZE > 0
 uint64_t stack_start = 0;
 uint64_t stack_size  = 0;
 
-uint64_t* init_zeroed_stack_segment_nid = (uint64_t*) 0;
-uint64_t* next_zeroed_stack_segment_nid = (uint64_t*) 0;
-
-uint64_t* initial_stack_nid = (uint64_t*) 0;
-
-uint64_t* initial_stack_segment_nid = (uint64_t*) 0;
+uint64_t* init_zeroed_stack_segment_nids = (uint64_t*) 0;
+uint64_t* next_zeroed_stack_segment_nids = (uint64_t*) 0;
 
 uint64_t* state_stack_segment_nid = (uint64_t*) 0;
-uint64_t* init_stack_segment_nid  = (uint64_t*) 0;
+
+uint64_t* initial_stack_nids = (uint64_t*) 0;
 
 uint64_t* state_stack_segment_nids = (uint64_t*) 0;
+uint64_t* init_stack_segment_nids  = (uint64_t*) 0;
 uint64_t* next_stack_segment_nids  = (uint64_t*) 0;
 uint64_t* sync_stack_segment_nids  = (uint64_t*) 0;
 
@@ -1329,11 +1325,23 @@ void init_memories(uint64_t number_of_cores) {
   next_data_segment_nids  = allocate_lines(number_of_cores);
   sync_data_segment_nids  = allocate_lines(number_of_cores);
 
+  init_zeroed_heap_segment_nids = allocate_lines(number_of_cores);
+  next_zeroed_heap_segment_nids = allocate_lines(number_of_cores);
+
+  initial_heap_nids = allocate_lines(number_of_cores);
+
   state_heap_segment_nids = allocate_lines(number_of_cores);
+  init_heap_segment_nids  = allocate_lines(number_of_cores);
   next_heap_segment_nids  = allocate_lines(number_of_cores);
   sync_heap_segment_nids  = allocate_lines(number_of_cores);
 
+  init_zeroed_stack_segment_nids = allocate_lines(number_of_cores);
+  next_zeroed_stack_segment_nids = allocate_lines(number_of_cores);
+
+  initial_stack_nids = allocate_lines(number_of_cores);
+
   state_stack_segment_nids = allocate_lines(number_of_cores);
+  init_stack_segment_nids  = allocate_lines(number_of_cores);
   next_stack_segment_nids  = allocate_lines(number_of_cores);
   sync_stack_segment_nids  = allocate_lines(number_of_cores);
 }
@@ -5790,6 +5798,11 @@ void print_data_segment(uint64_t core) {
 }
 
 void new_heap_segment(uint64_t core) {
+  uint64_t* init_zeroed_heap_segment_nid;
+  uint64_t* next_zeroed_heap_segment_nid;
+  uint64_t* initial_heap_nid;
+  uint64_t* initial_heap_segment_nid;
+  uint64_t* init_heap_segment_nid;
   uint64_t  number_of_hex_digits;
   uint64_t  saved_reuse_lines;
   uint64_t  vaddr;
@@ -5817,12 +5830,16 @@ void new_heap_segment(uint64_t core) {
 
   eval_init(init_zeroed_heap_segment_nid);
 
-  if (number_of_binaries > 0) {
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
+  set_for(core, init_zeroed_heap_segment_nids, init_zeroed_heap_segment_nid);
 
+  next_zeroed_heap_segment_nid = UNUSED;
+
+  if (number_of_binaries > 0) {
     initial_heap_nid = UNUSED;
 
     initial_heap_segment_nid = state_heap_segment_nid;
+
+    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
     saved_reuse_lines = reuse_lines;
 
@@ -5883,10 +5900,18 @@ void new_heap_segment(uint64_t core) {
       eval_init(init_heap_segment_nid);
     } else
       init_heap_segment_nid = init_zeroed_heap_segment_nid;
+
+    set_for(core, next_zeroed_heap_segment_nids, next_zeroed_heap_segment_nid);
+
+    set_for(core, initial_heap_nids, initial_heap_nid);
+
+    set_for(core, init_heap_segment_nids, init_heap_segment_nid);
   }
 }
 
 void print_heap_segment(uint64_t core) {
+  uint64_t* initial_heap_nid;
+
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
       return;
@@ -5896,11 +5921,13 @@ void print_heap_segment(uint64_t core) {
 
   print_break_comment_for(core, "zeroed heap segment");
 
-  print_line(init_zeroed_heap_segment_nid);
+  print_line_for(core, init_zeroed_heap_segment_nids);
 
-  if (number_of_binaries > 0)
+  if (number_of_binaries > 0) {
+    initial_heap_nid = get_for(core, initial_heap_nids);
+
     if (initial_heap_nid != UNUSED) {
-      print_line(next_zeroed_heap_segment_nid);
+      print_line_for(core, next_zeroed_heap_segment_nids);
 
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading heap", log_ten(heap_initial_size * 3) + 1);
@@ -5913,11 +5940,17 @@ void print_heap_segment(uint64_t core) {
 
       print_break_comment_for(core, "loaded heap segment");
 
-      print_line(init_heap_segment_nid);
+      print_line_for(core, init_heap_segment_nids);
     }
+  }
 }
 
 void new_stack_segment(uint64_t core) {
+  uint64_t* init_zeroed_stack_segment_nid;
+  uint64_t* next_zeroed_stack_segment_nid;
+  uint64_t* initial_stack_nid;
+  uint64_t* initial_stack_segment_nid;
+  uint64_t* init_stack_segment_nid;
   uint64_t  number_of_hex_digits;
   uint64_t  saved_reuse_lines;
   uint64_t  vaddr;
@@ -5945,12 +5978,16 @@ void new_stack_segment(uint64_t core) {
 
   eval_init(init_zeroed_stack_segment_nid);
 
-  if (number_of_binaries > 0) {
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
+  set_for(core, init_zeroed_stack_segment_nids, init_zeroed_stack_segment_nid);
 
+  next_zeroed_stack_segment_nid = UNUSED;
+
+  if (number_of_binaries > 0) {
     initial_stack_nid = UNUSED;
 
     initial_stack_segment_nid = state_stack_segment_nid;
+
+    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
     saved_reuse_lines = reuse_lines;
 
@@ -6011,10 +6048,18 @@ void new_stack_segment(uint64_t core) {
       eval_init(init_stack_segment_nid);
     } else
       init_stack_segment_nid = init_zeroed_stack_segment_nid;
+
+    set_for(core, next_zeroed_stack_segment_nids, next_zeroed_stack_segment_nid);
+
+    set_for(core, initial_stack_nids, initial_stack_nid);
+
+    set_for(core, init_stack_segment_nids, init_stack_segment_nid);
   }
 }
 
 void print_stack_segment(uint64_t core) {
+  uint64_t* initial_stack_nid;
+
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
       return;
@@ -6024,11 +6069,13 @@ void print_stack_segment(uint64_t core) {
 
   print_break_comment_for(core, "zeroed stack segment");
 
-  print_line(init_zeroed_stack_segment_nid);
+  print_line_for(core, init_zeroed_stack_segment_nids);
 
-  if (number_of_binaries > 0)
+  if (number_of_binaries > 0) {
+    initial_stack_nid = get_for(core, initial_stack_nids);
+
     if (initial_stack_nid != UNUSED) {
-      print_line(next_zeroed_stack_segment_nid);
+      print_line_for(core, next_zeroed_stack_segment_nids);
 
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading stack", log_ten(stack_initial_size * 3) + 1);
@@ -6041,8 +6088,9 @@ void print_stack_segment(uint64_t core) {
 
       print_break_comment_for(core, "loaded stack segment");
 
-      print_line(init_stack_segment_nid);
+      print_line_for(core, init_stack_segment_nids);
     }
+  }
 }
 
 uint64_t* get_memory_address_sort(uint64_t* segment_nid) {
