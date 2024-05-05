@@ -98,6 +98,8 @@ void set_reuse(uint64_t* line, uint64_t reuse)         { *(line + 10) = reuse; }
 void set_pred(uint64_t* line, uint64_t* pred)          { *(line + 11) = (uint64_t) pred; }
 void set_succ(uint64_t* line, uint64_t* succ)          { *(line + 12) = (uint64_t) succ; }
 
+uint64_t* allocate_lines(uint64_t number_of_lines);
+
 uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
 
@@ -686,14 +688,14 @@ void init_interface_kernel() {
 }
 
 void init_kernels(uint64_t number_of_cores) {
-  init_program_break_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_program_break_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_program_break_nids = allocate_lines(number_of_cores);
+  next_program_break_nids = allocate_lines(number_of_cores);
 
-  init_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_readable_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_readable_bytes_nids = allocate_lines(number_of_cores);
+  next_readable_bytes_nids = allocate_lines(number_of_cores);
 
-  init_read_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_read_bytes_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_read_bytes_nids = allocate_lines(number_of_cores);
+  next_read_bytes_nids = allocate_lines(number_of_cores);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -821,13 +823,13 @@ void init_register_file_sorts() {
 }
 
 void init_register_files(uint64_t number_of_cores) {
-  init_zeroed_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_zeroed_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_zeroed_register_file_nids = allocate_lines(number_of_cores);
+  next_zeroed_register_file_nids = allocate_lines(number_of_cores);
 
-  state_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  init_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  sync_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_register_file_nids = allocate_lines(number_of_cores);
+  init_register_file_nids  = allocate_lines(number_of_cores);
+  next_register_file_nids  = allocate_lines(number_of_cores);
+  sync_register_file_nids  = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -1306,34 +1308,34 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 }
 
 void init_segmentation(uint64_t number_of_cores) {
-  NID_CODE_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
-  NID_CODE_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_CODE_STARTS = allocate_lines(number_of_cores);
+  NID_CODE_ENDS   = allocate_lines(number_of_cores);
 
-  NID_DATA_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
-  NID_DATA_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_DATA_STARTS = allocate_lines(number_of_cores);
+  NID_DATA_ENDS   = allocate_lines(number_of_cores);
 
-  NID_HEAP_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
-  NID_HEAP_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_HEAP_STARTS = allocate_lines(number_of_cores);
+  NID_HEAP_ENDS   = allocate_lines(number_of_cores);
 
-  NID_STACK_STARTS = zmalloc(number_of_cores * sizeof(uint64_t*));
-  NID_STACK_ENDS   = zmalloc(number_of_cores * sizeof(uint64_t*));
+  NID_STACK_STARTS = allocate_lines(number_of_cores);
+  NID_STACK_ENDS   = allocate_lines(number_of_cores);
 }
 
 void init_memories(uint64_t number_of_cores) {
-  state_code_segment_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_code_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_code_segment_nids = allocate_lines(number_of_cores);
+  next_code_segment_nids  = allocate_lines(number_of_cores);
 
-  state_data_segment_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_data_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  sync_data_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_data_segment_nids = allocate_lines(number_of_cores);
+  next_data_segment_nids  = allocate_lines(number_of_cores);
+  sync_data_segment_nids  = allocate_lines(number_of_cores);
 
-  state_heap_segment_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_heap_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  sync_heap_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_heap_segment_nids = allocate_lines(number_of_cores);
+  next_heap_segment_nids  = allocate_lines(number_of_cores);
+  sync_heap_segment_nids  = allocate_lines(number_of_cores);
 
-  state_stack_segment_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_stack_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  sync_stack_segment_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_stack_segment_nids = allocate_lines(number_of_cores);
+  next_stack_segment_nids  = allocate_lines(number_of_cores);
+  sync_stack_segment_nids  = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -2971,9 +2973,9 @@ void init_compressed_instruction_sorts() {
 }
 
 void init_decoders(uint64_t number_of_cores) {
-  eval_instruction_ID_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_compressed_instruction_ID_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_ID_nids                        = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_ID_nids            = allocate_lines(number_of_cores);
+  eval_compressed_instruction_ID_nids = allocate_lines(number_of_cores);
+  eval_ID_nids                        = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -3049,31 +3051,31 @@ uint64_t* eval_stack_segment_data_flow_nids = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_cores(uint64_t number_of_cores) {
-  eval_ir_nids   = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_c_ir_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_ir_nids   = allocate_lines(number_of_cores);
+  eval_c_ir_nids = allocate_lines(number_of_cores);
 
-  state_pc_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  init_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  next_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  sync_pc_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  state_pc_nids = allocate_lines(number_of_cores);
+  init_pc_nids  = allocate_lines(number_of_cores);
+  next_pc_nids  = allocate_lines(number_of_cores);
+  sync_pc_nids  = allocate_lines(number_of_cores);
 
-  eval_instruction_control_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_non_kernel_control_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_control_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_control_flow_nids = allocate_lines(number_of_cores);
+  eval_non_kernel_control_flow_nids  = allocate_lines(number_of_cores);
+  eval_control_flow_nids             = allocate_lines(number_of_cores);
 
-  eval_instruction_register_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_non_kernel_register_data_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_register_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_register_data_flow_nids = allocate_lines(number_of_cores);
+  eval_non_kernel_register_data_flow_nids  = allocate_lines(number_of_cores);
+  eval_register_data_flow_nids             = allocate_lines(number_of_cores);
 
-  eval_instruction_data_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_data_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_data_segment_data_flow_nids = allocate_lines(number_of_cores);
+  eval_data_segment_data_flow_nids             = allocate_lines(number_of_cores);
 
-  eval_instruction_heap_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_non_kernel_heap_segment_data_flow_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_heap_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_heap_segment_data_flow_nids = allocate_lines(number_of_cores);
+  eval_non_kernel_heap_segment_data_flow_nids  = allocate_lines(number_of_cores);
+  eval_heap_segment_data_flow_nids             = allocate_lines(number_of_cores);
 
-  eval_instruction_stack_segment_data_flow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  eval_stack_segment_data_flow_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
+  eval_instruction_stack_segment_data_flow_nids = allocate_lines(number_of_cores);
+  eval_stack_segment_data_flow_nids             = allocate_lines(number_of_cores);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -3209,30 +3211,30 @@ uint64_t* prop_write_seg_faulting_nids  = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_properties(uint64_t number_of_cores) {
-  prop_is_instruction_known_nids           = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_illegal_instruction_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_illegal_compressed_instruction_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_next_fetch_unaligned_nids           = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_next_fetch_seg_faulting_nids        = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_is_instruction_known_nids           = allocate_lines(number_of_cores);
+  prop_illegal_instruction_nids            = allocate_lines(number_of_cores);
+  prop_illegal_compressed_instruction_nids = allocate_lines(number_of_cores);
+  prop_next_fetch_unaligned_nids           = allocate_lines(number_of_cores);
+  prop_next_fetch_seg_faulting_nids        = allocate_lines(number_of_cores);
 
-  prop_is_syscall_id_known_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_is_syscall_id_known_nids = allocate_lines(number_of_cores);
 
-  prop_bad_exit_code_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_good_exit_code_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_bad_exit_code_nids  = allocate_lines(number_of_cores);
+  prop_good_exit_code_nids = allocate_lines(number_of_cores);
 
-  prop_division_by_zero_nids         = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_signed_division_overflow_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_division_by_zero_nids         = allocate_lines(number_of_cores);
+  prop_signed_division_overflow_nids = allocate_lines(number_of_cores);
 
-  prop_load_seg_faulting_nids             = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_store_seg_faulting_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_compressed_load_seg_faulting_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_compressed_store_seg_faulting_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_stack_seg_faulting_nids            = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_load_seg_faulting_nids             = allocate_lines(number_of_cores);
+  prop_store_seg_faulting_nids            = allocate_lines(number_of_cores);
+  prop_compressed_load_seg_faulting_nids  = allocate_lines(number_of_cores);
+  prop_compressed_store_seg_faulting_nids = allocate_lines(number_of_cores);
+  prop_stack_seg_faulting_nids            = allocate_lines(number_of_cores);
 
-  prop_brk_seg_faulting_nids    = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_openat_seg_faulting_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_read_seg_faulting_nids   = zmalloc(number_of_cores * sizeof(uint64_t*));
-  prop_write_seg_faulting_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
+  prop_brk_seg_faulting_nids    = allocate_lines(number_of_cores);
+  prop_openat_seg_faulting_nids = allocate_lines(number_of_cores);
+  prop_read_seg_faulting_nids   = allocate_lines(number_of_cores);
+  prop_write_seg_faulting_nids  = allocate_lines(number_of_cores);
 }
 
 // -----------------------------------------------------------------
@@ -3320,6 +3322,10 @@ void init_binaries() {
 // -----------------------     M O D E L     -----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t* allocate_lines(uint64_t number_of_lines) {
+  return zmalloc(number_of_lines * sizeof(uint64_t*));
+}
 
 uint64_t are_lines_equal(uint64_t* left_line, uint64_t* right_line) {
   // assert: pointer equivalence iff structural equivalence
