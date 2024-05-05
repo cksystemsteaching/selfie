@@ -622,9 +622,10 @@ uint64_t* SID_INPUT_BUFFER  = (uint64_t*) 0;
 
 uint64_t* state_program_break_nid  = (uint64_t*) 0;
 uint64_t* init_program_break_nid   = (uint64_t*) 0;
-uint64_t* init_program_break_nids  = (uint64_t*) 0;
 uint64_t* eval_program_break_nid   = (uint64_t*) 0;
 uint64_t* next_program_break_nid   = (uint64_t*) 0;
+
+uint64_t* init_program_break_nids  = (uint64_t*) 0;
 uint64_t* next_program_break_nids  = (uint64_t*) 0;
 
 uint64_t* state_file_descriptor_nid = (uint64_t*) 0;
@@ -637,6 +638,7 @@ uint64_t* next_input_buffer_nid  = (uint64_t*) 0;
 
 uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
 uint64_t* init_readable_bytes_nid  = (uint64_t*) 0;
+
 uint64_t* init_readable_bytes_nids = (uint64_t*) 0;
 uint64_t* next_readable_bytes_nids = (uint64_t*) 0;
 
@@ -644,6 +646,7 @@ uint64_t* eval_still_reading_active_read_nid = (uint64_t*) 0;
 
 uint64_t* state_read_bytes_nid = (uint64_t*) 0;
 uint64_t* init_read_bytes_nid  = (uint64_t*) 0;
+
 uint64_t* init_read_bytes_nids = (uint64_t*) 0;
 uint64_t* next_read_bytes_nids = (uint64_t*) 0;
 
@@ -758,8 +761,11 @@ uint64_t SHARED_REGISTERS       = 0; // flag for shared registers across cores
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* init_zeroed_register_file_nid = (uint64_t*) 0;
-uint64_t* next_zeroed_register_file_nid = (uint64_t*) 0;
+uint64_t* init_zeroed_register_file_nid  = (uint64_t*) 0;
+uint64_t* next_zeroed_register_file_nid  = (uint64_t*) 0;
+
+uint64_t* init_zeroed_register_file_nids = (uint64_t*) 0;
+uint64_t* next_zeroed_register_file_nids = (uint64_t*) 0;
 
 uint64_t* initial_register_file_nid = (uint64_t*) 0;
 
@@ -767,6 +773,7 @@ uint64_t* state_register_file_nid = (uint64_t*) 0;
 uint64_t* init_register_file_nid  = (uint64_t*) 0;
 
 uint64_t* state_register_file_nids = (uint64_t*) 0;
+uint64_t* init_register_file_nids  = (uint64_t*) 0;
 uint64_t* next_register_file_nids  = (uint64_t*) 0;
 uint64_t* sync_register_file_nids  = (uint64_t*) 0;
 
@@ -814,7 +821,11 @@ void init_register_file_sorts() {
 }
 
 void init_register_files(uint64_t number_of_cores) {
+  init_zeroed_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  next_zeroed_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+
   state_register_file_nids = zmalloc(number_of_cores * sizeof(uint64_t*));
+  init_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   next_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
   sync_register_file_nids  = zmalloc(number_of_cores * sizeof(uint64_t*));
 }
@@ -3167,9 +3178,10 @@ uint64_t* prop_next_fetch_seg_faulting_nids        = (uint64_t*) 0;
 
 uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
 
-uint64_t* prop_bad_exit_code_nid   = (uint64_t*) 0;
+uint64_t* prop_bad_exit_code_nid  = (uint64_t*) 0;
+uint64_t* prop_good_exit_code_nid = (uint64_t*) 0;
+
 uint64_t* prop_bad_exit_code_nids  = (uint64_t*) 0;
-uint64_t* prop_good_exit_code_nid  = (uint64_t*) 0;
 uint64_t* prop_good_exit_code_nids = (uint64_t*) 0;
 
 uint64_t* prop_active_exits_nid           = (uint64_t*) 0;
@@ -5144,6 +5156,8 @@ void new_register_file_state(uint64_t core) {
   init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
 
+  set_for(core, init_zeroed_register_file_nids, init_zeroed_register_file_nid);
+
   eval_init(init_zeroed_register_file_nid);
 
   if (number_of_binaries == 0) {
@@ -5195,6 +5209,8 @@ void new_register_file_state(uint64_t core) {
     next_zeroed_register_file_nid = new_next(SID_REGISTER_STATE,
       state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
 
+    set_for(core, next_zeroed_register_file_nids, next_zeroed_register_file_nid);
+
     state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
       format_comment("core-%lu-initialized-register-file", core), "initialized register file");
 
@@ -5204,6 +5220,8 @@ void new_register_file_state(uint64_t core) {
       state_register_file_nid, initial_register_file_nid, "initializing registers");
   } else
     init_register_file_nid = init_zeroed_register_file_nid;
+
+  set_for(core, init_register_file_nids, init_register_file_nid);
 
   eval_init(init_register_file_nid);
 }
@@ -5218,21 +5236,22 @@ void print_register_file_state(uint64_t core) {
 
   print_break_comment_for(core, "zeroed register file");
 
-  print_line(init_zeroed_register_file_nid);
+  print_line_for(core, init_zeroed_register_file_nids);
 
-  if (init_register_file_nid != init_zeroed_register_file_nid) {
-    print_line(next_zeroed_register_file_nid);
+  if (get_for(core, init_register_file_nids) != get_for(core, init_zeroed_register_file_nids)) {
+    print_line_for(core, next_zeroed_register_file_nids);
 
     if (number_of_binaries == 0)
       print_break_comment("initializing sp");
     else
       print_aligned_break_comment("initializing registers", log_ten(NUMBEROFREGISTERS * 3 + 1) + 1);
 
-    print_line(initial_register_file_nid);
+    // print initial values before state
+    print_line(get_arg2(get_for(core, init_register_file_nids)));
 
     print_break_comment_for(core, "initialized register file");
 
-    print_line(init_register_file_nid);
+    print_line_for(core, init_register_file_nids);
   }
 }
 
