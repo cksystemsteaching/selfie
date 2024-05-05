@@ -1117,19 +1117,20 @@ uint64_t* NID_BYTE_SIZE_IN_BASE_BITS = (uint64_t*) 0;
 
 // code segment
 
-uint64_t* state_zeroed_code_segment_nid = (uint64_t*) 0;
-uint64_t* init_zeroed_code_segment_nid  = (uint64_t*) 0;
-uint64_t* next_zeroed_code_segment_nid  = (uint64_t*) 0;
+uint64_t* init_zeroed_code_segment_nid = (uint64_t*) 0;
+uint64_t* next_zeroed_code_segment_nid = (uint64_t*) 0;
 
-uint64_t* initial_code_nid = (uint64_t*) 0;
+uint64_t* init_zeroed_code_segment_nids = (uint64_t*) 0;
+uint64_t* next_zeroed_code_segment_nids = (uint64_t*) 0;
 
-uint64_t* initial_code_segment_nid = (uint64_t*) 0;
+uint64_t* initial_code_nids = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nid = (uint64_t*) 0;
 uint64_t* init_code_segment_nid  = (uint64_t*) 0;
 uint64_t* next_code_segment_nid  = (uint64_t*) 0;
 
 uint64_t* state_code_segment_nids = (uint64_t*) 0;
+uint64_t* init_code_segment_nids  = (uint64_t*) 0;
 uint64_t* next_code_segment_nids  = (uint64_t*) 0;
 
 // data segment
@@ -1322,7 +1323,13 @@ void init_segmentation(uint64_t number_of_cores) {
 }
 
 void init_memories(uint64_t number_of_cores) {
+  initial_code_nids = allocate_lines(number_of_cores);
+
+  init_zeroed_code_segment_nids = allocate_lines(number_of_cores);
+  next_zeroed_code_segment_nids = allocate_lines(number_of_cores);
+
   state_code_segment_nids = allocate_lines(number_of_cores);
+  init_code_segment_nids  = allocate_lines(number_of_cores);
   next_code_segment_nids  = allocate_lines(number_of_cores);
 
   state_data_segment_nids = allocate_lines(number_of_cores);
@@ -5491,6 +5498,9 @@ uint64_t* store_if_in_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t
 }
 
 void new_code_segment(uint64_t core) {
+  uint64_t* zeroed_code_segment_nid;
+  uint64_t* initial_code_nid;
+  uint64_t* initial_code_segment_nid;
   uint64_t  number_of_hex_digits;
   uint64_t  saved_reuse_lines;
   uint64_t* laddr_nid;
@@ -5498,30 +5508,37 @@ void new_code_segment(uint64_t core) {
   uint64_t* store_nid;
 
   if (core >= number_of_binaries) {
+    zeroed_code_segment_nid = UNUSED;
+
+    init_zeroed_code_segment_nid = UNUSED;
+    next_zeroed_code_segment_nid = UNUSED;
+
     state_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "uninitialized code segment");
+
+    initial_code_nid = UNUSED;
 
     init_code_segment_nid = UNUSED;
 
     next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
   } else {
-    state_zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
+    zeroed_code_segment_nid = new_input(OP_STATE, SID_CODE_STATE,
       format_comment("core-%lu-code-segment", core), "code segment");
 
     init_zeroed_code_segment_nid = new_init(SID_CODE_STATE,
-      state_zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
+      zeroed_code_segment_nid, NID_CODE_WORD_0, "zeroing code segment");
 
     eval_init(init_zeroed_code_segment_nid);
 
     next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
-      state_zeroed_code_segment_nid, state_zeroed_code_segment_nid, "read-only zeroed code segment");
+      zeroed_code_segment_nid, zeroed_code_segment_nid, "read-only zeroed code segment");
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
     initial_code_nid = UNUSED;
 
-    initial_code_segment_nid = state_zeroed_code_segment_nid;
+    initial_code_segment_nid = zeroed_code_segment_nid;
 
     saved_reuse_lines = reuse_lines;
 
@@ -5575,26 +5592,37 @@ void new_code_segment(uint64_t core) {
       next_code_segment_nid = new_next(SID_CODE_STATE,
         state_code_segment_nid, state_code_segment_nid, "read-only code segment");
     } else {
-      state_code_segment_nid = state_zeroed_code_segment_nid;
-      init_code_segment_nid  = init_zeroed_code_segment_nid;
-      next_code_segment_nid  = next_zeroed_code_segment_nid;
+      state_code_segment_nid = zeroed_code_segment_nid;
+
+      init_code_segment_nid = init_zeroed_code_segment_nid;
+      next_code_segment_nid = next_zeroed_code_segment_nid;
     }
   }
 
+  set_for(core, init_zeroed_code_segment_nids, init_zeroed_code_segment_nid);
+  set_for(core, next_zeroed_code_segment_nids, next_zeroed_code_segment_nid);
+
+  set_for(core, initial_code_nids, initial_code_nid);
+
   set_for(core, state_code_segment_nids, state_code_segment_nid);
+  set_for(core, init_code_segment_nids, init_code_segment_nid);
   set_for(core, next_code_segment_nids, next_code_segment_nid);
 }
 
 void print_code_segment(uint64_t core) {
+  uint64_t* initial_code_nid;
+
   if (core >= number_of_binaries) {
     print_break_comment_for(core, "uninitialized code segment");
 
-    print_line(next_code_segment_nid);
+    print_line_for(core, next_code_segment_nids);
   } else {
     print_break_comment("zeroed code segment");
 
-    print_line(init_zeroed_code_segment_nid);
-    print_line(next_zeroed_code_segment_nid);
+    print_line_for(core, init_zeroed_code_segment_nids);
+    print_line_for(core, next_zeroed_code_segment_nids);
+
+    initial_code_nid = get_for(core, initial_code_nids);
 
     if (initial_code_nid != UNUSED) {
       // conservatively estimating number of lines needed to store one byte
@@ -5608,8 +5636,8 @@ void print_code_segment(uint64_t core) {
 
       print_break_comment_for(core, "loaded code segment");
 
-      print_line(init_code_segment_nid);
-      print_line(next_code_segment_nid);
+      print_line_for(core, init_code_segment_nids);
+      print_line_for(core, next_code_segment_nids);
     }
   }
 }
