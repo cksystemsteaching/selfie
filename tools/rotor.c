@@ -9689,6 +9689,9 @@ void print_core_state(uint64_t core) {
 
   print_break_comment_for(core, "program counter");
 
+  // print initial value before state
+  print_line(get_arg2(init_pc_nid));
+
   print_line_for(core, init_pc_nids);
 }
 
