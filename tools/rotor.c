@@ -5026,9 +5026,9 @@ void new_program_break(uint64_t core) {
   init_program_break_nid = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
     NID_HEAP_START, "initial program break is start of heap segment");
 
-  set_for(core, init_program_break_nids, init_program_break_nid);
-
   eval_init(init_program_break_nid);
+
+  set_for(core, init_program_break_nids, init_program_break_nid);
 
   next_program_break_nid = state_program_break_nid;
 }
@@ -5061,18 +5061,18 @@ void new_kernel_state(uint64_t core) {
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
     NID_BYTES_TO_READ, "number of readable bytes");
 
-  set_for(core, init_readable_bytes_nids, init_readable_bytes_nid);
-
   eval_init(init_readable_bytes_nid);
+
+  set_for(core, init_readable_bytes_nids, init_readable_bytes_nid);
 
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
     NID_MACHINE_WORD_0, "initially zero read bytes");
 
-  set_for(core, init_read_bytes_nids, init_read_bytes_nid);
-
   eval_init(init_read_bytes_nid);
+
+  set_for(core, init_read_bytes_nids, init_read_bytes_nid);
 }
 
 void print_kernel_state(uint64_t core) {
@@ -5157,12 +5157,8 @@ void new_register_file_state(uint64_t core) {
   state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
     format_comment("core-%lu-zeroed-register-file", core), "zeroed register file");
 
-  set_for(core, state_register_file_nids, state_register_file_nid);
-
   init_zeroed_register_file_nid = new_init(SID_REGISTER_STATE,
     state_register_file_nid, NID_MACHINE_WORD_0, "zeroing register file");
-
-  set_for(core, init_zeroed_register_file_nids, init_zeroed_register_file_nid);
 
   eval_init(init_zeroed_register_file_nid);
 
@@ -5215,21 +5211,24 @@ void new_register_file_state(uint64_t core) {
     next_zeroed_register_file_nid = new_next(SID_REGISTER_STATE,
       state_register_file_nid, state_register_file_nid, "read-only zeroed register file");
 
-    set_for(core, next_zeroed_register_file_nids, next_zeroed_register_file_nid);
-
     state_register_file_nid = new_input(OP_STATE, SID_REGISTER_STATE,
       format_comment("core-%lu-initialized-register-file", core), "initialized register file");
 
-    set_for(core, state_register_file_nids, state_register_file_nid);
-
     init_register_file_nid = new_init(SID_REGISTER_STATE,
       state_register_file_nid, initial_register_file_nid, "initializing registers");
-  } else
-    init_register_file_nid = init_zeroed_register_file_nid;
+  } else {
+    next_zeroed_register_file_nid = UNUSED;
 
-  set_for(core, init_register_file_nids, init_register_file_nid);
+    init_register_file_nid = init_zeroed_register_file_nid;
+  }
 
   eval_init(init_register_file_nid);
+
+  set_for(core, init_zeroed_register_file_nids, init_zeroed_register_file_nid);
+  set_for(core, next_zeroed_register_file_nids, next_zeroed_register_file_nid);
+
+  set_for(core, state_register_file_nids, state_register_file_nid);
+  set_for(core, init_register_file_nids, init_register_file_nid);
 }
 
 void print_register_file_state(uint64_t core) {
@@ -9702,9 +9701,9 @@ void new_core_state(uint64_t core) {
 
   init_pc_nid = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
 
-  set_for(core, init_pc_nids, init_pc_nid);
-
   eval_init(init_pc_nid);
+
+  set_for(core, init_pc_nids, init_pc_nid);
 }
 
 void print_core_state(uint64_t core) {
