@@ -3567,8 +3567,9 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
     if (op == OP_STATE) {
       if (is_bitvector(get_sid(line))) {
         // TODO: handle uninitialized bitvector states
-        nid = print_line_once(nid, get_symbolic_state(line));
-        set_nid(line, get_nid(get_symbolic_state(line)));
+        if (get_op(get_symbolic_state(line)) == OP_INIT)
+          nid = print_line_once(nid, get_arg2(get_symbolic_state(line)));
+        set_nid(line, get_nid(get_arg2(get_symbolic_state(line))));
         return nid;
       } else {
         // assert: array
@@ -4170,7 +4171,6 @@ uint64_t eval_input(uint64_t* line) {
       // TODO: input is consumed more than once
       input_steps = current_step;
 
-    set_symbolic_state(line, line);
     set_state(line, current_input);
     set_step(line, next_step);
 
@@ -4582,9 +4582,6 @@ uint64_t eval_line(uint64_t* line) {
   else
     value = eval_binary_op(line);
 
-  if (printing_unrolled_model)
-    print_line_advancing_nid(line);
-
   return value;
 }
 
@@ -4614,7 +4611,9 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    } else if (printing_unrolled_model)
+    }
+
+    if (printing_unrolled_model)
       print_line_advancing_nid(line);
 
     set_state(line, condition != 0);
@@ -4626,7 +4625,9 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    } else if (printing_unrolled_model)
+    }
+
+    if (printing_unrolled_model)
       print_line_advancing_nid(line);
 
     set_state(line, condition == 0);
@@ -4663,9 +4664,9 @@ void eval_init(uint64_t* line) {
               if (is_bitvector(get_sid(state_nid))) {
                 match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
 
-                set_symbolic_state(state_nid, value_nid);
-
                 set_state(state_nid, eval_line(value_nid));
+
+                set_symbolic_state(state_nid, line);
               } else {
                 // assert: sid of state line is ARRAY
                 if (is_bitvector(get_sid(value_nid))) {
@@ -4677,9 +4678,9 @@ void eval_init(uint64_t* line) {
                     exit(EXITCODE_SYSTEMERROR);
                   }
 
-                  set_symbolic_state(state_nid, value_nid);
-
                   set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+
+                  set_symbolic_state(state_nid, line);
                 } else {
                   // assert: sid of value line is ARRAY
                   match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
@@ -4687,9 +4688,9 @@ void eval_init(uint64_t* line) {
                   value_nid = (uint64_t*) eval_line(value_nid);
 
                   if (get_state(state_nid) != get_state(value_nid)) {
-                    set_symbolic_state(state_nid, value_nid);
-
                     set_state(state_nid, get_state(value_nid));
+
+                    set_symbolic_state(state_nid, line);
 
                     // TODO: reinitialize value state
                     set_state(value_nid, 0);
@@ -4779,6 +4780,9 @@ uint64_t eval_next(uint64_t* line) {
 
               set_step(line, next_step);
 
+              if (printing_unrolled_model)
+                print_line_advancing_nid(get_arg2(line));
+
               return no_update;
             } else
               printf("%s: next non-current state error\n", selfie_name);
@@ -4808,12 +4812,13 @@ void apply_next(uint64_t* line) {
 
   if (get_step(line) == next_step) {
     state_nid = get_arg1(line);
+    value_nid = get_arg2(line);
 
-    if (is_bitvector(get_sid(state_nid))) {
-      value_nid = get_arg2(line);
-
+    if (is_bitvector(get_sid(state_nid)))
       set_state(state_nid, get_state(value_nid));
-    } // TODO: log writes and only apply with init and next
+    // TODO: else log writes and only apply with init and next
+
+    set_symbolic_state(state_nid, line);
 
     set_step(state_nid, next_step);
 
@@ -11797,6 +11802,8 @@ void disassemble_rotor(uint64_t core) {
 }
 
 void print_unrolled_model() {
+  uint64_t last_step_nid;
+
   // TODO: finish
   open_model_file();
 
@@ -11815,7 +11822,25 @@ void print_unrolled_model() {
 
   printing_unrolled_model = 1;
 
+  last_nid = 0;
+
   eval_multicore_properties();
+
+  while (current_step < 2) {
+    last_step_nid = current_nid - 1;
+
+    eval_multicore_sequential();
+
+    apply_multicore_sequential();
+
+    current_step = next_step;
+
+    next_step = next_step + 1;
+
+    last_nid = last_step_nid;
+
+    eval_multicore_properties();
+  }
 
   close_model_file();
 }
