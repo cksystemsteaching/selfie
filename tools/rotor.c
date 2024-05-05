@@ -419,7 +419,7 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
-uint64_t printing_btor_model = 0; // indicates if BTOR model is printed during evaluation
+uint64_t printing_unrolled_model = 0; // indicates if model is printed during evaluation
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3560,16 +3560,25 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_input(uint64_t nid, uint64_t* line) {
-  if (printing_btor_model) {
-    if (get_op(line) == OP_STATE) {
-      nid = print_line_once(nid, get_symbolic_state(line));
-      set_nid(line, get_nid(get_symbolic_state(line)));
+  char* op;
+  nid = print_line_once(nid, get_sid(line));
+  op = get_op(line);
+  if (printing_unrolled_model) {
+    if (op == OP_STATE) {
+      if (is_bitvector(get_sid(line))) {
+        // TODO: handle uninitialized bitvector states
+        nid = print_line_once(nid, get_symbolic_state(line));
+        set_nid(line, get_nid(get_symbolic_state(line)));
+        return nid;
+      } else {
+        // assert: array
+        // TODO: handle initialized array states
+        op = OP_INPUT;
+      }
     }
-  } else {
-    nid = print_line_once(nid, get_sid(line));
-    print_nid(nid, line);
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)), (char*) get_arg1(line));
   }
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
   return nid;
 }
 
@@ -3624,7 +3633,7 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
 uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
-  if (printing_btor_model)
+  if (printing_unrolled_model)
     // TODO: possibly negate constraint
     w = w + dprintf(output_fd, " root %lu %lu", get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
   else
@@ -3672,7 +3681,11 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     nid = print_constraint(nid, line);
   else
     nid = print_binary_op(nid, line);
-  print_comment(line);
+  if (printing_unrolled_model)
+    // TODO: comments irritate bitwuzla here
+    w = w + dprintf(output_fd, "\n");
+  else
+    print_comment(line);
   return nid;
 }
 
@@ -4569,7 +4582,7 @@ uint64_t eval_line(uint64_t* line) {
   else
     value = eval_binary_op(line);
 
-  if (printing_btor_model)
+  if (printing_unrolled_model)
     print_line_advancing_nid(line);
 
   return value;
@@ -4601,7 +4614,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    } else if (printing_btor_model)
+    } else if (printing_unrolled_model)
       print_line_advancing_nid(line);
 
     set_state(line, condition != 0);
@@ -4613,7 +4626,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
       printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    } else if (printing_btor_model)
+    } else if (printing_unrolled_model)
       print_line_advancing_nid(line);
 
     set_state(line, condition == 0);
@@ -11800,7 +11813,7 @@ void print_btor_model() {
   first_input = 0;
   any_input   = 0;
 
-  printing_btor_model = 1;
+  printing_unrolled_model = 1;
 
   eval_multicore_properties();
 
