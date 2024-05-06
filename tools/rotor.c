@@ -104,6 +104,7 @@ uint64_t  are_lines_equal(uint64_t* left_line, uint64_t* right_line);
 uint64_t* find_equal_line(uint64_t* line);
 
 uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3, char* comment);
+uint64_t* new_line_symbolic(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3, char* comment);
 
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
@@ -117,6 +118,7 @@ uint64_t* new_slice(uint64_t* sid, uint64_t* value_nid, uint64_t u, uint64_t l, 
 uint64_t* new_unary(char* op, uint64_t* sid, uint64_t* value_nid, char* comment);
 uint64_t* new_unary_boolean(char* op, uint64_t* value_nid, char* comment);
 uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
+uint64_t* new_binary_symbolic(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment);
 uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* second_nid, uint64_t* third_nid, char* comment);
 
@@ -278,6 +280,7 @@ void print_nid(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
 uint64_t print_constant(uint64_t nid, uint64_t* line);
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 uint64_t print_input(uint64_t nid, uint64_t* line);
 
 uint64_t print_ext(uint64_t nid, uint64_t* line);
@@ -324,6 +327,8 @@ char* format_comment_binary(char* comment, uint64_t value);
 uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
+
+uint64_t printing_propagated_constants = 0; // TODO: extend beyond initialization
 
 // -----------------------------------------------------------------
 // -------------------------- SEMANTICS ----------------------------
@@ -3416,6 +3421,13 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   }
 }
 
+uint64_t* new_line_symbolic(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3, char* comment) {
+  uint64_t* line;
+  line = new_line(op, sid, arg1, arg2, arg3, comment);
+  set_symbolic_state(line, line);
+  return line;
+}
+
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment) {
   return new_line(OP_SORT, UNUSED, (uint64_t*) BITVEC, (uint64_t*) size_in_bits, UNUSED, comment);
 }
@@ -3429,7 +3441,7 @@ uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, uint64_t digi
 }
 
 uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment) {
-  return new_line(op, sid, (uint64_t*) symbol, UNUSED, UNUSED, comment);
+  return new_line_symbolic(op, sid, (uint64_t*) symbol, UNUSED, UNUSED, comment);
 }
 
 uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment) {
@@ -3452,6 +3464,10 @@ uint64_t* new_binary(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* righ
   return new_line(op, sid, left_nid, right_nid, UNUSED, comment);
 }
 
+uint64_t* new_binary_symbolic(char* op, uint64_t* sid, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
+  return new_line_symbolic(op, sid, left_nid, right_nid, UNUSED, comment);
+}
+
 uint64_t* new_binary_boolean(char* op, uint64_t* left_nid, uint64_t* right_nid, char* comment) {
   return new_binary(op, SID_BOOLEAN, left_nid, right_nid, comment);
 }
@@ -3461,11 +3477,11 @@ uint64_t* new_ternary(char* op, uint64_t* sid, uint64_t* first_nid, uint64_t* se
 }
 
 uint64_t* new_init(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
-  return new_binary(OP_INIT, sid, state_nid, value_nid, comment);
+  return new_binary_symbolic(OP_INIT, sid, state_nid, value_nid, comment);
 }
 
 uint64_t* new_next(uint64_t* sid, uint64_t* state_nid, uint64_t* value_nid, char* comment) {
-  return new_binary(OP_NEXT, sid, state_nid, value_nid, comment);
+  return new_binary_symbolic(OP_NEXT, sid, state_nid, value_nid, comment);
 }
 
 uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* comment) {
@@ -3559,13 +3575,22 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
+  if (is_constant_op(get_op(line))) return print_constant(nid, line);
+  nid = print_line_once(nid, get_sid(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  return nid;
+}
+
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
   nid = print_line_once(nid, get_sid(line));
   op = get_op(line);
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (get_symbolic_state(line) == UNUSED)
+      if (get_symbolic_state(line) == line)
+        // state is uninitialized
         op = OP_INPUT;
       else if (is_bitvector(get_sid(line))) {
         if (get_op(get_symbolic_state(line)) == OP_INIT)
@@ -3679,29 +3704,35 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     nid = print_constant(nid, line);
   else if (is_input_op(op))
     nid = print_input(nid, line);
-  else if (op == OP_SEXT)
-    nid = print_ext(nid, line);
-  else if (op == OP_UEXT)
-    nid = print_ext(nid, line);
-  else if (op == OP_SLICE)
-    nid = print_slice(nid, line);
-  else if (is_unary_op(op))
-    nid = print_unary_op(nid, line);
-  else if (op == OP_ITE)
-    nid = print_ternary_op(nid, line);
-  else if (op == OP_WRITE)
-    nid = print_ternary_op(nid, line);
-  else if (op == OP_BAD)
-    nid = print_constraint(nid, line);
-  else if (op == OP_CONSTRAINT)
-    nid = print_constraint(nid, line);
-  else
-    nid = print_binary_op(nid, line);
-  if (printing_unrolled_model)
+  else {
+    if (printing_propagated_constants)
+      if (get_symbolic_state(line) == UNUSED)
+        return print_propagated_constant(nid, line);
+
+    if (op == OP_SEXT)
+      nid = print_ext(nid, line);
+    else if (op == OP_UEXT)
+      nid = print_ext(nid, line);
+    else if (op == OP_SLICE)
+      nid = print_slice(nid, line);
+    else if (is_unary_op(op))
+      nid = print_unary_op(nid, line);
+    else if (op == OP_ITE)
+      nid = print_ternary_op(nid, line);
+    else if (op == OP_WRITE)
+      nid = print_ternary_op(nid, line);
+    else if (op == OP_BAD)
+      nid = print_constraint(nid, line);
+    else if (op == OP_CONSTRAINT)
+      nid = print_constraint(nid, line);
+    else
+      nid = print_binary_op(nid, line);
+  }
+  //if (printing_unrolled_model)
     // TODO: comments irritate bitwuzla here
-    w = w + dprintf(output_fd, "\n");
-  else
-    print_comment(line);
+    //w = w + dprintf(output_fd, "\n");
+  //else
+  print_comment(line);
   return nid;
 }
 
@@ -4400,6 +4431,8 @@ uint64_t eval_write(uint64_t* line) {
 
           set_state(line, (uint64_t) state_nid);
 
+          set_symbolic_state(line, line);
+
           set_step(line, next_step);
 
           return get_state(line);
@@ -4680,8 +4713,6 @@ void eval_init(uint64_t* line) {
                 match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
 
                 set_state(state_nid, eval_line(value_nid));
-
-                set_symbolic_state(state_nid, line);
               } else {
                 // assert: sid of state line is ARRAY
                 if (is_bitvector(get_sid(value_nid))) {
@@ -4694,8 +4725,6 @@ void eval_init(uint64_t* line) {
                   }
 
                   set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
-
-                  set_symbolic_state(state_nid, line);
                 } else {
                   // assert: sid of value line is ARRAY
                   match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
@@ -4704,8 +4733,6 @@ void eval_init(uint64_t* line) {
 
                   if (get_state(state_nid) != get_state(value_nid)) {
                     set_state(state_nid, get_state(value_nid));
-
-                    set_symbolic_state(state_nid, line);
 
                     // TODO: reinitialize value state
                     set_state(value_nid, 0);
@@ -4717,6 +4744,9 @@ void eval_init(uint64_t* line) {
                   }
                 }
               }
+
+              // use the init line as symbolic state
+              set_symbolic_state(state_nid, line);
 
               set_step(state_nid, INITIALIZED);
 
@@ -4833,6 +4863,7 @@ void apply_next(uint64_t* line) {
       set_state(state_nid, get_state(value_nid));
     // TODO: else log writes and only apply with init and next
 
+    // use the next line as symbolic state
     set_symbolic_state(state_nid, line);
 
     set_step(state_nid, next_step);
@@ -11075,6 +11106,8 @@ void close_model_file() {
 }
 
 void print_model_for(uint64_t core) {
+  printing_propagated_constants = 1;
+
   print_segmentation(core);
 
   print_kernel_state(core);
@@ -11085,6 +11118,8 @@ void print_model_for(uint64_t core) {
   print_data_segment(core);
   print_heap_segment(core);
   print_stack_segment(core);
+
+  printing_propagated_constants = 0;
 
   print_break_comment_line_for(core, "fetch instruction", eval_ir_nids);
   print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nids);
