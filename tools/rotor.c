@@ -3565,16 +3565,25 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   op = get_op(line);
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (is_bitvector(get_sid(line))) {
-        // TODO: handle uninitialized bitvector states
+      if (get_symbolic_state(line) == UNUSED)
+        op = OP_INPUT;
+      else if (is_bitvector(get_sid(line))) {
         if (get_op(get_symbolic_state(line)) == OP_INIT)
           nid = print_line_once(nid, get_arg2(get_symbolic_state(line)));
         set_nid(line, get_nid(get_arg2(get_symbolic_state(line))));
         return nid;
       } else {
         // assert: array
-        // TODO: handle initialized array states
-        op = OP_INPUT;
+        if (is_bitvector(get_sid(get_arg2(get_symbolic_state(line)))))
+          // assert: get_op(get_symbolic_state(line)) == OP_INIT
+          // TODO: handle zeroed arrays
+          op = OP_INPUT;
+        else {
+          if (get_op(get_symbolic_state(line)) == OP_INIT)
+            nid = print_line_once(nid, get_arg2(get_symbolic_state(line)));
+          set_nid(line, get_nid(get_arg2(get_symbolic_state(line))));
+          return nid;
+        }
       }
     }
   }
@@ -3635,10 +3644,16 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   if (printing_unrolled_model)
-    // TODO: possibly negate constraint
-    w = w + dprintf(output_fd, " root %lu %lu", get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
-  else
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
+    if (get_op(line) == OP_BAD) {
+      //w = w + dprintf(output_fd, "%lu %s %lu %lu\n", nid, OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
+      //print_nid(nid + 1, line);
+      //w = w + dprintf(output_fd, " %s %lu %s", OP_CONSTRAINT, nid, (char*) get_arg2(line));
+      //return nid + 1;
+      w = w + dprintf(output_fd, " %s %lu %s", OP_CONSTRAINT, get_nid(get_arg1(line)), (char*) get_arg2(line));
+      return nid;
+    }
+  //print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
   return nid;
 }
 
