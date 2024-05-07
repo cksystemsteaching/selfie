@@ -294,6 +294,8 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
 
+uint64_t has_symbolic_state(uint64_t* line);
+
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
 uint64_t print_line_once(uint64_t nid, uint64_t* line);
 
@@ -328,7 +330,7 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
-uint64_t printing_propagated_constants = 0; // TODO: extend beyond initialization
+uint64_t printing_propagated_constants = 0;
 
 // -----------------------------------------------------------------
 // -------------------------- SEMANTICS ----------------------------
@@ -375,6 +377,9 @@ uint64_t eval_slice_u(uint64_t* line);
 uint64_t eval_slice_l(uint64_t* line);
 
 uint64_t eval_input(uint64_t* line);
+
+void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3);
+
 uint64_t eval_ext(uint64_t* line);
 uint64_t eval_slice(uint64_t* line);
 uint64_t eval_concat(uint64_t* line);
@@ -423,6 +428,8 @@ uint64_t current_input = 0; // current input byte value
 uint64_t first_input = 0; // indicates if input has been consumed for the first time
 
 uint64_t any_input = 0; // indicates if any input has been consumed
+
+uint64_t propagating_symbolic_state = 0;
 
 uint64_t printing_unrolled_model = 0; // indicates if model is printed during evaluation
 
@@ -3693,6 +3700,13 @@ void print_comment(uint64_t* line) {
   w = w + dprintf(output_fd, "\n");
 }
 
+uint64_t has_symbolic_state(uint64_t* line) {
+  if (line == UNUSED)
+    return 0;
+  else
+    return get_symbolic_state(line) != UNUSED;
+}
+
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
   char* op;
 
@@ -3706,7 +3720,7 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     nid = print_input(nid, line);
   else {
     if (printing_propagated_constants)
-      if (get_symbolic_state(line) == UNUSED)
+      if (has_symbolic_state(line) == 0)
         return print_propagated_constant(nid, line);
 
     if (op == OP_SEXT)
@@ -4233,6 +4247,15 @@ uint64_t eval_input(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
+void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3) {
+  if (propagating_symbolic_state) {
+    if ((has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3)) == 0)
+      set_symbolic_state(line, UNUSED);
+    else
+      set_symbolic_state(line, line);
+  }
+}
+
 uint64_t eval_ext(uint64_t* line) {
   uint64_t* value_nid;
   uint64_t n;
@@ -4252,6 +4275,8 @@ uint64_t eval_ext(uint64_t* line) {
       else
         // assert: unsigned extension
         set_state(line, eval_line(value_nid));
+
+      propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
 
       set_step(line, next_step);
 
@@ -4281,6 +4306,8 @@ uint64_t eval_slice(uint64_t* line) {
     if (u >= l)
       if (eval_bitvec_size(get_sid(line)) == u - l + 1) {
         set_state(line, get_bits(eval_line(value_nid), l, u - l + 1));
+
+        propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
 
         set_step(line, next_step);
 
@@ -4316,6 +4343,8 @@ uint64_t eval_concat(uint64_t* line) {
 
     set_state(line, left_shift(left_value, right_size) + right_value);
 
+    propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+
     set_step(line, next_step);
 
     return get_state(line);
@@ -4341,10 +4370,21 @@ uint64_t eval_ite(uint64_t* line) {
   match_sorts(get_sid(line), get_sid(then_nid), "ite then");
   match_sorts(get_sid(line), get_sid(else_nid), "ite else");
 
-  if (eval_line(if_nid))
+  if (eval_line(if_nid)) {
     set_state(line, eval_line(then_nid));
-  else
+
+    if (propagating_symbolic_state)
+      if (has_symbolic_state(if_nid))
+        eval_line(else_nid);
+  } else {
+    if (propagating_symbolic_state)
+      if (has_symbolic_state(if_nid))
+        eval_line(then_nid);
+
     set_state(line, eval_line(else_nid));
+  }
+
+  propagate_symbolic_state(line, if_nid, then_nid, else_nid);
 
   set_step(line, next_step);
 
@@ -4386,6 +4426,8 @@ uint64_t eval_read(uint64_t* line) {
 
           any_input = 1;
         }
+
+        propagate_symbolic_state(line, read_nid, index_nid, UNUSED);
 
         set_step(line, next_step);
 
@@ -4474,6 +4516,8 @@ uint64_t eval_unary_op(uint64_t* line) {
     else if (op == OP_NEG)
       set_state(line, sign_shrink(-value, size));
 
+    propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+
     set_step(line, next_step);
 
     return get_state(line);
@@ -4506,9 +4550,13 @@ uint64_t eval_binary_op(uint64_t* line) {
 
       left_value = eval_line(left_nid);
 
-      if (left_value == 0)
+      if (left_value == 0) {
         set_state(line, left_value == 0);
-      else {
+
+        if (propagating_symbolic_state)
+          if (has_symbolic_state(left_nid))
+            eval_line(right_nid);
+      } else {
         // lazy evaluation of right operand
         right_value = eval_line(right_nid);
 
@@ -4589,6 +4637,8 @@ uint64_t eval_binary_op(uint64_t* line) {
       }
     }
 
+    propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+
     set_step(line, next_step);
 
     return get_state(line);
@@ -4655,30 +4705,34 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
-    if (condition != 0) {
+    if (printing_unrolled_model)
+      print_line_advancing_nid(line);
+    else if (condition != 0) {
       printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
-    if (printing_unrolled_model)
-      print_line_advancing_nid(line);
-
     set_state(line, condition != 0);
+
+    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
+
     set_step(line, next_step);
 
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
-    if (condition == 0) {
+    if (printing_unrolled_model)
+      print_line_advancing_nid(line);
+    else if (condition == 0) {
       printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
         symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     }
 
-    if (printing_unrolled_model)
-      print_line_advancing_nid(line);
-
     set_state(line, condition == 0);
+
+    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
+
     set_step(line, next_step);
 
     return condition == 0;
