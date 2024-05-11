@@ -1,5 +1,13 @@
+#!/usr/bin/env python3
+
+# This script is used to compare objdump outputs of Rotor and RISC-V
+
+
 import re
+import subprocess
+from abc import abstractmethod
 from typing import Callable
+from argparse import ArgumentParser
 
 
 class Logger:
@@ -12,6 +20,11 @@ class Logger:
         PURPLE = "\033[35m"
         CYAN = "\033[36m"
         WHITE = "\033[37m"
+        GRAY = "\033[90m"
+
+    @staticmethod
+    def debug(message: str, prefix=""):
+        Logger.__log_colored(Logger.Colors.GRAY, prefix, message)
 
     @staticmethod
     def error(message: str, prefix="ERROR: "):
@@ -74,17 +87,16 @@ class Instruction:
 
     @staticmethod
     def from_riscv(instruction: str) -> "Instruction":
-        return Instruction.__create(instruction, Instruction.Source.RISCV, r"\s+([\da-f]+):\s+[\da-f]+\s+(\w*)(?:\s+([\w,()\-]*))?(.*?)[\n$]")
+        return Instruction.__create(instruction, Instruction.Source.RISCV, r"\s+([\da-f]+):\s+[\da-f]+\s+(\w*)(?:\s+([\w,()\-]*))?(.*?)(?:\r?\n|$)")
 
     @staticmethod
     def from_rotor(instruction: str) -> "Instruction":
-        return Instruction.__create(instruction, Instruction.Source.ROTOR, r"0x([\da-f]+):\s+([\w.]*)(?:\s+([\w,()\-]*))?(.*?)[\n$]")
+        return Instruction.__create(instruction, Instruction.Source.ROTOR, r"0x([\da-f]+):\s+([\w.]*)(?:\s+([\w,()\-]*))?(.*?)(?:\r?\n|$)")
 
     @staticmethod
     def __create(instruction: str, source: str, regex: str):
         match = re.match(regex, instruction, re.IGNORECASE)
         if not match:
-            # print("Instruction " + instruction + " does not match regex")
             raise ValueError("Instruction does not match regex")
 
         address = match.group(1)
@@ -134,15 +146,14 @@ class Instruction:
         return self.__str__()
 
 
-class FileReader:
-    def __init__(self, file_path, instruction_class: Callable[[str], Instruction]):
-        self.file = open(file_path, "r")
+class CodeReader:
+    def __init__(self, instruction_class: Callable[[str], Instruction]):
         self.instruction_class = instruction_class
         self.__peek: Instruction | None = None
 
     def peek_instruction(self) -> Instruction:
         if self.__peek is None:
-            self.__peek = self.__actual_next_instruction()
+            self.__peek = self._actual_next_instruction()
         return self.__peek
 
     def next_instruction(self) -> Instruction:
@@ -150,21 +161,99 @@ class FileReader:
             next_instruction = self.__peek
             self.__peek = None
             return next_instruction
-        return self.__actual_next_instruction()
+        return self._actual_next_instruction()
 
-    def __actual_next_instruction(self) -> Instruction:
+    @abstractmethod
+    def _actual_next_instruction(self) -> Instruction:
+        pass
+
+
+class StdoutReader(CodeReader):
+    def __init__(self, stdout: str, instruction_class: Callable[[str], Instruction]):
+        super().__init__(instruction_class)
+        self.iterator = iter(stdout.splitlines())
+
+    def _actual_next_instruction(self) -> Instruction:
+        while True:
+            try:
+                line = next(self.iterator)
+                return self.instruction_class(str(line))
+            except StopIteration:
+                raise EOFError("End of output")
+            except ValueError:
+                continue
+
+
+class FileReader(CodeReader):
+    def __init__(self, file_path, instruction_class: Callable[[str], Instruction]):
+        super().__init__(instruction_class)
+        self.file = open(file_path, "r")
+
+    def _actual_next_instruction(self) -> Instruction:
         while True:
             if (line := self.file.readline()) == "":
                 raise EOFError("End of file")
             try:
                 return self.instruction_class(str(line))
             except ValueError:
-                pass
+                continue
+
+
+def parse_args():
+    argparser = ArgumentParser()
+    argparser.add_argument("-s", "--rotor-path", dest="rotor_path", default="./rotor;./tools/rotor;../rotor", help="Path to the Rotor executable (multiple paths can be provided, first one that exists will be used)")
+    argparser.add_argument("-r", "--riscv-path", dest="riscv_path", default="riscv64-unknown-elf-objdump", help="Path to the RISC-V objdump executable")
+    argparser.add_argument(dest="in_file", help="Input binary")
+    return argparser.parse_args()
 
 
 def main():
-    riscv_reader = FileReader("C:/Users/alexe/Desktop/riscv.txt", Instruction.from_riscv)
-    rotor_reader = FileReader("C:/Users/alexe/Desktop/rotoro.txt", Instruction.from_rotor)
+    args = parse_args()
+
+    Logger.debug("Dumping assembly using RISC-V at path " + args.riscv_path)
+
+    try:
+        riscv_output = subprocess.run([args.riscv_path, "-d", args.in_file], capture_output=True, text=True)
+    except FileNotFoundError:
+        Logger.error("RISC-V objdump executable not found")
+        return
+
+    if riscv_output.returncode != 0:
+        Logger.error("RISC-V objdump failed")
+        print(riscv_output.stderr)
+        return
+
+    rotor_paths = args.rotor_path.split(";")
+    rotor_output = None
+
+    for rotor_path in rotor_paths:
+        Logger.debug("Dumping assembly using Rotor at path " + rotor_path)
+
+        try:
+            rotor_output = subprocess.run([rotor_path, "-l", args.in_file, "-", "0", "-s"], capture_output=True, text=True)
+            break
+        except FileNotFoundError:
+            Logger.debug("Rotor executable not found at path " + rotor_path)
+            continue
+
+    if rotor_output is None:
+        Logger.error("Rotor executable not found")
+        return
+
+    if rotor_output.returncode != 0:
+        Logger.error("Rotor failed")
+        print(rotor_output.stderr)
+        return
+
+    riscv_reader = StdoutReader(riscv_output.stdout, Instruction.from_riscv)
+    rotor_reader = StdoutReader(rotor_output.stdout, Instruction.from_rotor)
+
+    compare_objdump(riscv_reader, rotor_reader)
+
+
+def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
+    Logger.debug("Comparing instructions...")
+
     while True:
         try:
             # assert: We are at the same position in both files
@@ -239,4 +328,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
