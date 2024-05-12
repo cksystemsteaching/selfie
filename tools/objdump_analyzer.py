@@ -87,7 +87,7 @@ class Instruction:
 
     @staticmethod
     def from_riscv(instruction: str) -> "Instruction":
-        return Instruction.__create(instruction, Instruction.Source.RISCV, r"\s+([\da-f]+):\s+[\da-f]+\s+(\w*)(?:\s+([\w,()\-]*))?(.*?)(?:\r?\n|$)")
+        return Instruction.__create(instruction, Instruction.Source.RISCV, r"\s+([\da-f]+):\s+[\da-f]+\s+([\w.]*)(?:\s+([\w,()\-]*))?(.*?)(?:\r?\n|$)")
 
     @staticmethod
     def from_rotor(instruction: str) -> "Instruction":

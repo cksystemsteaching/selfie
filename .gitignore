@@ -3,6 +3,7 @@
 *.s
 *.smt
 *.btor2
+.idea
 selfie
 selfie-32
 selfie.h
