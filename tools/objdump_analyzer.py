@@ -35,6 +35,10 @@ class Logger:
         Logger.__log_colored(Logger.Colors.YELLOW, prefix, message)
 
     @staticmethod
+    def bigproblem(message: str, prefix="PROBLEM: "):
+        Logger.__log_colored(Logger.Colors.RED, prefix, message)
+
+    @staticmethod
     def header(message: str, prefix="===== ", suffix=" ====="):
         Logger.__log_colored(Logger.Colors.BLUE, prefix, message, suffix)
 
@@ -316,8 +320,13 @@ def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
 
             # We are ready to check for instruction equality
 
-            if riscv_curr != rotor_curr:
+            if riscv_curr.instruction != rotor_curr.instruction:
                 Logger.problem("Instructions are not equal")
+                Logger.inline_header(repr(riscv_curr), "RISC-V - ")
+                Logger.inline_header(repr(rotor_curr), "ROTOR  - ")
+                print()
+            elif riscv_curr != rotor_curr:
+                Logger.bigproblem("Operands are not equal")
                 Logger.inline_header(repr(riscv_curr), "RISC-V - ")
                 Logger.inline_header(repr(rotor_curr), "ROTOR  - ")
                 print()
