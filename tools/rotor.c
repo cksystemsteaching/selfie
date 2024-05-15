@@ -11510,34 +11510,87 @@ void print_assembly(uint64_t core) {
     }
   }
 
-  printf("%s", get_instruction_mnemonic(ID));
+  // replace basic instructions with appropriate pseudoinstructions according to the RISC-V spec
+  if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
+    printf("li %s,%ld", rd, I_imm);
+  else if (ID == ID_ADDI && I_imm == 0)
+    printf("mv %s,%s", rd, rs1);
+  else if (ID == ID_ADD && rs1 == get_register_name(REG_ZR))
+    // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
+    // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
+    printf("mv %s,%s", rd, rs2);
+  else if (ID == ID_XORI && I_imm == -1)
+    printf("not %s,%s", rd, rs1);
+  else if (ID == ID_SUB && rs1 == get_register_name(REG_ZR))
+    printf("neg %s,%s", rd, rs2);
+  else if (ID == ID_SUBW && rs1 == get_register_name(REG_ZR))
+    printf("negw %s,%s", rd, rs2);
+  else if (ID == ID_ADDIW && I_imm_32_bit == 0)
+    printf("sext.w %s,%s", rd, rs1);
+  else if (ID == ID_SLTIU && I_imm == 1)
+    printf("seqz %s,%s", rd, rs1);
 
-  if (is_R_type(ID))
-    printf(" %s,%s,%s", rd, rs1, rs2);
-  else if (is_I_type(ID)) {
-    if (is_shift_I_type(ID))
-      if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
-    else
-      if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
-    if (is_register_relative_I_type(ID))
-      printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
-    else if (is_shift_I_type(ID))
-      printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
-    else
-      printf(" %s,%s,%ld", rd, rs1, imm_shamt);
-  } else if (is_S_type(ID))
-    printf(" %s,%ld(%s)", rs2, S_imm, rs1);
-  else if (is_SB_type(ID))
-    printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
+  else if (ID == ID_BEQ && rs2 == get_register_name(REG_ZR))
+    printf("beqz %s,0x%lX <%ld>", rs1, pc + SB_imm,
       signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (is_U_type(ID))
-    printf(" %s,0x%lX", rd, U_imm);
-  else if (ID == ID_JAL)
-    printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
-      signed_division(UJ_imm, INSTRUCTIONSIZE));
+  else if (ID == ID_BNE && rs2 == get_register_name(REG_ZR))
+    printf("bnez %s,0x%lX <%ld>", rs1, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
+  else if (ID == ID_BGE && rs1 == get_register_name(REG_ZR))
+    printf("blez %s,0x%lX <%ld>", rs2, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
+  else if (ID == ID_BGE && rs2 == get_register_name(REG_ZR))
+    printf("bgez %s,0x%lX <%ld>", rs1, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
+  else if (ID == ID_BLT && rs2 == get_register_name(REG_ZR))
+    printf("bltz %s,0x%lX <%ld>", rs1, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
+  else if (ID == ID_BLT && rs1 == get_register_name(REG_ZR))
+    printf("bgtz %s,0x%lX <%ld>", rs2, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
 
-  if (mnemonic != get_instruction_mnemonic(ID))
-    printf(" (%s)", mnemonic);
+  else if (ID == ID_JAL && rd == get_register_name(REG_ZR))
+    printf("j 0x%lX", pc + UJ_imm);
+  else if (ID == ID_JAL && rd == get_register_name(REG_RA))
+    printf("jal 0x%lX", pc + UJ_imm);
+  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 != get_register_name(REG_RA) && I_imm == 0)
+    // (rs1 != x1) is an additional check to prevent [ret] instructions from falling through to this case
+    printf("jr %s", rs1);
+  else if (ID == ID_JALR && rd == get_register_name(REG_RA) && I_imm == 0)
+    printf("jalr %s", rs1);
+  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
+    printf("ret");
+
+  else {
+    printf("%s", get_instruction_mnemonic(ID));
+
+    if (is_R_type(ID))
+      printf(" %s,%s,%s", rd, rs1, rs2);
+    else if (is_I_type(ID)) {
+      if (is_shift_I_type(ID))
+        if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
+      else
+        if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
+      if (is_register_relative_I_type(ID))
+        printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
+      else if (is_shift_I_type(ID))
+        printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
+      else
+        printf(" %s,%s,%ld", rd, rs1, imm_shamt);
+    } else if (is_S_type(ID))
+      printf(" %s,%ld(%s)", rs2, S_imm, rs1);
+    else if (is_SB_type(ID))
+      printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
+        signed_division(SB_imm, INSTRUCTIONSIZE));
+    else if (is_U_type(ID))
+      printf(" %s,0x%lX", rd, U_imm);
+    else if (ID == ID_JAL)
+      printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
+        signed_division(UJ_imm, INSTRUCTIONSIZE));
+
+    if (mnemonic != get_instruction_mnemonic(ID))
+      printf(" (%s)", mnemonic);
+  }
 }
 
 void print_multicore_assembly() {
