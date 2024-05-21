@@ -22,7 +22,7 @@ and models with RISC-V code loaded from selfie- and gcc-generated
 RISC-V ELF binaries (for code analysis) in linear time and space
 in the size of the binaries.
 
-BTOR2 models feature combinational and seqential logic over
+BTOR2 models feature combinational and sequential logic over
 bitvectors and arrays of bitvectors. The state space of BTOR2
 models evolves in steps through sequential logic and can be
 checked for safety and finite liveness properties with a
