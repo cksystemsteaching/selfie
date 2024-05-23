@@ -328,7 +328,7 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
-uint64_t printing_propagated_constants = 1;
+uint64_t printing_propagated_constants = 0;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
 uint64_t states_are_symbolic = 0; // states are originally not symbolic unless uninitialized
@@ -12244,7 +12244,7 @@ uint64_t selfie_model() {
       if (unroll_model)
         print_unrolled_model();
       else {
-        if (printing_propagated_constants)
+        //if (printing_propagated_constants)
           eval_constant_propagation();
 
         print_model();
