@@ -328,7 +328,7 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
-uint64_t printing_propagated_constants = 0;
+uint64_t printing_propagated_constants = 1;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
 uint64_t states_are_symbolic = 0; // states are originally not symbolic unless uninitialized
@@ -668,6 +668,8 @@ uint64_t* eval_more_than_one_readable_byte_to_read_nid = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interface_kernel() {
+  uint64_t saved_reuse_lines;
+
   NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     MAX_STRING_LENGTH, 0, "maximum string length");
 
@@ -695,7 +697,14 @@ void init_interface_kernel() {
   SID_INPUT_ADDRESS = new_bitvec(INPUT_ADDRESS_SPACE,
     format_comment("%lu-bit input address", INPUT_ADDRESS_SPACE));
 
+  saved_reuse_lines = reuse_lines;
+
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
   SID_INPUT_BUFFER = new_array(SID_INPUT_ADDRESS, SID_BYTE, "input buffer");
+
+  reuse_lines = saved_reuse_lines;
 }
 
 void init_kernels(uint64_t number_of_cores) {
@@ -1239,7 +1248,14 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
     format_comment("%lu-bit code segment address", CODE_ADDRESS_SPACE));
 
+  saved_reuse_lines = reuse_lines;
+
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
   SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_CODE_WORD, "code segment state");
+
+  reuse_lines = saved_reuse_lines;
 
   // main memory
 
@@ -1251,11 +1267,6 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
 
-  saved_reuse_lines = reuse_lines;
-
-  // make sure to have unique SIDs below
-  reuse_lines = 0;
-
   // data segment
 
   DATA_ADDRESS_SPACE = calculate_address_space(max_data_size, eval_bitvec_size(SID_MEMORY_WORD));
@@ -1263,7 +1274,12 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_DATA_ADDRESS = new_bitvec(DATA_ADDRESS_SPACE,
     format_comment("%lu-bit physical data segment address", DATA_ADDRESS_SPACE));
 
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
   SID_DATA_STATE = new_array(SID_DATA_ADDRESS, SID_MEMORY_WORD, "data segment state");
+
+  reuse_lines = saved_reuse_lines;
 
   // heap segment
 
@@ -1272,7 +1288,12 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_HEAP_ADDRESS = new_bitvec(HEAP_ADDRESS_SPACE,
     format_comment("%lu-bit physical heap segment address", HEAP_ADDRESS_SPACE));
 
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
   SID_HEAP_STATE = new_array(SID_HEAP_ADDRESS, SID_MEMORY_WORD, "heap segment state");
+
+  reuse_lines = saved_reuse_lines;
 
   // stack segment
 
@@ -1280,6 +1301,9 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   SID_STACK_ADDRESS = new_bitvec(STACK_ADDRESS_SPACE,
     format_comment("%lu-bit physical stack segment address", STACK_ADDRESS_SPACE));
+
+  // make sure to have a unique SID
+  reuse_lines = 0;
 
   SID_STACK_STATE = new_array(SID_STACK_ADDRESS, SID_MEMORY_WORD, "stack segment state");
 
@@ -2844,7 +2868,7 @@ void init_compressed_instruction_sorts() {
 
   // offset sorts
 
-  SID_1_BIT_OFFSET  = new_bitvec(1, "1-bit offset sort");
+  SID_1_BIT_OFFSET  = SID_BOOLEAN;
   SID_2_BIT_OFFSET  = new_bitvec(2, "2-bit offset sort");
   SID_3_BIT_OFFSET  = new_bitvec(3, "3-bit offset sort");
   SID_4_BIT_OFFSET  = new_bitvec(4, "4-bit offset sort");
@@ -4437,6 +4461,11 @@ uint64_t eval_read(uint64_t* line) {
           any_input = 1;
         }
 
+        if (get_sid(state_nid) == SID_CODE_STATE)
+          if (get_symbolic(state_nid) != UNUSED)
+            // avoid reading illegal instruction from uninitialized code segment
+            set_state(line, 1);
+
         propagate_symbolic_state(line, state_nid, index_nid, UNUSED);
 
         set_step(line, next_step);
@@ -5208,6 +5237,8 @@ void new_kernel_state(uint64_t core) {
     // initialize only for emulator
     eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
 
+    // TODO: make state symbolic for unrolling model
+
     next_input_buffer_nid = new_next(SID_INPUT_BUFFER,
       state_input_buffer_nid, state_input_buffer_nid, "read-only uninitialized input buffer");
   }
@@ -5677,6 +5708,9 @@ void new_code_segment(uint64_t core) {
 
     // initialize only for emulator
     eval_init(new_init(SID_CODE_STATE, state_code_segment_nid, NID_CODE_WORD_0, "zeroed code segment"));
+
+    // uninitialized state is symbolic
+    set_symbolic(state_code_segment_nid, state_code_segment_nid);
 
     next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
