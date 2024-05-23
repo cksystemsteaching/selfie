@@ -3283,6 +3283,8 @@ void restore_multicore_states();
 
 void eval_multicore_states();
 
+void eval_constant_propagation();
+
 void eval_rotor();
 
 void disassemble_rotor(uint64_t core);
@@ -3713,6 +3715,8 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     nid = print_input(nid, line);
   else if (op == OP_WRITE)
     nid = print_ternary_op(nid, line);
+  else if (op == OP_INIT)
+    nid = print_binary_op(nid, line);
   else if (op == OP_NEXT)
     nid = print_binary_op(nid, line);
   else {
@@ -4224,7 +4228,7 @@ uint64_t eval_input(uint64_t* line) {
   else if (op == OP_INPUT) {
     if (input_steps == 0)
       // TODO: input is consumed more than once
-      input_steps = current_step;
+      input_steps = current_step - current_offset;
 
     set_state(line, current_input);
     set_step(line, next_step);
@@ -4377,9 +4381,15 @@ uint64_t eval_ite(uint64_t* line) {
 
     if (has_symbolic_state(if_nid))
       eval_line(else_nid);
+    else
+      // do not propagate unevaluated symbolic value
+      else_nid = UNUSED;
   } else {
     if (has_symbolic_state(if_nid))
       eval_line(then_nid);
+    else
+      // do not propagate unevaluated symbolic value
+      then_nid = UNUSED;
 
     set_state(line, eval_line(else_nid));
   }
@@ -4417,7 +4427,7 @@ uint64_t eval_read(uint64_t* line) {
           // input buffer is uninitialized, generate input
           if (input_steps == 0)
             // TODO: input is consumed more than once
-            input_steps = current_step;
+            input_steps = current_step - current_offset;
 
           set_state(line, current_input);
 
@@ -4432,10 +4442,8 @@ uint64_t eval_read(uint64_t* line) {
         set_step(line, next_step);
 
         return get_state(line);
-      } else {
-        printf("%s\n", get_comment(line));
+      } else
         printf("%s: read non-current state error\n", selfie_name);
-      }
     } else
       printf("%s: read non-state error\n", selfie_name);
   } else
@@ -4566,6 +4574,9 @@ uint64_t eval_binary_op(uint64_t* line) {
 
         if (has_symbolic_state(left_nid))
           eval_line(right_nid);
+        else
+          // do not propagate unevaluated symbolic value
+          right_nid = UNUSED;
       } else {
         // lazy evaluation of right operand
         right_value = eval_line(right_nid);
@@ -4813,9 +4824,6 @@ void eval_init(uint64_t* line) {
 
               set_step(state_nid, INITIALIZED);
 
-              // init lines are always symbolic
-              set_symbolic(line, line);
-
               set_step(line, INITIALIZED);
 
               return;
@@ -4889,9 +4897,6 @@ uint64_t eval_next(uint64_t* line) {
                     exit(EXITCODE_SYSTEMERROR);
                   }
                 }
-
-                // next lines are always symbolic
-                set_symbolic(line, line);
 
                 set_step(line, next_step);
 
@@ -5004,6 +5009,8 @@ void save_state(uint64_t* line) {
 
       memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
     }
+
+  set_symbolic(line, get_symbolic(state_nid));
 }
 
 void save_state_for(uint64_t core, uint64_t* lines) {
@@ -5031,6 +5038,8 @@ void restore_state(uint64_t* line) {
       // keep current state to avoid reallocating arrays
       set_state(line, current_state);
     }
+
+  set_symbolic(state_nid, get_symbolic(line));
 
   set_step(state_nid, next_step);
 
@@ -11306,28 +11315,6 @@ void print_model() {
 
   open_model_file();
 
-/*
-  current_offset = 0;
-  current_step   = 0;
-
-  input_steps   = 0;
-  current_input = 0;
-
-  save_multicore_states();
-
-  next_step = next_step + 1;
-
-  first_input = 0;
-  any_input   = 0;
-
-  last_nid = 0;
-
-  states_are_symbolic = 1;
-
-  eval_multicore_properties();
-  eval_multicore_sequential();
-*/
-
   print_interface_sorts();
   print_interface_kernel();
 
@@ -11853,12 +11840,39 @@ void eval_multicore_states() {
   }
 }
 
+void eval_constant_propagation() {
+  current_offset = 0;
+  current_step   = 0;
+
+  input_steps   = 0;
+  current_input = 0;
+
+  save_multicore_states();
+
+  next_step = next_step + 1;
+
+  first_input = 0;
+  any_input   = 0;
+
+  last_nid = 0;
+
+  states_are_symbolic = 1;
+
+  eval_multicore_properties();
+  eval_multicore_sequential();
+
+  restore_multicore_states();
+
+  current_step = next_step;
+
+  states_are_symbolic = 0;
+}
+
 void eval_rotor() {
   if (number_of_binaries == number_of_cores) {
     printf("%s: ********************************************************************************\n", selfie_name);
 
-    current_offset = 0;
-    current_step   = 0;
+    current_offset = current_step;
 
     input_steps   = 0;
     current_input = 0;
@@ -12196,6 +12210,9 @@ uint64_t selfie_model() {
       if (unroll_model)
         print_unrolled_model();
       else {
+        if (printing_propagated_constants)
+          eval_constant_propagation();
+
         print_model();
 
         if (evaluate_model)
