@@ -328,7 +328,7 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
-uint64_t printing_propagated_constants = 0;
+uint64_t printing_propagated_constants = 1;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
 uint64_t states_are_symbolic = 0; // states are originally not symbolic unless uninitialized
@@ -4300,8 +4300,7 @@ uint64_t eval_ext(uint64_t* line) {
         set_state(line, value);
     else if (has_symbolic_state(value_nid) == 0) {
       // TODO: support of non-symbolic double machine words
-      printf("%s: ext unsupported sort error: n==%lu, w==%lu, m==%lu\n", selfie_name,
-        n, w, eval_bitvec_size(get_sid(line)));
+      printf("%s: ext unsupported sort error: n==%lu, w==%lu\n", selfie_name, n, w);
 
       exit(EXITCODE_SYSTEMERROR);
     }
@@ -4324,6 +4323,7 @@ uint64_t eval_slice(uint64_t* line) {
   uint64_t n;
   uint64_t u;
   uint64_t l;
+  uint64_t value;
 
   value_nid = get_arg1(line);
 
@@ -4335,7 +4335,16 @@ uint64_t eval_slice(uint64_t* line) {
   if (n > u)
     if (u >= l)
       if (eval_bitvec_size(get_sid(line)) == u - l + 1) {
-        set_state(line, get_bits(eval_line(value_nid), l, u - l + 1));
+        value = eval_line(value_nid);
+
+        if (u < WORDSIZEINBITS)
+          set_state(line, get_bits(value, l, u - l + 1));
+        else if (has_symbolic_state(value_nid) == 0) {
+          // TODO: support of non-symbolic double machine words
+          printf("%s: slice unsupported sort error: n==%lu, u==%lu, l==%lu\n", selfie_name, n, u, l);
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
 
         propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
 
@@ -4367,18 +4376,20 @@ uint64_t eval_concat(uint64_t* line) {
   left_size  = eval_bitvec_size(get_sid(left_nid));
   right_size = eval_bitvec_size(get_sid(right_nid));
 
-  if (size == left_size + right_size) {
-    left_value  = eval_line(left_nid);
-    right_value = eval_line(right_nid);
+  if (size <= WORDSIZEINBITS)
+    //  TODO: support of non-symbolic double machine words
+    if (size == left_size + right_size) {
+      left_value  = eval_line(left_nid);
+      right_value = eval_line(right_nid);
 
-    set_state(line, left_shift(left_value, right_size) + right_value);
+      set_state(line, left_shift(left_value, right_size) + right_value);
 
-    propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+      propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
 
-    set_step(line, next_step);
+      set_step(line, next_step);
 
-    return get_state(line);
-  }
+      return get_state(line);
+    }
 
   printf("%s: concat %lu-bit and %lu-bit bitvectors to missorted %lu-bit bitvector\n", selfie_name,
     left_size, right_size, size);
@@ -12244,7 +12255,7 @@ uint64_t selfie_model() {
       if (unroll_model)
         print_unrolled_model();
       else {
-        //if (printing_propagated_constants)
+        if (printing_propagated_constants)
           eval_constant_propagation();
 
         print_model();
