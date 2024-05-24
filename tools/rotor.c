@@ -4298,7 +4298,9 @@ uint64_t eval_ext(uint64_t* line) {
       else
         // assert: unsigned extension
         set_state(line, value);
-    else if (has_symbolic_state(value_nid) == 0) {
+    else if (has_symbolic_state(value_nid))
+      set_state(line, 0);
+    else {
       // TODO: support of non-symbolic double machine words
       printf("%s: ext unsupported sort error: n==%lu, w==%lu\n", selfie_name, n, w);
 
@@ -4339,7 +4341,9 @@ uint64_t eval_slice(uint64_t* line) {
 
         if (u < WORDSIZEINBITS)
           set_state(line, get_bits(value, l, u - l + 1));
-        else if (has_symbolic_state(value_nid) == 0) {
+        else if (has_symbolic_state(value_nid))
+          set_state(line, 0);
+        else {
           // TODO: support of non-symbolic double machine words
           printf("%s: slice unsupported sort error: n==%lu, u==%lu, l==%lu\n", selfie_name, n, u, l);
 
@@ -4653,19 +4657,27 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, left_value - right_value);
         else if (op == OP_MUL)
           set_state(line, left_value * right_value);
-        else if (op == OP_UDIV)
-          set_state(line, left_value / right_value);
-        else if (op == OP_UREM)
-          set_state(line, left_value % right_value);
-        else {
-          left_value  = sign_extend(left_value, size);
-          right_value = sign_extend(right_value, size);
+        else if (right_value != 0) {
+          if (op == OP_UDIV)
+            set_state(line, left_value / right_value);
+          else if (op == OP_UREM)
+            set_state(line, left_value % right_value);
+          else {
+            left_value  = sign_extend(left_value, size);
+            right_value = sign_extend(right_value, size);
 
-          if (op == OP_SDIV)
-            set_state(line, sign_shrink(signed_division(left_value, right_value), size));
-          else if (op == OP_SREM)
-            set_state(line,
-              sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+            if (op == OP_SDIV)
+              set_state(line, sign_shrink(signed_division(left_value, right_value), size));
+            else if (op == OP_SREM)
+              set_state(line,
+                sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+          }
+        } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+          set_state(line, 0);
+        else {
+          printf("%s: non-symbolic %s by zero\n", selfie_name, op);
+
+          exit(EXITCODE_SYSTEMERROR);
         }
       } else if (is_comparison_operator(op)) {
         match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
