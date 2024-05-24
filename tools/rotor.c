@@ -11455,7 +11455,7 @@ void print_assembly(uint64_t core) {
 
     S_imm  = eval_line(get_instruction_S_immediate(ir_nid));
     SB_imm = eval_line(get_instruction_SB_immediate(ir_nid));
-    U_imm  = eval_line(get_instruction_U_immediate(ir_nid));
+    U_imm  = sign_shrink(eval_line(get_instruction_U_immediate(ir_nid)), SINGLEWORDSIZEINBITS);
     UJ_imm = eval_line(get_instruction_UJ_immediate(ir_nid));
   } else {
     rd  = get_register_name(eval_line(get_compressed_instruction_rd(c_ir_nid)));
@@ -11468,7 +11468,7 @@ void print_assembly(uint64_t core) {
     shamt = eval_line(get_compressed_instruction_shamt(c_ir_nid));
 
     SB_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
-    U_imm  = eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid));
+    U_imm  = sign_shrink(eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid)), 18);
     UJ_imm = eval_line(get_compressed_instruction_CJ_offset(c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
@@ -11567,17 +11567,19 @@ void print_assembly(uint64_t core) {
       rs1 = rd;
       rs2 = get_register_name(REG_ZR);
 
-      I_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
-      if (ID == ID_C_BEQZ)
-        ID = ID_BEQ;
-      else if (ID == ID_C_BNEZ)
-        ID = ID_BNE;
-      else if (ID == ID_C_ANDI)
+      if (ID == ID_C_ANDI)
         ID = ID_ANDI;
       else if (ID == ID_C_SRLI)
-        ID = ID_C_SRLI;
+        ID = ID_SRLI;
       else if (ID == ID_C_SRAI)
         ID = ID_SRAI;
+      else {
+        I_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
+        if (ID == ID_C_BEQZ)
+          ID = ID_BEQ;
+        else if (ID == ID_C_BNEZ)
+          ID = ID_BNE;
+      }
     } else if (is_CJ_type(ID)) {
       if (ID == ID_C_J)
         rd = get_register_name(REG_ZR);
@@ -11586,6 +11588,9 @@ void print_assembly(uint64_t core) {
       ID = ID_JAL;
     }
   }
+
+  I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
+  U_imm        = right_shift(U_imm, 12);
 
   printf("%s", get_instruction_mnemonic(ID));
 
