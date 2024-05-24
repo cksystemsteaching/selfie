@@ -6,7 +6,7 @@
 #####################################
 # RISCV gnu toolchain builder image #
 #####################################
-FROM ubuntu:jammy AS riscvgnutoolchainbuilder
+FROM ubuntu:noble AS riscvgnutoolchainbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -31,7 +31,7 @@ RUN cd riscv-gnu-toolchain \
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:jammy AS pkbuilder
+FROM ubuntu:noble AS pkbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -62,7 +62,7 @@ RUN mkdir -p riscv-pk/build \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:jammy AS spikebuilder
+FROM ubuntu:noble AS spikebuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -88,7 +88,7 @@ RUN mkdir -p riscv-isa-sim/build \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:jammy AS qemubuilder
+FROM ubuntu:noble AS qemubuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -110,7 +110,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:jammy AS boolectorbuilder
+FROM ubuntu:noble AS boolectorbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -145,7 +145,7 @@ RUN mkdir -p $RISCV \
 #########################
 # OpenOCD builder image #
 #########################
-FROM ubuntu:jammy AS openocdbuilder
+FROM ubuntu:noble AS openocdbuilder
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -176,7 +176,7 @@ RUN mkdir -p $RISCV \
 ############################
 # Selfie interactive image #
 ############################
-FROM ubuntu:jammy AS selfieall
+FROM ubuntu:noble AS selfieall
 
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 
@@ -191,9 +191,8 @@ RUN apt-get update \
        ca-certificates \
        make git \
        gcc gdb libc6-dev-i386-amd64-cross \
-       python3.10 \
+       python3 \
        device-tree-compiler gcc-riscv64-linux-gnu \
-  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
   && apt-get install -y --no-install-recommends \
        binutils-riscv64-linux-gnu libc-dev-riscv64-cross \
        libusb-dev libhidapi-dev \
