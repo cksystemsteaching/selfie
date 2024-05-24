@@ -2619,8 +2619,10 @@ void turn_on_gc_library(uint64_t period, char* name) {
 // -----------------------------------------------------------------
 
 uint64_t two_to_the_power_of(uint64_t p) {
-  // assert: 0 <= p < SIZEOFUINT64INBITS
-  return *(power_of_two_table + p);
+  if (p < SIZEOFUINT64INBITS)
+    return *(power_of_two_table + p);
+
+  exit(EXITCODE_SYSTEMERROR);
 }
 
 uint64_t log_two(uint64_t n) {
@@ -2692,26 +2694,30 @@ uint64_t signed_less_than(uint64_t a, uint64_t b) {
 }
 
 uint64_t signed_division(uint64_t a, uint64_t b) {
-  // assert: b != 0
-  // assert: a == INT64_MIN -> b != -1
-  if (a == INT64_MIN)
-    if (b == INT64_MIN)
-      return 1;
+  if (b != 0) {
+    if (a == INT64_MIN)
+      if (b == INT64_MIN)
+        return 1;
+      else if (signed_less_than(b, 0)) {
+        if (b != (uint64_t) -1)
+          return INT64_MIN / absolute(b);
+        // signed division overflow
+      } else
+        return -(INT64_MIN / b);
+    else if (b == INT64_MIN)
+      return 0;
+    else if (signed_less_than(a, 0))
+      if (signed_less_than(b, 0))
+        return absolute(a) / absolute(b);
+      else
+        return -(absolute(a) / b);
     else if (signed_less_than(b, 0))
-      return INT64_MIN / absolute(b);
+      return -(a / absolute(b));
     else
-      return -(INT64_MIN / b);
-  else if (b == INT64_MIN)
-    return 0;
-  else if (signed_less_than(a, 0))
-    if (signed_less_than(b, 0))
-      return absolute(a) / absolute(b);
-    else
-      return -(absolute(a) / b);
-  else if (signed_less_than(b, 0))
-    return -(a / absolute(b));
-  else
-    return a / b;
+      return a / b;
+  }
+
+  exit(EXITCODE_DIVISIONBYZERO);
 }
 
 uint64_t is_signed_integer(uint64_t n, uint64_t b) {
