@@ -4666,11 +4666,19 @@ uint64_t eval_binary_op(uint64_t* line) {
             left_value  = sign_extend(left_value, size);
             right_value = sign_extend(right_value, size);
 
-            if (op == OP_SDIV)
-              set_state(line, sign_shrink(signed_division(left_value, right_value), size));
-            else if (op == OP_SREM)
-              set_state(line,
-                sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+            if ((left_value == INT64_MIN) * (right_value == (uint64_t) -1) == 0) {
+              if (op == OP_SDIV)
+                set_state(line, sign_shrink(signed_division(left_value, right_value), size));
+              else if (op == OP_SREM)
+                set_state(line,
+                  sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+            } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+              set_state(line, 0);
+            else {
+              printf("%s: non-symbolic %s overflow\n", selfie_name, op);
+
+              exit(EXITCODE_SYSTEMERROR);
+            }
           }
         } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
           set_state(line, 0);
