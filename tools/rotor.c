@@ -4666,11 +4666,19 @@ uint64_t eval_binary_op(uint64_t* line) {
             left_value  = sign_extend(left_value, size);
             right_value = sign_extend(right_value, size);
 
-            if (op == OP_SDIV)
-              set_state(line, sign_shrink(signed_division(left_value, right_value), size));
-            else if (op == OP_SREM)
-              set_state(line,
-                sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+            if ((left_value == INT64_MIN) * (right_value == (uint64_t) -1) == 0) {
+              if (op == OP_SDIV)
+                set_state(line, sign_shrink(signed_division(left_value, right_value), size));
+              else if (op == OP_SREM)
+                set_state(line,
+                  sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+            } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+              set_state(line, 0);
+            else {
+              printf("%s: non-symbolic %s overflow\n", selfie_name, op);
+
+              exit(EXITCODE_SYSTEMERROR);
+            }
           }
         } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
           set_state(line, 0);
@@ -11467,7 +11475,7 @@ void print_assembly(uint64_t core) {
 
     S_imm  = eval_line(get_instruction_S_immediate(ir_nid));
     SB_imm = eval_line(get_instruction_SB_immediate(ir_nid));
-    U_imm  = sign_shrink(eval_line(get_instruction_U_immediate(ir_nid)), SINGLEWORDSIZEINBITS);
+    U_imm  = eval_line(get_instruction_U_immediate(ir_nid));
     UJ_imm = eval_line(get_instruction_UJ_immediate(ir_nid));
   } else {
     rd  = get_register_name(eval_line(get_compressed_instruction_rd(c_ir_nid)));
@@ -11480,7 +11488,7 @@ void print_assembly(uint64_t core) {
     shamt = eval_line(get_compressed_instruction_shamt(c_ir_nid));
 
     SB_imm = eval_line(get_compressed_instruction_CB_offset(c_ir_nid));
-    U_imm  = sign_shrink(eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid)), 18);
+    U_imm  = eval_line(get_compressed_instruction_CUI_immediate(c_ir_nid));
     UJ_imm = eval_line(get_compressed_instruction_CJ_offset(c_ir_nid));
     if (is_CR_type(ID)) {
       if (is_jump_CR_type(ID)) {
@@ -11602,7 +11610,7 @@ void print_assembly(uint64_t core) {
   }
 
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
-  U_imm        = right_shift(U_imm, 12);
+  U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
   // replace basic instructions with appropriate pseudoinstructions according to the RISC-V spec
   if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
