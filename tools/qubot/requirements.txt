@@ -65,7 +65,7 @@ pyparsing==2.4.7
 pyqubo==1.0.13
 pyrsistent==0.18.0
 python-dateutil==2.8.2
-requests==2.31.0
+requests==2.32.0
 terminado==0.12.1
 typing-extensions==3.10.0.2
 wcwidth==0.2.5
