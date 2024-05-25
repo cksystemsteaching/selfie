@@ -298,6 +298,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
 
+uint64_t has_uninitialized_symbolic_state(uint64_t* line);
 uint64_t has_symbolic_state(uint64_t* line);
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
@@ -3735,16 +3736,26 @@ void print_comment(uint64_t* line) {
   w = w + dprintf(output_fd, "\n");
 }
 
+uint64_t has_uninitialized_symbolic_state(uint64_t* line) {
+  return get_symbolic(line) == SYMBOLIC;
+}
+
 uint64_t has_symbolic_state(uint64_t* line) {
   if (line == UNUSED)
     return 0;
+  else if (has_uninitialized_symbolic_state(line))
+    return 1;
   else if (get_op(line) == OP_INPUT)
-    return inputs_are_symbolic == 1;
-  else if (get_op(line) == OP_STATE)
+    return inputs_are_symbolic;
+  else if (get_op(line) == OP_STATE) {
     if (states_are_symbolic)
       return 1;
-
-  return get_symbolic(line) != NONSYMBOLIC;
+    else
+      // assert: get_symbolic(line) is init or next line
+      // assert: get_arg2(get_symbolic(line)) != line
+      return has_symbolic_state(get_arg2(get_symbolic(line)));
+  } else
+    return get_symbolic(line) != NONSYMBOLIC;
 }
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
@@ -4498,7 +4509,7 @@ uint64_t eval_read(uint64_t* line) {
         }
 
         if (get_sid(state_nid) == SID_CODE_STATE)
-          if (get_symbolic(state_nid) != NONSYMBOLIC)
+          if (has_uninitialized_symbolic_state(state_nid))
             // avoid reading illegal instruction from uninitialized code segment
             set_state(line, 1);
 
@@ -4890,11 +4901,8 @@ void eval_init(uint64_t* line) {
                 }
               }
 
-              propagate_symbolic_state(state_nid, value_nid, NONSYMBOLIC, NONSYMBOLIC);
-
-              if (has_symbolic_state(state_nid))
-                // use the init line as symbolic state
-                set_symbolic(state_nid, line);
+              // state is only symbolic if the initial value is symbolic
+              set_symbolic(state_nid, line);
 
               set_step(state_nid, INITIALIZED);
 
@@ -5014,11 +5022,10 @@ void apply_next(uint64_t* line) {
       set_state(state_nid, get_state(value_nid));
     // TODO: else log writes and only apply with init and next
 
-    propagate_symbolic_state(state_nid, value_nid, NONSYMBOLIC, NONSYMBOLIC);
-
-    if (has_symbolic_state(state_nid))
-      // use the next line as symbolic state
+    if (state_nid != value_nid)
+      // state is only symbolic if the next value is symbolic
       set_symbolic(state_nid, line);
+    // else: symbolic state remains unchanged
 
     set_step(state_nid, next_step);
 
