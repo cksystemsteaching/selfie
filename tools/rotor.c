@@ -3744,10 +3744,16 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     nid = print_input(nid, line);
   else if (op == OP_WRITE)
     nid = print_ternary_op(nid, line);
+  else if (op == OP_ITE)
+    nid = print_ternary_op(nid, line);
   else if (op == OP_INIT)
     nid = print_binary_op(nid, line);
   else if (op == OP_NEXT)
     nid = print_binary_op(nid, line);
+  else if (op == OP_BAD)
+    nid = print_constraint(nid, line);
+  else if (op == OP_CONSTRAINT)
+    nid = print_constraint(nid, line);
   else {
     if (printing_propagated_constants)
       if (has_symbolic_state(line) == 0)
@@ -3761,12 +3767,6 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
       nid = print_slice(nid, line);
     else if (is_unary_op(op))
       nid = print_unary_op(nid, line);
-    else if (op == OP_ITE)
-      nid = print_ternary_op(nid, line);
-    else if (op == OP_BAD)
-      nid = print_constraint(nid, line);
-    else if (op == OP_CONSTRAINT)
-      nid = print_constraint(nid, line);
     else
       nid = print_binary_op(nid, line);
   }
