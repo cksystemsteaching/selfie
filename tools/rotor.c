@@ -3313,7 +3313,7 @@ void restore_multicore_states();
 
 void eval_multicore_states();
 
-void eval_constant_propagation();
+uint64_t eval_constant_propagation();
 
 void eval_rotor();
 
@@ -11906,20 +11906,20 @@ void eval_multicore_states() {
     if (eval_multicore_properties())
       return;
 
+    if (next_step - current_offset >= 100000) {
+      printf("%s: terminating %s after %lu steps", selfie_name,
+        model_name, next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+
+      return;
+    }
+
     if (eval_multicore_sequential()) {
       if (number_of_cores > 1) {
         printf("%s: %s called exit on all cores after %lu steps", selfie_name,
           model_name, next_step - current_offset);
         if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
       }
-
-      return;
-    }
-
-    if (current_step - current_offset >= 100000 - 1) {
-      printf("%s: terminating %s after %lu steps", selfie_name,
-        model_name, next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
       return;
     }
@@ -11938,7 +11938,7 @@ void eval_multicore_states() {
   }
 }
 
-void eval_constant_propagation() {
+uint64_t eval_constant_propagation() {
   current_offset = 0;
   current_step   = 0;
 
@@ -11956,14 +11956,25 @@ void eval_constant_propagation() {
 
   states_are_symbolic = 1;
 
-  eval_multicore_properties();
-  eval_multicore_sequential();
+  if (eval_multicore_properties()) {
+    printf("%s: %s violated one or more conditions already after 1 step\n", selfie_name, model_name);
+
+    return 1;
+  }
+
+  if (eval_multicore_sequential()) {
+    printf("%s: %s called exit on all cores already after 1 step\n", selfie_name, model_name);
+
+    return 1;
+  }
 
   restore_multicore_states();
 
   current_step = next_step;
 
   states_are_symbolic = 0;
+
+  return 0;
 }
 
 void eval_rotor() {
@@ -12096,7 +12107,7 @@ void print_unrolled_model() {
       return;
     }
 
-    if (current_step - current_offset >= 2) {
+    if (next_step - current_offset >= 2) {
       close_model_file();
 
       printf("%s: terminating %s after %lu steps\n", selfie_name,
@@ -12331,7 +12342,8 @@ uint64_t selfie_model() {
         print_unrolled_model();
       else {
         if (printing_propagated_constants)
-          eval_constant_propagation();
+          if (eval_constant_propagation())
+            return EXITCODE_NOERROR;
 
         print_model();
 
