@@ -4818,7 +4818,10 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
 
     set_step(line, next_step);
 
-    return condition != 0;
+    if (has_symbolic_state(condition_nid))
+      return 0;
+    else
+      return condition != 0;
   } else if (op == OP_CONSTRAINT) {
     if (has_symbolic_state(condition_nid) == 0) {
       if (condition == 0) {
@@ -4833,7 +4836,10 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
 
     set_step(line, next_step);
 
-    return condition == 0;
+    if (has_symbolic_state(condition_nid))
+      return 0;
+    else
+      return condition == 0;
   }
 
   printf("%s: unknown property operator %s\n", selfie_name, op);
@@ -4977,8 +4983,14 @@ uint64_t eval_next(uint64_t* line) {
 
                 set_step(line, next_step);
 
+                value_nid = get_arg2(line);
+
                 if (printing_unrolled_model)
-                  print_line_advancing_nid(get_arg2(line));
+                  print_line_advancing_nid(value_nid);
+
+                if (state_nid != value_nid)
+                  if (has_symbolic_state(value_nid))
+                    return 0;
 
                 return no_update;
               } else
