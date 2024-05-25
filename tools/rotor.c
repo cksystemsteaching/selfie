@@ -4525,20 +4525,13 @@ uint64_t eval_write(uint64_t* line) {
           index = eval_line(index_nid);
           value = eval_line(value_nid);
 
-          propagate_symbolic_state(state_nid, state_nid, index_nid, value_nid);
+          propagate_symbolic_state(line, state_nid, index_nid, value_nid);
 
-          if (has_symbolic_state(state_nid)) {
-            // use the write line as symbolic state
-            set_symbolic(state_nid, line);
-
-            set_symbolic(line, SYMBOLIC);
-          } else {
+          if (has_symbolic_state(line) == 0) {
             read_or_write(state_nid, index, value, 0);
 
             // TODO: log writes and only apply with init and next
             set_step(state_nid, next_step);
-
-            set_symbolic(line, NONSYMBOLIC);
           }
 
           set_state(line, (uint64_t) state_nid);
