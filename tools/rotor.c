@@ -3610,7 +3610,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
     if (op == OP_STATE) {
       if (get_symbolic(line) == NONSYMBOLIC)
         printf("%s\n", get_comment(line));
-      else if (get_symbolic(line) == line)
+      else if (get_symbolic(line) == SYMBOLIC)
         // state is uninitialized
         op = OP_INPUT;
       else if (is_bitvector(get_sid(line))) {
@@ -3694,22 +3694,23 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_ite(uint64_t nid, uint64_t* line) {
-  if (has_symbolic_state(get_arg1(line)) == 0) {
-    // happens only when printing unrolled model
-    if (is_bitvector(get_sid(line)))
-      return print_propagated_constant(nid, line);
-    else
-      // assert: array
-      if (get_state(get_arg1(line))) {
-        nid = print_line_once(nid, get_arg2(line));
-        set_nid(line, get_nid(get_arg2(line)));
-      } else {
-        nid = print_line_once(nid, get_arg3(line));
-        set_nid(line, get_nid(get_arg3(line)));
-      }
-    return nid;
-  } else
-    return print_ternary_op(nid, line);
+  if (printing_propagated_constants)
+    if (has_symbolic_state(get_arg1(line)) == 0) {
+      // happens only when printing unrolled model
+      if (is_bitvector(get_sid(line)))
+        return print_propagated_constant(nid, line);
+      else
+        // assert: array
+        if (get_state(get_arg1(line))) {
+          nid = print_line_once(nid, get_arg2(line));
+          set_nid(line, get_nid(get_arg2(line)));
+        } else {
+          nid = print_line_once(nid, get_arg3(line));
+          set_nid(line, get_nid(get_arg3(line)));
+        }
+      return nid;
+    }
+  return print_ternary_op(nid, line);
 }
 
 uint64_t print_constraint(uint64_t nid, uint64_t* line) {
@@ -4803,33 +4804,32 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
-    if (printing_unrolled_model)
+    if (has_symbolic_state(condition_nid) == 0) {
+      if (printing_unrolled_model == 0)
+        if (condition != 0) {
+          printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
+            symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
+          if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+        }
+    } else if (printing_unrolled_model)
       print_line_advancing_nid(line);
-    else if (condition != 0) {
-      printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
-        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
 
     set_state(line, condition != 0);
-
-    propagate_symbolic_state(line, condition_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
-    if (printing_unrolled_model)
+    if (has_symbolic_state(condition_nid) == 0) {
+      if (condition == 0) {
+        printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
+          symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
+        if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+      }
+    } else if (printing_unrolled_model)
       print_line_advancing_nid(line);
-    else if (condition == 0) {
-      printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
 
     set_state(line, condition == 0);
-
-    propagate_symbolic_state(line, condition_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
