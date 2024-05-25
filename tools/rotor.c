@@ -130,6 +130,9 @@ uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* co
 uint64_t* UNUSED    = (uint64_t*) 0;
 char*     NOCOMMENT = (char*) 0;
 
+uint64_t* NONSYMBOLIC = (uint64_t*) 0;
+uint64_t* SYMBOLIC    = (uint64_t*) 1;
+
 char* BITVEC = (char*) 0;
 char* ARRAY  = (char*) 0;
 
@@ -3418,7 +3421,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg2(new_line, arg2);
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
-  set_symbolic(new_line, UNUSED);
+  set_symbolic(new_line, NONSYMBOLIC);
   set_state(new_line, 0);
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
@@ -3610,7 +3613,9 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   op = get_op(line);
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (get_symbolic(line) == line)
+      if (get_symbolic(line) == NONSYMBOLIC)
+        printf("%s\n", get_comment(line));
+      else if (get_symbolic(line) == line)
         // state is uninitialized
         op = OP_INPUT;
       else if (is_bitvector(get_sid(line))) {
@@ -3723,7 +3728,7 @@ uint64_t has_symbolic_state(uint64_t* line) {
     if (states_are_symbolic)
       return 1;
 
-  return get_symbolic(line) != UNUSED;
+  return get_symbolic(line) != NONSYMBOLIC;
 }
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
@@ -4272,9 +4277,9 @@ uint64_t eval_input(uint64_t* line) {
 
 void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3) {
   if ((has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3)) == 0)
-    set_symbolic(line, UNUSED);
+    set_symbolic(line, NONSYMBOLIC);
   else
-    set_symbolic(line, line);
+    set_symbolic(line, SYMBOLIC);
 }
 
 uint64_t eval_ext(uint64_t* line) {
@@ -4307,7 +4312,7 @@ uint64_t eval_ext(uint64_t* line) {
       exit(EXITCODE_SYSTEMERROR);
     }
 
-    propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4350,7 +4355,7 @@ uint64_t eval_slice(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
 
-        propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+        propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
         set_step(line, next_step);
 
@@ -4388,7 +4393,7 @@ uint64_t eval_concat(uint64_t* line) {
 
       set_state(line, left_shift(left_value, right_size) + right_value);
 
-      propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+      propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
       set_step(line, next_step);
 
@@ -4422,13 +4427,13 @@ uint64_t eval_ite(uint64_t* line) {
       eval_line(else_nid);
     else
       // do not propagate unevaluated symbolic value
-      else_nid = UNUSED;
+      else_nid = NONSYMBOLIC;
   } else {
     if (has_symbolic_state(if_nid))
       eval_line(then_nid);
     else
       // do not propagate unevaluated symbolic value
-      then_nid = UNUSED;
+      then_nid = NONSYMBOLIC;
 
     set_state(line, eval_line(else_nid));
   }
@@ -4477,11 +4482,11 @@ uint64_t eval_read(uint64_t* line) {
         }
 
         if (get_sid(state_nid) == SID_CODE_STATE)
-          if (get_symbolic(state_nid) != UNUSED)
+          if (get_symbolic(state_nid) != NONSYMBOLIC)
             // avoid reading illegal instruction from uninitialized code segment
             set_state(line, 1);
 
-        propagate_symbolic_state(line, state_nid, index_nid, UNUSED);
+        propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
         set_step(line, next_step);
 
@@ -4526,14 +4531,14 @@ uint64_t eval_write(uint64_t* line) {
             // use the write line as symbolic state
             set_symbolic(state_nid, line);
 
-            set_symbolic(line, line);
+            set_symbolic(line, SYMBOLIC);
           } else {
             read_or_write(state_nid, index, value, 0);
 
             // TODO: log writes and only apply with init and next
             set_step(state_nid, next_step);
 
-            set_symbolic(line, UNUSED);
+            set_symbolic(line, NONSYMBOLIC);
           }
 
           set_state(line, (uint64_t) state_nid);
@@ -4579,7 +4584,7 @@ uint64_t eval_unary_op(uint64_t* line) {
     else if (op == OP_NEG)
       set_state(line, sign_shrink(-value, size));
 
-    propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4620,7 +4625,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           eval_line(right_nid);
         else
           // do not propagate unevaluated symbolic value
-          right_nid = UNUSED;
+          right_nid = NONSYMBOLIC;
       } else {
         // lazy evaluation of right operand
         right_value = eval_line(right_nid);
@@ -4718,7 +4723,7 @@ uint64_t eval_binary_op(uint64_t* line) {
       }
     }
 
-    propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+    propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4793,7 +4798,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
 
     set_state(line, condition != 0);
 
-    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, condition_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4809,7 +4814,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
 
     set_state(line, condition == 0);
 
-    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, condition_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4876,7 +4881,7 @@ void eval_init(uint64_t* line) {
                 }
               }
 
-              propagate_symbolic_state(state_nid, value_nid, UNUSED, UNUSED);
+              propagate_symbolic_state(state_nid, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
               if (has_symbolic_state(state_nid))
                 // use the init line as symbolic state
@@ -5000,7 +5005,7 @@ void apply_next(uint64_t* line) {
       set_state(state_nid, get_state(value_nid));
     // TODO: else log writes and only apply with init and next
 
-    propagate_symbolic_state(state_nid, value_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(state_nid, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     if (has_symbolic_state(state_nid))
       // use the next line as symbolic state
@@ -5268,7 +5273,7 @@ void new_kernel_state(uint64_t core) {
     // initialize only for emulator
     eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
 
-    // TODO: make state symbolic for unrolling model
+    // uninitialized state is made symbolic just for unrolling model
 
     next_input_buffer_nid = new_next(SID_INPUT_BUFFER,
       state_input_buffer_nid, state_input_buffer_nid, "read-only uninitialized input buffer");
@@ -5741,7 +5746,7 @@ void new_code_segment(uint64_t core) {
     eval_init(new_init(SID_CODE_STATE, state_code_segment_nid, NID_CODE_WORD_0, "zeroed code segment"));
 
     // uninitialized state is symbolic
-    set_symbolic(state_code_segment_nid, state_code_segment_nid);
+    set_symbolic(state_code_segment_nid, SYMBOLIC);
 
     next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
@@ -12045,6 +12050,8 @@ void print_unrolled_model() {
 
   input_steps   = 0;
   current_input = 0;
+
+  set_symbolic(state_input_buffer_nid, SYMBOLIC);
 
   save_multicore_states();
 
