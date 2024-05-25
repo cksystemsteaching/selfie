@@ -291,6 +291,8 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line);
 uint64_t print_binary_op(uint64_t nid, uint64_t* line);
 uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 
+uint64_t print_ite(uint64_t nid, uint64_t* line);
+
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
@@ -3691,6 +3693,25 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
+uint64_t print_ite(uint64_t nid, uint64_t* line) {
+  if (has_symbolic_state(get_arg1(line)) == 0) {
+    // happens only when printing unrolled model
+    if (is_bitvector(get_sid(line)))
+      return print_propagated_constant(nid, line);
+    else
+      // assert: array
+      if (get_state(get_arg1(line))) {
+        nid = print_line_once(nid, get_arg2(line));
+        set_nid(line, get_nid(get_arg2(line)));
+      } else {
+        nid = print_line_once(nid, get_arg3(line));
+        set_nid(line, get_nid(get_arg3(line)));
+      }
+    return nid;
+  } else
+    return print_ternary_op(nid, line);
+}
+
 uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
@@ -3745,7 +3766,7 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
   else if (op == OP_WRITE)
     nid = print_ternary_op(nid, line);
   else if (op == OP_ITE)
-    nid = print_ternary_op(nid, line);
+    nid = print_ite(nid, line);
   else if (op == OP_INIT)
     nid = print_binary_op(nid, line);
   else if (op == OP_NEXT)
