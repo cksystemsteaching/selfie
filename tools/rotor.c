@@ -281,7 +281,6 @@ void print_nid(uint64_t nid, uint64_t* line);
 
 uint64_t print_sort(uint64_t nid, uint64_t* line);
 uint64_t print_constant(uint64_t nid, uint64_t* line);
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 uint64_t print_input(uint64_t nid, uint64_t* line);
 
 uint64_t print_ext(uint64_t nid, uint64_t* line);
@@ -290,6 +289,8 @@ uint64_t print_slice(uint64_t nid, uint64_t* line);
 uint64_t print_unary_op(uint64_t nid, uint64_t* line);
 uint64_t print_binary_op(uint64_t nid, uint64_t* line);
 uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
+
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 
 uint64_t print_ite(uint64_t nid, uint64_t* line);
 
@@ -3601,14 +3602,6 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
-  if (is_constant_op(get_op(line))) return print_constant(nid, line);
-  nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  return nid;
-}
-
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
   op = get_op(line);
@@ -3690,6 +3683,13 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  return nid;
+}
+
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
+  nid = print_line_once(nid, get_sid(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
   return nid;
 }
 
