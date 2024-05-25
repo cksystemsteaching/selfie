@@ -298,7 +298,6 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
 
-uint64_t has_uninitialized_symbolic_state(uint64_t* line);
 uint64_t has_symbolic_state(uint64_t* line);
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
@@ -3736,14 +3735,10 @@ void print_comment(uint64_t* line) {
   w = w + dprintf(output_fd, "\n");
 }
 
-uint64_t has_uninitialized_symbolic_state(uint64_t* line) {
-  return get_symbolic(line) == SYMBOLIC;
-}
-
 uint64_t has_symbolic_state(uint64_t* line) {
   if (line == UNUSED)
     return 0;
-  else if (has_uninitialized_symbolic_state(line))
+  else if (get_symbolic(line) == SYMBOLIC)
     return 1;
   else if (get_op(line) == OP_INPUT)
     return inputs_are_symbolic;
@@ -4509,7 +4504,7 @@ uint64_t eval_read(uint64_t* line) {
         }
 
         if (get_sid(state_nid) == SID_CODE_STATE)
-          if (has_uninitialized_symbolic_state(state_nid))
+          if (get_symbolic(state_nid) == SYMBOLIC)
             // avoid reading illegal instruction from uninitialized code segment
             set_state(line, 1);
 
