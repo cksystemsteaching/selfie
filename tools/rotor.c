@@ -3721,7 +3721,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   if (printing_unrolled_model)
     if (op == OP_BAD)
       op = OP_CONSTRAINT;
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
+  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
   return nid;
 }
 
@@ -3805,8 +3805,11 @@ uint64_t print_line_once(uint64_t nid, uint64_t* line) {
   if (get_nid(line) > last_nid)
     // print lines only once
     return nid;
-  else
-    return print_line_with_given_nid(nid, line) + 1;
+  else if (get_nid(line) > 0) {
+    if (get_step(line) <= current_step)
+      return nid;
+  }
+  return print_line_with_given_nid(nid, line) + 1;
 }
 
 void print_line_advancing_nid(uint64_t* line) {
@@ -4207,16 +4210,14 @@ uint64_t signed_less_than_or_equal_to(uint64_t a, uint64_t b) {
 uint64_t get_cached_state(uint64_t* line) {
   if (get_step(line) != UNINITIALIZED) {
     if (get_op(line) == OP_STATE) {
-      if (get_step(line) >= current_step) {
-        if (is_bitvector(get_sid(line))) {
-          if (get_step(line) == current_step)
-            return get_state(line);
-        } else {
-          // assert: array
-          if (get_step(line) <= next_step)
-            // TODO: log writes and only apply with init and next
-            return (uint64_t) line;
-        }
+      if (is_bitvector(get_sid(line))) {
+        if (get_step(line) == current_step)
+          return get_state(line);
+      } else {
+        // assert: array
+        if (get_step(line) <= next_step)
+          // TODO: log writes and only apply with init and next
+          return (uint64_t) line;
       }
 
       printf("%s: non-current state access\n", selfie_name);
@@ -4485,7 +4486,7 @@ uint64_t eval_read(uint64_t* line) {
 
     if (get_op(state_nid) == OP_STATE) {
       // TODO: if current_step == next_step (during init) read after write is not detected
-      if (get_step(state_nid) == current_step) {
+      if (get_step(state_nid) <= current_step) {
         index = eval_line(index_nid);
 
         if (get_sid(state_nid) != SID_INPUT_BUFFER)
@@ -4515,7 +4516,7 @@ uint64_t eval_read(uint64_t* line) {
 
         return get_state(line);
       } else
-        printf("%s: read non-current state error\n", selfie_name);
+        printf("%s: read updated state error\n", selfie_name);
     } else
       printf("%s: read non-state error\n", selfie_name);
   } else
@@ -4804,6 +4805,10 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
+    set_state(line, condition != 0);
+
+    set_step(line, next_step);
+
     if (has_symbolic_state(condition_nid) == 0) {
       if (printing_unrolled_model == 0)
         if (condition != 0) {
@@ -4811,35 +4816,33 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
             symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
         }
-    } else if (printing_unrolled_model)
-      print_line_advancing_nid(line);
+    } else {
+      if (printing_unrolled_model)
+        print_line_advancing_nid(line);
 
-    set_state(line, condition != 0);
+      return 0;
+    }
+
+    return condition != 0;
+  } else if (op == OP_CONSTRAINT) {
+    set_state(line, condition == 0);
 
     set_step(line, next_step);
 
-    if (has_symbolic_state(condition_nid))
-      return 0;
-    else
-      return condition != 0;
-  } else if (op == OP_CONSTRAINT) {
     if (has_symbolic_state(condition_nid) == 0) {
       if (condition == 0) {
         printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
           symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
         if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
       }
-    } else if (printing_unrolled_model)
-      print_line_advancing_nid(line);
+    } else {
+      if (printing_unrolled_model)
+        print_line_advancing_nid(line);
 
-    set_state(line, condition == 0);
-
-    set_step(line, next_step);
-
-    if (has_symbolic_state(condition_nid))
       return 0;
-    else
-      return condition == 0;
+    }
+
+    return condition == 0;
   }
 
   printf("%s: unknown property operator %s\n", selfie_name, op);
@@ -4945,7 +4948,7 @@ uint64_t eval_next(uint64_t* line) {
 
           if (get_op(state_nid) == OP_STATE) {
             if (get_step(state_nid) != UNINITIALIZED)
-              if (get_step(state_nid) >= current_step) {
+              if (get_step(state_nid) <= current_step) {
                 match_sorts(get_sid(line), get_sid(state_nid), "next state");
 
                 value_nid = get_arg2(line);
@@ -4985,16 +4988,17 @@ uint64_t eval_next(uint64_t* line) {
 
                 value_nid = get_arg2(line);
 
-                if (printing_unrolled_model)
-                  print_line_advancing_nid(value_nid);
+                if (state_nid != value_nid) {
+                  if (printing_unrolled_model)
+                    print_line_advancing_nid(value_nid);
 
-                if (state_nid != value_nid)
                   if (has_symbolic_state(value_nid))
                     return 0;
+                }
 
                 return no_update;
               } else
-                printf("%s: next non-current state error\n", selfie_name);
+                printf("%s: next updated state error\n", selfie_name);
             else
               printf("%s: next uninitialized state error\n", selfie_name);
           } else
@@ -5029,12 +5033,12 @@ void apply_next(uint64_t* line) {
       set_state(state_nid, get_state(value_nid));
     // TODO: else log writes and only apply with init and next
 
-    if (state_nid != value_nid)
+    if (state_nid != value_nid) {
       // state is only symbolic if the next value is symbolic
       set_symbolic(state_nid, line);
-    // else: symbolic state remains unchanged
 
-    set_step(state_nid, next_step);
+      set_step(state_nid, next_step);
+    } // else: symbolic state remains unchanged
 
     return;
   }
@@ -12107,7 +12111,7 @@ void print_unrolled_model() {
       return;
     }
 
-    if (next_step - current_offset >= 2) {
+    if (next_step - current_offset >= 110) {
       close_model_file();
 
       printf("%s: terminating %s after %lu steps\n", selfie_name,
