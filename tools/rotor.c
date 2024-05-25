@@ -12065,7 +12065,6 @@ void disassemble_rotor(uint64_t core) {
 void print_unrolled_model() {
   uint64_t last_step_nid;
 
-  // TODO: finish
   open_model_file();
 
   current_offset = 0;
@@ -12087,12 +12086,35 @@ void print_unrolled_model() {
 
   last_nid = 0;
 
-  eval_multicore_properties();
+  while (1) {
+    if (eval_multicore_properties()) {
+      close_model_file();
 
-  while (current_step < 2) {
+      printf("%s: %s violated one or more conditions after %lu steps\n", selfie_name,
+        model_name, next_step - current_offset);
+
+      return;
+    }
+
+    if (current_step - current_offset >= 2) {
+      close_model_file();
+
+      printf("%s: terminating %s after %lu steps\n", selfie_name,
+        model_name, next_step - current_offset);
+
+      return;
+    }
+
     last_step_nid = current_nid - 1;
 
-    eval_multicore_sequential();
+    if (eval_multicore_sequential()) {
+      close_model_file();
+
+      printf("%s: %s called exit on all cores after %lu steps\n", selfie_name,
+        model_name, next_step - current_offset);
+
+      return;
+    }
 
     apply_multicore_sequential();
 
@@ -12101,8 +12123,6 @@ void print_unrolled_model() {
     next_step = next_step + 1;
 
     last_nid = last_step_nid;
-
-    eval_multicore_properties();
   }
 
   close_model_file();
