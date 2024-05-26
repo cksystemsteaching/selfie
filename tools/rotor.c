@@ -5473,8 +5473,8 @@ void new_register_file_state(uint64_t core) {
     while (reg < NUMBEROFREGISTERS) {
       value = *(get_regs(current_context) + reg);
 
-      if (value != 0) {
-        // skipping zero as initial value
+      if ((value != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
         value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           value,
           0,
@@ -5840,8 +5840,8 @@ void new_code_segment(uint64_t core) {
     while (pc - code_start < code_size) {
       fetch();
 
-      if (ir != 0) {
-        // skipping zero as instruction
+      if ((ir != 0) + printing_unrolled_model > 0) {
+        // skipping zero as instruction unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
 
@@ -5992,8 +5992,8 @@ void new_data_segment(uint64_t core) {
         // memory allocated but not yet mapped is assumed to be zeroed
         data = load_virtual_memory(get_pt(current_context), vaddr);
 
-        if (data != 0) {
-          // skipping zero as initial value
+        if ((data != 0) + printing_unrolled_model > 0) {
+          // skipping zero as initial value unless printing unrolled model
           laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
             vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
@@ -6140,8 +6140,8 @@ void new_heap_segment(uint64_t core) {
         // memory allocated but not yet mapped is assumed to be zeroed
         data = load_virtual_memory(get_pt(current_context), vaddr);
 
-        if (data != 0) {
-          // skipping zero as initial value
+        if ((data != 0) + printing_unrolled_model > 0) {
+          // skipping zero as initial value unless printing unrolled model
           laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
             vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
@@ -6288,8 +6288,8 @@ void new_stack_segment(uint64_t core) {
         // memory allocated but not yet mapped is assumed to be zeroed
         data = load_virtual_memory(get_pt(current_context), vaddr);
 
-        if (data != 0) {
-          // skipping zero as initial value
+        if ((data != 0) + printing_unrolled_model > 0) {
+          // skipping zero as initial value unless printing unrolled model
           laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
             vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
