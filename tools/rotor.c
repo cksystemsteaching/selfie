@@ -3931,6 +3931,11 @@ uint64_t eval_bitvec_size(uint64_t* line) {
   if (is_bitvector(line)) {
     size = (uint64_t) get_arg2(line);
 
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
+
     if (size > 0)
       if (size <= SIZEOFUINT64INBITS)
         return size;
@@ -3982,6 +3987,11 @@ uint64_t eval_array_size(uint64_t* line) {
   if (is_array(line)) {
     size = eval_bitvec_size(get_arg2(line));
 
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
+
     if (size <= VIRTUAL_ADDRESS_SPACE)
       return size;
 
@@ -3997,6 +4007,11 @@ uint64_t eval_element_size(uint64_t* line) {
 
   if (is_array(line)) {
     size = eval_bitvec_size(get_arg3(line));
+
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
 
     if (size <= SIZEOFUINT64INBITS)
       return size;
@@ -4247,10 +4262,10 @@ uint64_t eval_constant_value(uint64_t* line) {
       fit_bitvec_sort(sid, value);
 
     set_state(line, value);
+
+    set_step(line, INITIALIZED);
   } else
     value = get_state(line);
-
-  set_step(line, next_step);
 
   return value;
 }
