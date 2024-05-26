@@ -4865,11 +4865,12 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     set_step(line, next_step);
 
     if (has_symbolic_state(condition_nid) == 0) {
-      if (condition == 0) {
-        printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
-          symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
-        if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-      }
+      if (printing_unrolled_model == 0)
+        if (condition == 0) {
+          printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
+            symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
+          if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+        }
     } else {
       if (printing_unrolled_model)
         print_line_advancing_nid(line);
