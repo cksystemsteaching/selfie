@@ -3597,8 +3597,13 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
       itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
   else
     // assert: get_op(line) == OP_CONSTH
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+    if (printing_unrolled_model)
+      // bitwuzla does not like hex literals starting with F
+      w = w + dprintf(output_fd, " %s %lu 0%s", get_op(line), get_nid(get_sid(line)),
+        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+    else
+      w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
+        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
   return nid;
 }
 
@@ -3689,7 +3694,11 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  if (printing_unrolled_model)
+    // bitwuzla does not like comments
+    w = w + dprintf(output_fd, " %s %lu %lu\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  else
+    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
   return nid;
 }
 
@@ -3719,8 +3728,13 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   if (printing_unrolled_model)
-    if (op == OP_BAD)
-      op = OP_CONSTRAINT;
+    if (op == OP_BAD) {
+      w = w + dprintf(output_fd, " %s %lu %lu\n", OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
+      print_nid(nid + 1, line);
+      w = w + dprintf(output_fd, " %s %lu %s", OP_CONSTRAINT, nid, (char*) get_arg2(line));
+      return nid + 1;
+      //op = OP_CONSTRAINT;
+    }
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
   return nid;
 }
@@ -3793,11 +3807,11 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     else
       nid = print_binary_op(nid, line);
   }
-  //if (printing_unrolled_model)
+  if (printing_unrolled_model)
     // TODO: comments irritate bitwuzla here
-    //w = w + dprintf(output_fd, "\n");
-  //else
-  print_comment(line);
+    w = w + dprintf(output_fd, "\n");
+  else
+    print_comment(line);
   return nid;
 }
 
