@@ -340,7 +340,7 @@ spike: selfie.m selfie.s
 
 # Run selfie on qemu usermode emulation
 qemu: selfie.m selfie.s
-	qemu-riscv64-static selfie.m selfie.m -c selfie.c -o selfie-qemu.m -s selfie-qemu.s -m 1
+	qemu-riscv64-static selfie.m -c selfie.c -o selfie-qemu.m -s selfie-qemu.s -m 1
 	diff -q selfie.m selfie-qemu.m
 	diff -q selfie.s selfie-qemu.s
 
@@ -367,7 +367,7 @@ rotor-32: tools/rotor.c selfie.h
 	./selfie-32 -l selfie-32.m -m 3 -l selfie-32.m -gc -y 1 -c selfie.c
 	./selfie-32 -gc -c selfie.h tools/gc-lib.c -gc -m 3 -nr -c selfie.c
 	./selfie-32 -c selfie-gc.h tools/boehm-gc.c -gc -m 1 -c selfie.c
-	qemu-riscv32-static selfie-32.m selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
+	qemu-riscv32-static selfie-32.m -c selfie.c -o selfie-qemu-32.m -s selfie-qemu-32.s -m 1
 	diff -q selfie-32.m selfie-qemu-32.m
 	diff -q selfie-32.s selfie-qemu-32.s
 	riscv64-linux-gnu-as selfie-32.s
