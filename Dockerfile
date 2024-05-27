@@ -228,7 +228,7 @@ FROM selfieall AS selfieeverything
 
 # install tools for 32-bit selfie
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends lib32gcc-13-dev \
+  && apt-get install -y --no-install-recommends lib32gcc-13-dev lib32gcc-12-dev \
   && apt clean
 
 # specify user work directory
