@@ -5036,7 +5036,7 @@ uint64_t eval_next(uint64_t* line) {
                   if (printing_unrolled_model) {
                     w = w + dprintf(output_fd, "; next-start-%lu: %s\n\n", current_step, get_comment(line));
                     print_line_advancing_nid(value_nid);
-                    w = w + dprintf(output_fd, "\n; next-end-%lu(%lu): %s\n\n", current_step, get_step(value_nid), get_comment(line));
+                    w = w + dprintf(output_fd, "\n; next-end-%lu: %s\n\n", current_step, get_comment(line));
                   }
 
                   if (has_symbolic_state(value_nid))
