@@ -290,7 +290,7 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line);
 uint64_t print_binary_op(uint64_t nid, uint64_t* line);
 uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
+uint64_t has_symbolic_state(uint64_t* line);
 
 uint64_t print_ite(uint64_t nid, uint64_t* line);
 
@@ -298,7 +298,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
 
-uint64_t has_symbolic_state(uint64_t* line);
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
 uint64_t print_line_once(uint64_t nid, uint64_t* line);
@@ -3611,29 +3611,29 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (get_symbolic(line) == NONSYMBOLIC)
-        printf("%s\n", get_comment(line));
-      else if (get_symbolic(line) == SYMBOLIC)
+      if (get_symbolic(line) == SYMBOLIC)
         // state is uninitialized
         op = OP_INPUT;
-      else if (is_bitvector(get_sid(line))) {
-        if (get_op(get_symbolic(line)) == OP_INIT)
-          nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-        set_nid(line, get_nid(get_arg2(get_symbolic(line))));
-        return nid;
-      } else {
-        // assert: array
-        if (is_bitvector(get_sid(get_arg2(get_symbolic(line)))))
-          // assert: get_op(get_symbolic(line)) == OP_INIT
-          // TODO: handle zeroed arrays
-          op = OP_INPUT;
-        else {
+      else
+        // assert: get_symbolic(line) != NONSYMBOLIC
+        if (is_bitvector(get_sid(line))) {
           if (get_op(get_symbolic(line)) == OP_INIT)
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
           return nid;
+        } else {
+          // assert: array
+          if (is_bitvector(get_sid(get_arg2(get_symbolic(line)))))
+            // assert: get_op(get_symbolic(line)) == OP_INIT
+            // TODO: handle zeroed arrays here
+            op = OP_INPUT;
+          else {
+            if (get_op(get_symbolic(line)) == OP_INIT)
+              nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+            set_nid(line, get_nid(get_arg2(get_symbolic(line))));
+            return nid;
+          }
         }
-      }
     }
   }
   print_nid(nid, line);
@@ -3689,15 +3689,22 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   return nid;
 }
 
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
-  nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
-  if (printing_unrolled_model)
-    // bitwuzla does not like comments
-    w = w + dprintf(output_fd, " %s %lu %lu\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  else
-    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  return nid;
+uint64_t has_symbolic_state(uint64_t* line) {
+  if (line == UNUSED)
+    return 0;
+  else if (get_symbolic(line) == SYMBOLIC)
+    return 1;
+  else if (get_op(line) == OP_INPUT)
+    return inputs_are_symbolic;
+  else if (get_op(line) == OP_STATE) {
+    if (states_are_symbolic)
+      return 1;
+    else
+      // assert: get_symbolic(line) is init or next line
+      // assert: get_arg2(get_symbolic(line)) != line
+      return has_symbolic_state(get_arg2(get_symbolic(line)));
+  } else
+    return get_symbolic(line) != NONSYMBOLIC;
 }
 
 uint64_t print_ite(uint64_t nid, uint64_t* line) {
@@ -3750,22 +3757,15 @@ void print_comment(uint64_t* line) {
   w = w + dprintf(output_fd, "\n");
 }
 
-uint64_t has_symbolic_state(uint64_t* line) {
-  if (line == UNUSED)
-    return 0;
-  else if (get_symbolic(line) == SYMBOLIC)
-    return 1;
-  else if (get_op(line) == OP_INPUT)
-    return inputs_are_symbolic;
-  else if (get_op(line) == OP_STATE) {
-    if (states_are_symbolic)
-      return 1;
-    else
-      // assert: get_symbolic(line) is init or next line
-      // assert: get_arg2(get_symbolic(line)) != line
-      return has_symbolic_state(get_arg2(get_symbolic(line)));
-  } else
-    return get_symbolic(line) != NONSYMBOLIC;
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
+  nid = print_line_once(nid, get_sid(line));
+  print_nid(nid, line);
+  if (printing_unrolled_model)
+    // bitwuzla does not like comments
+    w = w + dprintf(output_fd, " %s %lu %lu\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  else
+    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  return nid;
 }
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
