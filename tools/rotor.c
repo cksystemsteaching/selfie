@@ -3197,8 +3197,6 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-uint64_t unroll_model = 0;
-
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
@@ -5070,6 +5068,9 @@ void apply_next(uint64_t* line) {
       set_symbolic(state_nid, line);
 
       set_step(state_nid, next_step);
+
+      if (printing_unrolled_model)
+        set_nid(state_nid, get_nid(value_nid));
     } // else: symbolic state remains unchanged
 
     return;
@@ -12110,8 +12111,6 @@ void disassemble_rotor(uint64_t core) {
 }
 
 void print_unrolled_model() {
-  uint64_t last_step_nid;
-
   open_model_file();
 
   current_offset = 0;
@@ -12143,7 +12142,7 @@ void print_unrolled_model() {
       return;
     }
 
-    if (next_step - current_offset >= 110) {
+    if (next_step - current_offset >= 77) {
       close_model_file();
 
       printf("%s: terminating %s after %lu steps\n", selfie_name,
@@ -12151,8 +12150,6 @@ void print_unrolled_model() {
 
       return;
     }
-
-    last_step_nid = current_nid - 1;
 
     if (eval_multicore_sequential()) {
       close_model_file();
@@ -12169,7 +12166,7 @@ void print_unrolled_model() {
 
     next_step = next_step + 1;
 
-    last_nid = last_step_nid;
+    last_nid = current_nid - 1;
   }
 
   close_model_file();
@@ -12374,7 +12371,7 @@ uint64_t selfie_model() {
 
       model_rotor();
 
-      if (unroll_model)
+      if (printing_unrolled_model)
         print_unrolled_model();
       else {
         if (printing_propagated_constants)
