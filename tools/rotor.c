@@ -4846,8 +4846,11 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
         }
     } else {
-      if (printing_unrolled_model)
+      if (printing_unrolled_model) {
+        w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
         print_line_advancing_nid(line);
+        w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
+      }
 
       return 0;
     }
@@ -4866,8 +4869,11 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
         }
     } else {
-      if (printing_unrolled_model)
+      if (printing_unrolled_model) {
+        w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step, get_comment(line));
         print_line_advancing_nid(line);
+        w = w + dprintf(output_fd, "\n; constraint-end-%lu: %s\n\n", current_step, get_comment(line));
+      }
 
       return 0;
     }
@@ -5019,8 +5025,11 @@ uint64_t eval_next(uint64_t* line) {
                 value_nid = get_arg2(line);
 
                 if (state_nid != value_nid) {
-                  if (printing_unrolled_model)
+                  if (printing_unrolled_model) {
+                    w = w + dprintf(output_fd, "; next-start-%lu: %s\n\n", current_step, get_comment(line));
                     print_line_advancing_nid(value_nid);
+                    w = w + dprintf(output_fd, "\n; next-end-%lu(%lu): %s\n\n", current_step, get_step(value_nid), get_comment(line));
+                  }
 
                   if (has_symbolic_state(value_nid))
                     return 0;
