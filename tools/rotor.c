@@ -436,7 +436,8 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
-uint64_t printing_unrolled_model = 0; // indicates if model is printed during evaluation
+uint64_t printing_unrolled_model       = 0; // indicates if model is printed during evaluation
+uint64_t printing_non_sequential_btor2 = 0; // indicates if targeting bitwuzla or btormc
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3731,9 +3732,11 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   if (printing_unrolled_model) {
-    //w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-    //return nid;
-    if (op == OP_BAD) {
+    if (printing_non_sequential_btor2 == 0) {
+      // for btormc
+      w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
+      return nid;
+    } else if (op == OP_BAD) {
       w = w + dprintf(output_fd, " %s %lu %lu\n", OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
       print_nid(nid + 1, line);
       w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, nid, (char*) get_arg2(line), next_step);
@@ -3824,6 +3827,7 @@ uint64_t print_line_once(uint64_t nid, uint64_t* line) {
   else if (get_nid(line) > 0) {
     // assert: only when printing unrolled model
     if (get_step(line) <= current_step)
+      // print input, state, and stale lines only once
       return nid;
   }
   return print_line_with_given_nid(nid, line) + 1;
@@ -5025,6 +5029,7 @@ uint64_t eval_next(uint64_t* line) {
 
                 set_step(line, next_step);
 
+                // value_nid could have been altered above
                 value_nid = get_arg2(line);
 
                 if (state_nid != value_nid) {
