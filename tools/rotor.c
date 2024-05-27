@@ -3608,7 +3608,6 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
   op = get_op(line);
-  nid = print_line_once(nid, get_sid(line));
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
       if (get_symbolic(line) == SYMBOLIC)
@@ -3619,6 +3618,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
         if (is_bitvector(get_sid(line))) {
           if (get_op(get_symbolic(line)) == OP_INIT)
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+          // else: assert: get_op(get_symbolic(line)) == OP_NEXT
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
           return nid;
         } else {
@@ -3630,12 +3630,14 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
           else {
             if (get_op(get_symbolic(line)) == OP_INIT)
               nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+            // else: assert: get_op(get_symbolic(line)) == OP_NEXT
             set_nid(line, get_nid(get_arg2(get_symbolic(line))));
             return nid;
           }
         }
     }
   }
+  nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
   return nid;
@@ -3820,6 +3822,7 @@ uint64_t print_line_once(uint64_t nid, uint64_t* line) {
     // print lines only once
     return nid;
   else if (get_nid(line) > 0) {
+    // assert: only when printing unrolled model
     if (get_step(line) <= current_step)
       return nid;
   }
@@ -3831,7 +3834,7 @@ void print_line_advancing_nid(uint64_t* line) {
 }
 
 void print_line(uint64_t* line) {
-  if (get_nid(line) > last_nid) {
+  if (get_nid(line) > 0) {
     // print lines only once but mention reuse at top level
     w = w + dprintf(output_fd, "; reusing ");
     print_line_with_given_nid(get_nid(line), line);
@@ -11454,6 +11457,8 @@ void print_model() {
 
   open_model_file();
 
+  last_nid = 0;
+
   print_interface_sorts();
   print_interface_kernel();
 
@@ -11998,8 +12003,6 @@ uint64_t eval_constant_propagation() {
   first_input = 0;
   any_input   = 0;
 
-  last_nid = 0;
-
   states_are_symbolic = 1;
 
   if (eval_multicore_properties()) {
@@ -12136,8 +12139,6 @@ void print_unrolled_model() {
 
   first_input = 0;
   any_input   = 0;
-
-  printing_unrolled_model = 1;
 
   last_nid = 0;
 
