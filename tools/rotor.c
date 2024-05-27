@@ -5469,15 +5469,45 @@ void new_register_file_state(uint64_t core) {
   next_zeroed_register_file_nid = UNUSED;
 
   if (number_of_binaries == 0) {
-    value_nid = cast_virtual_address_to_machine_word(
-      new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
-    initial_register_file_nid =
-      store_register_value(NID_SP, value_nid, "write initial sp value", state_register_file_nid);
+    initial_register_file_nid = state_register_file_nid;
 
-    if (eval_line(load_register_value(NID_SP, "read initial sp value", initial_register_file_nid)) != eval_line(value_nid)) {
-      printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(REG_SP));
+    reg = 0;
 
-      exit(EXITCODE_SYSTEMERROR);
+    while (reg < NUMBEROFREGISTERS) {
+      if (reg == REG_SP) {
+        value_nid = cast_virtual_address_to_machine_word(
+          new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
+        reg_nid = NID_SP;
+
+        value = eval_line(value_nid);
+      } else if (printing_unrolled_model) {
+        // skipping registers other than sp unless printing unrolled model
+        value     = 0;
+        value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          value,
+          0,
+          format_comment("initial register value 0x%lX", value));
+        // for reuse creating register address exactly as above in register sorts
+        reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
+          reg,
+          5,
+          format_comment("%s", *(REGISTERS + reg)));
+      } else
+        value_nid = UNUSED;
+
+      if (value_nid != UNUSED) {
+        initial_register_file_nid =
+          store_register_value(reg_nid, value_nid,
+            "write initial register value", initial_register_file_nid);
+
+        if (eval_line(load_register_value(reg_nid, "read initial register value", initial_register_file_nid)) != value) {
+          printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(reg));
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
+      }
+
+      reg = reg + 1;
     }
   } else {
     initial_register_file_nid = state_register_file_nid;
