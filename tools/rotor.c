@@ -3705,18 +3705,14 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
 uint64_t print_ite(uint64_t nid, uint64_t* line) {
   if (printing_propagated_constants)
     if (has_symbolic_state(get_arg1(line)) == 0) {
-      // happens only when printing unrolled model
-      if (is_bitvector(get_sid(line)))
-        return print_propagated_constant(nid, line);
-      else
-        // assert: array
-        if (get_state(get_arg1(line))) {
-          nid = print_line_once(nid, get_arg2(line));
-          set_nid(line, get_nid(get_arg2(line)));
-        } else {
-          nid = print_line_once(nid, get_arg3(line));
-          set_nid(line, get_nid(get_arg3(line)));
-        }
+      // conjecture: happens only when printing unrolled model
+      if (get_state(get_arg1(line))) {
+        nid = print_line_once(nid, get_arg2(line));
+        set_nid(line, get_nid(get_arg2(line)));
+      } else {
+        nid = print_line_once(nid, get_arg3(line));
+        set_nid(line, get_nid(get_arg3(line)));
+      }
       return nid;
     }
   return print_ternary_op(nid, line);
@@ -4486,13 +4482,13 @@ uint64_t eval_ite(uint64_t* line) {
       eval_line(else_nid);
     else
       // do not propagate unevaluated symbolic value
-      else_nid = NONSYMBOLIC;
+      else_nid = UNUSED;
   } else {
     if (has_symbolic_state(if_nid))
       eval_line(then_nid);
     else
       // do not propagate unevaluated symbolic value
-      then_nid = NONSYMBOLIC;
+      then_nid = UNUSED;
 
     set_state(line, eval_line(else_nid));
   }
@@ -4677,7 +4673,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           eval_line(right_nid);
         else
           // do not propagate unevaluated symbolic value
-          right_nid = NONSYMBOLIC;
+          right_nid = UNUSED;
       } else {
         // lazy evaluation of right operand
         right_value = eval_line(right_nid);
