@@ -7,7 +7,7 @@ OBJCOPY=$(PREFIX)objcopy
 QEMU=qemu-system-riscv64
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-mabi=lp64d -march=rv64imafdc -mcmodel=medany -ffreestanding -Iinclude -Wall -Wextra -MMD -MP -O3
+CFLAGS=-mabi=lp64d -march=rv64imafdc_zifencei -mcmodel=medany -ffreestanding -Iinclude -Wall -Wextra -MMD -MP -O3
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-nostdlib -lgcc -Wl,--build-id=none
 QEMUFLAGS=-M virt -m 128M -nographic -bios none
