@@ -4339,7 +4339,7 @@ uint64_t eval_input(uint64_t* line) {
 }
 
 void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3) {
-  if ((has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3)) == 0)
+  if (has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3) == 0)
     set_symbolic(line, NONSYMBOLIC);
   else
     set_symbolic(line, SYMBOLIC);
@@ -5984,6 +5984,8 @@ void print_code_segment(uint64_t core) {
 }
 
 void new_data_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_data_segment_nid;
   uint64_t* next_zeroed_data_segment_nid;
   uint64_t* initial_data_nid;
@@ -6020,7 +6022,7 @@ void new_data_segment(uint64_t core) {
 
   next_zeroed_data_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_data_nid = UNUSED;
 
     initial_data_segment_nid = state_data_segment_nid;
@@ -6035,11 +6037,13 @@ void new_data_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - data_start < data_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-        data = load_virtual_memory(get_pt(current_context), vaddr);
-      else
-        // unmapped memory is assumed to be zeroed
-        data = 0;
+      data = 0;
+
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6049,15 +6053,15 @@ void new_data_segment(uint64_t core) {
         data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           data, 0, format_comment("data 0x%lX", data));
 
-          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
 
-          if (initial_data_nid == UNUSED)
-            initial_data_nid = store_nid;
-          else
-            // set successor for printing initial data segment iteratively to avoid stack overflow
-            set_succ(initial_data_segment_nid, store_nid);
+        if (initial_data_nid == UNUSED)
+          initial_data_nid = store_nid;
+        else
+          // set successor for printing initial data segment iteratively to avoid stack overflow
+          set_succ(initial_data_segment_nid, store_nid);
 
-          initial_data_segment_nid = store_nid;
+        initial_data_segment_nid = store_nid;
 
         // evaluate on-the-fly to avoid stack overflow later
         if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
@@ -6111,6 +6115,7 @@ void print_data_segment(uint64_t core) {
   print_line_for(core, init_zeroed_data_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_data_nid = get_for(core, initial_data_nids);
 
     if (initial_data_nid != UNUSED) {
@@ -6133,6 +6138,8 @@ void print_data_segment(uint64_t core) {
 }
 
 void new_heap_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_heap_segment_nid;
   uint64_t* next_zeroed_heap_segment_nid;
   uint64_t* initial_heap_nid;
@@ -6169,7 +6176,7 @@ void new_heap_segment(uint64_t core) {
 
   next_zeroed_heap_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_heap_nid = UNUSED;
 
     initial_heap_segment_nid = state_heap_segment_nid;
@@ -6184,11 +6191,13 @@ void new_heap_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - heap_start < heap_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-        data = load_virtual_memory(get_pt(current_context), vaddr);
-      else
-        // unmapped memory is assumed to be zeroed
-        data = 0;
+      data = 0;
+
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6260,6 +6269,7 @@ void print_heap_segment(uint64_t core) {
   print_line_for(core, init_zeroed_heap_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_heap_nid = get_for(core, initial_heap_nids);
 
     if (initial_heap_nid != UNUSED) {
@@ -6282,6 +6292,8 @@ void print_heap_segment(uint64_t core) {
 }
 
 void new_stack_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_stack_segment_nid;
   uint64_t* next_zeroed_stack_segment_nid;
   uint64_t* initial_stack_nid;
@@ -6318,7 +6330,7 @@ void new_stack_segment(uint64_t core) {
 
   next_zeroed_stack_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_stack_nid = UNUSED;
 
     initial_stack_segment_nid = state_stack_segment_nid;
@@ -6333,11 +6345,13 @@ void new_stack_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - stack_start < stack_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-        data = load_virtual_memory(get_pt(current_context), vaddr);
-      else
-        // unmapped memory is assumed to be zeroed
-        data = 0;
+      data = 0;
+
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6409,6 +6423,7 @@ void print_stack_segment(uint64_t core) {
   print_line_for(core, init_zeroed_stack_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_stack_nid = get_for(core, initial_stack_nids);
 
     if (initial_stack_nid != UNUSED) {
@@ -12424,8 +12439,10 @@ uint64_t selfie_model() {
       } else {
         number_of_binaries = 0;
 
-        max_code_size = 7 * 4; // must be > 0
-        max_data_size = 0;
+        max_code_size = 7 * INSTRUCTIONSIZE; // must be > 0
+
+        // must be a power of two for zeroed data segment initialization during unrolling
+        max_data_size = 2 * WORDSIZE;
       }
 
       exit_code = rotor_arguments();
