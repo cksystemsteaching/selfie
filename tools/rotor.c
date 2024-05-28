@@ -334,6 +334,8 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
+uint64_t printing_comments = 1;
+
 uint64_t printing_propagated_constants = 1;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
@@ -3565,8 +3567,7 @@ void print_nid(uint64_t nid, uint64_t* line) {
 }
 
 void print_comment(uint64_t* line) {
-  if (printing_unrolled_model == 0) {
-    // TODO: comments irritate bitwuzla
+  if (printing_comments) {
     if (get_comment(line) != NOCOMMENT) {
       if (get_reuse(line) > 0)
         w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
@@ -3780,11 +3781,10 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
-  if (printing_unrolled_model == 0)
-    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  else
-    // bitwuzla does not like comments
-    w = w + dprintf(output_fd, " %s %lu %lu\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  if (printing_comments)
+    w = w + dprintf(output_fd, " ; propagated state");
+  w = w + dprintf(output_fd, "\n");
   return nid;
 }
 
@@ -12208,6 +12208,9 @@ void print_unrolled_model() {
 
   last_nid = 0;
 
+  // TODO: bitwuzla does not like comments
+  printing_comments = 0;
+
   while (1) {
     if (eval_multicore_properties()) {
       close_model_file();
@@ -12254,6 +12257,7 @@ uint64_t rotor_arguments() {
   char* disassemble_model_option;
   char* unroll_model_option;
   char* load_code_option;
+  char* print_comments_option;
 
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
@@ -12277,6 +12281,8 @@ uint64_t rotor_arguments() {
   memory_word_size_option        = "-memorywordsize";
   heap_allowance_option          = "-heapallowance";
   stack_allowance_option         = "-stackallowance";
+
+  print_comments_option = "-nocomments";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -12419,6 +12425,10 @@ uint64_t rotor_arguments() {
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), print_comments_option)) {
+        printing_comments = 0;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
