@@ -6035,34 +6035,35 @@ void new_data_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - data_start < data_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
+      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
         data = load_virtual_memory(get_pt(current_context), vaddr);
+      else
+        // unmapped memory is assumed to be zeroed
+        data = 0;
 
-        if ((data != 0) + printing_unrolled_model > 0) {
-          // skipping zero as initial value unless printing unrolled model
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-            store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
+          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
 
-            if (initial_data_nid == UNUSED)
-              initial_data_nid = store_nid;
-            else
-              // set successor for printing initial data segment iteratively to avoid stack overflow
-              set_succ(initial_data_segment_nid, store_nid);
+          if (initial_data_nid == UNUSED)
+            initial_data_nid = store_nid;
+          else
+            // set successor for printing initial data segment iteratively to avoid stack overflow
+            set_succ(initial_data_segment_nid, store_nid);
 
-            initial_data_segment_nid = store_nid;
+          initial_data_segment_nid = store_nid;
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
@@ -6183,34 +6184,35 @@ void new_heap_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - heap_start < heap_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
+      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
         data = load_virtual_memory(get_pt(current_context), vaddr);
+      else
+        // unmapped memory is assumed to be zeroed
+        data = 0;
 
-        if ((data != 0) + printing_unrolled_model > 0) {
-          // skipping zero as initial value unless printing unrolled model
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
 
-          if (initial_heap_nid == UNUSED)
-            initial_heap_nid = store_nid;
-          else
-            // set successor for printing initial heap segment iteratively to avoid stack overflow
-            set_succ(initial_heap_segment_nid, store_nid);
+        if (initial_heap_nid == UNUSED)
+          initial_heap_nid = store_nid;
+        else
+          // set successor for printing initial heap segment iteratively to avoid stack overflow
+          set_succ(initial_heap_segment_nid, store_nid);
 
-          initial_heap_segment_nid = store_nid;
+        initial_heap_segment_nid = store_nid;
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
@@ -6331,34 +6333,35 @@ void new_stack_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - stack_start < stack_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
+      if (is_virtual_address_mapped(get_pt(current_context), vaddr))
         data = load_virtual_memory(get_pt(current_context), vaddr);
+      else
+        // unmapped memory is assumed to be zeroed
+        data = 0;
 
-        if ((data != 0) + printing_unrolled_model > 0) {
-          // skipping zero as initial value unless printing unrolled model
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
 
-          if (initial_stack_nid == UNUSED)
-            initial_stack_nid = store_nid;
-          else
-            // set successor for printing initial stack segment iteratively to avoid stack overflow
-            set_succ(initial_stack_segment_nid, store_nid);
+        if (initial_stack_nid == UNUSED)
+          initial_stack_nid = store_nid;
+        else
+          // set successor for printing initial stack segment iteratively to avoid stack overflow
+          set_succ(initial_stack_segment_nid, store_nid);
 
-          initial_stack_segment_nid = store_nid;
+        initial_stack_segment_nid = store_nid;
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
