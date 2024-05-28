@@ -279,6 +279,8 @@ uint64_t is_unary_op(char* op);
 
 void print_nid(uint64_t nid, uint64_t* line);
 
+void print_comment(uint64_t* line);
+
 uint64_t print_sort(uint64_t nid, uint64_t* line);
 uint64_t print_constant(uint64_t nid, uint64_t* line);
 uint64_t print_input(uint64_t nid, uint64_t* line);
@@ -295,8 +297,6 @@ uint64_t has_symbolic_state(uint64_t* line);
 uint64_t print_ite(uint64_t nid, uint64_t* line);
 
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
-
-void print_comment(uint64_t* line);
 
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 
@@ -3564,6 +3564,20 @@ void print_nid(uint64_t nid, uint64_t* line) {
   w = w + dprintf(output_fd, "%lu", nid);
 }
 
+void print_comment(uint64_t* line) {
+  if (printing_unrolled_model == 0) {
+    // TODO: comments irritate bitwuzla
+    if (get_comment(line) != NOCOMMENT) {
+      if (get_reuse(line) > 0)
+        w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
+      else
+        w = w + dprintf(output_fd, " ; %s", get_comment(line));
+    } else if (get_reuse(line) > 0)
+      w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
+  }
+  w = w + dprintf(output_fd, "\n");
+}
+
 uint64_t print_sort(uint64_t nid, uint64_t* line) {
   if (is_array(line)) {
     nid = print_line_once(nid, get_arg2(line));
@@ -3576,6 +3590,7 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   else
     // assert: array
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3603,6 +3618,7 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
     else
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
         itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3641,6 +3657,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3650,6 +3667,7 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3659,6 +3677,7 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3668,6 +3687,7 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3678,6 +3698,7 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3689,6 +3710,7 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3751,28 +3773,18 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
       }
   }
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
+  print_comment(line);
   return nid;
-}
-
-void print_comment(uint64_t* line) {
-  if (get_comment(line) != NOCOMMENT) {
-    if (get_reuse(line) > 0)
-      w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
-    else
-      w = w + dprintf(output_fd, " ; %s", get_comment(line));
-  } else if (get_reuse(line) > 0)
-    w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
-  w = w + dprintf(output_fd, "\n");
 }
 
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
-  if (printing_unrolled_model)
+  if (printing_unrolled_model == 0)
+    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  else
     // bitwuzla does not like comments
     w = w + dprintf(output_fd, " %s %lu %lu\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  else
-    w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
   return nid;
 }
 
@@ -3782,45 +3794,39 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
   op = get_op(line);
 
   if (op == OP_SORT)
-    nid = print_sort(nid, line);
+    return print_sort(nid, line);
   else if (is_constant_op(op))
-    nid = print_constant(nid, line);
+    return print_constant(nid, line);
   else if (is_input_op(op))
-    nid = print_input(nid, line);
+    return print_input(nid, line);
   else if (op == OP_WRITE)
-    nid = print_ternary_op(nid, line);
+    return print_ternary_op(nid, line);
   else if (op == OP_ITE)
-    nid = print_ite(nid, line);
+    return print_ite(nid, line);
   else if (op == OP_INIT)
-    nid = print_binary_op(nid, line);
+    return print_binary_op(nid, line);
   else if (op == OP_NEXT)
-    nid = print_binary_op(nid, line);
+    return print_binary_op(nid, line);
   else if (op == OP_BAD)
-    nid = print_constraint(nid, line);
+    return print_constraint(nid, line);
   else if (op == OP_CONSTRAINT)
-    nid = print_constraint(nid, line);
+    return print_constraint(nid, line);
   else {
     if (printing_propagated_constants)
       if (has_symbolic_state(line) == 0)
         return print_propagated_constant(nid, line);
 
     if (op == OP_SEXT)
-      nid = print_ext(nid, line);
+      return print_ext(nid, line);
     else if (op == OP_UEXT)
-      nid = print_ext(nid, line);
+      return print_ext(nid, line);
     else if (op == OP_SLICE)
-      nid = print_slice(nid, line);
+      return print_slice(nid, line);
     else if (is_unary_op(op))
-      nid = print_unary_op(nid, line);
+      return print_unary_op(nid, line);
     else
-      nid = print_binary_op(nid, line);
+      return print_binary_op(nid, line);
   }
-  if (printing_unrolled_model)
-    // TODO: comments irritate bitwuzla here
-    w = w + dprintf(output_fd, "\n");
-  else
-    print_comment(line);
-  return nid;
 }
 
 uint64_t print_line_once(uint64_t nid, uint64_t* line) {
