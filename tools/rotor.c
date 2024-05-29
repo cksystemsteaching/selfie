@@ -3296,7 +3296,7 @@ void restore_binary(uint64_t binary);
 
 void print_assembly(uint64_t core);
 void print_multicore_assembly();
-uint64_t print_pseudoinstruction(uint64_t ID, char* rs1, char* rs2, char* rd,
+uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
   uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
   uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm);
 
@@ -11759,7 +11759,7 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (!print_pseudoinstruction(ID, rs1, rs2, rd, I_imm, I_imm_32_bit, shamt, shamt_5_bit, S_imm, SB_imm, U_imm, UJ_imm)) {
+  if (!print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, shamt, shamt_5_bit, S_imm, SB_imm, U_imm, UJ_imm)) {
     printf("%s", get_instruction_mnemonic(ID));
 
     if (is_R_type(ID))
@@ -11808,12 +11808,14 @@ void print_multicore_assembly() {
   printf("\n");
 }
 
-uint64_t print_pseudoinstruction(uint64_t ID, char* rs1, char* rs2, char* rd,
+uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
   uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
   uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm) {
   // print current instruction as pseudoinstruction if it is one
 
-  if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
+  if (ID == ID_ADDI && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_ZR) && I_imm == 0)
+    printf("nop");
+  else if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
     printf("li %s,%ld", rd, I_imm);
   else if (ID == ID_ADDI && I_imm == 0)
     printf("mv %s,%s", rd, rs1);
@@ -11851,17 +11853,25 @@ uint64_t print_pseudoinstruction(uint64_t ID, char* rs1, char* rs2, char* rd,
     printf("bgtz %s,0x%lX <%ld>", rs2, pc + SB_imm,
       signed_division(SB_imm, INSTRUCTIONSIZE));
 
+  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
+    printf("ret");
   else if (ID == ID_JAL && rd == get_register_name(REG_ZR))
     printf("j 0x%lX", pc + UJ_imm);
   else if (ID == ID_JAL && rd == get_register_name(REG_RA))
     printf("jal 0x%lX", pc + UJ_imm);
-  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 != get_register_name(REG_RA) && I_imm == 0)
-    // (rs1 != x1) is an additional check to prevent [ret] instructions from falling through to this case
+  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && I_imm == 0)
     printf("jr %s", rs1);
+  else if (ID == ID_JALR && rd == get_register_name(REG_ZR))
+    // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
+    printf("jr %ld(%s)", I_imm, rs1);
   else if (ID == ID_JALR && rd == get_register_name(REG_RA) && I_imm == 0)
     printf("jalr %s", rs1);
-  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
-    printf("ret");
+  else if (ID == ID_JALR && rd == get_register_name(REG_RA))
+    // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
+    printf("jalr %ld(%s)", I_imm, rs1);
+
+  else if (ID == ID_ANDI && I_imm == 255)
+    printf("zext.b %s,%s", rd, rs1);
 
   else
     return 0; // this is not a pseudoinstruction
