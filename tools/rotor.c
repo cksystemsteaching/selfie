@@ -3757,7 +3757,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
-  if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", next_step);
+  if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
   print_comment(line);
   return nid;
 }
