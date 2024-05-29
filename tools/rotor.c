@@ -3296,6 +3296,9 @@ void restore_binary(uint64_t binary);
 
 void print_assembly(uint64_t core);
 void print_multicore_assembly();
+uint64_t print_pseudoinstruction(uint64_t ID, char* rs1, char* rs2, char* rd,
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
+  uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm);
 
 uint64_t eval_properties(uint64_t core);
 uint64_t eval_multicore_properties();
@@ -11756,7 +11759,60 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  // replace basic instructions with appropriate pseudoinstructions according to the RISC-V spec
+  if (!print_pseudoinstruction(ID, rs1, rs2, rd, I_imm, I_imm_32_bit, shamt, shamt_5_bit, S_imm, SB_imm, U_imm, UJ_imm)) {
+    printf("%s", get_instruction_mnemonic(ID));
+
+    if (is_R_type(ID))
+      printf(" %s,%s,%s", rd, rs1, rs2);
+    else if (is_I_type(ID)) {
+      if (is_shift_I_type(ID))
+        if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
+      else
+        if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
+      if (is_register_relative_I_type(ID))
+        printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
+      else if (is_shift_I_type(ID))
+        printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
+      else
+        printf(" %s,%s,%ld", rd, rs1, imm_shamt);
+    } else if (is_S_type(ID))
+      printf(" %s,%ld(%s)", rs2, S_imm, rs1);
+    else if (is_SB_type(ID))
+      printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
+        signed_division(SB_imm, INSTRUCTIONSIZE));
+    else if (is_U_type(ID))
+      printf(" %s,0x%lX", rd, U_imm);
+    else if (ID == ID_JAL)
+      printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
+        signed_division(UJ_imm, INSTRUCTIONSIZE));
+
+    if (mnemonic != get_instruction_mnemonic(ID))
+      printf(" (%s)", mnemonic);
+  }
+}
+
+void print_multicore_assembly() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < number_of_cores) {
+    print_assembly(core);
+
+    core = core + 1;
+
+    if (core < number_of_cores)
+      printf("; ");
+  }
+
+  printf("\n");
+}
+
+uint64_t print_pseudoinstruction(uint64_t ID, char* rs1, char* rs2, char* rd,
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
+  uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm) {
+  // print current instruction as pseudoinstruction if it is one
+
   if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
     printf("li %s,%ld", rd, I_imm);
   else if (ID == ID_ADDI && I_imm == 0)
@@ -11807,53 +11863,10 @@ void print_assembly(uint64_t core) {
   else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
     printf("ret");
 
-  else {
-    printf("%s", get_instruction_mnemonic(ID));
+  else
+    return 0; // this is not a pseudoinstruction
 
-    if (is_R_type(ID))
-      printf(" %s,%s,%s", rd, rs1, rs2);
-    else if (is_I_type(ID)) {
-      if (is_shift_I_type(ID))
-        if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
-      else
-        if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
-      if (is_register_relative_I_type(ID))
-        printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
-      else if (is_shift_I_type(ID))
-        printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
-      else
-        printf(" %s,%s,%ld", rd, rs1, imm_shamt);
-    } else if (is_S_type(ID))
-      printf(" %s,%ld(%s)", rs2, S_imm, rs1);
-    else if (is_SB_type(ID))
-      printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
-        signed_division(SB_imm, INSTRUCTIONSIZE));
-    else if (is_U_type(ID))
-      printf(" %s,0x%lX", rd, U_imm);
-    else if (ID == ID_JAL)
-      printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
-        signed_division(UJ_imm, INSTRUCTIONSIZE));
-
-    if (mnemonic != get_instruction_mnemonic(ID))
-      printf(" (%s)", mnemonic);
-  }
-}
-
-void print_multicore_assembly() {
-  uint64_t core;
-
-  core = 0;
-
-  while (core < number_of_cores) {
-    print_assembly(core);
-
-    core = core + 1;
-
-    if (core < number_of_cores)
-      printf("; ");
-  }
-
-  printf("\n");
+  return 1; // pseudoinstruction already printed
 }
 
 uint64_t eval_properties(uint64_t core) {
