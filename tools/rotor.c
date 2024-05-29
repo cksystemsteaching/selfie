@@ -439,7 +439,9 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
-uint64_t printing_for_btormc     = 1; // indicates if targeting non-sequential BMC or SMT
+uint64_t printing_non_seq_btor2  = 0; // indicates if targeting non-sequential BTOR2
+
+uint64_t* eval_bad_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3849,26 +3851,8 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   op = get_op(line);
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
-  if (printing_unrolled_model) {
-    if (printing_for_btormc) {
-      w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-      return nid;
-    } else
-      // for bitwuzla
-      if (op == OP_BAD) {
-        //w = w + dprintf(output_fd, " %s %lu %lu\n", OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
-        //print_nid(nid + 1, line);
-        //w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, nid, (char*) get_arg2(line), next_step);
-        //return nid + 1;
-        w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-        return nid;
-      } else {
-        // assert: constraint
-        w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-        return nid;
-      }
-  }
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
+  if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
   print_comment(line);
   return nid;
 }
@@ -3877,8 +3861,7 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  if (printing_comments)
-    w = w + dprintf(output_fd, " ; propagated state");
+  if (printing_comments) w = w + dprintf(output_fd, " ; propagated state");
   w = w + dprintf(output_fd, "\n");
   return nid;
 }
@@ -4959,7 +4942,18 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
-        print_line_advancing_nid(line);
+        if (printing_non_seq_btor2 == 0)
+          print_line_advancing_nid(line);
+        else {
+          if (eval_bad_nid == UNUSED)
+            eval_bad_nid = condition_nid;
+          else {
+            eval_bad_nid = new_binary_boolean(OP_AND, eval_bad_nid, condition_nid, "bad property chain");
+            set_symbolic(eval_bad_nid, SYMBOLIC);
+            set_step(eval_bad_nid, next_step);
+          }
+          print_line_advancing_nid(eval_bad_nid);
+        }
         w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
       }
 
@@ -5936,6 +5930,7 @@ void new_code_segment(uint64_t core) {
   uint64_t* next_code_segment_nid;
   uint64_t* initial_code_segment_nid;
   uint64_t  number_of_hex_digits;
+  uint64_t  address_space_size;
   uint64_t  saved_reuse_lines;
   uint64_t* laddr_nid;
   uint64_t* ir_nid;
@@ -5979,14 +5974,19 @@ void new_code_segment(uint64_t core) {
 
     initial_code_segment_nid = state_zeroed_code_segment_nid;
 
+    address_space_size = two_to_the_power_of(CODE_ADDRESS_SPACE) * (CODEWORDSIZEINBITS / 8);
+
+    pc = code_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    pc = code_start;
-
-    while (pc - code_start < code_size) {
-      fetch();
+    while (pc - code_start < address_space_size) {
+      if (pc - code_start < code_size)
+        fetch();
+      else
+        ir = 0;
 
       if ((ir != 0) + printing_unrolled_model > 0) {
         // skipping zero as instruction unless printing unrolled model
@@ -6093,8 +6093,9 @@ void new_data_segment(uint64_t core) {
   uint64_t* initial_data_segment_nid;
   uint64_t* init_data_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6130,21 +6131,25 @@ void new_data_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(DATA_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = data_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = data_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - data_start < data_size) {
+    while (vaddr - data_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - data_start < data_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6247,8 +6252,9 @@ void new_heap_segment(uint64_t core) {
   uint64_t* initial_heap_segment_nid;
   uint64_t* init_heap_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6284,21 +6290,25 @@ void new_heap_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(HEAP_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = heap_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = heap_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - heap_start < heap_size) {
+    while (vaddr - heap_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - heap_start < heap_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6401,8 +6411,9 @@ void new_stack_segment(uint64_t core) {
   uint64_t* initial_stack_segment_nid;
   uint64_t* init_stack_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6438,21 +6449,25 @@ void new_stack_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(STACK_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = stack_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = stack_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - stack_start < stack_size) {
+    while (vaddr - stack_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - stack_start < stack_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -12590,6 +12605,21 @@ void print_unrolled_model() {
     }
 
     if (next_step - current_offset >= printing_unrolled_model) {
+      if (eval_bad_nid != UNUSED) {
+        eval_bad_nid = new_unary_boolean(OP_NOT, eval_bad_nid, "negated bad property chain");
+        set_symbolic(eval_bad_nid, SYMBOLIC);
+        set_step(eval_bad_nid, next_step);
+
+        eval_bad_nid = new_property(OP_CONSTRAINT,
+          eval_bad_nid,
+          "all-bad-properties",
+          "all bad properties");
+        set_symbolic(eval_bad_nid, SYMBOLIC);
+        set_step(eval_bad_nid, next_step);
+
+        print_line_advancing_nid(eval_bad_nid);
+      }
+
       close_model_file();
 
       printf("%s: unrolled %s for %lu steps (up to %lu instructions)\n", selfie_name,
@@ -12626,6 +12656,7 @@ uint64_t rotor_arguments() {
   char* unroll_model_option;
   char* load_code_option;
   char* print_comments_option;
+  char* printing_non_seq_btor2_option;
 
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
@@ -12651,6 +12682,8 @@ uint64_t rotor_arguments() {
   stack_allowance_option         = "-stackallowance";
 
   print_comments_option = "-nocomments";
+
+  printing_non_seq_btor2_option = "-smt";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -12797,6 +12830,10 @@ uint64_t rotor_arguments() {
         printing_comments = 0;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), printing_non_seq_btor2_option)) {
+        printing_non_seq_btor2 = 1;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
@@ -12826,9 +12863,7 @@ uint64_t selfie_model() {
         number_of_binaries = 0;
 
         max_code_size = 7 * INSTRUCTIONSIZE; // must be > 0
-
-        // must be a power of two for zeroed data segment initialization during unrolling
-        max_data_size = 2 * WORDSIZE;
+        max_data_size = WORDSIZE;
       }
 
       exit_code = rotor_arguments();
