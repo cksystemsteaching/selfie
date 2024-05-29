@@ -11934,6 +11934,7 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
     printf("jalr %ld(%s)", I_imm, rs1);
 
   else if (ID == ID_ANDI && I_imm == 255)
+    // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
     printf("zext.b %s,%s", rd, rs1);
 
   else
