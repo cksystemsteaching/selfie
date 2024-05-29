@@ -4850,23 +4850,14 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
         if (printing_non_seq_btor2 == 0)
           print_line_advancing_nid(line);
         else {
-          condition_nid = new_unary_boolean(OP_NOT, condition_nid, "negated bad condition");
-          set_symbolic(condition_nid, SYMBOLIC);
-          set_step(condition_nid, next_step);
-
-          line = new_property(OP_CONSTRAINT, condition_nid, (char*) get_arg2(line), get_comment(line));
-          set_symbolic(line, SYMBOLIC);
-          set_step(line, next_step);
-
-          print_line_advancing_nid(line);
-          /*if (eval_bad_nid == UNUSED)
+          if (eval_bad_nid == UNUSED)
             eval_bad_nid = condition_nid;
           else {
-            eval_bad_nid = new_binary_boolean(OP_OR, eval_bad_nid, condition_nid, "bad property chain");
+            eval_bad_nid = new_binary_boolean(OP_AND, eval_bad_nid, condition_nid, "bad property chain");
             set_symbolic(eval_bad_nid, SYMBOLIC);
             set_step(eval_bad_nid, next_step);
           }
-          print_line_advancing_nid(eval_bad_nid);*/
+          print_line_advancing_nid(eval_bad_nid);
         }
         w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
       }
@@ -12246,7 +12237,7 @@ void print_unrolled_model() {
     }
 
     if (next_step - current_offset >= printing_unrolled_model) {
-      /*if (eval_bad_nid != UNUSED) {
+      if (eval_bad_nid != UNUSED) {
         eval_bad_nid = new_unary_boolean(OP_NOT, eval_bad_nid, "negated bad property chain");
         set_symbolic(eval_bad_nid, SYMBOLIC);
         set_step(eval_bad_nid, next_step);
@@ -12259,7 +12250,7 @@ void print_unrolled_model() {
         set_step(eval_bad_nid, next_step);
 
         print_line_advancing_nid(eval_bad_nid);
-      }*/
+      }
 
       close_model_file();
 
