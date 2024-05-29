@@ -439,7 +439,7 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
-uint64_t printing_for_btormc     = 1; // indicates if targeting non-sequential BMC or SMT
+uint64_t printing_non_seq_btor2  = 0; // indicates if targeting non-sequential BTOR2
 
 uint64_t* eval_bad_nid = (uint64_t*) 0;
 
@@ -4847,7 +4847,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
-        if (printing_for_btormc)
+        if (printing_non_seq_btor2 == 0)
           print_line_advancing_nid(line);
         else {
           if (eval_bad_nid == UNUSED)
@@ -12288,6 +12288,7 @@ uint64_t rotor_arguments() {
   char* unroll_model_option;
   char* load_code_option;
   char* print_comments_option;
+  char* printing_non_seq_btor2_option;
 
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
@@ -12313,6 +12314,8 @@ uint64_t rotor_arguments() {
   stack_allowance_option         = "-stackallowance";
 
   print_comments_option = "-nocomments";
+
+  printing_non_seq_btor2_option = "-smt";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -12457,6 +12460,10 @@ uint64_t rotor_arguments() {
           return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), print_comments_option)) {
         printing_comments = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), printing_non_seq_btor2_option)) {
+        printing_non_seq_btor2 = 1;
 
         get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
