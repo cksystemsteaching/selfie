@@ -441,6 +441,8 @@ uint64_t any_input = 0; // indicates if any input has been consumed
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
 uint64_t printing_for_btormc     = 1; // indicates if targeting non-sequential BMC or SMT
 
+uint64_t* eval_bad_nid = (uint64_t*) 0;
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // -------------------     I N T E R F A C E     -------------------
@@ -3754,21 +3756,8 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   op = get_op(line);
   nid = print_line_once(nid, get_arg1(line));
   print_nid(nid, line);
-  if (printing_unrolled_model) {
-    if (printing_for_btormc)
-      w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-    else
-      // for bitwuzla
-      if (op == OP_BAD) {
-        w = w + dprintf(output_fd, " %s %lu %lu\n", OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
-        print_nid(nid + 1, line);
-        w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, nid, (char*) get_arg2(line), next_step);
-        nid = nid + 1;
-      } else
-        // assert: constraint
-        w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
-  } else
-    w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
+  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
+  if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", next_step);
   print_comment(line);
   return nid;
 }
@@ -3777,8 +3766,7 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
-  if (printing_comments)
-    w = w + dprintf(output_fd, " ; propagated state");
+  if (printing_comments) w = w + dprintf(output_fd, " ; propagated state");
   w = w + dprintf(output_fd, "\n");
   return nid;
 }
@@ -4859,7 +4847,18 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
-        print_line_advancing_nid(line);
+        if (printing_for_btormc)
+          print_line_advancing_nid(line);
+        else {
+          if (eval_bad_nid == UNUSED)
+            eval_bad_nid = condition_nid;
+          else {
+            eval_bad_nid = new_binary_boolean(OP_AND, eval_bad_nid, condition_nid, "bad property chain");
+            set_symbolic(eval_bad_nid, SYMBOLIC);
+            set_step(eval_bad_nid, next_step);
+          }
+          print_line_advancing_nid(eval_bad_nid);
+        }
         w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
       }
 
@@ -12217,6 +12216,21 @@ void print_unrolled_model() {
     }
 
     if (next_step - current_offset >= printing_unrolled_model) {
+      if (eval_bad_nid != UNUSED) {
+        eval_bad_nid = new_unary_boolean(OP_NOT, eval_bad_nid, "negated bad property chain");
+        set_symbolic(eval_bad_nid, SYMBOLIC);
+        set_step(eval_bad_nid, next_step);
+
+        eval_bad_nid = new_property(OP_CONSTRAINT,
+          eval_bad_nid,
+          "all-bad-properties",
+          "all bad properties");
+        set_symbolic(eval_bad_nid, SYMBOLIC);
+        set_step(eval_bad_nid, next_step);
+
+        print_line_advancing_nid(eval_bad_nid);
+      }
+
       close_model_file();
 
       printf("%s: unrolled %s for %lu steps (up to %lu instructions)\n", selfie_name,
