@@ -11811,11 +11811,67 @@ void print_multicore_assembly() {
 uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
   uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
   uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm) {
-  // print current instruction as pseudoinstruction if it is one
+  // This function prints the current instruction as pseudoinstruction, if it is one
+  // I have tried to keep the order of the pseudoinstruction checks the same as the order in the RISC-V spec
+
+  /*
+
+  NOTE: Certain pseudoinstructions are not implemented. They are listed below:
+
+  ## Pseudoinstructions with multiple base instructions are not supported. This includes the following:
+
+  -- Load address --
+  la rd, symbol -> auipc rd, symbol[31:12]
+                   addi rd, rd, symbol[11:0]
+
+  -- Load global --
+  l{b|h|w|d} rd, symbol -> auipc rd, symbol[31:12]
+                           l{b|h|w|d} rd, symbol[11:0](rd)
+
+  -- Store global --
+  s{b|h|w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                               s{b|h|w|d} rd, symbol[11:0](rt)
+
+  -- Floating-point load global --
+  fl{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                            fl{w|d} rd, symbol[11:0](rt)
+
+  -- Floating-point store global --
+  fs{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                            fs{w|d} rd, symbol[11:0](rt)
+
+  -- Call far-away subroutine --
+  call offset -> auipc x6, offset[31:12]
+                 jalr x1, x6, offset[11:0]
+
+  -- Tail call far-away subroutine --
+  tail offset -> auipc x6, offset[31:12]
+                 jalr x0, x6, offset[11:0]
+
+  ## The following pseudoinstructions are not implemented because the base instructions are missing from rotor:
+
+  fmv.s  rd, rs -> fsgnj.s  rd, rs, rs   (Copy single-precision register)
+  fabs.s rd, rs -> fsgnjx.s rd, rs, rs   (Single-precision absolute value)
+  fneg.s rd, rs -> fsgnjn.s rd, rs, rs   (Single-precision negate)
+  fmv.d  rd, rs -> fsgnj.d  rd, rs, rs   (Copy double-precision register)
+  fabs.d rd, rs -> fsgnjx.d rd, rs, rs   (Double-precision absolute value)
+  fneg.d rd, rs -> fsgnjn.d rd, rs, rs   (Double-precision negate)
+  fence -> fence iorw, iorw   (Fence on all memory and I/O)
+
+  ## The following set of pseudoinstructions are not implemented because they are never disassembled by objdump:
+
+  bgt  rs, rt, offset -> blt  rt, rs, offset   (Branch if >)
+  ble  rs, rt, offset -> bge  rt, rs, offset   (Branch if <=)
+  bgtu rs, rt, offset -> bltu rt, rs, offset   (Branch if >, unsigned)
+  bleu rs, rt, offset -> bgeu rt, rs, offset   (Branch if <=, unsigned)
+
+  */
 
   if (ID == ID_ADDI && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_ZR) && I_imm == 0)
     printf("nop");
   else if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
+    // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
+    // but objdump seems to only implement it for [addi rd, x0, imm] instructions
     printf("li %s,%ld", rd, I_imm);
   else if (ID == ID_ADDI && I_imm == 0)
     printf("mv %s,%s", rd, rs1);
@@ -11833,6 +11889,12 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
     printf("sext.w %s,%s", rd, rs1);
   else if (ID == ID_SLTIU && I_imm == 1)
     printf("seqz %s,%s", rd, rs1);
+  else if (ID == ID_SLTU && rs1 == get_register_name(REG_ZR))
+    printf("snez %s,%s", rd, rs2);
+  else if (ID == ID_SLT && rs2 == get_register_name(REG_ZR))
+    printf("sltz %s,%s", rd, rs1);
+  else if (ID == ID_SLT && rs1 == get_register_name(REG_ZR))
+    printf("sgtz %s,%s", rd, rs2);
 
   else if (ID == ID_BEQ && rs2 == get_register_name(REG_ZR))
     printf("beqz %s,0x%lX <%ld>", rs1, pc + SB_imm,
@@ -11854,6 +11916,7 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
       signed_division(SB_imm, INSTRUCTIONSIZE));
 
   else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
+    // Checking for [ret] first because we don't want it to fall under [jr ...] or [jalr ...]
     printf("ret");
   else if (ID == ID_JAL && rd == get_register_name(REG_ZR))
     printf("j 0x%lX", pc + UJ_imm);
