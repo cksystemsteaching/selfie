@@ -43,7 +43,7 @@ For all k > 0, the SMT formula unrolled from the model k times is
 satisfiable if and only if there is machine input (code synthesis)
 or program input (code analysis) such that a machine or program
 state is reached for which at least one state property of the
-model holds after executing k machine instructions.
+model holds after executing up to k+1 machine instructions.
 
 Rotor enables symbolic execution of selfie- and gcc-generated
 RISC-V ELF binaries using bounded model checkers and SMT solvers.
@@ -129,6 +129,9 @@ uint64_t* new_property(char* op, uint64_t* condition_nid, char* symbol, char* co
 
 uint64_t* UNUSED    = (uint64_t*) 0;
 char*     NOCOMMENT = (char*) 0;
+
+uint64_t* NONSYMBOLIC = (uint64_t*) 0;
+uint64_t* SYMBOLIC    = (uint64_t*) 1;
 
 char* BITVEC = (char*) 0;
 char* ARRAY  = (char*) 0;
@@ -276,9 +279,10 @@ uint64_t is_unary_op(char* op);
 
 void print_nid(uint64_t nid, uint64_t* line);
 
+void print_comment(uint64_t* line);
+
 uint64_t print_sort(uint64_t nid, uint64_t* line);
 uint64_t print_constant(uint64_t nid, uint64_t* line);
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 uint64_t print_input(uint64_t nid, uint64_t* line);
 
 uint64_t print_ext(uint64_t nid, uint64_t* line);
@@ -288,11 +292,13 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line);
 uint64_t print_binary_op(uint64_t nid, uint64_t* line);
 uint64_t print_ternary_op(uint64_t nid, uint64_t* line);
 
+uint64_t has_symbolic_state(uint64_t* line);
+
+uint64_t print_ite(uint64_t nid, uint64_t* line);
+
 uint64_t print_constraint(uint64_t nid, uint64_t* line);
 
-void print_comment(uint64_t* line);
-
-uint64_t has_symbolic_state(uint64_t* line);
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line);
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line);
 uint64_t print_line_once(uint64_t nid, uint64_t* line);
@@ -327,6 +333,8 @@ char* format_comment_binary(char* comment, uint64_t value);
 uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
+
+uint64_t printing_comments = 1;
 
 uint64_t printing_propagated_constants = 1;
 
@@ -430,7 +438,8 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
-uint64_t printing_unrolled_model = 0; // indicates if model is printed during evaluation
+uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
+uint64_t printing_for_btormc     = 1; // indicates if targeting non-sequential BMC or SMT
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -3191,8 +3200,6 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-uint64_t unroll_model = 0;
-
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
@@ -3307,7 +3314,7 @@ void restore_multicore_states();
 
 void eval_multicore_states();
 
-void eval_constant_propagation();
+uint64_t eval_constant_propagation();
 
 void eval_rotor();
 
@@ -3418,7 +3425,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_arg2(new_line, arg2);
   set_arg3(new_line, arg3);
   set_comment(new_line, comment);
-  set_symbolic(new_line, UNUSED);
+  set_symbolic(new_line, NONSYMBOLIC);
   set_state(new_line, 0);
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
@@ -3559,6 +3566,19 @@ void print_nid(uint64_t nid, uint64_t* line) {
   w = w + dprintf(output_fd, "%lu", nid);
 }
 
+void print_comment(uint64_t* line) {
+  if (printing_comments) {
+    if (get_comment(line) != NOCOMMENT) {
+      if (get_reuse(line) > 0)
+        w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
+      else
+        w = w + dprintf(output_fd, " ; %s", get_comment(line));
+    } else if (get_reuse(line) > 0)
+      w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
+  }
+  w = w + dprintf(output_fd, "\n");
+}
+
 uint64_t print_sort(uint64_t nid, uint64_t* line) {
   if (is_array(line)) {
     nid = print_line_once(nid, get_arg2(line));
@@ -3571,6 +3591,7 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   else
     // assert: array
     w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3591,50 +3612,53 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
       itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
   else
     // assert: get_op(line) == OP_CONSTH
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
-  return nid;
-}
-
-uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
-  if (is_constant_op(get_op(line))) return print_constant(nid, line);
-  nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu ; propagated state\n", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+    if (printing_unrolled_model)
+      // bitwuzla does not like hex literals starting with F
+      w = w + dprintf(output_fd, " %s %lu 0%s", get_op(line), get_nid(get_sid(line)),
+        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+    else
+      w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
+        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+  print_comment(line);
   return nid;
 }
 
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
-  nid = print_line_once(nid, get_sid(line));
   op = get_op(line);
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (get_symbolic(line) == line)
+      if (get_symbolic(line) == SYMBOLIC)
         // state is uninitialized
         op = OP_INPUT;
-      else if (is_bitvector(get_sid(line))) {
-        if (get_op(get_symbolic(line)) == OP_INIT)
-          nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-        set_nid(line, get_nid(get_arg2(get_symbolic(line))));
-        return nid;
-      } else {
-        // assert: array
-        if (is_bitvector(get_sid(get_arg2(get_symbolic(line)))))
-          // assert: get_op(get_symbolic(line)) == OP_INIT
-          // TODO: handle zeroed arrays
-          op = OP_INPUT;
-        else {
+      else
+        // assert: get_symbolic(line) != NONSYMBOLIC
+        if (is_bitvector(get_sid(line))) {
           if (get_op(get_symbolic(line)) == OP_INIT)
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+          // else: assert: get_op(get_symbolic(line)) == OP_NEXT
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
           return nid;
+        } else {
+          // assert: array
+          if (is_bitvector(get_sid(get_arg2(get_symbolic(line)))))
+            // assert: get_op(get_symbolic(line)) == OP_INIT
+            // TODO: handle zeroed arrays here
+            op = OP_INPUT;
+          else {
+            if (get_op(get_symbolic(line)) == OP_INIT)
+              nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+            // else: assert: get_op(get_symbolic(line)) == OP_NEXT
+            set_nid(line, get_nid(get_arg2(get_symbolic(line))));
+            return nid;
+          }
         }
-      }
     }
   }
+  nid = print_line_once(nid, get_sid(line));
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3644,6 +3668,7 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3653,6 +3678,7 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
+  print_comment(line);
   return nid;
 }
 
@@ -3662,6 +3688,7 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3672,6 +3699,7 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  print_comment(line);
   return nid;
 }
 
@@ -3683,47 +3711,81 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   print_nid(nid, line);
   w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
     get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  print_comment(line);
   return nid;
-}
-
-uint64_t print_constraint(uint64_t nid, uint64_t* line) {
-  nid = print_line_once(nid, get_arg1(line));
-  print_nid(nid, line);
-  if (printing_unrolled_model)
-    if (get_op(line) == OP_BAD) {
-      //w = w + dprintf(output_fd, "%lu %s %lu %lu\n", nid, OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
-      //print_nid(nid + 1, line);
-      //w = w + dprintf(output_fd, " %s %lu %s", OP_CONSTRAINT, nid, (char*) get_arg2(line));
-      //return nid + 1;
-      w = w + dprintf(output_fd, " %s %lu %s", OP_CONSTRAINT, get_nid(get_arg1(line)), (char*) get_arg2(line));
-      return nid;
-    }
-  //print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
-  return nid;
-}
-
-void print_comment(uint64_t* line) {
-  if (get_comment(line) != NOCOMMENT) {
-    if (get_reuse(line) > 0)
-      w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
-    else
-      w = w + dprintf(output_fd, " ; %s", get_comment(line));
-  } else if (get_reuse(line) > 0)
-    w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
-  w = w + dprintf(output_fd, "\n");
 }
 
 uint64_t has_symbolic_state(uint64_t* line) {
   if (line == UNUSED)
     return 0;
+  else if (get_symbolic(line) == SYMBOLIC)
+    return 1;
   else if (get_op(line) == OP_INPUT)
-    return inputs_are_symbolic == 1;
-  else if (get_op(line) == OP_STATE)
+    return inputs_are_symbolic;
+  else if (get_op(line) == OP_STATE) {
     if (states_are_symbolic)
       return 1;
+    else
+      // assert: get_symbolic(line) is init or next line
+      // assert: get_arg2(get_symbolic(line)) != line
+      return has_symbolic_state(get_arg2(get_symbolic(line)));
+  } else
+    return get_symbolic(line) != NONSYMBOLIC;
+}
 
-  return get_symbolic(line) != UNUSED;
+uint64_t print_ite(uint64_t nid, uint64_t* line) {
+  if (printing_propagated_constants)
+    if (has_symbolic_state(get_arg1(line)) == 0) {
+      // conjecture: happens only when printing unrolled model
+      if (get_state(get_arg1(line))) {
+        nid = print_line_once(nid, get_arg2(line));
+        set_nid(line, get_nid(get_arg2(line)));
+      } else {
+        nid = print_line_once(nid, get_arg3(line));
+        set_nid(line, get_nid(get_arg3(line)));
+      }
+      return nid;
+    }
+  return print_ternary_op(nid, line);
+}
+
+uint64_t print_constraint(uint64_t nid, uint64_t* line) {
+  char* op;
+  op = get_op(line);
+  nid = print_line_once(nid, get_arg1(line));
+  print_nid(nid, line);
+  if (printing_unrolled_model) {
+    if (printing_for_btormc) {
+      w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
+      return nid;
+    } else
+      // for bitwuzla
+      if (op == OP_BAD) {
+        //w = w + dprintf(output_fd, " %s %lu %lu\n", OP_NOT, get_nid(get_sid(get_arg1(line))), get_nid(get_arg1(line)));
+        //print_nid(nid + 1, line);
+        //w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, nid, (char*) get_arg2(line), next_step);
+        //return nid + 1;
+        w = w + dprintf(output_fd, " %s %lu %s-%lu", OP_CONSTRAINT, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
+        return nid;
+      } else {
+        // assert: constraint
+        w = w + dprintf(output_fd, " %s %lu %s-%lu", op, get_nid(get_arg1(line)), (char*) get_arg2(line), next_step);
+        return nid;
+      }
+  }
+  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
+  print_comment(line);
+  return nid;
+}
+
+uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
+  nid = print_line_once(nid, get_sid(line));
+  print_nid(nid, line);
+  w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  if (printing_comments)
+    w = w + dprintf(output_fd, " ; propagated state");
+  w = w + dprintf(output_fd, "\n");
+  return nid;
 }
 
 uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
@@ -3732,53 +3794,52 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
   op = get_op(line);
 
   if (op == OP_SORT)
-    nid = print_sort(nid, line);
+    return print_sort(nid, line);
   else if (is_constant_op(op))
-    nid = print_constant(nid, line);
+    return print_constant(nid, line);
   else if (is_input_op(op))
-    nid = print_input(nid, line);
+    return print_input(nid, line);
   else if (op == OP_WRITE)
-    nid = print_ternary_op(nid, line);
+    return print_ternary_op(nid, line);
+  else if (op == OP_ITE)
+    return print_ite(nid, line);
   else if (op == OP_INIT)
-    nid = print_binary_op(nid, line);
+    return print_binary_op(nid, line);
   else if (op == OP_NEXT)
-    nid = print_binary_op(nid, line);
+    return print_binary_op(nid, line);
+  else if (op == OP_BAD)
+    return print_constraint(nid, line);
+  else if (op == OP_CONSTRAINT)
+    return print_constraint(nid, line);
   else {
     if (printing_propagated_constants)
       if (has_symbolic_state(line) == 0)
         return print_propagated_constant(nid, line);
 
     if (op == OP_SEXT)
-      nid = print_ext(nid, line);
+      return print_ext(nid, line);
     else if (op == OP_UEXT)
-      nid = print_ext(nid, line);
+      return print_ext(nid, line);
     else if (op == OP_SLICE)
-      nid = print_slice(nid, line);
+      return print_slice(nid, line);
     else if (is_unary_op(op))
-      nid = print_unary_op(nid, line);
-    else if (op == OP_ITE)
-      nid = print_ternary_op(nid, line);
-    else if (op == OP_BAD)
-      nid = print_constraint(nid, line);
-    else if (op == OP_CONSTRAINT)
-      nid = print_constraint(nid, line);
+      return print_unary_op(nid, line);
     else
-      nid = print_binary_op(nid, line);
+      return print_binary_op(nid, line);
   }
-  //if (printing_unrolled_model)
-    // TODO: comments irritate bitwuzla here
-    //w = w + dprintf(output_fd, "\n");
-  //else
-  print_comment(line);
-  return nid;
 }
 
 uint64_t print_line_once(uint64_t nid, uint64_t* line) {
   if (get_nid(line) > last_nid)
     // print lines only once
     return nid;
-  else
-    return print_line_with_given_nid(nid, line) + 1;
+  else if (get_nid(line) > 0) {
+    // assert: only when printing unrolled model
+    if (get_step(line) <= current_step)
+      // print input, state, and stale lines only once
+      return nid;
+  }
+  return print_line_with_given_nid(nid, line) + 1;
 }
 
 void print_line_advancing_nid(uint64_t* line) {
@@ -3786,7 +3847,7 @@ void print_line_advancing_nid(uint64_t* line) {
 }
 
 void print_line(uint64_t* line) {
-  if (get_nid(line) > last_nid) {
+  if (get_nid(line) > 0) {
     // print lines only once but mention reuse at top level
     w = w + dprintf(output_fd, "; reusing ");
     print_line_with_given_nid(get_nid(line), line);
@@ -3900,6 +3961,11 @@ uint64_t eval_bitvec_size(uint64_t* line) {
   if (is_bitvector(line)) {
     size = (uint64_t) get_arg2(line);
 
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
+
     if (size > 0)
       if (size <= SIZEOFUINT64INBITS)
         return size;
@@ -3951,6 +4017,11 @@ uint64_t eval_array_size(uint64_t* line) {
   if (is_array(line)) {
     size = eval_bitvec_size(get_arg2(line));
 
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
+
     if (size <= VIRTUAL_ADDRESS_SPACE)
       return size;
 
@@ -3966,6 +4037,11 @@ uint64_t eval_element_size(uint64_t* line) {
 
   if (is_array(line)) {
     size = eval_bitvec_size(get_arg3(line));
+
+    if (get_step(line) == INITIALIZED)
+      return size;
+    else
+      set_step(line, INITIALIZED);
 
     if (size <= SIZEOFUINT64INBITS)
       return size;
@@ -4179,16 +4255,14 @@ uint64_t signed_less_than_or_equal_to(uint64_t a, uint64_t b) {
 uint64_t get_cached_state(uint64_t* line) {
   if (get_step(line) != UNINITIALIZED) {
     if (get_op(line) == OP_STATE) {
-      if (get_step(line) >= current_step) {
-        if (is_bitvector(get_sid(line))) {
-          if (get_step(line) == current_step)
-            return get_state(line);
-        } else {
-          // assert: array
-          if (get_step(line) <= next_step)
-            // TODO: log writes and only apply with init and next
-            return (uint64_t) line;
-        }
+      if (is_bitvector(get_sid(line))) {
+        if (get_step(line) == current_step)
+          return get_state(line);
+      } else {
+        // assert: array
+        if (get_step(line) <= next_step)
+          // TODO: log writes and only apply with init and next
+          return (uint64_t) line;
       }
 
       printf("%s: non-current state access\n", selfie_name);
@@ -4218,10 +4292,10 @@ uint64_t eval_constant_value(uint64_t* line) {
       fit_bitvec_sort(sid, value);
 
     set_state(line, value);
+
+    set_step(line, INITIALIZED);
   } else
     value = get_state(line);
-
-  set_step(line, next_step);
 
   return value;
 }
@@ -4271,10 +4345,10 @@ uint64_t eval_input(uint64_t* line) {
 }
 
 void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3) {
-  if ((has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3)) == 0)
-    set_symbolic(line, UNUSED);
+  if (has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3) == 0)
+    set_symbolic(line, NONSYMBOLIC);
   else
-    set_symbolic(line, line);
+    set_symbolic(line, SYMBOLIC);
 }
 
 uint64_t eval_ext(uint64_t* line) {
@@ -4307,7 +4381,7 @@ uint64_t eval_ext(uint64_t* line) {
       exit(EXITCODE_SYSTEMERROR);
     }
 
-    propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4350,7 +4424,7 @@ uint64_t eval_slice(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
 
-        propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+        propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
         set_step(line, next_step);
 
@@ -4388,7 +4462,7 @@ uint64_t eval_concat(uint64_t* line) {
 
       set_state(line, left_shift(left_value, right_size) + right_value);
 
-      propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+      propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
       set_step(line, next_step);
 
@@ -4457,7 +4531,7 @@ uint64_t eval_read(uint64_t* line) {
 
     if (get_op(state_nid) == OP_STATE) {
       // TODO: if current_step == next_step (during init) read after write is not detected
-      if (get_step(state_nid) == current_step) {
+      if (get_step(state_nid) <= current_step) {
         index = eval_line(index_nid);
 
         if (get_sid(state_nid) != SID_INPUT_BUFFER)
@@ -4477,17 +4551,17 @@ uint64_t eval_read(uint64_t* line) {
         }
 
         if (get_sid(state_nid) == SID_CODE_STATE)
-          if (get_symbolic(state_nid) != UNUSED)
+          if (get_symbolic(state_nid) == SYMBOLIC)
             // avoid reading illegal instruction from uninitialized code segment
             set_state(line, 1);
 
-        propagate_symbolic_state(line, state_nid, index_nid, UNUSED);
+        propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
         set_step(line, next_step);
 
         return get_state(line);
       } else
-        printf("%s: read non-current state error\n", selfie_name);
+        printf("%s: read updated state error\n", selfie_name);
     } else
       printf("%s: read non-state error\n", selfie_name);
   } else
@@ -4520,20 +4594,13 @@ uint64_t eval_write(uint64_t* line) {
           index = eval_line(index_nid);
           value = eval_line(value_nid);
 
-          propagate_symbolic_state(state_nid, state_nid, index_nid, value_nid);
+          propagate_symbolic_state(line, state_nid, index_nid, value_nid);
 
-          if (has_symbolic_state(state_nid)) {
-            // use the write line as symbolic state
-            set_symbolic(state_nid, line);
-
-            set_symbolic(line, line);
-          } else {
+          if (has_symbolic_state(line) == 0) {
             read_or_write(state_nid, index, value, 0);
 
             // TODO: log writes and only apply with init and next
             set_step(state_nid, next_step);
-
-            set_symbolic(line, UNUSED);
           }
 
           set_state(line, (uint64_t) state_nid);
@@ -4579,7 +4646,7 @@ uint64_t eval_unary_op(uint64_t* line) {
     else if (op == OP_NEG)
       set_state(line, sign_shrink(-value, size));
 
-    propagate_symbolic_state(line, value_nid, UNUSED, UNUSED);
+    propagate_symbolic_state(line, value_nid, NONSYMBOLIC, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4718,7 +4785,7 @@ uint64_t eval_binary_op(uint64_t* line) {
       }
     }
 
-    propagate_symbolic_state(line, left_nid, right_nid, UNUSED);
+    propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
     set_step(line, next_step);
 
@@ -4783,35 +4850,49 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
-    if (printing_unrolled_model)
-      print_line_advancing_nid(line);
-    else if (condition != 0) {
-      printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps", selfie_name,
-        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
-
     set_state(line, condition != 0);
 
-    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
-
     set_step(line, next_step);
+
+    if (has_symbolic_state(condition_nid) == 0) {
+      if (printing_unrolled_model == 0)
+        if (condition != 0) {
+          printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)", selfie_name,
+            symbol, core, eval_line_for(core, state_pc_nids), current_step - current_offset, next_step - current_offset);
+          if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+        }
+    } else {
+      if (printing_unrolled_model) {
+        w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
+        print_line_advancing_nid(line);
+        w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
+      }
+
+      return 0;
+    }
 
     return condition != 0;
   } else if (op == OP_CONSTRAINT) {
-    if (printing_unrolled_model)
-      print_line_advancing_nid(line);
-    else if (condition == 0) {
-      printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps\n", selfie_name,
-        symbol, core, eval_line_for(core, state_pc_nids), next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-    }
-
     set_state(line, condition == 0);
 
-    propagate_symbolic_state(line, condition_nid, UNUSED, UNUSED);
-
     set_step(line, next_step);
+
+    if (has_symbolic_state(condition_nid) == 0) {
+      if (printing_unrolled_model == 0)
+        if (condition == 0) {
+          printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)\n", selfie_name,
+            symbol, core, eval_line_for(core, state_pc_nids), current_step - current_offset, next_step - current_offset);
+          if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+        }
+    } else {
+      if (printing_unrolled_model) {
+        w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step, get_comment(line));
+        print_line_advancing_nid(line);
+        w = w + dprintf(output_fd, "\n; constraint-end-%lu: %s\n\n", current_step, get_comment(line));
+      }
+
+      return 0;
+    }
 
     return condition == 0;
   }
@@ -4876,11 +4957,8 @@ void eval_init(uint64_t* line) {
                 }
               }
 
-              propagate_symbolic_state(state_nid, value_nid, UNUSED, UNUSED);
-
-              if (has_symbolic_state(state_nid))
-                // use the init line as symbolic state
-                set_symbolic(state_nid, line);
+              // state is only symbolic if the initial value is symbolic
+              set_symbolic(state_nid, line);
 
               set_step(state_nid, INITIALIZED);
 
@@ -4922,7 +5000,7 @@ uint64_t eval_next(uint64_t* line) {
 
           if (get_op(state_nid) == OP_STATE) {
             if (get_step(state_nid) != UNINITIALIZED)
-              if (get_step(state_nid) >= current_step) {
+              if (get_step(state_nid) <= current_step) {
                 match_sorts(get_sid(line), get_sid(state_nid), "next state");
 
                 value_nid = get_arg2(line);
@@ -4960,12 +5038,23 @@ uint64_t eval_next(uint64_t* line) {
 
                 set_step(line, next_step);
 
-                if (printing_unrolled_model)
-                  print_line_advancing_nid(get_arg2(line));
+                // value_nid could have been altered above
+                value_nid = get_arg2(line);
+
+                if (state_nid != value_nid) {
+                  if (printing_unrolled_model) {
+                    w = w + dprintf(output_fd, "; next-start-%lu: %s\n\n", current_step, get_comment(line));
+                    print_line_advancing_nid(value_nid);
+                    w = w + dprintf(output_fd, "\n; next-end-%lu: %s\n\n", current_step, get_comment(line));
+                  }
+
+                  if (has_symbolic_state(value_nid))
+                    return 0;
+                }
 
                 return no_update;
               } else
-                printf("%s: next non-current state error\n", selfie_name);
+                printf("%s: next updated state error\n", selfie_name);
             else
               printf("%s: next uninitialized state error\n", selfie_name);
           } else
@@ -5000,13 +5089,15 @@ void apply_next(uint64_t* line) {
       set_state(state_nid, get_state(value_nid));
     // TODO: else log writes and only apply with init and next
 
-    propagate_symbolic_state(state_nid, value_nid, UNUSED, UNUSED);
-
-    if (has_symbolic_state(state_nid))
-      // use the next line as symbolic state
+    if (state_nid != value_nid) {
+      // state is only symbolic if the next value is symbolic
       set_symbolic(state_nid, line);
 
-    set_step(state_nid, next_step);
+      set_step(state_nid, next_step);
+
+      if (printing_unrolled_model)
+        set_nid(state_nid, get_nid(value_nid));
+    } // else: symbolic state remains unchanged
 
     return;
   }
@@ -5268,7 +5359,7 @@ void new_kernel_state(uint64_t core) {
     // initialize only for emulator
     eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
 
-    // TODO: make state symbolic for unrolling model
+    // uninitialized state is made symbolic just for unrolling model
 
     next_input_buffer_nid = new_next(SID_INPUT_BUFFER,
       state_input_buffer_nid, state_input_buffer_nid, "read-only uninitialized input buffer");
@@ -5387,15 +5478,45 @@ void new_register_file_state(uint64_t core) {
   next_zeroed_register_file_nid = UNUSED;
 
   if (number_of_binaries == 0) {
-    value_nid = cast_virtual_address_to_machine_word(
-      new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
-    initial_register_file_nid =
-      store_register_value(NID_SP, value_nid, "write initial sp value", state_register_file_nid);
+    initial_register_file_nid = state_register_file_nid;
 
-    if (eval_line(load_register_value(NID_SP, "read initial sp value", initial_register_file_nid)) != eval_line(value_nid)) {
-      printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(REG_SP));
+    reg = 0;
 
-      exit(EXITCODE_SYSTEMERROR);
+    while (reg < NUMBEROFREGISTERS) {
+      if (reg == REG_SP) {
+        value_nid = cast_virtual_address_to_machine_word(
+          new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
+        reg_nid = NID_SP;
+
+        value = eval_line(value_nid);
+      } else if (printing_unrolled_model) {
+        // skipping registers other than sp unless printing unrolled model
+        value     = 0;
+        value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          value,
+          0,
+          format_comment("initial register value 0x%lX", value));
+        // for reuse creating register address exactly as above in register sorts
+        reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
+          reg,
+          5,
+          format_comment("%s", *(REGISTERS + reg)));
+      } else
+        value_nid = UNUSED;
+
+      if (value_nid != UNUSED) {
+        initial_register_file_nid =
+          store_register_value(reg_nid, value_nid,
+            "write initial register value", initial_register_file_nid);
+
+        if (eval_line(load_register_value(reg_nid, "read initial register value", initial_register_file_nid)) != value) {
+          printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(reg));
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
+      }
+
+      reg = reg + 1;
     }
   } else {
     initial_register_file_nid = state_register_file_nid;
@@ -5405,8 +5526,8 @@ void new_register_file_state(uint64_t core) {
     while (reg < NUMBEROFREGISTERS) {
       value = *(get_regs(current_context) + reg);
 
-      if (value != 0) {
-        // skipping zero as initial value
+      if ((value != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
         value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           value,
           0,
@@ -5741,7 +5862,7 @@ void new_code_segment(uint64_t core) {
     eval_init(new_init(SID_CODE_STATE, state_code_segment_nid, NID_CODE_WORD_0, "zeroed code segment"));
 
     // uninitialized state is symbolic
-    set_symbolic(state_code_segment_nid, state_code_segment_nid);
+    set_symbolic(state_code_segment_nid, SYMBOLIC);
 
     next_code_segment_nid = new_next(SID_CODE_STATE,
       state_code_segment_nid, state_code_segment_nid, "read-only uninitialized code segment");
@@ -5772,8 +5893,8 @@ void new_code_segment(uint64_t core) {
     while (pc - code_start < code_size) {
       fetch();
 
-      if (ir != 0) {
-        // skipping zero as instruction
+      if ((ir != 0) + printing_unrolled_model > 0) {
+        // skipping zero as instruction unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
 
@@ -5869,6 +5990,8 @@ void print_code_segment(uint64_t core) {
 }
 
 void new_data_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_data_segment_nid;
   uint64_t* next_zeroed_data_segment_nid;
   uint64_t* initial_data_nid;
@@ -5905,7 +6028,7 @@ void new_data_segment(uint64_t core) {
 
   next_zeroed_data_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_data_nid = UNUSED;
 
     initial_data_segment_nid = state_data_segment_nid;
@@ -5920,34 +6043,37 @@ void new_data_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - data_start < data_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
-        data = load_virtual_memory(get_pt(current_context), vaddr);
+      data = 0;
 
-        if (data != 0) {
-          // skipping zero as initial value
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-            store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-            if (initial_data_nid == UNUSED)
-              initial_data_nid = store_nid;
-            else
-              // set successor for printing initial data segment iteratively to avoid stack overflow
-              set_succ(initial_data_segment_nid, store_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
 
-            initial_data_segment_nid = store_nid;
+        if (initial_data_nid == UNUSED)
+          initial_data_nid = store_nid;
+        else
+          // set successor for printing initial data segment iteratively to avoid stack overflow
+          set_succ(initial_data_segment_nid, store_nid);
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        initial_data_segment_nid = store_nid;
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
@@ -5995,6 +6121,7 @@ void print_data_segment(uint64_t core) {
   print_line_for(core, init_zeroed_data_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_data_nid = get_for(core, initial_data_nids);
 
     if (initial_data_nid != UNUSED) {
@@ -6017,6 +6144,8 @@ void print_data_segment(uint64_t core) {
 }
 
 void new_heap_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_heap_segment_nid;
   uint64_t* next_zeroed_heap_segment_nid;
   uint64_t* initial_heap_nid;
@@ -6053,7 +6182,7 @@ void new_heap_segment(uint64_t core) {
 
   next_zeroed_heap_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_heap_nid = UNUSED;
 
     initial_heap_segment_nid = state_heap_segment_nid;
@@ -6068,34 +6197,37 @@ void new_heap_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - heap_start < heap_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
-        data = load_virtual_memory(get_pt(current_context), vaddr);
+      data = 0;
 
-        if (data != 0) {
-          // skipping zero as initial value
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-          if (initial_heap_nid == UNUSED)
-            initial_heap_nid = store_nid;
-          else
-            // set successor for printing initial heap segment iteratively to avoid stack overflow
-            set_succ(initial_heap_segment_nid, store_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
 
-          initial_heap_segment_nid = store_nid;
+        if (initial_heap_nid == UNUSED)
+          initial_heap_nid = store_nid;
+        else
+          // set successor for printing initial heap segment iteratively to avoid stack overflow
+          set_succ(initial_heap_segment_nid, store_nid);
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        initial_heap_segment_nid = store_nid;
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
@@ -6143,6 +6275,7 @@ void print_heap_segment(uint64_t core) {
   print_line_for(core, init_zeroed_heap_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_heap_nid = get_for(core, initial_heap_nids);
 
     if (initial_heap_nid != UNUSED) {
@@ -6165,6 +6298,8 @@ void print_heap_segment(uint64_t core) {
 }
 
 void new_stack_segment(uint64_t core) {
+  // TODO: consolidate with other new segment procedures
+
   uint64_t* init_zeroed_stack_segment_nid;
   uint64_t* next_zeroed_stack_segment_nid;
   uint64_t* initial_stack_nid;
@@ -6201,7 +6336,7 @@ void new_stack_segment(uint64_t core) {
 
   next_zeroed_stack_segment_nid = UNUSED;
 
-  if (number_of_binaries > 0) {
+  if (number_of_binaries + printing_unrolled_model > 0) {
     initial_stack_nid = UNUSED;
 
     initial_stack_segment_nid = state_stack_segment_nid;
@@ -6216,34 +6351,37 @@ void new_stack_segment(uint64_t core) {
 
     // consider 32-bit overflow to terminate loop
     while (vaddr - stack_start < stack_size) {
-      if (is_virtual_address_mapped(get_pt(current_context), vaddr)) {
-        // memory allocated but not yet mapped is assumed to be zeroed
-        data = load_virtual_memory(get_pt(current_context), vaddr);
+      data = 0;
 
-        if (data != 0) {
-          // skipping zero as initial value
-          laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-            vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      if (core < number_of_binaries)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zeroed
+      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
 
-          data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            data, 0, format_comment("data 0x%lX", data));
+      if ((data != 0) + printing_unrolled_model > 0) {
+        // skipping zero as initial value unless printing unrolled model
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+          vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
-          store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
+        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+          data, 0, format_comment("data 0x%lX", data));
 
-          if (initial_stack_nid == UNUSED)
-            initial_stack_nid = store_nid;
-          else
-            // set successor for printing initial stack segment iteratively to avoid stack overflow
-            set_succ(initial_stack_segment_nid, store_nid);
+        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
 
-          initial_stack_segment_nid = store_nid;
+        if (initial_stack_nid == UNUSED)
+          initial_stack_nid = store_nid;
+        else
+          // set successor for printing initial stack segment iteratively to avoid stack overflow
+          set_succ(initial_stack_segment_nid, store_nid);
 
-          // evaluate on-the-fly to avoid stack overflow later
-          if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-            printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+        initial_stack_segment_nid = store_nid;
 
-            exit(EXITCODE_SYSTEMERROR);
-          }
+        // evaluate on-the-fly to avoid stack overflow later
+        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+          printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+
+          exit(EXITCODE_SYSTEMERROR);
         }
       }
 
@@ -6291,6 +6429,7 @@ void print_stack_segment(uint64_t core) {
   print_line_for(core, init_zeroed_stack_segment_nids);
 
   if (number_of_binaries > 0) {
+    // assert: not reached during unrolling
     initial_stack_nid = get_for(core, initial_stack_nids);
 
     if (initial_stack_nid != UNUSED) {
@@ -11204,6 +11343,9 @@ void open_model_file() {
 
   w = dprintf(output_fd, "; %s\n\n", SELFIE_URL)
     + dprintf(output_fd, "; BTOR2 file %s generated by %s\n\n", model_name, selfie_name);
+  if (printing_unrolled_model > 0)
+    w = w + dprintf(output_fd, "; unrolled %s for %lu steps (up to %lu instructions)\n\n",
+      model_name, printing_unrolled_model - 1, printing_unrolled_model);
   if (check_bad_exit_code == 0)
     w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
   if (check_good_exit_code)
@@ -11379,6 +11521,8 @@ void print_model() {
   uint64_t core;
 
   open_model_file();
+
+  last_nid = 0;
 
   print_interface_sorts();
   print_interface_kernel();
@@ -11817,11 +11961,12 @@ uint64_t eval_multicore_sequential() {
 
   while (core < number_of_cores) {
     if (eval_sequential(core)) {
-      printf("%s: %s called exit(%lu) on core-%lu @ 0x%lX after %lu steps", selfie_name,
+      printf("%s: %s called exit(%lu) on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)", selfie_name,
         model_name,
         eval_line(load_register_value(NID_A0, "exit code", get_for(core, state_register_file_nids))),
         core,
         eval_line_for(core, state_pc_nids),
+        current_step - current_offset,
         next_step - current_offset);
       if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
     } else
@@ -11931,20 +12076,20 @@ void eval_multicore_states() {
     if (eval_multicore_properties())
       return;
 
-    if (eval_multicore_sequential()) {
-      if (number_of_cores > 1) {
-        printf("%s: %s called exit on all cores after %lu steps", selfie_name,
-          model_name, next_step - current_offset);
-        if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
-      }
+    if (next_step - current_offset >= 100000) {
+      printf("%s: terminating %s after %lu steps (up to %lu instructions)", selfie_name,
+        model_name, current_step - current_offset, next_step - current_offset);
+      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
 
       return;
     }
 
-    if (current_step - current_offset >= 100000 - 1) {
-      printf("%s: terminating %s after %lu steps", selfie_name,
-        model_name, next_step - current_offset);
-      if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+    if (eval_multicore_sequential()) {
+      if (number_of_cores > 1) {
+        printf("%s: %s called exit on all cores after %lu steps (up to %lu instructions)", selfie_name,
+          model_name, current_step - current_offset, next_step - current_offset);
+        if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
+      }
 
       return;
     }
@@ -11963,7 +12108,7 @@ void eval_multicore_states() {
   }
 }
 
-void eval_constant_propagation() {
+uint64_t eval_constant_propagation() {
   current_offset = 0;
   current_step   = 0;
 
@@ -11977,18 +12122,27 @@ void eval_constant_propagation() {
   first_input = 0;
   any_input   = 0;
 
-  last_nid = 0;
-
   states_are_symbolic = 1;
 
-  eval_multicore_properties();
-  eval_multicore_sequential();
+  if (eval_multicore_properties()) {
+    printf("%s: %s violated one or more conditions already after 1 step\n", selfie_name, model_name);
+
+    return 1;
+  }
+
+  if (eval_multicore_sequential()) {
+    printf("%s: %s called exit on all cores already after 1 step\n", selfie_name, model_name);
+
+    return 1;
+  }
 
   restore_multicore_states();
 
   current_step = next_step;
 
   states_are_symbolic = 0;
+
+  return 0;
 }
 
 void eval_rotor() {
@@ -12030,13 +12184,13 @@ void eval_rotor() {
 
         current_input = current_input + 1;
       } else {
-        printf("%s: executed %lu instructions without input\n", selfie_name, max_steps);
+        printf("%s: executed up to %lu instructions without input\n", selfie_name, max_steps);
 
         return;
       }
     }
 
-    printf("%s: executed between %lu instructions with input %lu and %lu instructions with input %lu\n", selfie_name,
+    printf("%s: executed between up to %lu instructions with input %lu and up to %lu instructions with input %lu\n", selfie_name,
       min_steps, min_input, max_steps, max_input);
 
     if (check_exit_codes)
@@ -12088,9 +12242,6 @@ void disassemble_rotor(uint64_t core) {
 }
 
 void print_unrolled_model() {
-  uint64_t last_step_nid;
-
-  // TODO: finish
   open_model_file();
 
   current_offset = 0;
@@ -12099,6 +12250,8 @@ void print_unrolled_model() {
   input_steps   = 0;
   current_input = 0;
 
+  set_symbolic(state_input_buffer_nid, SYMBOLIC);
+
   save_multicore_states();
 
   next_step = next_step + 1;
@@ -12106,16 +12259,38 @@ void print_unrolled_model() {
   first_input = 0;
   any_input   = 0;
 
-  printing_unrolled_model = 1;
-
   last_nid = 0;
 
-  eval_multicore_properties();
+  // TODO: bitwuzla does not like comments
+  printing_comments = 0;
 
-  while (current_step < 2) {
-    last_step_nid = current_nid - 1;
+  while (1) {
+    if (eval_multicore_properties()) {
+      close_model_file();
 
-    eval_multicore_sequential();
+      printf("%s: %s violated one or more conditions after %lu steps (up to %lu instructions)\n", selfie_name,
+        model_name, current_step - current_offset, next_step - current_offset);
+
+      return;
+    }
+
+    if (next_step - current_offset >= printing_unrolled_model) {
+      close_model_file();
+
+      printf("%s: unrolled %s for %lu steps (up to %lu instructions)\n", selfie_name,
+        model_name, current_step - current_offset, next_step - current_offset);
+
+      return;
+    }
+
+    if (eval_multicore_sequential()) {
+      close_model_file();
+
+      printf("%s: %s called exit on all cores after %lu steps (up to %lu instructions)\n", selfie_name,
+        model_name, current_step - current_offset, next_step - current_offset);
+
+      return;
+    }
 
     apply_multicore_sequential();
 
@@ -12123,9 +12298,7 @@ void print_unrolled_model() {
 
     next_step = next_step + 1;
 
-    last_nid = last_step_nid;
-
-    eval_multicore_properties();
+    last_nid = current_nid - 1;
   }
 
   close_model_file();
@@ -12135,11 +12308,14 @@ uint64_t rotor_arguments() {
   char* evaluate_model_option;
   char* debug_model_option;
   char* disassemble_model_option;
+  char* unroll_model_option;
   char* load_code_option;
+  char* print_comments_option;
 
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
   disassemble_model_option = "-s";
+  unroll_model_option      = "-k";
   load_code_option         = "-l";
 
   bad_exit_code_check_option  = "-Pnobadexitcode";
@@ -12159,6 +12335,8 @@ uint64_t rotor_arguments() {
   heap_allowance_option          = "-heapallowance";
   stack_allowance_option         = "-stackallowance";
 
+  print_comments_option = "-nocomments";
+
   target_exit_code = atoi(peek_argument(0));
 
   while (1) {
@@ -12176,6 +12354,15 @@ uint64_t rotor_arguments() {
         disassemble_model = 1;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), unroll_model_option)) {
+        get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          printing_unrolled_model = atoi(peek_argument(1)) + 1;
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), load_code_option)) {
         get_argument();
 
@@ -12291,6 +12478,10 @@ uint64_t rotor_arguments() {
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), print_comments_option)) {
+        printing_comments = 0;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
@@ -12319,8 +12510,10 @@ uint64_t selfie_model() {
       } else {
         number_of_binaries = 0;
 
-        max_code_size = 7 * 4; // must be > 0
-        max_data_size = 0;
+        max_code_size = 7 * INSTRUCTIONSIZE; // must be > 0
+
+        // must be a power of two for zeroed data segment initialization during unrolling
+        max_data_size = 2 * WORDSIZE;
       }
 
       exit_code = rotor_arguments();
@@ -12330,11 +12523,12 @@ uint64_t selfie_model() {
 
       model_rotor();
 
-      if (unroll_model)
+      if (printing_unrolled_model)
         print_unrolled_model();
       else {
         if (printing_propagated_constants)
-          eval_constant_propagation();
+          if (eval_constant_propagation())
+            return EXITCODE_NOERROR;
 
         print_model();
 

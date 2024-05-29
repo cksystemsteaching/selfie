@@ -175,7 +175,9 @@ def check_lazy_evaluation() -> List[Check]:
 
 def check_array() -> List[Check]:
     return check_compilable('global-declaration.c',
-                            'array declaration do compile') + \
+                            'global array declaration do compile') + \
+        check_compilable('local-declaration.c',
+                         'local array declaration do compile') + \
         check_compilable('assignment.c',
                          'assignments on arrays do compile') + \
         check_compilable('invalid-assignment.c',
