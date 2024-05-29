@@ -5835,6 +5835,7 @@ void new_code_segment(uint64_t core) {
   uint64_t* next_code_segment_nid;
   uint64_t* initial_code_segment_nid;
   uint64_t  number_of_hex_digits;
+  uint64_t  address_space_size;
   uint64_t  saved_reuse_lines;
   uint64_t* laddr_nid;
   uint64_t* ir_nid;
@@ -5878,14 +5879,19 @@ void new_code_segment(uint64_t core) {
 
     initial_code_segment_nid = state_zeroed_code_segment_nid;
 
+    address_space_size = two_to_the_power_of(CODE_ADDRESS_SPACE) * (CODEWORDSIZEINBITS / 8);
+
+    pc = code_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    pc = code_start;
-
-    while (pc - code_start < code_size) {
-      fetch();
+    while (pc - code_start < address_space_size) {
+      if (pc - code_start < code_size)
+        fetch();
+      else
+        ir = 0;
 
       if ((ir != 0) + printing_unrolled_model > 0) {
         // skipping zero as instruction unless printing unrolled model
@@ -5992,8 +5998,9 @@ void new_data_segment(uint64_t core) {
   uint64_t* initial_data_segment_nid;
   uint64_t* init_data_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6029,21 +6036,25 @@ void new_data_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(DATA_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = data_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = data_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - data_start < data_size) {
+    while (vaddr - data_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - data_start < data_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6146,8 +6157,9 @@ void new_heap_segment(uint64_t core) {
   uint64_t* initial_heap_segment_nid;
   uint64_t* init_heap_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6183,21 +6195,25 @@ void new_heap_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(HEAP_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = heap_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = heap_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - heap_start < heap_size) {
+    while (vaddr - heap_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - heap_start < heap_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -6300,8 +6316,9 @@ void new_stack_segment(uint64_t core) {
   uint64_t* initial_stack_segment_nid;
   uint64_t* init_stack_segment_nid;
   uint64_t  number_of_hex_digits;
-  uint64_t  saved_reuse_lines;
+  uint64_t  address_space_size;
   uint64_t  vaddr;
+  uint64_t  saved_reuse_lines;
   uint64_t  data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
@@ -6337,21 +6354,25 @@ void new_stack_segment(uint64_t core) {
 
     number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
+    address_space_size = two_to_the_power_of(STACK_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+    vaddr = stack_start;
+
     saved_reuse_lines = reuse_lines;
 
     reuse_lines = 0; // TODO: turn on via console argument
 
-    vaddr = stack_start;
-
     // consider 32-bit overflow to terminate loop
-    while (vaddr - stack_start < stack_size) {
+    while (vaddr - stack_start < address_space_size) {
       data = 0;
 
       if (core < number_of_binaries)
-        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-          data = load_virtual_memory(get_pt(current_context), vaddr);
-        // else: unmapped memory is assumed to be zeroed
-      // else: memory with uninitialized code segment is explicitly zeroed for unrolling
+        if (vaddr - stack_start < stack_size)
+          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+            data = load_virtual_memory(get_pt(current_context), vaddr);
+          // else: unmapped memory is assumed to be zero
+        // else: out-of-segment memory is zeroed
+      // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
       if ((data != 0) + printing_unrolled_model > 0) {
         // skipping zero as initial value unless printing unrolled model
@@ -12467,9 +12488,7 @@ uint64_t selfie_model() {
         number_of_binaries = 0;
 
         max_code_size = 7 * INSTRUCTIONSIZE; // must be > 0
-
-        // must be a power of two for zeroed data segment initialization during unrolling
-        max_data_size = 2 * WORDSIZE;
+        max_data_size = WORDSIZE;
       }
 
       exit_code = rotor_arguments();
