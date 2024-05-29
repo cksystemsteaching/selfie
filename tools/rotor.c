@@ -1744,6 +1744,15 @@ uint64_t* compressed_jr_jalr_control_flow(uint64_t* c_ir_nid, uint64_t* register
 
 uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uint64_t* register_file_nid, uint64_t* other_control_flow_nid);
 
+// pseudoinstructions
+
+uint64_t p_has_rd_imm_operands(uint64_t instruction_ID);
+uint64_t p_has_rd_rsx_operands(uint64_t instruction_ID);
+uint64_t has_rsx_imm_operands(uint64_t instruction_ID);
+uint64_t p_is_branch_type(uint64_t instruction_ID);
+uint64_t p_is_jump_type(uint64_t instruction_ID);
+uint64_t p_is_jump_register_type(uint64_t instruction_ID);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t* SID_INSTRUCTION_WORD = (uint64_t*) 0;
@@ -2331,6 +2340,49 @@ uint64_t ID_C_SRAI = 93; // "c.srai";
 uint64_t ID_C_J   = 94; // "c.j";
 uint64_t ID_C_JAL = 95; // "c.jal";
 
+// pseudoinstruction IDs
+
+// No operands
+
+uint64_t ID_P_NOP = 96;
+uint64_t ID_P_RET = 97;
+
+// rd,I_imm
+
+uint64_t ID_P_LI = 98;
+
+// rd,rsx
+
+uint64_t ID_P_MV     = 99;  // rs1 or rs2
+uint64_t ID_P_NOT    = 100; // rs1
+uint64_t ID_P_SEXT_W = 101; // rs1
+uint64_t ID_P_SEQZ   = 102; // rs1
+uint64_t ID_P_SLTZ   = 103; // rs1
+uint64_t ID_P_ZEXT_B = 104; // rs1
+uint64_t ID_P_NEG    = 105; // rs2
+uint64_t ID_P_NEGW   = 106; // rs2
+uint64_t ID_P_SNEZ   = 107; // rs2
+uint64_t ID_P_SGTZ   = 108; // rs2
+
+// branch type (rsx,pc+SB_imm <SB_imm>)
+
+uint64_t ID_P_BEQZ = 109; // rs1
+uint64_t ID_P_BNEZ = 110; // rs1
+uint64_t ID_P_BGEZ = 111; // rs1
+uint64_t ID_P_BLTZ = 112; // rs1
+uint64_t ID_P_BLEZ = 113; // rs2
+uint64_t ID_P_BGTZ = 114; // rs2
+
+// jump type (pc + UJ_imm <UJ_imm>)
+
+uint64_t ID_P_J   = 115;
+uint64_t ID_P_JAL = 116;
+
+// jump register type (immx(rs1))
+
+uint64_t ID_P_JR   = 117; // I_imm or 0
+uint64_t ID_P_JALR = 118; // I_imm or 0
+
 uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -2342,7 +2394,7 @@ uint64_t* eval_ID_nids                        = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_instruction_mnemonics() {
-  RISC_V_MNEMONICS = smalloc((ID_C_JAL + 1) * sizeof(char*));
+  RISC_V_MNEMONICS = smalloc((ID_P_JALR + 1) * sizeof(char*));
 
   *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unknown";
 
@@ -2503,6 +2555,47 @@ void init_instruction_mnemonics() {
 
   *(RISC_V_MNEMONICS + ID_C_J)   = (uint64_t) "c.j";
   *(RISC_V_MNEMONICS + ID_C_JAL) = (uint64_t) "c.jal";
+
+  // pseudoinstruction IDs
+
+  // No operands
+
+  *(RISC_V_MNEMONICS + ID_P_NOP) = (uint64_t) "nop";
+  *(RISC_V_MNEMONICS + ID_P_RET) = (uint64_t) "ret";
+
+  // rd,I_imm
+
+  *(RISC_V_MNEMONICS + ID_P_LI) = (uint64_t) "li";
+
+  // rd,rsx
+
+  *(RISC_V_MNEMONICS + ID_P_MV)     = (uint64_t) "mv";
+  *(RISC_V_MNEMONICS + ID_P_NOT)    = (uint64_t) "not";
+  *(RISC_V_MNEMONICS + ID_P_SEXT_W) = (uint64_t) "sext.w";
+  *(RISC_V_MNEMONICS + ID_P_SEQZ)   = (uint64_t) "seqz";
+  *(RISC_V_MNEMONICS + ID_P_SLTZ)   = (uint64_t) "sltz";
+  *(RISC_V_MNEMONICS + ID_P_ZEXT_B) = (uint64_t) "zext.b";
+  *(RISC_V_MNEMONICS + ID_P_NEG)    = (uint64_t) "neg";
+  *(RISC_V_MNEMONICS + ID_P_NEGW)   = (uint64_t) "negw";
+  *(RISC_V_MNEMONICS + ID_P_SNEZ)   = (uint64_t) "snez";
+  *(RISC_V_MNEMONICS + ID_P_SGTZ)   = (uint64_t) "sgtz";
+
+  // branch type (rsx,pc+SB_imm <SB_imm>)
+
+  *(RISC_V_MNEMONICS + ID_P_BEQZ) = (uint64_t) "beqz";
+  *(RISC_V_MNEMONICS + ID_P_BNEZ) = (uint64_t) "bnez";
+  *(RISC_V_MNEMONICS + ID_P_BGEZ) = (uint64_t) "bgez";
+  *(RISC_V_MNEMONICS + ID_P_BLTZ) = (uint64_t) "bltz";
+  *(RISC_V_MNEMONICS + ID_P_BLEZ) = (uint64_t) "blez";
+  *(RISC_V_MNEMONICS + ID_P_BGTZ) = (uint64_t) "bgtz";
+
+  // jump type (pc + UJ_imm <UJ_imm>)
+  *(RISC_V_MNEMONICS + ID_P_J)   = (uint64_t) "j";
+  *(RISC_V_MNEMONICS + ID_P_JAL) = (uint64_t) "jal";
+
+  // jump register type (immx(rs1))
+  *(RISC_V_MNEMONICS + ID_P_JR)   = (uint64_t) "jr";
+  *(RISC_V_MNEMONICS + ID_P_JALR) = (uint64_t) "jalr";
 }
 
 void init_instruction_sorts() {
@@ -3297,8 +3390,7 @@ void restore_binary(uint64_t binary);
 void print_assembly(uint64_t core);
 void print_multicore_assembly();
 uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
-  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
-  uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm);
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm);
 
 uint64_t eval_properties(uint64_t core);
 uint64_t eval_multicore_properties();
@@ -10134,6 +10226,47 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
     return other_control_flow_nid;
 }
 
+// pseudoinstructions
+
+uint64_t p_has_rd_imm_operands(uint64_t instruction_ID) {
+  if (instruction_ID == ID_P_LI)
+      return 1;
+
+  return 0;
+}
+
+uint64_t p_has_rd_rsx_operands(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_P_MV)
+    if (instruction_ID <= ID_P_SGTZ)
+      return 1;
+
+  return 0;
+}
+
+uint64_t p_is_branch_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_P_BEQZ)
+    if (instruction_ID <= ID_P_BGTZ)
+      return 1;
+
+  return 0;
+}
+
+uint64_t p_is_jump_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_P_J)
+    if (instruction_ID <= ID_P_JAL)
+      return 1;
+
+  return 0;
+}
+
+uint64_t p_is_jump_register_type(uint64_t instruction_ID) {
+  if (instruction_ID >= ID_P_JR)
+    if (instruction_ID <= ID_P_JALR)
+      return 1;
+
+  return 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- CORE ------------------------------
 // -----------------------------------------------------------------
@@ -11759,7 +11892,7 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (!print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, shamt, shamt_5_bit, S_imm, SB_imm, U_imm, UJ_imm)) {
+  if (!print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
     printf("%s", get_instruction_mnemonic(ID));
 
     if (is_R_type(ID))
@@ -11809,10 +11942,13 @@ void print_multicore_assembly() {
 }
 
 uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
-  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t shamt, uint64_t shamt_5_bit,
-  uint64_t S_imm, uint64_t SB_imm, uint64_t U_imm, uint64_t UJ_imm) {
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm) {
   // This function prints the current instruction as pseudoinstruction, if it is one
   // I have tried to keep the order of the pseudoinstruction checks the same as the order in the RISC-V spec
+  uint64_t pID;
+  uint64_t variant;
+
+  variant = -1;
 
   /*
 
@@ -11867,80 +12003,119 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
 
   */
 
-  if (ID == ID_ADDI && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_ZR) && I_imm == 0)
-    printf("nop");
-  else if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR))
+  if (ID == ID_ADDI && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_ZR) && I_imm == 0) {
+    pID = ID_P_NOP;
+  } else if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR)) {
     // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
     // but objdump seems to only implement it for [addi rd, x0, imm] instructions
-    printf("li %s,%ld", rd, I_imm);
-  else if (ID == ID_ADDI && I_imm == 0)
-    printf("mv %s,%s", rd, rs1);
-  else if (ID == ID_ADD && rs1 == get_register_name(REG_ZR))
+    pID = ID_P_LI;
+  } else if (ID == ID_ADDI && I_imm == 0) {
+    pID = ID_P_MV;
+    variant = 1; // rs1
+  } else if (ID == ID_ADD && rs1 == get_register_name(REG_ZR)) {
     // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
     // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
-    printf("mv %s,%s", rd, rs2);
-  else if (ID == ID_XORI && I_imm == -1)
-    printf("not %s,%s", rd, rs1);
-  else if (ID == ID_SUB && rs1 == get_register_name(REG_ZR))
-    printf("neg %s,%s", rd, rs2);
-  else if (ID == ID_SUBW && rs1 == get_register_name(REG_ZR))
-    printf("negw %s,%s", rd, rs2);
-  else if (ID == ID_ADDIW && I_imm_32_bit == 0)
-    printf("sext.w %s,%s", rd, rs1);
-  else if (ID == ID_SLTIU && I_imm == 1)
-    printf("seqz %s,%s", rd, rs1);
-  else if (ID == ID_SLTU && rs1 == get_register_name(REG_ZR))
-    printf("snez %s,%s", rd, rs2);
-  else if (ID == ID_SLT && rs2 == get_register_name(REG_ZR))
-    printf("sltz %s,%s", rd, rs1);
-  else if (ID == ID_SLT && rs1 == get_register_name(REG_ZR))
-    printf("sgtz %s,%s", rd, rs2);
-
-  else if (ID == ID_BEQ && rs2 == get_register_name(REG_ZR))
-    printf("beqz %s,0x%lX <%ld>", rs1, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (ID == ID_BNE && rs2 == get_register_name(REG_ZR))
-    printf("bnez %s,0x%lX <%ld>", rs1, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (ID == ID_BGE && rs1 == get_register_name(REG_ZR))
-    printf("blez %s,0x%lX <%ld>", rs2, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (ID == ID_BGE && rs2 == get_register_name(REG_ZR))
-    printf("bgez %s,0x%lX <%ld>", rs1, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (ID == ID_BLT && rs2 == get_register_name(REG_ZR))
-    printf("bltz %s,0x%lX <%ld>", rs1, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-  else if (ID == ID_BLT && rs1 == get_register_name(REG_ZR))
-    printf("bgtz %s,0x%lX <%ld>", rs2, pc + SB_imm,
-      signed_division(SB_imm, INSTRUCTIONSIZE));
-
-  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0)
+    pID = ID_P_MV;
+    variant = 2; // rs2
+  } else if (ID == ID_XORI && I_imm == -1) {
+    pID = ID_P_NOT;
+    variant = 1; // rs1
+  } else if (ID == ID_SUB && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_NEG;
+    variant = 2; // rs2
+  } else if (ID == ID_SUBW && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_NEGW;
+    variant = 2; // rs2
+  } else if (ID == ID_ADDIW && I_imm_32_bit == 0) {
+    pID = ID_P_SEXT_W;
+    variant = 1; // rs1
+  } else if (ID == ID_SLTIU && I_imm == 1) {
+    pID = ID_P_SEQZ;
+    variant = 1; // rs1
+  } else if (ID == ID_SLTU && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_SNEZ;
+    variant = 2; // rs2
+  } else if (ID == ID_SLT && rs2 == get_register_name(REG_ZR)) {
+    pID = ID_P_SLTZ;
+    variant = 1; // rs1
+  } else if (ID == ID_SLT && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_SGTZ;
+    variant = 2; // rs2
+  } else if (ID == ID_BEQ && rs2 == get_register_name(REG_ZR)) {
+    pID = ID_P_BEQZ;
+    variant = 1; // rs1
+  } else if (ID == ID_BNE && rs2 == get_register_name(REG_ZR)) {
+    pID = ID_P_BNEZ;
+    variant = 1; // rs1
+  } else if (ID == ID_BGE && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_BLEZ;
+    variant = 2; // rs2
+  } else if (ID == ID_BGE && rs2 == get_register_name(REG_ZR)) {
+    pID = ID_P_BGEZ;
+    variant = 1; // rs1
+  } else if (ID == ID_BLT && rs2 == get_register_name(REG_ZR)) {
+    pID = ID_P_BLTZ;
+    variant = 1; // rs1
+  } else if (ID == ID_BLT && rs1 == get_register_name(REG_ZR)) {
+    pID = ID_P_BGTZ;
+    variant = 2; // rs2
+  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0) {
     // Checking for [ret] first because we don't want it to fall under [jr ...] or [jalr ...]
-    printf("ret");
-  else if (ID == ID_JAL && rd == get_register_name(REG_ZR))
-    printf("j 0x%lX", pc + UJ_imm);
-  else if (ID == ID_JAL && rd == get_register_name(REG_RA))
-    printf("jal 0x%lX", pc + UJ_imm);
-  else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && I_imm == 0)
-    printf("jr %s", rs1);
-  else if (ID == ID_JALR && rd == get_register_name(REG_ZR))
+    pID = ID_P_RET;
+  } else if (ID == ID_JAL && rd == get_register_name(REG_ZR)) {
+    pID = ID_P_J;
+  } else if (ID == ID_JAL && rd == get_register_name(REG_RA)) {
+    pID = ID_P_JAL;
+  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && I_imm == 0) {
+    pID = ID_P_JR;
+    variant = 0; // 0
+  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR)) {
     // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
-    printf("jr %ld(%s)", I_imm, rs1);
-  else if (ID == ID_JALR && rd == get_register_name(REG_RA) && I_imm == 0)
-    printf("jalr %s", rs1);
-  else if (ID == ID_JALR && rd == get_register_name(REG_RA))
+    pID = ID_P_JR;
+    variant = 1; // I_imm
+  } else if (ID == ID_JALR && rd == get_register_name(REG_RA) && I_imm == 0) {
+    pID = ID_P_JALR;
+    variant = 0; // 0
+  } else if (ID == ID_JALR && rd == get_register_name(REG_RA)) {
     // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
-    printf("jalr %ld(%s)", I_imm, rs1);
-
-  else if (ID == ID_ANDI && I_imm == 255)
+    pID = ID_P_JALR;
+    variant = 1; // I_imm
+  } else if (ID == ID_ANDI && I_imm == 255) {
     // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
-    printf("zext.b %s,%s", rd, rs1);
+    pID = ID_P_ZEXT_B;
+    variant = 1; // rs1
+  } else {
+    // This is not a pseudoinstruction
+    return 0;
+  }
 
-  else
-    return 0; // this is not a pseudoinstruction
+  printf("%s", get_instruction_mnemonic(pID));
 
-  return 1; // pseudoinstruction already printed
+  if (p_has_rd_imm_operands(pID)) {
+    printf(" %s,%ld", rd, I_imm);
+  } else if (p_has_rd_rsx_operands(pID)) {
+    if (variant == 1) {
+      printf(" %s,%s", rd, rs1);
+    } else if (variant == 2) {
+      printf(" %s,%s", rd, rs2);
+    }
+  } else if (p_is_branch_type(pID)) {
+    if (variant == 1) {
+      printf(" %s,0x%lX <%ld>", rs1, pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
+    } else if (variant == 2) {
+      printf(" %s,0x%lX <%ld>", rs2, pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
+    }
+  } else if (p_is_jump_type(pID)) {
+    printf(" 0x%lX <%ld>", pc + UJ_imm, signed_division(UJ_imm, INSTRUCTIONSIZE));
+  } else if (p_is_jump_register_type(pID)) {
+    if (variant == 0) {
+      printf(" %s", rs1);
+    } else if (variant == 1) {
+      printf(" %ld(%s)", I_imm, rs1);
+    }
+  }
+
+  return 1;
 }
 
 uint64_t eval_properties(uint64_t core) {
