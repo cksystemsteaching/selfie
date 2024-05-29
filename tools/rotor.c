@@ -11892,36 +11892,38 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (!print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
-    printf("%s", get_instruction_mnemonic(ID));
-
-    if (is_R_type(ID))
-      printf(" %s,%s,%s", rd, rs1, rs2);
-    else if (is_I_type(ID)) {
-      if (is_shift_I_type(ID))
-        if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
-      else
-        if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
-      if (is_register_relative_I_type(ID))
-        printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
-      else if (is_shift_I_type(ID))
-        printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
-      else
-        printf(" %s,%s,%ld", rd, rs1, imm_shamt);
-    } else if (is_S_type(ID))
-      printf(" %s,%ld(%s)", rs2, S_imm, rs1);
-    else if (is_SB_type(ID))
-      printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
-        signed_division(SB_imm, INSTRUCTIONSIZE));
-    else if (is_U_type(ID))
-      printf(" %s,0x%lX", rd, U_imm);
-    else if (ID == ID_JAL)
-      printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
-        signed_division(UJ_imm, INSTRUCTIONSIZE));
-
-    if (mnemonic != get_instruction_mnemonic(ID))
-      printf(" (%s)", mnemonic);
+  if (print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
+    return;
   }
+
+  printf("%s", get_instruction_mnemonic(ID));
+
+  if (is_R_type(ID))
+    printf(" %s,%s,%s", rd, rs1, rs2);
+  else if (is_I_type(ID)) {
+    if (is_shift_I_type(ID))
+      if (is_32_bit_shift_I_type(ID)) imm_shamt = shamt_5_bit; else imm_shamt = shamt;
+    else
+      if (ID == ID_ADDIW) imm_shamt = I_imm_32_bit; else imm_shamt = I_imm;
+    if (is_register_relative_I_type(ID))
+      printf(" %s,%ld(%s)", rd, imm_shamt, rs1);
+    else if (is_shift_I_type(ID))
+      printf(" %s,%s,0x%lX", rd, rs1, imm_shamt);
+    else
+      printf(" %s,%s,%ld", rd, rs1, imm_shamt);
+  } else if (is_S_type(ID))
+    printf(" %s,%ld(%s)", rs2, S_imm, rs1);
+  else if (is_SB_type(ID))
+    printf(" %s,%s,0x%lX <%ld>", rs1, rs2, pc + SB_imm,
+      signed_division(SB_imm, INSTRUCTIONSIZE));
+  else if (is_U_type(ID))
+    printf(" %s,0x%lX", rd, U_imm);
+  else if (ID == ID_JAL)
+    printf(" %s,0x%lX <%ld>", rd, pc + UJ_imm,
+      signed_division(UJ_imm, INSTRUCTIONSIZE));
+
+  if (mnemonic != get_instruction_mnemonic(ID))
+    printf(" (%s)", mnemonic);
 }
 
 void print_multicore_assembly() {
@@ -11944,12 +11946,12 @@ void print_multicore_assembly() {
 uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2, char* rd,
   uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm) {
   // This function prints the current instruction as pseudoinstruction, if it is one
-  // I have tried to keep the order of the pseudoinstruction checks the same as the order in the RISC-V spec
   uint64_t pID;
   uint64_t variant;
   char* zr_name;
   char* ra_name;
 
+  pID = -1;
   variant = -1;
   zr_name = get_register_name(REG_ZR);
   ra_name = get_register_name(REG_RA);
@@ -12007,89 +12009,136 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
 
   */
 
-  if (ID == ID_ADDI && rd == zr_name && rs1 == zr_name && I_imm == 0) {
-    pID = ID_P_NOP;
-  } else if (ID == ID_ADDI && rs1 == zr_name) {
-    // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
-    // but objdump seems to only implement it for [addi rd, x0, imm] instructions
-    pID = ID_P_LI;
-  } else if (ID == ID_ADDI && I_imm == 0) {
-    pID = ID_P_MV;
-    variant = 1; // rs1
-  } else if (ID == ID_ADD && rs1 == zr_name) {
-    // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
-    // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
-    pID = ID_P_MV;
-    variant = 2; // rs2
-  } else if (ID == ID_XORI && I_imm == -1) {
-    pID = ID_P_NOT;
-    variant = 1; // rs1
-  } else if (ID == ID_SUB && rs1 == zr_name) {
-    pID = ID_P_NEG;
-    variant = 2; // rs2
-  } else if (ID == ID_SUBW && rs1 == zr_name) {
-    pID = ID_P_NEGW;
-    variant = 2; // rs2
-  } else if (ID == ID_ADDIW && I_imm_32_bit == 0) {
-    pID = ID_P_SEXT_W;
-    variant = 1; // rs1
-  } else if (ID == ID_SLTIU && I_imm == 1) {
-    pID = ID_P_SEQZ;
-    variant = 1; // rs1
-  } else if (ID == ID_SLTU && rs1 == zr_name) {
-    pID = ID_P_SNEZ;
-    variant = 2; // rs2
-  } else if (ID == ID_SLT && rs2 == zr_name) {
-    pID = ID_P_SLTZ;
-    variant = 1; // rs1
-  } else if (ID == ID_SLT && rs1 == zr_name) {
-    pID = ID_P_SGTZ;
-    variant = 2; // rs2
-  } else if (ID == ID_BEQ && rs2 == zr_name) {
-    pID = ID_P_BEQZ;
-    variant = 1; // rs1
-  } else if (ID == ID_BNE && rs2 == zr_name) {
-    pID = ID_P_BNEZ;
-    variant = 1; // rs1
-  } else if (ID == ID_BGE && rs1 == zr_name) {
-    pID = ID_P_BLEZ;
-    variant = 2; // rs2
-  } else if (ID == ID_BGE && rs2 == zr_name) {
-    pID = ID_P_BGEZ;
-    variant = 1; // rs1
-  } else if (ID == ID_BLT && rs2 == zr_name) {
-    pID = ID_P_BLTZ;
-    variant = 1; // rs1
-  } else if (ID == ID_BLT && rs1 == zr_name) {
-    pID = ID_P_BGTZ;
-    variant = 2; // rs2
-  } else if (ID == ID_JALR && rd == zr_name && rs1 == ra_name && I_imm == 0) {
-    // Checking for [ret] first because we don't want it to fall under [jr ...] or [jalr ...]
-    pID = ID_P_RET;
-  } else if (ID == ID_JAL && rd == zr_name) {
-    pID = ID_P_J;
-  } else if (ID == ID_JAL && rd == ra_name) {
-    pID = ID_P_JAL;
-  } else if (ID == ID_JALR && rd == zr_name && I_imm == 0) {
-    pID = ID_P_JR;
-    variant = 0; // 0
-  } else if (ID == ID_JALR && rd == zr_name) {
-    // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
-    pID = ID_P_JR;
-    variant = 1; // I_imm
-  } else if (ID == ID_JALR && rd == ra_name && I_imm == 0) {
-    pID = ID_P_JALR;
-    variant = 0; // 0
-  } else if (ID == ID_JALR && rd == ra_name) {
-    // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
-    pID = ID_P_JALR;
-    variant = 1; // I_imm
-  } else if (ID == ID_ANDI && I_imm == 255) {
-    // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
-    pID = ID_P_ZEXT_B;
-    variant = 1; // rs1
-  } else {
-    // This is not a pseudoinstruction
+  if (ID == ID_ADDI) {
+    if (rs1 == zr_name) {
+      if (rd == zr_name) {
+        if (I_imm == 0) {
+          pID = ID_P_NOP;
+        } else {
+          // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
+          // but objdump seems to only implement it for [addi rd, x0, imm] instructions
+          pID = ID_P_LI;
+        }
+      } else {
+        pID = ID_P_LI;
+      }
+    } else if (I_imm == 0) {
+      pID = ID_P_MV;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_ADD) {
+    if (rs1 == zr_name) {
+      // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
+      // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
+      pID = ID_P_MV;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_XORI) {
+    if (I_imm == (uint64_t) -1) {
+      pID = ID_P_NOT;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SUB) {
+    if (rs1 == zr_name) {
+      pID = ID_P_NEG;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_SUBW) {
+    if (rs1 == zr_name) {
+      pID = ID_P_NEGW;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_ADDIW) {
+    if (I_imm_32_bit == 0) {
+      pID = ID_P_SEXT_W;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLTIU) {
+    if (I_imm == 1) {
+      pID = ID_P_SEQZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLTU) {
+    if (rs1 == zr_name) {
+      pID = ID_P_SNEZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_SLT) {
+    if (rs2 == zr_name) {
+      pID = ID_P_SLTZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLT) {
+    if (rs1 == zr_name) {
+      pID = ID_P_SGTZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_BEQ) {
+    if (rs2 == zr_name) {
+      pID = ID_P_BEQZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BNE) {
+    if (rs2 == zr_name) {
+      pID = ID_P_BNEZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BGE) {
+    if (rs1 == zr_name) {
+      pID = ID_P_BLEZ;
+      variant = 2; // rs2
+    } else if (rs2 == zr_name) {
+      pID = ID_P_BGEZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BLT) {
+    if (rs2 == zr_name) {
+      pID = ID_P_BLTZ;
+      variant = 1; // rs1
+    } else if (rs1 == zr_name) {
+      pID = ID_P_BGTZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_JALR) {
+    if (rd == zr_name) {
+      if (I_imm == 0) {
+        if (rs1 == ra_name) {
+          pID = ID_P_RET;
+        } else {
+          pID = ID_P_JR;
+          variant = 0; // 0
+        }
+      } else {
+        // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
+        pID = ID_P_JR;
+        variant = 1; // I_imm
+      }
+    } else if (rd == ra_name) {
+      if (I_imm == 0) {
+        pID = ID_P_JALR;
+        variant = 0; // 0
+      } else {
+        // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
+        pID = ID_P_JALR;
+        variant = 1; // I_imm
+      }
+    }
+  } else if (ID == ID_JAL) {
+    if (rd == zr_name) {
+      pID = ID_P_J;
+    } else if (rd == ra_name) {
+      pID = ID_P_JAL;
+    }
+  } else if (ID == ID_ANDI) {
+    if (I_imm == 255) {
+      // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
+      pID = ID_P_ZEXT_B;
+      variant = 1; // rs1
+    }
+  }
+
+  if (pID == (uint64_t) -1) {
+    // This is not a pseudoinstruction, let's get out of here
     return 0;
   }
 
