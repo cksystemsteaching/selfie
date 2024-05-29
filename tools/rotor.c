@@ -11947,8 +11947,12 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
   // I have tried to keep the order of the pseudoinstruction checks the same as the order in the RISC-V spec
   uint64_t pID;
   uint64_t variant;
+  char* zr_name;
+  char* ra_name;
 
   variant = -1;
+  zr_name = get_register_name(REG_ZR);
+  ra_name = get_register_name(REG_RA);
 
   /*
 
@@ -12003,16 +12007,16 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
 
   */
 
-  if (ID == ID_ADDI && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_ZR) && I_imm == 0) {
+  if (ID == ID_ADDI && rd == zr_name && rs1 == zr_name && I_imm == 0) {
     pID = ID_P_NOP;
-  } else if (ID == ID_ADDI && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_ADDI && rs1 == zr_name) {
     // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
     // but objdump seems to only implement it for [addi rd, x0, imm] instructions
     pID = ID_P_LI;
   } else if (ID == ID_ADDI && I_imm == 0) {
     pID = ID_P_MV;
     variant = 1; // rs1
-  } else if (ID == ID_ADD && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_ADD && rs1 == zr_name) {
     // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
     // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
     pID = ID_P_MV;
@@ -12020,10 +12024,10 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
   } else if (ID == ID_XORI && I_imm == -1) {
     pID = ID_P_NOT;
     variant = 1; // rs1
-  } else if (ID == ID_SUB && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_SUB && rs1 == zr_name) {
     pID = ID_P_NEG;
     variant = 2; // rs2
-  } else if (ID == ID_SUBW && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_SUBW && rs1 == zr_name) {
     pID = ID_P_NEGW;
     variant = 2; // rs2
   } else if (ID == ID_ADDIW && I_imm_32_bit == 0) {
@@ -12032,51 +12036,51 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, char* rs1, char* rs2,
   } else if (ID == ID_SLTIU && I_imm == 1) {
     pID = ID_P_SEQZ;
     variant = 1; // rs1
-  } else if (ID == ID_SLTU && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_SLTU && rs1 == zr_name) {
     pID = ID_P_SNEZ;
     variant = 2; // rs2
-  } else if (ID == ID_SLT && rs2 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_SLT && rs2 == zr_name) {
     pID = ID_P_SLTZ;
     variant = 1; // rs1
-  } else if (ID == ID_SLT && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_SLT && rs1 == zr_name) {
     pID = ID_P_SGTZ;
     variant = 2; // rs2
-  } else if (ID == ID_BEQ && rs2 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BEQ && rs2 == zr_name) {
     pID = ID_P_BEQZ;
     variant = 1; // rs1
-  } else if (ID == ID_BNE && rs2 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BNE && rs2 == zr_name) {
     pID = ID_P_BNEZ;
     variant = 1; // rs1
-  } else if (ID == ID_BGE && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BGE && rs1 == zr_name) {
     pID = ID_P_BLEZ;
     variant = 2; // rs2
-  } else if (ID == ID_BGE && rs2 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BGE && rs2 == zr_name) {
     pID = ID_P_BGEZ;
     variant = 1; // rs1
-  } else if (ID == ID_BLT && rs2 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BLT && rs2 == zr_name) {
     pID = ID_P_BLTZ;
     variant = 1; // rs1
-  } else if (ID == ID_BLT && rs1 == get_register_name(REG_ZR)) {
+  } else if (ID == ID_BLT && rs1 == zr_name) {
     pID = ID_P_BGTZ;
     variant = 2; // rs2
-  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && rs1 == get_register_name(REG_RA) && I_imm == 0) {
+  } else if (ID == ID_JALR && rd == zr_name && rs1 == ra_name && I_imm == 0) {
     // Checking for [ret] first because we don't want it to fall under [jr ...] or [jalr ...]
     pID = ID_P_RET;
-  } else if (ID == ID_JAL && rd == get_register_name(REG_ZR)) {
+  } else if (ID == ID_JAL && rd == zr_name) {
     pID = ID_P_J;
-  } else if (ID == ID_JAL && rd == get_register_name(REG_RA)) {
+  } else if (ID == ID_JAL && rd == ra_name) {
     pID = ID_P_JAL;
-  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR) && I_imm == 0) {
+  } else if (ID == ID_JALR && rd == zr_name && I_imm == 0) {
     pID = ID_P_JR;
     variant = 0; // 0
-  } else if (ID == ID_JALR && rd == get_register_name(REG_ZR)) {
+  } else if (ID == ID_JALR && rd == zr_name) {
     // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
     pID = ID_P_JR;
     variant = 1; // I_imm
-  } else if (ID == ID_JALR && rd == get_register_name(REG_RA) && I_imm == 0) {
+  } else if (ID == ID_JALR && rd == ra_name && I_imm == 0) {
     pID = ID_P_JALR;
     variant = 0; // 0
-  } else if (ID == ID_JALR && rd == get_register_name(REG_RA)) {
+  } else if (ID == ID_JALR && rd == ra_name) {
     // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
     pID = ID_P_JALR;
     variant = 1; // I_imm
