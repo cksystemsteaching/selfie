@@ -1750,7 +1750,6 @@ uint64_t* core_compressed_control_flow(uint64_t* pc_nid, uint64_t* c_ir_nid, uin
 
 uint64_t p_has_rd_imm_operands(uint64_t instruction_ID);
 uint64_t p_has_rd_rsx_operands(uint64_t instruction_ID);
-uint64_t has_rsx_imm_operands(uint64_t instruction_ID);
 uint64_t p_is_branch_type(uint64_t instruction_ID);
 uint64_t p_is_jump_type(uint64_t instruction_ID);
 uint64_t p_is_jump_register_type(uint64_t instruction_ID);
