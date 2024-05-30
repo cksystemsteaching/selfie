@@ -31,6 +31,7 @@ For more detailed information about its usage, please consult the README.
 '''
 
 bulk_grade_mode = False
+commit_link_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
 include_dependencies = False
@@ -39,6 +40,7 @@ include_dependencies = False
 def error(msg):
     print_error(msg)
     exit(1)
+
 
 def list_assignments_str(assignments: List[Assignment]) -> str:
     def print_assignment_of_lecture(lecture, stream):
@@ -57,6 +59,7 @@ def list_assignments_str(assignments: List[Assignment]) -> str:
 
     return stream.getvalue()
 
+
 def print_dependency_tree(assignments: List[Assignment]):
     def print_assignment_with_dependents(assignment, stream, depth):
         for i in range(depth):
@@ -72,7 +75,7 @@ def print_dependency_tree(assignments: List[Assignment]):
 
         for assignment in filter(lambda x: x.lecture is lecture, assignments.copy()):
             if assignment.parent is None:
-                print_assignment_with_dependents(assignment, stream, 0);
+                print_assignment_with_dependents(assignment, stream, 0)
 
         print(file=stream)
 
@@ -84,6 +87,7 @@ def print_dependency_tree(assignments: List[Assignment]):
 
     return stream.getvalue()
 
+
 def parse_assignment(args: str, assignments: List[Assignment]) -> Optional[Assignment]:
     if not args:
         return None
@@ -94,6 +98,7 @@ def parse_assignment(args: str, assignments: List[Assignment]) -> Optional[Assig
         return possible_assignment[0]
 
     error('unknown test: {}'.format(args))
+
 
 def parse_truncate_range(arg: str) -> int:
     try:
@@ -164,7 +169,7 @@ def check_assignment(assignment: Assignment, baseline: List[Assignment]) -> Tupl
 
         if assignment.parent is not None:
             print_dependencies(assignment.parent)
-        
+
         print_message(']')
 
         results = baseline_results + check_dependencies(assignment)
@@ -210,6 +215,13 @@ def set_bulk_grade_directory(directory):
     bulk_grade_directory = os.path.abspath(directory)
 
 
+def enable_commit_link_grader(commit_url_from_arg):
+    global commit_link_grade_mode, commit_url
+
+    commit_link_grade_mode = True
+    commit_url = commit_url_from_arg
+
+
 def parse_commit_url(url) -> Optional[Dict]:
     matcher = re.match(
         '^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', url)
@@ -224,7 +236,56 @@ def parse_commit_url(url) -> Optional[Dict]:
         }
 
 
-def do_bulk_grading(assignment: Optional[Assignment], baseline: List[Assignment]):
+def grade_commit(commit_url, assignment, baseline):
+    info = parse_commit_url(commit_url)
+
+    if info is None:
+        print_message(commit_url + '" is not a valid github commit link')
+        return
+
+    repo_id = '{}/{}'.format(info['user'], info['repo'])
+
+    print_message(repo_id + ': ', end='', loud=True)
+
+    clone_dir = os.path.join(bulk_grade_directory, repo_id)
+
+    if not os.path.exists(clone_dir):
+        status = run(
+            ['git', 'clone', '-q', 'git@github.com:{}'.format(repo_id), repo_id],
+                        stdout=DEVNULL, stderr=DEVNULL).returncode
+
+        if status != 0:
+            print_message('error while cloning ' + repo_id, loud=True)
+            return
+
+    os.chdir(clone_dir)
+
+    # remove all changes in local repository
+    run(['git', 'reset', '--hard', '-q'], stdout=DEVNULL, stderr=DEVNULL)
+
+    # fetch updates from github repository
+    run(['git', 'fetch', '-q'], stdout=DEVNULL, stderr=DEVNULL)
+
+    # change the local repository state using the commit ID
+    status = run(
+        ['git', 'checkout', '-q', info['commit']],
+        stdout=DEVNULL, stderr=DEVNULL).returncode
+
+    if status == 0:
+        if assignment is None:
+            print_message('updated', loud=True)
+        else:
+            print_message('')
+            check_assignment(assignment, baseline)
+            print_message('', loud=True)
+    else:
+        print_message(
+                    'commit hash "{}" is not valid'.format(info['commit']), loud=True)
+
+    os.chdir(bulk_grade_directory)
+
+
+def prepare_grading() -> str:
     if not os.path.exists(bulk_grade_directory):
         os.mkdir(bulk_grade_directory)
 
@@ -232,59 +293,33 @@ def do_bulk_grading(assignment: Optional[Assignment], baseline: List[Assignment]
 
     os.chdir(bulk_grade_directory)
 
-    with open(file_with_commit_links, 'rt') as file:
-        for line in file.readlines():
-            info = parse_commit_url(line)
+    return working_directory
 
-            if info is None:
-                print_message(line + '" is not a valid github commit link')
-                continue
 
-            repo_id = '{}/{}'.format(info['user'], info['repo'])
-
-            print_message(repo_id + ': ', end='', loud=True)
-
-            clone_dir = os.path.join(bulk_grade_directory, repo_id)
-
-            if not os.path.exists(clone_dir):
-                status = run(
-                        ['git', 'clone', '-q', 'git@github.com:{}'.format(repo_id), repo_id],
-                        stdout=DEVNULL, stderr=DEVNULL).returncode
-
-                if status != 0:
-                    print_message('error while cloning ' + repo_id, loud=True)
-                    continue
-
-            os.chdir(clone_dir)
-
-            # remove all changes in local repository
-            run(['git', 'reset', '--hard', '-q'], stdout=DEVNULL, stderr=DEVNULL)
-
-            # fetch updates from github repository
-            run(['git', 'fetch', '-q'], stdout=DEVNULL, stderr=DEVNULL)
-
-            # change the local repository state using the commit ID
-            status = run(
-                    ['git', 'checkout', '-q', info['commit']],
-                    stdout=DEVNULL, stderr=DEVNULL).returncode
-
-            if status == 0:
-                if assignment is None:
-                    print_message('updated', loud=True)
-                else:
-                    print_message('')
-                    check_assignment(assignment, baseline)
-                    print_message('', loud=True)
-            else:
-                print_message(
-                    'commit hash "{}" is not valid'.format(info['commit']), loud=True)
-
-            os.chdir(bulk_grade_directory)
-
+def cleanup_after_grading(working_directory: str):
     os.chdir(working_directory)
 
     if bulk_grade_directory is DEFAULT_BULK_GRADE_DIRECTORY:
         os.system('rm -rf {}'.format(bulk_grade_directory))
+
+
+
+def do_bulk_grading(assignment: Optional[Assignment], baseline: List[Assignment]):
+    working_directory = prepare_grading()
+
+    with open(file_with_commit_links, 'rt') as file:
+        for line in file.readlines():
+            grade_commit(line, assignment, baseline)
+
+    cleanup_after_grading(working_directory)
+
+
+def do_commit_grading(assignment: Optional[Assignment], baseline: List[Assignment]):
+    working_directory = prepare_grading()
+
+    grade_commit(commit_url, assignment, baseline)
+
+    cleanup_after_grading(working_directory)
 
 
 def reset_state():
@@ -321,6 +356,8 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
     parser.add_argument('-d', default=None, metavar="<directory>",
             help='directory where all bulk-graded repositories are stored',
             dest='bulk_directory')
+    parser.add_argument('-l', default=None, metavar="<commit_link>",
+            help='grade assignment given as github commit link', dest='commit_link')
     parser.add_argument('--truncate', metavar=('trailing', 'leading'), nargs=2,
             type=parse_truncate_range,
             help='truncates the amount of leading and trailing lines',
@@ -361,10 +398,15 @@ def process_arguments(argv: List[str], assignments: List[Assignment], baseline: 
         if args.bulk_directory:
             set_bulk_grade_directory(args.bulk_directory)
 
+        if args.commit_link:
+            enable_commit_link_grader(args.commit_link)
+
         validate_options_for(args.assignment)
 
         if bulk_grade_mode:
             do_bulk_grading(args.assignment, baseline)
+        elif commit_link_grade_mode:
+            do_commit_grading(args.assignment, baseline)
         else:
             check_assignment(args.assignment, baseline)
 
