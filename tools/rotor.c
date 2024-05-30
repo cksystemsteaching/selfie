@@ -12151,7 +12151,7 @@ uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, uint64_t rs1, uint64_
   }
 
   if (pID == (uint64_t) -1) {
-    // This is not a pseudoinstruction, let's get out of here
+    // This is not a pseudoinstruction
     return 0;
   }
 
