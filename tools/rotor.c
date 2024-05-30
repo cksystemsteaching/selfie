@@ -4853,7 +4853,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
           if (eval_bad_nid == UNUSED)
             eval_bad_nid = condition_nid;
           else {
-            eval_bad_nid = new_binary_boolean(OP_AND, eval_bad_nid, condition_nid, "bad property chain");
+            eval_bad_nid = new_binary_boolean(OP_OR, eval_bad_nid, condition_nid, "bad property chain");
             set_symbolic(eval_bad_nid, SYMBOLIC);
             set_step(eval_bad_nid, next_step);
           }
@@ -12238,14 +12238,7 @@ void print_unrolled_model() {
 
     if (next_step - current_offset >= printing_unrolled_model) {
       if (eval_bad_nid != UNUSED) {
-        eval_bad_nid = new_unary_boolean(OP_NOT, eval_bad_nid, "negated bad property chain");
-        set_symbolic(eval_bad_nid, SYMBOLIC);
-        set_step(eval_bad_nid, next_step);
-
-        eval_bad_nid = new_property(OP_CONSTRAINT,
-          eval_bad_nid,
-          "all-bad-properties",
-          "all bad properties");
+        eval_bad_nid = new_property(OP_CONSTRAINT, eval_bad_nid, "any-bad-property", "any bad property");
         set_symbolic(eval_bad_nid, SYMBOLIC);
         set_step(eval_bad_nid, next_step);
 
