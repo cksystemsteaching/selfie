@@ -335,6 +335,7 @@ uint64_t last_nid = 0; // last nid is 0
 uint64_t current_nid = 1; // first nid is 1
 
 uint64_t printing_comments = 1;
+uint64_t disassembling_pseudoinstructions = 1;
 
 uint64_t printing_propagated_constants = 1;
 
@@ -11906,8 +11907,10 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
-    return;
+  if (disassembling_pseudoinstructions) {
+    if (print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
+      return;
+    }
   }
 
   printf("%s", get_instruction_mnemonic(ID));
@@ -12651,6 +12654,7 @@ uint64_t rotor_arguments() {
   char* unroll_model_option;
   char* load_code_option;
   char* print_comments_option;
+  char* disassemble_pseudoinstructions_option;
   char* printing_non_seq_btor2_option;
 
   evaluate_model_option    = "-m";
@@ -12677,6 +12681,7 @@ uint64_t rotor_arguments() {
   stack_allowance_option         = "-stackallowance";
 
   print_comments_option = "-nocomments";
+  disassemble_pseudoinstructions_option = "-nopseudoinstructions";
 
   printing_non_seq_btor2_option = "-smt";
 
@@ -12823,6 +12828,10 @@ uint64_t rotor_arguments() {
           return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), print_comments_option)) {
         printing_comments = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), disassemble_pseudoinstructions_option)) {
+        disassembling_pseudoinstructions = 0;
 
         get_argument();
       } else if (string_compare(peek_argument(1), printing_non_seq_btor2_option)) {
