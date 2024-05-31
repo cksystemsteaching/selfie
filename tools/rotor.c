@@ -12422,7 +12422,7 @@ void eval_multicore_states() {
 
     if (eval_multicore_sequential()) {
       if (number_of_cores > 1) {
-        printf("%s: %s called exit on all cores after %lu steps (up to %lu instructions)", selfie_name,
+        printf("%s: %s halted on all cores after %lu steps (up to %lu instructions)", selfie_name,
           model_name, current_step - current_offset, next_step - current_offset);
         if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
       }
@@ -12467,7 +12467,7 @@ uint64_t eval_constant_propagation() {
   }
 
   if (eval_multicore_sequential()) {
-    printf("%s: %s called exit on all cores already after 1 step\n", selfie_name, model_name);
+    printf("%s: %s halted on all cores already after 1 step\n", selfie_name, model_name);
 
     return 1;
   }
@@ -12630,7 +12630,7 @@ void print_unrolled_model() {
     if (eval_multicore_sequential()) {
       close_model_file();
 
-      printf("%s: %s called exit on all cores after %lu steps (up to %lu instructions)\n", selfie_name,
+      printf("%s: %s halted on all cores after %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
 
       return;
