@@ -3451,7 +3451,7 @@ uint64_t max_steps = 0;
 uint64_t min_input = 0;
 uint64_t max_input = 0;
 
-uint64_t printing_pseudoinstructions = 1;
+uint64_t printing_pseudoinstructions = 1; // >1 also prints original non-pseudo instruction
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -12101,9 +12101,13 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (printing_pseudoinstructions)
-    if (print_pseudoinstruction(pc, ID, rd, rs1, rs2, I_imm, I_imm_32_bit, SB_imm, UJ_imm))
-      return;
+  if (printing_pseudoinstructions > 0)
+    if (print_pseudoinstruction(pc, ID, rd, rs1, rs2, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
+      if (printing_pseudoinstructions > 1)
+        printf(" # ");
+      else
+        return;
+    }
 
   printf("%s", get_instruction_mnemonic(ID));
 
@@ -12671,7 +12675,7 @@ uint64_t rotor_arguments() {
 
   printing_comments_option           = "-nocomments";
   printing_smt_option                = "-smt";
-  printing_pseudoinstructions_option = "-nopseudoinstructions";
+  printing_pseudoinstructions_option = "-p";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -12823,9 +12827,14 @@ uint64_t rotor_arguments() {
 
         get_argument();
       } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
-        printing_pseudoinstructions = 0;
-
         get_argument();
+
+        if (number_of_remaining_arguments() > 1) {
+          printing_pseudoinstructions = atoi(peek_argument(1));
+
+          get_argument();
+        } else
+          return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
