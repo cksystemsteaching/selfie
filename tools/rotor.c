@@ -335,7 +335,6 @@ uint64_t last_nid = 0; // last nid is 0
 uint64_t current_nid = 1; // first nid is 1
 
 uint64_t printing_comments = 1;
-uint64_t disassembling_pseudoinstructions = 1;
 
 uint64_t printing_propagated_constants = 1;
 
@@ -440,7 +439,7 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
-uint64_t printing_non_seq_btor2  = 0; // indicates if targeting non-sequential BTOR2
+uint64_t printing_smt            = 0; // indicates if targeting non-sequential BTOR2
 
 uint64_t* eval_bad_nid = (uint64_t*) 0;
 
@@ -3386,13 +3385,15 @@ void init_properties(uint64_t number_of_cores) {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
-void save_binary(uint64_t binary);
-void restore_binary(uint64_t binary);
+uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID,
+  uint64_t rd, uint64_t rs1, uint64_t rs2,
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm);
 
 void print_assembly(uint64_t core);
 void print_multicore_assembly();
-uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, uint64_t rs1, uint64_t rs2, uint64_t rd,
-  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm);
+
+void save_binary(uint64_t binary);
+void restore_binary(uint64_t binary);
 
 uint64_t eval_properties(uint64_t core);
 uint64_t eval_multicore_properties();
@@ -3449,6 +3450,8 @@ uint64_t max_steps = 0;
 
 uint64_t min_input = 0;
 uint64_t max_input = 0;
+
+uint64_t printing_pseudoinstructions = 1;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -4942,7 +4945,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
-        if (printing_non_seq_btor2 == 0)
+        if (printing_smt == 0)
           print_line_advancing_nid(line);
         else {
           if (eval_bad_nid == UNUSED)
@@ -11696,32 +11699,223 @@ void print_model() {
 // ---------------------------- EMULATOR ---------------------------
 // -----------------------------------------------------------------
 
-void save_binary(uint64_t binary) {
-  set_for(binary, binary_names, (uint64_t*) binary_name);
+uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID,
+  uint64_t rd, uint64_t rs1, uint64_t rs2,
+  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm) {
+  // This function prints the current instruction as pseudoinstruction, if it is one
+  uint64_t pID;
+  uint64_t variant;
 
-  set_for(binary, e_entries, (uint64_t*) e_entry);
+  pID     = -1;
+  variant = -1;
 
-  set_for(binary, code_binaries, (uint64_t*) code_binary);
-  set_for(binary, data_binaries, (uint64_t*) data_binary);
+  /*
 
-  set_for(binary, code_starts, (uint64_t*) code_start);
-  set_for(binary, code_sizes, (uint64_t*) code_size);
-  set_for(binary, data_starts, (uint64_t*) data_start);
-  set_for(binary, data_sizes, (uint64_t*) data_size);
-}
+  NOTE: Certain pseudoinstructions are not implemented. They are listed below:
 
-void restore_binary(uint64_t binary) {
-  binary_name = (char*) get_for(binary, binary_names);
+  ## Pseudoinstructions with multiple base instructions are not supported. This includes the following:
 
-  e_entry = (uint64_t) get_for(binary, e_entries);
+  -- Load address --
+  la rd, symbol -> auipc rd, symbol[31:12]
+                   addi rd, rd, symbol[11:0]
 
-  code_binary = get_for(binary, code_binaries);
-  data_binary = get_for(binary, data_binaries);
+  -- Load global --
+  l{b|h|w|d} rd, symbol -> auipc rd, symbol[31:12]
+                           l{b|h|w|d} rd, symbol[11:0](rd)
 
-  code_start = (uint64_t) get_for(binary, code_starts);
-  code_size  = (uint64_t) get_for(binary, code_sizes);
-  data_start = (uint64_t) get_for(binary, data_starts);
-  data_size  = (uint64_t) get_for(binary, data_sizes);
+  -- Store global --
+  s{b|h|w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                               s{b|h|w|d} rd, symbol[11:0](rt)
+
+  -- Floating-point load global --
+  fl{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                            fl{w|d} rd, symbol[11:0](rt)
+
+  -- Floating-point store global --
+  fs{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
+                            fs{w|d} rd, symbol[11:0](rt)
+
+  -- Call far-away subroutine --
+  call offset -> auipc x6, offset[31:12]
+                 jalr x1, x6, offset[11:0]
+
+  -- Tail call far-away subroutine --
+  tail offset -> auipc x6, offset[31:12]
+                 jalr x0, x6, offset[11:0]
+
+  ## The following pseudoinstructions are not implemented because the base instructions are missing from rotor:
+
+  fmv.s  rd, rs -> fsgnj.s  rd, rs, rs   (Copy single-precision register)
+  fabs.s rd, rs -> fsgnjx.s rd, rs, rs   (Single-precision absolute value)
+  fneg.s rd, rs -> fsgnjn.s rd, rs, rs   (Single-precision negate)
+  fmv.d  rd, rs -> fsgnj.d  rd, rs, rs   (Copy double-precision register)
+  fabs.d rd, rs -> fsgnjx.d rd, rs, rs   (Double-precision absolute value)
+  fneg.d rd, rs -> fsgnjn.d rd, rs, rs   (Double-precision negate)
+  fence -> fence iorw, iorw   (Fence on all memory and I/O)
+
+  ## The following set of pseudoinstructions are not implemented because they are never disassembled by objdump:
+
+  bgt  rs, rt, offset -> blt  rt, rs, offset   (Branch if >)
+  ble  rs, rt, offset -> bge  rt, rs, offset   (Branch if <=)
+  bgtu rs, rt, offset -> bltu rt, rs, offset   (Branch if >, unsigned)
+  bleu rs, rt, offset -> bgeu rt, rs, offset   (Branch if <=, unsigned)
+
+  */
+
+  if (ID == ID_ADDI) {
+    if (rs1 == REG_ZR) {
+      if (rd == REG_ZR) {
+        if (I_imm == 0)
+          pID = ID_P_NOP;
+        else {
+          // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
+          // but objdump seems to only implement it for [addi rd, x0, imm] instructions
+          pID = ID_P_LI;
+        }
+      } else
+        pID = ID_P_LI;
+    } else if (I_imm == 0) {
+      pID = ID_P_MV;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_ADD) {
+    if (rs1 == REG_ZR) {
+      // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
+      // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
+      pID = ID_P_MV;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_XORI) {
+    if (I_imm == (uint64_t) -1) {
+      pID = ID_P_NOT;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SUB) {
+    if (rs1 == REG_ZR) {
+      pID = ID_P_NEG;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_SUBW) {
+    if (rs1 == REG_ZR) {
+      pID = ID_P_NEGW;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_ADDIW) {
+    if (I_imm_32_bit == 0) {
+      pID = ID_P_SEXT_W;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLTIU) {
+    if (I_imm == 1) {
+      pID = ID_P_SEQZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLTU) {
+    if (rs1 == REG_ZR) {
+      pID = ID_P_SNEZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_SLT) {
+    if (rs2 == REG_ZR) {
+      pID = ID_P_SLTZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_SLT) {
+    if (rs1 == REG_ZR) {
+      pID = ID_P_SGTZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_BEQ) {
+    if (rs2 == REG_ZR) {
+      pID = ID_P_BEQZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BNE) {
+    if (rs2 == REG_ZR) {
+      pID = ID_P_BNEZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BGE) {
+    if (rs1 == REG_ZR) {
+      pID = ID_P_BLEZ;
+      variant = 2; // rs2
+    } else if (rs2 == REG_ZR) {
+      pID = ID_P_BGEZ;
+      variant = 1; // rs1
+    }
+  } else if (ID == ID_BLT) {
+    if (rs2 == REG_ZR) {
+      pID = ID_P_BLTZ;
+      variant = 1; // rs1
+    } else if (rs1 == REG_ZR) {
+      pID = ID_P_BGTZ;
+      variant = 2; // rs2
+    }
+  } else if (ID == ID_JALR) {
+    if (rd == REG_ZR) {
+      if (I_imm == 0) {
+        if (rs1 == REG_RA) {
+          pID = ID_P_RET;
+        } else {
+          pID = ID_P_JR;
+          variant = 0; // 0
+        }
+      } else {
+        // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
+        pID = ID_P_JR;
+        variant = 1; // I_imm
+      }
+    } else if (rd == REG_RA) {
+      if (I_imm == 0) {
+        pID = ID_P_JALR;
+        variant = 0; // 0
+      } else {
+        // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
+        pID = ID_P_JALR;
+        variant = 1; // I_imm
+      }
+    }
+  } else if (ID == ID_JAL) {
+    if (rd == REG_ZR)
+      pID = ID_P_J;
+    else if (rd == REG_RA)
+      pID = ID_P_JAL;
+  } else if (ID == ID_ANDI) {
+    if (I_imm == 255) {
+      // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
+      pID = ID_P_ZEXT_B;
+      variant = 1; // rs1
+    }
+  }
+
+  if (pID == (uint64_t) -1)
+    // This is not a pseudoinstruction
+    return 0;
+
+  printf("%s", get_instruction_mnemonic(pID));
+
+  if (p_has_rd_imm_operands(pID))
+    printf(" %s,%ld", get_register_name(rd), I_imm);
+  else if (p_has_rd_rsx_operands(pID)) {
+    if (variant == 1)
+      printf(" %s,%s", get_register_name(rd), get_register_name(rs1));
+    else if (variant == 2)
+      printf(" %s,%s", get_register_name(rd), get_register_name(rs2));
+  } else if (p_is_branch_type(pID)) {
+    if (variant == 1)
+      printf(" %s,0x%lX <%ld>", get_register_name(rs1), pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
+    else if (variant == 2)
+      printf(" %s,0x%lX <%ld>", get_register_name(rs2), pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
+  } else if (p_is_jump_type(pID))
+    printf(" 0x%lX <%ld>", pc + UJ_imm, signed_division(UJ_imm, INSTRUCTIONSIZE));
+  else if (p_is_jump_register_type(pID)) {
+    if (variant == 0)
+      printf(" %s", get_register_name(rs1));
+    else if (variant == 1)
+      printf(" %ld(%s)", I_imm, get_register_name(rs1));
+  }
+
+  return 1;
 }
 
 void print_assembly(uint64_t core) {
@@ -11907,11 +12101,9 @@ void print_assembly(uint64_t core) {
   I_imm_32_bit = sign_extend(I_imm_32_bit, SINGLEWORDSIZEINBITS);
   U_imm        = right_shift(sign_shrink(U_imm, SINGLEWORDSIZEINBITS), 12);
 
-  if (disassembling_pseudoinstructions) {
-    if (print_pseudoinstruction(pc, ID, rs1, rs2, rd, I_imm, I_imm_32_bit, SB_imm, UJ_imm)) {
+  if (printing_pseudoinstructions)
+    if (print_pseudoinstruction(pc, ID, rd, rs1, rs2, I_imm, I_imm_32_bit, SB_imm, UJ_imm))
       return;
-    }
-  }
 
   printf("%s", get_instruction_mnemonic(ID));
 
@@ -11960,228 +12152,32 @@ void print_multicore_assembly() {
   printf("\n");
 }
 
-uint64_t print_pseudoinstruction(uint64_t pc, uint64_t ID, uint64_t rs1, uint64_t rs2, uint64_t rd,
-  uint64_t I_imm, uint64_t I_imm_32_bit, uint64_t SB_imm, uint64_t UJ_imm) {
-  // This function prints the current instruction as pseudoinstruction, if it is one
-  uint64_t pID;
-  uint64_t variant;
+void save_binary(uint64_t binary) {
+  set_for(binary, binary_names, (uint64_t*) binary_name);
 
-  pID = -1;
-  variant = -1;
+  set_for(binary, e_entries, (uint64_t*) e_entry);
 
-  /*
+  set_for(binary, code_binaries, (uint64_t*) code_binary);
+  set_for(binary, data_binaries, (uint64_t*) data_binary);
 
-  NOTE: Certain pseudoinstructions are not implemented. They are listed below:
+  set_for(binary, code_starts, (uint64_t*) code_start);
+  set_for(binary, code_sizes, (uint64_t*) code_size);
+  set_for(binary, data_starts, (uint64_t*) data_start);
+  set_for(binary, data_sizes, (uint64_t*) data_size);
+}
 
-  ## Pseudoinstructions with multiple base instructions are not supported. This includes the following:
+void restore_binary(uint64_t binary) {
+  binary_name = (char*) get_for(binary, binary_names);
 
-  -- Load address --
-  la rd, symbol -> auipc rd, symbol[31:12]
-                   addi rd, rd, symbol[11:0]
+  e_entry = (uint64_t) get_for(binary, e_entries);
 
-  -- Load global --
-  l{b|h|w|d} rd, symbol -> auipc rd, symbol[31:12]
-                           l{b|h|w|d} rd, symbol[11:0](rd)
+  code_binary = get_for(binary, code_binaries);
+  data_binary = get_for(binary, data_binaries);
 
-  -- Store global --
-  s{b|h|w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
-                               s{b|h|w|d} rd, symbol[11:0](rt)
-
-  -- Floating-point load global --
-  fl{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
-                            fl{w|d} rd, symbol[11:0](rt)
-
-  -- Floating-point store global --
-  fs{w|d} rd, symbol, rt -> auipc rt, symbol[31:12]
-                            fs{w|d} rd, symbol[11:0](rt)
-
-  -- Call far-away subroutine --
-  call offset -> auipc x6, offset[31:12]
-                 jalr x1, x6, offset[11:0]
-
-  -- Tail call far-away subroutine --
-  tail offset -> auipc x6, offset[31:12]
-                 jalr x0, x6, offset[11:0]
-
-  ## The following pseudoinstructions are not implemented because the base instructions are missing from rotor:
-
-  fmv.s  rd, rs -> fsgnj.s  rd, rs, rs   (Copy single-precision register)
-  fabs.s rd, rs -> fsgnjx.s rd, rs, rs   (Single-precision absolute value)
-  fneg.s rd, rs -> fsgnjn.s rd, rs, rs   (Single-precision negate)
-  fmv.d  rd, rs -> fsgnj.d  rd, rs, rs   (Copy double-precision register)
-  fabs.d rd, rs -> fsgnjx.d rd, rs, rs   (Double-precision absolute value)
-  fneg.d rd, rs -> fsgnjn.d rd, rs, rs   (Double-precision negate)
-  fence -> fence iorw, iorw   (Fence on all memory and I/O)
-
-  ## The following set of pseudoinstructions are not implemented because they are never disassembled by objdump:
-
-  bgt  rs, rt, offset -> blt  rt, rs, offset   (Branch if >)
-  ble  rs, rt, offset -> bge  rt, rs, offset   (Branch if <=)
-  bgtu rs, rt, offset -> bltu rt, rs, offset   (Branch if >, unsigned)
-  bleu rs, rt, offset -> bgeu rt, rs, offset   (Branch if <=, unsigned)
-
-  */
-
-  if (ID == ID_ADDI) {
-    if (rs1 == REG_ZR) {
-      if (rd == REG_ZR) {
-        if (I_imm == 0) {
-          pID = ID_P_NOP;
-        } else {
-          // There is no standard defined for which base instructions are expanded to the [li rd, imm] pseudoinstruction,
-          // but objdump seems to only implement it for [addi rd, x0, imm] instructions
-          pID = ID_P_LI;
-        }
-      } else {
-        pID = ID_P_LI;
-      }
-    } else if (I_imm == 0) {
-      pID = ID_P_MV;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_ADD) {
-    if (rs1 == REG_ZR) {
-      // according to the RISC-V spec, [mv rd, rs] should be implemented as [addi rd, rs, 0], as the above case checks for
-      // but sometimes it seems that the compiler chooses to implement it as [add rd, x0, rs] instead for whatever reason
-      pID = ID_P_MV;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_XORI) {
-    if (I_imm == (uint64_t) -1) {
-      pID = ID_P_NOT;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_SUB) {
-    if (rs1 == REG_ZR) {
-      pID = ID_P_NEG;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_SUBW) {
-    if (rs1 == REG_ZR) {
-      pID = ID_P_NEGW;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_ADDIW) {
-    if (I_imm_32_bit == 0) {
-      pID = ID_P_SEXT_W;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_SLTIU) {
-    if (I_imm == 1) {
-      pID = ID_P_SEQZ;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_SLTU) {
-    if (rs1 == REG_ZR) {
-      pID = ID_P_SNEZ;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_SLT) {
-    if (rs2 == REG_ZR) {
-      pID = ID_P_SLTZ;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_SLT) {
-    if (rs1 == REG_ZR) {
-      pID = ID_P_SGTZ;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_BEQ) {
-    if (rs2 == REG_ZR) {
-      pID = ID_P_BEQZ;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_BNE) {
-    if (rs2 == REG_ZR) {
-      pID = ID_P_BNEZ;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_BGE) {
-    if (rs1 == REG_ZR) {
-      pID = ID_P_BLEZ;
-      variant = 2; // rs2
-    } else if (rs2 == REG_ZR) {
-      pID = ID_P_BGEZ;
-      variant = 1; // rs1
-    }
-  } else if (ID == ID_BLT) {
-    if (rs2 == REG_ZR) {
-      pID = ID_P_BLTZ;
-      variant = 1; // rs1
-    } else if (rs1 == REG_ZR) {
-      pID = ID_P_BGTZ;
-      variant = 2; // rs2
-    }
-  } else if (ID == ID_JALR) {
-    if (rd == REG_ZR) {
-      if (I_imm == 0) {
-        if (rs1 == REG_RA) {
-          pID = ID_P_RET;
-        } else {
-          pID = ID_P_JR;
-          variant = 0; // 0
-        }
-      } else {
-        // Even though the RISC-V specification defines [jr rs] as [jalr x0, rs, 0], objdump also outputs [jalr x0, rs, imm] as [jr imm(rs)]
-        pID = ID_P_JR;
-        variant = 1; // I_imm
-      }
-    } else if (rd == REG_RA) {
-      if (I_imm == 0) {
-        pID = ID_P_JALR;
-        variant = 0; // 0
-      } else {
-        // Even though the RISC-V specification defines [jalr rs] as [jalr x1, rs, 0], objdump also outputs [jalr x1, rs, imm] as [jalr imm(rs)]
-        pID = ID_P_JALR;
-        variant = 1; // I_imm
-      }
-    }
-  } else if (ID == ID_JAL) {
-    if (rd == REG_ZR) {
-      pID = ID_P_J;
-    } else if (rd == REG_RA) {
-      pID = ID_P_JAL;
-    }
-  } else if (ID == ID_ANDI) {
-    if (I_imm == 255) {
-      // This pseudoinstruction is defined in the RISC-V Bitmanip Extension Document Version 0.94-draft
-      pID = ID_P_ZEXT_B;
-      variant = 1; // rs1
-    }
-  }
-
-  if (pID == (uint64_t) -1) {
-    // This is not a pseudoinstruction
-    return 0;
-  }
-
-  printf("%s", get_instruction_mnemonic(pID));
-
-  if (p_has_rd_imm_operands(pID)) {
-    printf(" %s,%ld", get_register_name(rd), I_imm);
-  } else if (p_has_rd_rsx_operands(pID)) {
-    if (variant == 1) {
-      printf(" %s,%s", get_register_name(rd), get_register_name(rs1));
-    } else if (variant == 2) {
-      printf(" %s,%s", get_register_name(rd), get_register_name(rs2));
-    }
-  } else if (p_is_branch_type(pID)) {
-    if (variant == 1) {
-      printf(" %s,0x%lX <%ld>", get_register_name(rs1), pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
-    } else if (variant == 2) {
-      printf(" %s,0x%lX <%ld>", get_register_name(rs2), pc + SB_imm, signed_division(SB_imm, INSTRUCTIONSIZE));
-    }
-  } else if (p_is_jump_type(pID)) {
-    printf(" 0x%lX <%ld>", pc + UJ_imm, signed_division(UJ_imm, INSTRUCTIONSIZE));
-  } else if (p_is_jump_register_type(pID)) {
-    if (variant == 0) {
-      printf(" %s", get_register_name(rs1));
-    } else if (variant == 1) {
-      printf(" %ld(%s)", I_imm, get_register_name(rs1));
-    }
-  }
-
-  return 1;
+  code_start = (uint64_t) get_for(binary, code_starts);
+  code_size  = (uint64_t) get_for(binary, code_sizes);
+  data_start = (uint64_t) get_for(binary, data_starts);
+  data_size  = (uint64_t) get_for(binary, data_sizes);
 }
 
 uint64_t eval_properties(uint64_t core) {
@@ -12646,9 +12642,9 @@ uint64_t rotor_arguments() {
   char* disassemble_model_option;
   char* unroll_model_option;
   char* load_code_option;
-  char* print_comments_option;
-  char* disassemble_pseudoinstructions_option;
-  char* printing_non_seq_btor2_option;
+  char* printing_comments_option;
+  char* printing_pseudoinstructions_option;
+  char* printing_smt_option;
 
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
@@ -12673,10 +12669,9 @@ uint64_t rotor_arguments() {
   heap_allowance_option          = "-heapallowance";
   stack_allowance_option         = "-stackallowance";
 
-  print_comments_option = "-nocomments";
-  disassemble_pseudoinstructions_option = "-nopseudoinstructions";
-
-  printing_non_seq_btor2_option = "-smt";
+  printing_comments_option           = "-nocomments";
+  printing_smt_option                = "-smt";
+  printing_pseudoinstructions_option = "-nopseudoinstructions";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -12819,16 +12814,16 @@ uint64_t rotor_arguments() {
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), print_comments_option)) {
+      } else if (string_compare(peek_argument(1), printing_comments_option)) {
         printing_comments = 0;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), disassemble_pseudoinstructions_option)) {
-        disassembling_pseudoinstructions = 0;
+      } else if (string_compare(peek_argument(1), printing_smt_option)) {
+        printing_smt = 1;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), printing_non_seq_btor2_option)) {
-        printing_non_seq_btor2 = 1;
+      } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
+        printing_pseudoinstructions = 0;
 
         get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
