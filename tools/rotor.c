@@ -441,7 +441,8 @@ uint64_t any_input = 0; // indicates if any input has been consumed
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
 uint64_t printing_smt            = 0; // indicates if targeting non-sequential BTOR2
 
-uint64_t* eval_bad_nid = (uint64_t*) 0;
+uint64_t* eval_bad_nid  = (uint64_t*) 0;
+uint64_t* eval_good_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -4979,7 +4980,18 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step, get_comment(line));
-        print_line_advancing_nid(line);
+        if (printing_smt == 0)
+          print_line_advancing_nid(line);
+        else {
+          if (eval_good_nid == UNUSED)
+            eval_good_nid = condition_nid;
+          else {
+            eval_good_nid = new_binary_boolean(OP_AND, eval_good_nid, condition_nid, "good property chain");
+            set_symbolic(eval_good_nid, SYMBOLIC);
+            set_step(eval_good_nid, next_step);
+          }
+          print_line_advancing_nid(eval_good_nid);
+        }
         w = w + dprintf(output_fd, "\n; constraint-end-%lu: %s\n\n", current_step, get_comment(line));
       }
 
@@ -12607,15 +12619,24 @@ void print_unrolled_model() {
       return;
     }
 
-    if (next_step - current_offset >= printing_unrolled_model) {
-      if (eval_bad_nid != UNUSED) {
-        eval_bad_nid = new_property(OP_CONSTRAINT, eval_bad_nid, "any-bad-property", "any bad property");
+    if (eval_bad_nid != UNUSED) {
+      if (eval_good_nid != UNUSED) {
+        eval_bad_nid = new_binary_boolean(OP_AND, eval_good_nid, eval_bad_nid, "constrained bad properties");
         set_symbolic(eval_bad_nid, SYMBOLIC);
         set_step(eval_bad_nid, next_step);
-
-        print_line_advancing_nid(eval_bad_nid);
       }
 
+      eval_bad_nid = new_property(OP_BAD, eval_bad_nid, "any-bad-property", "any bad property");
+      set_symbolic(eval_bad_nid, SYMBOLIC);
+      set_step(eval_bad_nid, next_step);
+
+      print_line_advancing_nid(eval_bad_nid);
+      w = w + dprintf(output_fd, "\n");
+
+      eval_bad_nid = UNUSED;
+    }
+
+    if (next_step - current_offset >= printing_unrolled_model) {
       close_model_file();
 
       printf("%s: unrolled %s for %lu steps (up to %lu instructions)\n", selfie_name,
