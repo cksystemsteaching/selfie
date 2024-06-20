@@ -10,7 +10,9 @@ from typing import Callable
 from argparse import ArgumentParser
 
 
+# noinspection PyClassHasNoInit
 class Logger:
+    # noinspection PyClassHasNoInit
     class Colors:
         RESET = "\033[0m"
         RED = "\033[31m"
@@ -43,7 +45,7 @@ class Logger:
         Logger.__log_colored(Logger.Colors.GREEN, message + Logger.Colors.RESET + after)
 
     @staticmethod
-    def message(message: str, after=""):
+    def header(message: str, after=""):
         Logger.__log_colored(Logger.Colors.BLUE, message + Logger.Colors.RESET + after)
 
     @staticmethod
@@ -72,6 +74,7 @@ class Logger:
 
 
 class Instruction:
+    # noinspection PyClassHasNoInit
     class Source:
         RISCV = "RISC-V"
         ROTOR = "Rotor"
@@ -350,7 +353,7 @@ def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
             at_start = False
 
         except EOFError:
-            Logger.message("Disassembly comparison finished")
+            Logger.info("Disassembly comparison finished")
 
             num_problems = num_missing_instruction_set + num_mismatched_opcode + num_mismatched_operands
             if num_problems == 0:
