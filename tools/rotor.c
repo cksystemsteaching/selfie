@@ -11626,16 +11626,6 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
   print_break_line_for(core, prop_is_syscall_id_known_nids);
 
-  // optional exit properties
-
-  print_break_line_for(core, prop_bad_exit_code_nids);
-  print_break_line_for(core, prop_good_exit_code_nids);
-
-  if (core == number_of_cores - 1) {
-    print_break_line(prop_exit_codes_nid);
-    print_break_line(prop_all_cores_exited_nid);
-  }
-
   // optional arithmetic properties
 
   print_break_line_for(core, prop_division_by_zero_nids);
@@ -11669,6 +11659,16 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, sync_data_segment_nids);
   print_break_line_for(core, sync_heap_segment_nids);
   print_break_line_for(core, sync_stack_segment_nids);
+
+  // optional exit properties
+
+  print_break_line_for(core, prop_bad_exit_code_nids);
+  print_break_line_for(core, prop_good_exit_code_nids);
+
+  if (core == number_of_cores - 1) {
+    print_break_line(prop_exit_codes_nid);
+    print_break_line(prop_all_cores_exited_nid);
+  }
 }
 
 void print_model() {
@@ -12198,19 +12198,6 @@ uint64_t eval_properties(uint64_t core) {
   halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids);
   halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids);
 
-  // optional exit properties
-
-  halt = halt + eval_property_for(core, prop_bad_exit_code_nids);
-  halt = halt + eval_property_for(core, prop_good_exit_code_nids);
-
-  if (core == number_of_cores - 1) {
-    // if property is falsified rotor terminates evaluation in current step
-    are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid);
-
-    // if property is satisfied rotor terminates evaluation in current step
-    eval_property(core, prop_all_cores_exited_nid);
-  }
-
   // optional arithmetic properties
 
   halt = halt + eval_property_for(core, prop_division_by_zero_nids);
@@ -12234,6 +12221,19 @@ uint64_t eval_properties(uint64_t core) {
   // synchronizing program counters
 
   halt = halt + eval_property_for(core, sync_pc_nids);
+
+  // optional exit properties
+
+  halt = halt + eval_property_for(core, prop_bad_exit_code_nids);
+  halt = halt + eval_property_for(core, prop_good_exit_code_nids);
+
+  if (core == number_of_cores - 1) {
+    // if property is falsified rotor terminates evaluation in current step
+    are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid);
+
+    // if property is satisfied rotor terminates evaluation in current step
+    eval_property(core, prop_all_cores_exited_nid);
+  }
 
   return halt != 0;
 }
