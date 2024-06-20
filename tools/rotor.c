@@ -12597,9 +12597,6 @@ void print_unrolled_model() {
 
   last_nid = 0;
 
-  // TODO: bitwuzla does not like comments
-  printing_comments = 0;
-
   while (1) {
     if (eval_multicore_properties()) {
       close_model_file();
