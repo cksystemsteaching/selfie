@@ -401,8 +401,8 @@ uint64_t eval_binary_op(uint64_t* line);
 uint64_t eval_line(uint64_t* line);
 uint64_t eval_line_for(uint64_t core, uint64_t* lines);
 
-uint64_t eval_property(uint64_t core, uint64_t* line);
-uint64_t eval_property_for(uint64_t core, uint64_t* lines);
+uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad);
+uint64_t eval_property_for(uint64_t core, uint64_t* lines, uint64_t bad);
 
 void eval_init(uint64_t* line);
 
@@ -441,7 +441,6 @@ uint64_t any_input = 0; // indicates if any input has been consumed
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
 uint64_t printing_smt            = 0; // indicates if targeting non-sequential BTOR2
 
-uint64_t* eval_bad_nid  = (uint64_t*) 0;
 uint64_t* eval_good_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -3396,8 +3395,8 @@ void print_multicore_assembly();
 void save_binary(uint64_t binary);
 void restore_binary(uint64_t binary);
 
-uint64_t eval_properties(uint64_t core);
-uint64_t eval_multicore_properties();
+uint64_t eval_properties(uint64_t core, uint64_t bad);
+uint64_t eval_multicore_properties(uint64_t bad);
 
 uint64_t eval_sequential(uint64_t core);
 uint64_t eval_multicore_sequential();
@@ -4914,17 +4913,26 @@ uint64_t eval_line_for(uint64_t core, uint64_t* lines) {
   return eval_line(get_for(core, lines));
 }
 
-uint64_t eval_property(uint64_t core, uint64_t* line) {
+uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
   char* op;
   uint64_t* condition_nid;
   char* symbol;
   uint64_t condition;
+  uint64_t* bad_nid;
 
   if (line == UNUSED)
     // no property to evaluate: do not halt
     return 0;
 
   op = get_op(line);
+
+  if (bad) {
+    if (op != OP_BAD)
+      // evaluating bad properties only
+      return 0;
+  } else if (op != OP_CONSTRAINT)
+    // evaluating good properties only
+    return 0;
 
   condition_nid = get_arg1(line);
   symbol        = (char*) get_arg2(line);
@@ -4949,14 +4957,18 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
         if (printing_smt == 0)
           print_line_advancing_nid(line);
         else {
-          if (eval_bad_nid == UNUSED)
-            eval_bad_nid = condition_nid;
+          if (eval_good_nid == UNUSED)
+            bad_nid = line;
           else {
-            eval_bad_nid = new_binary_boolean(OP_OR, eval_bad_nid, condition_nid, "bad property chain");
-            set_symbolic(eval_bad_nid, SYMBOLIC);
-            set_step(eval_bad_nid, next_step);
+            bad_nid = new_binary_boolean(OP_AND, eval_good_nid, condition_nid, "constrained bad property");
+            set_symbolic(bad_nid, SYMBOLIC);
+            set_step(bad_nid, next_step);
+
+            bad_nid = new_property(OP_BAD, bad_nid, symbol, get_comment(line));
+            set_symbolic(bad_nid, SYMBOLIC);
+            set_step(bad_nid, next_step);
           }
-          print_line_advancing_nid(eval_bad_nid);
+          print_line_advancing_nid(bad_nid);
         }
         w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
       }
@@ -5006,8 +5018,8 @@ uint64_t eval_property(uint64_t core, uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-uint64_t eval_property_for(uint64_t core, uint64_t* lines) {
-  return eval_property(core, get_for(core, lines));
+uint64_t eval_property_for(uint64_t core, uint64_t* lines, uint64_t bad) {
+  return eval_property(core, get_for(core, lines), bad);
 }
 
 void eval_init(uint64_t* line) {
@@ -12196,61 +12208,61 @@ void restore_binary(uint64_t binary) {
   data_size  = (uint64_t) get_for(binary, data_sizes);
 }
 
-uint64_t eval_properties(uint64_t core) {
+uint64_t eval_properties(uint64_t core, uint64_t bad) {
   uint64_t halt;
 
   halt = 0;
 
   // mandatory state properties
 
-  halt = halt + eval_property_for(core, prop_illegal_instruction_nids);
-  halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nids);
-  halt = halt + eval_property_for(core, prop_is_instruction_known_nids);
-  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nids);
-  halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids);
+  halt = halt + eval_property_for(core, prop_illegal_instruction_nids, bad);
+  halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nids, bad);
+  halt = halt + eval_property_for(core, prop_is_instruction_known_nids, bad);
+  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nids, bad);
+  halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids, bad);
 
   // optional arithmetic properties
 
-  halt = halt + eval_property_for(core, prop_division_by_zero_nids);
-  halt = halt + eval_property_for(core, prop_signed_division_overflow_nids);
+  halt = halt + eval_property_for(core, prop_division_by_zero_nids, bad);
+  halt = halt + eval_property_for(core, prop_signed_division_overflow_nids, bad);
 
   // optional user code segmentation fault checks
 
-  halt = halt + eval_property_for(core, prop_load_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_store_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_load_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_store_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nids, bad);
 
   // optional kernel segmentation fault checks
 
-  halt = halt + eval_property_for(core, prop_brk_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_openat_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_read_seg_faulting_nids);
-  halt = halt + eval_property_for(core, prop_write_seg_faulting_nids);
+  halt = halt + eval_property_for(core, prop_brk_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_openat_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_read_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_write_seg_faulting_nids, bad);
 
   // synchronizing program counters
 
-  halt = halt + eval_property_for(core, sync_pc_nids);
+  halt = halt + eval_property_for(core, sync_pc_nids, bad);
 
   // optional exit properties
 
-  halt = halt + eval_property_for(core, prop_bad_exit_code_nids);
-  halt = halt + eval_property_for(core, prop_good_exit_code_nids);
+  halt = halt + eval_property_for(core, prop_bad_exit_code_nids, bad);
+  halt = halt + eval_property_for(core, prop_good_exit_code_nids, bad);
 
   if (core == number_of_cores - 1) {
     // if property is falsified rotor terminates evaluation in current step
-    are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid);
+    are_exit_codes_different = are_exit_codes_different + eval_property(core, prop_exit_codes_nid, bad);
 
     // if property is satisfied rotor terminates evaluation in current step
-    eval_property(core, prop_all_cores_exited_nid);
+    eval_property(core, prop_all_cores_exited_nid, bad);
   }
 
   return halt != 0;
 }
 
-uint64_t eval_multicore_properties() {
+uint64_t eval_multicore_properties(uint64_t bad) {
   uint64_t halt;
   uint64_t core;
 
@@ -12259,7 +12271,7 @@ uint64_t eval_multicore_properties() {
   core = 0;
 
   while (core < number_of_cores) {
-    halt = halt + eval_properties(core);
+    halt = halt + eval_properties(core, bad);
 
     core = core + 1;
   }
@@ -12421,7 +12433,10 @@ void eval_multicore_states() {
     if (output_assembly)
       print_multicore_assembly();
 
-    if (eval_multicore_properties())
+    if (eval_multicore_properties(0))
+      return;
+
+    if (eval_multicore_properties(1))
       return;
 
     if (next_step - current_offset >= 100000) {
@@ -12472,8 +12487,14 @@ uint64_t eval_constant_propagation() {
 
   states_are_symbolic = 1;
 
-  if (eval_multicore_properties()) {
-    printf("%s: %s violated one or more conditions already after 1 step\n", selfie_name, model_name);
+  if (eval_multicore_properties(0)) {
+    printf("%s: %s violated one or more constraints already after 1 step\n", selfie_name, model_name);
+
+    return 1;
+  }
+
+  if (eval_multicore_properties(1)) {
+    printf("%s: %s satisfied one or more bad properties already after 1 step\n", selfie_name, model_name);
 
     return 1;
   }
@@ -12610,30 +12631,22 @@ void print_unrolled_model() {
   last_nid = 0;
 
   while (1) {
-    if (eval_multicore_properties()) {
+    if (eval_multicore_properties(0)) {
       close_model_file();
 
-      printf("%s: %s violated one or more conditions after %lu steps (up to %lu instructions)\n", selfie_name,
+      printf("%s: %s violated one or more constraints after %lu steps (up to %lu instructions)\n", selfie_name,
         model_name, current_step - current_offset, next_step - current_offset);
 
       return;
     }
 
-    if (eval_bad_nid != UNUSED) {
-      if (eval_good_nid != UNUSED) {
-        eval_bad_nid = new_binary_boolean(OP_AND, eval_good_nid, eval_bad_nid, "constrained bad properties");
-        set_symbolic(eval_bad_nid, SYMBOLIC);
-        set_step(eval_bad_nid, next_step);
-      }
+    if (eval_multicore_properties(1)) {
+      close_model_file();
 
-      eval_bad_nid = new_property(OP_BAD, eval_bad_nid, "any-bad-property", "any bad property");
-      set_symbolic(eval_bad_nid, SYMBOLIC);
-      set_step(eval_bad_nid, next_step);
+      printf("%s: %s satisfied one or more bad properties after %lu steps (up to %lu instructions)\n", selfie_name,
+        model_name, current_step - current_offset, next_step - current_offset);
 
-      print_line_advancing_nid(eval_bad_nid);
-      w = w + dprintf(output_fd, "\n");
-
-      eval_bad_nid = UNUSED;
+      return;
     }
 
     if (next_step - current_offset >= printing_unrolled_model) {
