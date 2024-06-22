@@ -75,7 +75,9 @@ RUN apt-get update \
        g++ device-tree-compiler libboost-regex-dev libboost-system-dev \
   && apt clean
 
-RUN git clone https://github.com/riscv/riscv-isa-sim
+RUN git clone https://github.com/riscv/riscv-isa-sim \
+    && cd riscv-isa-sim \
+    && git checkout 3d4027a2bb559af758a2a9d624a3848ae2485453
 
 ENV MAKEFLAGS=-j4
 
