@@ -142,6 +142,38 @@ RUN mkdir -p $RISCV \
   && make \
   && make install
 
+#######################################
+# Bitwuzla (SMT solver) builder image #
+#######################################
+FROM ubuntu:23.04 AS bitwuzlabuilder
+
+ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+
+WORKDIR $TOP
+
+# Setting non-interactive mode
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+# install tools to build bitwuzla
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       make git \
+       g++ \
+       pkg-config cmake meson libgmp-dev \
+  && apt clean
+
+RUN git clone https://github.com/bitwuzla/bitwuzla
+
+ENV MAKEFLAGS=-j4
+
+# build bitwuzla and dependencies
+RUN mkdir -p $RISCV \
+  && cd bitwuzla \
+  && ./configure.py --prefix $RISCV \
+  && cd build \
+  && ninja install
+
 #########################
 # OpenOCD builder image #
 #########################
@@ -204,6 +236,7 @@ COPY --from=pkbuilder $RISCV/ $RISCV/
 COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
 COPY --from=boolectorbuilder $RISCV/ $RISCV/
+COPY --from=bitwuzlabuilder $RISCV/ $RISCV/
 COPY --from=openocdbuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
