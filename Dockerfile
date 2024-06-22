@@ -72,7 +72,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        ca-certificates \
        make git \
-       g++ device-tree-compiler \
+       g++ device-tree-compiler libboost-regex-dev libboost-system-dev \
   && apt clean
 
 RUN git clone https://github.com/riscv/riscv-isa-sim
