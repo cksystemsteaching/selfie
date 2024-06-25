@@ -3713,9 +3713,8 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   else
     // assert: get_op(line) == OP_CONSTH
     if (printing_unrolled_model)
-      // bitwuzla does not like hex literals starting with F
-      w = w + dprintf(output_fd, " %s %lu 0%s", get_op(line), get_nid(get_sid(line)),
-        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+      // bitwuzla does not like hex literals
+      w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), value);
     else
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
         itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
