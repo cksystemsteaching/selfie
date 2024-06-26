@@ -441,6 +441,8 @@ uint64_t any_input = 0; // indicates if any input has been consumed
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
 uint64_t printing_smt            = 0; // indicates if targeting non-sequential BTOR2
 
+uint64_t printing_explicit_constraints = 0;
+
 uint64_t* eval_good_nid = (uint64_t*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4953,7 +4955,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
-        if (printing_smt == 0)
+        if (printing_explicit_constraints == 0)
           print_line_advancing_nid(line);
         else {
           if (eval_good_nid == UNUSED)
@@ -4991,7 +4993,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step, get_comment(line));
-        if (printing_smt == 0)
+        if (printing_explicit_constraints == 0)
           print_line_advancing_nid(line);
         else {
           if (eval_good_nid == UNUSED)
