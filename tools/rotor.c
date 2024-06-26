@@ -2123,6 +2123,7 @@ uint64_t* SID_17_BIT_OFFSET = (uint64_t*) 0;
 uint64_t* SID_18_BIT_OFFSET = (uint64_t*) 0;
 
 uint64_t* NID_1_BIT_OFFSET_0  = (uint64_t*) 0;
+uint64_t* NID_1_BIT_OFFSET_1  = (uint64_t*) 0;
 uint64_t* NID_2_BIT_OFFSET_0  = (uint64_t*) 0;
 uint64_t* NID_2_BIT_OFFSET_1  = (uint64_t*) 0;
 uint64_t* NID_3_BIT_OFFSET_0  = (uint64_t*) 0;
@@ -2602,6 +2603,8 @@ void init_instruction_mnemonics() {
 }
 
 void init_instruction_sorts() {
+  uint64_t saved_reuse_lines;
+
   SID_INSTRUCTION_WORD = SID_SINGLE_WORD;
 
   if (RVC)
@@ -2660,7 +2663,15 @@ void init_instruction_sorts() {
 
   // immediate sorts
 
-  SID_1_BIT_IMM  = new_bitvec(1, "1-bit immediate sort");
+  saved_reuse_lines = reuse_lines;
+
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
+  SID_1_BIT_IMM = new_bitvec(1, "1-bit immediate sort");
+
+  reuse_lines = saved_reuse_lines;
+
   SID_4_BIT_IMM  = new_bitvec(4, "4-bit immediate sort");
   SID_5_BIT_IMM  = new_bitvec(5, "5-bit immediate sort");
   SID_6_BIT_IMM  = new_bitvec(6, "6-bit immediate sort");
@@ -2673,7 +2684,7 @@ void init_instruction_sorts() {
   SID_21_BIT_IMM = new_bitvec(21, "21-bit immediate sort");
   SID_32_BIT_IMM = new_bitvec(32, "32-bit immediate sort");
 
-  NID_1_BIT_IMM_0  = NID_FALSE;
+  NID_1_BIT_IMM_0  = new_constant(OP_CONST, SID_1_BIT_IMM, 0, 1, "zeroed bit");
   NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, 0, 12, "12 LSBs zeroed");
 
   // RISC-U instructions
@@ -2921,6 +2932,8 @@ void init_instruction_sorts() {
 }
 
 void init_compressed_instruction_sorts() {
+  uint64_t saved_reuse_lines;
+
   // RVC codes
 
   SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
@@ -2973,7 +2986,15 @@ void init_compressed_instruction_sorts() {
 
   // offset sorts
 
-  SID_1_BIT_OFFSET  = SID_BOOLEAN;
+  saved_reuse_lines = reuse_lines;
+
+  // make sure to have a unique SID
+  reuse_lines = 0;
+
+  SID_1_BIT_OFFSET = new_bitvec(1, "1-bit offset sort");
+
+  reuse_lines = saved_reuse_lines;
+
   SID_2_BIT_OFFSET  = new_bitvec(2, "2-bit offset sort");
   SID_3_BIT_OFFSET  = new_bitvec(3, "3-bit offset sort");
   SID_4_BIT_OFFSET  = new_bitvec(4, "4-bit offset sort");
@@ -2988,7 +3009,8 @@ void init_compressed_instruction_sorts() {
   SID_17_BIT_OFFSET = new_bitvec(17, "17-bit offset sort");
   SID_18_BIT_OFFSET = new_bitvec(18, "18-bit offset sort");
 
-  NID_1_BIT_OFFSET_0  = NID_FALSE;
+  NID_1_BIT_OFFSET_0  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 0, 1, "1-bit offset 0");
+  NID_1_BIT_OFFSET_1  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 1, 1, "1-bit offset 1");
   NID_2_BIT_OFFSET_0  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 0, 2, "2-bit offset 0");
   NID_2_BIT_OFFSET_1  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, 2, "2-bit offset 1, 01000 s0");
   NID_3_BIT_OFFSET_0  = new_constant(OP_CONST, SID_3_BIT_OFFSET, 0, 3, "3-bit offset 0");
@@ -9485,7 +9507,10 @@ uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid)
 
   if (IS64BITTARGET == 0)
     illegal_shamt_nid = new_binary_boolean(OP_OR,
-      get_compressed_instruction_shamt_5(c_ir_nid),
+      new_binary_boolean(OP_EQ,
+        get_compressed_instruction_shamt_5(c_ir_nid),
+        NID_1_BIT_OFFSET_1,
+        "CI-shamt[5] == 1?"),
       illegal_shamt_nid,
       "CI-shamt[5] == 1 or CI-shamt == 0?");
 
