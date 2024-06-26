@@ -293,9 +293,9 @@ def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
                 else:
                     # No => seems like whole instruction set is mismatched. Log error and exit
                     Logger.error("ERROR: Instruction sets are mismatched")
-                    Logger.message("===== RISC-V =====")
+                    Logger.header("===== RISC-V =====")
                     Logger.print_instruction_array(5, [*mismatching_instructions, riscv_curr])
-                    Logger.message("===== Rotor =====")
+                    Logger.header("===== Rotor =====")
                     print(rotor_curr)
 
                     print()
@@ -324,9 +324,9 @@ def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
                 else:
                     # No => seems like whole instruction set is mismatched. Log error and exit
                     Logger.error("Instruction sets are mismatched")
-                    Logger.message("===== RISC-V =====")
+                    Logger.header("===== RISC-V =====")
                     print(riscv_curr)
-                    Logger.message("===== Rotor =====")
+                    Logger.header("===== Rotor =====")
                     Logger.print_instruction_array(5, [*mismatching_instructions, rotor_curr])
 
                     print()
@@ -339,15 +339,15 @@ def compare_objdump(riscv_reader: CodeReader, rotor_reader: CodeReader):
                 # Opcode is different, this might indicate an unimplemented instruction or pseudoinstruction, or an unhandled compressed instruction
                 num_mismatched_opcode += 1
                 Logger.warning("PROBLEM: Instructions are not equal")
-                Logger.message("RISC-V - ", repr(riscv_curr))
-                Logger.message("ROTOR  - ", repr(rotor_curr))
+                Logger.header("RISC-V - ", repr(riscv_curr))
+                Logger.header("ROTOR  - ", repr(rotor_curr))
                 print()
             elif riscv_curr != rotor_curr:
                 # Opcode is the same but operands are different, this is 100% a bug in Rotor operand printing!
                 num_mismatched_operands += 1
                 Logger.warning("PROBLEM: Operands are not equal")
-                Logger.message("RISC-V - ", repr(riscv_curr))
-                Logger.message("ROTOR  - ", repr(rotor_curr))
+                Logger.header("RISC-V - ", repr(riscv_curr))
+                Logger.header("ROTOR  - ", repr(rotor_curr))
                 print()
 
             at_start = False
