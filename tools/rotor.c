@@ -277,6 +277,9 @@ uint64_t is_constant_op(char* op);
 uint64_t is_input_op(char* op);
 uint64_t is_unary_op(char* op);
 
+char* get_smt_id(uint64_t* line);
+char* get_smt_op(uint64_t* line);
+
 void print_nid(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
@@ -3685,6 +3688,97 @@ uint64_t is_unary_op(char* op) {
     return 0;
 }
 
+char* get_smt_id(uint64_t* line) {
+  if (get_op(line) == OP_SORT)
+    sprintf(string_buffer, "s%lu", get_nid(line));
+  else if (is_constant_op(get_op(line)))
+    sprintf(string_buffer, "c%lu", get_nid(line));
+  else if (is_input_op(get_op(line)))
+    sprintf(string_buffer, "i%lu", get_nid(line));
+  else
+    sprintf(string_buffer, "e%lu", get_nid(line));
+  return string_copy(string_buffer);
+}
+
+char* get_smt_op(uint64_t* line) {
+  char* op;
+
+  op = get_op(line);
+
+  if (op == OP_SEXT)
+    return "sign-extend";
+  else if (op == OP_UEXT)
+    return "zero-extend";
+  else if (op == OP_SLICE)
+    return "extract";
+  else if (op == OP_NOT)
+    return "bvnot";
+  else if (op == OP_INC)
+    return "bvinc";
+  else if (op == OP_DEC)
+    return "bvdec";
+  else if (op == OP_NEG)
+    return "bvneg";
+  else if (op == OP_IMPLIES)
+    return "=>";
+  else if (op == OP_EQ)
+    return "=";
+  else if (op == OP_NEQ)
+    return "distinct";
+  else if (op == OP_SGT)
+    return "bvsgt";
+  else if (op == OP_UGT)
+    return "bvugt";
+  else if (op == OP_SGTE)
+    return "bvsgte";
+  else if (op == OP_UGTE)
+    return "bvugte";
+  else if (op == OP_SLT)
+    return "bvslt";
+  else if (op == OP_ULT)
+    return "bvult";
+  else if (op == OP_SLTE)
+    return "bvslte";
+  else if (op == OP_ULTE)
+    return "bvulte";
+  else if (op == OP_AND)
+    return "bvand";
+  else if (op == OP_OR)
+    return "bvor";
+  else if (op == OP_XOR)
+    return "bvxor";
+  else if (op == OP_SLL)
+    return "bvsll";
+  else if (op == OP_SRL)
+    return "bvlshr";
+  else if (op == OP_SRA)
+    return "bvashr";
+  else if (op == OP_ADD)
+    return "bvadd";
+  else if (op == OP_SUB)
+    return "bvsub";
+  else if (op == OP_MUL)
+    return "bvmul";
+  else if (op == OP_SDIV)
+    return "bvsdiv";
+  else if (op == OP_UDIV)
+    return "bvudiv";
+  else if (op == OP_SREM)
+    return "bvsrem";
+  else if (op == OP_UREM)
+    return "bvurem";
+  else if (op == OP_CONCAT)
+    return "concat";
+  else if (op == OP_READ)
+    return "select";
+  else if (op == OP_ITE)
+    return "ite";
+  else if (op == OP_WRITE)
+    return "store";
+  else
+    return "unknown";
+}
+
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
   w = w + dprintf(output_fd, "%lu", nid);
@@ -3708,40 +3802,73 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
     nid = print_line_once(nid, get_arg2(line));
     nid = print_line_once(nid, get_arg3(line));
   }
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s", OP_SORT);
-  if (is_bitvector(line))
-    w = w + dprintf(output_fd, " %s %lu", BITVEC, eval_bitvec_size(line));
-  else
-    // assert: array
-    w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-sort %s () ", get_smt_id(line));
+    if (is_bitvector(line)) {
+      if (line == SID_BOOLEAN)
+        w = w + dprintf(output_fd, "Bool");
+      else
+        w = w + dprintf(output_fd, "(_ BitVec %lu)", eval_bitvec_size(line));
+    } else
+      // assert: array
+      w = w + dprintf(output_fd, "(Array %s %s)", get_smt_id(get_arg2(line)), get_smt_id(get_arg3(line)));
+    w = w + dprintf(output_fd, ")");
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s", OP_SORT);
+    if (is_bitvector(line))
+      w = w + dprintf(output_fd, " %s %lu", BITVEC, eval_bitvec_size(line));
+    else
+      // assert: array
+      w = w + dprintf(output_fd, " %s %lu %lu", ARRAY, get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  }
   print_comment(line);
   return nid;
 }
 
 uint64_t print_constant(uint64_t nid, uint64_t* line) {
   uint64_t value;
+  uint64_t size;
   nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
   value = eval_constant_value(line);
-  if (get_op(line) == OP_CONSTD) {
-    if (value == 0)
-      w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
-    else if (value == 1)
-      w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
-    else
-      w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
-  } else if (get_op(line) == OP_CONST)
-    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-      itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
-  else
-    // assert: get_op(line) == OP_CONSTH
-    if (printing_unrolled_model)
-      // bitwuzla does not like hex literals
-      w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), value);
-    else
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s ", get_smt_id(line), get_smt_id(get_sid(line)));
+    if (get_sid(line) == SID_BOOLEAN)
+      if (value) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
+    else {
+      size = eval_bitvec_size(get_sid(line));
+      if (get_op(line) == OP_CONSTD)
+        w = w + dprintf(output_fd, "(_ bv%lu %lu)", value, size);
+      else if (get_op(line) == OP_CONST)
+        w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
+      else
+        // assert: get_op(line) == OP_CONSTH
+        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, size));
+    }
+    w = w + dprintf(output_fd, ")");
+  } else {
+    print_nid(nid, line);
+    if (get_op(line) == OP_CONSTD) {
+      if (value == 0)
+        w = w + dprintf(output_fd, " zero %lu", get_nid(get_sid(line)));
+      else if (value == 1)
+        w = w + dprintf(output_fd, " one %lu", get_nid(get_sid(line)));
+      else
+        w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
+    } else if (get_op(line) == OP_CONST)
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+        itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
+    else
+      // assert: get_op(line) == OP_CONSTH
+      if (printing_unrolled_model)
+        // bitwuzla does not like hex literals
+        w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), value);
+      else
+        w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
+          itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+  }
   print_comment(line);
   return nid;
 }
@@ -3779,8 +3906,13 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
     }
   }
   nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(declare-fun %s () %s)", get_smt_id(line), get_smt_id(get_sid(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
+  }
   print_comment(line);
   return nid;
 }
@@ -3788,9 +3920,19 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
 uint64_t print_ext(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s ((_ %s %lu) %s))",
+      get_smt_id(line),
+      get_smt_id(get_sid(line)),
+      get_smt_op(line),
+      eval_ext_w(line),
+      get_smt_id(get_arg1(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu %lu",
+      get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_ext_w(line));
+  }
   print_comment(line);
   return nid;
 }
@@ -3798,9 +3940,20 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
 uint64_t print_slice(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s ((_ %s %lu %lu) %s))",
+      get_smt_id(line),
+      get_smt_id(get_sid(line)),
+      get_smt_op(line),
+      eval_slice_u(line),
+      eval_slice_l(line),
+      get_smt_id(get_arg1(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+      OP_SLICE, get_nid(get_sid(line)), get_nid(get_arg1(line)), eval_slice_u(line), eval_slice_l(line));
+  }
   print_comment(line);
   return nid;
 }
@@ -3808,9 +3961,18 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
 uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s))",
+      get_smt_id(line),
+      get_smt_id(get_sid(line)),
+      get_smt_op(line),
+      get_smt_id(get_arg1(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu",
+      get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+  }
   print_comment(line);
   return nid;
 }
@@ -3819,9 +3981,19 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
   nid = print_line_once(nid, get_arg2(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s %s))",
+      get_smt_id(line),
+      get_smt_id(get_sid(line)),
+      get_smt_op(line),
+      get_smt_id(get_arg1(line)),
+      get_smt_id(get_arg2(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu %lu",
+      get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)));
+  }
   print_comment(line);
   return nid;
 }
@@ -3831,9 +4003,20 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   nid = print_line_once(nid, get_arg2(line));
   nid = print_line_once(nid, get_arg3(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
-    get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s %s %s))",
+      get_smt_id(line),
+      get_smt_id(get_sid(line)),
+      get_smt_op(line),
+      get_smt_id(get_arg1(line)),
+      get_smt_id(get_arg2(line)),
+      get_smt_id(get_arg3(line)));
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
+      get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)), get_nid(get_arg2(line)), get_nid(get_arg3(line)));
+  }
   print_comment(line);
   return nid;
 }
@@ -3873,20 +4056,35 @@ uint64_t print_ite(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_constraint(uint64_t nid, uint64_t* line) {
-  char* op;
-  op = get_op(line);
   nid = print_line_once(nid, get_arg1(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_arg1(line)), (char*) get_arg2(line));
-  if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
-  print_comment(line);
+  if (printing_smt) {
+    if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(push 1)\n");
+    w = w + dprintf(output_fd, "(assert (= %s true))", get_smt_id(get_arg1(line)));
+    print_comment(line);
+    if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(check-sat)\n(get-model)\n(pop 1)\n");
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
+    if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
+    print_comment(line);
+  }
   return nid;
 }
 
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
-  print_nid(nid, line);
-  w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  if (printing_smt) {
+    set_nid(line, nid);
+    w = w + dprintf(output_fd, "(define-fun %s () %s ", get_smt_id(line), get_smt_id(get_sid(line)));
+    if (get_sid(line) == SID_BOOLEAN)
+      if (get_state(line)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
+    else
+      w = w + dprintf(output_fd, "(_ bv%lu %lu)", get_state(line), eval_bitvec_size(get_sid(line)));
+    w = w + dprintf(output_fd, ")");
+  } else {
+    print_nid(nid, line);
+    w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
+  }
   if (printing_comments) w = w + dprintf(output_fd, " ; propagated state");
   w = w + dprintf(output_fd, "\n");
   return nid;
@@ -11601,9 +11799,14 @@ void open_model_file() {
       w = w + dprintf(output_fd, "without console arguments");
     w = w + dprintf(output_fd, "\n\n");
   }
+
+  if (printing_smt)
+    w = w + dprintf(output_fd, "(set-option :produce-models true)\n(set-option :incremental true)\n(set-logic QF_ABV)\n\n");
 }
 
 void close_model_file() {
+  if (printing_smt) w = w + dprintf(output_fd, "(exit)\n");
+
   output_name = (char*) 0;
   output_fd   = 1;
 
