@@ -3706,9 +3706,9 @@ char* get_smt_op(uint64_t* line) {
   op = get_op(line);
 
   if (op == OP_SEXT)
-    return "sign-extend";
+    return "sign_extend";
   else if (op == OP_UEXT)
-    return "zero-extend";
+    return "zero_extend";
   else if (op == OP_SLICE)
     return "extract";
   else if (op == OP_NOT)
@@ -3730,17 +3730,17 @@ char* get_smt_op(uint64_t* line) {
   else if (op == OP_UGT)
     return "bvugt";
   else if (op == OP_SGTE)
-    return "bvsgte";
+    return "bvsge";
   else if (op == OP_UGTE)
-    return "bvugte";
+    return "bvuge";
   else if (op == OP_SLT)
     return "bvslt";
   else if (op == OP_ULT)
     return "bvult";
   else if (op == OP_SLTE)
-    return "bvslte";
+    return "bvsle";
   else if (op == OP_ULTE)
-    return "bvulte";
+    return "bvule";
   else if (op == OP_AND)
     return "bvand";
   else if (op == OP_OR)
@@ -3748,7 +3748,7 @@ char* get_smt_op(uint64_t* line) {
   else if (op == OP_XOR)
     return "bvxor";
   else if (op == OP_SLL)
-    return "bvsll";
+    return "bvshl";
   else if (op == OP_SRL)
     return "bvlshr";
   else if (op == OP_SRA)
