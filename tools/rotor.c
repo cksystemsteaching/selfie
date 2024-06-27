@@ -460,7 +460,8 @@ uint64_t first_input = 0; // indicates if input has been consumed for the first 
 uint64_t any_input = 0; // indicates if any input has been consumed
 
 uint64_t printing_unrolled_model = 0; // indicates for how many steps model is unrolled
-uint64_t printing_smt            = 0; // indicates if targeting non-sequential BTOR2
+
+uint64_t printing_smt = 0; // indicates if targeting SMT-LIB instead of non-sequential BTOR2
 
 uint64_t printing_explicit_constraints = 0;
 
@@ -13162,6 +13163,9 @@ uint64_t rotor_arguments() {
         printing_smt = 1;
 
         get_argument();
+
+        if (printing_unrolled_model == 0)
+          return EXITCODE_BADARGUMENTS;
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
