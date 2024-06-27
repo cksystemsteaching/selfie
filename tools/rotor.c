@@ -296,6 +296,8 @@ char* get_smt_op(uint64_t* line);
 void declare_fun(uint64_t* line, uint64_t nid, char* type);
 void define_fun(uint64_t* line, uint64_t nid, char* type);
 
+uint64_t get_size_in_hex_digits(uint64_t size_in_bits);
+
 void print_nid(uint64_t nid, uint64_t* line);
 
 void print_comment(uint64_t* line);
@@ -3794,6 +3796,13 @@ void define_fun(uint64_t* line, uint64_t nid, char* type) {
     get_nid(get_sid(line)));
 }
 
+uint64_t get_size_in_hex_digits(uint64_t size_in_bits) {
+  if (size_in_bits % 4 == 0)
+    return size_in_bits / 4;
+  else
+    return size_in_bits / 4 + 1;
+}
+
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
   w = w + dprintf(output_fd, "%lu", nid);
@@ -3864,7 +3873,7 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
         w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
       else
         // assert: get_op(line) == OP_CONSTH
-        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, round_up(size / 4, 4)));
+        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, get_size_in_hex_digits(size)));
     }
     w = w + dprintf(output_fd, ")");
   } else {
