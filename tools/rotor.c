@@ -3329,6 +3329,9 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
+char* printing_comments_option             = (char*) 0;
+char* printing_propagated_constants_option = (char*) 0;
+
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
@@ -11816,6 +11819,14 @@ void open_model_file() {
         heap_allowance_option, heap_allowance, heap_initial_size)
     + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
         stack_allowance_option, stack_allowance, stack_initial_size);
+  if (printing_comments)
+    w = w + dprintf(output_fd, "; printing comments\n");
+  else
+    w = w + dprintf(output_fd, "; with %s\n", printing_comments_option);
+  if (printing_propagated_constants)
+    w = w + dprintf(output_fd, "; printing propagated constants\n\n");
+  else
+    w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
   i = 0;
   while (i < number_of_binaries) {
     w = w
@@ -12957,7 +12968,6 @@ uint64_t rotor_arguments() {
   char* disassemble_model_option;
   char* unroll_model_option;
   char* load_code_option;
-  char* printing_comments_option;
   char* printing_pseudoinstructions_option;
   char* printing_smt_option;
 
@@ -12984,9 +12994,11 @@ uint64_t rotor_arguments() {
   heap_allowance_option          = "-heapallowance";
   stack_allowance_option         = "-stackallowance";
 
-  printing_comments_option           = "-nocomments";
-  printing_smt_option                = "-smt";
-  printing_pseudoinstructions_option = "-p";
+  printing_comments_option             = "-nocomments";
+  printing_propagated_constants_option = "-nopropagatedconstants";
+  printing_pseudoinstructions_option   = "-p";
+
+  printing_smt_option = "-smt";
 
   target_exit_code = atoi(peek_argument(0));
 
@@ -13133,8 +13145,8 @@ uint64_t rotor_arguments() {
         printing_comments = 0;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), printing_smt_option)) {
-        printing_smt = 1;
+      } else if (string_compare(peek_argument(1), printing_propagated_constants_option)) {
+        printing_propagated_constants = 0;
 
         get_argument();
       } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
@@ -13146,6 +13158,10 @@ uint64_t rotor_arguments() {
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
+      } else if (string_compare(peek_argument(1), printing_smt_option)) {
+        printing_smt = 1;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), "-")) {
         get_argument();
 
