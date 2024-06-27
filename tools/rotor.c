@@ -10,7 +10,7 @@ in Austria. For further information and code please refer to:
 selfie.cs.uni-salzburg.at
 
 Rotor is a tool for bit-precise reasoning about RISC-V machines
-and RISC-V code using BTOR2 as intermediate modeling format.
+and RISC-V code using BTOR2 and SMT-LIB as modeling format.
 
 Rotor generates models of 64-bit and 32-bit RISC-V machines
 supporting 64-bit and 32-bit integer arithmetic (RV64I, RV32I)
