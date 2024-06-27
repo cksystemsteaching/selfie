@@ -710,13 +710,13 @@ void init_interface_kernel() {
 
   INPUT_ADDRESS_SPACE = calculate_address_space(BYTES_TO_READ, 8);
 
-  SID_INPUT_ADDRESS = new_bitvec(INPUT_ADDRESS_SPACE,
-    format_comment("%lu-bit input address", INPUT_ADDRESS_SPACE));
-
   saved_reuse_lines = reuse_lines;
 
-  // make sure to have a unique SID
+  // make sure to have unique SIDs for input addresses and buffer
   reuse_lines = 0;
+
+  SID_INPUT_ADDRESS = new_bitvec(INPUT_ADDRESS_SPACE,
+    format_comment("%lu-bit input address", INPUT_ADDRESS_SPACE));
 
   SID_INPUT_BUFFER = new_array(SID_INPUT_ADDRESS, SID_BYTE, "input buffer");
 
@@ -1261,13 +1261,13 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   CODE_ADDRESS_SPACE = calculate_address_space(max_code_size, eval_bitvec_size(SID_CODE_WORD));
 
-  SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
-    format_comment("%lu-bit code segment address", CODE_ADDRESS_SPACE));
-
   saved_reuse_lines = reuse_lines;
 
-  // make sure to have a unique SID
+  // make sure to have unique SIDs for code addresses and state
   reuse_lines = 0;
+
+  SID_CODE_ADDRESS = new_bitvec(CODE_ADDRESS_SPACE,
+    format_comment("%lu-bit code segment address", CODE_ADDRESS_SPACE));
 
   SID_CODE_STATE = new_array(SID_CODE_ADDRESS, SID_CODE_WORD, "code segment state");
 
@@ -1283,6 +1283,9 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
 
+  // make sure to have unique SIDs for segment addresses and state
+  reuse_lines = 0;
+
   // data segment
 
   DATA_ADDRESS_SPACE = calculate_address_space(max_data_size, eval_bitvec_size(SID_MEMORY_WORD));
@@ -1290,12 +1293,7 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_DATA_ADDRESS = new_bitvec(DATA_ADDRESS_SPACE,
     format_comment("%lu-bit physical data segment address", DATA_ADDRESS_SPACE));
 
-  // make sure to have a unique SID
-  reuse_lines = 0;
-
   SID_DATA_STATE = new_array(SID_DATA_ADDRESS, SID_MEMORY_WORD, "data segment state");
-
-  reuse_lines = saved_reuse_lines;
 
   // heap segment
 
@@ -1304,12 +1302,7 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_HEAP_ADDRESS = new_bitvec(HEAP_ADDRESS_SPACE,
     format_comment("%lu-bit physical heap segment address", HEAP_ADDRESS_SPACE));
 
-  // make sure to have a unique SID
-  reuse_lines = 0;
-
   SID_HEAP_STATE = new_array(SID_HEAP_ADDRESS, SID_MEMORY_WORD, "heap segment state");
-
-  reuse_lines = saved_reuse_lines;
 
   // stack segment
 
@@ -1317,9 +1310,6 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   SID_STACK_ADDRESS = new_bitvec(STACK_ADDRESS_SPACE,
     format_comment("%lu-bit physical stack segment address", STACK_ADDRESS_SPACE));
-
-  // make sure to have a unique SID
-  reuse_lines = 0;
 
   SID_STACK_STATE = new_array(SID_STACK_ADDRESS, SID_MEMORY_WORD, "stack segment state");
 
