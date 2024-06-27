@@ -67,7 +67,7 @@ support for reasoning about concurrent code is future work.
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 uint64_t* allocate_line() {
-  return smalloc(7 * sizeof(uint64_t*) + 2 * sizeof(char*) + 4 * sizeof(uint64_t));
+  return smalloc(7 * sizeof(uint64_t*) + 3 * sizeof(char*) + 4 * sizeof(uint64_t));
 }
 
 uint64_t  get_nid(uint64_t* line)      { return *line; }
@@ -81,8 +81,9 @@ uint64_t* get_symbolic(uint64_t* line) { return (uint64_t*) *(line + 7); }
 uint64_t  get_state(uint64_t* line)    { return *(line + 8); }
 uint64_t  get_step(uint64_t* line)     { return *(line + 9); }
 uint64_t  get_reuse(uint64_t* line)    { return *(line + 10); }
-uint64_t* get_pred(uint64_t* line)     { return (uint64_t*) *(line + 11); }
-uint64_t* get_succ(uint64_t* line)     { return (uint64_t*) *(line + 12); }
+char*     get_prefix(uint64_t* line)   { return (char*) *(line + 11); }
+uint64_t* get_pred(uint64_t* line)     { return (uint64_t*) *(line + 12); }
+uint64_t* get_succ(uint64_t* line)     { return (uint64_t*) *(line + 13); }
 
 void set_nid(uint64_t* line, uint64_t nid)       { *line        = nid; }
 void set_op(uint64_t* line, char* op)            { *(line + 1)  = (uint64_t) op; }
@@ -95,8 +96,9 @@ void set_symbolic(uint64_t* line, uint64_t* nid) { *(line + 7)  = (uint64_t) nid
 void set_state(uint64_t* line, uint64_t state)   { *(line + 8)  = state; }
 void set_step(uint64_t* line, uint64_t step)     { *(line + 9)  = step; }
 void set_reuse(uint64_t* line, uint64_t reuse)   { *(line + 10) = reuse; }
-void set_pred(uint64_t* line, uint64_t* pred)    { *(line + 11) = (uint64_t) pred; }
-void set_succ(uint64_t* line, uint64_t* succ)    { *(line + 12) = (uint64_t) succ; }
+void set_prefix(uint64_t* line, char* prefix)    { *(line + 11) = (uint64_t) prefix; }
+void set_pred(uint64_t* line, uint64_t* pred)    { *(line + 12) = (uint64_t) pred; }
+void set_succ(uint64_t* line, uint64_t* succ)    { *(line + 13) = (uint64_t) succ; }
 
 uint64_t* allocate_lines(uint64_t number_of_lines);
 
@@ -193,6 +195,12 @@ char* OP_WRITE = (char*) 0;
 char* OP_BAD        = (char*) 0;
 char* OP_CONSTRAINT = (char*) 0;
 
+char* PREFIX_SORT  = (char*) 0;
+char* PREFIX_CONST = (char*) 0;
+char* PREFIX_INPUT = (char*) 0;
+char* PREFIX_EXP   = (char*) 0;
+char* PREFIX_EVAL  = (char*) 0;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t reuse_lines = 1; // flag for reusing lines
@@ -264,6 +272,12 @@ void init_model() {
 
   OP_BAD        = "bad";
   OP_CONSTRAINT = "constraint";
+
+  PREFIX_SORT  = "sort";
+  PREFIX_CONST = "const";
+  PREFIX_INPUT = "input";
+  PREFIX_EXP   = "exp";
+  PREFIX_EVAL  = "eval";
 }
 
 // -----------------------------------------------------------------
@@ -277,8 +291,10 @@ uint64_t is_constant_op(char* op);
 uint64_t is_input_op(char* op);
 uint64_t is_unary_op(char* op);
 
-char* get_smt_id(uint64_t* line);
 char* get_smt_op(uint64_t* line);
+
+void declare_fun(uint64_t* line, uint64_t nid, char* type);
+void define_fun(uint64_t* line, uint64_t nid, char* type);
 
 void print_nid(uint64_t nid, uint64_t* line);
 
@@ -3546,6 +3562,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
   set_state(new_line, 0);
   set_step(new_line, UNINITIALIZED);
   set_reuse(new_line, 0);
+  set_prefix(new_line, (char*) 0);
   set_pred(new_line, UNUSED);
   set_succ(new_line, UNUSED);
 
@@ -3678,18 +3695,6 @@ uint64_t is_unary_op(char* op) {
     return 0;
 }
 
-char* get_smt_id(uint64_t* line) {
-  if (get_op(line) == OP_SORT)
-    sprintf(string_buffer, "s%lu", get_nid(line));
-  else if (is_constant_op(get_op(line)))
-    sprintf(string_buffer, "c%lu", get_nid(line));
-  else if (is_input_op(get_op(line)))
-    sprintf(string_buffer, "i%lu", get_nid(line));
-  else
-    sprintf(string_buffer, "e%lu", get_nid(line));
-  return string_copy(string_buffer);
-}
-
 char* get_smt_op(uint64_t* line) {
   char* op;
 
@@ -3769,6 +3774,26 @@ char* get_smt_op(uint64_t* line) {
     return "unknown";
 }
 
+void declare_fun(uint64_t* line, uint64_t nid, char* type) {
+  set_nid(line, nid);
+  set_prefix(line, type);
+  w = w + dprintf(output_fd, "(declare-fun %s%lu () %s%lu)",
+    get_prefix(line),
+    get_nid(line),
+    get_prefix(get_sid(line)),
+    get_nid(get_sid(line)));
+}
+
+void define_fun(uint64_t* line, uint64_t nid, char* type) {
+  set_nid(line, nid);
+  set_prefix(line, type);
+  w = w + dprintf(output_fd, "(define-fun %s%lu () %s%lu ",
+    get_prefix(line),
+    get_nid(line),
+    get_prefix(get_sid(line)),
+    get_nid(get_sid(line)));
+}
+
 void print_nid(uint64_t nid, uint64_t* line) {
   set_nid(line, nid);
   w = w + dprintf(output_fd, "%lu", nid);
@@ -3794,7 +3819,8 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
   }
   if (printing_smt) {
     set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-sort %s () ", get_smt_id(line));
+    set_prefix(line, PREFIX_SORT);
+    w = w + dprintf(output_fd, "(define-sort %s%lu () ", get_prefix(line), get_nid(line));
     if (is_bitvector(line)) {
       if (line == SID_BOOLEAN)
         w = w + dprintf(output_fd, "Bool");
@@ -3802,7 +3828,11 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
         w = w + dprintf(output_fd, "(_ BitVec %lu)", eval_bitvec_size(line));
     } else
       // assert: array
-      w = w + dprintf(output_fd, "(Array %s %s)", get_smt_id(get_arg2(line)), get_smt_id(get_arg3(line)));
+      w = w + dprintf(output_fd, "(Array %s%lu %s%lu)",
+        get_prefix(get_arg2(line)),
+        get_nid(get_arg2(line)),
+        get_prefix(get_arg3(line)),
+        get_nid(get_arg3(line)));
     w = w + dprintf(output_fd, ")");
   } else {
     print_nid(nid, line);
@@ -3823,8 +3853,7 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   value = eval_constant_value(line);
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s ", get_smt_id(line), get_smt_id(get_sid(line)));
+    define_fun(line, nid, PREFIX_CONST);
     if (get_sid(line) == SID_BOOLEAN)
       if (value) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
     else {
@@ -3835,7 +3864,7 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
         w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
       else
         // assert: get_op(line) == OP_CONSTH
-        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, size));
+        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, round_up(size / 4, 4)));
     }
     w = w + dprintf(output_fd, ")");
   } else {
@@ -3878,6 +3907,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
           // else: assert: get_op(get_symbolic(line)) == OP_NEXT
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
+          set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
           return nid;
         } else {
           // assert: array
@@ -3890,16 +3920,16 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
               nid = print_line_once(nid, get_arg2(get_symbolic(line)));
             // else: assert: get_op(get_symbolic(line)) == OP_NEXT
             set_nid(line, get_nid(get_arg2(get_symbolic(line))));
+            set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
             return nid;
           }
         }
     }
   }
   nid = print_line_once(nid, get_sid(line));
-  if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(declare-fun %s () %s)", get_smt_id(line), get_smt_id(get_sid(line)));
-  } else {
+  if (printing_smt)
+    declare_fun(line, nid, PREFIX_INPUT);
+  else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
   }
@@ -3911,13 +3941,12 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s ((_ %s %lu) %s))",
-      get_smt_id(line),
-      get_smt_id(get_sid(line)),
+    define_fun(line, nid, PREFIX_EXP);
+    w = w + dprintf(output_fd, "((_ %s %lu) %s%lu))",
       get_smt_op(line),
       eval_ext_w(line),
-      get_smt_id(get_arg1(line)));
+      get_prefix(get_arg1(line)),
+      get_nid(get_arg1(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu",
@@ -3931,14 +3960,13 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s ((_ %s %lu %lu) %s))",
-      get_smt_id(line),
-      get_smt_id(get_sid(line)),
+    define_fun(line, nid, PREFIX_EXP);
+    w = w + dprintf(output_fd, "((_ %s %lu %lu) %s%lu))",
       get_smt_op(line),
       eval_slice_u(line),
       eval_slice_l(line),
-      get_smt_id(get_arg1(line)));
+      get_prefix(get_arg1(line)),
+      get_nid(get_arg1(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
@@ -3952,12 +3980,12 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s))",
-      get_smt_id(line),
-      get_smt_id(get_sid(line)),
-      get_smt_op(line),
-      get_smt_id(get_arg1(line)));
+    define_fun(line, nid, PREFIX_EXP);
+    if ((get_op(line) == OP_NOT) * (get_sid(line) == SID_BOOLEAN) > 0)
+      w = w + dprintf(output_fd, "(%s", get_op(line));
+    else
+      w = w + dprintf(output_fd, "(%s", get_smt_op(line));
+    w = w + dprintf(output_fd, " %s%lu))", get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu",
@@ -3972,13 +4000,17 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   nid = print_line_once(nid, get_arg2(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s %s))",
-      get_smt_id(line),
-      get_smt_id(get_sid(line)),
-      get_smt_op(line),
-      get_smt_id(get_arg1(line)),
-      get_smt_id(get_arg2(line)));
+    define_fun(line, nid, PREFIX_EXP);
+    if (((get_op(line) == OP_AND) + (get_op(line) == OP_OR) + (get_op(line) == OP_XOR))
+      * (get_sid(line) == SID_BOOLEAN) > 0)
+        w = w + dprintf(output_fd, "(%s", get_op(line));
+    else
+      w = w + dprintf(output_fd, "(%s", get_smt_op(line));
+    w = w + dprintf(output_fd, " %s%lu %s%lu))",
+      get_prefix(get_arg1(line)),
+      get_nid(get_arg1(line)),
+      get_prefix(get_arg2(line)),
+      get_nid(get_arg2(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu",
@@ -3994,14 +4026,15 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg2(line));
   nid = print_line_once(nid, get_arg3(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s (%s %s %s %s))",
-      get_smt_id(line),
-      get_smt_id(get_sid(line)),
+    define_fun(line, nid, PREFIX_EXP);
+    w = w + dprintf(output_fd, "(%s %s%lu %s%lu %s%lu))",
       get_smt_op(line),
-      get_smt_id(get_arg1(line)),
-      get_smt_id(get_arg2(line)),
-      get_smt_id(get_arg3(line)));
+      get_prefix(get_arg1(line)),
+      get_nid(get_arg1(line)),
+      get_prefix(get_arg2(line)),
+      get_nid(get_arg2(line)),
+      get_prefix(get_arg3(line)),
+      get_nid(get_arg3(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
@@ -4036,9 +4069,11 @@ uint64_t print_ite(uint64_t nid, uint64_t* line) {
       if (get_state(get_arg1(line))) {
         nid = print_line_once(nid, get_arg2(line));
         set_nid(line, get_nid(get_arg2(line)));
+        set_prefix(line, get_prefix(get_arg2(line)));
       } else {
         nid = print_line_once(nid, get_arg3(line));
         set_nid(line, get_nid(get_arg3(line)));
+        set_prefix(line, get_prefix(get_arg3(line)));
       }
       return nid;
     }
@@ -4049,7 +4084,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
     if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(push 1)\n");
-    w = w + dprintf(output_fd, "(assert (= %s true))", get_smt_id(get_arg1(line)));
+    w = w + dprintf(output_fd, "(assert (= %s%lu true))", get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
     print_comment(line);
     if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(check-sat)\n(get-model)\n(pop 1)\n");
   } else {
@@ -4064,8 +4099,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_sid(line));
   if (printing_smt) {
-    set_nid(line, nid);
-    w = w + dprintf(output_fd, "(define-fun %s () %s ", get_smt_id(line), get_smt_id(get_sid(line)));
+    define_fun(line, nid, PREFIX_EVAL);
     if (get_sid(line) == SID_BOOLEAN)
       if (get_state(line)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
     else
@@ -5422,8 +5456,10 @@ void apply_next(uint64_t* line) {
 
       set_step(state_nid, next_step);
 
-      if (printing_unrolled_model)
+      if (printing_unrolled_model) {
         set_nid(state_nid, get_nid(value_nid));
+        set_prefix(state_nid, get_prefix(value_nid));
+      }
     } // else: symbolic state remains unchanged
 
     return;
