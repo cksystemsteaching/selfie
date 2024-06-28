@@ -12899,6 +12899,13 @@ void eval_rotor() {
         max_steps - 1,
         max_steps);
     }
+
+    printf("%s: for unrolled model invoke: %s -c %s - %lu -kmin %lu -kmax %lu -smt\n", selfie_name,
+      selfie_name,
+      binary_name,
+      target_exit_code,
+      min_steps_to_bad_state - 1,
+      max_steps_to_bad_state - 1);
   }
 }
 
