@@ -11783,22 +11783,37 @@ void model_rotor() {
 }
 
 void open_model_file() {
+  char* suffix;
   char* extension;
+
   uint64_t i;
 
-  if (printing_smt) extension = "smt"; else extension = "btor2";
+  if (number_of_binaries > 0)
+    model_name = (char*) get_for(0, binary_names);
+  else if (IS64BITTARGET)
+    model_name = "64-bit-riscv-machine.m";
+  else
+    model_name = "32-bit-riscv-machine.m";
 
-  if (number_of_binaries > 0) {
-    if (number_of_binaries < number_of_cores)
-      model_name = replace_extension((char*) get_for(0, binary_names), "-synthesize", extension);
-    else
-      model_name = replace_extension((char*) get_for(0, binary_names), "-rotorized", extension);
-  } else {
-    if (IS64BITTARGET)
-      model_name = replace_extension("64-bit-riscv-machine.m", "-synthesize", extension);
-    else
-      model_name = replace_extension("32-bit-riscv-machine.m", "-synthesize", extension);
+  if (number_of_binaries == number_of_cores)
+    suffix = "-rotorized";
+  else
+    suffix = "-synthesize";
+
+  if (printing_unrolled_model) {
+    sprintf(string_buffer, "-kmin-%lu-kmax-%lu%s",
+      min_steps_to_bad_state - 1,
+      max_steps_to_bad_state - 1,
+      suffix);
+    suffix = string_copy(string_buffer);
   }
+
+  if (printing_smt)
+    extension = "smt";
+  else
+    extension = "btor2";
+
+  model_name = replace_extension(model_name, suffix, extension);
 
   // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
