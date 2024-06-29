@@ -12870,14 +12870,17 @@ void eval_rotor() {
       printf("%s: --------------------------------------------------------------------------------\n", selfie_name);
 
     if (any_input) {
-      printf("%s: %lu bad states reached in [%lu,%lu] steps with up to [%lu,%lu] instructions executed on input (%lu,%lu)\n", selfie_name,
-        number_of_bad_states,
-        min_steps_to_bad_state - 1,
-        max_steps_to_bad_state - 1,
-        min_steps_to_bad_state,
-        max_steps_to_bad_state,
-        min_input_to_bad_state,
-        max_input_to_bad_state);
+      if (number_of_bad_states > 0)
+        printf("%s: %lu bad states reached in [%lu,%lu] steps with up to [%lu,%lu] instructions executed on input (%lu,%lu)\n", selfie_name,
+          number_of_bad_states,
+          min_steps_to_bad_state - 1,
+          max_steps_to_bad_state - 1,
+          min_steps_to_bad_state,
+          max_steps_to_bad_state,
+          min_input_to_bad_state,
+          max_input_to_bad_state);
+      else
+        printf("%s: no bad states reached\n", selfie_name);
 
       printf("%s: [%lu,%lu] steps taken with up to [%lu,%lu] instructions executed on input (%lu,%lu)\n", selfie_name,
         min_steps - 1, max_steps - 1, min_steps, max_steps, min_input, max_input);
@@ -12890,22 +12893,26 @@ void eval_rotor() {
             printf("%s: exit codes are equal for all considered inputs\n", selfie_name);
         }
     } else {
-      printf("%s: %lu bad states reached in %lu steps with up to %lu instructions executed\n", selfie_name,
-        number_of_bad_states,
-        max_steps_to_bad_state - 1,
-        max_steps_to_bad_state);
+      if (number_of_bad_states > 0)
+        printf("%s: %lu bad states reached in %lu steps with up to %lu instructions executed\n", selfie_name,
+          number_of_bad_states,
+          max_steps_to_bad_state - 1,
+          max_steps_to_bad_state);
+      else
+        printf("%s: no bad states reached\n", selfie_name);
 
       printf("%s: %lu steps taken with up to %lu instructions executed without input\n", selfie_name,
         max_steps - 1,
         max_steps);
     }
 
-    printf("%s: for unrolled model invoke: %s -c %s - %lu -kmin %lu -kmax %lu -smt\n", selfie_name,
-      selfie_name,
-      binary_name,
-      target_exit_code,
-      min_steps_to_bad_state - 1,
-      max_steps_to_bad_state - 1);
+    if (number_of_bad_states > 0)
+      printf("%s: for unrolled model invoke: %s -c %s - %lu -kmin %lu -kmax %lu -smt\n", selfie_name,
+        selfie_name,
+        binary_name,
+        target_exit_code,
+        min_steps_to_bad_state - 1,
+        max_steps_to_bad_state - 1);
   }
 }
 
