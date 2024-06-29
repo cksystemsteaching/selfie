@@ -1218,7 +1218,7 @@ uint64_t* eval_core_0_heap_segment_data_flow_nid = (uint64_t*) 0;
 // stack segment
 
 uint64_t stack_initial_size = 0;
-uint64_t stack_allowance    = 4096; // must be multiple of WORDSIZE > 0
+uint64_t stack_allowance    = 2048; // must be multiple of WORDSIZE > 0
 
 uint64_t stack_start = 0;
 uint64_t stack_size  = 0;
