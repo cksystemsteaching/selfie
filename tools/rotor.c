@@ -3905,12 +3905,8 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
         itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
     else
       // assert: get_op(line) == OP_CONSTH
-      if (printing_unrolled_model)
-        // bitwuzla does not like hex literals
-        w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), value);
-      else
-        w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-          itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+      w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
+        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
   }
   print_comment(line);
   return nid;
