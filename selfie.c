@@ -2622,6 +2622,8 @@ uint64_t two_to_the_power_of(uint64_t p) {
   if (p < SIZEOFUINT64INBITS)
     return *(power_of_two_table + p);
 
+  printf("%s: 2^%lu overflow\n", selfie_name, p);
+
   exit(EXITCODE_SYSTEMERROR);
 }
 
