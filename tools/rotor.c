@@ -5055,12 +5055,20 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, bitwise_or(left_value, right_value));
         else if (op == OP_XOR)
           set_state(line, bitwise_xor(left_value, right_value));
-        else if (op == OP_SLL)
-          set_state(line, sign_shrink(left_shift(left_value, right_value), size));
-        else if (op == OP_SRL)
-          set_state(line, right_shift(left_value, right_value));
-        else if (op == OP_SRA)
-          set_state(line, arithmetic_right_shift(left_value, right_value, size));
+        else if (right_value < SIZEOFUINT64INBITS) {
+          if (op == OP_SLL)
+            set_state(line, sign_shrink(left_shift(left_value, right_value), size));
+          else if (op == OP_SRL)
+            set_state(line, right_shift(left_value, right_value));
+          else if (op == OP_SRA)
+            set_state(line, arithmetic_right_shift(left_value, right_value, size));
+        } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+          set_state(line, 0);
+        else {
+          printf("%s: non-symbolic %s by %lu bits\n", selfie_name, op, right_value);
+
+          exit(EXITCODE_SYSTEMERROR);
+        }
       } else if (is_arithmetic_operator(op)) {
         match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
 
