@@ -3808,7 +3808,8 @@ void get_symbol() {
             syntax_error_message("unsigned integer out of target bound");
 
             exit(EXITCODE_SCANNERERROR);
-          }
+          } else if (literal >= INT_MIN)
+            literal = sign_extend(literal, WORDSIZEINBITS);
         }
 
         symbol = SYM_INTEGER;
