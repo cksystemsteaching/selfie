@@ -3914,7 +3914,9 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
 
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
+  char* type;
   op = get_op(line);
+  type = PREFIX_INPUT;
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
       if (get_symbolic(line) == SYMBOLIC)
@@ -3923,22 +3925,28 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
       else
         // assert: get_symbolic(line) != NONSYMBOLIC
         if (is_bitvector(get_sid(line))) {
-          if (get_op(get_symbolic(line)) == OP_INIT)
+          if (get_op(get_symbolic(line)) == OP_INIT) {
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-          // else: assert: get_op(get_symbolic(line)) == OP_NEXT
+            w = w + dprintf(output_fd, "\n");
+          } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
           set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
           return nid;
         } else {
           // assert: array
-          if (is_bitvector(get_sid(get_arg2(get_symbolic(line)))))
+          if (is_bitvector(get_sid(get_arg2(get_symbolic(line))))) {
             // assert: get_op(get_symbolic(line)) == OP_INIT
-            // TODO: handle zeroed arrays here
-            op = OP_INPUT;
-          else {
-            if (get_op(get_symbolic(line)) == OP_INIT)
+            if (printing_smt) {
               nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-            // else: assert: get_op(get_symbolic(line)) == OP_NEXT
+              type = PREFIX_CONST;
+            }
+            // TODO: handle BTOR2 zeroed arrays here
+            op = OP_INPUT;
+          } else {
+            if (get_op(get_symbolic(line)) == OP_INIT) {
+              nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+              w = w + dprintf(output_fd, "\n");
+            } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
             set_nid(line, get_nid(get_arg2(get_symbolic(line))));
             set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
             return nid;
@@ -3947,13 +3955,22 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
     }
   }
   nid = print_line_once(nid, get_sid(line));
-  if (printing_smt)
-    declare_fun(line, nid, PREFIX_INPUT);
-  else {
+  if (printing_smt) {
+    declare_fun(line, nid, type);
+    print_comment(line);
+    if (type == PREFIX_CONST)
+      w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))\n\n",
+        get_prefix(line),
+        get_nid(line),
+        get_prefix(get_sid(line)),
+        get_nid(get_sid(line)),
+        get_prefix(get_arg2(get_symbolic(line))),
+        get_nid(get_arg2(get_symbolic(line))));
+  } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
+    print_comment(line);
   }
-  print_comment(line);
   return nid;
 }
 
@@ -5896,17 +5913,21 @@ void new_register_file_state(uint64_t core) {
 
         value = eval_line(value_nid);
       } else if (printing_unrolled_model) {
-        // skipping registers other than sp unless printing unrolled model
-        value     = 0;
-        value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-          value,
-          0,
-          format_comment("initial register value 0x%lX", value));
-        // for reuse creating register address exactly as above in register sorts
-        reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
-          reg,
-          5,
-          format_comment("%s", *(REGISTERS + reg)));
+        if (printing_smt)
+          value_nid = UNUSED;
+        else {
+          // skipping registers other than sp unless printing unrolled model
+          value     = 0;
+          value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+            value,
+            0,
+            format_comment("initial register value 0x%lX", value));
+          // for reuse creating register address exactly as above in register sorts
+          reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
+            reg,
+            5,
+            format_comment("%s", *(REGISTERS + reg)));
+        }
       } else
         value_nid = UNUSED;
 
@@ -5932,7 +5953,7 @@ void new_register_file_state(uint64_t core) {
     while (reg < NUMBEROFREGISTERS) {
       value = *(get_regs(current_context) + reg);
 
-      if ((value != 0) + printing_unrolled_model > 0) {
+      if ((value != 0) + (printing_unrolled_model - printing_smt) > 0) {
         // skipping zero as initial value unless printing unrolled model
         value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           value,
@@ -6305,7 +6326,7 @@ void new_code_segment(uint64_t core) {
       else
         ir = 0;
 
-      if ((ir != 0) + printing_unrolled_model > 0) {
+      if ((ir != 0) + (printing_unrolled_model - printing_smt) > 0) {
         // skipping zero as instruction unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
@@ -6468,7 +6489,7 @@ void new_data_segment(uint64_t core) {
         // else: out-of-segment memory is zeroed
       // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
-      if ((data != 0) + printing_unrolled_model > 0) {
+      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
         // skipping zero as initial value unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
@@ -6627,7 +6648,7 @@ void new_heap_segment(uint64_t core) {
         // else: out-of-segment memory is zeroed
       // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
-      if ((data != 0) + printing_unrolled_model > 0) {
+      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
         // skipping zero as initial value unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
@@ -6786,7 +6807,7 @@ void new_stack_segment(uint64_t core) {
         // else: out-of-segment memory is zeroed
       // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
-      if ((data != 0) + printing_unrolled_model > 0) {
+      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
         // skipping zero as initial value unless printing unrolled model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
