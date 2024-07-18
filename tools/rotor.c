@@ -906,14 +906,11 @@ uint64_t* store_if_in_segment(uint64_t* vaddr_nid, uint64_t* store_nid, uint64_t
 void new_code_segment(uint64_t core);
 void print_code_segment(uint64_t core);
 
-void new_data_segment(uint64_t core);
-void print_data_segment(uint64_t core);
+void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
+  uint64_t MEMORY_ADDRESS_SPACE, uint64_t segment_start, uint64_t segment_size);
 
-void new_heap_segment(uint64_t core);
-void print_heap_segment(uint64_t core);
-
-void new_stack_segment(uint64_t core);
-void print_stack_segment(uint64_t core);
+void new_memory_segments(uint64_t core);
+void print_memory_segments(uint64_t core);
 
 uint64_t* get_memory_address_sort(uint64_t* segment_nid);
 uint64_t* get_memory_word_sort(uint64_t* segment_nid);
@@ -1176,6 +1173,11 @@ uint64_t* initial_code_nids = (uint64_t*) 0;
 uint64_t* state_code_segment_nids = (uint64_t*) 0;
 uint64_t* init_code_segment_nids  = (uint64_t*) 0;
 uint64_t* next_code_segment_nids  = (uint64_t*) 0;
+
+// memory segments
+
+uint64_t* initial_head_nid = (uint64_t*) 0;
+uint64_t* initial_tail_nid = (uint64_t*) 0;
 
 // data segment
 
@@ -6422,24 +6424,88 @@ void print_code_segment(uint64_t core) {
   }
 }
 
-void new_data_segment(uint64_t core) {
-  // TODO: consolidate with other new segment procedures
-
-  uint64_t* init_zeroed_data_segment_nid;
-  uint64_t* next_zeroed_data_segment_nid;
-  uint64_t* initial_data_nid;
-  uint64_t* initial_data_segment_nid;
-  uint64_t* init_data_segment_nid;
-  uint64_t  number_of_hex_digits;
-  uint64_t  address_space_size;
-  uint64_t  vaddr;
-  uint64_t  saved_reuse_lines;
-  uint64_t  data;
+void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
+  uint64_t MEMORY_ADDRESS_SPACE, uint64_t segment_start, uint64_t segment_size) {
+  uint64_t saved_reuse_lines;
+  uint64_t number_of_hex_digits;
+  uint64_t address_space_size;
+  uint64_t vaddr;
+  uint64_t data;
   uint64_t* laddr_nid;
   uint64_t* data_nid;
   uint64_t* store_nid;
 
+  saved_reuse_lines = reuse_lines;
+
+  reuse_lines = 0; // TODO: turn on via console argument
+
+  number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
+
+  address_space_size = two_to_the_power_of(MEMORY_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
+
+  initial_head_nid = UNUSED;
+  initial_tail_nid = state_segment_nid;
+
+  vaddr = segment_start;
+
+  // consider 32-bit overflow to terminate loop
+  while (vaddr - segment_start < address_space_size) {
+    data = 0;
+
+    if (core < number_of_binaries)
+      if (vaddr - segment_start < segment_size)
+        if (is_virtual_address_mapped(get_pt(current_context), vaddr))
+          data = load_virtual_memory(get_pt(current_context), vaddr);
+        // else: unmapped memory is assumed to be zero
+      // else: out-of-segment memory is zeroed
+    // else: memory in a system with uninitialized code segment is zeroed for unrolling
+
+    if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
+      // skipping zero as initial value unless printing unrolled model
+      laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
+        vaddr - segment_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+
+      data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
+        data, 0, format_comment("data 0x%lX", data));
+
+      store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_tail_nid);
+
+      if (initial_head_nid == UNUSED)
+        initial_head_nid = store_nid;
+      else
+        // set successor for printing initial segment iteratively to avoid stack overflow
+        set_succ(initial_tail_nid, store_nid);
+
+      initial_tail_nid = store_nid;
+
+      // evaluate on-the-fly to avoid stack overflow later
+      if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
+        printf("%s: initial segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    }
+
+    vaddr = vaddr + WORDSIZE;
+  }
+
+  reuse_lines = saved_reuse_lines;
+}
+
+void new_memory_segments(uint64_t core) {
+  uint64_t* init_zeroed_data_segment_nid;
+  uint64_t* next_zeroed_data_segment_nid;
+  uint64_t* init_zeroed_heap_segment_nid;
+  uint64_t* next_zeroed_heap_segment_nid;
+  uint64_t* init_zeroed_stack_segment_nid;
+  uint64_t* next_zeroed_stack_segment_nid;
+  uint64_t* init_data_segment_nid;
+  uint64_t* init_heap_segment_nid;
+  uint64_t* init_stack_segment_nid;
+
   set_for(core, state_data_segment_nids, state_data_segment_nid);
+  set_for(core, state_heap_segment_nids, state_heap_segment_nid);
+  set_for(core, state_stack_segment_nids, state_stack_segment_nid);
 
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
@@ -6450,77 +6516,38 @@ void new_data_segment(uint64_t core) {
 
   state_data_segment_nid = new_input(OP_STATE, SID_DATA_STATE,
     format_comment("core-%lu-zeroed-data-segment", core), "zeroed data segment");
+  state_heap_segment_nid = new_input(OP_STATE, SID_HEAP_STATE,
+    format_comment("core-%lu-zeroed-heap-segment", core), "zeroed heap segment");
+  state_stack_segment_nid = new_input(OP_STATE, SID_STACK_STATE,
+    format_comment("core-%lu-zeroed-stack-segment", core), "zeroed stack segment");
 
   set_for(core, state_data_segment_nids, state_data_segment_nid);
+  set_for(core, state_heap_segment_nids, state_heap_segment_nid);
+  set_for(core, state_stack_segment_nids, state_stack_segment_nid);
 
   init_zeroed_data_segment_nid = new_init(SID_DATA_STATE,
     state_data_segment_nid, NID_MEMORY_WORD_0, "zeroing data segment");
+  init_zeroed_heap_segment_nid = new_init(SID_HEAP_STATE,
+    state_heap_segment_nid, NID_MEMORY_WORD_0, "zeroing heap segment");
+  init_zeroed_stack_segment_nid = new_init(SID_STACK_STATE,
+    state_stack_segment_nid, NID_MEMORY_WORD_0, "zeroing stack segment");
 
   eval_init(init_zeroed_data_segment_nid);
+  eval_init(init_zeroed_heap_segment_nid);
+  eval_init(init_zeroed_stack_segment_nid);
 
   set_for(core, init_zeroed_data_segment_nids, init_zeroed_data_segment_nid);
+  set_for(core, init_zeroed_heap_segment_nids, init_zeroed_heap_segment_nid);
+  set_for(core, init_zeroed_stack_segment_nids, init_zeroed_stack_segment_nid);
 
-  next_zeroed_data_segment_nid = UNUSED;
+  next_zeroed_data_segment_nid  = UNUSED;
+  next_zeroed_heap_segment_nid  = UNUSED;
+  next_zeroed_stack_segment_nid = UNUSED;
 
   if (number_of_binaries + printing_unrolled_model > 0) {
-    initial_data_nid = UNUSED;
+    initialize_memory_segment(core, state_data_segment_nid, DATA_ADDRESS_SPACE, data_start, data_size);
 
-    initial_data_segment_nid = state_data_segment_nid;
-
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
-
-    address_space_size = two_to_the_power_of(DATA_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
-
-    vaddr = data_start;
-
-    saved_reuse_lines = reuse_lines;
-
-    reuse_lines = 0; // TODO: turn on via console argument
-
-    // consider 32-bit overflow to terminate loop
-    while (vaddr - data_start < address_space_size) {
-      data = 0;
-
-      if (core < number_of_binaries)
-        if (vaddr - data_start < data_size)
-          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-            data = load_virtual_memory(get_pt(current_context), vaddr);
-          // else: unmapped memory is assumed to be zero
-        // else: out-of-segment memory is zeroed
-      // else: memory in a system with uninitialized code segment is zeroed for unrolling
-
-      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
-        // skipping zero as initial value unless printing unrolled model
-        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          vaddr - data_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
-
-        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-          data, 0, format_comment("data 0x%lX", data));
-
-        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_data_segment_nid);
-
-        if (initial_data_nid == UNUSED)
-          initial_data_nid = store_nid;
-        else
-          // set successor for printing initial data segment iteratively to avoid stack overflow
-          set_succ(initial_data_segment_nid, store_nid);
-
-        initial_data_segment_nid = store_nid;
-
-        // evaluate on-the-fly to avoid stack overflow later
-        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-          printf("%s: initial data segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
-
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      }
-
-      vaddr = vaddr + WORDSIZE;
-    }
-
-    reuse_lines = saved_reuse_lines;
-
-    if (initial_data_nid != UNUSED) {
+    if (initial_head_nid != UNUSED) {
       next_zeroed_data_segment_nid = new_next(SID_DATA_STATE,
         state_data_segment_nid, state_data_segment_nid, "read-only zeroed data segment");
 
@@ -6530,22 +6557,64 @@ void new_data_segment(uint64_t core) {
       set_for(core, state_data_segment_nids, state_data_segment_nid);
 
       init_data_segment_nid = new_init(SID_DATA_STATE,
-        state_data_segment_nid, initial_data_segment_nid, "loaded data");
+        state_data_segment_nid, initial_tail_nid, "loaded data");
 
       eval_init(init_data_segment_nid);
     } else
       init_data_segment_nid = init_zeroed_data_segment_nid;
 
     set_for(core, next_zeroed_data_segment_nids, next_zeroed_data_segment_nid);
-
-    set_for(core, initial_data_nids, initial_data_nid);
-
+    set_for(core, initial_data_nids, initial_head_nid);
     set_for(core, init_data_segment_nids, init_data_segment_nid);
+
+    initialize_memory_segment(core, state_heap_segment_nid, HEAP_ADDRESS_SPACE, heap_start, heap_size);
+
+    if (initial_head_nid != UNUSED) {
+      next_zeroed_heap_segment_nid = new_next(SID_HEAP_STATE,
+        state_heap_segment_nid, state_heap_segment_nid, "read-only zeroed heap segment");
+
+      state_heap_segment_nid = new_input(OP_STATE, SID_HEAP_STATE,
+        format_comment("core-%lu-loaded-heap-segment", core), "loaded heap segment");
+
+      set_for(core, state_heap_segment_nids, state_heap_segment_nid);
+
+      init_heap_segment_nid = new_init(SID_HEAP_STATE,
+        state_heap_segment_nid, initial_tail_nid, "loaded heap");
+
+      eval_init(init_heap_segment_nid);
+    } else
+      init_heap_segment_nid = init_zeroed_heap_segment_nid;
+
+    set_for(core, next_zeroed_heap_segment_nids, next_zeroed_heap_segment_nid);
+    set_for(core, initial_heap_nids, initial_head_nid);
+    set_for(core, init_heap_segment_nids, init_heap_segment_nid);
+
+    initialize_memory_segment(core, state_stack_segment_nid, STACK_ADDRESS_SPACE, stack_start, stack_size);
+
+    if (initial_head_nid != UNUSED) {
+      next_zeroed_stack_segment_nid = new_next(SID_STACK_STATE,
+        state_stack_segment_nid, state_stack_segment_nid, "read-only zeroed stack segment");
+
+      state_stack_segment_nid = new_input(OP_STATE, SID_STACK_STATE,
+        format_comment("core-%lu-loaded-stack-segment", core), "loaded stack segment");
+
+      set_for(core, state_stack_segment_nids, state_stack_segment_nid);
+
+      init_stack_segment_nid = new_init(SID_STACK_STATE,
+        state_stack_segment_nid, initial_tail_nid, "loaded stack");
+
+      eval_init(init_stack_segment_nid);
+    } else
+      init_stack_segment_nid = init_zeroed_stack_segment_nid;
+
+    set_for(core, next_zeroed_stack_segment_nids, next_zeroed_stack_segment_nid);
+    set_for(core, initial_stack_nids, initial_head_nid);
+    set_for(core, init_stack_segment_nids, init_stack_segment_nid);
   }
 }
 
-void print_data_segment(uint64_t core) {
-  uint64_t* initial_data_nid;
+void print_memory_segments(uint64_t core) {
+  uint64_t* initial_nid;
 
   if (SYNCHRONIZED_MEMORY) {
     if (core > 0)
@@ -6560,18 +6629,18 @@ void print_data_segment(uint64_t core) {
 
   if (number_of_binaries > 0) {
     // assert: not reached during unrolling
-    initial_data_nid = get_for(core, initial_data_nids);
+    initial_nid = get_for(core, initial_data_nids);
 
-    if (initial_data_nid != UNUSED) {
+    if (initial_nid != UNUSED) {
       print_line_for(core, next_zeroed_data_segment_nids);
 
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading data", log_ten(data_size * 3) + 1);
 
-      while (initial_data_nid != UNUSED) {
-        print_line(initial_data_nid);
+      while (initial_nid != UNUSED) {
+        print_line(initial_nid);
 
-        initial_data_nid = get_succ(initial_data_nid);
+        initial_nid = get_succ(initial_nid);
       }
 
       print_break_comment_for(core, "loaded data segment");
@@ -6579,139 +6648,6 @@ void print_data_segment(uint64_t core) {
       print_line_for(core, init_data_segment_nids);
     }
   }
-}
-
-void new_heap_segment(uint64_t core) {
-  // TODO: consolidate with other new segment procedures
-
-  uint64_t* init_zeroed_heap_segment_nid;
-  uint64_t* next_zeroed_heap_segment_nid;
-  uint64_t* initial_heap_nid;
-  uint64_t* initial_heap_segment_nid;
-  uint64_t* init_heap_segment_nid;
-  uint64_t  number_of_hex_digits;
-  uint64_t  address_space_size;
-  uint64_t  vaddr;
-  uint64_t  saved_reuse_lines;
-  uint64_t  data;
-  uint64_t* laddr_nid;
-  uint64_t* data_nid;
-  uint64_t* store_nid;
-
-  set_for(core, state_heap_segment_nids, state_heap_segment_nid);
-
-  if (SYNCHRONIZED_MEMORY) {
-    if (core > 0)
-      return;
-  } else if (SHARED_MEMORY)
-    if (core > 0)
-      return;
-
-  state_heap_segment_nid = new_input(OP_STATE, SID_HEAP_STATE,
-    format_comment("core-%lu-zeroed-heap-segment", core), "zeroed heap segment");
-
-  set_for(core, state_heap_segment_nids, state_heap_segment_nid);
-
-  init_zeroed_heap_segment_nid = new_init(SID_HEAP_STATE,
-    state_heap_segment_nid, NID_MEMORY_WORD_0, "zeroing heap segment");
-
-  eval_init(init_zeroed_heap_segment_nid);
-
-  set_for(core, init_zeroed_heap_segment_nids, init_zeroed_heap_segment_nid);
-
-  next_zeroed_heap_segment_nid = UNUSED;
-
-  if (number_of_binaries + printing_unrolled_model > 0) {
-    initial_heap_nid = UNUSED;
-
-    initial_heap_segment_nid = state_heap_segment_nid;
-
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
-
-    address_space_size = two_to_the_power_of(HEAP_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
-
-    vaddr = heap_start;
-
-    saved_reuse_lines = reuse_lines;
-
-    reuse_lines = 0; // TODO: turn on via console argument
-
-    // consider 32-bit overflow to terminate loop
-    while (vaddr - heap_start < address_space_size) {
-      data = 0;
-
-      if (core < number_of_binaries)
-        if (vaddr - heap_start < heap_size)
-          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-            data = load_virtual_memory(get_pt(current_context), vaddr);
-          // else: unmapped memory is assumed to be zero
-        // else: out-of-segment memory is zeroed
-      // else: memory in a system with uninitialized code segment is zeroed for unrolling
-
-      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
-        // skipping zero as initial value unless printing unrolled model
-        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          vaddr - heap_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
-
-        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-          data, 0, format_comment("data 0x%lX", data));
-
-        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_heap_segment_nid);
-
-        if (initial_heap_nid == UNUSED)
-          initial_heap_nid = store_nid;
-        else
-          // set successor for printing initial heap segment iteratively to avoid stack overflow
-          set_succ(initial_heap_segment_nid, store_nid);
-
-        initial_heap_segment_nid = store_nid;
-
-        // evaluate on-the-fly to avoid stack overflow later
-        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-          printf("%s: initial heap segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
-
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      }
-
-      vaddr = vaddr + WORDSIZE;
-    }
-
-    reuse_lines = saved_reuse_lines;
-
-    if (initial_heap_nid != UNUSED) {
-      next_zeroed_heap_segment_nid = new_next(SID_HEAP_STATE,
-        state_heap_segment_nid, state_heap_segment_nid, "read-only zeroed heap segment");
-
-      state_heap_segment_nid = new_input(OP_STATE, SID_HEAP_STATE,
-        format_comment("core-%lu-loaded-heap-segment", core), "loaded heap segment");
-
-      set_for(core, state_heap_segment_nids, state_heap_segment_nid);
-
-      init_heap_segment_nid = new_init(SID_HEAP_STATE,
-        state_heap_segment_nid, initial_heap_segment_nid, "loaded heap");
-
-      eval_init(init_heap_segment_nid);
-    } else
-      init_heap_segment_nid = init_zeroed_heap_segment_nid;
-
-    set_for(core, next_zeroed_heap_segment_nids, next_zeroed_heap_segment_nid);
-
-    set_for(core, initial_heap_nids, initial_heap_nid);
-
-    set_for(core, init_heap_segment_nids, init_heap_segment_nid);
-  }
-}
-
-void print_heap_segment(uint64_t core) {
-  uint64_t* initial_heap_nid;
-
-  if (SYNCHRONIZED_MEMORY) {
-    if (core > 0)
-      return;
-  } else if (SHARED_MEMORY)
-    if (core > 0)
-      return;
 
   print_break_comment_for(core, "zeroed heap segment");
 
@@ -6719,18 +6655,18 @@ void print_heap_segment(uint64_t core) {
 
   if (number_of_binaries > 0) {
     // assert: not reached during unrolling
-    initial_heap_nid = get_for(core, initial_heap_nids);
+    initial_nid = get_for(core, initial_heap_nids);
 
-    if (initial_heap_nid != UNUSED) {
+    if (initial_nid != UNUSED) {
       print_line_for(core, next_zeroed_heap_segment_nids);
 
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading heap", log_ten(heap_initial_size * 3) + 1);
 
-      while (initial_heap_nid != UNUSED) {
-        print_line(initial_heap_nid);
+      while (initial_nid != UNUSED) {
+        print_line(initial_nid);
 
-        initial_heap_nid = get_succ(initial_heap_nid);
+        initial_nid = get_succ(initial_nid);
       }
 
       print_break_comment_for(core, "loaded heap segment");
@@ -6738,139 +6674,6 @@ void print_heap_segment(uint64_t core) {
       print_line_for(core, init_heap_segment_nids);
     }
   }
-}
-
-void new_stack_segment(uint64_t core) {
-  // TODO: consolidate with other new segment procedures
-
-  uint64_t* init_zeroed_stack_segment_nid;
-  uint64_t* next_zeroed_stack_segment_nid;
-  uint64_t* initial_stack_nid;
-  uint64_t* initial_stack_segment_nid;
-  uint64_t* init_stack_segment_nid;
-  uint64_t  number_of_hex_digits;
-  uint64_t  address_space_size;
-  uint64_t  vaddr;
-  uint64_t  saved_reuse_lines;
-  uint64_t  data;
-  uint64_t* laddr_nid;
-  uint64_t* data_nid;
-  uint64_t* store_nid;
-
-  set_for(core, state_stack_segment_nids, state_stack_segment_nid);
-
-  if (SYNCHRONIZED_MEMORY) {
-    if (core > 0)
-      return;
-  } else if (SHARED_MEMORY)
-    if (core > 0)
-      return;
-
-  state_stack_segment_nid = new_input(OP_STATE, SID_STACK_STATE,
-    format_comment("core-%lu-zeroed-stack-segment", core), "zeroed stack segment");
-
-  set_for(core, state_stack_segment_nids, state_stack_segment_nid);
-
-  init_zeroed_stack_segment_nid = new_init(SID_STACK_STATE,
-    state_stack_segment_nid, NID_MEMORY_WORD_0, "zeroing stack segment");
-
-  eval_init(init_zeroed_stack_segment_nid);
-
-  set_for(core, init_zeroed_stack_segment_nids, init_zeroed_stack_segment_nid);
-
-  next_zeroed_stack_segment_nid = UNUSED;
-
-  if (number_of_binaries + printing_unrolled_model > 0) {
-    initial_stack_nid = UNUSED;
-
-    initial_stack_segment_nid = state_stack_segment_nid;
-
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
-
-    address_space_size = two_to_the_power_of(STACK_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
-
-    vaddr = stack_start;
-
-    saved_reuse_lines = reuse_lines;
-
-    reuse_lines = 0; // TODO: turn on via console argument
-
-    // consider 32-bit overflow to terminate loop
-    while (vaddr - stack_start < address_space_size) {
-      data = 0;
-
-      if (core < number_of_binaries)
-        if (vaddr - stack_start < stack_size)
-          if (is_virtual_address_mapped(get_pt(current_context), vaddr))
-            data = load_virtual_memory(get_pt(current_context), vaddr);
-          // else: unmapped memory is assumed to be zero
-        // else: out-of-segment memory is zeroed
-      // else: memory in a system with uninitialized code segment is zeroed for unrolling
-
-      if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
-        // skipping zero as initial value unless printing unrolled model
-        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          vaddr - stack_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
-
-        data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-          data, 0, format_comment("data 0x%lX", data));
-
-        store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_stack_segment_nid);
-
-        if (initial_stack_nid == UNUSED)
-          initial_stack_nid = store_nid;
-        else
-          // set successor for printing initial stack segment iteratively to avoid stack overflow
-          set_succ(initial_stack_segment_nid, store_nid);
-
-        initial_stack_segment_nid = store_nid;
-
-        // evaluate on-the-fly to avoid stack overflow later
-        if (eval_line(load_machine_word_at_virtual_address(laddr_nid, store_nid)) != data) {
-          printf("%s: initial stack segment value mismatch @ 0x%lX\n", selfie_name, vaddr);
-
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      }
-
-      vaddr = vaddr + WORDSIZE;
-    }
-
-    reuse_lines = saved_reuse_lines;
-
-    if (initial_stack_nid != UNUSED) {
-      next_zeroed_stack_segment_nid = new_next(SID_STACK_STATE,
-        state_stack_segment_nid, state_stack_segment_nid, "read-only zeroed stack segment");
-
-      state_stack_segment_nid = new_input(OP_STATE, SID_STACK_STATE,
-        format_comment("core-%lu-loaded-stack-segment", core), "loaded stack segment");
-
-      set_for(core, state_stack_segment_nids, state_stack_segment_nid);
-
-      init_stack_segment_nid = new_init(SID_STACK_STATE,
-        state_stack_segment_nid, initial_stack_segment_nid, "loaded stack");
-
-      eval_init(init_stack_segment_nid);
-    } else
-      init_stack_segment_nid = init_zeroed_stack_segment_nid;
-
-    set_for(core, next_zeroed_stack_segment_nids, next_zeroed_stack_segment_nid);
-
-    set_for(core, initial_stack_nids, initial_stack_nid);
-
-    set_for(core, init_stack_segment_nids, init_stack_segment_nid);
-  }
-}
-
-void print_stack_segment(uint64_t core) {
-  uint64_t* initial_stack_nid;
-
-  if (SYNCHRONIZED_MEMORY) {
-    if (core > 0)
-      return;
-  } else if (SHARED_MEMORY)
-    if (core > 0)
-      return;
 
   print_break_comment_for(core, "zeroed stack segment");
 
@@ -6878,18 +6681,18 @@ void print_stack_segment(uint64_t core) {
 
   if (number_of_binaries > 0) {
     // assert: not reached during unrolling
-    initial_stack_nid = get_for(core, initial_stack_nids);
+    initial_nid = get_for(core, initial_stack_nids);
 
-    if (initial_stack_nid != UNUSED) {
+    if (initial_nid != UNUSED) {
       print_line_for(core, next_zeroed_stack_segment_nids);
 
       // conservatively estimating number of lines needed to store one byte
       print_aligned_break_comment("loading stack", log_ten(stack_initial_size * 3) + 1);
 
-      while (initial_stack_nid != UNUSED) {
-        print_line(initial_stack_nid);
+      while (initial_nid != UNUSED) {
+        print_line(initial_nid);
 
-        initial_stack_nid = get_succ(initial_stack_nid);
+        initial_nid = get_succ(initial_nid);
       }
 
       print_break_comment_for(core, "loaded stack segment");
@@ -11752,9 +11555,7 @@ void model_rotor() {
     new_register_file_state(core);
 
     new_code_segment(core);
-    new_data_segment(core);
-    new_heap_segment(core);
-    new_stack_segment(core);
+    new_memory_segments(core);
 
     rotor_combinational(core, state_pc_nid,
       state_code_segment_nid, state_register_file_nid,
@@ -11938,9 +11739,7 @@ void print_model_for(uint64_t core) {
   print_register_file_state(core);
 
   print_code_segment(core);
-  print_data_segment(core);
-  print_heap_segment(core);
-  print_stack_segment(core);
+  print_memory_segments(core);
 
   print_break_comment_line_for(core, "fetch instruction", eval_ir_nids);
   print_break_comment_line_for(core, "fetch compressed instruction", eval_c_ir_nids);
