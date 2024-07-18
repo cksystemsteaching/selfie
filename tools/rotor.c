@@ -4121,7 +4121,8 @@ uint64_t print_ite(uint64_t nid, uint64_t* line) {
         set_nid(line, get_nid(get_arg3(line)));
         set_prefix(line, get_prefix(get_arg3(line)));
       }
-      return nid;
+      if (printing_comments) w = w + dprintf(output_fd, "; %s checked\n", get_comment(line));
+      return nid - 1; // nid is not used
     }
   return print_ternary_op(nid, line);
 }
@@ -4156,7 +4157,7 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu", OP_CONSTD, get_nid(get_sid(line)), get_state(line));
   }
-  if (printing_comments) w = w + dprintf(output_fd, " ; propagated state");
+  if (printing_comments) w = w + dprintf(output_fd, " ; %s propagated", get_comment(line));
   w = w + dprintf(output_fd, "\n");
   return nid;
 }
