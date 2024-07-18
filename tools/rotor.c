@@ -3929,11 +3929,12 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
         if (is_bitvector(get_sid(line))) {
           if (get_op(get_symbolic(line)) == OP_INIT) {
             nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-            w = w + dprintf(output_fd, "\n");
+            if (printing_comments)
+              w = w + dprintf(output_fd, "; %s initialized\n", get_comment(line));
           } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
           set_nid(line, get_nid(get_arg2(get_symbolic(line))));
           set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
-          return nid;
+          return nid - 1; // nid is not used
         } else {
           // assert: array
           if (is_bitvector(get_sid(get_arg2(get_symbolic(line))))) {
@@ -3947,11 +3948,12 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
           } else {
             if (get_op(get_symbolic(line)) == OP_INIT) {
               nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-              w = w + dprintf(output_fd, "\n");
+              if (printing_comments)
+                w = w + dprintf(output_fd, "; %s initialized\n", get_comment(line));
             } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
             set_nid(line, get_nid(get_arg2(get_symbolic(line))));
             set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
-            return nid;
+            return nid - 1; // nid is not used
           }
         }
     }
@@ -3960,14 +3962,19 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   if (printing_smt) {
     declare_fun(line, nid, type);
     print_comment(line);
-    if (type == PREFIX_CONST)
-      w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))\n\n",
+    if (type == PREFIX_CONST) {
+      w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))",
         get_prefix(line),
         get_nid(line),
         get_prefix(get_sid(line)),
         get_nid(get_sid(line)),
         get_prefix(get_arg2(get_symbolic(line))),
         get_nid(get_arg2(get_symbolic(line))));
+      if (printing_comments)
+        w = w + dprintf(output_fd, " ; %s initialized\n", get_comment(line));
+      else
+        w = w + dprintf(output_fd, "\n");
+    }
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
@@ -4126,13 +4133,14 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
     w = w + dprintf(output_fd, "(assert (= %s%lu true))", get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
     print_comment(line);
     if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(check-sat)\n(get-model)\n(pop 1)\n");
+    return nid - 1; // nid is not used
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
     if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
     print_comment(line);
+    return nid;
   }
-  return nid;
 }
 
 uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
