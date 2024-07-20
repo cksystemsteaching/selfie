@@ -215,6 +215,8 @@ char* SELFIE_URL = (char*) 0;
 uint64_t IS64BITSYSTEM = 1; // flag indicating 64-bit selfie
 uint64_t IS64BITTARGET = 1; // flag indicating 64-bit target
 
+uint64_t ISRISCU = 1; // flag indicating presence of starc-generated RISC-U binary
+
 uint64_t SIZEOFUINT64INBITS     = 64; // sizeof(uint64_t) * 8
 uint64_t SIZEOFUINT64STARINBITS = 64; // sizeof(uint64_t*) * 8
 
@@ -7343,6 +7345,12 @@ uint64_t decode_elf_file_header(uint64_t* header) {
         e_entry = load_word(header, 24, 1);
         e_phnum = get_bits(load_word(header, 56, 1), 0, 16);
 
+        ISRISCU = 0;
+
+        if (e_entry == PK_CODE_START)
+          if (e_phnum == 2)
+            ISRISCU = 1;
+
         return 1;
       }
   } else if (EI_CLASS == ELFCLASS32) {
@@ -7350,6 +7358,12 @@ uint64_t decode_elf_file_header(uint64_t* header) {
       if (get_bits(load_word(header, 40, 0), 16, 16) == e_phentsize) {
         e_entry = load_word(header, 24, 0);
         e_phnum = get_bits(load_word(header, 44, 0), 0, 16);
+
+        ISRISCU = 0;
+
+        if (e_entry == PK_CODE_START)
+          if (e_phnum == 2)
+            ISRISCU = 1;
 
         return 1;
       }

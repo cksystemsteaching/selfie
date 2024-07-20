@@ -355,8 +355,7 @@ uint64_t last_nid = 0; // last nid is 0
 
 uint64_t current_nid = 1; // first nid is 1
 
-uint64_t printing_comments = 1;
-
+uint64_t printing_comments             = 1;
 uint64_t printing_propagated_constants = 1;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
@@ -1843,7 +1842,7 @@ uint64_t* NID_12_BIT_IMM_0 = (uint64_t*) 0;
 
 // RISC-U instruction switches
 
-uint64_t RISCU = 0; // restrict to RISC-U
+uint64_t RISCUONLY = 0; // restrict modeling to RISC-U only
 
 uint64_t* SID_INSTRUCTION_ID = (uint64_t*) 0;
 
@@ -2405,6 +2404,8 @@ uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t modeling_riscu_only = 0;
+
 uint64_t* eval_instruction_ID_nids            = (uint64_t*) 0;
 uint64_t* eval_compressed_instruction_ID_nids = (uint64_t*) 0;
 uint64_t* eval_ID_nids                        = (uint64_t*) 0;
@@ -2730,7 +2731,7 @@ void init_instruction_sorts() {
   NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ECALL, 0, get_instruction_mnemonic(ID_ECALL));
 
   if (IS64BITTARGET) {
-    if (RISCU) {
+    if (RISCUONLY) {
       NID_LW = NID_DISABLED;
       NID_SW = NID_DISABLED;
     }
@@ -2773,7 +2774,7 @@ void init_instruction_sorts() {
 
   // RV32I instruction switches
 
-  if (RISCU) {
+  if (RISCUONLY) {
     NID_AUIPC = NID_DISABLED;
 
     NID_BNE  = NID_DISABLED;
@@ -2872,7 +2873,7 @@ void init_instruction_sorts() {
   NID_SRLW = NID_DISABLED;
   NID_SRAW = NID_DISABLED;
 
-  if (RISCU == 0)
+  if (RISCUONLY == 0)
     if (IS64BITTARGET) {
       NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, 0, get_instruction_mnemonic(ID_LWU));
 
@@ -2898,7 +2899,7 @@ void init_instruction_sorts() {
 
   // RV32M instruction switches
 
-  if (RISCU)
+  if (RISCUONLY)
     RV32M = 1;
 
   NID_MULH   = NID_DISABLED;
@@ -2907,7 +2908,7 @@ void init_instruction_sorts() {
   NID_DIV    = NID_DISABLED;
   NID_REM    = NID_DISABLED;
 
-  if (RISCU == 0) {
+  if (RISCUONLY == 0) {
     if (RV32M) {
       // MUL, DIVU, REMU already defined
       NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, 0, get_instruction_mnemonic(ID_MULH));
@@ -2924,7 +2925,7 @@ void init_instruction_sorts() {
 
   // RV64M instruction switches
 
-  if (RISCU)
+  if (RISCUONLY)
     RV64M = 0;
 
   if (IS64BITTARGET == 0)
@@ -3035,7 +3036,7 @@ void init_compressed_instruction_sorts() {
 
   // RVC instruction switches
 
-  if (RISCU)
+  if (RISCUONLY)
     RVC = 0;
 
   NID_C_LI  = NID_DISABLED;
@@ -3337,6 +3338,8 @@ char* stack_allowance_option       = (char*) 0;
 
 char* printing_comments_option             = (char*) 0;
 char* printing_propagated_constants_option = (char*) 0;
+
+char* modeling_riscu_only_option = (char*) 0;
 
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
@@ -7778,7 +7781,7 @@ uint64_t* decode_lui(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* auipc_nid, char* comment,
   uint64_t* other_opcode_nid) {
-  if (RISCU)
+  if (RISCUONLY)
     return other_opcode_nid;
 
   return decode_opcode(sid, ir_nid,
@@ -7923,7 +7926,7 @@ uint64_t* decode_imm(uint64_t* sid, uint64_t* ir_nid,
     funct_sra_nid     = NID_F7_SUB_SRA;
   }
 
-  if (RISCU)
+  if (RISCUONLY)
     return decode_opcode(sid, ir_nid,
       NID_OP_IMM, "IMM?",
       decode_funct3(sid, ir_nid,
@@ -8008,7 +8011,7 @@ uint64_t* decode_op(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* addw_nid, uint64_t* subw_nid,
   uint64_t* sllw_nid, uint64_t* srlw_nid, uint64_t* sraw_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* RV32M_nid, uint64_t* RV64M_nid, uint64_t* other_opcode_nid) {
-  if (RISCU)
+  if (RISCUONLY)
     return decode_opcode(sid, ir_nid,
       NID_OP_OP, "OP?",
       decode_funct7(sid, ir_nid,
@@ -8083,7 +8086,7 @@ uint64_t* decode_RV32M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mul_nid, uint64_t* mulh_nid, uint64_t* mulhsu_nid, uint64_t* mulhu_nid,
   uint64_t* div_nid, uint64_t* divu_nid, uint64_t* rem_nid, uint64_t* remu_nid, char* comment,
   uint64_t* no_funct_nid) {
-  if (RISCU)
+  if (RISCUONLY)
     return decode_funct7(sid, ir_nid,
       NID_F7_MUL_DIV_REM, "MUL or DIVU or REMU?",
       decode_funct3(sid, ir_nid,
@@ -8137,7 +8140,7 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mulw_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
   uint64_t* no_funct_nid) {
-  if (RISCU)
+  if (RISCUONLY)
     return no_funct_nid;
 
   if (RV64M)
@@ -8169,8 +8172,8 @@ uint64_t* is_division_remainder_by_zero(uint64_t* ir_nid, uint64_t* register_fil
   uint64_t* RV64M_nid;
   uint64_t* RV32M_nid;
 
-  if (RISCU + RV32M + RV64M) {
-    if (RISCU)
+  if (RISCUONLY + RV32M + RV64M) {
+    if (RISCUONLY)
       RV32M_nid = decode_opcode(SID_BOOLEAN, ir_nid,
         NID_OP_OP, "OP?",
         decode_RV32M(SID_BOOLEAN, ir_nid,
@@ -8229,7 +8232,7 @@ uint64_t* is_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* regi
   uint64_t* RV64M_nid;
   uint64_t* RV32M_nid;
 
-  if (RISCU == 0)
+  if (RISCUONLY == 0)
     if (RV32M + RV64M) {
       rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
       rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
@@ -8297,7 +8300,7 @@ uint64_t* decode_load_RV64I(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* ld_nid, uint64_t* lwu_nid, char* comment,
   uint64_t* no_funct3_nid) {
   if (IS64BITTARGET)
-    if (RISCU)
+    if (RISCUONLY)
       return decode_funct3(sid, ir_nid,
         NID_F3_LD, "LD?",
         ld_nid, format_comment("ld %s", (uint64_t) comment),
@@ -8320,7 +8323,7 @@ uint64_t* decode_load(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* lh_nid, uint64_t* lhu_nid,
   uint64_t* lb_nid, uint64_t* lbu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
-  if (RISCU) {
+  if (RISCUONLY) {
     if (IS64BITTARGET)
       return decode_opcode(sid, ir_nid,
         NID_OP_LOAD, "LOAD?",
@@ -8380,7 +8383,7 @@ uint64_t* decode_store(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* sd_nid,
   uint64_t* sw_nid, uint64_t* sh_nid, uint64_t* sb_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
-  if (RISCU) {
+  if (RISCUONLY) {
     if (IS64BITTARGET)
       return decode_opcode(sid, ir_nid,
         NID_OP_STORE, "STORE?",
@@ -8423,7 +8426,7 @@ uint64_t* decode_branch(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* blt_nid, uint64_t* bge_nid,
   uint64_t* bltu_nid, uint64_t* bgeu_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* other_opcode_nid) {
-  if (RISCU)
+  if (RISCUONLY)
     return decode_opcode(sid, ir_nid,
       NID_OP_BRANCH, "BRANCH?",
       decode_funct3(sid, ir_nid,
@@ -11529,6 +11532,12 @@ void model_rotor() {
   if (number_of_binaries > 0)
     init_memory(number_of_binaries);
 
+  // modeling default is full RISC-V
+  if (RISCUONLY)
+    RISCUONLY = modeling_riscu_only;
+  else if (number_of_binaries == 0)
+    RISCUONLY = modeling_riscu_only;
+
   init_model();
 
   init_interface_sorts();
@@ -11704,6 +11713,8 @@ void open_model_file() {
     w = w + dprintf(output_fd, "; printing propagated constants\n\n");
   else
     w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
+  if (RISCUONLY)
+    w = w + dprintf(output_fd, "; with %s\n\n", modeling_riscu_only_option);
   i = 0;
   while (i < number_of_binaries) {
     w = w
@@ -12907,7 +12918,10 @@ uint64_t rotor_arguments() {
 
   printing_comments_option             = "-nocomments";
   printing_propagated_constants_option = "-nopropagatedconstants";
-  printing_pseudoinstructions_option   = "-p";
+
+  modeling_riscu_only_option = "-riscuonly";
+
+  printing_pseudoinstructions_option = "-p";
 
   printing_smt_option = "-smt";
 
@@ -12947,6 +12961,9 @@ uint64_t rotor_arguments() {
 
             if (data_size > max_data_size)
               max_data_size = data_size;
+
+            if (RISCUONLY)
+              RISCUONLY = ISRISCU;
 
             get_argument();
           } else
@@ -13081,6 +13098,10 @@ uint64_t rotor_arguments() {
         printing_propagated_constants = 0;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), modeling_riscu_only_option)) {
+        modeling_riscu_only = 1;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
         get_argument();
 
@@ -13122,6 +13143,8 @@ uint64_t selfie_model() {
 
         max_code_size = code_size;
         max_data_size = data_size;
+
+        RISCUONLY = ISRISCU;
       } else {
         number_of_binaries = 0;
 
