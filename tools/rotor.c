@@ -373,7 +373,8 @@ void signed_fit_bitvec_sort(uint64_t* sid, uint64_t value);
 uint64_t eval_array_size(uint64_t* line);
 uint64_t eval_element_size(uint64_t* line);
 
-void fit_array_sorts(uint64_t* array_sid, uint64_t index, uint64_t value);
+void fit_array_index_sort(uint64_t* array_sid, uint64_t index);
+void fit_array_element_sort(uint64_t* array_sid, uint64_t value);
 
 void match_sorts(uint64_t* sid1, uint64_t* sid2, char* comment);
 void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value_sid);
@@ -4451,15 +4452,26 @@ uint64_t eval_element_size(uint64_t* line) {
   exit(EXITCODE_SYSTEMERROR);
 }
 
-void fit_array_sorts(uint64_t* array_sid, uint64_t index, uint64_t value) {
+void fit_array_index_sort(uint64_t* array_sid, uint64_t index) {
   if (is_array(array_sid)) {
     fit_bitvec_sort(get_arg2(array_sid), index);
+
+    return;
+  }
+
+  printf("%s: non-array access @ 0x%lX index error\n", selfie_name, index);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+void fit_array_element_sort(uint64_t* array_sid, uint64_t value) {
+  if (is_array(array_sid)) {
     fit_bitvec_sort(get_arg3(array_sid), value);
 
     return;
   }
 
-  printf("%s: fit %lu @ 0x%lX non-array error\n", selfie_name, value, index);
+  printf("%s: non-array access with %lu value error\n", selfie_name, value);
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -4486,16 +4498,21 @@ uint64_t* allocate_array(uint64_t* sid) {
 uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t read) {
   uint64_t* array;
 
-  fit_array_sorts(get_sid(state_nid), index, value);
+  fit_array_index_sort(get_sid(state_nid), index);
 
   array = (uint64_t*) get_state(state_nid);
 
   if (array != (uint64_t*) 0) {
-    if (read)
+    if (read) {
       value = *(array + index);
-    else
+
+      fit_array_element_sort(get_sid(state_nid), value);
+    } else {
+      fit_array_element_sort(get_sid(state_nid), value);
+
       // TODO: log writes and only apply with init and next
       *(array + index) = value;
+    }
 
     return value;
   }
@@ -5190,6 +5207,8 @@ uint64_t eval_binary_op(uint64_t* line) {
         }
       }
     }
+
+    fit_bitvec_sort(get_sid(line), get_state(line));
 
     propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
