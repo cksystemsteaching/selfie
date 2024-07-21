@@ -5125,11 +5125,11 @@ uint64_t eval_binary_op(uint64_t* line) {
         match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
 
         if (op == OP_ADD)
-          set_state(line, left_value + right_value);
+          set_state(line, sign_shrink(left_value + right_value, size));
         else if (op == OP_SUB)
-          set_state(line, left_value - right_value);
+          set_state(line, sign_shrink(left_value - right_value, size));
         else if (op == OP_MUL)
-          set_state(line, left_value * right_value);
+          set_state(line, sign_shrink(left_value * right_value, size));
         else if (right_value != 0) {
           if (op == OP_UDIV)
             set_state(line, left_value / right_value);
