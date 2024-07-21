@@ -7599,13 +7599,12 @@ void selfie_load(char* filename) {
                         if (number_of_read_bytes == to_be_read_bytes) {
                           number_of_read_bytes_in_total = number_of_read_bytes_in_total + number_of_read_bytes;
 
-                          printf("%s: %lu bytes with %lu %lu-bit RISC-U instructions and %lu bytes of data loaded from %s\n",
-                            selfie_name,
-                            number_of_read_bytes_in_total,
-                            code_file_size / INSTRUCTIONSIZE,
-                            WORDSIZEINBITS,
-                            data_file_size,
-                            binary_name);
+                          printf("%s: %lu bytes with ", selfie_name, number_of_read_bytes_in_total);
+                          if (ISRISCU)
+                            printf("%lu %lu-bit RISC-U instructions ", code_file_size / INSTRUCTIONSIZE, WORDSIZEINBITS);
+                          else
+                            printf("%lu bytes of %lu-bit RISC-V code ", code_file_size, WORDSIZEINBITS);
+                          printf("and %lu bytes of data loaded from %s\n", data_file_size, binary_name);
 
                           return;
                         }
