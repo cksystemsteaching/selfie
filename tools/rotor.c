@@ -1077,6 +1077,8 @@ uint64_t* NID_VIRTUAL_HALF_WORD_SIZE_MINUS_1   = (uint64_t*) 0;
 uint64_t* NID_VIRTUAL_SINGLE_WORD_SIZE_MINUS_1 = (uint64_t*) 0;
 uint64_t* NID_VIRTUAL_DOUBLE_WORD_SIZE_MINUS_1 = (uint64_t*) 0;
 
+uint64_t* NID_HIGHEST_VIRTUAL_ADDRESS = (uint64_t*) 0;
+
 // code segment
 
 uint64_t CODEWORDSIZEINBITS = 32;
@@ -1244,7 +1246,10 @@ uint64_t* eval_core_0_stack_segment_data_flow_nid = (uint64_t*) 0;
 void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   uint64_t saved_reuse_lines;
 
-  if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
+    NID_HIGHEST_VIRTUAL_ADDRESS = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+      two_to_the_power_of(VIRTUAL_ADDRESS_SPACE) - 1, 0, "highest virtual address");
+  else if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
     VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
 
   SID_VIRTUAL_ADDRESS = new_bitvec(VIRTUAL_ADDRESS_SPACE,
@@ -1558,6 +1563,7 @@ uint64_t* extend_half_word_to_machine_word(char* op, uint64_t* word_nid);
 uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid,
   uint64_t* other_data_flow_nid);
+uint64_t* load_valid_address(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* load_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 
@@ -1575,6 +1581,7 @@ uint64_t* core_register_data_flow(uint64_t* pc_nid, uint64_t* ir_nid,
 uint64_t* get_rs1_value_plus_S_immediate(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* store_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* segment_nid, uint64_t* other_data_flow_nid);
+uint64_t* store_valid_address(uint64_t* ir_nid, uint64_t* register_file_nid);
 uint64_t* store_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 
@@ -1729,6 +1736,7 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
   uint64_t* c_ldsp_nid, uint64_t* c_lwsp_nid,
   uint64_t* c_ld_nid, uint64_t* c_lw_nid, char* comment,
   uint64_t* no_funct3_nid, uint64_t* no_opcode_nid);
+uint64_t* compressed_load_valid_address(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 uint64_t* get_pc_value_plus_2(uint64_t* pc_nid);
@@ -1745,6 +1753,7 @@ uint64_t* get_sp_value_plus_CSS32_offset(uint64_t* c_ir_nid, uint64_t* register_
 uint64_t* get_sp_value_plus_CSS64_offset(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* get_rs1_shift_value_plus_CS32_offset(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid, uint64_t* register_file_nid);
+uint64_t* compressed_store_valid_address(uint64_t* c_ir_nid, uint64_t* register_file_nid);
 uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid);
 uint64_t* core_compressed_memory_data_flow(uint64_t* c_ir_nid,
@@ -3327,7 +3336,8 @@ char* exit_codes_check_option     = (char*) 0;
 char* division_by_zero_check_option  = (char*) 0;
 char* division_overflow_check_option = (char*) 0;
 
-char* seg_faults_check_option = (char*) 0;
+char* invalid_addresses_check_option = (char*) 0;
+char* seg_faults_check_option        = (char*) 0;
 
 char* bytes_to_read_option         = (char*) 0;
 char* cores_option                 = (char*) 0;
@@ -3353,7 +3363,8 @@ uint64_t check_exit_codes     = 1;
 uint64_t check_division_by_zero  = 1;
 uint64_t check_division_overflow = 1;
 
-uint64_t check_seg_faults = 1;
+uint64_t check_invalid_addresses = 1;
+uint64_t check_seg_faults        = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -3370,7 +3381,8 @@ uint64_t target_exit_code = 0; // model for this exit code
 uint64_t* prop_is_instruction_known_nids           = (uint64_t*) 0;
 uint64_t* prop_illegal_instruction_nids            = (uint64_t*) 0;
 uint64_t* prop_illegal_compressed_instruction_nids = (uint64_t*) 0;
-uint64_t* prop_next_fetch_unaligned_nids           = (uint64_t*) 0;
+uint64_t* prop_next_fetch_invalid_address_nids     = (uint64_t*) 0;
+uint64_t* prop_next_fetch_unaligned_address_nids   = (uint64_t*) 0;
 uint64_t* prop_next_fetch_seg_faulting_nids        = (uint64_t*) 0;
 
 uint64_t* prop_is_syscall_id_known_nids = (uint64_t*) 0;
@@ -3392,11 +3404,17 @@ uint64_t are_exit_codes_different = 0;
 uint64_t* prop_division_by_zero_nids         = (uint64_t*) 0;
 uint64_t* prop_signed_division_overflow_nids = (uint64_t*) 0;
 
+uint64_t* prop_load_invalid_address_nids             = (uint64_t*) 0;
+uint64_t* prop_store_invalid_address_nids            = (uint64_t*) 0;
+uint64_t* prop_compressed_load_invalid_address_nids  = (uint64_t*) 0;
+uint64_t* prop_compressed_store_invalid_address_nids = (uint64_t*) 0;
+uint64_t* prop_stack_pointer_invalid_address_nids    = (uint64_t*) 0;
+
 uint64_t* prop_load_seg_faulting_nids             = (uint64_t*) 0;
 uint64_t* prop_store_seg_faulting_nids            = (uint64_t*) 0;
 uint64_t* prop_compressed_load_seg_faulting_nids  = (uint64_t*) 0;
 uint64_t* prop_compressed_store_seg_faulting_nids = (uint64_t*) 0;
-uint64_t* prop_stack_seg_faulting_nids            = (uint64_t*) 0;
+uint64_t* prop_stack_pointer_seg_faulting_nids    = (uint64_t*) 0;
 
 uint64_t* prop_brk_seg_faulting_nids    = (uint64_t*) 0;
 uint64_t* prop_openat_seg_faulting_nids = (uint64_t*) 0;
@@ -3427,7 +3445,8 @@ void init_properties(uint64_t number_of_cores) {
   prop_is_instruction_known_nids           = allocate_lines(number_of_cores);
   prop_illegal_instruction_nids            = allocate_lines(number_of_cores);
   prop_illegal_compressed_instruction_nids = allocate_lines(number_of_cores);
-  prop_next_fetch_unaligned_nids           = allocate_lines(number_of_cores);
+  prop_next_fetch_invalid_address_nids     = allocate_lines(number_of_cores);
+  prop_next_fetch_unaligned_address_nids   = allocate_lines(number_of_cores);
   prop_next_fetch_seg_faulting_nids        = allocate_lines(number_of_cores);
 
   prop_is_syscall_id_known_nids = allocate_lines(number_of_cores);
@@ -3438,11 +3457,17 @@ void init_properties(uint64_t number_of_cores) {
   prop_division_by_zero_nids         = allocate_lines(number_of_cores);
   prop_signed_division_overflow_nids = allocate_lines(number_of_cores);
 
+  prop_load_invalid_address_nids             = allocate_lines(number_of_cores);
+  prop_store_invalid_address_nids            = allocate_lines(number_of_cores);
+  prop_compressed_load_invalid_address_nids  = allocate_lines(number_of_cores);
+  prop_compressed_store_invalid_address_nids = allocate_lines(number_of_cores);
+  prop_stack_pointer_invalid_address_nids    = allocate_lines(number_of_cores);
+
   prop_load_seg_faulting_nids             = allocate_lines(number_of_cores);
   prop_store_seg_faulting_nids            = allocate_lines(number_of_cores);
   prop_compressed_load_seg_faulting_nids  = allocate_lines(number_of_cores);
   prop_compressed_store_seg_faulting_nids = allocate_lines(number_of_cores);
-  prop_stack_seg_faulting_nids            = allocate_lines(number_of_cores);
+  prop_stack_pointer_seg_faulting_nids    = allocate_lines(number_of_cores);
 
   prop_brk_seg_faulting_nids    = allocate_lines(number_of_cores);
   prop_openat_seg_faulting_nids = allocate_lines(number_of_cores);
@@ -7298,27 +7323,22 @@ uint64_t* cast_virtual_address_to_machine_word(uint64_t* vaddr_nid) {
 }
 
 uint64_t* cast_machine_word_to_virtual_address(uint64_t* machine_word_nid) {
-  if (WORDSIZEINBITS > VIRTUAL_ADDRESS_SPACE)
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
     return new_slice(SID_VIRTUAL_ADDRESS, machine_word_nid,
       VIRTUAL_ADDRESS_SPACE - 1, 0, "slice virtual address from machine word");
-  else if (WORDSIZEINBITS < VIRTUAL_ADDRESS_SPACE)
-    return new_ext(OP_UEXT, SID_VIRTUAL_ADDRESS,
-      machine_word_nid,
-      VIRTUAL_ADDRESS_SPACE - WORDSIZEINBITS,
-      "unsigned extension of machine word to virtual address");
   else
+    // assert: VIRTUAL_ADDRESS_SPACE == WORDSIZEINBITS
     return machine_word_nid;
 }
 
 uint64_t* is_machine_word_virtual_address(uint64_t* machine_word_nid) {
-  if (WORDSIZEINBITS > VIRTUAL_ADDRESS_SPACE)
-    return new_binary_boolean(OP_EQ,
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
+    return new_binary_boolean(OP_ULTE,
       machine_word_nid,
-      cast_virtual_address_to_machine_word(
-        cast_machine_word_to_virtual_address(machine_word_nid)),
+      NID_HIGHEST_VIRTUAL_ADDRESS,
       "is machine word virtual address?");
   else
-    return NID_TRUE;
+    return UNUSED;
 }
 
 uint64_t* load_byte_from_segment(uint64_t* vaddr_nid, uint64_t* segment_nid) {
@@ -7462,7 +7482,7 @@ uint64_t* store_double_word_if_in_segment(uint64_t* maddr_nid, uint64_t* word_ni
 }
 
 uint64_t* does_machine_word_work_as_virtual_address(uint64_t* machine_word_nid, uint64_t* property_nid) {
-  if (WORDSIZEINBITS > VIRTUAL_ADDRESS_SPACE)
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
     return new_binary_boolean(OP_AND,
       is_machine_word_virtual_address(machine_word_nid),
       property_nid,
@@ -8914,6 +8934,22 @@ uint64_t* load_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
     other_data_flow_nid);
 }
 
+uint64_t* load_valid_address(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* valid_nid;
+
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS) {
+    valid_nid = is_machine_word_virtual_address(
+      get_rs1_value_plus_I_immediate(ir_nid, register_file_nid));
+
+    return decode_load(SID_BOOLEAN, ir_nid,
+      valid_nid, valid_nid, valid_nid, valid_nid, valid_nid, valid_nid, valid_nid,
+      "valid-address",
+      NID_TRUE,
+      NID_TRUE);
+  } else
+    return UNUSED;
+}
+
 uint64_t* load_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   uint64_t* maddr_nid;
@@ -9046,6 +9082,22 @@ uint64_t* store_memory_data_flow(uint64_t* ir_nid, uint64_t* register_file_nid,
     "memory data flow",
     segment_nid,
     other_data_flow_nid);
+}
+
+uint64_t* store_valid_address(uint64_t* ir_nid, uint64_t* register_file_nid) {
+  uint64_t* valid_nid;
+
+  if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS) {
+    valid_nid = is_machine_word_virtual_address(
+      get_rs1_value_plus_S_immediate(ir_nid, register_file_nid));
+
+    return decode_store(SID_BOOLEAN, ir_nid,
+      valid_nid, valid_nid, valid_nid, valid_nid,
+      "valid-address",
+      NID_TRUE,
+      NID_TRUE);
+  } else
+    return UNUSED;
 }
 
 uint64_t* store_no_seg_faults(uint64_t* ir_nid, uint64_t* register_file_nid,
@@ -10069,6 +10121,28 @@ uint64_t* decode_compressed_load_with_opcode(uint64_t* sid, uint64_t* c_ir_nid,
       no_opcode_nid));
 }
 
+uint64_t* compressed_load_valid_address(uint64_t* c_ir_nid, uint64_t* register_file_nid) {
+  if (RVC)
+    if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
+      return new_binary_boolean(OP_IMPLIES,
+        is_compressed_instruction(c_ir_nid),
+        decode_compressed_load_with_opcode(SID_BOOLEAN, c_ir_nid,
+          is_machine_word_virtual_address(
+            get_sp_value_plus_CI64_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_sp_value_plus_CI32_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_rs1_shift_value_plus_CL64_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_rs1_shift_value_plus_CL32_offset(c_ir_nid, register_file_nid)),
+          "valid-address",
+          NID_TRUE,
+          NID_TRUE),
+        "valid compressed load address");
+
+  return UNUSED;
+}
+
 uint64_t* compressed_load_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   if (RVC)
@@ -10294,6 +10368,27 @@ uint64_t* get_rs1_shift_value_plus_CS64_offset(uint64_t* c_ir_nid, uint64_t* reg
     "rs1' value plus CS64-offset");
 }
 
+uint64_t* compressed_store_valid_address(uint64_t* c_ir_nid, uint64_t* register_file_nid) {
+  if (RVC)
+    if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
+      return new_binary_boolean(OP_IMPLIES,
+        is_compressed_instruction(c_ir_nid),
+        decode_compressed_memory_data_flow(SID_BOOLEAN, c_ir_nid,
+          is_machine_word_virtual_address(
+            get_sp_value_plus_CSS64_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_sp_value_plus_CSS32_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_rs1_shift_value_plus_CS64_offset(c_ir_nid, register_file_nid)),
+          is_machine_word_virtual_address(
+            get_rs1_shift_value_plus_CS32_offset(c_ir_nid, register_file_nid)),
+          "valid-address",
+          NID_TRUE),
+        "valid compressed store address");
+
+  return UNUSED;
+}
+
 uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_file_nid,
   uint64_t* data_segment_nid, uint64_t* heap_segment_nid, uint64_t* stack_segment_nid) {
   if (RVC)
@@ -10314,7 +10409,7 @@ uint64_t* compressed_store_no_seg_faults(uint64_t* c_ir_nid, uint64_t* register_
           data_segment_nid, heap_segment_nid, stack_segment_nid),
         "no-seg-faults",
         NID_TRUE),
-      "no compressed store and other store segmentation faults");
+      "no compressed store segmentation faults");
   else
     return UNUSED;
 }
@@ -11423,7 +11518,13 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
     format_comment("core-%lu-known-instructions", core),
     format_comment("core-%lu known instructions", core)));
 
-  set_for(core, prop_next_fetch_unaligned_nids, state_property(core,
+  set_for(core, prop_next_fetch_invalid_address_nids, state_property(core,
+    is_machine_word_virtual_address(control_flow_nid),
+    UNUSED,
+    format_comment("core-%lu-fetch-invalid-address", core),
+    format_comment("core-%lu imminent fetch at invalid address", core)));
+
+  set_for(core, prop_next_fetch_unaligned_address_nids, state_property(core,
     new_binary_boolean(OP_EQ,
       new_binary(OP_AND, SID_MACHINE_WORD,
         control_flow_nid,
@@ -11457,7 +11558,44 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
       format_comment("core-%lu-signed-division-overflow", core),
       format_comment("core-%lu signed division overflow", core)));
 
-  // segmentation faults in main memory
+  // optional invalid address checks in main memory
+
+  if (check_invalid_addresses) {
+    set_for(core, prop_load_invalid_address_nids, state_property(core,
+      load_valid_address(ir_nid, register_file_nid),
+      UNUSED,
+      format_comment("core-%lu-load-invalid-address", core),
+      format_comment("core-%lu load at invalid address", core)));
+
+    set_for(core, prop_store_invalid_address_nids, state_property(core,
+      store_valid_address(ir_nid, register_file_nid),
+      UNUSED,
+      format_comment("core-%lu-store-invalid-address", core),
+      format_comment("core-%lu store at invalid address", core)));
+
+    set_for(core, prop_compressed_load_invalid_address_nids, state_property(core,
+      compressed_load_valid_address(c_ir_nid, register_file_nid),
+      UNUSED,
+      format_comment("core-%lu-compressed-load-invalid-address", core),
+      format_comment("core-%lu compressed load at invalid address", core)));
+
+    set_for(core, prop_compressed_store_invalid_address_nids, state_property(core,
+      compressed_store_valid_address(c_ir_nid, register_file_nid),
+      UNUSED,
+      format_comment("core-%lu-compressed-store-invalid-address", core),
+      format_comment("core-%lu compressed store at invalid address", core)));
+
+    // TODO: check stack pointer invalid address earlier upon sp update
+
+    set_for(core, prop_stack_pointer_invalid_address_nids, state_property(core,
+      is_machine_word_virtual_address(
+        load_register_value(NID_SP, "sp value", register_file_nid)),
+      UNUSED,
+      format_comment("core-%lu-stack-pointer-invalid-address", core),
+      format_comment("core-%lu stack pointer invalid address", core)));
+  }
+
+  // optional segmentation fault checks in main memory
 
   if (check_seg_faults) {
     set_for(core, prop_load_seg_faulting_nids, state_property(core,
@@ -11490,13 +11628,13 @@ void rotor_properties(uint64_t core, uint64_t* ir_nid, uint64_t* c_ir_nid,
 
     // TODO: check stack pointer segfault earlier upon sp update
 
-    set_for(core, prop_stack_seg_faulting_nids, state_property(core,
+    set_for(core, prop_stack_pointer_seg_faulting_nids, state_property(core,
       is_address_in_machine_word_in_segment(
         load_register_value(NID_SP, "sp value", register_file_nid),
         stack_segment_nid),
       UNUSED,
-      format_comment("core-%lu-stack-seg-fault", core),
-      format_comment("core-%lu stack segmentation fault", core)));
+      format_comment("core-%lu-stack-pointer-seg-fault", core),
+      format_comment("core-%lu stack pointer segmentation fault", core)));
   }
 }
 
@@ -11738,6 +11876,8 @@ void open_model_file() {
     w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
   if (check_division_overflow == 0)
     w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
+  if (check_invalid_addresses == 0)
+    w = w + dprintf(output_fd, "; with %s\n", invalid_addresses_check_option);
   if (check_seg_faults == 0)
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
   w = w
@@ -11865,7 +12005,8 @@ void print_model_for(uint64_t core) {
   print_line_for(core, prop_illegal_instruction_nids);
   print_break_line_for(core, prop_illegal_compressed_instruction_nids);
   print_break_line_for(core, prop_is_instruction_known_nids);
-  print_break_line_for(core, prop_next_fetch_unaligned_nids);
+  print_break_line_for(core, prop_next_fetch_invalid_address_nids);
+  print_break_line_for(core, prop_next_fetch_unaligned_address_nids);
   print_break_line_for(core, prop_next_fetch_seg_faulting_nids);
   print_break_line_for(core, prop_is_syscall_id_known_nids);
 
@@ -11874,13 +12015,21 @@ void print_model_for(uint64_t core) {
   print_break_line_for(core, prop_division_by_zero_nids);
   print_break_line_for(core, prop_signed_division_overflow_nids);
 
+  // optional user code invalid address checks
+
+  print_break_line_for(core, prop_load_invalid_address_nids);
+  print_break_line_for(core, prop_store_invalid_address_nids);
+  print_break_line_for(core, prop_compressed_load_invalid_address_nids);
+  print_break_line_for(core, prop_compressed_store_invalid_address_nids);
+  print_break_line_for(core, prop_stack_pointer_invalid_address_nids);
+
   // optional user code segmentation fault checks
 
   print_break_line_for(core, prop_load_seg_faulting_nids);
   print_break_line_for(core, prop_store_seg_faulting_nids);
   print_break_line_for(core, prop_compressed_load_seg_faulting_nids);
   print_break_line_for(core, prop_compressed_store_seg_faulting_nids);
-  print_break_line_for(core, prop_stack_seg_faulting_nids);
+  print_break_line_for(core, prop_stack_pointer_seg_faulting_nids);
 
   // optional kernel segmentation fault checks
 
@@ -12437,7 +12586,8 @@ uint64_t eval_properties(uint64_t core, uint64_t bad) {
   halt = halt + eval_property_for(core, prop_illegal_instruction_nids, bad);
   halt = halt + eval_property_for(core, prop_illegal_compressed_instruction_nids, bad);
   halt = halt + eval_property_for(core, prop_is_instruction_known_nids, bad);
-  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_nids, bad);
+  halt = halt + eval_property_for(core, prop_next_fetch_invalid_address_nids, bad);
+  halt = halt + eval_property_for(core, prop_next_fetch_unaligned_address_nids, bad);
   halt = halt + eval_property_for(core, prop_next_fetch_seg_faulting_nids, bad);
   halt = halt + eval_property_for(core, prop_is_syscall_id_known_nids, bad);
 
@@ -12446,13 +12596,21 @@ uint64_t eval_properties(uint64_t core, uint64_t bad) {
   halt = halt + eval_property_for(core, prop_division_by_zero_nids, bad);
   halt = halt + eval_property_for(core, prop_signed_division_overflow_nids, bad);
 
+  // optional user code invalid address checks
+
+  halt = halt + eval_property_for(core, prop_load_invalid_address_nids, bad);
+  halt = halt + eval_property_for(core, prop_store_invalid_address_nids, bad);
+  halt = halt + eval_property_for(core, prop_compressed_load_invalid_address_nids, bad);
+  halt = halt + eval_property_for(core, prop_compressed_store_invalid_address_nids, bad);
+  halt = halt + eval_property_for(core, prop_stack_pointer_invalid_address_nids, bad);
+
   // optional user code segmentation fault checks
 
   halt = halt + eval_property_for(core, prop_load_seg_faulting_nids, bad);
   halt = halt + eval_property_for(core, prop_store_seg_faulting_nids, bad);
   halt = halt + eval_property_for(core, prop_compressed_load_seg_faulting_nids, bad);
   halt = halt + eval_property_for(core, prop_compressed_store_seg_faulting_nids, bad);
-  halt = halt + eval_property_for(core, prop_stack_seg_faulting_nids, bad);
+  halt = halt + eval_property_for(core, prop_stack_pointer_seg_faulting_nids, bad);
 
   // optional kernel segmentation fault checks
 
@@ -12956,7 +13114,8 @@ uint64_t rotor_arguments() {
   division_by_zero_check_option  = "-Pnodivisionbyzero";
   division_overflow_check_option = "-Pnodivisionoverflow";
 
-  seg_faults_check_option = "-Pnosegfaults";
+  invalid_addresses_check_option = "-Pnoinvalidaddresses";
+  seg_faults_check_option        = "-Pnosegfaults";
 
   bytes_to_read_option           = "-bytestoread";
   cores_option                   = "-cores";
@@ -13070,6 +13229,10 @@ uint64_t rotor_arguments() {
         check_division_overflow = 0;
 
         get_argument();
+      } else if (string_compare(peek_argument(1), invalid_addresses_check_option)) {
+        check_invalid_addresses = 0;
+
+        get_argument();
       } else if (string_compare(peek_argument(1), seg_faults_check_option)) {
         check_seg_faults = 0;
 
@@ -13101,6 +13264,9 @@ uint64_t rotor_arguments() {
         if (number_of_remaining_arguments() > 1) {
           VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
 
+          if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
+            VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
+
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
@@ -13110,6 +13276,9 @@ uint64_t rotor_arguments() {
         if (number_of_remaining_arguments() > 1) {
           CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
 
+          if (CODEWORDSIZEINBITS > WORDSIZEINBITS)
+            CODEWORDSIZEINBITS = WORDSIZEINBITS;
+
           get_argument();
         } else
           return EXITCODE_BADARGUMENTS;
@@ -13118,6 +13287,9 @@ uint64_t rotor_arguments() {
 
         if (number_of_remaining_arguments() > 1) {
           MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+          if (MEMORYWORDSIZEINBITS > WORDSIZEINBITS)
+            MEMORYWORDSIZEINBITS = WORDSIZEINBITS;
 
           get_argument();
         } else
