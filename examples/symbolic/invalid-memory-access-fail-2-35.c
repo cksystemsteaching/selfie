@@ -9,9 +9,10 @@ uint64_t main() {
   read(0, x, 1);
 
   if (*x == 48)
-    // address outside of virtual address space -> invalid memory access
+    // on 64-bit systems: address is outside of virtual address space -> invalid memory access
+    // on 32-bit systems: address is zero -> segmentation fault
     // if the input is '0' (== 48 == b00110000)
-    *(x + 4294967296) = 0;
+    *(x + 4294967248) = 0;
 
   a = *x - 7;
 

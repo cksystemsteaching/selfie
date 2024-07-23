@@ -29,7 +29,7 @@ uint64_t main() {
   a = modified_factorial(*x);
 
   //           10! * 14!
-  if (a == 3628800 * 87178291200)
+  if (a == 3628800 * (2724321600 * 32))
     // non-zero exit code if the input is '1' (== 49 == b00110001)
     return 1;
   else
