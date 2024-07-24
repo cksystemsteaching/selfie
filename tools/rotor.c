@@ -2414,7 +2414,7 @@ uint64_t* RISC_V_MNEMONICS = (uint64_t*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t modeling_riscu_only = 0;
+uint64_t riscu_only = 0;
 
 uint64_t* eval_instruction_ID_nids            = (uint64_t*) 0;
 uint64_t* eval_compressed_instruction_ID_nids = (uint64_t*) 0;
@@ -3350,7 +3350,9 @@ char* stack_allowance_option       = (char*) 0;
 char* printing_comments_option             = (char*) 0;
 char* printing_propagated_constants_option = (char*) 0;
 
-char* modeling_riscu_only_option = (char*) 0;
+char* riscu_only_option = (char*) 0;
+char* no_RVC_option     = (char*) 0;
+char* no_RVM_option     = (char*) 0;
 
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
@@ -11275,8 +11277,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
     core_register_data_flow(pc_nid, eval_ir_nid,
       register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid);
 
-  set_for(core, eval_instruction_register_data_flow_nids,
-    instruction_register_data_flow_nid);
+  set_for(core, eval_instruction_register_data_flow_nids, instruction_register_data_flow_nid);
 
   // compressed and uncompressed instruction register data flow
 
@@ -11285,8 +11286,7 @@ void rotor_combinational(uint64_t core, uint64_t* pc_nid,
       register_file_nid, data_segment_nid, heap_segment_nid, stack_segment_nid,
       instruction_register_data_flow_nid);
 
-  set_for(core, eval_non_kernel_register_data_flow_nids,
-    eval_non_kernel_register_data_flow_nid);
+  set_for(core, eval_non_kernel_register_data_flow_nids, eval_non_kernel_register_data_flow_nid);
 
   // instruction data segment data flow
 
@@ -11712,9 +11712,9 @@ void model_rotor() {
 
   // modeling default is full RISC-V
   if (RISCUONLY)
-    RISCUONLY = modeling_riscu_only;
+    RISCUONLY = riscu_only;
   else if (number_of_binaries == 0)
-    RISCUONLY = modeling_riscu_only;
+    RISCUONLY = riscu_only;
 
   init_model();
 
@@ -11902,8 +11902,15 @@ void open_model_file() {
     w = w + dprintf(output_fd, "; printing propagated constants\n\n");
   else
     w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
+
   if (RISCUONLY)
-    w = w + dprintf(output_fd, "; with %s\n\n", modeling_riscu_only_option);
+    w = w + dprintf(output_fd, "; with %s\n", riscu_only_option);
+  if (RVC == 0)
+    w = w + dprintf(output_fd, "; with %s\n", no_RVC_option);
+  if (RV64M + RV32M == 0)
+    w = w + dprintf(output_fd, "; with %s\n", no_RVM_option);
+  if (RISCUONLY + (RVC == 0) + (RV64M + RV32M == 0) > 0)
+    w = w + dprintf(output_fd, "\n");
 
   i = 0;
   while (i < number_of_binaries) {
@@ -11958,8 +11965,9 @@ void print_model_for(uint64_t core) {
   print_break_comment_line_for(core, "decode compressed instruction", eval_compressed_instruction_ID_nids);
 
   print_break_comment_line_for(core, "instruction control flow", eval_instruction_control_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction control flow",
-    eval_non_kernel_control_flow_nids);
+  if (RVC)
+    print_break_comment_line_for(core, "compressed and uncompressed instruction control flow",
+      eval_non_kernel_control_flow_nids);
 
   print_nobreak_comment_for(core, "update kernel state");
 
@@ -11974,30 +11982,34 @@ void print_model_for(uint64_t core) {
 
   print_break_comment_line_for(core, "instruction register data flow",
     eval_instruction_register_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction register data flow",
-    eval_non_kernel_register_data_flow_nids);
+  if (RVC)
+    print_break_comment_line_for(core, "compressed and uncompressed instruction register data flow",
+      eval_non_kernel_register_data_flow_nids);
   print_break_comment_line_for(core, "kernel and instruction register data flow",
     eval_register_data_flow_nids);
   print_break_comment_line_for(core, "update register data flow", next_register_file_nids);
 
   print_break_comment_line_for(core, "instruction data segment data flow",
     eval_instruction_data_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction data segment data flow",
-    eval_data_segment_data_flow_nids);
+  if (RVC)
+    print_break_comment_line_for(core, "compressed and uncompressed instruction data segment data flow",
+      eval_data_segment_data_flow_nids);
   print_break_comment_line_for(core, "update data segment data flow", next_data_segment_nids);
 
   print_break_comment_line_for(core, "instruction heap segment data flow",
     eval_instruction_heap_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction heap segment data flow",
-    eval_non_kernel_heap_segment_data_flow_nids);
+  if (RVC)
+    print_break_comment_line_for(core, "compressed and uncompressed instruction heap segment data flow",
+      eval_non_kernel_heap_segment_data_flow_nids);
   print_break_comment_line_for(core, "kernel and instruction heap segment data flow",
     eval_heap_segment_data_flow_nids);
   print_break_comment_line_for(core, "update heap segment data flow", next_heap_segment_nids);
 
   print_break_comment_line_for(core, "instruction stack segment data flow",
     eval_instruction_stack_segment_data_flow_nids);
-  print_break_comment_line_for(core, "compressed and uncompressed instruction stack segment data flow",
-    eval_stack_segment_data_flow_nids);
+  if (RVC)
+    print_break_comment_line_for(core, "compressed and uncompressed instruction stack segment data flow",
+      eval_stack_segment_data_flow_nids);
   print_break_comment_line_for(core, "update stack segment data flow", next_stack_segment_nids);
 
   print_break_comment_for(core, "state properties");
@@ -13128,7 +13140,9 @@ uint64_t rotor_arguments() {
   printing_comments_option             = "-nocomments";
   printing_propagated_constants_option = "-nopropagatedconstants";
 
-  modeling_riscu_only_option = "-riscuonly";
+  riscu_only_option = "-riscuonly";
+  no_RVC_option     = "-noRVC";
+  no_RVM_option     = "-noRVM";
 
   printing_pseudoinstructions_option = "-p";
 
@@ -13320,8 +13334,17 @@ uint64_t rotor_arguments() {
         printing_propagated_constants = 0;
 
         get_argument();
-      } else if (string_compare(peek_argument(1), modeling_riscu_only_option)) {
-        modeling_riscu_only = 1;
+      } else if (string_compare(peek_argument(1), riscu_only_option)) {
+        riscu_only = 1;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), no_RVC_option)) {
+        RVC = 0;
+
+        get_argument();
+      } else if (string_compare(peek_argument(1), no_RVM_option)) {
+        RV64M = 0;
+        RV32M = 0;
 
         get_argument();
       } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
