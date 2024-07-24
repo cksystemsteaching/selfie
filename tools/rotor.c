@@ -3324,10 +3324,22 @@ void print_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t number_of_binaries = 0; // number of loaded binaries
+int    rotor_argc = 0;
+char** rotor_argv = (char**) 0; // original rotor console invocation
+
+char* evaluate_model_option    = (char*) 0;
+char* debug_model_option       = (char*) 0;
+char* disassemble_model_option = (char*) 0;
+char* load_code_option         = (char*) 0;
 
 char* min_unroll_model_option = (char*) 0;
 char* max_unroll_model_option = (char*) 0;
+
+char* printing_comments_option             = (char*) 0;
+char* printing_propagated_constants_option = (char*) 0;
+
+char* printing_pseudoinstructions_option = (char*) 0;
+char* printing_smt_option                = (char*) 0;
 
 char* bad_exit_code_check_option  = (char*) 0;
 char* good_exit_code_check_option = (char*) 0;
@@ -3347,12 +3359,13 @@ char* memory_word_size_option      = (char*) 0;
 char* heap_allowance_option        = (char*) 0;
 char* stack_allowance_option       = (char*) 0;
 
-char* printing_comments_option             = (char*) 0;
-char* printing_propagated_constants_option = (char*) 0;
-
 char* riscu_only_option = (char*) 0;
 char* no_RVC_option     = (char*) 0;
 char* no_RVM_option     = (char*) 0;
+
+uint64_t target_exit_code = 0; // model for given exit code
+
+uint64_t number_of_binaries = 0; // number of loaded binaries
 
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
@@ -3370,15 +3383,10 @@ uint64_t check_seg_faults        = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int    rotor_argc = 0;
-char** rotor_argv = (char**) 0; // original rotor console invocation
-
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
 uint64_t w = 0; // number of written characters
-
-uint64_t target_exit_code = 0; // model for this exit code
 
 uint64_t* prop_is_instruction_known_nids           = (uint64_t*) 0;
 uint64_t* prop_illegal_instruction_nids            = (uint64_t*) 0;
@@ -3426,21 +3434,57 @@ uint64_t* prop_write_seg_faulting_nids  = (uint64_t*) 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void init_rotor(int argc, char** argv) {
-  char** v;
+  uint64_t* v;
 
   rotor_argc = argc;
   rotor_argv = (char**) smalloc(argc * sizeof(uint64_t*));
 
-  v = rotor_argv;
+  v = (uint64_t*) rotor_argv;
 
   while (argc > 0) {
-    *v = string_copy(*argv);
+    *v = (uint64_t) string_copy(*argv);
 
     v = v + 1;
 
     argc = argc - 1;
     argv = argv + 1;
   }
+
+  evaluate_model_option    = "-m";
+  debug_model_option       = "-d";
+  disassemble_model_option = "-s";
+  load_code_option         = "-l";
+
+  min_unroll_model_option = "-kmin";
+  max_unroll_model_option = "-kmax";
+
+  printing_comments_option             = "-nocomments";
+  printing_propagated_constants_option = "-nopropagatedconstants";
+
+  printing_pseudoinstructions_option = "-p";
+  printing_smt_option                = "-smt";
+
+  bad_exit_code_check_option  = "-Pnobadexitcode";
+  good_exit_code_check_option = "-Pgoodexitcode";
+  exit_codes_check_option     = "-Pnoexitcodes";
+
+  division_by_zero_check_option  = "-Pnodivisionbyzero";
+  division_overflow_check_option = "-Pnodivisionoverflow";
+
+  invalid_addresses_check_option = "-Pnoinvalidaddresses";
+  seg_faults_check_option        = "-Pnosegfaults";
+
+  bytes_to_read_option           = "-bytestoread";
+  cores_option                   = "-cores";
+  virtual_address_space_option   = "-virtualaddressspace";
+  code_word_size_option          = "-codewordsize";
+  memory_word_size_option        = "-memorywordsize";
+  heap_allowance_option          = "-heapallowance";
+  stack_allowance_option         = "-stackallowance";
+
+  riscu_only_option = "-riscuonly";
+  no_RVC_option     = "-noRVC";
+  no_RVM_option     = "-noRVM";
 }
 
 void init_properties(uint64_t number_of_cores) {
@@ -3516,10 +3560,6 @@ void disassemble_rotor(uint64_t core);
 
 void print_unrolled_model();
 
-uint64_t rotor_arguments();
-
-uint64_t selfie_model();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t MAX_BINARIES = 3;
@@ -3572,6 +3612,17 @@ void init_binaries() {
   data_starts = smalloc(MAX_BINARIES * sizeof(uint64_t*));
   data_sizes  = smalloc(MAX_BINARIES * sizeof(uint64_t*));
 }
+
+// -----------------------------------------------------------------
+// ----------------------------- ROTOR -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t parse_engine_arguments();
+uint64_t parse_model_arguments();
+
+uint64_t parse_rotor_arguments();
+
+uint64_t selfie_model();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -11866,6 +11917,15 @@ void open_model_file() {
     w = w + dprintf(output_fd, "; with %s %lu %s %lu\n\n",
       min_unroll_model_option, min_steps_to_bad_state - 1, max_unroll_model_option, max_steps_to_bad_state - 1);
 
+  if (printing_comments)
+    w = w + dprintf(output_fd, "; printing comments\n");
+  else
+    w = w + dprintf(output_fd, "; with %s\n", printing_comments_option);
+  if (printing_propagated_constants)
+    w = w + dprintf(output_fd, "; printing propagated constants\n\n");
+  else
+    w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
+
   if (check_bad_exit_code == 0)
     w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
   if (check_good_exit_code)
@@ -11893,15 +11953,6 @@ void open_model_file() {
         heap_allowance_option, heap_allowance, heap_initial_size)
     + dprintf(output_fd, "; with %s %lu (core-0 %lu bytes initial stack size)\n\n",
         stack_allowance_option, stack_allowance, stack_initial_size);
-
-  if (printing_comments)
-    w = w + dprintf(output_fd, "; printing comments\n");
-  else
-    w = w + dprintf(output_fd, "; with %s\n", printing_comments_option);
-  if (printing_propagated_constants)
-    w = w + dprintf(output_fd, "; printing propagated constants\n\n");
-  else
-    w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
 
   if (RISCUONLY)
     w = w + dprintf(output_fd, "; with %s\n", riscu_only_option);
@@ -13102,272 +13153,258 @@ void print_unrolled_model() {
   close_model_file();
 }
 
-uint64_t rotor_arguments() {
-  char* evaluate_model_option;
-  char* debug_model_option;
-  char* disassemble_model_option;
-  char* load_code_option;
+// -----------------------------------------------------------------
+// ----------------------------- ROTOR -----------------------------
+// -----------------------------------------------------------------
 
-  char* printing_pseudoinstructions_option;
-  char* printing_smt_option;
+uint64_t parse_engine_arguments() {
+  if (string_compare(peek_argument(1), evaluate_model_option)) {
+    evaluate_model = 1;
 
-  evaluate_model_option    = "-m";
-  debug_model_option       = "-d";
-  disassemble_model_option = "-s";
-  load_code_option         = "-l";
+    get_argument();
+  } else if (string_compare(peek_argument(1), debug_model_option)) {
+    evaluate_model  = 1;
+    output_assembly = 1;
 
-  min_unroll_model_option = "-kmin";
-  max_unroll_model_option = "-kmax";
+    get_argument();
+  } else if (string_compare(peek_argument(1), disassemble_model_option)) {
+    disassemble_model = 1;
 
-  bad_exit_code_check_option  = "-Pnobadexitcode";
-  good_exit_code_check_option = "-Pgoodexitcode";
-  exit_codes_check_option     = "-Pnoexitcodes";
+    get_argument();
+  } else if (string_compare(peek_argument(1), load_code_option)) {
+    get_argument();
 
-  division_by_zero_check_option  = "-Pnodivisionbyzero";
-  division_overflow_check_option = "-Pnodivisionoverflow";
+    if (number_of_remaining_arguments() > 1) {
+      if (number_of_binaries < MAX_BINARIES) {
+        selfie_load(peek_argument(1));
 
-  invalid_addresses_check_option = "-Pnoinvalidaddresses";
-  seg_faults_check_option        = "-Pnosegfaults";
+        save_binary(number_of_binaries);
 
-  bytes_to_read_option           = "-bytestoread";
-  cores_option                   = "-cores";
-  virtual_address_space_option   = "-virtualaddressspace";
-  code_word_size_option          = "-codewordsize";
-  memory_word_size_option        = "-memorywordsize";
-  heap_allowance_option          = "-heapallowance";
-  stack_allowance_option         = "-stackallowance";
+        number_of_binaries = number_of_binaries + 1;
 
-  printing_comments_option             = "-nocomments";
-  printing_propagated_constants_option = "-nopropagatedconstants";
+        if (number_of_binaries > number_of_cores)
+          number_of_cores = number_of_binaries;
 
-  riscu_only_option = "-riscuonly";
-  no_RVC_option     = "-noRVC";
-  no_RVM_option     = "-noRVM";
+        if (code_size > max_code_size)
+          max_code_size = code_size;
 
-  printing_pseudoinstructions_option = "-p";
+        if (data_size > max_data_size)
+          max_data_size = data_size;
 
-  printing_smt_option = "-smt";
+        if (RISCUONLY)
+          RISCUONLY = ISRISCU;
+
+        get_argument();
+      } else
+      return EXITCODE_BADARGUMENTS;
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), min_unroll_model_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      min_steps_to_bad_state = atoi(peek_argument(1)) + 1;
+
+      printing_unrolled_model = 1;
+
+      if (max_steps_to_bad_state < min_steps_to_bad_state)
+        max_steps_to_bad_state = min_steps_to_bad_state;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), max_unroll_model_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      max_steps_to_bad_state = atoi(peek_argument(1)) + 1;
+
+      printing_unrolled_model = 1;
+
+      if (min_steps_to_bad_state + 1 == 0)
+        min_steps_to_bad_state = 1;
+      else if (max_steps_to_bad_state < min_steps_to_bad_state)
+        max_steps_to_bad_state = min_steps_to_bad_state;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), printing_comments_option)) {
+    printing_comments = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), printing_propagated_constants_option)) {
+    printing_propagated_constants = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      printing_pseudoinstructions = atoi(peek_argument(1));
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), printing_smt_option)) {
+    printing_smt = 1;
+
+    get_argument();
+
+    if (printing_unrolled_model == 0)
+      return EXITCODE_BADARGUMENTS;
+  } else
+    return EXITCODE_MOREARGUMENTS;
+
+  return EXITCODE_NOERROR;
+}
+
+uint64_t parse_model_arguments() {
+  if (string_compare(peek_argument(1), bad_exit_code_check_option)) {
+    check_bad_exit_code = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), good_exit_code_check_option)) {
+    check_good_exit_code = 1;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), exit_codes_check_option)) {
+    check_exit_codes = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), division_by_zero_check_option)) {
+    check_division_by_zero = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), division_overflow_check_option)) {
+    check_division_overflow = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), invalid_addresses_check_option)) {
+    check_invalid_addresses = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), seg_faults_check_option)) {
+    check_seg_faults = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), bytes_to_read_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      BYTES_TO_READ = atoi(peek_argument(1));
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), cores_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      number_of_cores = atoi(peek_argument(1));
+
+      if (number_of_cores < number_of_binaries)
+        number_of_cores = number_of_binaries;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), virtual_address_space_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
+
+      if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
+        VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), code_word_size_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+      if (CODEWORDSIZEINBITS > WORDSIZEINBITS)
+        CODEWORDSIZEINBITS = WORDSIZEINBITS;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), memory_word_size_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
+
+      if (MEMORYWORDSIZEINBITS > WORDSIZEINBITS)
+        MEMORYWORDSIZEINBITS = WORDSIZEINBITS;
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), heap_allowance_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), stack_allowance_option)) {
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), riscu_only_option)) {
+    riscu_only = 1;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), no_RVC_option)) {
+    RVC = 0;
+
+    get_argument();
+  } else if (string_compare(peek_argument(1), no_RVM_option)) {
+    RV64M = 0;
+    RV32M = 0;
+
+    get_argument();
+  } else
+    return EXITCODE_MOREARGUMENTS;
+
+  return EXITCODE_NOERROR;
+}
+
+uint64_t parse_rotor_arguments() {
+  uint64_t exit_code;
 
   target_exit_code = atoi(peek_argument(0));
 
   while (1) {
     if (number_of_remaining_arguments() > 1) {
-      if (string_compare(peek_argument(1), evaluate_model_option)) {
-        evaluate_model = 1;
+      exit_code = parse_engine_arguments();
 
-        get_argument();
-      } else if (string_compare(peek_argument(1), debug_model_option)) {
-        evaluate_model  = 1;
-        output_assembly = 1;
+      if (exit_code == EXITCODE_MOREARGUMENTS) {
+        exit_code = parse_model_arguments();
 
-        get_argument();
-      } else if (string_compare(peek_argument(1), disassemble_model_option)) {
-        disassemble_model = 1;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), load_code_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          if (number_of_binaries < MAX_BINARIES) {
-            selfie_load(peek_argument(1));
-
-            save_binary(number_of_binaries);
-
-            number_of_binaries = number_of_binaries + 1;
-
-            if (number_of_binaries > number_of_cores)
-              number_of_cores = number_of_binaries;
-
-            if (code_size > max_code_size)
-              max_code_size = code_size;
-
-            if (data_size > max_data_size)
-              max_data_size = data_size;
-
-            if (RISCUONLY)
-              RISCUONLY = ISRISCU;
-
+        if (exit_code == EXITCODE_MOREARGUMENTS) {
+          if (string_compare(peek_argument(1), "-")) {
             get_argument();
+
+            return EXITCODE_NOERROR;
           } else
-          return EXITCODE_BADARGUMENTS;
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), min_unroll_model_option)) {
-        get_argument();
+            return EXITCODE_BADARGUMENTS;
+        }
+      }
 
-        if (number_of_remaining_arguments() > 1) {
-          min_steps_to_bad_state = atoi(peek_argument(1)) + 1;
-
-          printing_unrolled_model = 1;
-
-          if (max_steps_to_bad_state < min_steps_to_bad_state)
-            max_steps_to_bad_state = min_steps_to_bad_state;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), max_unroll_model_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          max_steps_to_bad_state = atoi(peek_argument(1)) + 1;
-
-          printing_unrolled_model = 1;
-
-          if (min_steps_to_bad_state + 1 == 0)
-            min_steps_to_bad_state = 1;
-          else if (max_steps_to_bad_state < min_steps_to_bad_state)
-            max_steps_to_bad_state = min_steps_to_bad_state;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), bad_exit_code_check_option)) {
-        check_bad_exit_code = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), good_exit_code_check_option)) {
-        check_good_exit_code = 1;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), exit_codes_check_option)) {
-        check_exit_codes = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), division_by_zero_check_option)) {
-        check_division_by_zero = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), division_overflow_check_option)) {
-        check_division_overflow = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), invalid_addresses_check_option)) {
-        check_invalid_addresses = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), seg_faults_check_option)) {
-        check_seg_faults = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), bytes_to_read_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          BYTES_TO_READ = atoi(peek_argument(1));
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), cores_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          number_of_cores = atoi(peek_argument(1));
-
-          if (number_of_cores < number_of_binaries)
-            number_of_cores = number_of_binaries;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), virtual_address_space_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          VIRTUAL_ADDRESS_SPACE = atoi(peek_argument(1));
-
-          if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
-            VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), code_word_size_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          CODEWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
-
-          if (CODEWORDSIZEINBITS > WORDSIZEINBITS)
-            CODEWORDSIZEINBITS = WORDSIZEINBITS;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), memory_word_size_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          MEMORYWORDSIZEINBITS = get_power_of_two_size_in_bytes(atoi(peek_argument(1))) * 8;
-
-          if (MEMORYWORDSIZEINBITS > WORDSIZEINBITS)
-            MEMORYWORDSIZEINBITS = WORDSIZEINBITS;
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), heap_allowance_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          heap_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), stack_allowance_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          stack_allowance = round_up(atoi(peek_argument(1)), WORDSIZE);
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), printing_comments_option)) {
-        printing_comments = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), printing_propagated_constants_option)) {
-        printing_propagated_constants = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), riscu_only_option)) {
-        riscu_only = 1;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), no_RVC_option)) {
-        RVC = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), no_RVM_option)) {
-        RV64M = 0;
-        RV32M = 0;
-
-        get_argument();
-      } else if (string_compare(peek_argument(1), printing_pseudoinstructions_option)) {
-        get_argument();
-
-        if (number_of_remaining_arguments() > 1) {
-          printing_pseudoinstructions = atoi(peek_argument(1));
-
-          get_argument();
-        } else
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), printing_smt_option)) {
-        printing_smt = 1;
-
-        get_argument();
-
-        if (printing_unrolled_model == 0)
-          return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(peek_argument(1), "-")) {
-        get_argument();
-
-        return EXITCODE_NOERROR;
-      } else
+      if (exit_code == EXITCODE_BADARGUMENTS)
         return EXITCODE_BADARGUMENTS;
     } else
       return EXITCODE_NOERROR;
@@ -13397,7 +13434,7 @@ uint64_t selfie_model() {
         max_data_size = WORDSIZE;
       }
 
-      exit_code = rotor_arguments();
+      exit_code = parse_rotor_arguments();
 
       if (exit_code != EXITCODE_NOERROR)
         return exit_code;
