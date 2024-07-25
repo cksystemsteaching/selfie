@@ -651,9 +651,12 @@ void print_kernel_state(uint64_t core);
 
 uint64_t* NID_MAX_STRING_LENGTH = (uint64_t*) 0;
 
+uint64_t SYSCALL_OPEN = 1024; // legacy syscall
+
 uint64_t* NID_EXIT_SYSCALL_ID   = (uint64_t*) 0;
 uint64_t* NID_BRK_SYSCALL_ID    = (uint64_t*) 0;
 uint64_t* NID_OPENAT_SYSCALL_ID = (uint64_t*) 0;
+uint64_t* NID_OPEN_SYSCALL_ID   = (uint64_t*) 0;
 uint64_t* NID_READ_SYSCALL_ID   = (uint64_t*) 0;
 uint64_t* NID_WRITE_SYSCALL_ID  = (uint64_t*) 0;
 
@@ -717,6 +720,9 @@ void init_interface_kernel() {
   NID_OPENAT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_OPENAT, 0,
     format_comment_binary("openat syscall ID", SYSCALL_OPENAT));
+  NID_OPEN_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
+    SYSCALL_OPEN, 0,
+    format_comment_binary("open syscall ID", SYSCALL_OPEN));
   NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
     SYSCALL_READ, 0,
     format_comment_binary("read syscall ID", SYSCALL_READ));
@@ -5827,6 +5833,7 @@ void print_interface_kernel() {
   print_line(NID_EXIT_SYSCALL_ID);
   print_line(NID_BRK_SYSCALL_ID);
   print_line(NID_OPENAT_SYSCALL_ID);
+  print_line(NID_OPEN_SYSCALL_ID);
   print_line(NID_READ_SYSCALL_ID);
   print_line(NID_WRITE_SYSCALL_ID);
 
@@ -10711,7 +10718,7 @@ void kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
 
   uint64_t* exit_syscall_nid;
   uint64_t* brk_syscall_nid;
-  uint64_t* openat_syscall_nid;
+  uint64_t* open_at_syscall_nid;
 
   uint64_t* read_syscall_nid;
   uint64_t* active_read_nid;
@@ -10737,9 +10744,12 @@ void kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
 
   a7_value_nid = load_register_value(NID_A7, "a7 value", register_file_nid);
 
-  exit_syscall_nid   = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
-  brk_syscall_nid    = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
-  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
+  exit_syscall_nid    = new_binary_boolean(OP_EQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 == exit syscall ID?");
+  brk_syscall_nid     = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
+  open_at_syscall_nid = new_binary_boolean(OP_OR,
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?"),
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPEN_SYSCALL_ID, "a7 == open syscall ID?"),
+    "a7 == openat or open syscall ID?");
 
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
@@ -10876,7 +10886,7 @@ void kernel_combinational(uint64_t core, uint64_t* pc_nid, uint64_t* ir_nid,
         "store new program break in a0",
         register_file_nid),
       new_ternary(OP_ITE, SID_REGISTER_STATE,
-        openat_syscall_nid,
+        open_at_syscall_nid,
         store_register_value(
           NID_A0,
           eval_file_descriptor_nid,
@@ -10954,7 +10964,7 @@ void kernel_sequential(uint64_t core,
   uint64_t* brk_syscall_nid;
   uint64_t* active_brk_nid;
 
-  uint64_t* openat_syscall_nid;
+  uint64_t* open_at_syscall_nid;
   uint64_t* active_openat_nid;
 
   uint64_t* read_syscall_nid;
@@ -10969,8 +10979,11 @@ void kernel_sequential(uint64_t core,
   brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
   active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
 
-  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
-  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
+  open_at_syscall_nid = new_binary_boolean(OP_OR,
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?"),
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPEN_SYSCALL_ID, "a7 == open syscall ID?"),
+    "a7 == openat or open syscall ID?");
+  active_openat_nid = new_binary_boolean(OP_AND, active_ecall_nid, open_at_syscall_nid, "active openat or open system call");
 
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
@@ -11052,7 +11065,7 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   uint64_t* brk_syscall_nid;
   uint64_t* active_brk_nid;
 
-  uint64_t* openat_syscall_nid;
+  uint64_t* open_at_syscall_nid;
   uint64_t* active_openat_nid;
 
   uint64_t* read_syscall_nid;
@@ -11079,8 +11092,11 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   brk_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 == brk syscall ID?");
   active_brk_nid  = new_binary_boolean(OP_AND, active_ecall_nid, brk_syscall_nid, "active brk system call");
 
-  openat_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?");
-  active_openat_nid  = new_binary_boolean(OP_AND, active_ecall_nid, openat_syscall_nid, "active openat system call");
+  open_at_syscall_nid = new_binary_boolean(OP_OR,
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 == openat syscall ID?"),
+    new_binary_boolean(OP_EQ, a7_value_nid, NID_OPEN_SYSCALL_ID, "a7 == open syscall ID?"),
+    "a7 == openat or open syscall ID?");
+  active_openat_nid = new_binary_boolean(OP_AND, active_ecall_nid, open_at_syscall_nid, "active openat or open system call");
 
   read_syscall_nid = new_binary_boolean(OP_EQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 == read syscall ID?");
   active_read_nid  = new_binary_boolean(OP_AND, active_ecall_nid, read_syscall_nid, "active read system call");
@@ -11097,23 +11113,23 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
   // kernel properties
 
   set_for(core, prop_is_syscall_id_known_nids, state_property(core,
-    UNUSED,
-    new_binary_boolean(OP_AND,
+    new_binary_boolean(OP_IMPLIES,
       active_ecall_nid,
-      new_binary_boolean(OP_AND,
-        new_binary_boolean(OP_NEQ, a7_value_nid, NID_EXIT_SYSCALL_ID, "a7 != exit syscall ID?"),
-        new_binary_boolean(OP_AND,
-          new_binary_boolean(OP_NEQ, a7_value_nid, NID_BRK_SYSCALL_ID, "a7 != brk syscall ID?"),
-          new_binary_boolean(OP_AND,
-            new_binary_boolean(OP_NEQ, a7_value_nid, NID_OPENAT_SYSCALL_ID, "a7 != openat syscall ID?"),
-            new_binary_boolean(OP_AND,
-              new_binary_boolean(OP_NEQ, a7_value_nid, NID_READ_SYSCALL_ID, "a7 != read syscall ID?"),
-              new_binary_boolean(OP_NEQ, a7_value_nid, NID_WRITE_SYSCALL_ID, "a7 != write syscall ID?"),
-              "a7 != read or write syscall ID"),
-            "a7 != openat or read or write syscall ID"),
-          "a7 != brk or openat or read or write syscall ID"),
-        "a7 != exit or brk or openat or read or write syscall ID"),
-      "active ecall and a7 != known syscall ID"),
+      new_binary_boolean(OP_OR,
+        exit_syscall_nid,
+        new_binary_boolean(OP_OR,
+          brk_syscall_nid,
+          new_binary_boolean(OP_OR,
+            open_at_syscall_nid,
+            new_binary_boolean(OP_OR,
+              read_syscall_nid,
+              write_syscall_nid,
+              "a7 == read or write syscall ID"),
+            "a7 == openat or open or read or write syscall ID"),
+          "a7 == brk or openat or open or read or write syscall ID"),
+        "a7 == exit or brk or openat or open or read or write syscall ID"),
+      "active ecall implies a7 == known syscall ID"),
+    UNUSED,
     format_comment("core-%lu-unknown-syscall-ID", core),
     format_comment("core-%lu unknown syscall ID", core)));
 
