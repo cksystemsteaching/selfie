@@ -9434,9 +9434,13 @@ void record_ecall() {
 }
 
 void do_ecall() {
+  uint64_t a7;
+
   read_register(REG_A7);
 
   ic_ecall = ic_ecall + 1;
+
+  a7 = *(registers + REG_A7);
 
   if (redo) {
     // TODO: redo all side effects
@@ -9446,7 +9450,7 @@ void do_ecall() {
     println();
 
     pc = pc + INSTRUCTIONSIZE;
-  } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
+  } else if (a7 == SYSCALL_SWITCH)
     if (record) {
       printf("%s: context switching during recording is unsupported\n", selfie_name);
 
@@ -9463,12 +9467,12 @@ void do_ecall() {
   else {
     read_register(REG_A0);
 
-    if (*(registers + REG_A7) != SYSCALL_EXIT) {
-      if (*(registers + REG_A7) != SYSCALL_BRK) {
+    if (a7 != SYSCALL_EXIT) {
+      if (a7 != SYSCALL_BRK) {
         read_register(REG_A1);
         read_register(REG_A2);
 
-        if (*(registers + REG_A7) == SYSCALL_OPENAT)
+        if (a7 == SYSCALL_OPENAT)
           read_register(REG_A3);
       }
 
@@ -9476,7 +9480,7 @@ void do_ecall() {
     }
 
     // all system calls other than switch are handled by exception
-    throw_exception(EXCEPTION_SYSCALL, *(registers + REG_A7));
+    throw_exception(EXCEPTION_SYSCALL, a7);
   }
 }
 
