@@ -2431,7 +2431,7 @@ uint64_t* eval_ID_nids                        = (uint64_t*) 0;
 void init_instruction_mnemonics() {
   RISC_V_MNEMONICS = smalloc((ID_P_JALR + 1) * sizeof(char*));
 
-  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unknown";
+  *(RISC_V_MNEMONICS + ID_UNKOWN) = (uint64_t) "unknown RISC-V instruction";
 
   *(RISC_V_MNEMONICS + ID_ECALL) = (uint64_t) "ecall";
 
@@ -3899,7 +3899,7 @@ char* get_smt_op(uint64_t* line) {
   else if (op == OP_WRITE)
     return "store";
   else
-    return "unknown";
+    return "unknown SMT-LIB operator";
 }
 
 void declare_fun(uint64_t* line, uint64_t nid, char* type) {
@@ -4838,7 +4838,7 @@ uint64_t eval_input(uint64_t* line) {
     return get_state(line);
   }
 
-  printf("%s: unknown operator %s\n", selfie_name, op);
+  printf("%s: unknown model operator %s\n", selfie_name, op);
 
   exit(EXITCODE_SYSTEMERROR);
 }
