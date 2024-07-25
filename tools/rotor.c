@@ -425,6 +425,8 @@ uint64_t eval_line_for(uint64_t core, uint64_t* lines);
 uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad);
 uint64_t eval_property_for(uint64_t core, uint64_t* lines, uint64_t bad);
 
+uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
+
 void eval_init(uint64_t* line);
 
 uint64_t eval_next(uint64_t* line);
@@ -432,12 +434,12 @@ uint64_t eval_next_for(uint64_t core, uint64_t* lines);
 void apply_next(uint64_t* line);
 void apply_next_for(uint64_t core, uint64_t* lines);
 
-uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
-
 void save_state(uint64_t* line);
 void save_state_for(uint64_t core, uint64_t* lines);
 void restore_state(uint64_t* line);
 void restore_state_for(uint64_t core, uint64_t* lines);
+void reset_state(uint64_t* line);
+void reset_state_for(uint64_t core, uint64_t* lines);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -685,6 +687,7 @@ uint64_t* eval_file_descriptor_nid  = (uint64_t*) 0;
 uint64_t* next_file_descriptor_nid  = (uint64_t*) 0;
 
 uint64_t* state_input_buffer_nid = (uint64_t*) 0;
+uint64_t* init_input_buffer_nid  = (uint64_t*) 0;
 uint64_t* next_input_buffer_nid  = (uint64_t*) 0;
 
 uint64_t* state_readable_bytes_nid = (uint64_t*) 0;
@@ -3338,6 +3341,8 @@ char* debug_model_option       = (char*) 0;
 char* disassemble_model_option = (char*) 0;
 char* load_code_option         = (char*) 0;
 
+char* determine_min_max_option = (char*) 0;
+
 char* min_unroll_model_option = (char*) 0;
 char* max_unroll_model_option = (char*) 0;
 
@@ -3461,6 +3466,8 @@ void init_rotor(int argc, char** argv) {
   disassemble_model_option = "-s";
   load_code_option         = "-l";
 
+  determine_min_max_option = "-k";
+
   min_unroll_model_option = "-kmin";
   max_unroll_model_option = "-kmax";
 
@@ -3555,6 +3562,9 @@ void save_multicore_states();
 
 void restore_states(uint64_t core);
 void restore_multicore_states();
+
+void reset_states(uint64_t core);
+void reset_multicore_states();
 
 void eval_multicore_states();
 
@@ -4247,7 +4257,7 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_arg1(line)), (char*) get_arg2(line));
-    if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step);
+    if (printing_unrolled_model) w = w + dprintf(output_fd, "-%lu", current_step - current_offset);
     print_comment(line);
     return nid;
   }
@@ -5395,8 +5405,8 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
         }
     } else {
       if (printing_unrolled_model)
-        if (next_step >= min_steps_to_bad_state) {
-          w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step, get_comment(line));
+        if (next_step - current_offset >= min_steps_to_bad_state) {
+          w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
           if (printing_explicit_constraints == 0)
             print_line_advancing_nid(line);
           else {
@@ -5413,7 +5423,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
             }
             print_line_advancing_nid(bad_nid);
           }
-          w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step, get_comment(line));
+          w = w + dprintf(output_fd, "\n; bad-end-%lu: %s\n\n", current_step - current_offset, get_comment(line));
         }
 
       return 0;
@@ -5434,7 +5444,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
         }
     } else {
       if (printing_unrolled_model) {
-        w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step, get_comment(line));
+        w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
         if (printing_explicit_constraints == 0)
           print_line_advancing_nid(line);
         else {
@@ -5447,7 +5457,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
           }
           print_line_advancing_nid(eval_good_nid);
         }
-        w = w + dprintf(output_fd, "\n; constraint-end-%lu: %s\n\n", current_step, get_comment(line));
+        w = w + dprintf(output_fd, "\n; constraint-end-%lu: %s\n\n", current_step - current_offset, get_comment(line));
       }
 
       return 0;
@@ -5465,9 +5475,30 @@ uint64_t eval_property_for(uint64_t core, uint64_t* lines, uint64_t bad) {
   return eval_property(core, get_for(core, lines), bad);
 }
 
+uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes) {
+  uint64_t i;
+
+  // assert: bytes is multiple of sizeof(uint64_t)
+
+  bytes = bytes / sizeof(uint64_t);
+
+  i = 0;
+
+  while (i < bytes) {
+    *(destination + i) = *(source + i);
+
+    i = i + 1;
+  }
+
+  return destination;
+}
+
 void eval_init(uint64_t* line) {
   uint64_t* state_nid;
+  uint64_t* state_sid;
   uint64_t* value_nid;
+  uint64_t* source;
+  uint64_t* destination;
 
   if (get_op(line) == OP_INIT)
     if (current_step == INITIALIZED)
@@ -5475,20 +5506,23 @@ void eval_init(uint64_t* line) {
         if (get_step(line) == UNINITIALIZED) {
           state_nid = get_arg1(line);
 
+          state_sid = get_sid(state_nid);
+
           if (get_op(state_nid) == OP_STATE) {
             if (get_step(state_nid) == UNINITIALIZED) {
-              match_sorts(get_sid(line), get_sid(state_nid), "init state");
+              match_sorts(get_sid(line), state_sid, "init state");
 
               value_nid = get_arg2(line);
 
-              if (is_bitvector(get_sid(state_nid))) {
-                match_sorts(get_sid(state_nid), get_sid(value_nid), "init bitvector");
+              if (is_bitvector(state_sid)) {
+                match_sorts(state_sid, get_sid(value_nid), "init bitvector");
 
                 set_state(state_nid, eval_line(value_nid));
+                set_state(line, get_state(state_nid));
               } else {
                 // assert: sid of state line is ARRAY
                 if (is_bitvector(get_sid(value_nid))) {
-                  match_sorts(get_arg3(get_sid(state_nid)), get_sid(value_nid), "init array element");
+                  match_sorts(get_arg3(state_sid), get_sid(value_nid), "init array element");
 
                   if (eval_line(value_nid) != 0) {
                     printf("%s: init non-zero array element error\n", selfie_name);
@@ -5496,15 +5530,27 @@ void eval_init(uint64_t* line) {
                     exit(EXITCODE_SYSTEMERROR);
                   }
 
-                  set_state(state_nid, (uint64_t) allocate_array(get_sid(state_nid)));
+                  set_state(state_nid, (uint64_t) allocate_array(state_sid));
+                  set_state(line, (uint64_t) allocate_array(state_sid));
                 } else {
                   // assert: sid of value line is ARRAY
-                  match_sorts(get_sid(state_nid), get_sid(value_nid), "init array");
+                  match_sorts(state_sid, get_sid(value_nid), "init array");
 
                   value_nid = (uint64_t*) eval_line(value_nid);
 
                   if (get_state(state_nid) != get_state(value_nid)) {
                     set_state(state_nid, get_state(value_nid));
+                    set_state(line, get_state(state_nid));
+
+                    if (state_sid != SID_INPUT_BUFFER)
+                      if (state_sid != SID_CODE_STATE) {
+                        set_state(line, (uint64_t) allocate_array(state_sid));
+
+                        source      = (uint64_t*) get_state(state_nid);
+                        destination = (uint64_t*) get_state(line);
+
+                        memcopy(destination, source, two_to_the_power_of(eval_array_size(state_sid)) * sizeof(uint64_t));
+                      }
 
                     // TODO: reinitialize value state
                     set_state(value_nid, 0);
@@ -5520,7 +5566,6 @@ void eval_init(uint64_t* line) {
               set_symbolic(state_nid, line);
 
               set_step(state_nid, INITIALIZED);
-
               set_step(line, INITIALIZED);
 
               return;
@@ -5534,7 +5579,7 @@ void eval_init(uint64_t* line) {
         exit(EXITCODE_SYSTEMERROR);
       }
 
-  printf("%s: init error\n", selfie_name);
+  printf("%s: init error: %s\n", selfie_name, get_comment(line));
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -5602,9 +5647,9 @@ uint64_t eval_next(uint64_t* line) {
 
                 if (state_nid != value_nid) {
                   if (printing_unrolled_model) {
-                    w = w + dprintf(output_fd, "; next-start-%lu: %s\n\n", current_step, get_comment(line));
+                    w = w + dprintf(output_fd, "; next-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
                     print_line_advancing_nid(value_nid);
-                    w = w + dprintf(output_fd, "\n; next-end-%lu: %s\n\n", current_step, get_comment(line));
+                    w = w + dprintf(output_fd, "\n; next-end-%lu: %s\n\n", current_step - current_offset, get_comment(line));
                   }
 
                   if (has_symbolic_state(value_nid))
@@ -5623,7 +5668,7 @@ uint64_t eval_next(uint64_t* line) {
         }
       }
 
-  printf("%s: next error\n", selfie_name);
+  printf("%s: next error: %s\n", selfie_name, get_comment(line));
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -5663,7 +5708,7 @@ void apply_next(uint64_t* line) {
     return;
   }
 
-  printf("%s: apply error\n", selfie_name);
+  printf("%s: apply error: %s\n", selfie_name, get_comment(line));
 
   exit(EXITCODE_SYSTEMERROR);
 }
@@ -5675,24 +5720,6 @@ void apply_next_for(uint64_t core, uint64_t* lines) {
     apply_next(get_for(core, lines));
 }
 
-uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes) {
-  uint64_t i;
-
-  // assert: bytes is multiple of sizeof(uint64_t)
-
-  bytes = bytes / sizeof(uint64_t);
-
-  i = 0;
-
-  while (i < bytes) {
-    *(destination + i) = *(source + i);
-
-    i = i + 1;
-  }
-
-  return destination;
-}
-
 void save_state(uint64_t* line) {
   uint64_t* state_nid;
   uint64_t* sid;
@@ -5700,6 +5727,7 @@ void save_state(uint64_t* line) {
   uint64_t* source;
   uint64_t* destination;
 
+  // assert: next line
   state_nid = get_arg1(line);
 
   sid   = get_sid(state_nid);
@@ -5737,6 +5765,7 @@ void restore_state(uint64_t* line) {
   uint64_t* sid;
   uint64_t current_state;
 
+  // assert: next line
   state_nid = get_arg1(line);
 
   sid = get_sid(state_nid);
@@ -5763,6 +5792,44 @@ void restore_state_for(uint64_t core, uint64_t* lines) {
     return;
   else
     restore_state(get_for(core, lines));
+}
+
+void reset_state(uint64_t* line) {
+  uint64_t* state_nid;
+  uint64_t* sid;
+  uint64_t state;
+  uint64_t* source;
+  uint64_t* destination;
+
+  // assert: init line
+  state_nid = get_arg1(line);
+
+  sid = get_sid(state_nid);
+
+  state = get_state(line);
+
+  if (is_bitvector(sid))
+    set_state(state_nid, state);
+  else if (sid != SID_INPUT_BUFFER)
+    if (sid != SID_CODE_STATE) {
+      // assert: array
+      source      = (uint64_t*) state;
+      destination = (uint64_t*) get_state(state_nid);
+
+      memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
+    }
+
+  // state is only symbolic if the initial value is symbolic
+  set_symbolic(state_nid, line);
+
+  set_step(state_nid, next_step);
+}
+
+void reset_state_for(uint64_t core, uint64_t* lines) {
+  if (get_for(core, lines) == UNUSED)
+    return;
+  else
+    reset_state(get_for(core, lines));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5917,9 +5984,11 @@ void new_kernel_state(uint64_t core) {
 
     state_input_buffer_nid = new_input(OP_STATE, SID_INPUT_BUFFER,
       "input-buffer", "uninitialized input buffer");
+    init_input_buffer_nid = new_init(SID_INPUT_BUFFER, state_input_buffer_nid,
+      NID_BYTE_0, "zeroed input buffer");
 
     // initialize only for emulator
-    eval_init(new_init(SID_INPUT_BUFFER, state_input_buffer_nid, NID_BYTE_0, "zeroed input buffer"));
+    eval_init(init_input_buffer_nid);
 
     // uninitialized state is made symbolic just for unrolling model
 
@@ -11772,6 +11841,13 @@ void load_binary(uint64_t binary) {
 void model_rotor() {
   uint64_t core;
 
+  if (number_of_binaries > 0)
+    model_name = (char*) get_for(0, binary_names);
+  else if (IS64BITTARGET)
+    model_name = "64-bit-riscv-machine.m";
+  else
+    model_name = "32-bit-riscv-machine.m";
+
   number_of_lines = 0;
 
   if (number_of_binaries > 0)
@@ -11876,13 +11952,6 @@ void open_model_file() {
   char* extension;
 
   uint64_t i;
-
-  if (number_of_binaries > 0)
-    model_name = (char*) get_for(0, binary_names);
-  else if (IS64BITTARGET)
-    model_name = "64-bit-riscv-machine.m";
-  else
-    model_name = "32-bit-riscv-machine.m";
 
   if (number_of_binaries == number_of_cores)
     suffix = "-rotorized";
@@ -12884,6 +12953,36 @@ void restore_multicore_states() {
   }
 }
 
+void reset_states(uint64_t core) {
+  reset_state_for(core, init_program_break_nids);
+  if (core == number_of_cores - 1) {
+    reset_state(init_file_descriptor_nid);
+    reset_state(init_input_buffer_nid);
+  }
+  reset_state_for(core, init_readable_bytes_nids);
+  reset_state_for(core, init_read_bytes_nids);
+
+  reset_state_for(core, init_pc_nids);
+
+  reset_state_for(core, init_register_file_nids);
+  reset_state_for(core, init_code_segment_nids);
+  reset_state_for(core, init_data_segment_nids);
+  reset_state_for(core, init_heap_segment_nids);
+  reset_state_for(core, init_stack_segment_nids);
+}
+
+void reset_multicore_states() {
+  uint64_t core;
+
+  core = 0;
+
+  while (core < number_of_cores) {
+    reset_states(core);
+
+    core = core + 1;
+  }
+}
+
 void eval_multicore_states() {
   while (1) {
     if (output_assembly)
@@ -13001,9 +13100,9 @@ void eval_rotor() {
         max_input = current_input;
       }
 
-      if (any_input) {
-        restore_multicore_states();
+      restore_multicore_states();
 
+      if (any_input) {
         current_offset = next_step - input_steps;
         current_step   = next_step;
 
@@ -13051,14 +13150,6 @@ void eval_rotor() {
         max_steps - 1,
         max_steps);
     }
-
-    if (number_of_bad_states > 0)
-      printf("%s: for unrolled model invoke: %s -c %s - %lu -kmin %lu -kmax %lu -smt\n", selfie_name,
-        selfie_name,
-        binary_name,
-        target_exit_code,
-        min_steps_to_bad_state - 1,
-        max_steps_to_bad_state - 1);
   }
 }
 
@@ -13103,8 +13194,8 @@ void disassemble_rotor(uint64_t core) {
 void print_unrolled_model() {
   open_model_file();
 
-  current_offset = 0;
-  current_step   = 0;
+  current_offset = current_step;
+  current_step   = next_step;
 
   input_steps   = 0;
   current_input = 0;
@@ -13215,6 +13306,11 @@ uint64_t parse_engine_arguments() {
       return EXITCODE_BADARGUMENTS;
     } else
       return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), determine_min_max_option)) {
+    printing_unrolled_model = 1;
+    evaluate_model          = 1;
+
+    get_argument();
   } else if (string_compare(peek_argument(1), min_unroll_model_option)) {
     get_argument();
 
@@ -13457,9 +13553,19 @@ uint64_t selfie_model() {
 
       model_rotor();
 
-      if (printing_unrolled_model)
+      if (printing_unrolled_model) {
+        if (evaluate_model) {
+          printing_unrolled_model = 0;
+
+          eval_rotor(); // determines kmin and kmax
+
+          printing_unrolled_model = 1;
+
+          reset_multicore_states();
+        }
+
         print_unrolled_model();
-      else {
+      } else {
         if (printing_propagated_constants)
           if (eval_constant_propagation())
             return EXITCODE_NOERROR;
@@ -13468,10 +13574,10 @@ uint64_t selfie_model() {
 
         if (evaluate_model)
           eval_rotor();
-
-        if (disassemble_model)
-          disassemble_rotor(0);
       }
+
+      if (disassemble_model)
+        disassemble_rotor(0);
 
       printf("%s: ################################################################################\n", selfie_name);
 
