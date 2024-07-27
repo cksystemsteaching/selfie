@@ -12040,13 +12040,15 @@ void open_model_file() {
         stack_allowance_option, stack_allowance, stack_initial_size);
 
   if (RISCUONLY)
-    w = w + dprintf(output_fd, "; with %s\n", riscu_only_option);
-  if (RVC == 0)
-    w = w + dprintf(output_fd, "; with %s\n", no_RVC_option);
-  if (RV64M + RV32M == 0)
-    w = w + dprintf(output_fd, "; with %s\n", no_RVM_option);
-  if (RISCUONLY + (RVC == 0) + (RV64M + RV32M == 0) > 0)
-    w = w + dprintf(output_fd, "\n");
+    w = w + dprintf(output_fd, "; with %s\n\n", riscu_only_option);
+  else {
+    if (RVC == 0)
+      w = w + dprintf(output_fd, "; with %s\n", no_RVC_option);
+    if (RV64M + RV32M == 0)
+      w = w + dprintf(output_fd, "; with %s\n", no_RVM_option);
+    if ((RVC == 0) + (RV64M + RV32M == 0) > 0)
+      w = w + dprintf(output_fd, "\n");
+  }
 
   i = 0;
   while (i < number_of_binaries) {
