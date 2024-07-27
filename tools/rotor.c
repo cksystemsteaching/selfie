@@ -356,6 +356,7 @@ uint64_t last_nid = 0; // last nid is 0
 uint64_t current_nid = 1; // first nid is 1
 
 uint64_t printing_comments             = 1;
+uint64_t printing_reuse                = 0;
 uint64_t printing_propagated_constants = 1;
 
 uint64_t inputs_are_symbolic = 1; // inputs are always symbolic
@@ -3946,13 +3947,12 @@ void print_nid(uint64_t nid, uint64_t* line) {
 
 void print_comment(uint64_t* line) {
   if (printing_comments) {
-    if (get_comment(line) != NOCOMMENT) {
-      if (get_reuse(line) > 0)
-        w = w + dprintf(output_fd, " ; %s [reused %lu time(s)]", get_comment(line), get_reuse(line));
-      else
-        w = w + dprintf(output_fd, " ; %s", get_comment(line));
-    } else if (get_reuse(line) > 0)
-      w = w + dprintf(output_fd, " ; [reused %lu time(s)]", get_reuse(line));
+    if ((get_comment(line) != NOCOMMENT) + printing_reuse * (get_reuse(line) > 0) > 0)
+      w = w + dprintf(output_fd, " ;");
+    if (get_comment(line) != NOCOMMENT)
+      w = w + dprintf(output_fd, " %s", get_comment(line));
+    if (printing_reuse * (get_reuse(line) > 0) > 0)
+      w = w + dprintf(output_fd, " [reused %lu time(s)]", get_reuse(line));
   }
   w = w + dprintf(output_fd, "\n");
 }
