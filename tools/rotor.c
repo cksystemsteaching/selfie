@@ -6535,7 +6535,7 @@ void new_code_segment(uint64_t core) {
         ir = 0;
 
       if ((ir != 0) + (printing_unrolled_model - printing_smt) > 0) {
-        // skipping zero as instruction unless printing unrolled model
+        // skipping zero as instruction unless printing unrolled BTOR2 model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
 
@@ -6667,7 +6667,7 @@ void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
     // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
     if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
-      // skipping zero as initial value unless printing unrolled model
+      // skipping zero as initial value unless printing unrolled BTOR2 model
       laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
         vaddr - segment_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
 
@@ -13151,6 +13151,12 @@ void eval_rotor() {
       printf("%s: %lu steps taken with up to %lu instructions executed without input\n", selfie_name,
         max_steps - 1,
         max_steps);
+    }
+  } else {
+    // initialize kmin and kmax
+    if (min_steps_to_bad_state == (uint64_t) -1) {
+      min_steps_to_bad_state = 1;
+      max_steps_to_bad_state = 2;
     }
   }
 }
