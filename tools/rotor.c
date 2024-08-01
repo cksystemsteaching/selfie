@@ -4036,68 +4036,54 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
 uint64_t print_input(uint64_t nid, uint64_t* line) {
   char* op;
   char* type;
+  uint64_t* value_nid;
   op = get_op(line);
   type = PREFIX_INPUT;
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      if (get_symbolic(line) == SYMBOLIC)
-        // state is uninitialized
-        op = OP_INPUT;
-      else
+      op = OP_INPUT;
+      if (get_symbolic(line) != SYMBOLIC) {
         // assert: get_symbolic(line) != NONSYMBOLIC
-        if (is_bitvector(get_sid(line))) {
+        value_nid = get_arg2(get_symbolic(line));
+        if (is_array(get_sid(line)) * is_bitvector(get_sid(value_nid)) > 0)
+          // assert: get_op(get_symbolic(line)) == OP_INIT
+          type = PREFIX_CONST;
+        else {
+          // assert: either bitvector initialized with bitvector constant
+          //         or else array initialized with (non-zero) bitvector constants
           if (get_op(get_symbolic(line)) == OP_INIT) {
-            nid = print_line_once(nid, get_arg2(get_symbolic(line)));
+            nid = print_line_once(nid, value_nid);
             if (printing_comments)
-              w = w + dprintf(output_fd, "; %s initialized\n", get_comment(line));
+              w = w + dprintf(output_fd, "; %s done\n", get_comment(get_symbolic(line)));
           } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
-          set_nid(line, get_nid(get_arg2(get_symbolic(line))));
-          set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
+          set_nid(line, get_nid(value_nid));
+          set_prefix(line, get_prefix(value_nid));
           return nid - 1; // nid is not used
-        } else {
-          // assert: array
-          if (is_bitvector(get_sid(get_arg2(get_symbolic(line))))) {
-            // assert: get_op(get_symbolic(line)) == OP_INIT
-            if (printing_smt) {
-              nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-              type = PREFIX_CONST;
-            }
-            // TODO: handle BTOR2 zeroed arrays here
-            op = OP_INPUT;
-          } else {
-            if (get_op(get_symbolic(line)) == OP_INIT) {
-              nid = print_line_once(nid, get_arg2(get_symbolic(line)));
-              if (printing_comments)
-                w = w + dprintf(output_fd, "; %s initialized\n", get_comment(line));
-            } // else: assert: get_op(get_symbolic(line)) == OP_NEXT
-            set_nid(line, get_nid(get_arg2(get_symbolic(line))));
-            set_prefix(line, get_prefix(get_arg2(get_symbolic(line))));
-            return nid - 1; // nid is not used
-          }
         }
+      }
     }
   }
   nid = print_line_once(nid, get_sid(line));
-  if (printing_smt) {
+  if (printing_smt)
     declare_fun(line, nid, type);
-    print_comment(line);
-    if (type == PREFIX_CONST) {
-      w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))",
-        get_prefix(line),
-        get_nid(line),
-        get_prefix(get_sid(line)),
-        get_nid(get_sid(line)),
-        get_prefix(get_arg2(get_symbolic(line))),
-        get_nid(get_arg2(get_symbolic(line))));
-      if (printing_comments)
-        w = w + dprintf(output_fd, " ; %s initialized\n", get_comment(line));
-      else
-        w = w + dprintf(output_fd, "\n");
-    }
-  } else {
+  else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %s", op, get_nid(get_sid(line)), (char*) get_arg1(line));
-    print_comment(line);
+  }
+  print_comment(line);
+  if (type == PREFIX_CONST) {
+    // initializing array with bitvector constant
+    nid = print_line_once(nid + 1, value_nid);
+    if (printing_smt) {
+      w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))",
+        get_prefix(line), get_nid(line),
+        get_prefix(get_sid(line)), get_nid(get_sid(line)),
+        get_prefix(value_nid), get_nid(value_nid));
+      nid = nid - 1; // nid is not used
+    } else
+      w = w + dprintf(output_fd, "%lu %s %lu %lu %lu",
+        nid, OP_INIT, get_nid(get_sid(line)), get_nid(line), get_nid(value_nid));
+    print_comment(get_symbolic(line));
   }
   return nid;
 }
@@ -5960,7 +5946,7 @@ void new_program_break(uint64_t core) {
       format_comment("core-%lu-program-break", core), "program break");
 
   init_program_break_nid = new_init(SID_VIRTUAL_ADDRESS, state_program_break_nid,
-    NID_HEAP_START, "initial program break is start of heap segment");
+    NID_HEAP_START, "initializing program break to start of heap segment");
 
   eval_init(init_program_break_nid);
 
@@ -5976,7 +5962,7 @@ void new_kernel_state(uint64_t core) {
     state_file_descriptor_nid = new_input(OP_STATE, SID_MACHINE_WORD,
       "file-descriptor", "file descriptor");
     init_file_descriptor_nid  = new_init(SID_MACHINE_WORD, state_file_descriptor_nid,
-      NID_MACHINE_WORD_0, "initial file descriptor is zero");
+      NID_MACHINE_WORD_0, "initializing file descriptor to zero");
 
     eval_init(init_file_descriptor_nid);
 
@@ -5999,7 +5985,7 @@ void new_kernel_state(uint64_t core) {
   state_readable_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-readable-bytes", core), "readable bytes");
   init_readable_bytes_nid  = new_init(SID_MACHINE_WORD, state_readable_bytes_nid,
-    NID_BYTES_TO_READ, "number of readable bytes");
+    NID_BYTES_TO_READ, "initializing number of readable bytes");
 
   eval_init(init_readable_bytes_nid);
 
@@ -6008,7 +5994,7 @@ void new_kernel_state(uint64_t core) {
   state_read_bytes_nid = new_input(OP_STATE, SID_MACHINE_WORD,
     format_comment("core-%lu-read-bytes", core), "bytes read in active read system call");
   init_read_bytes_nid  = new_init(SID_MACHINE_WORD, state_read_bytes_nid,
-    NID_MACHINE_WORD_0, "initially zero read bytes");
+    NID_MACHINE_WORD_0, "initializing read bytes to zero");
 
   eval_init(init_read_bytes_nid);
 
@@ -6109,49 +6095,18 @@ void new_register_file_state(uint64_t core) {
   next_zeroed_register_file_nid = UNUSED;
 
   if (number_of_binaries == 0) {
-    initial_register_file_nid = state_register_file_nid;
+    value_nid = cast_virtual_address_to_machine_word(
+      new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
+    value = eval_line(value_nid);
 
-    reg = 0;
+    initial_register_file_nid =
+      store_register_value(NID_SP, value_nid,
+        "write initial sp register value", state_register_file_nid);
 
-    while (reg < NUMBEROFREGISTERS) {
-      if (reg == REG_SP) {
-        value_nid = cast_virtual_address_to_machine_word(
-          new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
-        reg_nid = NID_SP;
+    if (eval_line(load_register_value(NID_SP, "read initial sp register value", initial_register_file_nid)) != value) {
+      printf("%s: initial sp register value mismatch\n", selfie_name);
 
-        value = eval_line(value_nid);
-      } else if (printing_unrolled_model) {
-        if (printing_smt)
-          value_nid = UNUSED;
-        else {
-          // skipping registers other than sp unless printing unrolled model
-          value     = 0;
-          value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-            value,
-            0,
-            format_comment("initial register value 0x%lX", value));
-          // for reuse creating register address exactly as above in register sorts
-          reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
-            reg,
-            5,
-            format_comment("%s", *(REGISTERS + reg)));
-        }
-      } else
-        value_nid = UNUSED;
-
-      if (value_nid != UNUSED) {
-        initial_register_file_nid =
-          store_register_value(reg_nid, value_nid,
-            "write initial register value", initial_register_file_nid);
-
-        if (eval_line(load_register_value(reg_nid, "read initial register value", initial_register_file_nid)) != value) {
-          printf("%s: initial register file value mismatch @ %s\n", selfie_name, get_register_name(reg));
-
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      }
-
-      reg = reg + 1;
+      exit(EXITCODE_SYSTEMERROR);
     }
   } else {
     initial_register_file_nid = state_register_file_nid;
@@ -6161,7 +6116,7 @@ void new_register_file_state(uint64_t core) {
     while (reg < NUMBEROFREGISTERS) {
       value = *(get_regs(current_context) + reg);
 
-      if ((value != 0) + (printing_unrolled_model - printing_smt) > 0) {
+      if (value != 0) {
         // skipping zero as initial value unless printing unrolled model
         value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           value,
@@ -6534,7 +6489,7 @@ void new_code_segment(uint64_t core) {
       else
         ir = 0;
 
-      if ((ir != 0) + (printing_unrolled_model - printing_smt) > 0) {
+      if (ir != 0) {
         // skipping zero as instruction unless printing unrolled BTOR2 model
         laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
           pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
@@ -6666,7 +6621,7 @@ void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
       // else: out-of-segment memory is zeroed
     // else: memory in a system with uninitialized code segment is zeroed for unrolling
 
-    if ((data != 0) + (printing_unrolled_model - printing_smt) > 0) {
+    if (data != 0) {
       // skipping zero as initial value unless printing unrolled BTOR2 model
       laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
         vaddr - segment_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
@@ -10727,7 +10682,7 @@ void new_core_state(uint64_t core) {
 
   set_for(core, state_pc_nids, state_pc_nid);
 
-  init_pc_nid = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initial value of pc");
+  init_pc_nid = new_init(SID_MACHINE_WORD, state_pc_nid, initial_pc_nid, "initializing pc");
 
   eval_init(init_pc_nid);
 
