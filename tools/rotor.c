@@ -4047,10 +4047,11 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
         value_nid = get_arg2(get_symbolic(line));
         if (is_array(get_sid(line)) * is_bitvector(get_sid(value_nid)) > 0)
           // assert: get_op(get_symbolic(line)) == OP_INIT
-          type = PREFIX_CONST;
+          type = PREFIX_CONST; // initializing array with bitvector constant (zero)
         else {
-          // assert: either bitvector initialized with bitvector constant
-          //         or else array initialized with (non-zero) bitvector constants
+          // initializing (init) or assigning (next)
+          // bitvector with bitvector constant or
+          // array with (non-zero) bitvector constants
           if (get_op(get_symbolic(line)) == OP_INIT) {
             nid = print_line_once(nid, value_nid);
             if (printing_comments)
@@ -4072,7 +4073,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   }
   print_comment(line);
   if (type == PREFIX_CONST) {
-    // initializing array with bitvector constant
+    // initializing array with bitvector constant (zero)
     nid = print_line_once(nid + 1, value_nid);
     if (printing_smt) {
       w = w + dprintf(output_fd, "(assert (= %s%lu ((as const %s%lu) %s%lu)))",
@@ -6097,13 +6098,13 @@ void new_register_file_state(uint64_t core) {
   if (number_of_binaries == 0) {
     value_nid = cast_virtual_address_to_machine_word(
       new_unary(OP_DEC, SID_VIRTUAL_ADDRESS, NID_STACK_END, "end of stack segment - 1"));
-    value = eval_line(value_nid);
 
     initial_register_file_nid =
       store_register_value(NID_SP, value_nid,
         "write initial sp register value", state_register_file_nid);
 
-    if (eval_line(load_register_value(NID_SP, "read initial sp register value", initial_register_file_nid)) != value) {
+    if (eval_line(load_register_value(NID_SP, "read initial sp register value",
+        initial_register_file_nid)) != eval_line(value_nid)) {
       printf("%s: initial sp register value mismatch\n", selfie_name);
 
       exit(EXITCODE_SYSTEMERROR);
