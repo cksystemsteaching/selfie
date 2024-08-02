@@ -3917,20 +3917,16 @@ void declare_fun(uint64_t* line, uint64_t nid, char* type) {
   set_nid(line, nid);
   set_prefix(line, type);
   w = w + dprintf(output_fd, "(declare-fun %s%lu () %s%lu)",
-    get_prefix(line),
-    get_nid(line),
-    get_prefix(get_sid(line)),
-    get_nid(get_sid(line)));
+    get_prefix(line), get_nid(line),
+    get_prefix(get_sid(line)), get_nid(get_sid(line)));
 }
 
 void define_fun(uint64_t* line, uint64_t nid, char* type) {
   set_nid(line, nid);
   set_prefix(line, type);
   w = w + dprintf(output_fd, "(define-fun %s%lu () %s%lu ",
-    get_prefix(line),
-    get_nid(line),
-    get_prefix(get_sid(line)),
-    get_nid(get_sid(line)));
+    get_prefix(line), get_nid(line),
+    get_prefix(get_sid(line)), get_nid(get_sid(line)));
 }
 
 uint64_t get_size_in_hex_digits(uint64_t size_in_bits) {
@@ -3974,10 +3970,8 @@ uint64_t print_sort(uint64_t nid, uint64_t* line) {
     } else
       // assert: array
       w = w + dprintf(output_fd, "(Array %s%lu %s%lu)",
-        get_prefix(get_arg2(line)),
-        get_nid(get_arg2(line)),
-        get_prefix(get_arg3(line)),
-        get_nid(get_arg3(line)));
+        get_prefix(get_arg2(line)), get_nid(get_arg2(line)),
+        get_prefix(get_arg3(line)), get_nid(get_arg3(line)));
     w = w + dprintf(output_fd, ")");
   } else {
     print_nid(nid, line);
@@ -4097,8 +4091,7 @@ uint64_t print_ext(uint64_t nid, uint64_t* line) {
     w = w + dprintf(output_fd, "((_ %s %lu) %s%lu))",
       get_smt_op(line),
       eval_ext_w(line),
-      get_prefix(get_arg1(line)),
-      get_nid(get_arg1(line)));
+      get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu",
@@ -4117,8 +4110,7 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
       get_smt_op(line),
       eval_slice_u(line),
       eval_slice_l(line),
-      get_prefix(get_arg1(line)),
-      get_nid(get_arg1(line)));
+      get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
@@ -4159,10 +4151,8 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
     else
       w = w + dprintf(output_fd, "(%s", get_smt_op(line));
     w = w + dprintf(output_fd, " %s%lu %s%lu))",
-      get_prefix(get_arg1(line)),
-      get_nid(get_arg1(line)),
-      get_prefix(get_arg2(line)),
-      get_nid(get_arg2(line)));
+      get_prefix(get_arg1(line)), get_nid(get_arg1(line)),
+      get_prefix(get_arg2(line)), get_nid(get_arg2(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu",
@@ -4181,12 +4171,9 @@ uint64_t print_ternary_op(uint64_t nid, uint64_t* line) {
     define_fun(line, nid, PREFIX_EXP);
     w = w + dprintf(output_fd, "(%s %s%lu %s%lu %s%lu))",
       get_smt_op(line),
-      get_prefix(get_arg1(line)),
-      get_nid(get_arg1(line)),
-      get_prefix(get_arg2(line)),
-      get_nid(get_arg2(line)),
-      get_prefix(get_arg3(line)),
-      get_nid(get_arg3(line)));
+      get_prefix(get_arg1(line)), get_nid(get_arg1(line)),
+      get_prefix(get_arg2(line)), get_nid(get_arg2(line)),
+      get_prefix(get_arg3(line)), get_nid(get_arg3(line)));
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu %lu %lu",
