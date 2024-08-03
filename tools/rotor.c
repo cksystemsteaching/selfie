@@ -4035,8 +4035,10 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   type = PREFIX_INPUT;
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
-      op = OP_INPUT;
-      if (get_symbolic(line) != SYMBOLIC) {
+      if (get_symbolic(line) == SYMBOLIC)
+        // replace uninitialized state variable with input
+        op = OP_INPUT;
+      else {
         // assert: get_symbolic(line) != NONSYMBOLIC
         value_nid = get_arg2(get_symbolic(line));
         if (is_array(get_sid(line)) * is_bitvector(get_sid(value_nid)) > 0)
