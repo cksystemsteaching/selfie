@@ -382,7 +382,13 @@ void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value
 
 uint64_t* allocate_array(uint64_t* sid);
 
-uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t read);
+uint64_t read_array_raw(uint64_t* state_nid, uint64_t index);
+uint64_t read_array(uint64_t* state_nid, uint64_t index);
+void     write_array_raw(uint64_t* state_nid, uint64_t index, uint64_t value);
+void     write_array(uint64_t* state_nid, uint64_t index, uint64_t value);
+
+uint64_t is_symbolic_array_element(uint64_t* state_nid, uint64_t index);
+void     set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is_symbolic);
 
 uint64_t is_comparison_operator(char* op);
 uint64_t is_bitwise_operator(char* op);
@@ -427,6 +433,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad);
 uint64_t eval_property_for(uint64_t core, uint64_t* lines, uint64_t bad);
 
 uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes);
+uint64_t* copy_array(uint64_t* sid, uint64_t* source, uint64_t* destination);
 
 void eval_init(uint64_t* line);
 
@@ -4562,34 +4569,68 @@ void match_array_sorts(uint64_t* array_sid, uint64_t* index_sid, uint64_t* value
 
 uint64_t* allocate_array(uint64_t* sid) {
   // assert: element size of array <= sizeof(uint64_t)
-  return zmalloc(two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
+  // allocate space for array as well as symbolic status of array elements
+  return zmalloc(2 * two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
 }
 
-uint64_t read_or_write(uint64_t* state_nid, uint64_t index, uint64_t value, uint64_t read) {
+uint64_t read_array_raw(uint64_t* state_nid, uint64_t index) {
   uint64_t* array;
 
+  array = (uint64_t*) get_state(state_nid);
+
+  if (array != (uint64_t*) 0)
+    return *(array + index);
+
+  printf("%s: reading from uninitialized state error\n", selfie_name);
+
+  exit(EXITCODE_SYSTEMERROR);
+}
+
+uint64_t read_array(uint64_t* state_nid, uint64_t index) {
+  uint64_t value;
+
   fit_array_index_sort(get_sid(state_nid), index);
+
+  value = read_array_raw(state_nid, index);
+
+  fit_array_element_sort(get_sid(state_nid), value);
+
+  return value;
+}
+
+void write_array_raw(uint64_t* state_nid, uint64_t index, uint64_t value) {
+  uint64_t* array;
 
   array = (uint64_t*) get_state(state_nid);
 
   if (array != (uint64_t*) 0) {
-    if (read) {
-      value = *(array + index);
+    // TODO: log writes and only apply with init and next
+    *(array + index) = value;
 
-      fit_array_element_sort(get_sid(state_nid), value);
-    } else {
-      fit_array_element_sort(get_sid(state_nid), value);
-
-      // TODO: log writes and only apply with init and next
-      *(array + index) = value;
-    }
-
-    return value;
+    return;
   }
 
-  printf("%s: uninitialized state access error\n", selfie_name);
+  printf("%s: writing to uninitialized state error\n", selfie_name);
 
   exit(EXITCODE_SYSTEMERROR);
+}
+
+void write_array(uint64_t* state_nid, uint64_t index, uint64_t value) {
+  fit_array_index_sort(get_sid(state_nid), index);
+  fit_array_element_sort(get_sid(state_nid), value);
+
+  write_array_raw(state_nid, index, value);
+}
+
+uint64_t is_symbolic_array_element(uint64_t* state_nid, uint64_t index) {
+  return read_array_raw(state_nid,
+    index + two_to_the_power_of(eval_array_size(get_sid(state_nid)))) == 1;
+}
+
+void set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is_symbolic) {
+  write_array_raw(state_nid,
+    index + two_to_the_power_of(eval_array_size(get_sid(state_nid))),
+    is_symbolic);
 }
 
 uint64_t is_comparison_operator(char* op) {
@@ -5015,13 +5056,24 @@ uint64_t eval_read(uint64_t* line) {
     state_nid = (uint64_t*) eval_line(read_nid);
 
     if (get_op(state_nid) == OP_STATE) {
-      // TODO: if current_step == next_step (during init) read after write is not detected
-      if (get_step(state_nid) <= current_step) {
+      // TODO: non-symbolic read after unrelated non-symbolic write is not detected
+      if (get_step(state_nid) <= next_step) {
         index = eval_line(index_nid);
 
-        if (get_sid(state_nid) != SID_INPUT_BUFFER)
-          set_state(line, read_or_write(state_nid, index, 0, 1));
-        else {
+        propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
+
+        if (get_sid(state_nid) != SID_INPUT_BUFFER) {
+          // avoids reading illegal instruction from uninitialized code segment
+          set_state(line, 1);
+
+          if (has_symbolic_state(line) == 0) {
+            if (is_symbolic_array_element(state_nid, index))
+              set_symbolic(line, SYMBOLIC);
+            else
+              // TODO: non-symbolic read after unrelated non-symbolic write may be incorrect
+              set_state(line, read_array(state_nid, index));
+          }
+        } else {
           // input buffer is uninitialized, generate input
           if (input_steps == 0)
             // TODO: input is consumed more than once
@@ -5034,13 +5086,6 @@ uint64_t eval_read(uint64_t* line) {
 
           any_input = 1;
         }
-
-        if (get_sid(state_nid) == SID_CODE_STATE)
-          if (get_symbolic(state_nid) == SYMBOLIC)
-            // avoid reading illegal instruction from uninitialized code segment
-            set_state(line, 1);
-
-        propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
         set_step(line, next_step);
 
@@ -5079,14 +5124,20 @@ uint64_t eval_write(uint64_t* line) {
           index = eval_line(index_nid);
           value = eval_line(value_nid);
 
-          propagate_symbolic_state(line, state_nid, index_nid, value_nid);
+          propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
           if (has_symbolic_state(line) == 0) {
-            read_or_write(state_nid, index, value, 0);
+            if (has_symbolic_state(value_nid))
+              set_symbolic_array_element(state_nid, index, 1);
+            else {
+              set_symbolic_array_element(state_nid, index, 0);
 
-            // TODO: log writes and only apply with init and next
-            set_step(state_nid, next_step);
+              write_array(state_nid, index, value);
+            }
           }
+
+          // TODO: log writes and only apply with init and next
+          set_step(state_nid, next_step);
 
           set_state(line, (uint64_t) state_nid);
 
@@ -5469,6 +5520,11 @@ uint64_t* memcopy(uint64_t* destination, uint64_t* source, uint64_t bytes) {
   return destination;
 }
 
+uint64_t* copy_array(uint64_t* sid, uint64_t* source, uint64_t* destination) {
+  // copy array as well as symbolic status of array elements
+  return memcopy(destination, source, 2 * two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
+}
+
 void eval_init(uint64_t* line) {
   uint64_t* state_nid;
   uint64_t* state_sid;
@@ -5525,7 +5581,7 @@ void eval_init(uint64_t* line) {
                         source      = (uint64_t*) get_state(state_nid);
                         destination = (uint64_t*) get_state(line);
 
-                        memcopy(destination, source, two_to_the_power_of(eval_array_size(state_sid)) * sizeof(uint64_t));
+                        copy_array(state_sid, source, destination);
                       }
 
                     // TODO: reinitialize value state
@@ -5723,7 +5779,7 @@ void save_state(uint64_t* line) {
         set_state(line, (uint64_t) destination);
       }
 
-      memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
+      copy_array(sid, source, destination);
     }
 
   set_symbolic(line, get_symbolic(state_nid));
@@ -5792,7 +5848,7 @@ void reset_state(uint64_t* line) {
       source      = (uint64_t*) state;
       destination = (uint64_t*) get_state(state_nid);
 
-      memcopy(destination, source, two_to_the_power_of(eval_array_size(sid)) * sizeof(uint64_t));
+      copy_array(sid, source, destination);
     }
 
   // state is only symbolic if the initial value is symbolic
