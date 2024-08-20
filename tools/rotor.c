@@ -390,9 +390,11 @@ void     write_array(uint64_t* state_nid, uint64_t index, uint64_t value);
 uint64_t is_symbolic_array_element(uint64_t* state_nid, uint64_t index);
 void     set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is_symbolic);
 
-uint64_t is_comparison_operator(char* op);
+uint64_t is_bitwise_logical_operator(char* op);
+uint64_t is_logical_operator(char *op, uint64_t* sid);
 uint64_t is_bitwise_operator(char* op);
 uint64_t is_arithmetic_operator(char* op);
+uint64_t is_comparison_operator(char* op);
 uint64_t is_binary_operator(char* op);
 
 uint64_t bitwise(uint64_t a, uint64_t b, uint64_t and_xor, uint64_t or_xor);
@@ -4633,37 +4635,29 @@ void set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is
     is_symbolic);
 }
 
-uint64_t is_comparison_operator(char* op) {
-  if (op == OP_EQ)
-    return 1;
-  else if (op == OP_NEQ)
-    return 1;
-  else if (op == OP_SGT)
-    return 1;
-  else if (op == OP_UGT)
-    return 1;
-  else if (op == OP_SGTE)
-    return 1;
-  else if (op == OP_UGTE)
-    return 1;
-  else if (op == OP_SLT)
-    return 1;
-  else if (op == OP_ULT)
-    return 1;
-  else if (op == OP_SLTE)
-    return 1;
-  else if (op == OP_ULTE)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t is_bitwise_operator(char* op) {
+uint64_t is_bitwise_logical_operator(char* op) {
   if (op == OP_AND)
     return 1;
   else if (op == OP_OR)
     return 1;
   else if (op == OP_XOR)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_logical_operator(char *op, uint64_t* sid) {
+  if (op == OP_IMPLIES)
+    return 1;
+  else if (sid == SID_BOOLEAN)
+    if (is_bitwise_logical_operator(op))
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_bitwise_operator(char* op) {
+  if (is_bitwise_logical_operator(op))
     return 1;
   else if (op == OP_SLL)
     return 1;
@@ -4694,14 +4688,39 @@ uint64_t is_arithmetic_operator(char* op) {
     return 0;
 }
 
-uint64_t is_binary_operator(char* op) {
-  if (op == OP_IMPLIES)
+uint64_t is_comparison_operator(char* op) {
+  if (op == OP_EQ)
     return 1;
-  else if (is_comparison_operator(op))
+  else if (op == OP_NEQ)
+    return 1;
+  else if (op == OP_SGT)
+    return 1;
+  else if (op == OP_UGT)
+    return 1;
+  else if (op == OP_SGTE)
+    return 1;
+  else if (op == OP_UGTE)
+    return 1;
+  else if (op == OP_SLT)
+    return 1;
+  else if (op == OP_ULT)
+    return 1;
+  else if (op == OP_SLTE)
+    return 1;
+  else if (op == OP_ULTE)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_binary_operator(char* op) {
+  if (is_logical_operator(op, SID_BOOLEAN))
     return 1;
   else if (is_bitwise_operator(op))
     return 1;
   else if (is_arithmetic_operator(op))
+    return 1;
+  else if (is_comparison_operator(op))
     return 1;
   else
     return 0;
@@ -5198,6 +5217,7 @@ uint64_t eval_binary_op(uint64_t* line) {
   char* op;
   uint64_t* left_nid;
   uint64_t* right_nid;
+  uint64_t* sid;
   uint64_t left_value;
   uint64_t right_value;
   uint64_t size;
@@ -5210,25 +5230,60 @@ uint64_t eval_binary_op(uint64_t* line) {
 
     match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
-    if (op == OP_IMPLIES) {
-      match_sorts(get_sid(left_nid), SID_BOOLEAN, "implication operator");
-      match_sorts(get_sid(line), SID_BOOLEAN, "implication operator");
+    sid = get_sid(line);
+
+    if (is_logical_operator(op, sid)) {
+      match_sorts(get_sid(left_nid), SID_BOOLEAN, "logical operator");
 
       left_value = eval_line(left_nid);
 
-      if (left_value == 0) {
-        set_state(line, left_value == 0);
-
-        if (has_symbolic_state(left_nid))
-          eval_line(right_nid);
-        else
-          // do not propagate unevaluated symbolic value
-          right_nid = UNUSED;
-      } else {
-        // lazy evaluation of right operand
+      if (has_symbolic_state(left_nid))
         right_value = eval_line(right_nid);
 
-        set_state(line, right_value != 0);
+      if (op == OP_IMPLIES) {
+        if (left_value == 0) {
+          set_state(line, 1);
+
+          if (has_symbolic_state(left_nid) == 0)
+            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+            right_nid = UNUSED;
+        } else {
+          if (has_symbolic_state(left_nid) == 0)
+            right_value = eval_line(right_nid);
+
+          set_state(line, right_value != 0);
+        }
+      } else if (op == OP_AND) {
+        if (left_value == 0) {
+          set_state(line, 0);
+
+          if (has_symbolic_state(left_nid) == 0)
+            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+            right_nid = UNUSED;
+        } else {
+          if (has_symbolic_state(left_nid) == 0)
+            right_value = eval_line(right_nid);
+
+          set_state(line, right_value != 0);
+        }
+      } else if (op == OP_OR) {
+        if (left_value != 0) {
+          set_state(line, 1);
+
+          if (has_symbolic_state(left_nid) == 0)
+            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+            right_nid = UNUSED;
+        } else {
+          if (has_symbolic_state(left_nid) == 0)
+            right_value = eval_line(right_nid);
+
+          set_state(line, right_value != 0);
+        }
+      } else if (op == OP_XOR) {
+        if (has_symbolic_state(left_nid) == 0)
+          right_value = eval_line(right_nid);
+
+        set_state(line, (left_value == 0) != (right_value == 0));
       }
     } else {
       left_value  = eval_line(left_nid);
@@ -5237,7 +5292,7 @@ uint64_t eval_binary_op(uint64_t* line) {
       size = eval_bitvec_size(get_sid(left_nid));
 
       if (is_bitwise_operator(op)) {
-        match_sorts(get_sid(line), get_sid(left_nid), "bitwise operator");
+        match_sorts(sid, get_sid(left_nid), "bitwise operator");
 
         if (op == OP_AND)
           set_state(line, bitwise_and(left_value, right_value));
@@ -5260,7 +5315,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
       } else if (is_arithmetic_operator(op)) {
-        match_sorts(get_sid(line), get_sid(left_nid), "arithmetic operator");
+        match_sorts(sid, get_sid(left_nid), "arithmetic operator");
 
         if (op == OP_ADD)
           set_state(line, sign_shrink(left_value + right_value, size));
@@ -5299,7 +5354,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           exit(EXITCODE_SYSTEMERROR);
         }
       } else if (is_comparison_operator(op)) {
-        match_sorts(get_sid(line), SID_BOOLEAN, "comparison operator");
+        match_sorts(sid, SID_BOOLEAN, "comparison operator");
 
         if (op == OP_EQ)
           set_state(line, left_value == right_value);
@@ -5329,7 +5384,7 @@ uint64_t eval_binary_op(uint64_t* line) {
       }
     }
 
-    fit_bitvec_sort(get_sid(line), get_state(line));
+    fit_bitvec_sort(sid, get_state(line));
 
     propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
 
