@@ -5224,178 +5224,179 @@ uint64_t eval_binary_op(uint64_t* line) {
 
   op = get_op(line);
 
-  if (is_binary_operator(op)) {
-    left_nid  = get_arg1(line);
-    right_nid = get_arg2(line);
+  if (is_binary_operator(op) == 0) {
+    // else case exceeds selfie's branch limit
+    printf("%s: unknown binary operator %s\n", selfie_name, op);
 
-    match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
+    exit(EXITCODE_SYSTEMERROR);
+  }
 
-    sid = get_sid(line);
+  left_nid  = get_arg1(line);
+  right_nid = get_arg2(line);
 
-    if (is_logical_operator(op, sid)) {
-      match_sorts(get_sid(left_nid), SID_BOOLEAN, "logical operator");
+  match_sorts(get_sid(left_nid), get_sid(right_nid), "left and right operand");
 
-      left_value = eval_line(left_nid);
+  sid = get_sid(line);
 
-      if (has_symbolic_state(left_nid))
-        right_value = eval_line(right_nid);
+  if (is_logical_operator(op, sid)) {
+    match_sorts(get_sid(left_nid), SID_BOOLEAN, "logical operator");
 
-      if (op == OP_IMPLIES) {
-        if (left_value == 0) {
-          set_state(line, 1);
+    left_value = eval_line(left_nid);
 
-          if (has_symbolic_state(left_nid) == 0)
-            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
-            right_nid = UNUSED;
-        } else {
-          if (has_symbolic_state(left_nid) == 0)
-            right_value = eval_line(right_nid);
+    if (has_symbolic_state(left_nid))
+      right_value = eval_line(right_nid);
 
-          set_state(line, right_value != 0);
-        }
-      } else if (op == OP_AND) {
-        if (left_value == 0) {
-          set_state(line, 0);
+    if (op == OP_IMPLIES) {
+      if (left_value == 0) {
+        set_state(line, 1);
 
-          if (has_symbolic_state(left_nid) == 0)
-            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
-            right_nid = UNUSED;
-        } else {
-          if (has_symbolic_state(left_nid) == 0)
-            right_value = eval_line(right_nid);
-
-          set_state(line, right_value != 0);
-        }
-      } else if (op == OP_OR) {
-        if (left_value != 0) {
-          set_state(line, 1);
-
-          if (has_symbolic_state(left_nid) == 0)
-            // lazy evaluation of right operand, do not propagate unevaluated symbolic value
-            right_nid = UNUSED;
-        } else {
-          if (has_symbolic_state(left_nid) == 0)
-            right_value = eval_line(right_nid);
-
-          set_state(line, right_value != 0);
-        }
-      } else if (op == OP_XOR) {
+        if (has_symbolic_state(left_nid) == 0)
+          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+          right_nid = UNUSED;
+      } else {
         if (has_symbolic_state(left_nid) == 0)
           right_value = eval_line(right_nid);
 
-        set_state(line, (left_value == 0) != (right_value == 0));
+        set_state(line, right_value != 0);
       }
-    } else {
-      left_value  = eval_line(left_nid);
-      right_value = eval_line(right_nid);
+    } else if (op == OP_AND) {
+      if (left_value == 0) {
+        set_state(line, 0);
 
-      size = eval_bitvec_size(get_sid(left_nid));
+        if (has_symbolic_state(left_nid) == 0)
+          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+          right_nid = UNUSED;
+      } else {
+        if (has_symbolic_state(left_nid) == 0)
+          right_value = eval_line(right_nid);
 
-      if (is_bitwise_operator(op)) {
-        match_sorts(sid, get_sid(left_nid), "bitwise operator");
+        set_state(line, right_value != 0);
+      }
+    } else if (op == OP_OR) {
+      if (left_value != 0) {
+        set_state(line, 1);
 
-        if (op == OP_AND)
-          set_state(line, bitwise_and(left_value, right_value));
-        else if (op == OP_OR)
-          set_state(line, bitwise_or(left_value, right_value));
-        else if (op == OP_XOR)
-          set_state(line, bitwise_xor(left_value, right_value));
-        else if (right_value < SIZEOFUINT64INBITS) {
-          if (op == OP_SLL)
-            set_state(line, sign_shrink(left_shift(left_value, right_value), size));
-          else if (op == OP_SRL)
-            set_state(line, right_shift(left_value, right_value));
-          else if (op == OP_SRA)
-            set_state(line, arithmetic_right_shift(left_value, right_value, size));
-        } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
-          set_state(line, 0);
-        else {
-          printf("%s: non-symbolic %s by %lu bits\n", selfie_name, op, right_value);
+        if (has_symbolic_state(left_nid) == 0)
+          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+          right_nid = UNUSED;
+      } else {
+        if (has_symbolic_state(left_nid) == 0)
+          right_value = eval_line(right_nid);
 
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      } else if (is_arithmetic_operator(op)) {
-        match_sorts(sid, get_sid(left_nid), "arithmetic operator");
+        set_state(line, right_value != 0);
+      }
+    } else if (op == OP_XOR) {
+      if (has_symbolic_state(left_nid) == 0)
+        right_value = eval_line(right_nid);
 
-        if (op == OP_ADD)
-          set_state(line, sign_shrink(left_value + right_value, size));
-        else if (op == OP_SUB)
-          set_state(line, sign_shrink(left_value - right_value, size));
-        else if (op == OP_MUL)
-          set_state(line, sign_shrink(left_value * right_value, size));
-        else if (right_value != 0) {
-          if (op == OP_UDIV)
-            set_state(line, left_value / right_value);
-          else if (op == OP_UREM)
-            set_state(line, left_value % right_value);
-          else {
-            left_value  = sign_extend(left_value, size);
-            right_value = sign_extend(right_value, size);
+      set_state(line, (left_value == 0) != (right_value == 0));
+    }
+  } else {
+    left_value  = eval_line(left_nid);
+    right_value = eval_line(right_nid);
 
-            if ((left_value == INT64_MIN) * (right_value == (uint64_t) -1) == 0) {
-              if (op == OP_SDIV)
-                set_state(line, sign_shrink(signed_division(left_value, right_value), size));
-              else if (op == OP_SREM)
-                set_state(line,
-                  sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
-            } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
-              set_state(line, 0);
-            else {
-              printf("%s: non-symbolic %s overflow\n", selfie_name, op);
+    size = eval_bitvec_size(get_sid(left_nid));
 
-              exit(EXITCODE_SYSTEMERROR);
-            }
-          }
-        } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
-          set_state(line, 0);
-        else {
-          printf("%s: non-symbolic %s by zero\n", selfie_name, op);
+    if (is_bitwise_operator(op)) {
+      match_sorts(sid, get_sid(left_nid), "bitwise operator");
 
-          exit(EXITCODE_SYSTEMERROR);
-        }
-      } else if (is_comparison_operator(op)) {
-        match_sorts(sid, SID_BOOLEAN, "comparison operator");
+      if (op == OP_AND)
+        set_state(line, bitwise_and(left_value, right_value));
+      else if (op == OP_OR)
+        set_state(line, bitwise_or(left_value, right_value));
+      else if (op == OP_XOR)
+        set_state(line, bitwise_xor(left_value, right_value));
+      else if (right_value < SIZEOFUINT64INBITS) {
+        if (op == OP_SLL)
+          set_state(line, sign_shrink(left_shift(left_value, right_value), size));
+        else if (op == OP_SRL)
+          set_state(line, right_shift(left_value, right_value));
+        else if (op == OP_SRA)
+          set_state(line, arithmetic_right_shift(left_value, right_value, size));
+      } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+        set_state(line, 0);
+      else {
+        printf("%s: non-symbolic %s by %lu bits\n", selfie_name, op, right_value);
 
-        if (op == OP_EQ)
-          set_state(line, left_value == right_value);
-        else if (op == OP_NEQ)
-          set_state(line, left_value != right_value);
-        else if (op == OP_UGT)
-          set_state(line, left_value > right_value);
-        else if (op == OP_UGTE)
-          set_state(line, left_value >= right_value);
-        else if (op == OP_ULT)
-          set_state(line, left_value < right_value);
-        else if (op == OP_ULTE)
-          set_state(line, left_value <= right_value);
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    } else if (is_arithmetic_operator(op)) {
+      match_sorts(sid, get_sid(left_nid), "arithmetic operator");
+
+      if (op == OP_ADD)
+        set_state(line, sign_shrink(left_value + right_value, size));
+      else if (op == OP_SUB)
+        set_state(line, sign_shrink(left_value - right_value, size));
+      else if (op == OP_MUL)
+        set_state(line, sign_shrink(left_value * right_value, size));
+      else if (right_value != 0) {
+        if (op == OP_UDIV)
+          set_state(line, left_value / right_value);
+        else if (op == OP_UREM)
+          set_state(line, left_value % right_value);
         else {
           left_value  = sign_extend(left_value, size);
           right_value = sign_extend(right_value, size);
 
-          if (op == OP_SGT)
-            set_state(line, signed_less_than(right_value, left_value));
-          else if (op == OP_SGTE)
-            set_state(line, signed_less_than_or_equal_to(right_value, left_value));
-          else if (op == OP_SLT)
-            set_state(line, signed_less_than(left_value, right_value));
-          else if (op == OP_SLTE)
-            set_state(line, signed_less_than_or_equal_to(left_value, right_value));
+          if ((left_value == INT64_MIN) * (right_value == (uint64_t) -1) == 0) {
+            if (op == OP_SDIV)
+              set_state(line, sign_shrink(signed_division(left_value, right_value), size));
+            else if (op == OP_SREM)
+              set_state(line,
+                sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
+          } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+            set_state(line, 0);
+          else {
+            printf("%s: non-symbolic %s overflow\n", selfie_name, op);
+
+            exit(EXITCODE_SYSTEMERROR);
+          }
         }
+      } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+        set_state(line, 0);
+      else {
+        printf("%s: non-symbolic %s by zero\n", selfie_name, op);
+
+        exit(EXITCODE_SYSTEMERROR);
+      }
+    } else if (is_comparison_operator(op)) {
+      match_sorts(sid, SID_BOOLEAN, "comparison operator");
+
+      if (op == OP_EQ)
+        set_state(line, left_value == right_value);
+      else if (op == OP_NEQ)
+        set_state(line, left_value != right_value);
+      else if (op == OP_UGT)
+        set_state(line, left_value > right_value);
+      else if (op == OP_UGTE)
+        set_state(line, left_value >= right_value);
+      else if (op == OP_ULT)
+        set_state(line, left_value < right_value);
+      else if (op == OP_ULTE)
+        set_state(line, left_value <= right_value);
+      else {
+        left_value  = sign_extend(left_value, size);
+        right_value = sign_extend(right_value, size);
+
+        if (op == OP_SGT)
+          set_state(line, signed_less_than(right_value, left_value));
+        else if (op == OP_SGTE)
+          set_state(line, signed_less_than_or_equal_to(right_value, left_value));
+        else if (op == OP_SLT)
+          set_state(line, signed_less_than(left_value, right_value));
+        else if (op == OP_SLTE)
+          set_state(line, signed_less_than_or_equal_to(left_value, right_value));
       }
     }
-
-    fit_bitvec_sort(sid, get_state(line));
-
-    propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
-
-    set_step(line, next_step);
-
-    return get_state(line);
   }
 
-  printf("%s: unknown binary operator %s\n", selfie_name, op);
+  fit_bitvec_sort(sid, get_state(line));
 
-  exit(EXITCODE_SYSTEMERROR);
+  propagate_symbolic_state(line, left_nid, right_nid, NONSYMBOLIC);
+
+  set_step(line, next_step);
+
+  return get_state(line);
 }
 
 uint64_t eval_line(uint64_t* line) {
