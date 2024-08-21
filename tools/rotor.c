@@ -5243,53 +5243,50 @@ uint64_t eval_binary_op(uint64_t* line) {
 
     left_value = eval_line(left_nid);
 
-    if (has_symbolic_state(left_nid))
-      right_value = eval_line(right_nid);
-
     if (op == OP_IMPLIES) {
       if (left_value == 0) {
         set_state(line, 1);
 
-        if (has_symbolic_state(left_nid) == 0)
-          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
+        if (has_symbolic_state(left_nid))
+          right_value = eval_line(right_nid);
+        else
+          // lazy evaluation of right operand and
+          // lazy propagation of (unevaluated) symbolic value
           right_nid = UNUSED;
       } else {
-        if (has_symbolic_state(left_nid) == 0)
-          right_value = eval_line(right_nid);
-
-        set_state(line, right_value != 0);
-      }
-    } else if (op == OP_AND) {
-      if (left_value == 0) {
-        set_state(line, 0);
-
-        if (has_symbolic_state(left_nid) == 0)
-          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
-          right_nid = UNUSED;
-      } else {
-        if (has_symbolic_state(left_nid) == 0)
-          right_value = eval_line(right_nid);
-
-        set_state(line, right_value != 0);
-      }
-    } else if (op == OP_OR) {
-      if (left_value != 0) {
-        set_state(line, 1);
-
-        if (has_symbolic_state(left_nid) == 0)
-          // lazy evaluation of right operand, do not propagate unevaluated symbolic value
-          right_nid = UNUSED;
-      } else {
-        if (has_symbolic_state(left_nid) == 0)
-          right_value = eval_line(right_nid);
-
-        set_state(line, right_value != 0);
-      }
-    } else if (op == OP_XOR) {
-      if (has_symbolic_state(left_nid) == 0)
         right_value = eval_line(right_nid);
 
-      set_state(line, (left_value == 0) != (right_value == 0));
+        set_state(line, right_value > 0);
+      }
+    } else {
+      right_value = eval_line(right_nid);
+
+      if (op == OP_AND) {
+        set_state(line, ((left_value > 0) * (right_value > 0)) > 0);
+
+        if (has_symbolic_state(left_nid) == 0)
+          if (left_value == 0)
+            // lazy propagation of symbolic value
+            right_nid = UNUSED;
+
+        if (has_symbolic_state(right_nid) == 0)
+          if (right_value == 0)
+            // lazy propagation of symbolic value
+            left_nid = UNUSED;
+      } else if (op == OP_OR) {
+        set_state(line, ((left_value > 0) + (right_value > 0)) > 0);
+
+        if (has_symbolic_state(left_nid) == 0)
+          if (left_value == 1)
+            // lazy propagation of symbolic value
+            right_nid = UNUSED;
+
+        if (has_symbolic_state(right_nid) == 0)
+          if (right_value == 1)
+            // lazy propagation of symbolic value
+            left_nid = UNUSED;
+      } else if (op == OP_XOR)
+        set_state(line, (left_value == 0) != (right_value == 0));
     }
   } else {
     left_value  = eval_line(left_nid);
