@@ -115,6 +115,12 @@ int dprintf(int fd, const char* format, ...);
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
+uint64_t is_true(uint64_t a);
+uint64_t not(uint64_t a);
+uint64_t and(uint64_t a, uint64_t b);
+uint64_t or(uint64_t a, uint64_t b);
+uint64_t xor(uint64_t a, uint64_t b);
+
 uint64_t two_to_the_power_of(uint64_t p);
 uint64_t log_two(uint64_t n);
 
@@ -2620,6 +2626,26 @@ void turn_on_gc_library(uint64_t period, char* name) {
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
+uint64_t is_true(uint64_t a) {
+  return a > 0;
+}
+
+uint64_t not(uint64_t a) {
+  return a == 0;
+}
+
+uint64_t and(uint64_t a, uint64_t b) {
+  return is_true(is_true(a) * is_true(b));
+}
+
+uint64_t or(uint64_t a, uint64_t b) {
+  return is_true(is_true(a) + is_true(b));
+}
+
+uint64_t xor(uint64_t a, uint64_t b) {
+  return is_true(a) != is_true(b);
+}
+
 uint64_t two_to_the_power_of(uint64_t p) {
   if (p < SIZEOFUINT64INBITS)
     return *(power_of_two_table + p);
@@ -4290,7 +4316,7 @@ uint64_t is_neither_rbrace_nor_eof() {
 
 uint64_t is_possibly_parameter(uint64_t is_already_variadic) {
   if (symbol == SYM_COMMA)
-    if (is_already_variadic == 0)
+    if (not(is_already_variadic))
       return 1;
 
   return 0;
@@ -4713,7 +4739,7 @@ uint64_t load_upper_address(uint64_t* entry) {
 
   offset = get_address(entry);
 
-  if (is_signed_integer(offset, 12) == 0) {
+  if (not(is_signed_integer(offset, 12))) {
     // offset does not fit 12-bit immediate value
     talloc();
 
@@ -5675,7 +5701,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
       // only accounting for procedures defined in source code
       number_of_procedures = number_of_procedures + 1;
-    } else if (is_boot_level_0_only_procedure(procedure) == 0) {
+    } else if (not(is_boot_level_0_only_procedure(procedure))) {
       // procedure already defined on all boot levels
       print_line_number("warning", line_number);
       printf("redefinition of procedure %s ignored\n", procedure);
@@ -5978,7 +6004,7 @@ void macro_var_start() {
   var_list_variable = (uint64_t*) 0;
 
   // #non-variadic parameters == - get_value(current_procedure)
-  if (signed_less_than(get_value(current_procedure), 0) == 0)
+  if (not(signed_less_than(get_value(current_procedure), 0)))
     syntax_error_message("'var_start' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
@@ -6059,7 +6085,7 @@ void macro_var_arg() {
 // implementation of va_start, va_arg, and va_end is platform-specific;
 // RISC-V va_end does nothing and is only implemented for parity with standard C
 void macro_var_end() {
-  if (signed_less_than(get_value(current_procedure), 0) == 0)
+  if (not(signed_less_than(get_value(current_procedure), 0)))
     syntax_error_message("'var_end' used in non-variadic procedure");
 
   if (symbol == SYM_IDENTIFIER) {
@@ -6512,7 +6538,7 @@ void write_register(uint64_t reg) {
 // -----------------------------------------------------------------
 
 void check_immediate_range(uint64_t immediate, uint64_t bits) {
-  if (is_signed_integer(immediate, bits) == 0) {
+  if (not(is_signed_integer(immediate, bits))) {
     print_line_number("encoding error", line_number);
     printf("%ld expected between %ld and %ld\n",
       immediate,
@@ -7788,7 +7814,7 @@ void implement_read(uint64_t* context) {
   size = sign_extend(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(0, size))
-    if (copy_buffer(context, vbuffer, IO_buffer, size, 1) == 0)
+    if (not(copy_buffer(context, vbuffer, IO_buffer, size, 1)))
       *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -8584,7 +8610,7 @@ uint64_t* get_PTE_address(uint64_t* parent_table, uint64_t* table, uint64_t page
 
   // assert: 0 <= page < NUMBEROFPAGES
 
-  if (PAGETABLETREE == 0)
+  if (not(PAGETABLETREE))
     // just pointer arithmetic, no access!
     return table + page;
   else {
@@ -8628,7 +8654,7 @@ void set_page_frame(uint64_t* table, uint64_t page, uint64_t frame) {
 
   // assert: 0 <= page < NUMBEROFPAGES
 
-  if (PAGETABLETREE == 0)
+  if (not(PAGETABLETREE))
     *(table + page) = frame;
   else {
     leaf_pt = (uint64_t*) *(table + root_PDE_offset(page));
@@ -10077,7 +10103,7 @@ void interrupt() {
 void run_until_exception() {
   trap = 0;
 
-  while (trap == 0) {
+  while (not(trap)) {
     fetch();
     decode();
     execute();
@@ -10935,8 +10961,8 @@ void mark_block_selfie(uint64_t* context, uint64_t gc_address) {
   uint64_t block_start;
   uint64_t block_end;
 
-  if (is_gc_library(context) == 0)
-    if (is_virtual_address_valid(gc_address, WORDSIZE) == 0)
+  if (not(is_gc_library(context)))
+    if (not(is_virtual_address_valid(gc_address, WORDSIZE)))
       return;
 
   metadata = get_metadata_if_address_is_valid(context, gc_address);
@@ -11144,7 +11170,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  if (PAGETABLETREE == 0)
+  if (not(PAGETABLETREE))
     // for a 4GB-virtual-memory page table with
     // 4KB pages and 64-bit pointers, allocate
     // 8MB = 2^23 ((2^32 / 2^12) * 2^3) bytes to
@@ -11495,7 +11521,7 @@ void pfree(uint64_t* frame) {
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
   // assert: is_virtual_address_valid(vaddr, WORDSIZE) == 1
 
-  if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
+  if (not(is_virtual_address_mapped(get_pt(context), vaddr)))
     map_page(context, page_of_virtual_address(vaddr), (uint64_t) palloc());
 
   store_virtual_memory(get_pt(context), vaddr, data);
@@ -12208,7 +12234,7 @@ uint64_t selfie(uint64_t extras) {
         selfie_disassemble(1);
       else if (string_compare(argument, "-l"))
         selfie_load(get_argument());
-      else if (extras == 0) {
+      else if (not(extras)) {
         if (string_compare(argument, "-m"))
           return selfie_run(MIPSTER);
         else if (string_compare(argument, "-d"))

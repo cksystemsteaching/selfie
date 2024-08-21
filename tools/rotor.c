@@ -2902,7 +2902,7 @@ void init_instruction_sorts() {
   NID_SRLW = NID_DISABLED;
   NID_SRAW = NID_DISABLED;
 
-  if (RISCUONLY == 0)
+  if (not(RISCUONLY))
     if (IS64BITTARGET) {
       NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, 0, get_instruction_mnemonic(ID_LWU));
 
@@ -2937,7 +2937,7 @@ void init_instruction_sorts() {
   NID_DIV    = NID_DISABLED;
   NID_REM    = NID_DISABLED;
 
-  if (RISCUONLY == 0) {
+  if (not(RISCUONLY)) {
     if (RV32M) {
       // MUL, DIVU, REMU already defined
       NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, 0, get_instruction_mnemonic(ID_MULH));
@@ -2957,7 +2957,7 @@ void init_instruction_sorts() {
   if (RISCUONLY)
     RV64M = 0;
 
-  if (IS64BITTARGET == 0)
+  if (not(IS64BITTARGET))
     RV64M = 0;
 
   if (RV64M) {
@@ -3115,7 +3115,7 @@ void init_compressed_instruction_sorts() {
   NID_C_JR   = NID_DISABLED;
   NID_C_JALR = NID_DISABLED;
 
-  if (RVC == 0)
+  if (not(RVC))
     // avoiding oversized then case
     return;
 
@@ -3952,11 +3952,11 @@ void print_nid(uint64_t nid, uint64_t* line) {
 
 void print_comment(uint64_t* line) {
   if (printing_comments) {
-    if ((get_comment(line) != NOCOMMENT) + printing_reuse * (get_reuse(line) > 0) > 0)
+    if (or(get_comment(line) != NOCOMMENT, and(printing_reuse, get_reuse(line) > 0)))
       w = w + dprintf(output_fd, " ;");
     if (get_comment(line) != NOCOMMENT)
       w = w + dprintf(output_fd, " %s", get_comment(line));
-    if (printing_reuse * (get_reuse(line) > 0) > 0)
+    if (and(printing_reuse, get_reuse(line) > 0))
       w = w + dprintf(output_fd, " [reused %lu time(s)]", get_reuse(line));
   }
   w = w + dprintf(output_fd, "\n");
@@ -4050,7 +4050,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
       else {
         // assert: get_symbolic(line) != NONSYMBOLIC
         value_nid = get_arg2(get_symbolic(line));
-        if (is_array(get_sid(line)) * is_bitvector(get_sid(value_nid)) > 0)
+        if (and(is_array(get_sid(line)), is_bitvector(get_sid(value_nid))))
           // assert: get_op(get_symbolic(line)) == OP_INIT
           type = PREFIX_CONST; // initializing array with bitvector constant (zero)
         else {
@@ -4136,7 +4136,7 @@ uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_EXP);
-    if ((get_op(line) == OP_NOT) * (get_sid(line) == SID_BOOLEAN) > 0)
+    if (and(get_op(line) == OP_NOT, get_sid(line) == SID_BOOLEAN))
       w = w + dprintf(output_fd, "(%s", get_op(line));
     else
       w = w + dprintf(output_fd, "(%s", get_smt_op(line));
@@ -4156,8 +4156,8 @@ uint64_t print_binary_op(uint64_t nid, uint64_t* line) {
   nid = print_line_once(nid, get_arg2(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_EXP);
-    if (((get_op(line) == OP_AND) + (get_op(line) == OP_OR) + (get_op(line) == OP_XOR))
-      * (get_sid(line) == SID_BOOLEAN) > 0)
+    if (and(or(get_op(line) == OP_AND, or(get_op(line) == OP_OR, get_op(line) == OP_XOR)),
+      get_sid(line) == SID_BOOLEAN))
         w = w + dprintf(output_fd, "(%s", get_op(line));
     else
       w = w + dprintf(output_fd, "(%s", get_smt_op(line));
@@ -4214,7 +4214,7 @@ uint64_t has_symbolic_state(uint64_t* line) {
 
 uint64_t print_ite(uint64_t nid, uint64_t* line) {
   if (printing_propagated_constants)
-    if (has_symbolic_state(get_arg1(line)) == 0) {
+    if (not(has_symbolic_state(get_arg1(line)))) {
       // conjecture: happens only when printing unrolled model
       if (get_state(get_arg1(line))) {
         nid = print_line_once(nid, get_arg2(line));
@@ -4291,7 +4291,7 @@ uint64_t print_line_with_given_nid(uint64_t nid, uint64_t* line) {
     return print_constraint(nid, line);
   else {
     if (printing_propagated_constants)
-      if (has_symbolic_state(line) == 0)
+      if (not(has_symbolic_state(line)))
         return print_propagated_constant(nid, line);
 
     if (op == OP_SEXT)
@@ -4625,8 +4625,8 @@ void write_array(uint64_t* state_nid, uint64_t index, uint64_t value) {
 }
 
 uint64_t is_symbolic_array_element(uint64_t* state_nid, uint64_t index) {
-  return read_array_raw(state_nid,
-    index + two_to_the_power_of(eval_array_size(get_sid(state_nid)))) == 1;
+  return is_true(read_array_raw(state_nid,
+    index + two_to_the_power_of(eval_array_size(get_sid(state_nid)))));
 }
 
 void set_symbolic_array_element(uint64_t* state_nid, uint64_t index, uint64_t is_symbolic) {
@@ -4876,7 +4876,7 @@ uint64_t eval_input(uint64_t* line) {
     set_state(line, current_input);
     set_step(line, next_step);
 
-    if (any_input == 0)
+    if (not(any_input))
       first_input = 1;
 
     any_input = 1;
@@ -4890,10 +4890,10 @@ uint64_t eval_input(uint64_t* line) {
 }
 
 void propagate_symbolic_state(uint64_t* line, uint64_t* arg1, uint64_t* arg2, uint64_t* arg3) {
-  if (has_symbolic_state(arg1) + has_symbolic_state(arg2) + has_symbolic_state(arg3) == 0)
-    set_symbolic(line, NONSYMBOLIC);
-  else
+  if (or(has_symbolic_state(arg1), or(has_symbolic_state(arg2), has_symbolic_state(arg3))))
     set_symbolic(line, SYMBOLIC);
+  else
+    set_symbolic(line, NONSYMBOLIC);
 }
 
 uint64_t eval_ext(uint64_t* line) {
@@ -5085,7 +5085,7 @@ uint64_t eval_read(uint64_t* line) {
           // avoids reading illegal instruction from uninitialized code segment
           set_state(line, 1);
 
-          if (has_symbolic_state(line) == 0) {
+          if (not(has_symbolic_state(line))) {
             if (is_symbolic_array_element(state_nid, index))
               set_symbolic(line, SYMBOLIC);
             else
@@ -5100,7 +5100,7 @@ uint64_t eval_read(uint64_t* line) {
 
           set_state(line, current_input);
 
-          if (any_input == 0)
+          if (not(any_input))
             first_input = 1;
 
           any_input = 1;
@@ -5145,7 +5145,7 @@ uint64_t eval_write(uint64_t* line) {
 
           propagate_symbolic_state(line, state_nid, index_nid, NONSYMBOLIC);
 
-          if (has_symbolic_state(line) == 0) {
+          if (not(has_symbolic_state(line))) {
             if (has_symbolic_state(value_nid))
               set_symbolic_array_element(state_nid, index, 1);
             else {
@@ -5224,7 +5224,7 @@ uint64_t eval_binary_op(uint64_t* line) {
 
   op = get_op(line);
 
-  if (is_binary_operator(op) == 0) {
+  if (not(is_binary_operator(op))) {
     // else case exceeds selfie's branch limit
     printf("%s: unknown binary operator %s\n", selfie_name, op);
 
@@ -5244,7 +5244,7 @@ uint64_t eval_binary_op(uint64_t* line) {
     left_value = eval_line(left_nid);
 
     if (op == OP_IMPLIES) {
-      if (left_value == 0) {
+      if (not(left_value)) {
         set_state(line, 1);
 
         if (has_symbolic_state(left_nid))
@@ -5256,37 +5256,37 @@ uint64_t eval_binary_op(uint64_t* line) {
       } else {
         right_value = eval_line(right_nid);
 
-        set_state(line, right_value > 0);
+        set_state(line, is_true(right_value));
       }
     } else {
       right_value = eval_line(right_nid);
 
       if (op == OP_AND) {
-        set_state(line, ((left_value > 0) * (right_value > 0)) > 0);
+        set_state(line, and(left_value, right_value));
 
-        if (has_symbolic_state(left_nid) == 0)
-          if (left_value == 0)
+        if (not(has_symbolic_state(left_nid)))
+          if (not(left_value))
             // lazy propagation of symbolic value
             right_nid = UNUSED;
 
-        if (has_symbolic_state(right_nid) == 0)
-          if (right_value == 0)
+        if (not(has_symbolic_state(right_nid)))
+          if (not(right_value))
             // lazy propagation of symbolic value
             left_nid = UNUSED;
       } else if (op == OP_OR) {
-        set_state(line, ((left_value > 0) + (right_value > 0)) > 0);
+        set_state(line, or(left_value, right_value));
 
-        if (has_symbolic_state(left_nid) == 0)
-          if (left_value == 1)
+        if (not(has_symbolic_state(left_nid)))
+          if (is_true(left_value))
             // lazy propagation of symbolic value
             right_nid = UNUSED;
 
-        if (has_symbolic_state(right_nid) == 0)
-          if (right_value == 1)
+        if (not(has_symbolic_state(right_nid)))
+          if (is_true(right_value))
             // lazy propagation of symbolic value
             left_nid = UNUSED;
       } else if (op == OP_XOR)
-        set_state(line, (left_value == 0) != (right_value == 0));
+        set_state(line, xor(left_value, right_value));
     }
   } else {
     left_value  = eval_line(left_nid);
@@ -5310,7 +5310,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           set_state(line, right_shift(left_value, right_value));
         else if (op == OP_SRA)
           set_state(line, arithmetic_right_shift(left_value, right_value, size));
-      } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+      } else if (or(has_symbolic_state(left_nid), has_symbolic_state(right_nid)))
         set_state(line, 0);
       else {
         printf("%s: non-symbolic %s by %lu bits\n", selfie_name, op, right_value);
@@ -5335,13 +5335,13 @@ uint64_t eval_binary_op(uint64_t* line) {
           left_value  = sign_extend(left_value, size);
           right_value = sign_extend(right_value, size);
 
-          if ((left_value == INT64_MIN) * (right_value == (uint64_t) -1) == 0) {
+          if (not(and(left_value == INT64_MIN, right_value == (uint64_t) -1))) {
             if (op == OP_SDIV)
               set_state(line, sign_shrink(signed_division(left_value, right_value), size));
             else if (op == OP_SREM)
               set_state(line,
                 sign_shrink(left_value - signed_division(left_value, right_value) * right_value, size));
-          } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+          } else if (or(has_symbolic_state(left_nid), has_symbolic_state(right_nid)))
             set_state(line, 0);
           else {
             printf("%s: non-symbolic %s overflow\n", selfie_name, op);
@@ -5349,7 +5349,7 @@ uint64_t eval_binary_op(uint64_t* line) {
             exit(EXITCODE_SYSTEMERROR);
           }
         }
-      } else if (has_symbolic_state(left_nid) + has_symbolic_state(right_nid) > 0)
+      } else if (or(has_symbolic_state(left_nid), has_symbolic_state(right_nid)))
         set_state(line, 0);
       else {
         printf("%s: non-symbolic %s by zero\n", selfie_name, op);
@@ -5458,13 +5458,13 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
   condition = eval_line(condition_nid);
 
   if (op == OP_BAD) {
-    set_state(line, condition != 0);
+    set_state(line, is_true(condition));
 
     set_step(line, next_step);
 
-    if (has_symbolic_state(condition_nid) == 0) {
-      if (printing_unrolled_model == 0)
-        if (condition != 0) {
+    if (not(has_symbolic_state(condition_nid))) {
+      if (not(printing_unrolled_model))
+        if (is_true(condition)) {
           printf("%s: bad %s satisfied on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)", selfie_name,
             symbol, core, eval_line_for(core, state_pc_nids), current_step - current_offset, next_step - current_offset);
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
@@ -5487,7 +5487,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
       if (printing_unrolled_model)
         if (next_step - current_offset >= min_steps_to_bad_state) {
           w = w + dprintf(output_fd, "; bad-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
-          if (printing_explicit_constraints == 0)
+          if (not(printing_explicit_constraints))
             print_line_advancing_nid(line);
           else {
             if (eval_good_nid == UNUSED)
@@ -5509,15 +5509,15 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
       return 0;
     }
 
-    return condition != 0;
+    return is_true(condition);
   } else if (op == OP_CONSTRAINT) {
-    set_state(line, condition == 0);
+    set_state(line, not(condition));
 
     set_step(line, next_step);
 
-    if (has_symbolic_state(condition_nid) == 0) {
-      if (printing_unrolled_model == 0)
-        if (condition == 0) {
+    if (not(has_symbolic_state(condition_nid))) {
+      if (not(printing_unrolled_model))
+        if (not(condition)) {
           printf("%s: constraint %s violated on core-%lu @ 0x%lX after %lu steps (up to %lu instructions)\n", selfie_name,
             symbol, core, eval_line_for(core, state_pc_nids), current_step - current_offset, next_step - current_offset);
           if (any_input) printf(" with input %lu\n", current_input); else printf("\n");
@@ -5525,7 +5525,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
     } else {
       if (printing_unrolled_model) {
         w = w + dprintf(output_fd, "; constraint-start-%lu: %s\n\n", current_step - current_offset, get_comment(line));
-        if (printing_explicit_constraints == 0)
+        if (not(printing_explicit_constraints))
           print_line_advancing_nid(line);
         else {
           if (eval_good_nid == UNUSED)
@@ -5543,7 +5543,7 @@ uint64_t eval_property(uint64_t core, uint64_t* line, uint64_t bad) {
       return 0;
     }
 
-    return condition == 0;
+    return not(condition);
   }
 
   printf("%s: unknown property operator %s\n", selfie_name, op);
@@ -6114,7 +6114,7 @@ void print_kernel_state(uint64_t core) {
 
   print_nobreak_comment_for(core, "kernel state");
 
-  if (SHARED_MEMORY == 0)
+  if (not(SHARED_MEMORY))
     print_break_line_for(core, init_program_break_nids);
 
   print_break_line_for(core, init_readable_bytes_nids);
@@ -6804,7 +6804,7 @@ void new_memory_segments(uint64_t core) {
   next_zeroed_heap_segment_nid  = UNUSED;
   next_zeroed_stack_segment_nid = UNUSED;
 
-  if (number_of_binaries + printing_unrolled_model > 0) {
+  if (or(number_of_binaries > 0, printing_unrolled_model)) {
     initialize_memory_segment(core, state_data_segment_nid, DATA_ADDRESS_SPACE, data_start, data_size);
 
     if (initial_head_nid != UNUSED) {
@@ -8475,8 +8475,8 @@ uint64_t* is_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* regi
   uint64_t* RV64M_nid;
   uint64_t* RV32M_nid;
 
-  if (RISCUONLY == 0)
-    if (RV32M + RV64M) {
+  if (not(RISCUONLY))
+    if (or(RV32M, RV64M)) {
       rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
       rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
 
@@ -9887,7 +9887,7 @@ uint64_t* is_illegal_compressed_shift(uint64_t* c_ir_nid, uint64_t* c_shift_nid)
     NID_MACHINE_WORD_0,
     "CI-shamt == 0?");
 
-  if (IS64BITTARGET == 0)
+  if (not(IS64BITTARGET))
     illegal_shamt_nid = new_binary_boolean(OP_OR,
       new_binary_boolean(OP_EQ,
         get_compressed_instruction_shamt_5(c_ir_nid),
@@ -11120,7 +11120,7 @@ void kernel_sequential(uint64_t core,
       next_program_break_nid,
       "new program break");
 
-  if ((SHARED_MEMORY == 0) + (core == number_of_cores - 1))
+  if (or(not(SHARED_MEMORY), core == number_of_cores - 1))
     set_for(core, next_program_break_nids,
       new_next(SID_VIRTUAL_ADDRESS,
         program_break_nid,
@@ -12065,19 +12065,19 @@ void open_model_file() {
   else
     w = w + dprintf(output_fd, "; with %s\n\n", printing_propagated_constants_option);
 
-  if (check_bad_exit_code == 0)
+  if (not(check_bad_exit_code))
     w = w + dprintf(output_fd, "; with %s\n", bad_exit_code_check_option);
   if (check_good_exit_code)
     w = w + dprintf(output_fd, "; with %s\n", good_exit_code_check_option);
-  if (check_exit_codes == 0)
+  if (not(check_exit_codes))
     w = w + dprintf(output_fd, "; with %s\n", exit_codes_check_option);
-  if (check_division_by_zero == 0)
+  if (not(check_division_by_zero))
     w = w + dprintf(output_fd, "; with %s\n", division_by_zero_check_option);
-  if (check_division_overflow == 0)
+  if (not(check_division_overflow))
     w = w + dprintf(output_fd, "; with %s\n", division_overflow_check_option);
-  if (check_invalid_addresses == 0)
+  if (not(check_invalid_addresses))
     w = w + dprintf(output_fd, "; with %s\n", invalid_addresses_check_option);
-  if (check_seg_faults == 0)
+  if (not(check_seg_faults))
     w = w + dprintf(output_fd, "; with %s\n", seg_faults_check_option);
   w = w
     + dprintf(output_fd, "; with %s %lu\n", bytes_to_read_option, BYTES_TO_READ)
@@ -12096,11 +12096,11 @@ void open_model_file() {
   if (RISCUONLY)
     w = w + dprintf(output_fd, "; with %s\n\n", riscu_only_option);
   else {
-    if (RVC == 0)
+    if (not(RVC))
       w = w + dprintf(output_fd, "; with %s\n", no_RVC_option);
-    if (RV64M + RV32M == 0)
+    if (and(not(RV64M), not(RV32M)))
       w = w + dprintf(output_fd, "; with %s\n", no_RVM_option);
-    if ((RVC == 0) + (RV64M + RV32M == 0) > 0)
+    if (or(not(RVC), and(not(RV64M), not(RV32M))))
       w = w + dprintf(output_fd, "\n");
   }
 
@@ -12547,7 +12547,7 @@ void print_assembly(uint64_t core) {
   ir_nid   = get_for(core, eval_ir_nids);
   c_ir_nid = get_for(core, eval_c_ir_nids);
 
-  if (is_compressed_instruction_ID(ID) == 0) {
+  if (not(is_compressed_instruction_ID(ID))) {
     rd  = eval_line(get_instruction_rd(ir_nid));
     rs1 = eval_line(get_instruction_rs1(ir_nid));
     rs2 = eval_line(get_instruction_rs2(ir_nid));
@@ -13425,7 +13425,7 @@ uint64_t parse_engine_arguments() {
 
     get_argument();
 
-    if (printing_unrolled_model == 0)
+    if (not(printing_unrolled_model))
       return EXITCODE_BADARGUMENTS;
   } else
     return EXITCODE_MOREARGUMENTS;
