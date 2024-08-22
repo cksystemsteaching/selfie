@@ -7,13 +7,47 @@ def tokenize_btor2(line):
     tokens = re.findall(btor2_token_pattern, line)
     return tokens
 
+def syntax_error(expected, line_no):
+    print("syntax error in line %u: expected %s" % (line_no, expected))
+    return False
+
+def parse_sort(tokens, nid, line_no):
+    try:
+        token = tokens[1]
+    except:
+        return syntax_error("bitvec or array", line_no)
+    if token == 'bitvec':
+        try:
+            token = tokens[2]
+        except:
+            return syntax_error("size", line_no)
+        if token.isdecimal():
+            size = int(token)
+            print("%u sort bitvec %u" % (nid, size))
+        else:
+            return syntax_error("size", line_no)
+    elif token == 'array':
+        return True
+    else:
+        return syntax_error("bitvec or array", line_no)
+    return True
+
 def parse_btor2(line, line_no):
-    # parses line tokens in btor2 file and prints them as is
     if line.strip():
-        for token in tokenize_btor2(line)[:-1]:
-            print(token, end=" ")
-        print(tokenize_btor2(line)[-1], end="")
-    print()
+        tokens = tokenize_btor2(line)
+        token = tokens[0]
+        if token[0] != ';':
+            if token.isdecimal():
+                nid = int(token)
+                try:
+                    token = tokens[1]
+                except:
+                    return syntax_error("keyword", line_no)
+                if token == 'sort':
+                    return parse_sort(tokens[1:], nid, line_no)
+            else:
+                return syntax_error("nid", line_no)
+    return True
 
 import argparse
 
@@ -29,8 +63,10 @@ def main():
     with open(args.modelfile) as modelfile:
         line_no = 1
         for line in modelfile:
-            parse_btor2(line, line_no)
-            line_no = line_no + 1
+            if parse_btor2(line, line_no):
+                line_no = line_no + 1
+            else:
+                exit(1)
 
 if __name__ == "__main__":
     main()
