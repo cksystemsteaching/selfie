@@ -4003,7 +4003,7 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   if (printing_smt) {
     define_fun(line, nid, PREFIX_CONST);
     if (get_sid(line) == SID_BOOLEAN)
-      if (value) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
+      if (is_true(value)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
     else {
       size = eval_bitvec_size(get_sid(line));
       if (get_op(line) == OP_CONSTD)
@@ -4216,7 +4216,7 @@ uint64_t print_ite(uint64_t nid, uint64_t* line) {
   if (printing_propagated_constants)
     if (not(has_symbolic_state(get_arg1(line)))) {
       // conjecture: happens only when printing unrolled model
-      if (get_state(get_arg1(line))) {
+      if (is_true(get_state(get_arg1(line)))) {
         nid = print_line_once(nid, get_arg2(line));
         set_nid(line, get_nid(get_arg2(line)));
         set_prefix(line, get_prefix(get_arg2(line)));
@@ -4253,7 +4253,7 @@ uint64_t print_propagated_constant(uint64_t nid, uint64_t* line) {
   if (printing_smt) {
     define_fun(line, nid, PREFIX_EVAL);
     if (get_sid(line) == SID_BOOLEAN)
-      if (get_state(line)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
+      if (is_true(get_state(line))) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
     else
       w = w + dprintf(output_fd, "(_ bv%lu %lu)", get_state(line), eval_bitvec_size(get_sid(line)));
     w = w + dprintf(output_fd, ")");
@@ -4580,8 +4580,7 @@ uint64_t read_array_raw(uint64_t* state_nid, uint64_t index) {
 
   array = (uint64_t*) get_state(state_nid);
 
-  if (array != (uint64_t*) 0)
-    return *(array + index);
+  if (array != (uint64_t*) 0) return *(array + index);
 
   printf("%s: reading from uninitialized state error\n", selfie_name);
 
@@ -5040,13 +5039,13 @@ uint64_t eval_ite(uint64_t* line) {
     if (has_symbolic_state(if_nid))
       eval_line(else_nid);
     else
-      // do not propagate unevaluated symbolic value
+      // lazy propagation of (unevaluated) symbolic value
       else_nid = UNUSED;
   } else {
     if (has_symbolic_state(if_nid))
       eval_line(then_nid);
     else
-      // do not propagate unevaluated symbolic value
+      // lazy propagation of (unevaluated) symbolic value
       then_nid = UNUSED;
 
     set_state(line, eval_line(else_nid));
@@ -5335,7 +5334,7 @@ uint64_t eval_binary_op(uint64_t* line) {
           left_value  = sign_extend(left_value, size);
           right_value = sign_extend(right_value, size);
 
-          if (not(and(left_value == INT64_MIN, right_value == (uint64_t) -1))) {
+          if (or(left_value != INT64_MIN, right_value != (uint64_t) -1)) {
             if (op == OP_SDIV)
               set_state(line, sign_shrink(signed_division(left_value, right_value), size));
             else if (op == OP_SREM)
@@ -8024,8 +8023,7 @@ uint64_t* decode_lui(uint64_t* sid, uint64_t* ir_nid,
 uint64_t* decode_auipc(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* auipc_nid, char* comment,
   uint64_t* other_opcode_nid) {
-  if (RISCUONLY)
-    return other_opcode_nid;
+  if (RISCUONLY) return other_opcode_nid;
 
   return decode_opcode(sid, ir_nid,
     NID_OP_AUIPC, "AUIPC?",
@@ -8383,8 +8381,7 @@ uint64_t* decode_RV64M(uint64_t* sid, uint64_t* ir_nid,
   uint64_t* mulw_nid,
   uint64_t* divw_nid, uint64_t* divuw_nid, uint64_t* remw_nid, uint64_t* remuw_nid, char* comment,
   uint64_t* no_funct_nid) {
-  if (RISCUONLY)
-    return no_funct_nid;
+  if (RISCUONLY) return no_funct_nid;
 
   if (RV64M)
     return decode_funct7(sid, ir_nid,
@@ -8476,7 +8473,7 @@ uint64_t* is_signed_division_remainder_overflow(uint64_t* ir_nid, uint64_t* regi
   uint64_t* RV32M_nid;
 
   if (not(RISCUONLY))
-    if (or(RV32M, RV64M)) {
+    if (or(RV64M, RV32M)) {
       rs1_value_nid = load_register_value(get_instruction_rs1(ir_nid), "rs1 value", register_file_nid);
       rs2_value_nid = load_register_value(get_instruction_rs2(ir_nid), "rs2 value", register_file_nid);
 
