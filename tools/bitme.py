@@ -21,58 +21,96 @@ def retrieve_line(nid):
     assert nid in lines
     return lines[nid]
 
-class Bitvec:
-    def __init__(self, nid, size, comment, line_no):
+class Line:
+    def __init__(self, nid, comment, line_no):
         self.nid = nid
-        self.size = size
         self.comment = comment
         self.line_no = line_no
+
+class Sort(Line):
+    def __init__(self, nid, comment, line_no):
+        super().__init__(nid, comment, line_no)
+
+class Bitvec(Sort):
+    def __init__(self, nid, size, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.size = size
         new_line(self)
 
     def __str__(self):
         return f"{self.nid} sort bitvec {self.size} {self.comment}"
 
-class Array:
-    def __init__(self, nid, array_size_nid, element_size_nid, comment, line_no):
-        self.nid = nid
-        if isinstance(retrieve_line(array_size_nid), Bitvec):
-            self.array_size_line = retrieve_line(array_size_nid)
-        else:
-            raise syntax_error("array size bitvec nid", line_no)
-        if isinstance(retrieve_line(element_size_nid), Bitvec):
-            self.element_size_line = retrieve_line(element_size_nid)
-        else:
-            raise syntax_error("element size bitvec nid", line_no)
-        self.comment = comment
-        self.line_no = line_no
+class Array(Sort):
+    def __init__(self, nid, array_size_sid, element_size_sid, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.array_size_line = retrieve_line(array_size_sid)
+        self.element_size_line = retrieve_line(element_size_sid)
         new_line(self)
 
     def __str__(self):
         return f"{self.nid} sort array {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
 
-class Const:
-    def __init__(self, nid, op, sid, value, comment, line_no):
-        self.nid = nid
-        self.op = op
-        if isinstance(retrieve_line(sid), Bitvec):
-            self.sid_line = retrieve_line(sid)
-        else:
-            raise syntax_error(f"{op} bitvec nid", line_no)
+class Constant(Line):
+    def __init__(self, nid, sid, value, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.sid_line = retrieve_line(sid)
         self.value = value
-        self.comment = comment
-        self.line_no = line_no
         new_line(self)
 
+class Zero(Constant):
+    def __init__(self, nid, sid, comment, line_no):
+        super().__init__(nid, sid, 0, comment, line_no)
+
     def __str__(self):
-        if (self.op in {'zero', 'one'}):
-            return f"{self.nid} {self.op} {self.sid_line.nid} {self.comment}"
-        elif (self.op == 'constd'):
-            value = self.value
-        elif (self.op == 'const'):
-            value = f"{self.value:b}"
-        elif (self.op == 'consth'):
-            value = f"{self.value:x}"
-        return f"{self.nid} {self.op} {self.sid_line.nid} {value} {self.comment}"
+        return f"{self.nid} zero {self.sid_line.nid} {self.comment}"
+
+class One(Constant):
+    def __init__(self, nid, sid, comment, line_no):
+        super().__init__(nid, sid, 1, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} one {self.sid_line.nid} {self.comment}"
+
+class Constd(Constant):
+    def __init__(self, nid, sid, value, comment, line_no):
+        super().__init__(nid, sid, value, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} constd {self.sid_line.nid} {self.value} {self.comment}"
+
+class Const(Constant):
+    def __init__(self, nid, sid, value, comment, line_no):
+        super().__init__(nid, sid, value, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} const {self.sid_line.nid} {self.value:b} {self.comment}"
+
+class Consth(Constant):
+    def __init__(self, nid, sid, value, comment, line_no):
+        super().__init__(nid, sid, value, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} consth {self.sid_line.nid} {self.value:x} {self.comment}"
+
+class Variable(Line):
+    def __init__(self, nid, sid, symbol, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.sid_line = retrieve_line(sid)
+        self.symbol = symbol
+
+class Input(Variable):
+    def __init__(self, nid, sid, symbol, comment, line_no):
+        super().__init__(nid, sid, symbol, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} input {self.sid_line.nid} {self.symbol} {self.comment}"
+
+class State(Variable):
+    def __init__(self, nid, sid, symbol, comment, line_no):
+        super().__init__(nid, sid, symbol, comment, line_no)
+
+    def __str__(self):
+        return f"{self.nid} state {self.sid_line.nid} {self.symbol} {self.comment}"
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -100,9 +138,24 @@ def get_nid(tokens, expected, line_no):
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
+def get_bitvec_sid(tokens, line_no):
+    sid = get_nid(tokens, "bitvec sort nid", line_no)
+    if isinstance(retrieve_line(sid), Bitvec):
+        return sid
+    else:
+        raise syntax_error("bitvec sort nid", line_no)
+
+def get_sid(tokens, line_no):
+    sid = get_nid(tokens, "sort nid", line_no)
+    if isinstance(retrieve_line(sid), Sort):
+        return sid
+    else:
+        raise syntax_error("sort nid", line_no)
+
 def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
     try:
+        # TODO: check value range
         if (base == 10):
             return int(token)
         else:
@@ -110,51 +163,76 @@ def get_number(tokens, base, expected, line_no):
     except ValueError:
         raise syntax_error(expected, line_no)
 
-def get_comment(tokens):
+def get_symbol(tokens):
     try:
         return get_token(tokens, None, None)
     except:
         return ""
 
+def get_comment(tokens, line_no):
+    comment = get_symbol(tokens)
+    if comment != "":
+        if comment[0] != ';':
+            raise syntax_error("comment", line_no)
+    return comment
+
 def parse_sort_line(tokens, nid, line_no):
     token = get_token(tokens, "bitvec or array", line_no)
     if token == 'bitvec':
         size = get_decimal(tokens, "bitvec size", line_no)
-        comment = get_comment(tokens)
+        comment = get_comment(tokens, line_no)
         return Bitvec(nid, size, comment, line_no)
     elif token == 'array':
-        array_size_nid = get_nid(tokens, "array size nid", line_no)
-        element_size_nid = get_nid(tokens, "element size nid", line_no)
-        comment = get_comment(tokens)
-        return Array(nid, array_size_nid, element_size_nid, comment, line_no)
+        array_size_sid = get_bitvec_sid(tokens, line_no)
+        element_size_sid = get_bitvec_sid(tokens, line_no)
+        comment = get_comment(tokens, line_no)
+        return Array(nid, array_size_sid, element_size_sid, comment, line_no)
     else:
         raise syntax_error("bitvec or array", line_no)
 
 def parse_zero_one_line(tokens, nid, value, line_no):
-    sid = get_nid(tokens, "sort nid", line_no)
-    comment = get_comment(tokens)
+    sid = get_bitvec_sid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
     if (value == 0):
-        return Const(nid, 'zero', sid, value, comment, line_no)
+        return Zero(nid, sid, comment, line_no)
     else:
-        return Const(nid, 'one', sid, value, comment, line_no)
+        return One(nid, sid, comment, line_no)
 
 def parse_constd_line(tokens, nid, line_no):
-    sid = get_nid(tokens, "sort nid", line_no)
+    sid = get_bitvec_sid(tokens, line_no)
     value = get_number(tokens, 10, "signed integer", line_no)
-    comment = get_comment(tokens)
-    return Const(nid, 'constd', sid, value, comment, line_no)
+    comment = get_comment(tokens, line_no)
+    return Constd(nid, sid, value, comment, line_no)
 
 def parse_const_line(tokens, nid, line_no):
-    sid = get_nid(tokens, "sort nid", line_no)
+    sid = get_bitvec_sid(tokens, line_no)
     value = get_number(tokens, 2, "binary number", line_no)
-    comment = get_comment(tokens)
-    return Const(nid, 'const', sid, value, comment, line_no)
+    comment = get_comment(tokens, line_no)
+    return Const(nid, sid, value, comment, line_no)
 
 def parse_consth_line(tokens, nid, line_no):
-    sid = get_nid(tokens, "sort nid", line_no)
+    sid = get_bitvec_sid(tokens, line_no)
     value = get_number(tokens, 16, "hexadecimal number", line_no)
-    comment = get_comment(tokens)
-    return Const(nid, 'consth', sid, value, comment, line_no)
+    comment = get_comment(tokens, line_no)
+    return Consth(nid, sid, value, comment, line_no)
+
+def parse_symbol_comment(tokens, line_no):
+    symbol = get_symbol(tokens)
+    comment = get_comment(tokens, line_no)
+    if symbol != "":
+        if symbol[0] == ';':
+            return "", symbol
+    return symbol, comment
+
+def parse_input_line(tokens, nid, line_no):
+    sid = get_sid(tokens, line_no)
+    symbol, comment = parse_symbol_comment(tokens, line_no)
+    return Input(nid, sid, symbol, comment, line_no)
+
+def parse_state_line(tokens, nid, line_no):
+    sid = get_sid(tokens, line_no)
+    symbol, comment = parse_symbol_comment(tokens, line_no)
+    return State(nid, sid, symbol, comment, line_no)
 
 def parse_btor2_line(line, line_no):
     global current_nid
@@ -179,6 +257,10 @@ def parse_btor2_line(line, line_no):
                         print(parse_const_line(tokens, nid, line_no))
                     elif token == 'consth':
                         print(parse_consth_line(tokens, nid, line_no))
+                    elif token == 'input':
+                        print(parse_input_line(tokens, nid, line_no))
+                    elif token == 'state':
+                        print(parse_state_line(tokens, nid, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
