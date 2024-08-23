@@ -64,7 +64,15 @@ class Const:
         new_line(self)
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.sid_line.nid} {self.value} {self.comment}"
+        if (self.op in {'zero', 'one'}):
+            return f"{self.nid} {self.op} {self.sid_line.nid} {self.comment}"
+        elif (self.op == 'constd'):
+            value = self.value
+        elif (self.op == 'const'):
+            value = f"{self.value:b}"
+        elif (self.op == 'consth'):
+            value = f"{self.value:x}"
+        return f"{self.nid} {self.op} {self.sid_line.nid} {value} {self.comment}"
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -92,10 +100,13 @@ def get_nid(tokens, expected, line_no):
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
-def get_signed_integer(tokens, expected, line_no):
+def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
     try:
-        return int(token)
+        if (base == 10):
+            return int(token)
+        else:
+            return int(token, base)
     except ValueError:
         raise syntax_error(expected, line_no)
 
@@ -119,11 +130,31 @@ def parse_sort_line(tokens, nid, line_no):
     else:
         raise syntax_error("bitvec or array", line_no)
 
+def parse_zero_one_line(tokens, nid, value, line_no):
+    sid = get_nid(tokens, "sort nid", line_no)
+    comment = get_comment(tokens)
+    if (value == 0):
+        return Const(nid, 'zero', sid, value, comment, line_no)
+    else:
+        return Const(nid, 'one', sid, value, comment, line_no)
+
 def parse_constd_line(tokens, nid, line_no):
     sid = get_nid(tokens, "sort nid", line_no)
-    value = get_signed_integer(tokens, "signed integer", line_no)
+    value = get_number(tokens, 10, "signed integer", line_no)
     comment = get_comment(tokens)
     return Const(nid, 'constd', sid, value, comment, line_no)
+
+def parse_const_line(tokens, nid, line_no):
+    sid = get_nid(tokens, "sort nid", line_no)
+    value = get_number(tokens, 2, "binary number", line_no)
+    comment = get_comment(tokens)
+    return Const(nid, 'const', sid, value, comment, line_no)
+
+def parse_consth_line(tokens, nid, line_no):
+    sid = get_nid(tokens, "sort nid", line_no)
+    value = get_number(tokens, 16, "hexadecimal number", line_no)
+    comment = get_comment(tokens)
+    return Const(nid, 'consth', sid, value, comment, line_no)
 
 def parse_btor2_line(line, line_no):
     global current_nid
@@ -138,8 +169,16 @@ def parse_btor2_line(line, line_no):
                     token = get_token(tokens, "keyword", line_no)
                     if token == 'sort':
                         print(parse_sort_line(tokens, nid, line_no))
+                    elif token == 'zero':
+                        print(parse_zero_one_line(tokens, nid, 0, line_no))
+                    elif token == 'one':
+                        print(parse_zero_one_line(tokens, nid, 1, line_no))
                     elif token == 'constd':
                         print(parse_constd_line(tokens, nid, line_no))
+                    elif token == 'const':
+                        print(parse_const_line(tokens, nid, line_no))
+                    elif token == 'consth':
+                        print(parse_consth_line(tokens, nid, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
