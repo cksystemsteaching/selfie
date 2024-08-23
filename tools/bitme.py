@@ -38,17 +38,33 @@ class Array:
         if isinstance(retrieve_line(array_size_nid), Bitvec):
             self.array_size_line = retrieve_line(array_size_nid)
         else:
-            raise syntax_error("array size bitvec", line_no)
+            raise syntax_error("array size bitvec nid", line_no)
         if isinstance(retrieve_line(element_size_nid), Bitvec):
             self.element_size_line = retrieve_line(element_size_nid)
         else:
-            raise syntax_error("element size bitvec", line_no)
+            raise syntax_error("element size bitvec nid", line_no)
         self.comment = comment
         self.line_no = line_no
         new_line(self)
 
     def __str__(self):
         return f"{self.nid} sort array {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
+
+class Const:
+    def __init__(self, nid, op, sid, value, comment, line_no):
+        self.nid = nid
+        self.op = op
+        if isinstance(retrieve_line(sid), Bitvec):
+            self.sid_line = retrieve_line(sid)
+        else:
+            raise syntax_error(f"{op} bitvec nid", line_no)
+        self.value = value
+        self.comment = comment
+        self.line_no = line_no
+        new_line(self)
+
+    def __str__(self):
+        return f"{self.nid} {self.op} {self.sid_line.nid} {self.value} {self.comment}"
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -76,6 +92,13 @@ def get_nid(tokens, expected, line_no):
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
+def get_signed_integer(tokens, expected, line_no):
+    token = get_token(tokens, expected, line_no)
+    try:
+        return int(token)
+    except ValueError:
+        raise syntax_error(expected, line_no)
+
 def get_comment(tokens):
     try:
         return get_token(tokens, None, None)
@@ -83,7 +106,6 @@ def get_comment(tokens):
         return ""
 
 def parse_sort_line(tokens, nid, line_no):
-    global lines
     token = get_token(tokens, "bitvec or array", line_no)
     if token == 'bitvec':
         size = get_decimal(tokens, "bitvec size", line_no)
@@ -96,6 +118,12 @@ def parse_sort_line(tokens, nid, line_no):
         return Array(nid, array_size_nid, element_size_nid, comment, line_no)
     else:
         raise syntax_error("bitvec or array", line_no)
+
+def parse_constd_line(tokens, nid, line_no):
+    sid = get_nid(tokens, "sort nid", line_no)
+    value = get_signed_integer(tokens, "signed integer", line_no)
+    comment = get_comment(tokens)
+    return Const(nid, 'constd', sid, value, comment, line_no)
 
 def parse_btor2_line(line, line_no):
     global current_nid
@@ -110,6 +138,8 @@ def parse_btor2_line(line, line_no):
                     token = get_token(tokens, "keyword", line_no)
                     if token == 'sort':
                         print(parse_sort_line(tokens, nid, line_no))
+                    elif token == 'constd':
+                        print(parse_constd_line(tokens, nid, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
