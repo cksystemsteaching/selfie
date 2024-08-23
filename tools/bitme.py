@@ -26,6 +26,7 @@ class Line:
         self.nid = nid
         self.comment = comment
         self.line_no = line_no
+        new_line(self)
 
 class Sort(Line):
     def __init__(self, nid, comment, line_no):
@@ -35,7 +36,6 @@ class Bitvec(Sort):
     def __init__(self, nid, size, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.size = size
-        new_line(self)
 
     def __str__(self):
         return f"{self.nid} sort bitvec {self.size} {self.comment}"
@@ -45,17 +45,19 @@ class Array(Sort):
         super().__init__(nid, comment, line_no)
         self.array_size_line = retrieve_line(array_size_sid)
         self.element_size_line = retrieve_line(element_size_sid)
-        new_line(self)
 
     def __str__(self):
         return f"{self.nid} sort array {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
 
-class Constant(Line):
-    def __init__(self, nid, sid, value, comment, line_no):
+class Expression(Line):
+    def __init__(self, nid, sid, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = retrieve_line(sid)
+
+class Constant(Expression):
+    def __init__(self, nid, sid, value, comment, line_no):
+        super().__init__(nid, sid, comment, line_no)
         self.value = value
-        new_line(self)
 
 class Zero(Constant):
     def __init__(self, nid, sid, comment, line_no):
@@ -92,10 +94,9 @@ class Consth(Constant):
     def __str__(self):
         return f"{self.nid} consth {self.sid_line.nid} {self.value:x} {self.comment}"
 
-class Variable(Line):
+class Variable(Expression):
     def __init__(self, nid, sid, symbol, comment, line_no):
-        super().__init__(nid, comment, line_no)
-        self.sid_line = retrieve_line(sid)
+        super().__init__(nid, sid, comment, line_no)
         self.symbol = symbol
 
 class Input(Variable):
@@ -111,6 +112,26 @@ class State(Variable):
 
     def __str__(self):
         return f"{self.nid} state {self.sid_line.nid} {self.symbol} {self.comment}"
+
+class Init(Line):
+    def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.sid_line = retrieve_line(sid)
+        self.state_line = retrieve_line(state_nid)
+        self.value_line = retrieve_line(value_nid)
+
+    def __str__(self):
+        return f"{self.nid} init {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+
+class Next(Line):
+    def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        self.sid_line = retrieve_line(sid)
+        self.state_line = retrieve_line(state_nid)
+        self.value_line = retrieve_line(value_nid)
+
+    def __str__(self):
+        return f"{self.nid} next {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -130,27 +151,28 @@ def get_decimal(tokens, expected, line_no):
     else:
         raise syntax_error(expected, line_no)
 
-def get_nid(tokens, expected, line_no):
+def get_nid(tokens, line, expected, line_no):
     global lines
     nid = get_decimal(tokens, expected, line_no)
     if nid in lines:
-        return nid
+        if isinstance(retrieve_line(nid), line):
+            return nid
+        else:
+            raise syntax_error(expected, line_no)
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
 def get_bitvec_sid(tokens, line_no):
-    sid = get_nid(tokens, "bitvec sort nid", line_no)
-    if isinstance(retrieve_line(sid), Bitvec):
-        return sid
-    else:
-        raise syntax_error("bitvec sort nid", line_no)
+    return get_nid(tokens, Bitvec, "bitvec sort nid", line_no)
 
 def get_sid(tokens, line_no):
-    sid = get_nid(tokens, "sort nid", line_no)
-    if isinstance(retrieve_line(sid), Sort):
-        return sid
-    else:
-        raise syntax_error("sort nid", line_no)
+    return get_nid(tokens, Sort, "sort nid", line_no)
+
+def get_state_nid(tokens, line_no):
+    return get_nid(tokens, State, "state nid", line_no)
+
+def get_value_nid(tokens, line_no):
+    return get_nid(tokens, Expression, "value nid", line_no)
 
 def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
@@ -234,6 +256,20 @@ def parse_state_line(tokens, nid, line_no):
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return State(nid, sid, symbol, comment, line_no)
 
+def parse_init_line(tokens, nid, line_no):
+    sid = get_sid(tokens, line_no)
+    state_nid = get_state_nid(tokens, line_no)
+    value_nid = get_value_nid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
+    return Init(nid, sid, state_nid, value_nid, comment, line_no)
+
+def parse_next_line(tokens, nid, line_no):
+    sid = get_sid(tokens, line_no)
+    state_nid = get_state_nid(tokens, line_no)
+    value_nid = get_value_nid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
+    return Next(nid, sid, state_nid, value_nid, comment, line_no)
+
 def parse_btor2_line(line, line_no):
     global current_nid
     if line.strip():
@@ -261,6 +297,10 @@ def parse_btor2_line(line, line_no):
                         print(parse_input_line(tokens, nid, line_no))
                     elif token == 'state':
                         print(parse_state_line(tokens, nid, line_no))
+                    elif token == 'init':
+                        print(parse_init_line(tokens, nid, line_no))
+                    elif token == 'next':
+                        print(parse_next_line(tokens, nid, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
