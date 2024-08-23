@@ -11,62 +11,55 @@ def syntax_error(expected, line_no):
     print("syntax error in line %u: expected %s" % (line_no, expected))
     return False
 
-def get_token(tokens, expected, line_no):
-    try:
-        return tokens[1]
-    except:
-        return syntax_error(expected, line_no)
+def get_token(tokens):
+    return tokens.pop(0) if tokens else False
+
+def get_comment(tokens):
+    comment = get_token(tokens)
+    return comment if comment else ""
 
 def parse_sort(tokens, nid, line_no):
-    token = get_token(tokens, "bitvec or array", line_no)
-    if token != False:
+    token = get_token(tokens)
+    if token is not False:
         if token == 'bitvec':
-            token = get_token(tokens[1:], "size", line_no)
-            if token != False:
+            token = get_token(tokens)
+            if token is not False:
                 if token.isdecimal():
                     size = int(token)
-                    print("%u sort bitvec %u" % (nid, size))
-                else:
-                    return syntax_error("size", line_no)
-            else:
-                return False
+                    comment = get_comment(tokens)
+                    print("%u sort bitvec %u %s" % (nid, size, comment))
+                    return True
+            return syntax_error("bitvec size", line_no)
         elif token == 'array':
-            token = get_token(tokens[1:], "array size", line_no)
-            if token != False:
+            token = get_token(tokens)
+            if token is not False:
                 if token.isdecimal():
                     array_size = int(token)
-                    token = get_token(tokens[2:], "element size", line_no)
-                    if token != False:
+                    token = get_token(tokens)
+                    if token is not False:
                         if token.isdecimal():
                             element_size = int(token)
-                            print("%u sort array %u %u" % (nid, array_size, element_size))
-                        else:
-                            return syntax_error("element size", line_no)
-                    else:
-                        return False
-                else:
-                    return syntax_error("array size", line_no)
-            else:
-                return False
-        else:
-            return False
-    else:
-        return False
-    return True
+                            comment = get_comment(tokens)
+                            print("%u sort array %u %u %s" % (nid, array_size, element_size, comment))
+                            return True
+                    return syntax_error("element size", line_no)
+            return syntax_error("array size", line_no)
+    return syntax_error("bitvec or array", line_no)
 
 def parse_btor2(line, line_no):
     if line.strip():
         tokens = tokenize_btor2(line)
-        token = tokens[0]
+        token = get_token(tokens)
         if token[0] != ';':
             if token.isdecimal():
                 nid = int(token)
-                token = get_token(tokens, "keyword", line_no)
-                if token != False:
+                token = get_token(tokens)
+                if token is not False:
                     if token == 'sort':
-                        return parse_sort(tokens[1:], nid, line_no)
-                else:
-                    return False
+                        return parse_sort(tokens, nid, line_no)
+                    else:
+                        return True
+                return syntax_error("keyword", line_no)
             else:
                 return syntax_error("nid", line_no)
     return True
@@ -75,8 +68,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(prog='bitme',
-        description='What the program does',
-        epilog='Text at the bottom of help')
+        description="What the program does",
+        epilog="Text at the bottom of help")
 
     parser.add_argument('modelfile')
 
@@ -90,5 +83,5 @@ def main():
             else:
                 exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
