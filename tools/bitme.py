@@ -28,7 +28,7 @@ def parse_sort(tokens, nid, line_no):
                     size = int(token)
                     comment = get_comment(tokens)
                     print("%u sort bitvec %u %s" % (nid, size, comment))
-                    return True
+                    return nid
             return syntax_error("bitvec size", line_no)
         elif token == 'array':
             token = get_token(tokens)
@@ -41,28 +41,31 @@ def parse_sort(tokens, nid, line_no):
                             element_size = int(token)
                             comment = get_comment(tokens)
                             print("%u sort array %u %u %s" % (nid, array_size, element_size, comment))
-                            return True
+                            return nid
                     return syntax_error("element size", line_no)
             return syntax_error("array size", line_no)
     return syntax_error("bitvec or array", line_no)
 
-def parse_btor2(line, line_no):
+def parse_btor2(line, current_nid, line_no):
     if line.strip():
         tokens = tokenize_btor2(line)
         token = get_token(tokens)
         if token[0] != ';':
             if token.isdecimal():
                 nid = int(token)
-                token = get_token(tokens)
-                if token is not False:
-                    if token == 'sort':
-                        return parse_sort(tokens, nid, line_no)
-                    else:
-                        return True
-                return syntax_error("keyword", line_no)
+                if nid > current_nid:
+                    token = get_token(tokens)
+                    if token is not False:
+                        if token == 'sort':
+                            return parse_sort(tokens, nid, line_no)
+                        else:
+                            return nid
+                    return syntax_error("keyword", line_no)
+                else:
+                    return syntax_error("increasing nid", line_no)
             else:
                 return syntax_error("nid", line_no)
-    return True
+    return current_nid
 
 import argparse
 
@@ -76,9 +79,11 @@ def main():
     args = parser.parse_args()
 
     with open(args.modelfile) as modelfile:
+        current_nid = 0
         line_no = 1
         for line in modelfile:
-            if parse_btor2(line, line_no):
+            current_nid = parse_btor2(line, current_nid, line_no)
+            if current_nid is not False:
                 line_no = line_no + 1
             else:
                 exit(1)
