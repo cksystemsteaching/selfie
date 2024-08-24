@@ -385,6 +385,7 @@ def parse_variable_line(tokens, nid, clss, line_no):
     return clss(nid, sid, symbol, comment, line_no)
 
 def parse_ext_line(tokens, nid, op, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     arg1_nid = get_exp_nid(tokens, line_no)
     w = get_decimal(tokens, "bit width", line_no)
@@ -392,6 +393,7 @@ def parse_ext_line(tokens, nid, op, line_no):
     return Ext(nid, sid, op, arg1_nid, w, comment, line_no)
 
 def parse_slice_line(tokens, nid, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     arg1_nid = get_exp_nid(tokens, line_no)
     u = get_decimal(tokens, "upper bit", line_no)
@@ -400,12 +402,14 @@ def parse_slice_line(tokens, nid, line_no):
     return Slice(nid, sid, arg1_nid, u, l, comment, line_no)
 
 def parse_unary_line(tokens, nid, op, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     arg1_nid = get_exp_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
     return Unary(nid, sid, op, arg1_nid, comment, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     arg1_nid = get_exp_nid(tokens, line_no)
     arg2_nid = get_exp_nid(tokens, line_no)
@@ -413,6 +417,7 @@ def parse_binary_line(tokens, nid, op, line_no):
     return Binary(nid, sid, op, arg1_nid, arg2_nid, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     arg1_nid = get_exp_nid(tokens, line_no)
     arg2_nid = get_exp_nid(tokens, line_no)
@@ -421,6 +426,7 @@ def parse_ternary_line(tokens, nid, op, line_no):
     return Ternary(nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
+    # TODO: check sorts
     sid = get_sid(tokens, line_no)
     state_nid = get_state_nid(tokens, line_no)
     exp_nid = get_exp_nid(tokens, line_no)
@@ -428,6 +434,7 @@ def parse_init_next_line(tokens, nid, clss, line_no):
     return clss(nid, sid, state_nid, exp_nid, comment, line_no)
 
 def parse_property_line(tokens, nid, clss, line_no):
+    # TODO: check for Boolean sort
     property_nid = get_exp_nid(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, property_nid, symbol, comment, line_no)
