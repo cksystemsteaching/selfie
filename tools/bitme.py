@@ -208,29 +208,29 @@ class Ternary(Expression):
 class Init(Line):
     keyword = 'init'
 
-    def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
+    def __init__(self, nid, sid, state_nid, exp_nid, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
-        self.value_line = Line.get(value_nid)
+        self.exp_line = Line.get(exp_nid)
 
     def __str__(self):
-        return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+        return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
 class Next(Line):
     keyword = 'next'
 
     nexts = dict()
 
-    def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
+    def __init__(self, nid, sid, state_nid, exp_nid, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
-        self.value_line = Line.get(value_nid)
+        self.exp_line = Line.get(exp_nid)
         self.new_next()
 
     def __str__(self):
-        return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+        return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
 
     def new_next(self):
         assert self not in Next.nexts
@@ -311,8 +311,8 @@ def get_sid(tokens, line_no):
 def get_state_nid(tokens, line_no):
     return get_nid(tokens, State, "state nid", line_no)
 
-def get_value_nid(tokens, line_no):
-    return get_nid(tokens, Expression, "value nid", line_no)
+def get_exp_nid(tokens, line_no):
+    return get_nid(tokens, Expression, "expression nid", line_no)
 
 def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
@@ -383,14 +383,14 @@ def parse_variable_line(tokens, nid, clss, line_no):
 
 def parse_ext_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
-    arg1_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_exp_nid(tokens, line_no)
     w = get_decimal(tokens, "bit width", line_no)
     comment = get_comment(tokens, line_no)
     return Ext(nid, sid, op, arg1_nid, w, comment, line_no)
 
 def parse_slice_line(tokens, nid, line_no):
     sid = get_sid(tokens, line_no)
-    arg1_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_exp_nid(tokens, line_no)
     u = get_decimal(tokens, "upper bit", line_no)
     l = get_decimal(tokens, "lower bit", line_no)
     comment = get_comment(tokens, line_no)
@@ -398,34 +398,34 @@ def parse_slice_line(tokens, nid, line_no):
 
 def parse_unary_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
-    arg1_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_exp_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
     return Unary(nid, sid, op, arg1_nid, comment, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
-    arg1_nid = get_value_nid(tokens, line_no)
-    arg2_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_exp_nid(tokens, line_no)
+    arg2_nid = get_exp_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
     return Binary(nid, sid, op, arg1_nid, arg2_nid, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
-    arg1_nid = get_value_nid(tokens, line_no)
-    arg2_nid = get_value_nid(tokens, line_no)
-    arg3_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_exp_nid(tokens, line_no)
+    arg2_nid = get_exp_nid(tokens, line_no)
+    arg3_nid = get_exp_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
     return Ternary(nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
     sid = get_sid(tokens, line_no)
     state_nid = get_state_nid(tokens, line_no)
-    value_nid = get_value_nid(tokens, line_no)
+    exp_nid = get_exp_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid, state_nid, value_nid, comment, line_no)
+    return clss(nid, sid, state_nid, exp_nid, comment, line_no)
 
 def parse_property_line(tokens, nid, clss, line_no):
-    property_nid = get_value_nid(tokens, line_no)
+    property_nid = get_exp_nid(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, property_nid, symbol, comment, line_no)
 
