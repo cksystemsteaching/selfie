@@ -133,6 +133,8 @@ class State(Variable):
 
     def __init__(self, nid, sid, symbol, comment, line_no):
         super().__init__(nid, sid, symbol, comment, line_no)
+        self.init_line = self
+        self.next_line = self
         self.new_state()
 
     def __str__(self):
@@ -213,6 +215,10 @@ class Init(Line):
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
         self.exp_line = Line.get(exp_nid)
+        if self.state_line.init_line == self.state_line:
+            self.state_line.init_line = self
+        else:
+            raise syntax_error("uninitialized state", line_no)
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
@@ -227,6 +233,10 @@ class Next(Line):
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
         self.exp_line = Line.get(exp_nid)
+        if self.state_line.next_line == self.state_line:
+            self.state_line.next_line = self
+        else:
+            raise syntax_error("untransitioned state", line_no)
         self.new_next()
 
     def __str__(self):
