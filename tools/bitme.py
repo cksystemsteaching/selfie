@@ -140,14 +140,40 @@ class State(Variable):
         assert self not in State.states
         State.states[self.nid] = self
 
+class Indexed(Expression):
+    def __init__(self, nid, sid, arg1_nid, comment, line_no):
+        super().__init__(nid, sid, comment, line_no)
+        self.arg1_line = Line.get(arg1_nid)
+
+class Ext(Indexed):
+    keywords = {'sext', 'uext'}
+
+    def __init__(self, nid, sid, op, arg1_nid, w, comment, line_no):
+        super().__init__(nid, sid, arg1_nid, comment, line_no)
+        self.op = op
+        self.w = w
+
+    def __str__(self):
+        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.w} {self.comment}"
+
+class Slice(Indexed):
+    keyword = 'slice'
+
+    def __init__(self, nid, sid, arg1_nid, u, l, comment, line_no):
+        super().__init__(nid, sid, arg1_nid, comment, line_no)
+        self.u = u
+        self.l = l
+
+    def __str__(self):
+        return f"{self.nid} {Slice.keyword} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
+
 class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
 
     def __init__(self, nid, sid, op, arg1_nid, comment, line_no):
         super().__init__(nid, sid, comment, line_no)
         self.op = op
-        #self.arg1_line = Line.get(arg1_nid)
-        self.arg1_line = self
+        self.arg1_line = Line.get(arg1_nid)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.arg1_line.nid} {self.comment}"
@@ -158,10 +184,8 @@ class Binary(Expression):
     def __init__(self, nid, sid, op, arg1_nid, arg2_nid, comment, line_no):
         super().__init__(nid, sid, comment, line_no)
         self.op = op
-        #self.arg1_line = Line.get(arg1_nid)
-        self.arg1_line = self
-        #self.arg2_line = Line.get(arg2_nid)
-        self.arg2_line = self
+        self.arg1_line = Line.get(arg1_nid)
+        self.arg2_line = Line.get(arg2_nid)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
@@ -172,12 +196,9 @@ class Ternary(Expression):
     def __init__(self, nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no):
         super().__init__(nid, sid, comment, line_no)
         self.op = op
-        #self.arg1_line = Line.get(arg1_nid)
-        self.arg1_line = self
-        #self.arg2_line = Line.get(arg2_nid)
-        self.arg2_line = self
-        #self.arg3_line = Line.get(arg3_nid)
-        self.arg3_line = self
+        self.arg1_line = Line.get(arg1_nid)
+        self.arg2_line = Line.get(arg2_nid)
+        self.arg3_line = Line.get(arg3_nid)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
@@ -189,8 +210,7 @@ class Init(Line):
         super().__init__(nid, comment, line_no)
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
-        # TODO: self.value_line = Line.get(value_nid)
-        self.value_line = self.state_line
+        self.value_line = Line.get(value_nid)
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
@@ -204,8 +224,7 @@ class Next(Line):
         super().__init__(nid, comment, line_no)
         self.sid_line = Line.get(sid)
         self.state_line = Line.get(state_nid)
-        # TODO: self.value_line = Line.get(value_nid)
-        self.value_line = self.state_line
+        self.value_line = Line.get(value_nid)
         self.new_next()
 
     def __str__(self):
@@ -218,8 +237,7 @@ class Next(Line):
 class Property(Line):
     def __init__(self, nid, property_nid, symbol, comment, line_no):
         super().__init__(nid, comment, line_no)
-        # TODO: self.property_line = Line.get(property_nid)
-        self.property_line = self
+        self.property_line = Line.get(property_nid)
         self.symbol = symbol
 
 class Constraint(Property):
@@ -292,8 +310,7 @@ def get_state_nid(tokens, line_no):
     return get_nid(tokens, State, "state nid", line_no)
 
 def get_value_nid(tokens, line_no):
-    # TODO: return get_nid(tokens, Expression, "value nid", line_no)
-    return get_decimal(tokens, "value nid", line_no)
+    return get_nid(tokens, Expression, "value nid", line_no)
 
 def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
@@ -362,6 +379,21 @@ def parse_variable_line(tokens, nid, clss, line_no):
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, sid, symbol, comment, line_no)
 
+def parse_ext_line(tokens, nid, op, line_no):
+    sid = get_sid(tokens, line_no)
+    arg1_nid = get_value_nid(tokens, line_no)
+    w = get_decimal(tokens, "bit width", line_no)
+    comment = get_comment(tokens, line_no)
+    return Ext(nid, sid, op, arg1_nid, w, comment, line_no)
+
+def parse_slice_line(tokens, nid, line_no):
+    sid = get_sid(tokens, line_no)
+    arg1_nid = get_value_nid(tokens, line_no)
+    u = get_decimal(tokens, "upper bit", line_no)
+    l = get_decimal(tokens, "lower bit", line_no)
+    comment = get_comment(tokens, line_no)
+    return Slice(nid, sid, arg1_nid, u, l, comment, line_no)
+
 def parse_unary_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
     arg1_nid = get_value_nid(tokens, line_no)
@@ -422,6 +454,10 @@ def parse_btor2_line(line, line_no):
                         print(parse_variable_line(tokens, nid, Input, line_no))
                     elif token == State.keyword:
                         print(parse_variable_line(tokens, nid, State, line_no))
+                    elif token in Ext.keywords:
+                        print(parse_ext_line(tokens, nid, token, line_no))
+                    elif token == Slice.keyword:
+                        print(parse_slice_line(tokens, nid, line_no))
                     elif token in Unary.keywords:
                         print(parse_unary_line(tokens, nid, token, line_no))
                     elif token in Binary.keywords:
