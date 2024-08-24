@@ -143,14 +143,44 @@ class State(Variable):
 class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
 
-    def __init__(self, nid, sid, op, arg_nid, comment, line_no):
+    def __init__(self, nid, sid, op, arg1_nid, comment, line_no):
         super().__init__(nid, sid, comment, line_no)
         self.op = op
-        #self.arg_line = Line.get(arg_nid)
-        self.arg_line = self
+        #self.arg1_line = Line.get(arg1_nid)
+        self.arg1_line = self
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.arg_line.nid} {self.comment}"
+        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.comment}"
+
+class Binary(Expression):
+    keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
+
+    def __init__(self, nid, sid, op, arg1_nid, arg2_nid, comment, line_no):
+        super().__init__(nid, sid, comment, line_no)
+        self.op = op
+        #self.arg1_line = Line.get(arg1_nid)
+        self.arg1_line = self
+        #self.arg2_line = Line.get(arg2_nid)
+        self.arg2_line = self
+
+    def __str__(self):
+        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
+
+class Ternary(Expression):
+    keywords = {'ite', 'write'}
+
+    def __init__(self, nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no):
+        super().__init__(nid, sid, comment, line_no)
+        self.op = op
+        #self.arg1_line = Line.get(arg1_nid)
+        self.arg1_line = self
+        #self.arg2_line = Line.get(arg2_nid)
+        self.arg2_line = self
+        #self.arg3_line = Line.get(arg3_nid)
+        self.arg3_line = self
+
+    def __str__(self):
+        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
 
 class Init(Line):
     keyword = 'init'
@@ -334,9 +364,24 @@ def parse_variable_line(tokens, nid, clss, line_no):
 
 def parse_unary_line(tokens, nid, op, line_no):
     sid = get_sid(tokens, line_no)
-    arg_nid = get_value_nid(tokens, line_no)
+    arg1_nid = get_value_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Unary(nid, sid, op, arg_nid, comment, line_no)
+    return Unary(nid, sid, op, arg1_nid, comment, line_no)
+
+def parse_binary_line(tokens, nid, op, line_no):
+    sid = get_sid(tokens, line_no)
+    arg1_nid = get_value_nid(tokens, line_no)
+    arg2_nid = get_value_nid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
+    return Binary(nid, sid, op, arg1_nid, arg2_nid, comment, line_no)
+
+def parse_ternary_line(tokens, nid, op, line_no):
+    sid = get_sid(tokens, line_no)
+    arg1_nid = get_value_nid(tokens, line_no)
+    arg2_nid = get_value_nid(tokens, line_no)
+    arg3_nid = get_value_nid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
+    return Ternary(nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
     sid = get_sid(tokens, line_no)
@@ -379,6 +424,10 @@ def parse_btor2_line(line, line_no):
                         print(parse_variable_line(tokens, nid, State, line_no))
                     elif token in Unary.keywords:
                         print(parse_unary_line(tokens, nid, token, line_no))
+                    elif token in Binary.keywords:
+                        print(parse_binary_line(tokens, nid, token, line_no))
+                    elif token in Ternary.keywords:
+                        print(parse_ternary_line(tokens, nid, token, line_no))
                     elif token == Init.keyword:
                         print(parse_init_next_line(tokens, nid, Init, line_no))
                     elif token == Next.keyword:
