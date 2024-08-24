@@ -110,7 +110,7 @@ uint64_t* new_line(char* op, uint64_t* sid, uint64_t* arg1, uint64_t* arg2, uint
 uint64_t* new_bitvec(uint64_t size_in_bits, char* comment);
 uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment);
 
-uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, uint64_t digits, char* comment);
+uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, char* comment);
 uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment);
 
 uint64_t* new_ext(char* op, uint64_t* sid, uint64_t* value_nid, uint64_t w, char* comment);
@@ -408,7 +408,6 @@ uint64_t signed_less_than_or_equal_to(uint64_t a, uint64_t b);
 uint64_t get_cached_state(uint64_t* line);
 
 uint64_t eval_constant_value(uint64_t* line);
-uint64_t eval_constant_digits(uint64_t* line);
 
 uint64_t eval_ext_w(uint64_t* line);
 
@@ -563,50 +562,50 @@ uint64_t* SID_DOUBLE_MACHINE_WORD = (uint64_t*) 0;
 void init_interface_sorts() {
   SID_BOOLEAN = new_bitvec(1, "Boolean");
 
-  NID_FALSE = new_constant(OP_CONSTD, SID_BOOLEAN, 0, 0, "false");
-  NID_TRUE  = new_constant(OP_CONSTD, SID_BOOLEAN, 1, 0, "true");
+  NID_FALSE = new_constant(OP_CONSTD, SID_BOOLEAN, 0, "false");
+  NID_TRUE  = new_constant(OP_CONSTD, SID_BOOLEAN, 1, "true");
 
   SID_BYTE = new_bitvec(8, "8-bit byte");
 
-  NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, 0, 0, "byte 0");
-  NID_BYTE_3 = new_constant(OP_CONSTD, SID_BYTE, 3, 0, "byte 3");
+  NID_BYTE_0 = new_constant(OP_CONSTD, SID_BYTE, 0, "byte 0");
+  NID_BYTE_3 = new_constant(OP_CONSTD, SID_BYTE, 3, "byte 3");
 
   SID_HALF_WORD = new_bitvec(HALFWORDSIZEINBITS, "16-bit half word");
 
-  NID_HALF_WORD_0 = new_constant(OP_CONSTD, SID_HALF_WORD, 0, 0, "half word 0");
-  NID_HALF_WORD_1 = new_constant(OP_CONSTD, SID_HALF_WORD, 1, 0, "half word 1");
+  NID_HALF_WORD_0 = new_constant(OP_CONSTD, SID_HALF_WORD, 0, "half word 0");
+  NID_HALF_WORD_1 = new_constant(OP_CONSTD, SID_HALF_WORD, 1, "half word 1");
 
   SID_SINGLE_WORD = new_bitvec(SINGLEWORDSIZEINBITS, "32-bit single word");
 
-  NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 0, 0, "single-word 0");
-  NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 1, 0, "single-word 1");
-  NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 2, 0, "single-word 2");
-  NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 3, 0, "single-word 3");
-  NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 4, 0, "single-word 4");
-  NID_SINGLE_WORD_5 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 5, 0, "single-word 5");
-  NID_SINGLE_WORD_6 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 6, 0, "single-word 6");
-  NID_SINGLE_WORD_7 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 7, 0, "single-word 7");
-  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 8, 0, "single-word 8");
+  NID_SINGLE_WORD_0 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 0, "single-word 0");
+  NID_SINGLE_WORD_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 1, "single-word 1");
+  NID_SINGLE_WORD_2 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 2, "single-word 2");
+  NID_SINGLE_WORD_3 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 3, "single-word 3");
+  NID_SINGLE_WORD_4 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 4, "single-word 4");
+  NID_SINGLE_WORD_5 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 5, "single-word 5");
+  NID_SINGLE_WORD_6 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 6, "single-word 6");
+  NID_SINGLE_WORD_7 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 7, "single-word 7");
+  NID_SINGLE_WORD_8 = new_constant(OP_CONSTD, SID_SINGLE_WORD, 8, "single-word 8");
 
-  NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, -1, 0, "single-word -1");
-  NID_SINGLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_SINGLE_WORD, two_to_the_power_of(SINGLEWORDSIZEINBITS - 1), 0, "single-word INT_MIN");
+  NID_SINGLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_SINGLE_WORD, -1, "single-word -1");
+  NID_SINGLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_SINGLE_WORD, two_to_the_power_of(SINGLEWORDSIZEINBITS - 1), "single-word INT_MIN");
 
   SID_DOUBLE_WORD = new_bitvec(DOUBLEWORDSIZEINBITS, "64-bit double word");
 
-  NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 0, 0, "double-word 0");
-  NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 1, 0, "double-word 1");
-  NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 2, 0, "double-word 2");
-  NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 3, 0, "double-word 3");
-  NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 4, 0, "double-word 4");
-  NID_DOUBLE_WORD_5 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 5, 0, "double-word 5");
-  NID_DOUBLE_WORD_6 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 6, 0, "double-word 6");
-  NID_DOUBLE_WORD_7 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 7, 0, "double-word 7");
-  NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, 0, "double-word 8");
+  NID_DOUBLE_WORD_0 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 0, "double-word 0");
+  NID_DOUBLE_WORD_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 1, "double-word 1");
+  NID_DOUBLE_WORD_2 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 2, "double-word 2");
+  NID_DOUBLE_WORD_3 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 3, "double-word 3");
+  NID_DOUBLE_WORD_4 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 4, "double-word 4");
+  NID_DOUBLE_WORD_5 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 5, "double-word 5");
+  NID_DOUBLE_WORD_6 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 6, "double-word 6");
+  NID_DOUBLE_WORD_7 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 7, "double-word 7");
+  NID_DOUBLE_WORD_8 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, 8, "double-word 8");
 
-  NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, 0, "double-word -1");
+  NID_DOUBLE_WORD_MINUS_1 = new_constant(OP_CONSTD, SID_DOUBLE_WORD, -1, "double-word -1");
 
   if (IS64BITTARGET) {
-    NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, two_to_the_power_of(DOUBLEWORDSIZEINBITS - 1), 0, "double-word INT_MIN");
+    NID_DOUBLE_WORD_INT_MIN = new_constant(OP_CONSTH, SID_DOUBLE_WORD, two_to_the_power_of(DOUBLEWORDSIZEINBITS - 1), "double-word INT_MIN");
 
     SID_MACHINE_WORD = SID_DOUBLE_WORD;
 
@@ -640,7 +639,7 @@ void init_interface_sorts() {
     NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN;
   }
 
-  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, 0, "all bits but LSB set");
+  NID_LSB_MASK = new_constant(OP_CONSTD, SID_MACHINE_WORD, -2, "all bits but LSB set");
 
   SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word");
 }
@@ -722,29 +721,23 @@ void init_interface_kernel() {
   uint64_t saved_reuse_lines;
 
   NID_MAX_STRING_LENGTH = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    MAX_STRING_LENGTH, 0, "maximum string length");
+    MAX_STRING_LENGTH, "maximum string length");
 
   NID_EXIT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_EXIT, 0,
-    format_comment_binary("exit syscall ID", SYSCALL_EXIT));
+    SYSCALL_EXIT, format_comment_binary("exit syscall ID", SYSCALL_EXIT));
   NID_BRK_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_BRK, 0,
-    format_comment_binary("brk syscall ID", SYSCALL_BRK));
+    SYSCALL_BRK, format_comment_binary("brk syscall ID", SYSCALL_BRK));
   NID_OPENAT_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_OPENAT, 0,
-    format_comment_binary("openat syscall ID", SYSCALL_OPENAT));
+    SYSCALL_OPENAT, format_comment_binary("openat syscall ID", SYSCALL_OPENAT));
   NID_OPEN_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_OPEN, 0,
-    format_comment_binary("open syscall ID", SYSCALL_OPEN));
+    SYSCALL_OPEN, format_comment_binary("open syscall ID", SYSCALL_OPEN));
   NID_READ_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_READ, 0,
-    format_comment_binary("read syscall ID", SYSCALL_READ));
+    SYSCALL_READ, format_comment_binary("read syscall ID", SYSCALL_READ));
   NID_WRITE_SYSCALL_ID = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    SYSCALL_WRITE, 0,
-    format_comment_binary("write syscall ID", SYSCALL_WRITE));
+    SYSCALL_WRITE, format_comment_binary("write syscall ID", SYSCALL_WRITE));
 
   NID_BYTES_TO_READ = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-    BYTES_TO_READ, 0, "bytes to read");
+    BYTES_TO_READ, "bytes to read");
 
   INPUT_ADDRESS_SPACE = calculate_address_space(BYTES_TO_READ, 8);
 
@@ -854,38 +847,38 @@ uint64_t* eval_core_0_register_data_flow_nid = (uint64_t*) 0;
 void init_register_file_sorts() {
   SID_REGISTER_ADDRESS = new_bitvec(5, "5-bit register address");
 
-  NID_ZR  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_ZR, 5, (char*) *(REGISTERS + REG_ZR));
-  NID_RA  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_RA, 5, (char*) *(REGISTERS + REG_RA));
-  NID_SP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_SP, 5, (char*) *(REGISTERS + REG_SP));
-  NID_GP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_GP, 5, (char*) *(REGISTERS + REG_GP));
-  NID_TP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_TP, 5, (char*) *(REGISTERS + REG_TP));
-  NID_T0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T0, 5, (char*) *(REGISTERS + REG_T0));
-  NID_T1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T1, 5, (char*) *(REGISTERS + REG_T1));
-  NID_T2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T2, 5, (char*) *(REGISTERS + REG_T2));
-  NID_S0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S0, 5, (char*) *(REGISTERS + REG_S0));
-  NID_S1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S1, 5, (char*) *(REGISTERS + REG_S1));
-  NID_A0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A0, 5, (char*) *(REGISTERS + REG_A0));
-  NID_A1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A1, 5, (char*) *(REGISTERS + REG_A1));
-  NID_A2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A2, 5, (char*) *(REGISTERS + REG_A2));
-  NID_A3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A3, 5, (char*) *(REGISTERS + REG_A3));
-  NID_A4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A4, 5, (char*) *(REGISTERS + REG_A4));
-  NID_A5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A5, 5, (char*) *(REGISTERS + REG_A5));
-  NID_A6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A6, 5, (char*) *(REGISTERS + REG_A6));
-  NID_A7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A7, 5, (char*) *(REGISTERS + REG_A7));
-  NID_S2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S2, 5, (char*) *(REGISTERS + REG_S2));
-  NID_S3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S3, 5, (char*) *(REGISTERS + REG_S3));
-  NID_S4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S4, 5, (char*) *(REGISTERS + REG_S4));
-  NID_S5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S5, 5, (char*) *(REGISTERS + REG_S5));
-  NID_S6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S6, 5, (char*) *(REGISTERS + REG_S6));
-  NID_S7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S7, 5, (char*) *(REGISTERS + REG_S7));
-  NID_S8  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S8, 5, (char*) *(REGISTERS + REG_S8));
-  NID_S9  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S9, 5, (char*) *(REGISTERS + REG_S9));
-  NID_S10 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S10, 5, (char*) *(REGISTERS + REG_S10));
-  NID_S11 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S11, 5, (char*) *(REGISTERS + REG_S11));
-  NID_T3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T3, 5, (char*) *(REGISTERS + REG_T3));
-  NID_T4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T4, 5, (char*) *(REGISTERS + REG_T4));
-  NID_T5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T5, 5, (char*) *(REGISTERS + REG_T5));
-  NID_T6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T6, 5, (char*) *(REGISTERS + REG_T6));
+  NID_ZR  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_ZR, (char*) *(REGISTERS + REG_ZR));
+  NID_RA  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_RA, (char*) *(REGISTERS + REG_RA));
+  NID_SP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_SP, (char*) *(REGISTERS + REG_SP));
+  NID_GP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_GP, (char*) *(REGISTERS + REG_GP));
+  NID_TP  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_TP, (char*) *(REGISTERS + REG_TP));
+  NID_T0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T0, (char*) *(REGISTERS + REG_T0));
+  NID_T1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T1, (char*) *(REGISTERS + REG_T1));
+  NID_T2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T2, (char*) *(REGISTERS + REG_T2));
+  NID_S0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S0, (char*) *(REGISTERS + REG_S0));
+  NID_S1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S1, (char*) *(REGISTERS + REG_S1));
+  NID_A0  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A0, (char*) *(REGISTERS + REG_A0));
+  NID_A1  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A1, (char*) *(REGISTERS + REG_A1));
+  NID_A2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A2, (char*) *(REGISTERS + REG_A2));
+  NID_A3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A3, (char*) *(REGISTERS + REG_A3));
+  NID_A4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A4, (char*) *(REGISTERS + REG_A4));
+  NID_A5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A5, (char*) *(REGISTERS + REG_A5));
+  NID_A6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A6, (char*) *(REGISTERS + REG_A6));
+  NID_A7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_A7, (char*) *(REGISTERS + REG_A7));
+  NID_S2  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S2, (char*) *(REGISTERS + REG_S2));
+  NID_S3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S3, (char*) *(REGISTERS + REG_S3));
+  NID_S4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S4, (char*) *(REGISTERS + REG_S4));
+  NID_S5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S5, (char*) *(REGISTERS + REG_S5));
+  NID_S6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S6, (char*) *(REGISTERS + REG_S6));
+  NID_S7  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S7, (char*) *(REGISTERS + REG_S7));
+  NID_S8  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S8, (char*) *(REGISTERS + REG_S8));
+  NID_S9  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S9, (char*) *(REGISTERS + REG_S9));
+  NID_S10 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S10, (char*) *(REGISTERS + REG_S10));
+  NID_S11 = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_S11, (char*) *(REGISTERS + REG_S11));
+  NID_T3  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T3, (char*) *(REGISTERS + REG_T3));
+  NID_T4  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T4, (char*) *(REGISTERS + REG_T4));
+  NID_T5  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T5, (char*) *(REGISTERS + REG_T5));
+  NID_T6  = new_constant(OP_CONST, SID_REGISTER_ADDRESS, REG_T6, (char*) *(REGISTERS + REG_T6));
 
   SID_REGISTER_STATE = new_array(SID_REGISTER_ADDRESS, SID_MACHINE_WORD, "register state");
 }
@@ -1267,22 +1260,22 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
 
   if (VIRTUAL_ADDRESS_SPACE < WORDSIZEINBITS)
     NID_HIGHEST_VIRTUAL_ADDRESS = new_constant(OP_CONSTD, SID_MACHINE_WORD,
-      two_to_the_power_of(VIRTUAL_ADDRESS_SPACE) - 1, 0, "highest virtual address");
+      two_to_the_power_of(VIRTUAL_ADDRESS_SPACE) - 1, "highest virtual address");
   else if (VIRTUAL_ADDRESS_SPACE > WORDSIZEINBITS)
     VIRTUAL_ADDRESS_SPACE = WORDSIZEINBITS;
 
   SID_VIRTUAL_ADDRESS = new_bitvec(VIRTUAL_ADDRESS_SPACE,
     format_comment("%lu-bit virtual address", VIRTUAL_ADDRESS_SPACE));
 
-  NID_VIRTUAL_ADDRESS_0 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 0, 0, "virtual address 0");
-  NID_VIRTUAL_ADDRESS_1 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 1, 0, "virtual address 1");
-  NID_VIRTUAL_ADDRESS_2 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 2, 0, "virtual address 2");
-  NID_VIRTUAL_ADDRESS_3 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 3, 0, "virtual address 3");
-  NID_VIRTUAL_ADDRESS_4 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 4, 0, "virtual address 4");
-  NID_VIRTUAL_ADDRESS_5 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 5, 0, "virtual address 5");
-  NID_VIRTUAL_ADDRESS_6 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 6, 0, "virtual address 6");
-  NID_VIRTUAL_ADDRESS_7 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 7, 0, "virtual address 7");
-  NID_VIRTUAL_ADDRESS_8 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 8, 0, "virtual address 8");
+  NID_VIRTUAL_ADDRESS_0 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 0, "virtual address 0");
+  NID_VIRTUAL_ADDRESS_1 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 1, "virtual address 1");
+  NID_VIRTUAL_ADDRESS_2 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 2, "virtual address 2");
+  NID_VIRTUAL_ADDRESS_3 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 3, "virtual address 3");
+  NID_VIRTUAL_ADDRESS_4 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 4, "virtual address 4");
+  NID_VIRTUAL_ADDRESS_5 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 5, "virtual address 5");
+  NID_VIRTUAL_ADDRESS_6 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 6, "virtual address 6");
+  NID_VIRTUAL_ADDRESS_7 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 7, "virtual address 7");
+  NID_VIRTUAL_ADDRESS_8 = new_constant(OP_CONSTD, SID_VIRTUAL_ADDRESS, 8, "virtual address 8");
 
   NID_VIRTUAL_HALF_WORD_SIZE   = NID_VIRTUAL_ADDRESS_2;
   NID_VIRTUAL_SINGLE_WORD_SIZE = NID_VIRTUAL_ADDRESS_4;
@@ -1300,7 +1293,7 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_CODE_WORD = new_bitvec(CODEWORDSIZEINBITS,
     format_comment("%lu-bit code word", CODEWORDSIZEINBITS));
 
-  NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, 0, "code word 0");
+  NID_CODE_WORD_0 = new_constant(OP_CONSTD, SID_CODE_WORD, 0, "code word 0");
 
   // assert: max_code_size >= WORDSIZE
 
@@ -1326,7 +1319,7 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   SID_MEMORY_WORD = new_bitvec(MEMORYWORDSIZEINBITS,
     format_comment("%lu-bit memory word", MEMORYWORDSIZEINBITS));
 
-  NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, 0, "memory word 0");
+  NID_MEMORY_WORD_0 = new_constant(OP_CONSTD, SID_MEMORY_WORD, 0, "memory word 0");
 
   // make sure to have unique SIDs for segment addresses and state
   reuse_lines = 0;
@@ -1366,9 +1359,9 @@ void init_memory_sorts(uint64_t max_code_size, uint64_t max_data_size) {
   NID_SINGLE_WORD_SIZE_MASK = NID_SINGLE_WORD_3;
   NID_DOUBLE_WORD_SIZE_MASK = NID_DOUBLE_WORD_7;
 
-  NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_BYTE, 255, 2, "maximum byte value");
-  NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_HALF_WORD, 65535, 4, "maximum half-word value");
-  NID_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_SINGLE_WORD, 4294967295, 8, "maximum single-word value");
+  NID_BYTE_MASK        = new_constant(OP_CONSTH, SID_BYTE, 255, "maximum byte value");
+  NID_HALF_WORD_MASK   = new_constant(OP_CONSTH, SID_HALF_WORD, 65535, "maximum half-word value");
+  NID_SINGLE_WORD_MASK = new_constant(OP_CONSTH, SID_SINGLE_WORD, 4294967295, "maximum single-word value");
 
   NID_SINGLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_SINGLE_WORD_2;
   NID_DOUBLE_WORD_SIZE_MINUS_HALF_WORD_SIZE   = NID_DOUBLE_WORD_6;
@@ -2658,51 +2651,50 @@ void init_instruction_sorts() {
 
   SID_OPCODE = new_bitvec(7, "opcode sort");
 
-  NID_OP_LOAD   = new_constant(OP_CONST, SID_OPCODE, OP_LOAD, 7, "OP_LOAD");
-  NID_OP_IMM    = new_constant(OP_CONST, SID_OPCODE, OP_IMM, 7, "OP_IMM");
-  NID_OP_STORE  = new_constant(OP_CONST, SID_OPCODE, OP_STORE, 7, "OP_STORE");
-  NID_OP_OP     = new_constant(OP_CONST, SID_OPCODE, OP_OP, 7, "OP_OP");
-  NID_OP_LUI    = new_constant(OP_CONST, SID_OPCODE, OP_LUI, 7, "OP_LUI");
-  NID_OP_BRANCH = new_constant(OP_CONST, SID_OPCODE, OP_BRANCH, 7, "OP_BRANCH");
-  NID_OP_JALR   = new_constant(OP_CONST, SID_OPCODE, OP_JALR, 7, "OP_JALR");
-  NID_OP_JAL    = new_constant(OP_CONST, SID_OPCODE, OP_JAL, 7, "OP_JAL");
-  NID_OP_SYSTEM = new_constant(OP_CONST, SID_OPCODE, OP_SYSTEM, 7, "OP_SYSTEM");
+  NID_OP_LOAD   = new_constant(OP_CONST, SID_OPCODE, OP_LOAD, "OP_LOAD");
+  NID_OP_IMM    = new_constant(OP_CONST, SID_OPCODE, OP_IMM, "OP_IMM");
+  NID_OP_STORE  = new_constant(OP_CONST, SID_OPCODE, OP_STORE, "OP_STORE");
+  NID_OP_OP     = new_constant(OP_CONST, SID_OPCODE, OP_OP, "OP_OP");
+  NID_OP_LUI    = new_constant(OP_CONST, SID_OPCODE, OP_LUI, "OP_LUI");
+  NID_OP_BRANCH = new_constant(OP_CONST, SID_OPCODE, OP_BRANCH, "OP_BRANCH");
+  NID_OP_JALR   = new_constant(OP_CONST, SID_OPCODE, OP_JALR, "OP_JALR");
+  NID_OP_JAL    = new_constant(OP_CONST, SID_OPCODE, OP_JAL, "OP_JAL");
+  NID_OP_SYSTEM = new_constant(OP_CONST, SID_OPCODE, OP_SYSTEM, "OP_SYSTEM");
 
   SID_FUNCT3 = new_bitvec(3, "funct3 sort");
 
-  NID_F3_NOP         = new_constant(OP_CONST, SID_FUNCT3, F3_NOP, 3, "F3_NOP");
-  NID_F3_ADDI        = new_constant(OP_CONST, SID_FUNCT3, F3_ADDI, 3, "F3_ADDI");
-  NID_F3_ADD_SUB_MUL = new_constant(OP_CONST, SID_FUNCT3, F3_ADD, 3, "F3_ADD_SUB_MUL");
-  NID_F3_DIVU        = new_constant(OP_CONST, SID_FUNCT3, F3_DIVU, 3, "F3_DIVU");
-  NID_F3_REMU        = new_constant(OP_CONST, SID_FUNCT3, F3_REMU, 3, "F3_REMU");
-  NID_F3_SLTU        = new_constant(OP_CONST, SID_FUNCT3, F3_SLTU, 3, "F3_SLTU");
-  NID_F3_LD          = new_constant(OP_CONST, SID_FUNCT3, F3_LD, 3, "F3_LD");
-  NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, F3_SD, 3, "F3_SD");
-  NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, F3_LW, 3, "F3_LW");
-  NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, F3_SW, 3, "F3_SW");
-  NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, F3_BEQ, 3, "F3_BEQ");
-  NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, F3_JALR, 3, "F3_JALR");
-  NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, F3_ECALL, 3, "F3_ECALL");
+  NID_F3_NOP         = new_constant(OP_CONST, SID_FUNCT3, F3_NOP, "F3_NOP");
+  NID_F3_ADDI        = new_constant(OP_CONST, SID_FUNCT3, F3_ADDI, "F3_ADDI");
+  NID_F3_ADD_SUB_MUL = new_constant(OP_CONST, SID_FUNCT3, F3_ADD, "F3_ADD_SUB_MUL");
+  NID_F3_DIVU        = new_constant(OP_CONST, SID_FUNCT3, F3_DIVU, "F3_DIVU");
+  NID_F3_REMU        = new_constant(OP_CONST, SID_FUNCT3, F3_REMU, "F3_REMU");
+  NID_F3_SLTU        = new_constant(OP_CONST, SID_FUNCT3, F3_SLTU, "F3_SLTU");
+  NID_F3_LD          = new_constant(OP_CONST, SID_FUNCT3, F3_LD, "F3_LD");
+  NID_F3_SD          = new_constant(OP_CONST, SID_FUNCT3, F3_SD, "F3_SD");
+  NID_F3_LW          = new_constant(OP_CONST, SID_FUNCT3, F3_LW, "F3_LW");
+  NID_F3_SW          = new_constant(OP_CONST, SID_FUNCT3, F3_SW, "F3_SW");
+  NID_F3_BEQ         = new_constant(OP_CONST, SID_FUNCT3, F3_BEQ, "F3_BEQ");
+  NID_F3_JALR        = new_constant(OP_CONST, SID_FUNCT3, F3_JALR, "F3_JALR");
+  NID_F3_ECALL       = new_constant(OP_CONST, SID_FUNCT3, F3_ECALL, "F3_ECALL");
 
   SID_FUNCT7 = new_bitvec(7, "funct7 sort");
 
-  NID_F7_ADD  = new_constant(OP_CONST, SID_FUNCT7, F7_ADD, 7, "F7_ADD");
-  NID_F7_MUL  = new_constant(OP_CONST, SID_FUNCT7, F7_MUL, 7, "F7_MUL");
-  NID_F7_SUB  = new_constant(OP_CONST, SID_FUNCT7, F7_SUB, 7, "F7_SUB");
-  NID_F7_DIVU = new_constant(OP_CONST, SID_FUNCT7, F7_DIVU, 7, "F7_DIVU");
-  NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, 7, "F7_REMU");
-  NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, 7, "F7_SLTU");
+  NID_F7_ADD  = new_constant(OP_CONST, SID_FUNCT7, F7_ADD, "F7_ADD");
+  NID_F7_MUL  = new_constant(OP_CONST, SID_FUNCT7, F7_MUL, "F7_MUL");
+  NID_F7_SUB  = new_constant(OP_CONST, SID_FUNCT7, F7_SUB, "F7_SUB");
+  NID_F7_DIVU = new_constant(OP_CONST, SID_FUNCT7, F7_DIVU, "F7_DIVU");
+  NID_F7_REMU = new_constant(OP_CONST, SID_FUNCT7, F7_REMU, "F7_REMU");
+  NID_F7_SLTU = new_constant(OP_CONST, SID_FUNCT7, F7_SLTU, "F7_SLTU");
 
   NID_F7_MUL_DIV_REM = NID_F7_MUL;
 
   SID_FUNCT12 = new_bitvec(12, "funct12 sort");
 
-  NID_F12_ECALL = new_constant(OP_CONST, SID_FUNCT12, F12_ECALL, 12, "F12_ECALL");
+  NID_F12_ECALL = new_constant(OP_CONST, SID_FUNCT12, F12_ECALL, "F12_ECALL");
 
   NID_ECALL_I = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
     left_shift(left_shift(left_shift(left_shift(F12_ECALL, 5) + REG_ZR, 3)
       + F3_ECALL, 5) + REG_ZR, 7) + OP_SYSTEM,
-    32,
     "ECALL instruction");
 
   // immediate sorts
@@ -2728,36 +2720,36 @@ void init_instruction_sorts() {
   SID_21_BIT_IMM = new_bitvec(21, "21-bit immediate sort");
   SID_32_BIT_IMM = new_bitvec(32, "32-bit immediate sort");
 
-  NID_1_BIT_IMM_0  = new_constant(OP_CONST, SID_1_BIT_IMM, 0, 1, "zeroed bit");
-  NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, 0, 12, "12 LSBs zeroed");
+  NID_1_BIT_IMM_0  = new_constant(OP_CONST, SID_1_BIT_IMM, 0, "zeroed bit");
+  NID_12_BIT_IMM_0 = new_constant(OP_CONST, SID_12_BIT_IMM, 0, "12 LSBs zeroed");
 
   // RISC-U instructions
 
   SID_INSTRUCTION_ID = new_bitvec(7, "7-bit instruction ID");
 
-  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKOWN, 0, get_instruction_mnemonic(ID_UNKOWN));
+  NID_DISABLED = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_UNKOWN, get_instruction_mnemonic(ID_UNKOWN));
 
-  NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, 0, get_instruction_mnemonic(ID_LUI));
-  NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, 0, get_instruction_mnemonic(ID_ADDI));
+  NID_LUI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LUI, get_instruction_mnemonic(ID_LUI));
+  NID_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDI, get_instruction_mnemonic(ID_ADDI));
 
-  NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADD, 0, get_instruction_mnemonic(ID_ADD));
-  NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUB, 0, get_instruction_mnemonic(ID_SUB));
-  NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MUL, 0, get_instruction_mnemonic(ID_MUL));
-  NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVU, 0, get_instruction_mnemonic(ID_DIVU));
-  NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMU, 0, get_instruction_mnemonic(ID_REMU));
-  NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTU, 0, get_instruction_mnemonic(ID_SLTU));
+  NID_ADD  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADD, get_instruction_mnemonic(ID_ADD));
+  NID_SUB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUB, get_instruction_mnemonic(ID_SUB));
+  NID_MUL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MUL, get_instruction_mnemonic(ID_MUL));
+  NID_DIVU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVU, get_instruction_mnemonic(ID_DIVU));
+  NID_REMU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMU, get_instruction_mnemonic(ID_REMU));
+  NID_SLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTU, get_instruction_mnemonic(ID_SLTU));
 
-  NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LW, 0, get_instruction_mnemonic(ID_LW));
-  NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SW, 0, get_instruction_mnemonic(ID_SW));
+  NID_LW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LW, get_instruction_mnemonic(ID_LW));
+  NID_SW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SW, get_instruction_mnemonic(ID_SW));
 
-  NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LD, 0, get_instruction_mnemonic(ID_LD));
-  NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SD, 0, get_instruction_mnemonic(ID_SD));
+  NID_LD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LD, get_instruction_mnemonic(ID_LD));
+  NID_SD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SD, get_instruction_mnemonic(ID_SD));
 
-  NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BEQ, 0, get_instruction_mnemonic(ID_BEQ));
-  NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JAL, 0, get_instruction_mnemonic(ID_JAL));
-  NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JALR, 0, get_instruction_mnemonic(ID_JALR));
+  NID_BEQ  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BEQ, get_instruction_mnemonic(ID_BEQ));
+  NID_JAL  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JAL, get_instruction_mnemonic(ID_JAL));
+  NID_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_JALR, get_instruction_mnemonic(ID_JALR));
 
-  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ECALL, 0, get_instruction_mnemonic(ID_ECALL));
+  NID_ECALL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ECALL, get_instruction_mnemonic(ID_ECALL));
 
   if (IS64BITTARGET) {
     if (RISCUONLY) {
@@ -2771,35 +2763,35 @@ void init_instruction_sorts() {
 
   // RV32I codes missing in RISC-U
 
-  NID_OP_AUIPC = new_constant(OP_CONST, SID_OPCODE, OP_AUIPC, 7, "OP_AUIPC");
+  NID_OP_AUIPC = new_constant(OP_CONST, SID_OPCODE, OP_AUIPC, "OP_AUIPC");
 
-  NID_F3_BNE  = new_constant(OP_CONST, SID_FUNCT3, F3_BNE, 3, "F3_BNE");
-  NID_F3_BLT  = new_constant(OP_CONST, SID_FUNCT3, F3_BLT, 3, "F3_BLT");
-  NID_F3_BGE  = new_constant(OP_CONST, SID_FUNCT3, F3_BGE, 3, "F3_BGE");
-  NID_F3_BLTU = new_constant(OP_CONST, SID_FUNCT3, F3_BLTU, 3, "F3_BLTU");
-  NID_F3_BGEU = new_constant(OP_CONST, SID_FUNCT3, F3_BGEU, 3, "F3_BGEU");
+  NID_F3_BNE  = new_constant(OP_CONST, SID_FUNCT3, F3_BNE, "F3_BNE");
+  NID_F3_BLT  = new_constant(OP_CONST, SID_FUNCT3, F3_BLT, "F3_BLT");
+  NID_F3_BGE  = new_constant(OP_CONST, SID_FUNCT3, F3_BGE, "F3_BGE");
+  NID_F3_BLTU = new_constant(OP_CONST, SID_FUNCT3, F3_BLTU, "F3_BLTU");
+  NID_F3_BGEU = new_constant(OP_CONST, SID_FUNCT3, F3_BGEU, "F3_BGEU");
 
-  NID_F3_LB  = new_constant(OP_CONST, SID_FUNCT3, F3_LB, 3, "F3_LB");
-  NID_F3_LH  = new_constant(OP_CONST, SID_FUNCT3, F3_LH, 3, "F3_LH");
-  NID_F3_LBU = new_constant(OP_CONST, SID_FUNCT3, F3_LBU, 3, "F3_LBU");
-  NID_F3_LHU = new_constant(OP_CONST, SID_FUNCT3, F3_LHU, 3, "F3_LHU");
+  NID_F3_LB  = new_constant(OP_CONST, SID_FUNCT3, F3_LB, "F3_LB");
+  NID_F3_LH  = new_constant(OP_CONST, SID_FUNCT3, F3_LH, "F3_LH");
+  NID_F3_LBU = new_constant(OP_CONST, SID_FUNCT3, F3_LBU, "F3_LBU");
+  NID_F3_LHU = new_constant(OP_CONST, SID_FUNCT3, F3_LHU, "F3_LHU");
 
-  NID_F3_SB = new_constant(OP_CONST, SID_FUNCT3, F3_SB, 3, "F3_SB");
-  NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, F3_SH, 3, "F3_SH");
+  NID_F3_SB = new_constant(OP_CONST, SID_FUNCT3, F3_SB, "F3_SB");
+  NID_F3_SH = new_constant(OP_CONST, SID_FUNCT3, F3_SH, "F3_SH");
 
-  NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, 3, "F3_SLL");
-  NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, 3, "F3_SLT");
-  NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, 3, "F3_XOR");
-  NID_F3_SRL = new_constant(OP_CONST, SID_FUNCT3, F3_SRL, 3, "F3_SRL");
-  NID_F3_SRA = new_constant(OP_CONST, SID_FUNCT3, F3_SRA, 3, "F3_SRA");
-  NID_F3_OR  = new_constant(OP_CONST, SID_FUNCT3, F3_OR, 3, "F3_OR");
-  NID_F3_AND = new_constant(OP_CONST, SID_FUNCT3, F3_AND, 3, "F3_AND");
+  NID_F3_SLL = new_constant(OP_CONST, SID_FUNCT3, F3_SLL, "F3_SLL");
+  NID_F3_SLT = new_constant(OP_CONST, SID_FUNCT3, F3_SLT, "F3_SLT");
+  NID_F3_XOR = new_constant(OP_CONST, SID_FUNCT3, F3_XOR, "F3_XOR");
+  NID_F3_SRL = new_constant(OP_CONST, SID_FUNCT3, F3_SRL, "F3_SRL");
+  NID_F3_SRA = new_constant(OP_CONST, SID_FUNCT3, F3_SRA, "F3_SRA");
+  NID_F3_OR  = new_constant(OP_CONST, SID_FUNCT3, F3_OR, "F3_OR");
+  NID_F3_AND = new_constant(OP_CONST, SID_FUNCT3, F3_AND, "F3_AND");
 
   NID_F7_ADD_SLT_XOR_OR_AND_SLL_SRL = NID_F7_ADD;
   NID_F7_SUB_SRA                    = NID_F7_SUB;
 
-  NID_F7_SLL_SRL_ILLEGAL = new_constant(OP_CONST, SID_FUNCT7, F7_ADD + 1, 7, "F7_SLL_SRL_ILLEGAL");
-  NID_F7_SRA_ILLEGAL     = new_constant(OP_CONST, SID_FUNCT7, F7_SUB + 1, 7, "F7_SRA_ILLEGAL");
+  NID_F7_SLL_SRL_ILLEGAL = new_constant(OP_CONST, SID_FUNCT7, F7_ADD + 1, "F7_SLL_SRL_ILLEGAL");
+  NID_F7_SRA_ILLEGAL     = new_constant(OP_CONST, SID_FUNCT7, F7_SUB + 1, "F7_SRA_ILLEGAL");
 
   // RV32I instruction switches
 
@@ -2839,53 +2831,53 @@ void init_instruction_sorts() {
     NID_OR  = NID_DISABLED;
     NID_AND = NID_DISABLED;
   } else {
-    NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AUIPC, 0, get_instruction_mnemonic(ID_AUIPC));
+    NID_AUIPC = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AUIPC, get_instruction_mnemonic(ID_AUIPC));
 
-    NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BNE, 0, get_instruction_mnemonic(ID_BNE));
-    NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLT, 0, get_instruction_mnemonic(ID_BLT));
-    NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGE, 0, get_instruction_mnemonic(ID_BGE));
-    NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLTU, 0, get_instruction_mnemonic(ID_BLTU));
-    NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGEU, 0, get_instruction_mnemonic(ID_BGEU));
+    NID_BNE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BNE, get_instruction_mnemonic(ID_BNE));
+    NID_BLT  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLT, get_instruction_mnemonic(ID_BLT));
+    NID_BGE  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGE, get_instruction_mnemonic(ID_BGE));
+    NID_BLTU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BLTU, get_instruction_mnemonic(ID_BLTU));
+    NID_BGEU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_BGEU, get_instruction_mnemonic(ID_BGEU));
 
-    NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LB, 0, get_instruction_mnemonic(ID_LB));
-    NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LH, 0, get_instruction_mnemonic(ID_LH));
-    NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LBU, 0, get_instruction_mnemonic(ID_LBU));
-    NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LHU, 0, get_instruction_mnemonic(ID_LHU));
+    NID_LB  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LB, get_instruction_mnemonic(ID_LB));
+    NID_LH  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LH, get_instruction_mnemonic(ID_LH));
+    NID_LBU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LBU, get_instruction_mnemonic(ID_LBU));
+    NID_LHU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LHU, get_instruction_mnemonic(ID_LHU));
 
-    NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SB, 0, get_instruction_mnemonic(ID_SB));
-    NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SH, 0, get_instruction_mnemonic(ID_SH));
+    NID_SB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SB, get_instruction_mnemonic(ID_SB));
+    NID_SH = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SH, get_instruction_mnemonic(ID_SH));
 
-    NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTI, 0, get_instruction_mnemonic(ID_SLTI));
-    NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTIU, 0, get_instruction_mnemonic(ID_SLTIU));
-    NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XORI, 0, get_instruction_mnemonic(ID_XORI));
-    NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ORI, 0, get_instruction_mnemonic(ID_ORI));
-    NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ANDI, 0, get_instruction_mnemonic(ID_ANDI));
+    NID_SLTI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTI, get_instruction_mnemonic(ID_SLTI));
+    NID_SLTIU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLTIU, get_instruction_mnemonic(ID_SLTIU));
+    NID_XORI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XORI, get_instruction_mnemonic(ID_XORI));
+    NID_ORI   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ORI, get_instruction_mnemonic(ID_ORI));
+    NID_ANDI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ANDI, get_instruction_mnemonic(ID_ANDI));
 
-    NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLI, 0, get_instruction_mnemonic(ID_SLLI));
-    NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLI, 0, get_instruction_mnemonic(ID_SRLI));
-    NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAI, 0, get_instruction_mnemonic(ID_SRAI));
+    NID_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLI, get_instruction_mnemonic(ID_SLLI));
+    NID_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLI, get_instruction_mnemonic(ID_SRLI));
+    NID_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAI, get_instruction_mnemonic(ID_SRAI));
 
-    NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLL, 0, get_instruction_mnemonic(ID_SLL));
-    NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLT, 0, get_instruction_mnemonic(ID_SLT));
-    NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XOR, 0, get_instruction_mnemonic(ID_XOR));
-    NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRL, 0, get_instruction_mnemonic(ID_SRL));
-    NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRA, 0, get_instruction_mnemonic(ID_SRA));
+    NID_SLL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLL, get_instruction_mnemonic(ID_SLL));
+    NID_SLT = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLT, get_instruction_mnemonic(ID_SLT));
+    NID_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_XOR, get_instruction_mnemonic(ID_XOR));
+    NID_SRL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRL, get_instruction_mnemonic(ID_SRL));
+    NID_SRA = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRA, get_instruction_mnemonic(ID_SRA));
 
-    NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_OR, 0, get_instruction_mnemonic(ID_OR));
-    NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AND, 0, get_instruction_mnemonic(ID_AND));
+    NID_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_OR, get_instruction_mnemonic(ID_OR));
+    NID_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_AND, get_instruction_mnemonic(ID_AND));
   }
 
   // RV64I codes missing in RISC-U
 
   SID_FUNCT6 = new_bitvec(6, "funct6 sort");
 
-  NID_F6_SLL_SRL = new_constant(OP_CONST, SID_FUNCT6, F6_SLL_SRL, 6, "F6_SLL_SRL");
-  NID_F6_SRA     = new_constant(OP_CONST, SID_FUNCT6, F6_SRA, 6, "F6_SRA");
+  NID_F6_SLL_SRL = new_constant(OP_CONST, SID_FUNCT6, F6_SLL_SRL, "F6_SLL_SRL");
+  NID_F6_SRA     = new_constant(OP_CONST, SID_FUNCT6, F6_SRA, "F6_SRA");
 
-  NID_OP_IMM_32 = new_constant(OP_CONST, SID_OPCODE, OP_IMM_32, 7, "OP_IMM_32");
-  NID_OP_OP_32  = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, 7, "OP_OP_32");
+  NID_OP_IMM_32 = new_constant(OP_CONST, SID_OPCODE, OP_IMM_32, "OP_IMM_32");
+  NID_OP_OP_32  = new_constant(OP_CONST, SID_OPCODE, OP_OP_32, "OP_OP_32");
 
-  NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, 3, "F3_LWU");
+  NID_F3_LWU = new_constant(OP_CONST, SID_FUNCT3, F3_LWU, "F3_LWU");
 
   // RV64I instruction switches
 
@@ -2904,27 +2896,27 @@ void init_instruction_sorts() {
 
   if (not(RISCUONLY))
     if (IS64BITTARGET) {
-      NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, 0, get_instruction_mnemonic(ID_LWU));
+      NID_LWU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_LWU, get_instruction_mnemonic(ID_LWU));
 
-      NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDIW, 0, get_instruction_mnemonic(ID_ADDIW));
-      NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLIW, 0, get_instruction_mnemonic(ID_SLLIW));
-      NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLIW, 0, get_instruction_mnemonic(ID_SRLIW));
-      NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAIW, 0, get_instruction_mnemonic(ID_SRAIW));
+      NID_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDIW, get_instruction_mnemonic(ID_ADDIW));
+      NID_SLLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLIW, get_instruction_mnemonic(ID_SLLIW));
+      NID_SRLIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLIW, get_instruction_mnemonic(ID_SRLIW));
+      NID_SRAIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAIW, get_instruction_mnemonic(ID_SRAIW));
 
-      NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDW, 0, get_instruction_mnemonic(ID_ADDW));
-      NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUBW, 0, get_instruction_mnemonic(ID_SUBW));
-      NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLW, 0, get_instruction_mnemonic(ID_SLLW));
-      NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLW, 0, get_instruction_mnemonic(ID_SRLW));
-      NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAW, 0, get_instruction_mnemonic(ID_SRAW));
+      NID_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_ADDW, get_instruction_mnemonic(ID_ADDW));
+      NID_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SUBW, get_instruction_mnemonic(ID_SUBW));
+      NID_SLLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SLLW, get_instruction_mnemonic(ID_SLLW));
+      NID_SRLW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRLW, get_instruction_mnemonic(ID_SRLW));
+      NID_SRAW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_SRAW, get_instruction_mnemonic(ID_SRAW));
     }
 
   // RV32M codes missing in RISC-U
 
-  NID_F3_MULH   = new_constant(OP_CONST, SID_FUNCT3, F3_MULH, 3, "F3_MULH");
-  NID_F3_MULHSU = new_constant(OP_CONST, SID_FUNCT3, F3_MULHSU, 3, "F3_MULHSU");
-  NID_F3_MULHU  = new_constant(OP_CONST, SID_FUNCT3, F3_MULHU, 3, "F3_MULHU");
-  NID_F3_DIV    = new_constant(OP_CONST, SID_FUNCT3, F3_DIV, 3, "F3_DIV");
-  NID_F3_REM    = new_constant(OP_CONST, SID_FUNCT3, F3_REM, 3, "F3_REM");
+  NID_F3_MULH   = new_constant(OP_CONST, SID_FUNCT3, F3_MULH, "F3_MULH");
+  NID_F3_MULHSU = new_constant(OP_CONST, SID_FUNCT3, F3_MULHSU, "F3_MULHSU");
+  NID_F3_MULHU  = new_constant(OP_CONST, SID_FUNCT3, F3_MULHU, "F3_MULHU");
+  NID_F3_DIV    = new_constant(OP_CONST, SID_FUNCT3, F3_DIV, "F3_DIV");
+  NID_F3_REM    = new_constant(OP_CONST, SID_FUNCT3, F3_REM, "F3_REM");
 
   // RV32M instruction switches
 
@@ -2940,11 +2932,11 @@ void init_instruction_sorts() {
   if (not(RISCUONLY)) {
     if (RV32M) {
       // MUL, DIVU, REMU already defined
-      NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, 0, get_instruction_mnemonic(ID_MULH));
-      NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHSU, 0, get_instruction_mnemonic(ID_MULHSU));
-      NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHU, 0, get_instruction_mnemonic(ID_MULHU));
-      NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIV, 0, get_instruction_mnemonic(ID_DIV));
-      NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REM, 0, get_instruction_mnemonic(ID_REM));
+      NID_MULH   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULH, get_instruction_mnemonic(ID_MULH));
+      NID_MULHSU = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHSU, get_instruction_mnemonic(ID_MULHSU));
+      NID_MULHU  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULHU, get_instruction_mnemonic(ID_MULHU));
+      NID_DIV    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIV, get_instruction_mnemonic(ID_DIV));
+      NID_REM    = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REM, get_instruction_mnemonic(ID_REM));
     } else {
       NID_MUL  = NID_DISABLED;
       NID_DIVU = NID_DISABLED;
@@ -2961,11 +2953,11 @@ void init_instruction_sorts() {
     RV64M = 0;
 
   if (RV64M) {
-    NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULW, 0, get_instruction_mnemonic(ID_MULW));
-    NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVW, 0, get_instruction_mnemonic(ID_DIVW));
-    NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVUW, 0, get_instruction_mnemonic(ID_DIVUW));
-    NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMW, 0, get_instruction_mnemonic(ID_REMW));
-    NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMUW, 0, get_instruction_mnemonic(ID_REMUW));
+    NID_MULW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_MULW, get_instruction_mnemonic(ID_MULW));
+    NID_DIVW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVW, get_instruction_mnemonic(ID_DIVW));
+    NID_DIVUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_DIVUW, get_instruction_mnemonic(ID_DIVUW));
+    NID_REMW  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMW, get_instruction_mnemonic(ID_REMW));
+    NID_REMUW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_REMUW, get_instruction_mnemonic(ID_REMUW));
   } else {
     NID_MULW  = NID_DISABLED;
     NID_DIVW  = NID_DISABLED;
@@ -2982,51 +2974,51 @@ void init_compressed_instruction_sorts() {
 
   SID_OPCODE_C = new_bitvec(2, "compressed opcode sort");
 
-  NID_OP_C0 = new_constant(OP_CONST, SID_OPCODE_C, 0, 2, "OP_C0");
-  NID_OP_C1 = new_constant(OP_CONST, SID_OPCODE_C, 1, 2, "OP_C1");
-  NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, 2, "OP_C2");
-  NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, 2, "OP_C3");
+  NID_OP_C0 = new_constant(OP_CONST, SID_OPCODE_C, 0, "OP_C0");
+  NID_OP_C1 = new_constant(OP_CONST, SID_OPCODE_C, 1, "OP_C1");
+  NID_OP_C2 = new_constant(OP_CONST, SID_OPCODE_C, 2, "OP_C2");
+  NID_OP_C3 = new_constant(OP_CONST, SID_OPCODE_C, 3, "OP_C3");
 
-  NID_F3_C_LI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_LI, 3, "F3_C_LI");
-  NID_F3_C_LUI_ADDI16SP = new_constant(OP_CONST, SID_FUNCT3, F3_C_LUI_ADDI16SP, 3, "F3_C_LUI_ADDI16SP");
+  NID_F3_C_LI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_LI, "F3_C_LI");
+  NID_F3_C_LUI_ADDI16SP = new_constant(OP_CONST, SID_FUNCT3, F3_C_LUI_ADDI16SP, "F3_C_LUI_ADDI16SP");
 
-  NID_F3_C_ADDI      = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI, 3, "F3_C_ADDI");
-  NID_F3_C_ADDIW_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDIW_JAL, 3, "F3_C_ADDIW_JAL");
+  NID_F3_C_ADDI      = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI, "F3_C_ADDI");
+  NID_F3_C_ADDIW_JAL = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDIW_JAL, "F3_C_ADDIW_JAL");
 
-  NID_F3_C_ADDI4SPN = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI4SPN, 3, "F3_C_ADDI4SPN");
+  NID_F3_C_ADDI4SPN = new_constant(OP_CONST, SID_FUNCT3, F3_C_ADDI4SPN, "F3_C_ADDI4SPN");
 
-  NID_F3_C_SLLI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_SLLI, 3, "F3_C_SLLI");
-  NID_F3_C_SRLI_SRAI_ANDI = new_constant(OP_CONST, SID_FUNCT3, F3_C_SRLI_SRAI_ANDI, 3, "F3_C_SRLI_SRAI_ANDI");
+  NID_F3_C_SLLI           = new_constant(OP_CONST, SID_FUNCT3, F3_C_SLLI, "F3_C_SLLI");
+  NID_F3_C_SRLI_SRAI_ANDI = new_constant(OP_CONST, SID_FUNCT3, F3_C_SRLI_SRAI_ANDI, "F3_C_SRLI_SRAI_ANDI");
 
   SID_FUNCT2 = new_bitvec(2, "compressed funct2 sort");
 
-  NID_F2_C_SRLI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRLI, 2, "F2_C_SRLI");
-  NID_F2_C_SRAI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRAI, 2, "F2_C_SRAI");
-  NID_F2_C_ANDI = new_constant(OP_CONST, SID_FUNCT2, F2_C_ANDI, 2, "F2_C_ANDI");
+  NID_F2_C_SRLI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRLI, "F2_C_SRLI");
+  NID_F2_C_SRAI = new_constant(OP_CONST, SID_FUNCT2, F2_C_SRAI, "F2_C_SRAI");
+  NID_F2_C_ANDI = new_constant(OP_CONST, SID_FUNCT2, F2_C_ANDI, "F2_C_ANDI");
 
-  NID_F6_C_SUB_XOR_OR_AND = new_constant(OP_CONST, SID_FUNCT6, F6_C_SUB_XOR_OR_AND, 6, "F6_C_SUB_XOR_OR_AND");
-  NID_F6_C_ADDW_SUBW      = new_constant(OP_CONST, SID_FUNCT6, F6_C_ADDW_SUBW, 6, "F6_C_ADDW_SUBW");
+  NID_F6_C_SUB_XOR_OR_AND = new_constant(OP_CONST, SID_FUNCT6, F6_C_SUB_XOR_OR_AND, "F6_C_SUB_XOR_OR_AND");
+  NID_F6_C_ADDW_SUBW      = new_constant(OP_CONST, SID_FUNCT6, F6_C_ADDW_SUBW, "F6_C_ADDW_SUBW");
 
-  NID_F2_C_SUB_SUBW = new_constant(OP_CONST, SID_FUNCT2, F2_C_SUB_SUBW, 2, "F2_C_SUB_SUBW");
-  NID_F2_C_XOR_ADDW = new_constant(OP_CONST, SID_FUNCT2, F2_C_XOR_ADDW, 2, "F2_C_XOR_ADDW");
-  NID_F2_C_OR       = new_constant(OP_CONST, SID_FUNCT2, F2_C_OR, 2, "F2_C_OR");
-  NID_F2_C_AND      = new_constant(OP_CONST, SID_FUNCT2, F2_C_AND, 2, "F2_C_AND");
+  NID_F2_C_SUB_SUBW = new_constant(OP_CONST, SID_FUNCT2, F2_C_SUB_SUBW, "F2_C_SUB_SUBW");
+  NID_F2_C_XOR_ADDW = new_constant(OP_CONST, SID_FUNCT2, F2_C_XOR_ADDW, "F2_C_XOR_ADDW");
+  NID_F2_C_OR       = new_constant(OP_CONST, SID_FUNCT2, F2_C_OR, "F2_C_OR");
+  NID_F2_C_AND      = new_constant(OP_CONST, SID_FUNCT2, F2_C_AND, "F2_C_AND");
 
-  NID_F3_C_LWSP_LW = new_constant(OP_CONST, SID_FUNCT3, F3_C_LWSP_LW, 3, "F3_C_LWSP_LW");
-  NID_F3_C_LDSP_LD = new_constant(OP_CONST, SID_FUNCT3, F3_C_LDSP_LD, 3, "F3_C_LDSP_LD");
+  NID_F3_C_LWSP_LW = new_constant(OP_CONST, SID_FUNCT3, F3_C_LWSP_LW, "F3_C_LWSP_LW");
+  NID_F3_C_LDSP_LD = new_constant(OP_CONST, SID_FUNCT3, F3_C_LDSP_LD, "F3_C_LDSP_LD");
 
-  NID_F3_C_SWSP_SW = new_constant(OP_CONST, SID_FUNCT3, F3_C_SWSP_SW, 3, "F3_C_SWSP_SW");
-  NID_F3_C_SDSP_SD = new_constant(OP_CONST, SID_FUNCT3, F3_C_SDSP_SD, 3, "F3_C_SDSP_SD");
+  NID_F3_C_SWSP_SW = new_constant(OP_CONST, SID_FUNCT3, F3_C_SWSP_SW, "F3_C_SWSP_SW");
+  NID_F3_C_SDSP_SD = new_constant(OP_CONST, SID_FUNCT3, F3_C_SDSP_SD, "F3_C_SDSP_SD");
 
-  NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, 3, "F3_C_BEQZ");
-  NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, 3, "F3_C_BNEZ");
+  NID_F3_C_BEQZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BEQZ, "F3_C_BEQZ");
+  NID_F3_C_BNEZ = new_constant(OP_CONST, SID_FUNCT3, F3_C_BNEZ, "F3_C_BNEZ");
 
-  NID_F3_C_J = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, 3, "F3_C_J");
+  NID_F3_C_J = new_constant(OP_CONST, SID_FUNCT3, F3_C_J, "F3_C_J");
 
   SID_FUNCT4 = new_bitvec(4, "compressed funct4 sort");
 
-  NID_F4_C_MV_JR    = new_constant(OP_CONST, SID_FUNCT4, F4_C_MV_JR, 4, "F4_C_MV_JR");
-  NID_F4_C_ADD_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_ADD_JALR, 4, "F4_C_ADD_JALR");
+  NID_F4_C_MV_JR    = new_constant(OP_CONST, SID_FUNCT4, F4_C_MV_JR, "F4_C_MV_JR");
+  NID_F4_C_ADD_JALR = new_constant(OP_CONST, SID_FUNCT4, F4_C_ADD_JALR, "F4_C_ADD_JALR");
 
   // offset sorts
 
@@ -3053,13 +3045,13 @@ void init_compressed_instruction_sorts() {
   SID_17_BIT_OFFSET = new_bitvec(17, "17-bit offset sort");
   SID_18_BIT_OFFSET = new_bitvec(18, "18-bit offset sort");
 
-  NID_1_BIT_OFFSET_0  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 0, 1, "1-bit offset 0");
-  NID_1_BIT_OFFSET_1  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 1, 1, "1-bit offset 1");
-  NID_2_BIT_OFFSET_0  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 0, 2, "2-bit offset 0");
-  NID_2_BIT_OFFSET_1  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, 2, "2-bit offset 1, 01000 s0");
-  NID_3_BIT_OFFSET_0  = new_constant(OP_CONST, SID_3_BIT_OFFSET, 0, 3, "3-bit offset 0");
-  NID_4_BIT_OFFSET_0  = new_constant(OP_CONST, SID_4_BIT_OFFSET, 0, 4, "4-bit offset 0");
-  NID_12_BIT_OFFSET_0 = new_constant(OP_CONST, SID_12_BIT_OFFSET, 0, 12, "12-bit offset 0");
+  NID_1_BIT_OFFSET_0  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 0, "1-bit offset 0");
+  NID_1_BIT_OFFSET_1  = new_constant(OP_CONST, SID_1_BIT_OFFSET, 1, "1-bit offset 1");
+  NID_2_BIT_OFFSET_0  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 0, "2-bit offset 0");
+  NID_2_BIT_OFFSET_1  = new_constant(OP_CONST, SID_2_BIT_OFFSET, 1, "2-bit offset 1, 01000 s0");
+  NID_3_BIT_OFFSET_0  = new_constant(OP_CONST, SID_3_BIT_OFFSET, 0, "3-bit offset 0");
+  NID_4_BIT_OFFSET_0  = new_constant(OP_CONST, SID_4_BIT_OFFSET, 0, "4-bit offset 0");
+  NID_12_BIT_OFFSET_0 = new_constant(OP_CONST, SID_12_BIT_OFFSET, 0, "12-bit offset 0");
 
   SID_COMPRESSED_REGISTER_ADDRESS = new_bitvec(3, "3-bit compressed register address");
 
@@ -3119,52 +3111,52 @@ void init_compressed_instruction_sorts() {
     // avoiding oversized then case
     return;
 
-  NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LI, 0, get_instruction_mnemonic(ID_C_LI));
-  NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LUI, 0, get_instruction_mnemonic(ID_C_LUI));
+  NID_C_LI  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LI, get_instruction_mnemonic(ID_C_LI));
+  NID_C_LUI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LUI, get_instruction_mnemonic(ID_C_LUI));
 
-  NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI, 0, get_instruction_mnemonic(ID_C_ADDI));
+  NID_C_ADDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI, get_instruction_mnemonic(ID_C_ADDI));
   if (IS64BITTARGET)
-    NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDIW, 0, get_instruction_mnemonic(ID_C_ADDIW));
+    NID_C_ADDIW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDIW, get_instruction_mnemonic(ID_C_ADDIW));
   else
     NID_C_ADDIW = NID_DISABLED;
-  NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI16SP, 0, get_instruction_mnemonic(ID_C_ADDI16SP));
+  NID_C_ADDI16SP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI16SP, get_instruction_mnemonic(ID_C_ADDI16SP));
 
-  NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI4SPN, 0, get_instruction_mnemonic(ID_C_ADDI4SPN));
+  NID_C_ADDI4SPN = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDI4SPN, get_instruction_mnemonic(ID_C_ADDI4SPN));
 
-  NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ANDI, 0, get_instruction_mnemonic(ID_C_ANDI));
+  NID_C_ANDI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ANDI, get_instruction_mnemonic(ID_C_ANDI));
 
-  NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SLLI, 0, get_instruction_mnemonic(ID_C_SLLI));
-  NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRLI, 0, get_instruction_mnemonic(ID_C_SRLI));
-  NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRAI, 0, get_instruction_mnemonic(ID_C_SRAI));
+  NID_C_SLLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SLLI, get_instruction_mnemonic(ID_C_SLLI));
+  NID_C_SRLI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRLI, get_instruction_mnemonic(ID_C_SRLI));
+  NID_C_SRAI = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SRAI, get_instruction_mnemonic(ID_C_SRAI));
 
-  NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_MV, 0, get_instruction_mnemonic(ID_C_MV));
-  NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADD, 0, get_instruction_mnemonic(ID_C_ADD));
+  NID_C_MV  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_MV, get_instruction_mnemonic(ID_C_MV));
+  NID_C_ADD = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADD, get_instruction_mnemonic(ID_C_ADD));
 
-  NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUB, 0, get_instruction_mnemonic(ID_C_SUB));
-  NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_XOR, 0, get_instruction_mnemonic(ID_C_XOR));
-  NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_OR, 0, get_instruction_mnemonic(ID_C_OR));
-  NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_AND, 0, get_instruction_mnemonic(ID_C_AND));
+  NID_C_SUB = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUB, get_instruction_mnemonic(ID_C_SUB));
+  NID_C_XOR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_XOR, get_instruction_mnemonic(ID_C_XOR));
+  NID_C_OR  = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_OR, get_instruction_mnemonic(ID_C_OR));
+  NID_C_AND = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_AND, get_instruction_mnemonic(ID_C_AND));
 
   if (IS64BITTARGET) {
-    NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDW, 0, get_instruction_mnemonic(ID_C_ADDW));
-    NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUBW, 0, get_instruction_mnemonic(ID_C_SUBW));
+    NID_C_ADDW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_ADDW, get_instruction_mnemonic(ID_C_ADDW));
+    NID_C_SUBW = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SUBW, get_instruction_mnemonic(ID_C_SUBW));
   } else {
     NID_C_ADDW = NID_DISABLED;
     NID_C_SUBW = NID_DISABLED;
   }
 
-  NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LWSP, 0, get_instruction_mnemonic(ID_C_LWSP));
-  NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LW, 0, get_instruction_mnemonic(ID_C_LW));
+  NID_C_LWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LWSP, get_instruction_mnemonic(ID_C_LWSP));
+  NID_C_LW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LW, get_instruction_mnemonic(ID_C_LW));
 
-  NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SWSP, 0, get_instruction_mnemonic(ID_C_SWSP));
-  NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SW, 0, get_instruction_mnemonic(ID_C_SW));
+  NID_C_SWSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SWSP, get_instruction_mnemonic(ID_C_SWSP));
+  NID_C_SW   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SW, get_instruction_mnemonic(ID_C_SW));
 
   if (IS64BITTARGET) {
-    NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LDSP, 0, get_instruction_mnemonic(ID_C_LDSP));
-    NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LD, 0, get_instruction_mnemonic(ID_C_LD));
+    NID_C_LDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LDSP, get_instruction_mnemonic(ID_C_LDSP));
+    NID_C_LD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_LD, get_instruction_mnemonic(ID_C_LD));
 
-    NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SDSP, 0, get_instruction_mnemonic(ID_C_SDSP));
-    NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SD, 0, get_instruction_mnemonic(ID_C_SD));
+    NID_C_SDSP = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SDSP, get_instruction_mnemonic(ID_C_SDSP));
+    NID_C_SD   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_SD, get_instruction_mnemonic(ID_C_SD));
   } else {
     NID_C_LDSP = NID_DISABLED;
     NID_C_LD   = NID_DISABLED;
@@ -3173,17 +3165,17 @@ void init_compressed_instruction_sorts() {
     NID_C_SD   = NID_DISABLED;
   }
 
-  NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BEQZ, 0, get_instruction_mnemonic(ID_C_BEQZ));
-  NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BNEZ, 0, get_instruction_mnemonic(ID_C_BNEZ));
+  NID_C_BEQZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BEQZ, get_instruction_mnemonic(ID_C_BEQZ));
+  NID_C_BNEZ = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_BNEZ, get_instruction_mnemonic(ID_C_BNEZ));
 
-  NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_J, 0, get_instruction_mnemonic(ID_C_J));
+  NID_C_J = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_J, get_instruction_mnemonic(ID_C_J));
   if (IS64BITTARGET)
     NID_C_JAL = NID_DISABLED;
   else
-    NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JAL, 0, get_instruction_mnemonic(ID_C_JAL));
+    NID_C_JAL = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JAL, get_instruction_mnemonic(ID_C_JAL));
 
-  NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JR, 0, get_instruction_mnemonic(ID_C_JR));
-  NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, 0, get_instruction_mnemonic(ID_C_JALR));
+  NID_C_JR   = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JR, get_instruction_mnemonic(ID_C_JR));
+  NID_C_JALR = new_constant(OP_CONSTD, SID_INSTRUCTION_ID, ID_C_JALR, get_instruction_mnemonic(ID_C_JALR));
 }
 
 void init_decoders(uint64_t number_of_cores) {
@@ -3750,8 +3742,8 @@ uint64_t* new_array(uint64_t* size_sid, uint64_t* element_sid, char* comment) {
   return new_line(OP_SORT, UNUSED, (uint64_t*) ARRAY, size_sid, element_sid, comment);
 }
 
-uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, uint64_t digits, char* comment) {
-  return new_line(op, sid, (uint64_t*) constant, (uint64_t*) digits, UNUSED, comment);
+uint64_t* new_constant(char* op, uint64_t* sid, uint64_t constant, char* comment) {
+  return new_line(op, sid, (uint64_t*) constant, UNUSED, UNUSED, comment);
 }
 
 uint64_t* new_input(char* op, uint64_t* sid, char* symbol, char* comment) {
@@ -4000,20 +3992,18 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
   uint64_t size;
   nid = print_line_once(nid, get_sid(line));
   value = eval_constant_value(line);
+  size = eval_bitvec_size(get_sid(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_CONST);
     if (get_sid(line) == SID_BOOLEAN)
       if (is_true(value)) w = w + dprintf(output_fd, "true"); else w = w + dprintf(output_fd, "false");
-    else {
-      size = eval_bitvec_size(get_sid(line));
-      if (get_op(line) == OP_CONSTD)
-        w = w + dprintf(output_fd, "(_ bv%lu %lu)", value, size);
-      else if (get_op(line) == OP_CONST)
-        w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
-      else
-        // assert: get_op(line) == OP_CONSTH
-        w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, get_size_in_hex_digits(size)));
-    }
+    else if (get_op(line) == OP_CONSTD)
+      w = w + dprintf(output_fd, "(_ bv%lu %lu)", value, size);
+    else if (get_op(line) == OP_CONST)
+      w = w + dprintf(output_fd, "#b%s", itoa(value, string_buffer, 2, 0, size));
+    else
+      // assert: get_op(line) == OP_CONSTH
+      w = w + dprintf(output_fd, "#x%s", itoa(value, string_buffer, 16, 0, get_size_in_hex_digits(size)));
     w = w + dprintf(output_fd, ")");
   } else {
     print_nid(nid, line);
@@ -4026,11 +4016,11 @@ uint64_t print_constant(uint64_t nid, uint64_t* line) {
         w = w + dprintf(output_fd, " %s %lu %ld", get_op(line), get_nid(get_sid(line)), value);
     } else if (get_op(line) == OP_CONST)
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-        itoa(value, string_buffer, 2, 0, eval_constant_digits(line)));
+        itoa(value, string_buffer, 2, 0, size));
     else
       // assert: get_op(line) == OP_CONSTH
       w = w + dprintf(output_fd, " %s %lu %s", get_op(line), get_nid(get_sid(line)),
-        itoa(value, string_buffer, 16, 0, eval_constant_digits(line)));
+        itoa(value, string_buffer, 16, 0, get_size_in_hex_digits(size)));
   }
   print_comment(line);
   return nid;
@@ -4842,10 +4832,6 @@ uint64_t eval_constant_value(uint64_t* line) {
     value = get_state(line);
 
   return value;
-}
-
-uint64_t eval_constant_digits(uint64_t* line) {
-  return (uint64_t) get_arg2(line);
 }
 
 uint64_t eval_ext_w(uint64_t* line) {
@@ -6218,12 +6204,10 @@ void new_register_file_state(uint64_t core) {
         // skipping zero as initial value unless printing unrolled model
         value_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
           value,
-          0,
           format_comment("initial register value 0x%lX", value));
         // for reuse creating register address exactly as above in register sorts
         reg_nid = new_constant(OP_CONST, SID_REGISTER_ADDRESS,
           reg,
-          5,
           format_comment("%s", *(REGISTERS + reg)));
         initial_register_file_nid =
           store_register_value(reg_nid, value_nid,
@@ -6330,45 +6314,31 @@ void new_segmentation(uint64_t core) {
   uint64_t low_stack_address_space;
   uint64_t up_stack_address_space;
 
-  NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    code_start,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_CODE_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, code_start,
     format_comment("start of code segment @ 0x%lX", code_start));
 
-  NID_CODE_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    code_start + code_size,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_CODE_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, code_start + code_size,
     format_comment("end of code segment accommodating at least %lu instructions", code_size / INSTRUCTIONSIZE));
 
   // assert: data_start >= code_start + code_size > 0
 
-  NID_DATA_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    data_start,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_DATA_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, data_start,
     format_comment("start of data segment @ 0x%lX", data_start));
 
-  NID_DATA_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    data_start + data_size,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_DATA_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, data_start + data_size,
     format_comment("end of data segment accommodating %lu bytes", data_size));
 
   // assert: heap_start >= data_start + data_size > 0
 
-  NID_HEAP_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    heap_start,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_HEAP_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, heap_start,
     format_comment("start of heap segment @ 0x%lX", heap_start));
 
-  NID_HEAP_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    heap_start + heap_size,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_HEAP_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, heap_start + heap_size,
     format_comment("static end of heap segment accommodating %lu bytes", heap_size));
 
   // assert: stack_start >= heap_start + heap_size > 0
 
-  NID_STACK_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-    stack_start,
-    round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+  NID_STACK_START = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_start,
     format_comment("static start of stack segment @ 0x%lX", stack_start));
 
   stack_end = stack_start + stack_size;
@@ -6383,22 +6353,16 @@ void new_segmentation(uint64_t core) {
 
     if (up_stack_address_space < VIRTUAL_ADDRESS_SPACE)
       // no stack end overflow in btor2
-      NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-        stack_end,
-        round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+      NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_end,
         format_comment("end of stack segment accommodating %lu bytes", stack_size));
     else if (up_stack_address_space == VIRTUAL_ADDRESS_SPACE) {
       if (low_stack_address_space < up_stack_address_space)
         // still no stack end overflow in btor2
-        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          stack_end,
-          round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, stack_end,
           format_comment("end of stack segment accommodating %lu bytes", stack_size));
       else
         // stack end overflow in btor2, force wrap-around
-        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          0,
-          round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+        NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, 0,
           format_comment("end of stack segment accommodating %lu bytes", stack_size));
     } else {
       printf("%s: end of stack segment at 0x%lX does not fit %lu-bit virtual address space\n", selfie_name,
@@ -6411,9 +6375,7 @@ void new_segmentation(uint64_t core) {
     // stack end overflow here
     if (VIRTUAL_ADDRESS_SPACE == WORDSIZEINBITS)
       // ok if virtual address space same as address space here, force wrap-around
-      NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-        0,
-        round_up(VIRTUAL_ADDRESS_SPACE / 4, 4),
+      NID_STACK_END = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, 0,
         format_comment("end of stack segment accommodating %lu bytes", stack_size));
     else {
       printf("%s: end of stack segment wrapped around to 0x0\n", selfie_name);
@@ -6528,7 +6490,6 @@ void new_code_segment(uint64_t core) {
   uint64_t* init_code_segment_nid;
   uint64_t* next_code_segment_nid;
   uint64_t* initial_code_segment_nid;
-  uint64_t  number_of_hex_digits;
   uint64_t  address_space_size;
   uint64_t  saved_reuse_lines;
   uint64_t* laddr_nid;
@@ -6567,8 +6528,6 @@ void new_code_segment(uint64_t core) {
     next_zeroed_code_segment_nid = new_next(SID_CODE_STATE,
       state_zeroed_code_segment_nid, state_zeroed_code_segment_nid, "read-only zeroed code segment");
 
-    number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
-
     initial_code_nid = UNUSED;
 
     initial_code_segment_nid = state_zeroed_code_segment_nid;
@@ -6589,11 +6548,11 @@ void new_code_segment(uint64_t core) {
 
       if (ir != 0) {
         // skipping zero as instruction unless printing unrolled BTOR2 model
-        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-          pc - code_start, number_of_hex_digits, format_comment("vaddr 0x%lX", pc));
+        laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, pc - code_start,
+          format_comment("vaddr 0x%lX", pc));
 
-        ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD,
-          ir, 32, format_comment("code 0x%04lX", ir));
+        ir_nid = new_constant(OP_CONST, SID_INSTRUCTION_WORD, ir,
+          format_comment("code 0x%04lX", ir));
 
         store_nid = store_single_word_at_virtual_address(laddr_nid, ir_nid, initial_code_segment_nid);
 
@@ -6686,7 +6645,6 @@ void print_code_segment(uint64_t core) {
 void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
   uint64_t MEMORY_ADDRESS_SPACE, uint64_t segment_start, uint64_t segment_size) {
   uint64_t saved_reuse_lines;
-  uint64_t number_of_hex_digits;
   uint64_t address_space_size;
   uint64_t vaddr;
   uint64_t data;
@@ -6697,8 +6655,6 @@ void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
   saved_reuse_lines = reuse_lines;
 
   reuse_lines = 0; // TODO: turn on via console argument
-
-  number_of_hex_digits = round_up(VIRTUAL_ADDRESS_SPACE, 4) / 4;
 
   address_space_size = two_to_the_power_of(MEMORY_ADDRESS_SPACE) * (MEMORYWORDSIZEINBITS / 8);
 
@@ -6721,11 +6677,11 @@ void initialize_memory_segment(uint64_t core, uint64_t* state_segment_nid,
 
     if (data != 0) {
       // skipping zero as initial value unless printing unrolled BTOR2 model
-      laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS,
-        vaddr - segment_start, number_of_hex_digits, format_comment("vaddr 0x%lX", vaddr));
+      laddr_nid = new_constant(OP_CONSTH, SID_VIRTUAL_ADDRESS, vaddr - segment_start,
+        format_comment("vaddr 0x%lX", vaddr));
 
-      data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD,
-        data, 0, format_comment("data 0x%lX", data));
+      data_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, data,
+        format_comment("data 0x%lX", data));
 
       store_nid = store_machine_word_at_virtual_address(laddr_nid, data_nid, initial_tail_nid);
 
@@ -10769,9 +10725,9 @@ void new_core_state(uint64_t core) {
       return;
 
   if (core < number_of_binaries)
-    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), 8, "entry pc value");
+    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, get_pc(current_context), "entry pc value");
   else
-    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, 8, "initial pc value");
+    initial_pc_nid = new_constant(OP_CONSTH, SID_MACHINE_WORD, code_start, "initial pc value");
 
   state_pc_nid =
     new_input(OP_STATE, SID_MACHINE_WORD, format_comment("core-%lu-pc", core), "program counter");
@@ -11329,8 +11285,8 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
         active_exit_nid,
         new_binary_boolean(OP_EQ,
           a0_value_nid,
-          new_constant(OP_CONSTD, SID_MACHINE_WORD,
-            target_exit_code, 0, format_comment("bad exit code %ld", target_exit_code)),
+          new_constant(OP_CONSTD, SID_MACHINE_WORD, target_exit_code,
+            format_comment("bad exit code %ld", target_exit_code)),
           "actual exit code == bad exit code?"),
         "active exit system call with bad exit code"),
       format_comment("core-%lu-bad-exit-code", core),
@@ -11345,8 +11301,8 @@ void kernel_properties(uint64_t core, uint64_t* ir_nid, uint64_t* read_bytes_nid
         active_exit_nid,
         new_binary_boolean(OP_NEQ,
           a0_value_nid,
-          new_constant(OP_CONSTD, SID_MACHINE_WORD,
-            target_exit_code, 0, format_comment("good exit code %ld", target_exit_code)),
+          new_constant(OP_CONSTD, SID_MACHINE_WORD, target_exit_code,
+            format_comment("good exit code %ld", target_exit_code)),
           "actual exit code != good exit code?"),
         "active exit system call with good exit code"),
       format_comment("core-%lu-good-exit-code", core),

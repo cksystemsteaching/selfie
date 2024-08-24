@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import re
+import math, re
 
 class syntax_error(Exception):
     def __init__(self, expected, line_no):
@@ -99,7 +99,8 @@ class Const(Constant):
         super().__init__(nid, sid, value, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} {Const.keyword} {self.sid_line.nid} {self.value:b} {self.comment}"
+        size = self.sid_line.size
+        return f"{self.nid} {Const.keyword} {self.sid_line.nid} {self.value:0{size}b} {self.comment}"
 
 class Consth(Constant):
     keyword = 'consth'
@@ -108,7 +109,8 @@ class Consth(Constant):
         super().__init__(nid, sid, value, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:x} {self.comment}"
+        size = math.ceil(self.sid_line.size / 4)
+        return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
 
 class Variable(Expression):
     def __init__(self, nid, sid, symbol, comment, line_no):
@@ -154,7 +156,7 @@ class Ext(Indexed):
         self.w = w
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.w} {self.comment}"
+        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
 
 class Slice(Indexed):
     keyword = 'slice'
@@ -165,7 +167,7 @@ class Slice(Indexed):
         self.l = l
 
     def __str__(self):
-        return f"{self.nid} {Slice.keyword} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
+        return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
 
 class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
@@ -176,7 +178,7 @@ class Unary(Expression):
         self.arg1_line = Line.get(arg1_nid)
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.comment}"
+        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
 
 class Binary(Expression):
     keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
@@ -188,7 +190,7 @@ class Binary(Expression):
         self.arg2_line = Line.get(arg2_nid)
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
+        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
 
 class Ternary(Expression):
     keywords = {'ite', 'write'}
@@ -201,7 +203,7 @@ class Ternary(Expression):
         self.arg3_line = Line.get(arg3_nid)
 
     def __str__(self):
-        return f"{self.nid} {self.op} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
+        return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
 
 class Init(Line):
     keyword = 'init'
@@ -439,42 +441,44 @@ def parse_btor2_line(line, line_no):
                     current_nid = nid
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
-                        print(parse_sort_line(tokens, nid, line_no))
+                        return parse_sort_line(tokens, nid, line_no)
                     elif token == Zero.keyword:
-                        print(parse_zero_one_line(tokens, nid, Zero, line_no))
+                        return parse_zero_one_line(tokens, nid, Zero, line_no)
                     elif token == One.keyword:
-                        print(parse_zero_one_line(tokens, nid, One, line_no))
+                        return parse_zero_one_line(tokens, nid, One, line_no)
                     elif token == Constd.keyword:
-                        print(parse_constant_line(tokens, nid, Constd, line_no))
+                        return parse_constant_line(tokens, nid, Constd, line_no)
                     elif token == Const.keyword:
-                        print(parse_constant_line(tokens, nid, Const, line_no))
+                        return parse_constant_line(tokens, nid, Const, line_no)
                     elif token == Consth.keyword:
-                        print(parse_constant_line(tokens, nid, Consth, line_no))
+                        return parse_constant_line(tokens, nid, Consth, line_no)
                     elif token == Input.keyword:
-                        print(parse_variable_line(tokens, nid, Input, line_no))
+                        return parse_variable_line(tokens, nid, Input, line_no)
                     elif token == State.keyword:
-                        print(parse_variable_line(tokens, nid, State, line_no))
+                        return parse_variable_line(tokens, nid, State, line_no)
                     elif token in Ext.keywords:
-                        print(parse_ext_line(tokens, nid, token, line_no))
+                        return parse_ext_line(tokens, nid, token, line_no)
                     elif token == Slice.keyword:
-                        print(parse_slice_line(tokens, nid, line_no))
+                        return parse_slice_line(tokens, nid, line_no)
                     elif token in Unary.keywords:
-                        print(parse_unary_line(tokens, nid, token, line_no))
+                        return parse_unary_line(tokens, nid, token, line_no)
                     elif token in Binary.keywords:
-                        print(parse_binary_line(tokens, nid, token, line_no))
+                        return parse_binary_line(tokens, nid, token, line_no)
                     elif token in Ternary.keywords:
-                        print(parse_ternary_line(tokens, nid, token, line_no))
+                        return parse_ternary_line(tokens, nid, token, line_no)
                     elif token == Init.keyword:
-                        print(parse_init_next_line(tokens, nid, Init, line_no))
+                        return parse_init_next_line(tokens, nid, Init, line_no)
                     elif token == Next.keyword:
-                        print(parse_init_next_line(tokens, nid, Next, line_no))
+                        return parse_init_next_line(tokens, nid, Next, line_no)
                     elif token == Constraint.keyword:
-                        print(parse_property_line(tokens, nid, Constraint, line_no))
+                        return parse_property_line(tokens, nid, Constraint, line_no)
                     elif token == Bad.keyword:
-                        print(parse_property_line(tokens, nid, Bad, line_no))
-                    return
+                        return parse_property_line(tokens, nid, Bad, line_no)
+                    else:
+                        raise syntax_error(f"unknown operator {token}", line_no)
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
+    return line.strip()
 
 import argparse
 
@@ -491,7 +495,7 @@ def main():
         line_no = 1
         for line in modelfile:
             try:
-                parse_btor2_line(line, line_no)
+                print(parse_btor2_line(line, line_no))
                 line_no = line_no + 1
             except syntax_error as message:
                 print(message)
