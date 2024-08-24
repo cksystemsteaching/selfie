@@ -314,16 +314,19 @@ def get_state_nid(tokens, line_no):
 def get_exp_nid(tokens, line_no):
     return get_nid(tokens, Expression, "expression nid", line_no)
 
-def get_number(tokens, base, expected, line_no):
+def get_number(tokens, sid, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
     try:
-        # TODO: check value range
         if (base == 10):
-            return int(token)
+            value = int(token)
         else:
-            return int(token, base)
+            value = int(token, base)
     except ValueError:
         raise syntax_error(expected, line_no)
+    if value < 2**Line.get(sid).size:
+        return value
+    else:
+        raise syntax_error(f"{value} in range of {Line.get(sid).size}-bit bitvector", line_no)
 
 def get_symbol(tokens):
     try:
@@ -360,11 +363,11 @@ def parse_zero_one_line(tokens, nid, clss, line_no):
 def parse_constant_line(tokens, nid, clss, line_no):
     sid = get_bitvec_sid(tokens, line_no)
     if clss is Constd:
-        value = get_number(tokens, 10, "signed integer", line_no)
+        value = get_number(tokens, sid, 10, "signed integer", line_no)
     elif clss is Const:
-        value = get_number(tokens, 2, "binary number", line_no)
+        value = get_number(tokens, sid, 2, "binary number", line_no)
     elif clss is Consth:
-        value = get_number(tokens, 16, "hexadecimal number", line_no)
+        value = get_number(tokens, sid, 16, "hexadecimal number", line_no)
     comment = get_comment(tokens, line_no)
     return clss(nid, sid, value, comment, line_no)
 
