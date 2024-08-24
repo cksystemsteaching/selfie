@@ -29,25 +29,31 @@ class Line:
         return Line.lines[nid]
 
 class Sort(Line):
+    keyword = 'sort'
+
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, comment, line_no)
 
 class Bitvec(Sort):
+    keyword = 'bitvec'
+
     def __init__(self, nid, size, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.size = size
 
     def __str__(self):
-        return f"{self.nid} sort bitvec {self.size} {self.comment}"
+        return f"{self.nid} {Sort.keyword} {Bitvec.keyword} {self.size} {self.comment}"
 
 class Array(Sort):
+    keyword = 'array'
+
     def __init__(self, nid, array_size_sid, element_size_sid, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.array_size_line = Line.get(array_size_sid)
         self.element_size_line = Line.get(element_size_sid)
 
     def __str__(self):
-        return f"{self.nid} sort array {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
+        return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
 
 class Expression(Line):
     def __init__(self, nid, sid, comment, line_no):
@@ -60,39 +66,49 @@ class Constant(Expression):
         self.value = value
 
 class Zero(Constant):
+    keyword = 'zero'
+
     def __init__(self, nid, sid, comment, line_no):
         super().__init__(nid, sid, 0, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} zero {self.sid_line.nid} {self.comment}"
+        return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
 
 class One(Constant):
+    keyword = 'one'
+
     def __init__(self, nid, sid, comment, line_no):
         super().__init__(nid, sid, 1, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} one {self.sid_line.nid} {self.comment}"
+        return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
 
 class Constd(Constant):
+    keyword = 'constd'
+
     def __init__(self, nid, sid, value, comment, line_no):
         super().__init__(nid, sid, value, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} constd {self.sid_line.nid} {self.value} {self.comment}"
+        return f"{self.nid} {Constd.keyword} {self.sid_line.nid} {self.value} {self.comment}"
 
 class Const(Constant):
+    keyword = 'const'
+
     def __init__(self, nid, sid, value, comment, line_no):
         super().__init__(nid, sid, value, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} const {self.sid_line.nid} {self.value:b} {self.comment}"
+        return f"{self.nid} {Const.keyword} {self.sid_line.nid} {self.value:b} {self.comment}"
 
 class Consth(Constant):
+    keyword = 'consth'
+
     def __init__(self, nid, sid, value, comment, line_no):
         super().__init__(nid, sid, value, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} consth {self.sid_line.nid} {self.value:x} {self.comment}"
+        return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:x} {self.comment}"
 
 class Variable(Expression):
     def __init__(self, nid, sid, symbol, comment, line_no):
@@ -100,13 +116,17 @@ class Variable(Expression):
         self.symbol = symbol
 
 class Input(Variable):
+    keyword = 'input'
+
     def __init__(self, nid, sid, symbol, comment, line_no):
         super().__init__(nid, sid, symbol, comment, line_no)
 
     def __str__(self):
-        return f"{self.nid} input {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
 class State(Variable):
+    keyword = 'state'
+
     states = dict()
 
     def __init__(self, nid, sid, symbol, comment, line_no):
@@ -114,13 +134,27 @@ class State(Variable):
         self.new_state()
 
     def __str__(self):
-        return f"{self.nid} state {self.sid_line.nid} {self.symbol} {self.comment}"
+        return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
     def new_state(self):
         assert self not in State.states
         State.states[self.nid] = self
 
+class Unary(Expression):
+    keywords = {'not', 'inc', 'dec', 'neg'}
+
+    def __init__(self, nid, sid, op, arg_nid, comment, line_no):
+        super().__init__(nid, sid, comment, line_no)
+        self.op = op
+        #self.arg_line = Line.get(arg_nid)
+        self.arg_line = self
+
+    def __str__(self):
+        return f"{self.nid} {self.op} {self.arg_line.nid} {self.comment}"
+
 class Init(Line):
+    keyword = 'init'
+
     def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = Line.get(sid)
@@ -129,9 +163,11 @@ class Init(Line):
         self.value_line = self.state_line
 
     def __str__(self):
-        return f"{self.nid} init {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+        return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
 
 class Next(Line):
+    keyword = 'next'
+
     nexts = dict()
 
     def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
@@ -143,7 +179,7 @@ class Next(Line):
         self.new_next()
 
     def __str__(self):
-        return f"{self.nid} next {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+        return f"{self.nid} {Next.keyword} {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
 
     def new_next(self):
         assert self not in Next.nexts
@@ -156,29 +192,33 @@ class Property(Line):
         self.property_line = self
         self.symbol = symbol
 
-    def __str__(self):
-        if isinstance(self, Constraint):
-            return f"{self.nid} constraint {self.property_line.nid} {self.symbol} {self.comment}"
-        elif isinstance(self, Bad):
-            return f"{self.nid} bad {self.property_line.nid} {self.symbol} {self.comment}"
-
 class Constraint(Property):
+    keyword = 'constraint'
+
     constraints = dict()
 
     def __init__(self, nid, property_nid, symbol, comment, line_no):
         super().__init__(nid, property_nid, symbol, comment, line_no)
         self.new_constraint()
 
+    def __str__(self):
+        return f"{self.nid} {Constraint.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
+
     def new_constraint(self):
         assert self not in Constraint.constraints
         Constraint.constraints[self.nid] = self
 
 class Bad(Property):
+    keyword = 'bad'
+
     bads = dict()
 
     def __init__(self, nid, property_nid, symbol, comment, line_no):
         super().__init__(nid, property_nid, symbol, comment, line_no)
         self.new_bad()
+
+    def __str__(self):
+        return f"{self.nid} {Bad.keyword} {self.property_line.nid} {self.symbol} {self.comment}"
 
     def new_bad(self):
         assert self not in Bad.bads
@@ -213,7 +253,7 @@ def get_nid(tokens, clss, expected, line_no):
         raise syntax_error(f"defined {expected}", line_no)
 
 def get_bitvec_sid(tokens, line_no):
-    return get_nid(tokens, Bitvec, "bitvec sort nid", line_no)
+    return get_nid(tokens, Bitvec, "bitvector sort nid", line_no)
 
 def get_sid(tokens, line_no):
     return get_nid(tokens, Sort, "sort nid", line_no)
@@ -250,18 +290,18 @@ def get_comment(tokens, line_no):
     return comment
 
 def parse_sort_line(tokens, nid, line_no):
-    token = get_token(tokens, "bitvec or array", line_no)
-    if token == 'bitvec':
-        size = get_decimal(tokens, "bitvec size", line_no)
+    token = get_token(tokens, "bitvector or array", line_no)
+    if token == Bitvec.keyword:
+        size = get_decimal(tokens, "bitvector size", line_no)
         comment = get_comment(tokens, line_no)
         return Bitvec(nid, size, comment, line_no)
-    elif token == 'array':
+    elif token == Array.keyword:
         array_size_sid = get_bitvec_sid(tokens, line_no)
         element_size_sid = get_bitvec_sid(tokens, line_no)
         comment = get_comment(tokens, line_no)
         return Array(nid, array_size_sid, element_size_sid, comment, line_no)
     else:
-        raise syntax_error("bitvec or array", line_no)
+        raise syntax_error("bitvector or array", line_no)
 
 def parse_zero_one_line(tokens, nid, clss, line_no):
     sid = get_bitvec_sid(tokens, line_no)
@@ -292,6 +332,12 @@ def parse_variable_line(tokens, nid, clss, line_no):
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, sid, symbol, comment, line_no)
 
+def parse_unary_line(tokens, nid, op, line_no):
+    sid = get_sid(tokens, line_no)
+    arg_nid = get_value_nid(tokens, line_no)
+    comment = get_comment(tokens, line_no)
+    return Unary(nid, sid, op, arg_nid, comment, line_no)
+
 def parse_init_next_line(tokens, nid, clss, line_no):
     sid = get_sid(tokens, line_no)
     state_nid = get_state_nid(tokens, line_no)
@@ -315,29 +361,31 @@ def parse_btor2_line(line, line_no):
                 if nid > current_nid:
                     current_nid = nid
                     token = get_token(tokens, "keyword", line_no)
-                    if token == 'sort':
+                    if token == Sort.keyword:
                         print(parse_sort_line(tokens, nid, line_no))
-                    elif token == 'zero':
+                    elif token == Zero.keyword:
                         print(parse_zero_one_line(tokens, nid, Zero, line_no))
-                    elif token == 'one':
+                    elif token == One.keyword:
                         print(parse_zero_one_line(tokens, nid, One, line_no))
-                    elif token == 'constd':
+                    elif token == Constd.keyword:
                         print(parse_constant_line(tokens, nid, Constd, line_no))
-                    elif token == 'const':
+                    elif token == Const.keyword:
                         print(parse_constant_line(tokens, nid, Const, line_no))
-                    elif token == 'consth':
+                    elif token == Consth.keyword:
                         print(parse_constant_line(tokens, nid, Consth, line_no))
-                    elif token == 'input':
+                    elif token == Input.keyword:
                         print(parse_variable_line(tokens, nid, Input, line_no))
-                    elif token == 'state':
+                    elif token == State.keyword:
                         print(parse_variable_line(tokens, nid, State, line_no))
-                    elif token == 'init':
+                    elif token in Unary.keywords:
+                        print(parse_unary_line(tokens, nid, token, line_no))
+                    elif token == Init.keyword:
                         print(parse_init_next_line(tokens, nid, Init, line_no))
-                    elif token == 'next':
+                    elif token == Next.keyword:
                         print(parse_init_next_line(tokens, nid, Next, line_no))
-                    elif token == 'constraint':
+                    elif token == Constraint.keyword:
                         print(parse_property_line(tokens, nid, Constraint, line_no))
-                    elif token == 'bad':
+                    elif token == Bad.keyword:
                         print(parse_property_line(tokens, nid, Bad, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
