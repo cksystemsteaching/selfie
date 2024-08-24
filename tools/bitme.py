@@ -8,25 +8,25 @@ class syntax_error(Exception):
 
 current_nid = 0
 
-lines = dict()
-
-def new_line(line):
-    global lines
-    assert line not in lines
-    lines[line.nid] = line
-    return line
-
-def retrieve_line(nid):
-    global lines
-    assert nid in lines
-    return lines[nid]
-
 class Line:
+    lines = dict()
+
     def __init__(self, nid, comment, line_no):
         self.nid = nid
         self.comment = comment
         self.line_no = line_no
-        new_line(self)
+        self.new_line()
+
+    def new_line(self):
+        assert self not in Line.lines
+        Line.lines[self.nid] = self
+
+    def is_defined(nid):
+        return nid in Line.lines
+
+    def get(nid):
+        assert nid in Line.lines
+        return Line.lines[nid]
 
 class Sort(Line):
     def __init__(self, nid, comment, line_no):
@@ -43,8 +43,8 @@ class Bitvec(Sort):
 class Array(Sort):
     def __init__(self, nid, array_size_sid, element_size_sid, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.array_size_line = retrieve_line(array_size_sid)
-        self.element_size_line = retrieve_line(element_size_sid)
+        self.array_size_line = Line.get(array_size_sid)
+        self.element_size_line = Line.get(element_size_sid)
 
     def __str__(self):
         return f"{self.nid} sort array {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
@@ -52,7 +52,7 @@ class Array(Sort):
 class Expression(Line):
     def __init__(self, nid, sid, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = retrieve_line(sid)
+        self.sid_line = Line.get(sid)
 
 class Constant(Expression):
     def __init__(self, nid, sid, value, comment, line_no):
@@ -107,31 +107,82 @@ class Input(Variable):
         return f"{self.nid} input {self.sid_line.nid} {self.symbol} {self.comment}"
 
 class State(Variable):
+    states = dict()
+
     def __init__(self, nid, sid, symbol, comment, line_no):
         super().__init__(nid, sid, symbol, comment, line_no)
+        self.new_state()
 
     def __str__(self):
         return f"{self.nid} state {self.sid_line.nid} {self.symbol} {self.comment}"
 
+    def new_state(self):
+        assert self not in State.states
+        State.states[self.nid] = self
+
 class Init(Line):
     def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = retrieve_line(sid)
-        self.state_line = retrieve_line(state_nid)
-        self.value_line = retrieve_line(value_nid)
+        self.sid_line = Line.get(sid)
+        self.state_line = Line.get(state_nid)
+        # TODO: self.value_line = Line.get(value_nid)
+        self.value_line = self.state_line
 
     def __str__(self):
         return f"{self.nid} init {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
 
 class Next(Line):
+    nexts = dict()
+
     def __init__(self, nid, sid, state_nid, value_nid, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = retrieve_line(sid)
-        self.state_line = retrieve_line(state_nid)
-        self.value_line = retrieve_line(value_nid)
+        self.sid_line = Line.get(sid)
+        self.state_line = Line.get(state_nid)
+        # TODO: self.value_line = Line.get(value_nid)
+        self.value_line = self.state_line
+        self.new_next()
 
     def __str__(self):
         return f"{self.nid} next {self.sid_line.nid} {self.state_line.nid} {self.value_line.nid} {self.comment}"
+
+    def new_next(self):
+        assert self not in Next.nexts
+        Next.nexts[self.nid] = self
+
+class Property(Line):
+    def __init__(self, nid, property_nid, symbol, comment, line_no):
+        super().__init__(nid, comment, line_no)
+        # TODO: self.property_line = Line.get(property_nid)
+        self.property_line = self
+        self.symbol = symbol
+
+    def __str__(self):
+        if isinstance(self, Constraint):
+            return f"{self.nid} constraint {self.property_line.nid} {self.symbol} {self.comment}"
+        elif isinstance(self, Bad):
+            return f"{self.nid} bad {self.property_line.nid} {self.symbol} {self.comment}"
+
+class Constraint(Property):
+    constraints = dict()
+
+    def __init__(self, nid, property_nid, symbol, comment, line_no):
+        super().__init__(nid, property_nid, symbol, comment, line_no)
+        self.new_constraint()
+
+    def new_constraint(self):
+        assert self not in Constraint.constraints
+        Constraint.constraints[self.nid] = self
+
+class Bad(Property):
+    bads = dict()
+
+    def __init__(self, nid, property_nid, symbol, comment, line_no):
+        super().__init__(nid, property_nid, symbol, comment, line_no)
+        self.new_bad()
+
+    def new_bad(self):
+        assert self not in Bad.bads
+        Bad.bads[self.nid] = self
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -151,11 +202,10 @@ def get_decimal(tokens, expected, line_no):
     else:
         raise syntax_error(expected, line_no)
 
-def get_nid(tokens, line, expected, line_no):
-    global lines
+def get_nid(tokens, clss, expected, line_no):
     nid = get_decimal(tokens, expected, line_no)
-    if nid in lines:
-        if isinstance(retrieve_line(nid), line):
+    if Line.is_defined(nid):
+        if isinstance(Line.get(nid), clss):
             return nid
         else:
             raise syntax_error(expected, line_no)
@@ -172,7 +222,8 @@ def get_state_nid(tokens, line_no):
     return get_nid(tokens, State, "state nid", line_no)
 
 def get_value_nid(tokens, line_no):
-    return get_nid(tokens, Expression, "value nid", line_no)
+    # TODO: return get_nid(tokens, Expression, "value nid", line_no)
+    return get_decimal(tokens, "value nid", line_no)
 
 def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
@@ -212,31 +263,21 @@ def parse_sort_line(tokens, nid, line_no):
     else:
         raise syntax_error("bitvec or array", line_no)
 
-def parse_zero_one_line(tokens, nid, value, line_no):
+def parse_zero_one_line(tokens, nid, clss, line_no):
     sid = get_bitvec_sid(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    if (value == 0):
-        return Zero(nid, sid, comment, line_no)
-    else:
-        return One(nid, sid, comment, line_no)
+    return clss(nid, sid, comment, line_no)
 
-def parse_constd_line(tokens, nid, line_no):
+def parse_constant_line(tokens, nid, clss, line_no):
     sid = get_bitvec_sid(tokens, line_no)
-    value = get_number(tokens, 10, "signed integer", line_no)
+    if clss is Constd:
+        value = get_number(tokens, 10, "signed integer", line_no)
+    elif clss is Const:
+        value = get_number(tokens, 2, "binary number", line_no)
+    elif clss is Consth:
+        value = get_number(tokens, 16, "hexadecimal number", line_no)
     comment = get_comment(tokens, line_no)
-    return Constd(nid, sid, value, comment, line_no)
-
-def parse_const_line(tokens, nid, line_no):
-    sid = get_bitvec_sid(tokens, line_no)
-    value = get_number(tokens, 2, "binary number", line_no)
-    comment = get_comment(tokens, line_no)
-    return Const(nid, sid, value, comment, line_no)
-
-def parse_consth_line(tokens, nid, line_no):
-    sid = get_bitvec_sid(tokens, line_no)
-    value = get_number(tokens, 16, "hexadecimal number", line_no)
-    comment = get_comment(tokens, line_no)
-    return Consth(nid, sid, value, comment, line_no)
+    return clss(nid, sid, value, comment, line_no)
 
 def parse_symbol_comment(tokens, line_no):
     symbol = get_symbol(tokens)
@@ -246,29 +287,22 @@ def parse_symbol_comment(tokens, line_no):
             return "", symbol
     return symbol, comment
 
-def parse_input_line(tokens, nid, line_no):
+def parse_variable_line(tokens, nid, clss, line_no):
     sid = get_sid(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return Input(nid, sid, symbol, comment, line_no)
+    return clss(nid, sid, symbol, comment, line_no)
 
-def parse_state_line(tokens, nid, line_no):
-    sid = get_sid(tokens, line_no)
-    symbol, comment = parse_symbol_comment(tokens, line_no)
-    return State(nid, sid, symbol, comment, line_no)
-
-def parse_init_line(tokens, nid, line_no):
+def parse_init_next_line(tokens, nid, clss, line_no):
     sid = get_sid(tokens, line_no)
     state_nid = get_state_nid(tokens, line_no)
     value_nid = get_value_nid(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Init(nid, sid, state_nid, value_nid, comment, line_no)
+    return clss(nid, sid, state_nid, value_nid, comment, line_no)
 
-def parse_next_line(tokens, nid, line_no):
-    sid = get_sid(tokens, line_no)
-    state_nid = get_state_nid(tokens, line_no)
-    value_nid = get_value_nid(tokens, line_no)
-    comment = get_comment(tokens, line_no)
-    return Next(nid, sid, state_nid, value_nid, comment, line_no)
+def parse_property_line(tokens, nid, clss, line_no):
+    property_nid = get_value_nid(tokens, line_no)
+    symbol, comment = parse_symbol_comment(tokens, line_no)
+    return clss(nid, property_nid, symbol, comment, line_no)
 
 def parse_btor2_line(line, line_no):
     global current_nid
@@ -284,23 +318,27 @@ def parse_btor2_line(line, line_no):
                     if token == 'sort':
                         print(parse_sort_line(tokens, nid, line_no))
                     elif token == 'zero':
-                        print(parse_zero_one_line(tokens, nid, 0, line_no))
+                        print(parse_zero_one_line(tokens, nid, Zero, line_no))
                     elif token == 'one':
-                        print(parse_zero_one_line(tokens, nid, 1, line_no))
+                        print(parse_zero_one_line(tokens, nid, One, line_no))
                     elif token == 'constd':
-                        print(parse_constd_line(tokens, nid, line_no))
+                        print(parse_constant_line(tokens, nid, Constd, line_no))
                     elif token == 'const':
-                        print(parse_const_line(tokens, nid, line_no))
+                        print(parse_constant_line(tokens, nid, Const, line_no))
                     elif token == 'consth':
-                        print(parse_consth_line(tokens, nid, line_no))
+                        print(parse_constant_line(tokens, nid, Consth, line_no))
                     elif token == 'input':
-                        print(parse_input_line(tokens, nid, line_no))
+                        print(parse_variable_line(tokens, nid, Input, line_no))
                     elif token == 'state':
-                        print(parse_state_line(tokens, nid, line_no))
+                        print(parse_variable_line(tokens, nid, State, line_no))
                     elif token == 'init':
-                        print(parse_init_line(tokens, nid, line_no))
+                        print(parse_init_next_line(tokens, nid, Init, line_no))
                     elif token == 'next':
-                        print(parse_next_line(tokens, nid, line_no))
+                        print(parse_init_next_line(tokens, nid, Next, line_no))
+                    elif token == 'constraint':
+                        print(parse_property_line(tokens, nid, Constraint, line_no))
+                    elif token == 'bad':
+                        print(parse_property_line(tokens, nid, Bad, line_no))
                     return
                 raise syntax_error("increasing nid", line_no)
             raise syntax_error("nid", line_no)
