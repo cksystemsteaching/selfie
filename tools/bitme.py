@@ -247,17 +247,66 @@ class Binary(Expression):
 class Implies(Binary):
     keyword = 'implies'
 
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
+        if not sid_line.is_boolean_sort():
+            raise model_error("Boolean result", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line):
+            raise model_error("compatible result and first operand sorts", line_no)
+        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first and second operand sorts", line_no)
+
 class Comparison(Binary):
     keywords = {'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte'}
+
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
+        if not sid_line.is_boolean_sort():
+            raise model_error("Boolean result", line_no)
+        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first and second operand sorts", line_no)
 
 class Computation(Binary):
     keywords = {'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
 
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line):
+            raise model_error("compatible result and first operand sorts", line_no)
+        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first and second operand sorts", line_no)
+
 class Concat(Binary):
     keyword = 'concat'
 
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
+        if not isinstance(arg1_line.sid_line, Bitvec):
+            raise model_error("bitvector first operand", line_no)
+        if not isinstance(arg2_line.sid_line, Bitvec):
+            raise model_error("bitvector second operand", line_no)
+        if sid_line.size != arg1_line.size + arg2_line.size:
+            raise model_error("compatible bitvector result", line_no)
+
 class Read(Binary):
     keyword = 'read'
+
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(arg1_line.sid_line, Array):
+            raise model_error("array first operand", line_no)
+        if not arg1_line.sid_line.array_size_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first operand array size and second operand sorts", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
+            raise model_error("compatible result and first operand element size sorts", line_no)
 
 class Ternary(Expression):
     keywords = {'ite', 'write'}
@@ -586,7 +635,6 @@ def parse_unary_line(tokens, nid, op, line_no):
     return Unary(nid, op, sid_line, arg1_line, comment, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     arg2_line = get_exp_line(tokens, line_no)
