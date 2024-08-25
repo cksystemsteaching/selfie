@@ -34,6 +34,9 @@ class Sort(Line):
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, comment, line_no)
 
+    def match_sorts(self, sort):
+        return type(self) == type(sort)
+
 class Bitvec(Sort):
     keyword = 'bitvec'
 
@@ -43,6 +46,12 @@ class Bitvec(Sort):
 
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Bitvec.keyword} {self.size} {self.comment}"
+
+    def match_sorts(self, sort):
+        return super().match_sorts(sort) and self.size == sort.size
+
+    def match_init_sorts(self, sort):
+        return self.match_sorts(sort)
 
 class Array(Sort):
     keyword = 'array'
@@ -54,6 +63,12 @@ class Array(Sort):
 
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
+
+    def match_sorts(self, sort):
+        return super().match_sorts(sort) and self.array_size_line.match_sorts(sort.array_size_line) and self.element_size_line.match_sorts(sort.element_size_line)
+
+    def match_init_sorts(self, sort):
+        return self.match_sorts(sort) or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort))
 
 class Expression(Line):
     def __init__(self, nid, sid_line, comment, line_no):
@@ -231,6 +246,12 @@ class Init(Line):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        if not isinstance(state_line, State):
+            raise syntax_error("state left operand", line_no)
+        if not isinstance(exp_line, Expression):
+            raise syntax_error("expression right operand", line_no)
+        if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
+            raise syntax_error("compatible sorts", line_no)
         if self.state_line.init_line == self.state_line:
             self.state_line.init_line = self
         else:
@@ -249,6 +270,12 @@ class Next(Line):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        if not isinstance(state_line, State):
+            raise syntax_error("state left operand", line_no)
+        if not isinstance(exp_line, Expression):
+            raise syntax_error("expression right operand", line_no)
+        if not state_line.sid_line.match_sorts(exp_line.sid_line):
+            raise syntax_error("compatible sorts", line_no)
         if self.state_line.next_line == self.state_line:
             self.state_line.next_line = self
         else:
@@ -453,7 +480,6 @@ def parse_ternary_line(tokens, nid, op, line_no):
     return Ternary(nid, sid_line, op, arg1_line, arg2_line, arg3_line, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
