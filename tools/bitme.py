@@ -47,29 +47,31 @@ class Bitvec(Sort):
 class Array(Sort):
     keyword = 'array'
 
-    def __init__(self, nid, array_size_sid, element_size_sid, comment, line_no):
+    def __init__(self, nid, array_size_line, element_size_line, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.array_size_line = Line.get(array_size_sid)
-        self.element_size_line = Line.get(element_size_sid)
+        self.array_size_line = array_size_line
+        self.element_size_line = element_size_line
 
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
 
 class Expression(Line):
-    def __init__(self, nid, sid, comment, line_no):
+    def __init__(self, nid, sid_line, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = Line.get(sid)
+        self.sid_line = sid_line
 
 class Constant(Expression):
-    def __init__(self, nid, sid, value, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
         self.value = value
+        if value >= 2**sid_line.size:
+            raise syntax_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
 class Zero(Constant):
     keyword = 'zero'
 
-    def __init__(self, nid, sid, comment, line_no):
-        super().__init__(nid, sid, 0, comment, line_no)
+    def __init__(self, nid, sid_line, comment, line_no):
+        super().__init__(nid, sid_line, 0, comment, line_no)
 
     def __str__(self):
         return f"{self.nid} {Zero.keyword} {self.sid_line.nid} {self.comment}"
@@ -77,8 +79,8 @@ class Zero(Constant):
 class One(Constant):
     keyword = 'one'
 
-    def __init__(self, nid, sid, comment, line_no):
-        super().__init__(nid, sid, 1, comment, line_no)
+    def __init__(self, nid, sid_line, comment, line_no):
+        super().__init__(nid, sid_line, 1, comment, line_no)
 
     def __str__(self):
         return f"{self.nid} {One.keyword} {self.sid_line.nid} {self.comment}"
@@ -86,8 +88,8 @@ class One(Constant):
 class Constd(Constant):
     keyword = 'constd'
 
-    def __init__(self, nid, sid, value, comment, line_no):
-        super().__init__(nid, sid, value, comment, line_no)
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        super().__init__(nid, sid_line, value, comment, line_no)
 
     def __str__(self):
         return f"{self.nid} {Constd.keyword} {self.sid_line.nid} {self.value} {self.comment}"
@@ -95,8 +97,8 @@ class Constd(Constant):
 class Const(Constant):
     keyword = 'const'
 
-    def __init__(self, nid, sid, value, comment, line_no):
-        super().__init__(nid, sid, value, comment, line_no)
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        super().__init__(nid, sid_line, value, comment, line_no)
 
     def __str__(self):
         size = self.sid_line.size
@@ -105,23 +107,23 @@ class Const(Constant):
 class Consth(Constant):
     keyword = 'consth'
 
-    def __init__(self, nid, sid, value, comment, line_no):
-        super().__init__(nid, sid, value, comment, line_no)
+    def __init__(self, nid, sid_line, value, comment, line_no):
+        super().__init__(nid, sid_line, value, comment, line_no)
 
     def __str__(self):
         size = math.ceil(self.sid_line.size / 4)
         return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
 
 class Variable(Expression):
-    def __init__(self, nid, sid, symbol, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
         self.symbol = symbol
 
 class Input(Variable):
     keyword = 'input'
 
-    def __init__(self, nid, sid, symbol, comment, line_no):
-        super().__init__(nid, sid, symbol, comment, line_no)
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
+        super().__init__(nid, sid_line, symbol, comment, line_no)
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -131,8 +133,8 @@ class State(Variable):
 
     states = dict()
 
-    def __init__(self, nid, sid, symbol, comment, line_no):
-        super().__init__(nid, sid, symbol, comment, line_no)
+    def __init__(self, nid, sid_line, symbol, comment, line_no):
+        super().__init__(nid, sid_line, symbol, comment, line_no)
         self.init_line = self
         self.next_line = self
         self.new_state()
@@ -145,15 +147,15 @@ class State(Variable):
         State.states[self.nid] = self
 
 class Indexed(Expression):
-    def __init__(self, nid, sid, arg1_nid, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
-        self.arg1_line = Line.get(arg1_nid)
+    def __init__(self, nid, sid_line, arg1_line, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
+        self.arg1_line = arg1_line
 
 class Ext(Indexed):
     keywords = {'sext', 'uext'}
 
-    def __init__(self, nid, sid, op, arg1_nid, w, comment, line_no):
-        super().__init__(nid, sid, arg1_nid, comment, line_no)
+    def __init__(self, nid, op, sid_line, arg1_line, w, comment, line_no):
+        super().__init__(nid, sid_line, arg1_line, comment, line_no)
         self.op = op
         self.w = w
 
@@ -163,8 +165,8 @@ class Ext(Indexed):
 class Slice(Indexed):
     keyword = 'slice'
 
-    def __init__(self, nid, sid, arg1_nid, u, l, comment, line_no):
-        super().__init__(nid, sid, arg1_nid, comment, line_no)
+    def __init__(self, nid, sid_line, arg1_line, u, l, comment, line_no):
+        super().__init__(nid, sid_line, arg1_line, comment, line_no)
         self.u = u
         self.l = l
 
@@ -174,10 +176,10 @@ class Slice(Indexed):
 class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
 
-    def __init__(self, nid, sid, op, arg1_nid, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
+    def __init__(self, nid, sid_line, op, arg1_line, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
         self.op = op
-        self.arg1_line = Line.get(arg1_nid)
+        self.arg1_line = arg1_line
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
@@ -185,11 +187,11 @@ class Unary(Expression):
 class Binary(Expression):
     keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
 
-    def __init__(self, nid, sid, op, arg1_nid, arg2_nid, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
+    def __init__(self, nid, sid_line, op, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
         self.op = op
-        self.arg1_line = Line.get(arg1_nid)
-        self.arg2_line = Line.get(arg2_nid)
+        self.arg1_line = arg1_line
+        self.arg2_line = arg2_line
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
@@ -197,12 +199,12 @@ class Binary(Expression):
 class Ternary(Expression):
     keywords = {'ite', 'write'}
 
-    def __init__(self, nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no):
-        super().__init__(nid, sid, comment, line_no)
+    def __init__(self, nid, sid_line, op, arg1_line, arg2_line, arg3_line, comment, line_no):
+        super().__init__(nid, sid_line, comment, line_no)
         self.op = op
-        self.arg1_line = Line.get(arg1_nid)
-        self.arg2_line = Line.get(arg2_nid)
-        self.arg3_line = Line.get(arg3_nid)
+        self.arg1_line = arg1_line
+        self.arg2_line = arg2_line
+        self.arg3_line = arg3_line
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
@@ -210,11 +212,11 @@ class Ternary(Expression):
 class Init(Line):
     keyword = 'init'
 
-    def __init__(self, nid, sid, state_nid, exp_nid, comment, line_no):
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = Line.get(sid)
-        self.state_line = Line.get(state_nid)
-        self.exp_line = Line.get(exp_nid)
+        self.sid_line = sid_line
+        self.state_line = state_line
+        self.exp_line = exp_line
         if self.state_line.init_line == self.state_line:
             self.state_line.init_line = self
         else:
@@ -228,11 +230,11 @@ class Next(Line):
 
     nexts = dict()
 
-    def __init__(self, nid, sid, state_nid, exp_nid, comment, line_no):
+    def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.sid_line = Line.get(sid)
-        self.state_line = Line.get(state_nid)
-        self.exp_line = Line.get(exp_nid)
+        self.sid_line = sid_line
+        self.state_line = state_line
+        self.exp_line = exp_line
         if self.state_line.next_line == self.state_line:
             self.state_line.next_line = self
         else:
@@ -247,9 +249,9 @@ class Next(Line):
         Next.nexts[self.nid] = self
 
 class Property(Line):
-    def __init__(self, nid, property_nid, symbol, comment, line_no):
+    def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, comment, line_no)
-        self.property_line = Line.get(property_nid)
+        self.property_line = property_line
         self.symbol = symbol
 
 class Constraint(Property):
@@ -257,8 +259,8 @@ class Constraint(Property):
 
     constraints = dict()
 
-    def __init__(self, nid, property_nid, symbol, comment, line_no):
-        super().__init__(nid, property_nid, symbol, comment, line_no)
+    def __init__(self, nid, property_line, symbol, comment, line_no):
+        super().__init__(nid, property_line, symbol, comment, line_no)
         self.new_constraint()
 
     def __str__(self):
@@ -273,8 +275,8 @@ class Bad(Property):
 
     bads = dict()
 
-    def __init__(self, nid, property_nid, symbol, comment, line_no):
-        super().__init__(nid, property_nid, symbol, comment, line_no)
+    def __init__(self, nid, property_line, symbol, comment, line_no):
+        super().__init__(nid, property_line, symbol, comment, line_no)
         self.new_bad()
 
     def __str__(self):
@@ -302,41 +304,38 @@ def get_decimal(tokens, expected, line_no):
     else:
         raise syntax_error(expected, line_no)
 
-def get_nid(tokens, clss, expected, line_no):
+def get_nid_line(tokens, clss, expected, line_no):
     nid = get_decimal(tokens, expected, line_no)
     if Line.is_defined(nid):
-        if isinstance(Line.get(nid), clss):
-            return nid
+        line = Line.get(nid)
+        if isinstance(line, clss):
+            return line
         else:
             raise syntax_error(expected, line_no)
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
-def get_bitvec_sid(tokens, line_no):
-    return get_nid(tokens, Bitvec, "bitvector sort nid", line_no)
+def get_bitvec_sid_line(tokens, line_no):
+    return get_nid_line(tokens, Bitvec, "bitvector sort nid", line_no)
 
-def get_sid(tokens, line_no):
-    return get_nid(tokens, Sort, "sort nid", line_no)
+def get_sid_line(tokens, line_no):
+    return get_nid_line(tokens, Sort, "sort nid", line_no)
 
-def get_state_nid(tokens, line_no):
-    return get_nid(tokens, State, "state nid", line_no)
+def get_state_line(tokens, line_no):
+    return get_nid_line(tokens, State, "state nid", line_no)
 
-def get_exp_nid(tokens, line_no):
-    return get_nid(tokens, Expression, "expression nid", line_no)
+def get_exp_line(tokens, line_no):
+    return get_nid_line(tokens, Expression, "expression nid", line_no)
 
-def get_number(tokens, sid, base, expected, line_no):
+def get_number(tokens, base, expected, line_no):
     token = get_token(tokens, expected, line_no)
     try:
         if (base == 10):
-            value = int(token)
+            return int(token)
         else:
-            value = int(token, base)
+            return int(token, base)
     except ValueError:
         raise syntax_error(expected, line_no)
-    if value < 2**Line.get(sid).size:
-        return value
-    else:
-        raise syntax_error(f"{value} in range of {Line.get(sid).size}-bit bitvector", line_no)
 
 def get_symbol(tokens):
     try:
@@ -358,28 +357,28 @@ def parse_sort_line(tokens, nid, line_no):
         comment = get_comment(tokens, line_no)
         return Bitvec(nid, size, comment, line_no)
     elif token == Array.keyword:
-        array_size_sid = get_bitvec_sid(tokens, line_no)
-        element_size_sid = get_bitvec_sid(tokens, line_no)
+        array_size_line = get_bitvec_sid_line(tokens, line_no)
+        element_size_line = get_bitvec_sid_line(tokens, line_no)
         comment = get_comment(tokens, line_no)
-        return Array(nid, array_size_sid, element_size_sid, comment, line_no)
+        return Array(nid, array_size_line, element_size_line, comment, line_no)
     else:
         raise syntax_error("bitvector or array", line_no)
 
 def parse_zero_one_line(tokens, nid, clss, line_no):
-    sid = get_bitvec_sid(tokens, line_no)
+    sid_line = get_bitvec_sid_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid, comment, line_no)
+    return clss(nid, sid_line, comment, line_no)
 
 def parse_constant_line(tokens, nid, clss, line_no):
-    sid = get_bitvec_sid(tokens, line_no)
+    sid_line = get_bitvec_sid_line(tokens, line_no)
     if clss is Constd:
-        value = get_number(tokens, sid, 10, "signed integer", line_no)
+        value = get_number(tokens, 10, "signed integer", line_no)
     elif clss is Const:
-        value = get_number(tokens, sid, 2, "binary number", line_no)
+        value = get_number(tokens, 2, "binary number", line_no)
     elif clss is Consth:
-        value = get_number(tokens, sid, 16, "hexadecimal number", line_no)
+        value = get_number(tokens, 16, "hexadecimal number", line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid, value, comment, line_no)
+    return clss(nid, sid_line, value, comment, line_no)
 
 def parse_symbol_comment(tokens, line_no):
     symbol = get_symbol(tokens)
@@ -390,64 +389,64 @@ def parse_symbol_comment(tokens, line_no):
     return symbol, comment
 
 def parse_variable_line(tokens, nid, clss, line_no):
-    sid = get_sid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return clss(nid, sid, symbol, comment, line_no)
+    return clss(nid, sid_line, symbol, comment, line_no)
 
 def parse_ext_line(tokens, nid, op, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    arg1_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    arg1_line = get_exp_line(tokens, line_no)
     w = get_decimal(tokens, "bit width", line_no)
     comment = get_comment(tokens, line_no)
-    return Ext(nid, sid, op, arg1_nid, w, comment, line_no)
+    return Ext(nid, op, sid_line, arg1_line, w, comment, line_no)
 
 def parse_slice_line(tokens, nid, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    arg1_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    arg1_line = get_exp_line(tokens, line_no)
     u = get_decimal(tokens, "upper bit", line_no)
     l = get_decimal(tokens, "lower bit", line_no)
     comment = get_comment(tokens, line_no)
-    return Slice(nid, sid, arg1_nid, u, l, comment, line_no)
+    return Slice(nid, sid_line, arg1_line, u, l, comment, line_no)
 
 def parse_unary_line(tokens, nid, op, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    arg1_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    arg1_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Unary(nid, sid, op, arg1_nid, comment, line_no)
+    return Unary(nid, sid_line, op, arg1_line, comment, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    arg1_nid = get_exp_nid(tokens, line_no)
-    arg2_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    arg1_line = get_exp_line(tokens, line_no)
+    arg2_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Binary(nid, sid, op, arg1_nid, arg2_nid, comment, line_no)
+    return Binary(nid, sid_line, op, arg1_line, arg2_line, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    arg1_nid = get_exp_nid(tokens, line_no)
-    arg2_nid = get_exp_nid(tokens, line_no)
-    arg3_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    arg1_line = get_exp_line(tokens, line_no)
+    arg2_line = get_exp_line(tokens, line_no)
+    arg3_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Ternary(nid, sid, op, arg1_nid, arg2_nid, arg3_nid, comment, line_no)
+    return Ternary(nid, sid_line, op, arg1_line, arg2_line, arg3_line, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
     # TODO: check sorts
-    sid = get_sid(tokens, line_no)
-    state_nid = get_state_nid(tokens, line_no)
-    exp_nid = get_exp_nid(tokens, line_no)
+    sid_line = get_sid_line(tokens, line_no)
+    state_line = get_state_line(tokens, line_no)
+    exp_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid, state_nid, exp_nid, comment, line_no)
+    return clss(nid, sid_line, state_line, exp_line, comment, line_no)
 
 def parse_property_line(tokens, nid, clss, line_no):
     # TODO: check for Boolean sort
-    property_nid = get_exp_nid(tokens, line_no)
+    property_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return clss(nid, property_nid, symbol, comment, line_no)
+    return clss(nid, property_line, symbol, comment, line_no)
 
 def parse_btor2_line(line, line_no):
     global current_nid
