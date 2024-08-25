@@ -267,6 +267,12 @@ class Property(Line):
         super().__init__(nid, comment, line_no)
         self.property_line = property_line
         self.symbol = symbol
+        if not isinstance(property_line, Expression):
+            raise syntax_error("expression operand", line_no)
+        if not isinstance(property_line.sid_line, Bitvec):
+            raise syntax_error("bitvector operand", line_no)
+        if property_line.sid_line.size != 1:
+            raise syntax_error("Boolean operand", line_no)
 
 class Constraint(Property):
     keyword = 'constraint'
@@ -455,7 +461,6 @@ def parse_init_next_line(tokens, nid, clss, line_no):
     return clss(nid, sid_line, state_line, exp_line, comment, line_no)
 
 def parse_property_line(tokens, nid, clss, line_no):
-    # TODO: check for Boolean sort
     property_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, property_line, symbol, comment, line_no)
