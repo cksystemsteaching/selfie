@@ -639,7 +639,7 @@ def parse_binary_line(tokens, nid, op, line_no):
     arg1_line = get_exp_line(tokens, line_no)
     arg2_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Binary(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+    return get_class(op)(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
