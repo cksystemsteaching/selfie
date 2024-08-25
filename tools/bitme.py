@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-import math, re
+import math
 
-class syntax_error(Exception):
+class model_error(Exception):
     def __init__(self, expected, line_no):
-        super().__init__(f"syntax error in line {line_no}: {expected} expected")
-
-current_nid = 0
+        super().__init__(f"model error in line {line_no}: {expected} expected")
 
 class Line:
     lines = dict()
@@ -60,6 +58,10 @@ class Array(Sort):
         super().__init__(nid, comment, line_no)
         self.array_size_line = array_size_line
         self.element_size_line = element_size_line
+        if not isinstance(array_size_line, Bitvec):
+            raise model_error("array size bitvector", line_no)
+        if not isinstance(element_size_line, Bitvec):
+            raise model_error("element size bitvector", line_no)
 
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
@@ -74,13 +76,15 @@ class Expression(Line):
     def __init__(self, nid, sid_line, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
+        if not isinstance(sid_line, Sort):
+            raise model_error("sort", line_no)
 
 class Constant(Expression):
     def __init__(self, nid, sid_line, value, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.value = value
         if value >= 2**sid_line.size:
-            raise syntax_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
+            raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
 class Zero(Constant):
     keyword = 'zero'
@@ -166,11 +170,11 @@ class Indexed(Expression):
         super().__init__(nid, sid_line, comment, line_no)
         self.arg1_line = arg1_line
         if not isinstance(sid_line, Bitvec):
-            raise syntax_error("bitvector result", line_no)
+            raise model_error("bitvector result", line_no)
         if not isinstance(arg1_line, Expression):
-            raise syntax_error("expression operand", line_no)
+            raise model_error("expression operand", line_no)
         if not isinstance(arg1_line.sid_line, Bitvec):
-            raise syntax_error("bitvector operand", line_no)
+            raise model_error("bitvector operand", line_no)
 
 class Ext(Indexed):
     keywords = {'sext', 'uext'}
@@ -180,7 +184,7 @@ class Ext(Indexed):
         self.op = op
         self.w = w
         if sid_line.size != arg1_line.sid_line.size + w:
-            raise syntax_error("compatible bitvector sorts", line_no)
+            raise model_error("compatible bitvector sorts", line_no)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
@@ -193,11 +197,11 @@ class Slice(Indexed):
         self.u = u
         self.l = l
         if u >= arg1_line.sid_line.size:
-            raise syntax_error("upper bit in range", line_no)
+            raise model_error("upper bit in range", line_no)
         if u < l:
-            raise syntax_error("upper bit >= lower bit", line_no)
+            raise model_error("upper bit >= lower bit", line_no)
         if sid_line.size != u - l + 1:
-            raise syntax_error("compatible bitvector sorts", line_no)
+            raise model_error("compatible bitvector sorts", line_no)
 
     def __str__(self):
         return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
@@ -205,10 +209,16 @@ class Slice(Indexed):
 class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
 
-    def __init__(self, nid, sid_line, op, arg1_line, comment, line_no):
+    def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
+        if not isinstance(arg1_line, Expression):
+            raise model_error("expression operand", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line):
+            raise model_error("compatible sorts", line_no)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
@@ -216,7 +226,7 @@ class Unary(Expression):
 class Binary(Expression):
     keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
 
-    def __init__(self, nid, sid_line, op, arg1_line, arg2_line, comment, line_no):
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
@@ -228,7 +238,7 @@ class Binary(Expression):
 class Ternary(Expression):
     keywords = {'ite', 'write'}
 
-    def __init__(self, nid, sid_line, op, arg1_line, arg2_line, arg3_line, comment, line_no):
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
@@ -246,16 +256,18 @@ class Init(Line):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        if not isinstance(sid_line, Sort):
+            raise model_error("sort", line_no)
         if not isinstance(state_line, State):
-            raise syntax_error("state left operand", line_no)
+            raise model_error("state left operand", line_no)
         if not isinstance(exp_line, Expression):
-            raise syntax_error("expression right operand", line_no)
+            raise model_error("expression right operand", line_no)
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
-            raise syntax_error("compatible sorts", line_no)
+            raise model_error("compatible sorts", line_no)
         if self.state_line.init_line == self.state_line:
             self.state_line.init_line = self
         else:
-            raise syntax_error("uninitialized state", line_no)
+            raise model_error("uninitialized state", line_no)
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
@@ -270,16 +282,18 @@ class Next(Line):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        if not isinstance(sid_line, Sort):
+            raise model_error("sort", line_no)
         if not isinstance(state_line, State):
-            raise syntax_error("state left operand", line_no)
+            raise model_error("state left operand", line_no)
         if not isinstance(exp_line, Expression):
-            raise syntax_error("expression right operand", line_no)
+            raise model_error("expression right operand", line_no)
         if not state_line.sid_line.match_sorts(exp_line.sid_line):
-            raise syntax_error("compatible sorts", line_no)
+            raise model_error("compatible sorts", line_no)
         if self.state_line.next_line == self.state_line:
             self.state_line.next_line = self
         else:
-            raise syntax_error("untransitioned state", line_no)
+            raise model_error("untransitioned state", line_no)
         self.new_next()
 
     def __str__(self):
@@ -295,11 +309,11 @@ class Property(Line):
         self.property_line = property_line
         self.symbol = symbol
         if not isinstance(property_line, Expression):
-            raise syntax_error("expression operand", line_no)
+            raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bitvec):
-            raise syntax_error("bitvector operand", line_no)
+            raise model_error("bitvector operand", line_no)
         if property_line.sid_line.size != 1:
-            raise syntax_error("Boolean operand", line_no)
+            raise model_error("Boolean operand", line_no)
 
 class Constraint(Property):
     keyword = 'constraint'
@@ -332,6 +346,12 @@ class Bad(Property):
     def new_bad(self):
         assert self not in Bad.bads
         Bad.bads[self.nid] = self
+
+import re
+
+class syntax_error(Exception):
+    def __init__(self, expected, line_no):
+        super().__init__(f"syntax error in line {line_no}: {expected} expected")
 
 def tokenize_btor2(line):
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
@@ -456,11 +476,10 @@ def parse_slice_line(tokens, nid, line_no):
     return Slice(nid, sid_line, arg1_line, u, l, comment, line_no)
 
 def parse_unary_line(tokens, nid, op, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Unary(nid, sid_line, op, arg1_line, comment, line_no)
+    return Unary(nid, op, sid_line, arg1_line, comment, line_no)
 
 def parse_binary_line(tokens, nid, op, line_no):
     # TODO: check sorts
@@ -468,7 +487,7 @@ def parse_binary_line(tokens, nid, op, line_no):
     arg1_line = get_exp_line(tokens, line_no)
     arg2_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Binary(nid, sid_line, op, arg1_line, arg2_line, comment, line_no)
+    return Binary(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
     # TODO: check sorts
@@ -477,7 +496,7 @@ def parse_ternary_line(tokens, nid, op, line_no):
     arg2_line = get_exp_line(tokens, line_no)
     arg3_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Ternary(nid, sid_line, op, arg1_line, arg2_line, arg3_line, comment, line_no)
+    return Ternary(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
     sid_line = get_sid_line(tokens, line_no)
@@ -490,6 +509,8 @@ def parse_property_line(tokens, nid, clss, line_no):
     property_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return clss(nid, property_line, symbol, comment, line_no)
+
+current_nid = 0
 
 def parse_btor2_line(line, line_no):
     global current_nid
@@ -559,6 +580,9 @@ def main():
             try:
                 print(parse_btor2_line(line, line_no))
                 line_no = line_no + 1
+            except model_error as message:
+                print(message)
+                exit(1)
             except syntax_error as message:
                 print(message)
                 exit(1)
