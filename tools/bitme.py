@@ -45,6 +45,9 @@ class Bitvec(Sort):
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Bitvec.keyword} {self.size} {self.comment}"
 
+    def is_boolean_sort(self):
+        return self.size == 1
+
     def match_sorts(self, sort):
         return super().match_sorts(sort) and self.size == sort.size
 
@@ -169,10 +172,10 @@ class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.arg1_line = arg1_line
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
         if not isinstance(arg1_line, Expression):
             raise model_error("expression operand", line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
         if not isinstance(arg1_line.sid_line, Bitvec):
             raise model_error("bitvector operand", line_no)
 
@@ -213,10 +216,10 @@ class Unary(Expression):
         super().__init__(nid, sid_line, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
         if not isinstance(arg1_line, Expression):
             raise model_error("expression operand", line_no)
+        if not isinstance(sid_line, Bitvec):
+            raise model_error("bitvector result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
             raise model_error("compatible sorts", line_no)
 
@@ -231,6 +234,10 @@ class Binary(Expression):
         self.op = op
         self.arg1_line = arg1_line
         self.arg2_line = arg2_line
+        if not isinstance(arg1_line, Expression):
+            raise model_error("expression left operand", line_no)
+        if not isinstance(arg2_line, Expression):
+            raise model_error("expression right operand", line_no)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
@@ -244,9 +251,43 @@ class Ternary(Expression):
         self.arg1_line = arg1_line
         self.arg2_line = arg2_line
         self.arg3_line = arg3_line
+        if not isinstance(arg1_line, Expression):
+            raise model_error("expression first operand", line_no)
+        if not isinstance(arg2_line, Expression):
+            raise model_error("expression second operand", line_no)
+        if not isinstance(arg3_line, Expression):
+            raise model_error("expression third operand", line_no)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.arg3_line.nid} {self.comment}"
+
+class Ite(Ternary):
+    keyword = 'ite'
+
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+        if not isinstance(arg1_line.sid_line, Bitvec):
+            raise model_error("bitvector first operand", line_no)
+        if not arg1_line.sid_line.is_boolean_sort():
+            raise model_error("Boolean first operand", line_no)
+        if not sid_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible result and second operand sorts", line_no)
+        if not arg2_line.sid_line.match_sorts(arg3_line.sid_line):
+            raise model_error("compatible second and third operand sorts", line_no)
+
+class Write(Ternary):
+    keyword = 'write'
+
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+        if not isinstance(sid_line, Array):
+            raise model_error("array result", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line):
+            raise model_error("compatible result and first operand sorts", line_no)
+        if not arg1_line.sid_line.array_size_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first operand array size and second operand sorts", line_no)
+        if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
+            raise model_error("compatible first operand element size and third operand sorts", line_no)
 
 class Init(Line):
     keyword = 'init'
@@ -490,13 +531,13 @@ def parse_binary_line(tokens, nid, op, line_no):
     return Binary(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
 
 def parse_ternary_line(tokens, nid, op, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     arg2_line = get_exp_line(tokens, line_no)
     arg3_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return Ternary(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+    clss = Ite if op == Ite.keyword else Write
+    return clss(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
 
 def parse_init_next_line(tokens, nid, clss, line_no):
     sid_line = get_sid_line(tokens, line_no)
@@ -580,10 +621,7 @@ def main():
             try:
                 print(parse_btor2_line(line, line_no))
                 line_no = line_no + 1
-            except model_error as message:
-                print(message)
-                exit(1)
-            except syntax_error as message:
+            except Exception as message:
                 print(message)
                 exit(1)
 
