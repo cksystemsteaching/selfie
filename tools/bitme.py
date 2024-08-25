@@ -137,6 +137,8 @@ class Consth(Constant):
         return f"{self.nid} {Consth.keyword} {self.sid_line.nid} {self.value:0{size}X} {self.comment}"
 
 class Variable(Expression):
+    keywords = {'input', 'state'}
+
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.symbol = symbol
@@ -242,6 +244,21 @@ class Binary(Expression):
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.arg2_line.nid} {self.comment}"
 
+class Implies(Binary):
+    keyword = 'implies'
+
+class Comparison(Binary):
+    keywords = {'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte'}
+
+class Computation(Binary):
+    keywords = {'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
+
+class Concat(Binary):
+    keyword = 'concat'
+
+class Read(Binary):
+    keyword = 'read'
+
 class Ternary(Expression):
     keywords = {'ite', 'write'}
 
@@ -345,6 +362,8 @@ class Next(Line):
         Next.nexts[self.nid] = self
 
 class Property(Line):
+    keywords = {'constraint', 'bad'}
+
     def __init__(self, nid, property_line, symbol, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.property_line = property_line
@@ -387,6 +406,50 @@ class Bad(Property):
     def new_bad(self):
         assert self not in Bad.bads
         Bad.bads[self.nid] = self
+
+def get_class(keyword):
+    if keyword == Zero.keyword:
+        return Zero
+    elif keyword == One.keyword:
+        return One
+    elif keyword == Constd.keyword:
+        return Constd
+    elif keyword == Const.keyword:
+        return Const
+    elif keyword == Consth.keyword:
+        return Consth
+    elif keyword == Input.keyword:
+        return Input
+    elif keyword == State.keyword:
+        return State
+    elif keyword in Ext.keywords:
+        return Ext
+    elif keyword == Slice.keyword:
+        return Slice
+    elif keyword in Unary.keywords:
+        return Unary
+    elif keyword == Implies.keyword:
+        return Implies
+    elif keyword in Comparison.keywords:
+        return Comparison
+    elif keyword in Computation.keywords:
+        return Computation
+    elif keyword == Concat.keyword:
+        return Concat
+    elif keyword == Read.keyword:
+        return Read
+    elif keyword == Ite.keyword:
+        return Ite
+    elif keyword == Write.keyword:
+        return Write
+    elif keyword == Init.keyword:
+        return Init
+    elif keyword == Next.keyword:
+        return Next
+    elif keyword == Constraint.keyword:
+        return Constraint
+    elif keyword == Bad.keyword:
+        return Bad
 
 import re
 
@@ -472,21 +535,21 @@ def parse_sort_line(tokens, nid, line_no):
     else:
         raise syntax_error("bitvector or array", line_no)
 
-def parse_zero_one_line(tokens, nid, clss, line_no):
+def parse_zero_one_line(tokens, nid, op, line_no):
     sid_line = get_bitvec_sid_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid_line, comment, line_no)
+    return get_class(op)(nid, sid_line, comment, line_no)
 
-def parse_constant_line(tokens, nid, clss, line_no):
+def parse_constant_line(tokens, nid, op, line_no):
     sid_line = get_bitvec_sid_line(tokens, line_no)
-    if clss is Constd:
+    if op == Constd.keyword:
         value = get_number(tokens, 10, "signed integer", line_no)
-    elif clss is Const:
+    elif op == Const.keyword:
         value = get_number(tokens, 2, "binary number", line_no)
-    elif clss is Consth:
+    elif op == Consth.keyword:
         value = get_number(tokens, 16, "hexadecimal number", line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid_line, value, comment, line_no)
+    return get_class(op)(nid, sid_line, value, comment, line_no)
 
 def parse_symbol_comment(tokens, line_no):
     symbol = get_symbol(tokens)
@@ -496,10 +559,10 @@ def parse_symbol_comment(tokens, line_no):
             return "", symbol
     return symbol, comment
 
-def parse_variable_line(tokens, nid, clss, line_no):
+def parse_variable_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return clss(nid, sid_line, symbol, comment, line_no)
+    return get_class(op)(nid, sid_line, symbol, comment, line_no)
 
 def parse_ext_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
@@ -536,20 +599,19 @@ def parse_ternary_line(tokens, nid, op, line_no):
     arg2_line = get_exp_line(tokens, line_no)
     arg3_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    clss = Ite if op == Ite.keyword else Write
-    return clss(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
+    return get_class(op)(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
 
-def parse_init_next_line(tokens, nid, clss, line_no):
+def parse_init_next_line(tokens, nid, op, line_no):
     sid_line = get_sid_line(tokens, line_no)
     state_line = get_state_line(tokens, line_no)
     exp_line = get_exp_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
-    return clss(nid, sid_line, state_line, exp_line, comment, line_no)
+    return get_class(op)(nid, sid_line, state_line, exp_line, comment, line_no)
 
-def parse_property_line(tokens, nid, clss, line_no):
+def parse_property_line(tokens, nid, op, line_no):
     property_line = get_exp_line(tokens, line_no)
     symbol, comment = parse_symbol_comment(tokens, line_no)
-    return clss(nid, property_line, symbol, comment, line_no)
+    return get_class(op)(nid, property_line, symbol, comment, line_no)
 
 current_nid = 0
 
@@ -566,20 +628,12 @@ def parse_btor2_line(line, line_no):
                     token = get_token(tokens, "keyword", line_no)
                     if token == Sort.keyword:
                         return parse_sort_line(tokens, nid, line_no)
-                    elif token == Zero.keyword:
-                        return parse_zero_one_line(tokens, nid, Zero, line_no)
-                    elif token == One.keyword:
-                        return parse_zero_one_line(tokens, nid, One, line_no)
-                    elif token == Constd.keyword:
-                        return parse_constant_line(tokens, nid, Constd, line_no)
-                    elif token == Const.keyword:
-                        return parse_constant_line(tokens, nid, Const, line_no)
-                    elif token == Consth.keyword:
-                        return parse_constant_line(tokens, nid, Consth, line_no)
-                    elif token == Input.keyword:
-                        return parse_variable_line(tokens, nid, Input, line_no)
-                    elif token == State.keyword:
-                        return parse_variable_line(tokens, nid, State, line_no)
+                    elif token in {Zero.keyword, One.keyword}:
+                        return parse_zero_one_line(tokens, nid, token, line_no)
+                    elif token in {Constd.keyword, Const.keyword, Consth.keyword}:
+                        return parse_constant_line(tokens, nid, token, line_no)
+                    elif token in Variable.keywords:
+                        return parse_variable_line(tokens, nid, token, line_no)
                     elif token in Ext.keywords:
                         return parse_ext_line(tokens, nid, token, line_no)
                     elif token == Slice.keyword:
@@ -590,14 +644,10 @@ def parse_btor2_line(line, line_no):
                         return parse_binary_line(tokens, nid, token, line_no)
                     elif token in Ternary.keywords:
                         return parse_ternary_line(tokens, nid, token, line_no)
-                    elif token == Init.keyword:
-                        return parse_init_next_line(tokens, nid, Init, line_no)
-                    elif token == Next.keyword:
-                        return parse_init_next_line(tokens, nid, Next, line_no)
-                    elif token == Constraint.keyword:
-                        return parse_property_line(tokens, nid, Constraint, line_no)
-                    elif token == Bad.keyword:
-                        return parse_property_line(tokens, nid, Bad, line_no)
+                    elif token in {Init.keyword, Next.keyword}:
+                        return parse_init_next_line(tokens, nid, token, line_no)
+                    elif token in Property.keywords:
+                        return parse_property_line(tokens, nid, token, line_no)
                     else:
                         raise syntax_error(f"unknown operator {token}", line_no)
                 raise syntax_error("increasing nid", line_no)
