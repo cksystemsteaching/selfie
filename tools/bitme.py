@@ -150,6 +150,12 @@ class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.arg1_line = arg1_line
+        if not isinstance(sid_line, Bitvec):
+            raise syntax_error("bitvector result", line_no)
+        if not isinstance(arg1_line, Expression):
+            raise syntax_error("expression operand", line_no)
+        if not isinstance(arg1_line.sid_line, Bitvec):
+            raise syntax_error("bitvector operand", line_no)
 
 class Ext(Indexed):
     keywords = {'sext', 'uext'}
@@ -158,6 +164,8 @@ class Ext(Indexed):
         super().__init__(nid, sid_line, arg1_line, comment, line_no)
         self.op = op
         self.w = w
+        if sid_line.size != arg1_line.sid_line.size + w:
+            raise syntax_error("compatible bitvector sorts", line_no)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
@@ -169,6 +177,12 @@ class Slice(Indexed):
         super().__init__(nid, sid_line, arg1_line, comment, line_no)
         self.u = u
         self.l = l
+        if u >= arg1_line.sid_line.size:
+            raise syntax_error("upper bit in range", line_no)
+        if u < l:
+            raise syntax_error("upper bit >= lower bit", line_no)
+        if sid_line.size != u - l + 1:
+            raise syntax_error("compatible bitvector sorts", line_no)
 
     def __str__(self):
         return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
@@ -394,7 +408,6 @@ def parse_variable_line(tokens, nid, clss, line_no):
     return clss(nid, sid_line, symbol, comment, line_no)
 
 def parse_ext_line(tokens, nid, op, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     w = get_decimal(tokens, "bit width", line_no)
@@ -402,7 +415,6 @@ def parse_ext_line(tokens, nid, op, line_no):
     return Ext(nid, op, sid_line, arg1_line, w, comment, line_no)
 
 def parse_slice_line(tokens, nid, line_no):
-    # TODO: check sorts
     sid_line = get_sid_line(tokens, line_no)
     arg1_line = get_exp_line(tokens, line_no)
     u = get_decimal(tokens, "upper bit", line_no)
