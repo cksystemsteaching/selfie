@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from z3 import *
+
 import math
 
 class model_error(Exception):
@@ -53,6 +55,7 @@ class Bool(Bitvector):
 
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, 1, comment, line_no)
+        self.z3 = z3.BoolSort()
         Bool.defined = True
 
     def match_sorts(self, sort):
@@ -61,6 +64,7 @@ class Bool(Bitvector):
 class Bitvec(Bitvector):
     def __init__(self, nid, size, comment, line_no):
         super().__init__(nid, size, comment, line_no)
+        self.z3 = z3.BitVecSort(size)
 
     def match_sorts(self, sort):
         return super().match_sorts(sort) and self.size == sort.size
@@ -76,6 +80,7 @@ class Array(Sort):
             raise model_error("array size bitvector", line_no)
         if not isinstance(element_size_line, Bitvec):
             raise model_error("element size bitvector", line_no)
+        self.z3 = z3.ArraySort(array_size_line.z3, element_size_line.z3)
 
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Array.keyword} {self.array_size_line.nid} {self.element_size_line.nid} {self.comment}"
@@ -99,6 +104,10 @@ class Constant(Expression):
         self.value = value
         if value >= 2**sid_line.size:
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
+        if isinstance(sid_line, Bool):
+            self.z3 = z3.BoolVal(bool(value))
+        else:
+            self.z3 = z3.BitVecVal(value, sid_line.size)
 
 class Zero(Constant):
     keyword = 'zero'
@@ -159,6 +168,7 @@ class Input(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
+        self.z3 = z3.Const(f"input{nid}", sid_line.z3)
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -172,6 +182,7 @@ class State(Variable):
         super().__init__(nid, sid_line, symbol, comment, line_no)
         self.init_line = self
         self.next_line = self
+        self.z3 = z3.Const(f"state{nid}", sid_line.z3)
         self.new_state()
 
     def __str__(self):
@@ -201,6 +212,10 @@ class Ext(Indexed):
         self.w = w
         if sid_line.size != arg1_line.sid_line.size + w:
             raise model_error("compatible bitvector sorts", line_no)
+        if op == 'sext':
+            self.z3 = z3.SignExt(w, arg1_line.z3)
+        elif op == 'uext':
+            self.z3 = z3.ZeroExt(w, arg1_line.z3)
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
@@ -218,6 +233,7 @@ class Slice(Indexed):
             raise model_error("upper bit >= lower bit", line_no)
         if sid_line.size != u - l + 1:
             raise model_error("compatible bitvector sorts", line_no)
+        self.z3 = z3.Extract(u, l, arg1_line.z3)
 
     def __str__(self):
         return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
@@ -237,6 +253,17 @@ class Unary(Expression):
             raise model_error("bitvector result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
             raise model_error("compatible sorts", line_no)
+        if op == 'not':
+            if isinstance(sid_line, Bool):
+                self.z3 = z3.Not(arg1_line.z3)
+            else:
+                self.z3 = ~arg1_line.z3
+        elif op == 'inc':
+            self.z3 = arg1_line.z3 + 1
+        elif op == 'dec':
+            self.z3 = arg1_line.z3 - 1
+        elif op == 'neg':
+            self.z3 = -arg1_line.z3
 
     def __str__(self):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
@@ -268,6 +295,7 @@ class Implies(Binary):
             raise model_error("compatible result and first operand sorts", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
+        self.z3 = z3.Implies(arg1_line.z3, arg2_line.z3)
 
 class Comparison(Binary):
     keywords = {'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte'}
@@ -280,6 +308,26 @@ class Comparison(Binary):
             raise model_error("bitvector first operand", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
+        if op == 'eq':
+            self.z3 = arg1_line.z3 == arg2_line.z3
+        elif op == 'neq':
+            self.z3 = arg1_line.z3 != arg2_line.z3
+        elif op == 'sgt':
+            self.z3 = arg1_line.z3 > arg2_line.z3
+        elif op == 'ugt':
+            self.z3 = z3.UGT(arg1_line.z3, arg2_line.z3)
+        elif op == 'sgte':
+            self.z3 = arg1_line.z3 >= arg2_line.z3
+        elif op == 'ugte':
+            self.z3 = z3.UGE(arg1_line.z3, arg2_line.z3)
+        elif op == 'slt':
+            self.z3 = arg1_line.z3 < arg2_line.z3
+        elif op == 'ult':
+            self.z3 = z3.ULT(arg1_line.z3, arg2_line.z3)
+        elif op == 'slte':
+            self.z3 = arg1_line.z3 <= arg2_line.z3
+        elif op == 'ulte':
+            self.z3 = z3.ULE(arg1_line.z3, arg2_line.z3)
 
 class Logical(Binary):
     keywords = {'and', 'or', 'xor'}
@@ -292,6 +340,20 @@ class Logical(Binary):
             raise model_error("compatible result and first operand sorts", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
+        if isinstance(sid_line, Bool):
+            if op == 'and':
+                self.z3 = z3.And(arg1_line.z3, arg2_line.z3)
+            elif op == 'or':
+                self.z3 = z3.Or(arg1_line.z3, arg2_line.z3)
+            elif op == 'xor':
+                self.z3 = z3.Xor(arg1_line.z3, arg2_line.z3)
+        else:
+            if op == 'and':
+                self.z3 = arg1_line.z3 & arg2_line.z3
+            elif op == 'or':
+                self.z3 = arg1_line.z3 | arg2_line.z3
+            elif op == 'xor':
+                self.z3 = arg1_line.z3 ^ arg2_line.z3
 
 class Computation(Binary):
     keywords = {'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
@@ -304,6 +366,26 @@ class Computation(Binary):
             raise model_error("compatible result and first operand sorts", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
+        if op == 'sll':
+            self.z3 = arg1_line.z3 << arg2_line.z3
+        elif op == 'srl':
+            self.z3 = z3.LShR(arg1_line.z3, arg2_line.z3)
+        elif op == 'sra':
+            self.z3 = arg1_line.z3 >> arg2_line.z3
+        elif op == 'add':
+            self.z3 = arg1_line.z3 + arg2_line.z3
+        elif op == 'sub':
+            self.z3 = arg1_line.z3 - arg2_line.z3
+        elif op == 'mul':
+            self.z3 = arg1_line.z3 * arg2_line.z3
+        elif op == 'sdiv':
+            self.z3 = arg1_line.z3 / arg2_line.z3
+        elif op == 'udiv':
+            self.z3 = z3.UDiv(arg1_line.z3, arg2_line.z3)
+        elif op == 'srem':
+            self.z3 = z3.SRem(arg1_line.z3, arg2_line.z3)
+        elif op == 'urem':
+            self.z3 = z3.URem(arg1_line.z3, arg2_line.z3)
 
 class Concat(Binary):
     keyword = 'concat'
@@ -318,6 +400,7 @@ class Concat(Binary):
             raise model_error("bitvector second operand", line_no)
         if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
             raise model_error("compatible bitvector result", line_no)
+        self.z3 = z3.Concat(arg1_line.z3, arg2_line.z3)
 
 class Read(Binary):
     keyword = 'read'
@@ -330,6 +413,7 @@ class Read(Binary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line.element_size_line):
             raise model_error("compatible result and first operand element size sorts", line_no)
+        self.z3 = z3.Select(arg1_line.z3, arg2_line.z3)
 
 class Ternary(Expression):
     keywords = {'ite', 'write'}
@@ -361,6 +445,7 @@ class Ite(Ternary):
             raise model_error("compatible result and second operand sorts", line_no)
         if not arg2_line.sid_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible second and third operand sorts", line_no)
+        self.z3 = z3.If(arg1_line.z3, arg2_line.z3, arg3_line.z3)
 
 class Write(Ternary):
     keyword = 'write'
@@ -375,6 +460,7 @@ class Write(Ternary):
             raise model_error("compatible first operand array size and second operand sorts", line_no)
         if not arg1_line.sid_line.element_size_line.match_sorts(arg3_line.sid_line):
             raise model_error("compatible first operand element size and third operand sorts", line_no)
+        self.z3 = z3.Store(arg1_line.z3, arg2_line.z3, arg3_line.z3)
 
 class Init(Line):
     keyword = 'init'
