@@ -51,6 +51,12 @@ rotor_path = Path("../rotor")
 examples_dir = Path("../examples/symbolic")
 models_dir = Path("../models")
 
+
+starc_64_riscv_path = Path(models_dir/"starc"/"64-bit"/"riscv")
+starc_64_riscu_path = Path(models_dir/"starc"/"64-bit"/"riscu")
+
+
+
 class ToolNotAvailableError(Exception):
     pass
 
@@ -118,13 +124,19 @@ def execute(command, timeout=30):
     
     return (process.returncode, output)
 
-def generate_model(file, args) -> None:
-    returncode, output = execute(f"{rotor_path} -c {file} -o {models_dir / file.name} {args}")
-    outputpath = Path(models_dir / file.name)
+def generate_model(file, args, output_dir) -> None:
+    returncode, output = execute(f"{rotor_path} -c {file} -o {output_dir / file.name} {args}")
+    outputpath = Path(output_dir / file.name)
     outputpath.unlink()
 
     if(returncode != 0):
         custom_exit(output, EXIT_MODEL_GENERATION_ERROR)
+
+def generate_starc_64_bit_riscu(file) -> None:
+    generate_model(file,"- 1 -riscuonly", starc_64_riscu_path)
+
+def generate_starc_64_bit_riscv(file) -> None:
+    generate_model(file,"- 1", starc_64_riscv_path)
 
 def generate_all_examples() -> None:
     # check if selfie || gcc is available
@@ -132,16 +144,23 @@ def generate_all_examples() -> None:
     # take each individual file and try to create model from it into all possible options
     #check if models directory exists, if it does remove all files inside and 
     clean_examples()
+    #prepare directories
     models_dir.mkdir()
+    starc_64_riscv_path.mkdir(parents=True)
+    starc_64_riscu_path.mkdir(parents=True)
+
     files = [file for file in examples_dir.iterdir()]
     for file in files:
         if(file.suffix != ".c"):
             continue
         # STARC
         # -----
-        #1) 32-bit architecture risc-u
-        generate_model(file, "- 1 -riscuonly")
-        
+        #1) 64-bit architecture risc-u
+        generate_starc_64_bit_riscu(file)
+        #2) 64-bit architecture risc-v
+        generate_starc_64_bit_riscv(file)
+
+
 
     # share info about the process in console
 
