@@ -35,7 +35,7 @@ class Sort(Line):
     def match_sorts(self, sort):
         return type(self) == type(sort)
 
-class Bitvec(Sort):
+class Bitvector(Sort):
     keyword = 'bitvec'
 
     def __init__(self, nid, size, comment, line_no):
@@ -45,14 +45,25 @@ class Bitvec(Sort):
     def __str__(self):
         return f"{self.nid} {Sort.keyword} {Bitvec.keyword} {self.size} {self.comment}"
 
-    def is_boolean_sort(self):
-        return self.size == 1
+    def match_init_sorts(self, sort):
+        return self.match_sorts(sort)
+
+class Bool(Bitvector):
+    defined = False
+
+    def __init__(self, nid, comment, line_no):
+        super().__init__(nid, 1, comment, line_no)
+        Bool.defined = True
+
+    def match_sorts(self, sort):
+        return super().match_sorts(sort)
+
+class Bitvec(Bitvector):
+    def __init__(self, nid, size, comment, line_no):
+        super().__init__(nid, size, comment, line_no)
 
     def match_sorts(self, sort):
         return super().match_sorts(sort) and self.size == sort.size
-
-    def match_init_sorts(self, sort):
-        return self.match_sorts(sort)
 
 class Array(Sort):
     keyword = 'array'
@@ -220,7 +231,9 @@ class Unary(Expression):
         self.arg1_line = arg1_line
         if not isinstance(arg1_line, Expression):
             raise model_error("expression operand", line_no)
-        if not isinstance(sid_line, Bitvec):
+        if op == 'not' and not isinstance(sid_line, Bitvector):
+            raise model_error("Boolean or bitvector result", line_no)
+        if op != 'not' and not isinstance(sid_line, Bitvec):
             raise model_error("bitvector result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
             raise model_error("compatible sorts", line_no)
@@ -249,9 +262,7 @@ class Implies(Binary):
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not sid_line.is_boolean_sort():
+        if not isinstance(sid_line, Bool):
             raise model_error("Boolean result", line_no)
         if not sid_line.match_sorts(arg1_line.sid_line):
             raise model_error("compatible result and first operand sorts", line_no)
@@ -263,15 +274,27 @@ class Comparison(Binary):
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
-        if not isinstance(sid_line, Bitvec):
-            raise model_error("bitvector result", line_no)
-        if not sid_line.is_boolean_sort():
+        if not isinstance(sid_line, Bool):
             raise model_error("Boolean result", line_no)
+        if not isinstance(arg1_line.sid_line, Bitvec):
+            raise model_error("bitvector first operand", line_no)
+        if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
+            raise model_error("compatible first and second operand sorts", line_no)
+
+class Logical(Binary):
+    keywords = {'and', 'or', 'xor'}
+
+    def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
+        super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
+        if not isinstance(sid_line, Bitvector):
+            raise model_error("Boolean or bitvector result", line_no)
+        if not sid_line.match_sorts(arg1_line.sid_line):
+            raise model_error("compatible result and first operand sorts", line_no)
         if not arg1_line.sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible first and second operand sorts", line_no)
 
 class Computation(Binary):
-    keywords = {'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
+    keywords = {'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem'}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, comment, line_no)
@@ -293,7 +316,7 @@ class Concat(Binary):
             raise model_error("bitvector first operand", line_no)
         if not isinstance(arg2_line.sid_line, Bitvec):
             raise model_error("bitvector second operand", line_no)
-        if sid_line.size != arg1_line.size + arg2_line.size:
+        if sid_line.size != arg1_line.sid_line.size + arg2_line.sid_line.size:
             raise model_error("compatible bitvector result", line_no)
 
 class Read(Binary):
@@ -332,9 +355,7 @@ class Ite(Ternary):
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
         super().__init__(nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no)
-        if not isinstance(arg1_line.sid_line, Bitvec):
-            raise model_error("bitvector first operand", line_no)
-        if not arg1_line.sid_line.is_boolean_sort():
+        if not isinstance(arg1_line.sid_line, Bool):
             raise model_error("Boolean first operand", line_no)
         if not sid_line.match_sorts(arg2_line.sid_line):
             raise model_error("compatible result and second operand sorts", line_no)
@@ -419,9 +440,7 @@ class Property(Line):
         self.symbol = symbol
         if not isinstance(property_line, Expression):
             raise model_error("expression operand", line_no)
-        if not isinstance(property_line.sid_line, Bitvec):
-            raise model_error("bitvector operand", line_no)
-        if property_line.sid_line.size != 1:
+        if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
 
 class Constraint(Property):
@@ -481,6 +500,8 @@ def get_class(keyword):
         return Implies
     elif keyword in Comparison.keywords:
         return Comparison
+    elif keyword in Logical.keywords:
+        return Logical
     elif keyword in Computation.keywords:
         return Computation
     elif keyword == Concat.keyword:
@@ -535,6 +556,9 @@ def get_nid_line(tokens, clss, expected, line_no):
     else:
         raise syntax_error(f"defined {expected}", line_no)
 
+def get_bool_or_bitvec_sid_line(tokens, line_no):
+    return get_nid_line(tokens, Bitvector, "Boolean or bitvector sort nid", line_no)
+
 def get_bitvec_sid_line(tokens, line_no):
     return get_nid_line(tokens, Bitvec, "bitvector sort nid", line_no)
 
@@ -575,7 +599,10 @@ def parse_sort_line(tokens, nid, line_no):
     if token == Bitvec.keyword:
         size = get_decimal(tokens, "bitvector size", line_no)
         comment = get_comment(tokens, line_no)
-        return Bitvec(nid, size, comment, line_no)
+        if not Bool.defined and size == 1:
+            return Bool(nid, comment, line_no)
+        else:
+            return Bitvec(nid, size, comment, line_no)
     elif token == Array.keyword:
         array_size_line = get_bitvec_sid_line(tokens, line_no)
         element_size_line = get_bitvec_sid_line(tokens, line_no)
@@ -585,12 +612,12 @@ def parse_sort_line(tokens, nid, line_no):
         raise syntax_error("bitvector or array", line_no)
 
 def parse_zero_one_line(tokens, nid, op, line_no):
-    sid_line = get_bitvec_sid_line(tokens, line_no)
+    sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
     comment = get_comment(tokens, line_no)
     return get_class(op)(nid, sid_line, comment, line_no)
 
 def parse_constant_line(tokens, nid, op, line_no):
-    sid_line = get_bitvec_sid_line(tokens, line_no)
+    sid_line = get_bool_or_bitvec_sid_line(tokens, line_no)
     if op == Constd.keyword:
         value = get_number(tokens, 10, "signed integer", line_no)
     elif op == Const.keyword:
