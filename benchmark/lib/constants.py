@@ -1,5 +1,8 @@
 from pathlib import Path
 
+RED = "\033[91m"
+RESET = "\033[0m"
+
 PIPE = -1
 STDOUT = -2
 DEVNULL = -3
@@ -14,5 +17,6 @@ examples_dir = Path("../examples/symbolic")
 models_dir = Path("../models")
 
 
-starc_64_riscv_path = Path(models_dir/"starc"/"64-bit"/"riscv")
-starc_64_riscu_path = Path(models_dir/"starc"/"64-bit"/"riscu")
+cstar_64_riscv_btor2_path = Path(models_dir/"starc"/"64-bit"/"riscv"/"btor2")
+cstar_64_riscu_smt_path = Path(models_dir/"starc"/"64-bit"/"riscu"/"smt")
+cstar_64_riscu_btor2_path = Path(models_dir/"starc"/"64-bit"/"riscu"/"btor2")

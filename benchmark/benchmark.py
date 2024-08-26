@@ -32,143 +32,23 @@
             a) full risc-v
             b) risc-u
 """
-import sys
-import shutil
-import shlex
-from subprocess import Popen, TimeoutExpired
-from pathlib import Path
-
-PIPE = -1
-STDOUT = -2
-DEVNULL = -3
-
-# Define exit error codes
-EXIT_SUCCESS = 0
-EXIT_MODEL_GENERATION_ERROR = 2
-EXIT_TOOL_NOT_FOUND = 3
-
-rotor_path = Path("../rotor")
-examples_dir = Path("../examples/symbolic")
-models_dir = Path("../models")
 
 
-starc_64_riscv_path = Path(models_dir/"starc"/"64-bit"/"riscv")
-starc_64_riscu_path = Path(models_dir/"starc"/"64-bit"/"riscu")
-
-
-
-class ToolNotAvailableError(Exception):
-    pass
-
-class TimeoutException(Exception):
-    def __init__(self, command, timeout, output): # , error_output):
-        Exception.__init__(self, 'The command \"' + command +
-                           '\" has timed out after ' + str(timeout) + 's')
-
-        self.output = output
-        # self.error_output = error_output
-
-def is_tool_available(name) -> bool: 
-    from shutil import which
-
-    return which(name) is not None
-
-
-def check_needed_tools() -> None:
-    check_internal_tools(rotor_path)
-    check_directory(examples_dir)
-    #check_tool("riscv64-unknown-elf-gcc")
-
-def check_tool(name) -> None:
-    print(f"Checking if {name} is available...")
-    if not is_tool_available(name):
-        raise ToolNotAvailableError(f"Error: {name} is not available on this machine")
-
-def check_internal_tools(tool) -> None:
-    print(f"Checking if {tool} is exists...")
-    if not tool.is_file():
-        raise ToolNotAvailableError(f"Error: {tool} is not available inside project's directory")
-
-def check_directory(dir) -> None:
-    print(f"Checking if {dir} exists...")
-    if not dir.is_dir():
-        raise ToolNotAvailableError(f"Error: {dir} directory doesn't exist...")
-
-def clean_examples() -> None:
-    if models_dir.is_dir():
-        shutil.rmtree(models_dir)
-
-
-def custom_exit(message, code = 0):
-    print(message)
-    sys.exit(code)
-
-def execute(command, timeout=30):
-    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
-
-    timedout = False
-
-    if sys.version_info < (3,3):
-        stdoutdata, _ = process.communicate()
-    else:
-        try:
-            stdoutdata, _ = process.communicate(timeout=timeout)
-        except TimeoutExpired:
-            process.kill()
-            stout, _ = process.communicate()
-            timedout = True
-    output = stdoutdata.decode(sys.stdout.encoding)
-
-    if timedout:
-        raise TimeoutException(command, timeout, output)
-    
-    return (process.returncode, output)
-
-def generate_model(file, args, output_dir) -> None:
-    returncode, output = execute(f"{rotor_path} -c {file} -o {output_dir / file.name} {args}")
-    outputpath = Path(output_dir / file.name)
-    outputpath.unlink()
-
-    if(returncode != 0):
-        custom_exit(output, EXIT_MODEL_GENERATION_ERROR)
-
-def generate_starc_64_bit_riscu(file) -> None:
-    generate_model(file,"- 1 -riscuonly", starc_64_riscu_path)
-
-def generate_starc_64_bit_riscv(file) -> None:
-    generate_model(file,"- 1", starc_64_riscv_path)
-
-def generate_all_examples() -> None:
-    # check if selfie || gcc is available
-    # locate examples directory
-    # take each individual file and try to create model from it into all possible options
-    #check if models directory exists, if it does remove all files inside and 
-    clean_examples()
-    #prepare directories
-    models_dir.mkdir()
-    starc_64_riscv_path.mkdir(parents=True)
-    starc_64_riscu_path.mkdir(parents=True)
-
-    files = [file for file in examples_dir.iterdir()]
-    for file in files:
-        if(file.suffix != ".c"):
-            continue
-        # STARC
-        # -----
-        #1) 64-bit architecture risc-u
-        generate_starc_64_bit_riscu(file)
-        #2) 64-bit architecture risc-v
-        generate_starc_64_bit_riscv(file)
-
-
-
-    # share info about the process in console
+from lib.checks import check_needed_tools
+from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
+import lib.constants as const
+from lib.generate import generate_all_examples
+from lib.print import custom_exit
 
 if __name__ == "__main__":
-    try: 
+    try:
         check_needed_tools()
+        generate_all_examples()
     except ToolNotAvailableError as e:
-        custom_exit(str(e), EXIT_TOOL_NOT_FOUND);
-    
-    generate_all_examples()
-
+        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+    except DirectoryNotFoundError as e:
+        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+    except InternalToolNotAvailableError as e:
+        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+    except TimeoutException as e:
+        custom_exit(str(e), const.EXIT_MODEL_GENERATION_ERROR)
