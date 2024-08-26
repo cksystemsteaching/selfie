@@ -34,10 +34,17 @@
 """
 import sys
 import shutil
+import shlex
+from subprocess import Popen, TimeoutExpired
 from pathlib import Path
+
+PIPE = -1
+STDOUT = -2
+DEVNULL = -3
 
 # Define exit error codes
 EXIT_SUCCESS = 0
+EXIT_MODEL_GENERATION_ERROR = 2
 EXIT_TOOL_NOT_FOUND = 3
 
 rotor_path = Path("../rotor")
@@ -46,6 +53,14 @@ models_dir = Path("../models")
 
 class ToolNotAvailableError(Exception):
     pass
+
+class TimeoutException(Exception):
+    def __init__(self, command, timeout, output): # , error_output):
+        Exception.__init__(self, 'The command \"' + command +
+                           '\" has timed out after ' + str(timeout) + 's')
+
+        self.output = output
+        # self.error_output = error_output
 
 def is_tool_available(name) -> bool: 
     from shutil import which
@@ -82,6 +97,35 @@ def custom_exit(message, code = 0):
     print(message)
     sys.exit(code)
 
+def execute(command, timeout=30):
+    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+
+    timedout = False
+
+    if sys.version_info < (3,3):
+        stdoutdata, _ = process.communicate()
+    else:
+        try:
+            stdoutdata, _ = process.communicate(timeout=timeout)
+        except TimeoutExpired:
+            process.kill()
+            stout, _ = process.communicate()
+            timedout = True
+    output = stdoutdata.decode(sys.stdout.encoding)
+
+    if timedout:
+        raise TimeoutException(command, timeout, output)
+    
+    return (process.returncode, output)
+
+def generate_model(file, args) -> None:
+    returncode, output = execute(f"{rotor_path} -c {file} -o {models_dir / file.name} {args}")
+    outputpath = Path(models_dir / file.name)
+    outputpath.unlink()
+
+    if(returncode != 0):
+        custom_exit(output, EXIT_MODEL_GENERATION_ERROR)
+
 def generate_all_examples() -> None:
     # check if selfie || gcc is available
     # locate examples directory
@@ -91,8 +135,14 @@ def generate_all_examples() -> None:
     models_dir.mkdir()
     files = [file for file in examples_dir.iterdir()]
     for file in files:
-        print(file)
-        # shutil.copy2(file, models_dir)
+        if(file.suffix != ".c"):
+            continue
+        # STARC
+        # -----
+        #1) 32-bit architecture risc-u
+        generate_model(file, "- 1 -riscuonly")
+        
+
     # share info about the process in console
 
 if __name__ == "__main__":
