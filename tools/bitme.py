@@ -465,6 +465,8 @@ class Write(Ternary):
 class Init(Line):
     keyword = 'init'
 
+    inits = dict()
+
     def __init__(self, nid, sid_line, state_line, exp_line, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
@@ -482,9 +484,18 @@ class Init(Line):
             self.state_line.init_line = self
         else:
             raise model_error("uninitialized state", line_no)
+        if isinstance(sid_line, Array) and isinstance(exp_line.sid_line, Bitvec):
+            self.z3 = state_line.z3 == z3.K(sid_line.array_size_line.z3, exp_line.z3)
+        else:
+            self.z3 = state_line.z3 == exp_line.z3
+        self.new_init()
 
     def __str__(self):
         return f"{self.nid} {Init.keyword} {self.sid_line.nid} {self.state_line.nid} {self.exp_line.nid} {self.comment}"
+
+    def new_init(self):
+        assert self not in Init.inits
+        Init.inits[self.nid] = self
 
 class Next(Line):
     keyword = 'next'
@@ -528,6 +539,7 @@ class Property(Line):
             raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
+        self.z3 = property_line.z3
 
 class Constraint(Property):
     keyword = 'constraint'
@@ -830,11 +842,27 @@ def main():
         line_no = 1
         for line in modelfile:
             try:
-                print(parse_btor2_line(line, line_no))
+                parse_btor2_line(line, line_no)
                 line_no = line_no + 1
             except Exception as message:
                 print(message)
                 exit(1)
+
+        s = z3.Solver()
+
+        for init in Init.inits.values():
+            s.add(init.z3)
+        for constraint in Constraint.constraints.values():
+            s.add(constraint.z3)
+        for bad in Bad.bads.values():
+            s.push()
+            s.add(bad.z3)
+            if z3.sat == s.check():
+                print(f"sat: {bad}")
+                print(s.model())
+            else:
+                print(f"unsat: {bad}")
+            s.pop()
 
 if __name__ == '__main__':
     main()
