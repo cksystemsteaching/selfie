@@ -837,41 +837,20 @@ def parse_btor2_line(line, line_no):
             raise syntax_error("nid", line_no)
     return line.strip()
 
-import argparse
+def bmc(kmin, kmax):
+    s = z3.Solver()
 
-def main():
-    parser = argparse.ArgumentParser(prog='bitme',
-        description="What the program does",
-        epilog="Text at the bottom of help")
+    for init in Init.inits.values():
+        s.add(init.z3)
 
-    parser.add_argument('modelfile')
-    parser.add_argument('-kmax', nargs=1, dest='kmax', type=int, default={0:110})
+    step = 0
 
-    args = parser.parse_args()
-    kmax = args.kmax[0]
+    while step <= kmax:
+        print(step)
 
-    with open(args.modelfile) as modelfile:
-        line_no = 1
-        for line in modelfile:
-            try:
-                parse_btor2_line(line, line_no)
-                line_no += 1
-            except Exception as message:
-                print(message)
-                exit(1)
-
-        s = z3.Solver()
-
-        for init in Init.inits.values():
-            s.add(init.z3)
-
-        step = 0
-
-        while step < kmax:
-            print(step)
-
-            for constraint in Constraint.constraints.values():
-                s.add(constraint.z3)
+        for constraint in Constraint.constraints.values():
+            s.add(constraint.z3)
+        if step >= kmin:
             for bad in Bad.bads.values():
                 s.push()
                 s.add(bad.z3)
@@ -884,29 +863,61 @@ def main():
                 #else:
                 #    print(f"unsat: {bad}")
                 s.pop()
-            for bad in Bad.bads.values():
-                s.add(bad.z3 == False)
-            for next_line in Next.nexts.values():
-                s.add(next_line.z3)
+        for bad in Bad.bads.values():
+            s.add(bad.z3 == False)
+        for next_line in Next.nexts.values():
+            s.add(next_line.z3)
 
-            current_states = [next_line.current_step for next_line in Next.nexts.values()]
-            next_states = [next_line.next_step for next_line in Next.nexts.values()]
-            renaming = [current_next for current_next in zip(current_states, next_states)]
+        current_states = [next_line.current_step for next_line in Next.nexts.values()]
+        next_states = [next_line.next_step for next_line in Next.nexts.values()]
+        renaming = [current_next for current_next in zip(current_states, next_states)]
 
-            for constraint in Constraint.constraints.values():
-                constraint.z3 = substitute(constraint.z3, renaming)
-            for bad in Bad.bads.values():
-                bad.z3 = substitute(bad.z3, renaming)
+        for constraint in Constraint.constraints.values():
+            constraint.z3 = substitute(constraint.z3, renaming)
+        for bad in Bad.bads.values():
+            bad.z3 = substitute(bad.z3, renaming)
 
-            for next_line in Next.nexts.values():
-                next_line.exp_line.z3 = substitute(next_line.exp_line.z3, renaming)
+        for next_line in Next.nexts.values():
+            next_line.exp_line.z3 = substitute(next_line.exp_line.z3, renaming)
 
-            for next_line in Next.nexts.values():
-                next_line.current_step = next_line.next_step
-                next_line.next_step = next_line.state_line.next_state(step + 2)
-                next_line.z3 = next_line.next_step == next_line.exp_line.z3
+        for next_line in Next.nexts.values():
+            next_line.current_step = next_line.next_step
+            next_line.next_step = next_line.state_line.next_state(step + 2)
+            next_line.z3 = next_line.next_step == next_line.exp_line.z3
 
-            step += 1
+        step += 1
+
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser(prog='bitme',
+        description="What the program does",
+        epilog="Text at the bottom of help")
+
+    parser.add_argument('modelfile')
+
+    parser.add_argument('-kmin', nargs=1, dest='kmin', type=int)
+    parser.add_argument('-kmax', nargs=1, dest='kmax', type=int)
+
+    args = parser.parse_args()
+
+    with open(args.modelfile) as modelfile:
+        line_no = 1
+        for line in modelfile:
+            try:
+                parse_btor2_line(line, line_no)
+                line_no += 1
+            except Exception as message:
+                print(message)
+                exit(1)
+
+        if args.kmin or args.kmax:
+            kmin = args.kmin[0] if args.kmin else 0
+            kmax = args.kmax[0] if args.kmax else 0
+
+            kmax = max(kmin, kmax)
+
+            bmc(kmin, kmax)
 
 if __name__ == '__main__':
     main()
