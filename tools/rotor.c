@@ -4240,7 +4240,16 @@ uint64_t print_constraint(uint64_t nid, uint64_t* line) {
     if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(push 1)\n");
     w = w + dprintf(output_fd, "(assert (= %s%lu true))", get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
     print_comment(line);
-    if (get_op(line) == OP_BAD) w = w + dprintf(output_fd, "(check-sat)\n(get-model)\n(pop 1)\n");
+    if (get_op(line) == OP_BAD) {
+      w = w + dprintf(output_fd, "(check-sat)\n");
+      if (number_of_binaries > 0)
+        w = w + dprintf(output_fd, "(get-value (%s%lu))\n",
+          get_prefix(state_input_buffer_nid), get_nid(state_input_buffer_nid));
+      else
+        w = w + dprintf(output_fd, "(get-value (%s%lu))\n",
+          get_prefix(state_code_segment_nid), get_nid(state_code_segment_nid));
+      w = w + dprintf(output_fd, "(pop 1)\n");
+    }
     return nid - 1; // nid is not used
   } else {
     print_nid(nid, line);
