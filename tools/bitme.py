@@ -51,12 +51,9 @@ class Bitvector(Sort):
         return self.match_sorts(sort)
 
 class Bool(Bitvector):
-    defined = False
-
     def __init__(self, nid, comment, line_no):
         super().__init__(nid, 1, comment, line_no)
         self.z3 = z3.BoolSort()
-        Bool.defined = True
 
     def match_sorts(self, sort):
         return super().match_sorts(sort)
@@ -89,6 +86,7 @@ class Array(Sort):
         return super().match_sorts(sort) and self.array_size_line.match_sorts(sort.array_size_line) and self.element_size_line.match_sorts(sort.element_size_line)
 
     def match_init_sorts(self, sort):
+        # allow constant arrays: array init with bitvector
         return self.match_sorts(sort) or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort))
 
 class Expression(Line):
@@ -495,6 +493,7 @@ class Init(Line):
         else:
             raise model_error("uninitialized state", line_no)
         if isinstance(sid_line, Array) and isinstance(exp_line.sid_line, Bitvec):
+            # initialize with constant array
             self.z3 = state_line.z3 == z3.K(sid_line.array_size_line.z3, exp_line.z3)
         else:
             self.z3 = state_line.z3 == exp_line.z3
@@ -639,6 +638,7 @@ class syntax_error(Exception):
         super().__init__(f"syntax error in line {line_no}: {expected} expected")
 
 def tokenize_btor2(line):
+    # comment, non-comment no-space printable string, signed integer, binary number, hexadecimal number
     btor2_token_pattern = r"(;.*|[^; \n\r]+|-?\d+|[0-1]|[0-9a-fA-F]+)"
     tokens = re.findall(btor2_token_pattern, line)
     return tokens
@@ -710,7 +710,8 @@ def parse_sort_line(tokens, nid, line_no):
     if token == Bitvec.keyword:
         size = get_decimal(tokens, "bitvector size", line_no)
         comment = get_comment(tokens, line_no)
-        if comment == "; Boolean" and size == 1: # not Bool.defined
+        # rotor-dependent Boolean declaration
+        if comment == "; Boolean" and size == 1:
             return Bool(nid, comment, line_no)
         else:
             return Bitvec(nid, size, comment, line_no)
@@ -852,6 +853,7 @@ def parse_btor2(modelfile):
 
     for state in State.states.values():
         if state.init_line == state:
+            # state has no init
             state.new_input()
 
 def bmc(kmin, kmax):
@@ -878,11 +880,10 @@ def bmc(kmin, kmax):
                     for d in m.decls():
                         for input_variable in Variable.inputs.values():
                             if str(input_variable.z3) in str(d.name()):
+                                # only print value of uninitialized states
                                 print(input_variable)
                                 print("%s = %s" % (d.name(), m[d]))
                     print("^" * 80)
-                #else:
-                #    print(f"unsat: {bad}")
                 s.pop()
         for bad in Bad.bads.values():
             s.add(bad.z3 == False)
