@@ -178,11 +178,15 @@ class State(Variable):
 
     states = dict()
 
+    input_buffer = None
+
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
         self.init_line = self
         self.next_line = self
-        self.z3 = z3.Const(f"state{nid}", sid_line.z3)
+        self.z3 = z3.Const(f"state{nid}-0", sid_line.z3)
+        if symbol == "input-buffer":
+            State.input_buffer = self
         self.new_state()
 
     def __str__(self):
@@ -191,6 +195,9 @@ class State(Variable):
     def new_state(self):
         assert self not in State.states
         State.states[self.nid] = self
+
+    def next_state(self, step):
+        return z3.Const(f"state{self.nid}-{step}", self.sid_line.z3)
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -519,6 +526,9 @@ class Next(Line):
             self.state_line.next_line = self
         else:
             raise model_error("untransitioned state", line_no)
+        self.current_step = state_line.z3
+        self.next_step = state_line.next_state(1)
+        self.z3 = self.next_step == exp_line.z3
         self.new_next()
 
     def __str__(self):
@@ -697,7 +707,7 @@ def parse_sort_line(tokens, nid, line_no):
     if token == Bitvec.keyword:
         size = get_decimal(tokens, "bitvector size", line_no)
         comment = get_comment(tokens, line_no)
-        if not Bool.defined and size == 1:
+        if comment == "; Boolean" and size == 1: # not Bool.defined
             return Bool(nid, comment, line_no)
         else:
             return Bitvec(nid, size, comment, line_no)
@@ -835,15 +845,17 @@ def main():
         epilog="Text at the bottom of help")
 
     parser.add_argument('modelfile')
+    parser.add_argument('-kmax', nargs=1, dest='kmax', type=int, default={0:110})
 
     args = parser.parse_args()
+    kmax = args.kmax[0]
 
     with open(args.modelfile) as modelfile:
         line_no = 1
         for line in modelfile:
             try:
                 parse_btor2_line(line, line_no)
-                line_no = line_no + 1
+                line_no += 1
             except Exception as message:
                 print(message)
                 exit(1)
@@ -852,17 +864,49 @@ def main():
 
         for init in Init.inits.values():
             s.add(init.z3)
-        for constraint in Constraint.constraints.values():
-            s.add(constraint.z3)
-        for bad in Bad.bads.values():
-            s.push()
-            s.add(bad.z3)
-            if z3.sat == s.check():
-                print(f"sat: {bad}")
-                print(s.model())
-            else:
-                print(f"unsat: {bad}")
-            s.pop()
+
+        step = 0
+
+        while step < kmax:
+            print(step)
+
+            for constraint in Constraint.constraints.values():
+                s.add(constraint.z3)
+            for bad in Bad.bads.values():
+                s.push()
+                s.add(bad.z3)
+                if z3.sat == s.check():
+                    print(f"sat: {bad}")
+                    m = s.model()
+                    for d in m.decls():
+                        if str(State.input_buffer.z3) in str(d.name()):
+                            print("%s = %s" % (d.name(), m[d]))
+                #else:
+                #    print(f"unsat: {bad}")
+                s.pop()
+            for bad in Bad.bads.values():
+                s.add(bad.z3 == False)
+            for next_line in Next.nexts.values():
+                s.add(next_line.z3)
+
+            current_states = [next_line.current_step for next_line in Next.nexts.values()]
+            next_states = [next_line.next_step for next_line in Next.nexts.values()]
+            renaming = [current_next for current_next in zip(current_states, next_states)]
+
+            for constraint in Constraint.constraints.values():
+                constraint.z3 = substitute(constraint.z3, renaming)
+            for bad in Bad.bads.values():
+                bad.z3 = substitute(bad.z3, renaming)
+
+            for next_line in Next.nexts.values():
+                next_line.exp_line.z3 = substitute(next_line.exp_line.z3, renaming)
+
+            for next_line in Next.nexts.values():
+                next_line.current_step = next_line.next_step
+                next_line.next_step = next_line.state_line.next_state(step + 2)
+                next_line.z3 = next_line.next_step == next_line.exp_line.z3
+
+            step += 1
 
 if __name__ == '__main__':
     main()
