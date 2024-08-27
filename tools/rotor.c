@@ -4122,19 +4122,32 @@ uint64_t print_slice(uint64_t nid, uint64_t* line) {
 }
 
 uint64_t print_unary_op(uint64_t nid, uint64_t* line) {
+  char* op;
+  op = get_op(line);
   nid = print_line_once(nid, get_sid(line));
   nid = print_line_once(nid, get_arg1(line));
   if (printing_smt) {
     define_fun(line, nid, PREFIX_EXP);
-    if (and(get_op(line) == OP_NOT, get_sid(line) == SID_BOOLEAN))
-      w = w + dprintf(output_fd, "(%s", get_op(line));
-    else
-      w = w + dprintf(output_fd, "(%s", get_smt_op(line));
-    w = w + dprintf(output_fd, " %s%lu))", get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
+    if (op == OP_INC)
+      // Z3 does not support bvinc
+      w = w + dprintf(output_fd, "(bvadd %s%lu (_ bv1 %lu)))",
+        get_prefix(get_arg1(line)), get_nid(get_arg1(line)),
+        eval_bitvec_size(get_sid(line)));
+    else if (op == OP_DEC)
+      // Z3 does not support bvdec
+      w = w + dprintf(output_fd, "(bvsub %s%lu (_ bv1 %lu)))",
+        get_prefix(get_arg1(line)), get_nid(get_arg1(line)),
+        eval_bitvec_size(get_sid(line)));
+    else {
+      if (or(op != OP_NOT, get_sid(line) != SID_BOOLEAN))
+        op = get_smt_op(line);
+      w = w + dprintf(output_fd, "(%s %s%lu))",
+        op, get_prefix(get_arg1(line)), get_nid(get_arg1(line)));
+    }
   } else {
     print_nid(nid, line);
     w = w + dprintf(output_fd, " %s %lu %lu",
-      get_op(line), get_nid(get_sid(line)), get_nid(get_arg1(line)));
+      op, get_nid(get_sid(line)), get_nid(get_arg1(line)));
   }
   print_comment(line);
   return nid;
