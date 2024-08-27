@@ -185,12 +185,17 @@ class State(Variable):
 
     states = dict()
 
+    pc = None
+
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
         self.init_line = self
         self.next_line = self
         self.z3 = z3.Const(f"state{nid}-0", sid_line.z3)
         self.new_state()
+        # rotor-dependent program counter declaration
+        if comment == "; program counter":
+            State.pc = self
 
     def __str__(self):
         return f"{self.nid} {State.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -858,7 +863,7 @@ def parse_btor2(modelfile):
             # state has no init
             state.new_input()
 
-def bmc(kmin, kmax):
+def bmc(kmin, kmax, print_pc):
     s = z3.Solver()
 
     for init in Init.inits.values():
@@ -869,8 +874,17 @@ def bmc(kmin, kmax):
     while step <= kmax:
         print(step)
 
+        if print_pc and State.pc:
+            s.check()
+            m = s.model()
+            for d in m.decls():
+                if str(State.pc.next_line.current_step) in str(d.name()):
+                    print(State.pc.next_line.state_line)
+                    print("%s = %s" % (d.name(), m[d]))
+
         for constraint in Constraint.constraints.values():
             s.add(constraint.z3)
+
         if step >= kmin:
             for bad in Bad.bads.values():
                 s.push()
@@ -887,6 +901,7 @@ def bmc(kmin, kmax):
                                 print("%s = %s" % (d.name(), m[d]))
                     print("^" * 80)
                 s.pop()
+
         for bad in Bad.bads.values():
             s.add(bad.z3 == False)
         for next_line in Next.nexts.values():
@@ -920,8 +935,10 @@ def main():
 
     parser.add_argument('modelfile')
 
-    parser.add_argument('-kmin', nargs=1, dest='kmin', type=int)
-    parser.add_argument('-kmax', nargs=1, dest='kmax', type=int)
+    parser.add_argument('-kmin', nargs=1, type=int)
+    parser.add_argument('-kmax', nargs=1, type=int)
+
+    parser.add_argument('--print-pc', action='store_true')
 
     args = parser.parse_args()
 
@@ -934,7 +951,7 @@ def main():
 
             kmax = max(kmin, kmax)
 
-            bmc(kmin, kmax)
+            bmc(kmin, kmax, args.print_pc)
 
 if __name__ == '__main__':
     main()
