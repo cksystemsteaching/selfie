@@ -159,9 +159,15 @@ class Consth(Constant):
 class Variable(Expression):
     keywords = {'input', 'state'}
 
+    inputs = dict()
+
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, comment, line_no)
         self.symbol = symbol
+
+    def new_input(self):
+        assert self not in Variable.inputs
+        Variable.inputs[self.nid] = self
 
 class Input(Variable):
     keyword = 'input'
@@ -169,6 +175,7 @@ class Input(Variable):
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
         self.z3 = z3.Const(f"input{nid}", sid_line.z3)
+        self.new_input()
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
@@ -178,15 +185,11 @@ class State(Variable):
 
     states = dict()
 
-    input_buffer = None
-
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
         self.init_line = self
         self.next_line = self
         self.z3 = z3.Const(f"state{nid}-0", sid_line.z3)
-        if symbol == "input-buffer":
-            State.input_buffer = self
         self.new_state()
 
     def __str__(self):
@@ -837,6 +840,20 @@ def parse_btor2_line(line, line_no):
             raise syntax_error("nid", line_no)
     return line.strip()
 
+def parse_btor2(modelfile):
+    line_no = 1
+    for line in modelfile:
+        try:
+            parse_btor2_line(line, line_no)
+            line_no += 1
+        except Exception as message:
+            print(message)
+            exit(1)
+
+    for state in State.states.values():
+        if state.init_line == state:
+            state.new_input()
+
 def bmc(kmin, kmax):
     s = z3.Solver()
 
@@ -855,11 +872,15 @@ def bmc(kmin, kmax):
                 s.push()
                 s.add(bad.z3)
                 if z3.sat == s.check():
+                    print("v" * 80)
                     print(f"sat: {bad}")
                     m = s.model()
                     for d in m.decls():
-                        if str(State.input_buffer.z3) in str(d.name()):
-                            print("%s = %s" % (d.name(), m[d]))
+                        for input_variable in Variable.inputs.values():
+                            if str(input_variable.z3) in str(d.name()):
+                                print(input_variable)
+                                print("%s = %s" % (d.name(), m[d]))
+                    print("^" * 80)
                 #else:
                 #    print(f"unsat: {bad}")
                 s.pop()
@@ -902,14 +923,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.modelfile) as modelfile:
-        line_no = 1
-        for line in modelfile:
-            try:
-                parse_btor2_line(line, line_no)
-                line_no += 1
-            except Exception as message:
-                print(message)
-                exit(1)
+        parse_btor2(modelfile)
 
         if args.kmin or args.kmax:
             kmin = args.kmin[0] if args.kmin else 0
