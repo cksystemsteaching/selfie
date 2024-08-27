@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# requires Z3 and the Z3 Python API: pip install z3-solver
+
 from z3 import *
 
 import math
