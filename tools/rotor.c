@@ -12081,7 +12081,7 @@ void open_model_file() {
   }
 
   if (printing_smt)
-    w = w + dprintf(output_fd, "(set-option :produce-models true)\n(set-option :incremental true)\n(set-logic QF_ABV)\n\n");
+    w = w + dprintf(output_fd, "(set-option :produce-models true)\n\n");
 }
 
 void close_model_file() {
