@@ -785,7 +785,7 @@ class Init(Line):
         if self.bitwuzla is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
-                self.bitwuzla = tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.exp_line.get_bitwuzla(tm))
+                self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL, [self.state_line.get_bitwuzla(tm), tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.exp_line.get_bitwuzla(tm))])
             else:
                 self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL, [self.state_line.get_bitwuzla(tm), self.exp_line.get_bitwuzla(tm)])
 
@@ -829,6 +829,12 @@ class Next(Line):
             self.current_step = self.state_line.get_z3()
             self.next_step = self.state_line.get_z3_step(1)
             self.z3 = self.next_step == self.exp_line.get_z3()
+
+    def set_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.current_step = self.state_line.get_bitwuzla(tm)
+            self.next_step = self.state_line.get_bitwuzla_step(1, tm)
+            self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL, [self.next_step, self.exp_line.get_bitwuzla(tm)])
 
 class Property(Line):
     keywords = {'constraint', 'bad'}
@@ -1166,20 +1172,10 @@ def new_problem(set_solver):
 def new_z3():
     new_problem(lambda line: line.set_z3())
 
-def new_bitwuzla():
-    tm = bitwuzla.TermManager()
-    options = bitwuzla.Options()
-    options.set(bitwuzla.Option.PRODUCE_MODELS, True)
+def new_bitwuzla(tm):
+    new_problem(lambda line: line.set_bitwuzla(tm))
 
-    #new_problem(lambda line: line.set_bitwuzla())
-    for init in Init.inits.values():
-        init.set_bitwuzla(tm)
-    for constraint in Constraint.constraints.values():
-        constraint.set_bitwuzla(tm)
-    for bad in Bad.bads.values():
-        bad.set_bitwuzla(tm)
-
-def bmc(kmin, kmax, print_pc):
+def bmc_z3(kmin, kmax, print_pc):
     s = z3.Solver()
 
     for init in Init.inits.values():
@@ -1242,6 +1238,46 @@ def bmc(kmin, kmax, print_pc):
 
         step += 1
 
+def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
+    s = bitwuzla.Bitwuzla(tm, options)
+
+    for init in Init.inits.values():
+        s.assert_formula(init.bitwuzla)
+
+    step = 0
+
+    while step <= 0:
+        print(step)
+
+        if print_pc and State.pc:
+            s.check_sat()
+            print(State.pc.next_line.state_line)
+            print("%s = %s" % (State.pc.next_line.state_line.symbol, s.get_value(State.pc.next_line.state_line.bitwuzla)))
+
+        for constraint in Constraint.constraints.values():
+            s.assert_formula(constraint.bitwuzla)
+
+        if step >= kmin:
+            for bad in Bad.bads.values():
+                s.push(1)
+                s.assert_formula(bad.bitwuzla)
+                if s.check_sat() == "sat":
+                    print("v" * 80)
+                    print(f"sat: {bad}")
+                    for input_variable in Variable.inputs.values():
+                        # only print value of uninitialized states
+                        print(input_variable)
+                        print("%s = %s" % (input_variable.symbol, s.get_value(input_variable.bitwuzla)))
+                    print("^" * 80)
+                s.pop(1)
+
+        for bad in Bad.bads.values():
+            s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
+        for next_line in Next.nexts.values():
+            s.assert_formula(next_line.bitwuzla)
+
+        step += 1
+
 import argparse
 
 def main():
@@ -1267,14 +1303,19 @@ def main():
 
         kmax = max(kmin, kmax)
 
-        use_Z3 = False
+        use_Z3 = True
 
         if is_Z3_present and use_Z3:
             new_z3()
-            bmc(kmin, kmax, args.print_pc)
+            bmc_z3(kmin, kmax, args.print_pc)
 
         if is_bitwuzla_present:
-            new_bitwuzla()
+            tm = bitwuzla.TermManager()
+            options = bitwuzla.Options()
+            options.set(bitwuzla.Option.PRODUCE_MODELS, True)
+
+            new_bitwuzla(tm)
+            bmc_bitwuzla(tm, options, kmin, kmax, args.print_pc)
 
 if __name__ == '__main__':
     main()
