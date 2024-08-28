@@ -169,6 +169,11 @@ class Constant(Expression):
                 self.z3 = z3.BitVecVal(self.value, self.sid_line.size)
         return self.z3
 
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_bv_value(self.sid_line.get_bitwuzla(tm), self.value)
+        return self.bitwuzla
+
 class Zero(Constant):
     keyword = 'zero'
 
@@ -239,10 +244,18 @@ class Input(Variable):
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
+    def get_name(self):
+        return f"input{self.nid}"
+
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = z3.Const(f"input{self.nid}", self.sid_line.get_z3())
+            self.z3 = z3.Const(self.get_name(), self.sid_line.get_z3())
         return self.z3
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(tm), self.get_name())
+        return self.bitwuzla
 
 class State(Variable):
     keyword = 'state'
@@ -600,6 +613,11 @@ class Write(Ternary):
             self.z3 = z3.Store(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_term(bitwuzla.Kind.ARRAY_STORE, [self.arg1_line.get_bitwuzla(tm), self.arg2_line.get_bitwuzla(tm), self.arg3_line.get_bitwuzla(tm)])
+        return self.bitwuzla
+
 class Init(Line):
     keyword = 'init'
 
@@ -616,8 +634,10 @@ class Init(Line):
             raise model_error("state left operand", line_no)
         if not isinstance(exp_line, Expression):
             raise model_error("expression right operand", line_no)
+        if not self.sid_line.match_sorts(state_line.sid_line):
+            raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
-            raise model_error("compatible sorts", line_no)
+            raise model_error("compatible state and expression sorts", line_no)
         if self.state_line.init_line == self.state_line:
             self.state_line.init_line = self
         else:
@@ -641,7 +661,11 @@ class Init(Line):
 
     def set_bitwuzla(self, tm):
         if self.bitwuzla is None:
-            self.bitwuzla = self.state_line.get_bitwuzla(tm)
+            if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
+                # initialize with constant array
+                self.bitwuzla = tm.mk_const_array(self.sid_line.get_bitwuzla(tm), self.exp_line.get_bitwuzla(tm))
+            else:
+                self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL, [self.state_line.get_bitwuzla(tm), self.exp_line.get_bitwuzla(tm)])
 
 class Next(Line):
     keyword = 'next'
@@ -659,8 +683,10 @@ class Next(Line):
             raise model_error("state left operand", line_no)
         if not isinstance(exp_line, Expression):
             raise model_error("expression right operand", line_no)
+        if not self.sid_line.match_sorts(state_line.sid_line):
+            raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_sorts(exp_line.sid_line):
-            raise model_error("compatible sorts", line_no)
+            raise model_error("compatible state and expression sorts", line_no)
         if self.state_line.next_line == self.state_line:
             self.state_line.next_line = self
         else:
@@ -1111,10 +1137,14 @@ def main():
 
         kmax = max(kmin, kmax)
 
-        if is_Z3_present:
-            new_z3()
+        use_Z3 = False
 
+        if is_Z3_present and use_Z3:
+            new_z3()
             bmc(kmin, kmax, args.print_pc)
+
+        if is_bitwuzla_present:
+            new_bitwuzla()
 
 if __name__ == '__main__':
     main()
