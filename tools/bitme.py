@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+# for debugging segfaults: import faulthandler; faulthandler.enable()
+
 # requires Z3 and the Z3 Python API:
 # pip install z3-solver
 
 try:
-    from z3 import *
+    import z3
     is_Z3_present = True
 except ImportError:
     print("Z3 is not available")
@@ -15,7 +17,7 @@ except ImportError:
 # pip install .
 
 try:
-    from bitwuzla import *
+    import bitwuzla
     is_bitwuzla_present = True
 except ImportError:
     print("bitwuzla is not available")
@@ -39,7 +41,8 @@ class Line(Z3, Bitwuzla):
     lines = dict()
 
     def __init__(self, nid, comment, line_no):
-        super().__init__()
+        Z3.__init__(self)
+        Bitwuzla.__init__(self)
         self.nid = nid
         self.comment = comment
         self.line_no = line_no
@@ -86,7 +89,7 @@ class Bool(Bitvector):
         return super().match_sorts(sort)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.BoolSort()
         return self.z3
 
@@ -98,7 +101,7 @@ class Bitvec(Bitvector):
         return super().match_sorts(sort) and self.size == sort.size
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.BitVecSort(self.size)
         return self.z3
 
@@ -125,7 +128,7 @@ class Array(Sort):
         return self.match_sorts(sort) or (isinstance(sort, Bitvec) and self.element_size_line.match_sorts(sort))
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.ArraySort(self.array_size_line.get_z3(), self.element_size_line.get_z3())
         return self.z3
 
@@ -144,7 +147,7 @@ class Constant(Expression):
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if isinstance(self.sid_line, Bool):
                 self.z3 = z3.BoolVal(bool(self.value))
             else:
@@ -222,7 +225,7 @@ class Input(Variable):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Const(f"input{self.nid}", self.sid_line.get_z3())
         return self.z3
 
@@ -249,11 +252,14 @@ class State(Variable):
         assert self not in State.states
         State.states[self.nid] = self
 
+    def get_step(self, step):
+        return f"state{self.nid}-{step}"
+
     def get_z3_step(self, step):
-        return z3.Const(f"state{self.nid}-{step}", self.sid_line.get_z3())
+        return z3.Const(self.get_step(step), self.sid_line.get_z3())
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = self.get_z3_step(0)
         return self.z3
 
@@ -282,7 +288,7 @@ class Ext(Indexed):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.w} {self.comment}"
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if self.op == 'sext':
                 self.z3 = z3.SignExt(self.w, self.arg1_line.get_z3())
             elif self.op == 'uext':
@@ -307,7 +313,7 @@ class Slice(Indexed):
         return f"{self.nid} {Slice.keyword} {self.sid_line.nid} {self.arg1_line.nid} {self.u} {self.l} {self.comment}"
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Extract(self.u, self.l, self.arg1_line.get_z3())
         return self.z3
 
@@ -331,7 +337,7 @@ class Unary(Expression):
         return f"{self.nid} {self.op} {self.sid_line.nid} {self.arg1_line.nid} {self.comment}"
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if self.op == 'not':
                 if isinstance(self.sid_line, Bool):
                     self.z3 = z3.Not(self.arg1_line.get_z3())
@@ -374,7 +380,7 @@ class Implies(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Implies(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
@@ -391,7 +397,7 @@ class Comparison(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if self.op == 'eq':
                 self.z3 = self.arg1_line.get_z3() == self.arg2_line.get_z3()
             elif self.op == 'neq':
@@ -427,7 +433,7 @@ class Logical(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if isinstance(self.sid_line, Bool):
                 if self.op == 'and':
                     self.z3 = z3.And(self.arg1_line.get_z3(), self.arg2_line.get_z3())
@@ -457,7 +463,7 @@ class Computation(Binary):
             raise model_error("compatible first and second operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if self.op == 'sll':
                 self.z3 = self.arg1_line.get_z3() << self.arg2_line.get_z3()
             elif self.op == 'srl':
@@ -495,7 +501,7 @@ class Concat(Binary):
             raise model_error("compatible bitvector result", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Concat(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
@@ -512,7 +518,7 @@ class Read(Binary):
             raise model_error("compatible result and first operand element size sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Select(self.arg1_line.get_z3(), self.arg2_line.get_z3())
         return self.z3
 
@@ -548,7 +554,7 @@ class Ite(Ternary):
             raise model_error("compatible second and third operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.If(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
@@ -567,7 +573,7 @@ class Write(Ternary):
             raise model_error("compatible first operand element size and third operand sorts", line_no)
 
     def get_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = z3.Store(self.arg1_line.get_z3(), self.arg2_line.get_z3(), self.arg3_line.get_z3())
         return self.z3
 
@@ -603,7 +609,7 @@ class Init(Line):
         Init.inits[self.nid] = self
 
     def set_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
                 self.z3 = self.state_line.get_z3() == z3.K(self.sid_line.array_size_line.get_z3(), self.exp_line.get_z3())
@@ -644,7 +650,7 @@ class Next(Line):
         Next.nexts[self.nid] = self
 
     def set_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.current_step = self.state_line.get_z3()
             self.next_step = self.state_line.get_z3_step(1)
             self.z3 = self.next_step == self.exp_line.get_z3()
@@ -662,7 +668,7 @@ class Property(Line):
             raise model_error("Boolean operand", line_no)
 
     def set_z3(self):
-        if self.z3 == None:
+        if self.z3 is None:
             self.z3 = self.property_line.get_z3()
 
 class Constraint(Property):
@@ -968,15 +974,19 @@ def parse_btor2(modelfile):
             # state has no init
             state.new_input()
 
-def new_z3():
+def new_problem(set_solver):
     for init in Init.inits.values():
-        init.set_z3()
+        set_solver(init)
     for constraint in Constraint.constraints.values():
-        constraint.set_z3()
+        set_solver(constraint)
     for bad in Bad.bads.values():
-        bad.set_z3()
+        set_solver(bad)
     for next_line in Next.nexts.values():
-        next_line.set_z3()
+        set_solver(next_line)
+
+def new_z3():
+    new_problem(lambda line: line.set_z3())
+
 
 def bmc(kmin, kmax, print_pc):
     s = z3.Solver()
@@ -1027,12 +1037,12 @@ def bmc(kmin, kmax, print_pc):
         renaming = [current_next for current_next in zip(current_states, next_states)]
 
         for constraint in Constraint.constraints.values():
-            constraint.z3 = substitute(constraint.z3, renaming)
+            constraint.z3 = z3.substitute(constraint.z3, renaming)
         for bad in Bad.bads.values():
-            bad.z3 = substitute(bad.z3, renaming)
+            bad.z3 = z3.substitute(bad.z3, renaming)
 
         for next_line in Next.nexts.values():
-            next_line.exp_line.z3 = substitute(next_line.exp_line.z3, renaming)
+            next_line.exp_line.z3 = z3.substitute(next_line.exp_line.z3, renaming)
 
         for next_line in Next.nexts.values():
             next_line.current_step = next_line.next_step
