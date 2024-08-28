@@ -93,6 +93,11 @@ class Bool(Bitvector):
             self.z3 = z3.BoolSort()
         return self.z3
 
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_bool_sort()
+        return self.bitwuzla
+
 class Bitvec(Bitvector):
     def __init__(self, nid, size, comment, line_no):
         super().__init__(nid, size, comment, line_no)
@@ -104,6 +109,11 @@ class Bitvec(Bitvector):
         if self.z3 is None:
             self.z3 = z3.BitVecSort(self.size)
         return self.z3
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_bv_sort(self.size)
+        return self.bitwuzla
 
 class Array(Sort):
     keyword = 'array'
@@ -131,6 +141,11 @@ class Array(Sort):
         if self.z3 is None:
             self.z3 = z3.ArraySort(self.array_size_line.get_z3(), self.element_size_line.get_z3())
         return self.z3
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = tm.mk_array_sort(self.array_size_line.get_bitwuzla(tm), self.element_size_line.get_bitwuzla(tm))
+        return self.bitwuzla
 
 class Expression(Line):
     def __init__(self, nid, sid_line, comment, line_no):
@@ -262,6 +277,14 @@ class State(Variable):
         if self.z3 is None:
             self.z3 = self.get_z3_step(0)
         return self.z3
+
+    def get_bitwuzla_step(self, step, tm):
+        return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.get_step(step))
+
+    def get_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = self.get_bitwuzla_step(0, tm)
+        return self.bitwuzla
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -615,6 +638,10 @@ class Init(Line):
                 self.z3 = self.state_line.get_z3() == z3.K(self.sid_line.array_size_line.get_z3(), self.exp_line.get_z3())
             else:
                 self.z3 = self.state_line.get_z3() == self.exp_line.get_z3()
+
+    def set_bitwuzla(self, tm):
+        if self.bitwuzla is None:
+            self.bitwuzla = self.state_line.get_bitwuzla(tm)
 
 class Next(Line):
     keyword = 'next'
@@ -987,6 +1014,14 @@ def new_problem(set_solver):
 def new_z3():
     new_problem(lambda line: line.set_z3())
 
+def new_bitwuzla():
+    tm = bitwuzla.TermManager()
+    options = bitwuzla.Options()
+    options.set(bitwuzla.Option.PRODUCE_MODELS, True)
+
+    #new_problem(lambda line: line.set_bitwuzla())
+    for init in Init.inits.values():
+        init.set_bitwuzla(tm)
 
 def bmc(kmin, kmax, print_pc):
     s = z3.Solver()
