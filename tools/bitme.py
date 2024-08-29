@@ -895,7 +895,7 @@ class Next(Line):
     def set_bitwuzla(self, step, tm):
         assert step == 0 or step == self.step + 1
         if self.bitwuzla is None or step > self.step:
-            if self.current_step is None:
+            if step == 0:
                 self.current_step = self.state_line.get_bitwuzla(step, tm)
             else:
                 self.current_step = self.next_step
