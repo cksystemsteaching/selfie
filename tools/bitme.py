@@ -96,6 +96,7 @@ class Bool(Bitvector):
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
+            assert step == 0
             self.bitwuzla = tm.mk_bool_sort()
         return self.bitwuzla
 
@@ -113,6 +114,7 @@ class Bitvec(Bitvector):
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
+            assert step == 0
             self.bitwuzla = tm.mk_bv_sort(self.size)
         return self.bitwuzla
 
@@ -145,6 +147,7 @@ class Array(Sort):
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
+            assert step == 0
             self.bitwuzla = tm.mk_array_sort(self.array_size_line.get_bitwuzla(step, tm), self.element_size_line.get_bitwuzla(step, tm))
         return self.bitwuzla
 
@@ -172,6 +175,7 @@ class Constant(Expression):
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
+            assert step == 0
             if isinstance(self.sid_line, Bool):
                 self.bitwuzla = tm.mk_true() if bool(self.value) else tm.mk_false()
             else:
@@ -258,6 +262,7 @@ class Input(Variable):
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
+            assert step == 0
             self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_name())
         return self.bitwuzla
 
@@ -299,9 +304,15 @@ class State(Variable):
         return tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_name(step))
 
     def get_bitwuzla(self, step, tm):
+        assert step == self.step
         if self.bitwuzla is None:
             self.bitwuzla = self.get_bitwuzla_step(step, tm)
         return self.bitwuzla
+
+    def set_bitwuzla(self, step, tm):
+        assert step == self.step + 1 and self.next_line is not None and step == self.next_line.step + 1
+        self.bitwuzla = self.next_line.next_step
+        self.step = step
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -336,6 +347,7 @@ class Ext(Indexed):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             if self.op == 'sext':
                 bitwuzla_op = bitwuzla.Kind.BV_SIGN_EXTEND
@@ -368,6 +380,7 @@ class Slice(Indexed):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.BV_EXTRACT, [self.arg1_line.get_bitwuzla(step, tm)], [self.u, self.l])
             self.step = step
@@ -408,6 +421,7 @@ class Unary(Expression):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             if self.op == 'not':
                 if isinstance(self.sid_line, Bool):
@@ -458,7 +472,8 @@ class Implies(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
-        if self.bitwuzla is None:
+        assert step == 0 or self.step <= step <= self.step + 1
+        if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.IMPLIES, [self.arg1_line.get_bitwuzla(step, tm), self.arg2_line.get_bitwuzla(step, tm)])
             self.step = step
         return self.bitwuzla
@@ -500,6 +515,7 @@ class Comparison(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             if self.op == 'eq':
                 bitwuzla_op = bitwuzla.Kind.EQUAL
@@ -556,6 +572,7 @@ class Logical(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             if isinstance(self.sid_line, Bool):
                 if self.op == 'and':
@@ -612,6 +629,7 @@ class Computation(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             if self.op == 'sll':
                 bitwuzla_op = bitwuzla.Kind.BV_SHL
@@ -657,6 +675,7 @@ class Concat(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.BV_CONCAT, [self.arg1_line.get_bitwuzla(step, tm), self.arg2_line.get_bitwuzla(step, tm)])
             self.step = step
@@ -680,6 +699,7 @@ class Read(Binary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.ARRAY_SELECT, [self.arg1_line.get_bitwuzla(step, tm), self.arg2_line.get_bitwuzla(step, tm)])
             self.step = step
@@ -722,6 +742,7 @@ class Ite(Ternary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.ITE, [self.arg1_line.get_bitwuzla(step, tm), self.arg2_line.get_bitwuzla(step, tm), self.arg3_line.get_bitwuzla(step, tm)])
             self.step = step
@@ -747,6 +768,7 @@ class Write(Ternary):
         return self.z3
 
     def get_bitwuzla(self, step, tm):
+        assert step == 0 or self.step <= step <= self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = tm.mk_term(bitwuzla.Kind.ARRAY_STORE, [self.arg1_line.get_bitwuzla(step, tm), self.arg2_line.get_bitwuzla(step, tm), self.arg3_line.get_bitwuzla(step, tm)])
             self.step = step
@@ -794,6 +816,7 @@ class Init(Line):
                 self.z3 = self.state_line.get_z3() == self.exp_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
+        assert step == 0 and step == self.step
         if self.bitwuzla is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
@@ -845,6 +868,7 @@ class Next(Line):
         self.z3 = self.next_step == self.exp_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
+        assert step == 0 or step == self.step + 1
         if self.bitwuzla is None or step > self.step:
             if self.current_step is None:
                 self.current_step = self.state_line.get_bitwuzla(step, tm)
@@ -871,6 +895,7 @@ class Property(Line):
             self.z3 = self.property_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
+        assert step == 0 or step == self.step + 1
         if self.bitwuzla is None or step > self.step:
             self.bitwuzla = self.property_line.get_bitwuzla(step, tm)
             self.step = step
@@ -1294,7 +1319,7 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
             s.assert_formula(next_line.bitwuzla)
 
         for state in State.states.values():
-            state.bitwuzla = state.next_line.next_step
+            state.set_bitwuzla(step + 1, tm)
 
         for constraint in Constraint.constraints.values():
             constraint.set_bitwuzla(step + 1, tm)
