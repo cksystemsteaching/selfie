@@ -1272,7 +1272,8 @@ def bmc_z3(kmin, kmax, print_pc):
             for bad in Bad.bads.values():
                 s.push()
                 s.add(bad.z3)
-                if z3.sat == s.check():
+                result = s.check()
+                if result == z3.sat:
                     print("v" * 80)
                     print(f"sat: {bad}")
                     m = s.model()
@@ -1284,9 +1285,12 @@ def bmc_z3(kmin, kmax, print_pc):
                                 print("%s = %s" % (d.name(), m[d]))
                     print("^" * 80)
                 s.pop()
+                if result == z3.unsat:
+                    s.add(bad.z3 == False)
+        else:
+            for bad in Bad.bads.values():
+                s.add(bad.z3 == False)
 
-        for bad in Bad.bads.values():
-            s.add(bad.z3 == False)
         for next_line in Next.nexts.values():
             s.add(next_line.z3)
 
@@ -1329,9 +1333,8 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
 
         if step >= kmin:
             for bad in Bad.bads.values():
-                s.push(1)
-                s.assert_formula(bad.bitwuzla)
-                if s.check_sat() is bitwuzla.Result.SAT:
+                result = s.check_sat(bad.bitwuzla)
+                if result is bitwuzla.Result.SAT:
                     print("v" * 80)
                     print(f"sat: {bad}")
                     for input_variable in Variable.inputs.values():
@@ -1340,10 +1343,12 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
                         print("%s = %s" % (input_variable.bitwuzla,
                             s.get_value(input_variable.bitwuzla)))
                     print("^" * 80)
-                s.pop(1)
+                elif result is bitwuzla.Result.UNSAT:
+                    s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
+        else:
+            for bad in Bad.bads.values():
+                s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
 
-        for bad in Bad.bads.values():
-            s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
         for next_line in Next.nexts.values():
             s.assert_formula(next_line.bitwuzla)
 
