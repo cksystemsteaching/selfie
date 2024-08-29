@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+title: selfie
+message: >-
+  An educational software system of a tiny self-compiling C
+  compiler, a tiny self-executing RISC-V emulator, and a
+  tiny self-hosting RISC-V hypervisor. 
+type: software
+authors:
+  - given-names: Christoph
+    family-names: Kirsch
+    email: ck@cs.uni-salzburg.at
+    affiliation: 'University of Salzburg, Austria'
+    orcid: 'https://orcid.org/0000-0002-0961-0564'
+repository-code: 'https://github.com/cksystemsteaching/selfie'
+url: 'http://selfie.cs.uni-salzburg.at/'
+abstract: >-
+  Selfie is a project of the Computational Systems Group at
+  the Department of Computer Sciences of the University of
+  Salzburg in Austria.
+
+
+  The Selfie Project provides an educational platform for
+  teaching undergraduate and graduate students the design
+  and implementation of programming languages and runtime
+  systems. The focus is on the construction of compilers,
+  libraries, operating systems, and even virtual machine
+  monitors. The common theme is to identify and resolve
+  self-reference in systems code which is seen as the key
+  challenge when teaching systems engineering, hence the
+  name.
+keywords:
+  - emulator
+  - computer-science
+  - compiler
+  - virtual-machine
+  - 'teaching '
+  - 'symbolic-execution-engine '
+license: BSD-2-Clause
+commit: eb71b1e97ec1510adbc799c434c18901e48a9829
+date-released: '2024-08-03'
