@@ -4032,6 +4032,7 @@ uint64_t print_input(uint64_t nid, uint64_t* line) {
   uint64_t* value_nid;
   op = get_op(line);
   type = PREFIX_INPUT;
+  value_nid = (uint64_t*) 0; // avoids uninitialized use warning
   if (printing_unrolled_model) {
     if (op == OP_STATE) {
       if (get_symbolic(line) == SYMBOLIC)
