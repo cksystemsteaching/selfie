@@ -1262,8 +1262,9 @@ def bmc_z3(kmin, kmax, print_pc):
             m = s.model()
             for d in m.decls():
                 if str(State.pc.next_line.current_step) in str(d.name()):
+                    pc = int(m[d].as_long())
                     print(State.pc.next_line.state_line)
-                    print("%s = %s" % (d.name(), m[d]))
+                    print("%s = 0x%X" % (d.name(), pc))
 
         for constraint in Constraint.constraints.values():
             s.add(constraint.z3)
@@ -1324,9 +1325,9 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
 
         if print_pc and State.pc:
             s.check_sat()
+            pc = int(s.get_value(State.pc.next_line.current_step).value(16), 16)
             print(State.pc.next_line.state_line)
-            print("%s = %s" % (State.pc.next_line.current_step,
-                s.get_value(State.pc.next_line.current_step)))
+            print("%s = 0x%X" % (State.pc.next_line.current_step, pc))
 
         for constraint in Constraint.constraints.values():
             s.assert_formula(constraint.bitwuzla)
