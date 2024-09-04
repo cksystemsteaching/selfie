@@ -307,15 +307,9 @@ class State(Variable):
         return tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_step_name(step))
 
     def get_bitwuzla(self, step, tm):
-        assert step == self.step
         if self.bitwuzla is None:
             self.bitwuzla = self.get_bitwuzla_step(step, tm)
         return self.bitwuzla
-
-    def set_bitwuzla(self, step, tm):
-        assert step == self.step + 1 and self.next_line is not None and step == self.next_line.step + 1
-        self.bitwuzla = self.next_line.next_step
-        self.step = step
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -838,7 +832,6 @@ class Init(Line):
                 self.z3 = self.state_line.get_z3() == self.exp_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
-        assert step == 0 and step == self.step
         if self.bitwuzla is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
@@ -894,16 +887,13 @@ class Next(Line):
         self.z3 = self.next_step == self.exp_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
-        assert step == 0 or step == self.step + 1
-        if self.bitwuzla is None or step > self.step:
-            if step == 0:
-                self.current_step = self.state_line.get_bitwuzla(step, tm)
-            else:
-                self.current_step = self.next_step
-            self.next_step = self.state_line.get_bitwuzla_step(step + 1, tm)
-            self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL,
-                [self.next_step, self.exp_line.get_bitwuzla(step, tm)])
-            self.step = step
+        if self.bitwuzla is None:
+            self.current_step = self.state_line.get_bitwuzla(step, tm)
+        else:
+            self.current_step = self.next_step
+        self.next_step = self.state_line.get_bitwuzla_step(step + 1, tm)
+        self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL,
+            [self.next_step, self.exp_line.get_bitwuzla(0, tm)])
 
 class Property(Line):
     keywords = {'constraint', 'bad'}
@@ -922,10 +912,8 @@ class Property(Line):
             self.z3 = self.property_line.get_z3()
 
     def set_bitwuzla(self, step, tm):
-        assert step == 0 or step == self.step + 1
-        if self.bitwuzla is None or step > self.step:
+        if self.bitwuzla is None:
             self.bitwuzla = self.property_line.get_bitwuzla(step, tm)
-            self.step = step
 
 class Constraint(Property):
     keyword = 'constraint'
@@ -1354,13 +1342,17 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
         for next_line in Next.nexts.values():
             s.assert_formula(next_line.bitwuzla)
 
-        for state in State.states.values():
-            state.set_bitwuzla(step + 1, tm)
+        current_states = [next_line.current_step for next_line in Next.nexts.values()]
+        next_states = [next_line.next_step for next_line in Next.nexts.values()]
+        renaming = dict(current_next for current_next in zip(current_states, next_states))
 
         for constraint in Constraint.constraints.values():
-            constraint.set_bitwuzla(step + 1, tm)
+            constraint.bitwuzla = tm.substitute_term(constraint.bitwuzla, renaming)
         for bad in Bad.bads.values():
-            bad.set_bitwuzla(step + 1, tm)
+            bad.bitwuzla = tm.substitute_term(bad.bitwuzla, renaming)
+
+        for next_line in Next.nexts.values():
+            next_line.exp_line.bitwuzla = tm.substitute_term(next_line.exp_line.bitwuzla, renaming)
 
         for next_line in Next.nexts.values():
             next_line.set_bitwuzla(step + 1, tm)
