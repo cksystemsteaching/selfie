@@ -251,23 +251,21 @@ class Input(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
+        self.name = f"input{self.nid}"
         self.new_input()
 
     def __str__(self):
         return f"{self.nid} {Input.keyword} {self.sid_line.nid} {self.symbol} {self.comment}"
 
-    def get_name(self):
-        return f"input{self.nid}"
-
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = z3.Const(self.get_name(), self.sid_line.get_z3())
+            self.z3 = z3.Const(self.name, self.sid_line.get_z3())
         return self.z3
 
     def get_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
             assert step == 0
-            self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_name())
+            self.bitwuzla = tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.name)
         return self.bitwuzla
 
 class State(Variable):
@@ -279,6 +277,7 @@ class State(Variable):
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
         super().__init__(nid, sid_line, symbol, comment, line_no)
+        self.name = f"state{nid}"
         self.init_line = self
         self.next_line = self
         self.new_state()
@@ -293,11 +292,11 @@ class State(Variable):
         assert self not in State.states
         State.states[self.nid] = self
 
-    def get_name(self, step):
-        return f"state{self.nid}-{step}"
+    def get_step_name(self, step):
+        return f"{self.name}-{step}"
 
     def get_z3_step(self, step):
-        return z3.Const(self.get_name(step), self.sid_line.get_z3())
+        return z3.Const(self.get_step_name(step), self.sid_line.get_z3())
 
     def get_z3(self):
         if self.z3 is None:
@@ -305,7 +304,7 @@ class State(Variable):
         return self.z3
 
     def get_bitwuzla_step(self, step, tm):
-        return tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_name(step))
+        return tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_step_name(step))
 
     def get_bitwuzla(self, step, tm):
         assert step == self.step
@@ -814,6 +813,8 @@ class Init(Line):
             raise model_error("compatible line and state sorts", line_no)
         if not state_line.sid_line.match_init_sorts(exp_line.sid_line):
             raise model_error("compatible state and expression sorts", line_no)
+        if state_line.nid < exp_line.nid:
+            raise model_error("state after expression", line_no)
         if self.state_line.init_line == self.state_line:
             self.state_line.init_line = self
         else:
