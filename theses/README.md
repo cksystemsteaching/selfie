@@ -1,5 +1,43 @@
 # Bachelor Theses on Selfie
 
+## Exploring Reasoning Performance of RISC-V Software Models in BTOR2 by Nadir Fejzić, University of Salzburg, Austria, 2024 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_fejzic.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_fejzic))
+
+When working with software programs, we want to ensure that they do not
+reach certain unsafe states. Various techniques exist for this purpose,
+such as testing. However, testing requires running the program with every
+possible input, which is often not practical because of the large input
+space. Most often we want to check whether an input exists such that our
+program reaches a specific state. This is known as the state reachability
+problem, which can be reduced to the boolean satisfiability problem and
+solved by SAT-solvers.
+
+The reduction can be done by encoding the sequence of machine instructions
+in the program as a satisfiability formula in the theory of bit-vectors,
+known as a Satisfiability Modulo Theory (SMT) formula. The resulting
+formula is the model of our program. SMT-formulae are then further reduced
+to boolean logic formulae by technique called bit-blasting. We can then run
+a SAT-solver on resulting boolean formulae, which will tell us whether the
+program satisfies the given constraints. Effectively, we reduced the
+problem of program correctness to the satisfiability problem. Important to
+notice is that only a finite number of instructions can be transformed this
+way, which makes the model checking bounded in number of executed
+instructions.
+
+As we reduced the program correctness problem to satisfiability problem,
+solving it is NP-Complete and computationally expensive. However, model
+generation is linear in the size of the input program. We took advantage of
+this property and generated many equivalent models to analyze impact of
+different configurations on solving performance of \texttt{btormc} model
+checker.
+
+In this thesis, we present a toolbox \texttt{peRISCope} for easy
+benchmarking of different model configurations. We also present and analyze
+results from benchmarking of solving time for models with different code
+and non-code memory granularity configurations. We found that models with
+smaller memory granularity were solved faster in models generated from
+binaries compiled with \texttt{starc} compiler. On models generated from
+binaries compiled with \texttt{gcc} compiler, models with larger memory
+granularity were solved faster.
 
 ## Automated Testing of Atomic Instructions (`LR`/`SC`) Implementations in Selfie by Luis Thiele, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_thiele.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_thiele))
 
@@ -9,16 +47,13 @@ This thesis is about extending the autograder to grade an assignment called `tre
 
 Additionally, this thesis also describes the correct implementations of the `LR` and `SC` instructions in the emulator and a correct implementation of the Treiber stack in order to pass the entirety of the autograded `treiber-stack` assignment. All prerequesite requirements are also explained, namely a correct implementation of support for threads (`threads` assignment), as well as any concepts and details about the emulator one must understand such as paging or system calls.
 
-
 ## Visualizing BTOR2 Models by Markus Diller, University of Salzburg, Austria, 2022 ([PDF](https://github.com/cksystemsteaching/selfie/blob/main/theses/bachelor_thesis_diller.pdf), [Repository](https://github.com/cksystemsgroup/beator-visualizer))
 
 The process of bounded model checking is very helpful in finding edge cases for invalid program inputs. To be able to do this, a format representing the model is necessary. Unfortunately, the model file itself does not provide any information about metrics or quality of a model. Its only purpose is to serve as an input to a model checker. In this thesis a tool called `beatle` for a subset of the BTOR2 modeling language is described. It helps to alleviate the aforementioned limitations of a standalone model file by visually displaying relevant information in the browser.
 
-
 ## RISC-U Binary Optimization for Selfie by David Pape, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_pape/bachelor_thesis_pape.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_pape))
-  
-Optimizers are part of any modern compiler, and their practical importance in writing performant code cannot be understated. Still, they introduce major complexity, and its complement: bugs. In this work, we present a binary optimizer for RISC-U, a small subset of RISC-V and the target architecture of selfies[@selfie] educational compiler. To address the complexity issue, our optimizer is structured as a standalone binary, keeping the compiler simple. Since this comes at the cost of compile-time information, a binary analyzer is a prerequisite. With it, our optimizer is able to remove redundant instructions and apply several peephole optimizations, leading to a roughly five percent speedup.
 
+Optimizers are part of any modern compiler, and their practical importance in writing performant code cannot be understated. Still, they introduce major complexity, and its complement: bugs. In this work, we present a binary optimizer for RISC-U, a small subset of RISC-V and the target architecture of selfies[@selfie] educational compiler. To address the complexity issue, our optimizer is structured as a standalone binary, keeping the compiler simple. Since this comes at the cost of compile-time information, a binary analyzer is a prerequisite. With it, our optimizer is able to remove redundant instructions and apply several peephole optimizations, leading to a roughly five percent speedup.
 
 ## Linear-Time Static Analysis of RISC-V Binary Code by Thomas Wulz, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_wulz/bachelor_thesis_wulz.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_wulz))
 
@@ -27,7 +62,7 @@ We present algorithms for static analysis of such RISC-V binaries along with a C
 
 ## RISC-V Bare-Metal Library Operating System for Selfie by Marcell Haritopoulos, University of Salzburg, Austria, 2021 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_haritopoulos/bachelor_thesis_haritopoulos.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_haritopoulos))
 
-Despite its young age, the field of Computer Science is multifaceted and complex, at the expense of the entry barrier. Selfie, an educational project, aims to close the gap on the fundamentals. It runs on a hosted environment, but was not able to run on bare metal RISC-V hardware. We introduce a simple library operating system for RISC-V that implements the system call interface of Selfie and supports (nearly) all applications, that are written in Selfie's tiny C subset C* and are using its syscall interface, without any modifications, including Selfie itself. The OS is linked to the application as a static library and is responsible for maintaining a C environment. System calls are performed as mere function invocations instead of raising an exception using ecall. Files are stored in a static read-only file system. I/O system calls are implemented in a general way so that related projects may share the same semantics.
+Despite its young age, the field of Computer Science is multifaceted and complex, at the expense of the entry barrier. Selfie, an educational project, aims to close the gap on the fundamentals. It runs on a hosted environment, but was not able to run on bare metal RISC-V hardware. We introduce a simple library operating system for RISC-V that implements the system call interface of Selfie and supports (nearly) all applications, that are written in Selfie's tiny C subset C\* and are using its syscall interface, without any modifications, including Selfie itself. The OS is linked to the application as a static library and is responsible for maintaining a C environment. System calls are performed as mere function invocations instead of raising an exception using ecall. Files are stored in a static read-only file system. I/O system calls are implemented in a general way so that related projects may share the same semantics.
 
 ## RISC-V S-Mode-Hosted Bare-Metal Selfie by Martin Fischer, University of Salzburg, Austria, 2020 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_fischer/bachelor_thesis_fischer.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_fischer))
 
@@ -43,7 +78,7 @@ Given a 64-bit RISC-V binary we compute a single logical formula that is satisfi
 
 ## Implementation and Application of a Parser for Boolector's Witness Format by Christoph Siller, University of Salzburg, Austria, 2020 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_siller/bachelor_thesis_siller.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_siller))
 
-In this bachelor thesis, a parser for Boolector’s witness format is introduced, which enables automated input validation. The toolchain takes a C* file containing read calls as input and generates a Btor2 model of it, using Selfie’s model generator. The resulting model is then fed to the Boolector-based bounded model checker BtorMC. By using SMT-solving, BtorMC is able to find error states in the model within a maximum number of executed instructions. In case an error state is found, BtorMC generates a witness. This witness is parsed in order to extract the input string that causes the C* program to run into the error. To validate that the extracted string indeed triggers an error, it is fed to the C* program while running it on Mipster. If the input string was generated correctly, Mipster runs into the predicted error. In addition to the parser, this thesis provides background information on all technologies used and the concepts they are based on.
+In this bachelor thesis, a parser for Boolector’s witness format is introduced, which enables automated input validation. The toolchain takes a C* file containing read calls as input and generates a Btor2 model of it, using Selfie’s model generator. The resulting model is then fed to the Boolector-based bounded model checker BtorMC. By using SMT-solving, BtorMC is able to find error states in the model within a maximum number of executed instructions. In case an error state is found, BtorMC generates a witness. This witness is parsed in order to extract the input string that causes the C* program to run into the error. To validate that the extracted string indeed triggers an error, it is fed to the C\* program while running it on Mipster. If the input string was generated correctly, Mipster runs into the predicted error. In addition to the parser, this thesis provides background information on all technologies used and the concepts they are based on.
 
 ## Selfie - RISC-V to x86-64 Binary Translation by Alexander Kollert, University of Salzburg, Austria, 2020 ([PDF](https://github.com/cksystemsteaching/selfie/releases/download/bachelor_thesis_kollert/bachelor_thesis_kollert.pdf), [Release](https://github.com/cksystemsteaching/selfie/releases/tag/bachelor_thesis_kollert))
 
