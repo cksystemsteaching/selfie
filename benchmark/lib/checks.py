@@ -4,7 +4,7 @@ from .exceptions import (
     DirectoryNotFoundError,
     InternalToolNotAvailableError,
 )
-import lib.constants as const
+import lib.config as cfg
 
 from subprocess import Popen, TimeoutExpired
 import shlex
@@ -17,8 +17,8 @@ def is_tool_available(name) -> bool:
 
 
 def check_needed_tools() -> None:
-    check_internal_tools(const.rotor_path)
-    check_directory(const.examples_dir)
+    check_internal_tools(cfg.rotor_path)
+    check_directory(cfg.examples_dir)
     # check_tool("riscv64-unknown-elf-gcc")
 
 
@@ -41,7 +41,7 @@ def check_directory(dir) -> None:
 
 
 def execute(command, timeout=200):
-    process = Popen(shlex.split(command), stdout=const.PIPE, stderr=const.STDOUT)
+    process = Popen(shlex.split(command), stdout=cfg.PIPE, stderr=cfg.STDOUT)
 
     timedout = False
 

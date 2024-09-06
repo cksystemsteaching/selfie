@@ -1,11 +1,11 @@
-""" 
+"""
 
 1. First I need to parse arguments
 -> what arguments will be available?
 
     1) --generate-all-examples
-    2) --clean -> will delete all generated examples 
-    3) --help 
+    2) --clean -> will delete all generated examples
+    3) --help
     4) --model "file1" "file2"
     5) --output "output1" "output2"
     6) --compiler gcc || selfie     -> default: selfie
@@ -36,7 +36,7 @@
 
 from lib.checks import check_needed_tools
 from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
-import lib.constants as const
+import lib.config as cfg
 from lib.generate import generate_all_examples
 from lib.print import custom_exit
 
@@ -45,10 +45,10 @@ if __name__ == "__main__":
         check_needed_tools()
         generate_all_examples()
     except ToolNotAvailableError as e:
-        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+        custom_exit(str(e), cfg.EXIT_TOOL_NOT_FOUND)
     except DirectoryNotFoundError as e:
-        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+        custom_exit(str(e), cfg.EXIT_TOOL_NOT_FOUND)
     except InternalToolNotAvailableError as e:
-        custom_exit(str(e), const.EXIT_TOOL_NOT_FOUND)
+        custom_exit(str(e), cfg.EXIT_TOOL_NOT_FOUND)
     except TimeoutException as e:
-        custom_exit(str(e), const.EXIT_MODEL_GENERATION_ERROR)
+        custom_exit(str(e), cfg.EXIT_MODEL_GENERATION_ERROR)
