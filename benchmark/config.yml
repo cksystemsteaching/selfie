@@ -9,7 +9,7 @@ base_dirs:
   gcc: "gcc"
 
 output_dir: "models"
-default_output: &default_output "model_output"
+default_output: &default_output "models"
 
 
 
@@ -18,46 +18,46 @@ models:
     64bit:
       riscv: 
         btor2:
-          command: "{rotor} -c {source_file} - 1"
+          command: "{rotor} -c {source_file} -o {output} - 1"
           example_output: "starc/64-bit/riscv/btor2"
           output: *default_output
 
         smt: 
-          command: "{rotor} -c {source_file} - 1 -k -smt -nocomments"
+          command: "{rotor} -c {source_file} -o {output} - 1 -k -smt -nocomments"
           example_output: "starc/64-bit/riscv/smt"
           output: *default_output
       
       riscu:
         btor2:
-          command: "{rotor} -c {source_file} - 1 -riscuonly"
+          command: "{rotor} -c {source_file} -o {output} - 1 -riscuonly"
           output: *default_output
           example_output: "starc/64-bit/riscu/btor2"
 
         smt: 
-        command: "{rotor} -c {source_file} - 1 -riscuonly -k -smt -nocomments"
+        command: "{rotor} -c {source_file} -o {output_dir} - 1 -riscuonly -k -smt -nocomments"
         output: *default_output
         example_output: "starc/64-bit/riscu/smt"
 
     32-bit:
       riscv:
         btor2: 
-          command: "{rotor} -m32 -c {source_file} - 1"
+          command: "{rotor} -m32 -c {source_file} -o {output} - 1"
           output: *default_output
           example_output: "starc/32-bit/riscv/btor2"
 
         smt: 
-          command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments"
+          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
           output: *default_output
           example_output: "starc/32-bit/riscv/smt"
       
       riscu:
         btor2: 
-          command: "{rotor} -m32 -c {source_file} - 1 -riscuonly"
+          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -riscuonly"
           output: *default_output
           example_output: "starc/32-bit/riscv/btor2"
 
         smt: 
-          command: "{rotor} -m32 -c {source_file} - 1 -k -smt -nocomments"
+          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
           output: *default_output
           example_output: "starc/32-bit/riscv/smt"
   gcc:
@@ -66,12 +66,12 @@ models:
       compilation: "riscv64-unknown-elf-gcc -mabi=lp64 -march=rv64imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
       
       btor2: 
-        command: "{rotor} -l {source_file} - 1"
+        command: "{rotor} -l {source_file} -o {output} - 1"
         output: *default_output
         example_output: "gcc/rv64imac/btor2"
 
       smt: 
-        command: "{rotor} -l {source_file} - 1 -k -smt -nocomments"
+        command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
         output: *default_output
         example_output: "gcc/rv64imac/smt"
 
@@ -79,12 +79,12 @@ models:
       compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}" 
 
       btor2: 
-        command: "{rotor} -l {source_file} - 1"
+        command: "{rotor} -l {source_file} -o {output} - 1"
         output: *default_output
         example_output: "gcc/rv32imac/btor2"
 
       smt: 
-        command: "{rotor} -l {source_file} - 1 -k -smt -nocomments"
+        command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
         output: *default_output
         example_output: "gcc/rv32imac/smt"
 
@@ -94,24 +94,24 @@ models:
       fullriscv:
         
         btor2: 
-          command: "{rotor} -l {source_file} - 1"
+          command: "{rotor} -l {source_file} -o {output} - 1"
           output: *default_output
           example_output: "gcc/rv32im/fullriscv/btor2"
 
         smt: 
-        command: "{rotor} -l {source_file} - 1 -k -smt -nocomments"
+        command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
         output: *default_output
         example_output: "gcc/rv32im/fullriscv/smt"
 
       nocompressed:
 
         btor2: 
-          command: "{rotor} -l {source_file} - 1 -noRVC"
+          command: "{rotor} -l {source_file} -o {output} - 1 -noRVC"
           output: *default_output
           example_output: "gcc/rv32im/fullriscv/btor2"
 
         smt: 
-          command: "{rotor} -l {source_file} - 1 -noRVC -k -smt -nocomments"
+          command: "{rotor} -l {source_file} -o {output} - 1 -noRVC -k -smt -nocomments"
           output: *default_output
           example_output: "gcc/rv32im/nocompressed/smt"
     
@@ -121,24 +121,24 @@ models:
       fullriscv:
 
         btor2:
-          command: "{rotor} -l {source_file} - 1"
+          command: "{rotor} -l {source_file} -o {output} - 1"
           output: *default_output
           example_output: "gcc/rv32i/fullriscv/btor2"
 
         smt: 
-          command: "{rotor} -l {source_file} - 1 -k -smt -nocomments"
+          command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
           output: *default_output
           example_output: "gcc/rv32i/fullriscv/smt"
 
       nocompressed:
       
         btor2: 
-          command: "{rotor} -l {source_file} - 1 -noRVC -noRVM"
+          command: "{rotor} -l {source_file} -o {output} - 1 -noRVC -noRVM"
           output: *default_output
           example_output: "gcc/rv32i/nocompressed/btor2"
 
         smt: 
-          command: "{rotor} -l {source_file} 1 -noRVC -noRVM -k -smt -nocomments"
+          command: "{rotor} -l {source_file} -o {output} - 1 -noRVC -noRVM -k -smt -nocomments"
           output: *default_output
           example_output: "gcc/rv32i/nocompressed/smt"
 

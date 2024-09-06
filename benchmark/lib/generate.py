@@ -18,8 +18,9 @@ CSTAR_32_BIT_RISCV_SMT = 8
 
 
 class ModelType:
-    def __init__(self, source_file: str, model_type: str):
+    def __init__(self, source_file: Path, model_type: str, is_example: bool = False):
         self.source_file = source_file
+        self.is_example = is_example
         self.parse_model_type(model_type)
 
     def parse_model_type(self, model_type: str):
@@ -34,21 +35,33 @@ class ModelType:
                     self.compilation_command = current_model["compilation"]
             else:
                 raise ParsingError(model_type, level)
-        self.command = current_model["command"].format(rotor=cfg.rotor_path, source_file=self.source_file)
-        self.output = current_model.get("output", None)
-        self.example_output = current_model.get("example_output")
-
-        if not self.command or not self.output or not self.example_output:
+        self.output = self.get_output_directory(current_model)
+        self.command = current_model["command"].format(
+            rotor=cfg.rotor_path,
+            source_file=self.source_file,
+            output=self.output
+        )
+        if not self.command or not self.output:
             raise ParsingError(model_type, level)
+
+    def get_output_directory(self, model):
+        if self.is_example:
+            outdir = Path(cfg.models_dir / model.get("example_output", None))
+        else:
+            outdir = Path(cfg.models_dir / model.get("output", None))
+        if not outdir.exists():
+            outdir.mkdir(parents=True, exist_ok=True)
+        outdir = outdir / self.source_file.name
+        return outdir
 
     def generate(self):
         if self.compilable:
             pass
+        # Selfie generates binary file as well, but that is not needed
         returncode, output = execute(self.command)
- 
+        self.output.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
-
 
 
 # def generate_model(file, model_type) -> None:
@@ -88,7 +101,7 @@ def generate_all_examples() -> None:
         # STARC
         # -----
         # 1) 64-bit architecture risc-u BTOR2
-        m = ModelType(file, "starc-64bit-riscv-btor2")
+        m = ModelType(file, "starc-64bit-riscv-btor2", True)
         m.generate()
         # generate_model(file, model_generators[CSTAR_64_BIT_RISCU_BTOR])
         # # 2) 64-bit architecture risc-v BTOR2
