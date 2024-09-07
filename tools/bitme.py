@@ -48,6 +48,9 @@ class Line(Z3, Bitwuzla):
         self.line_no = line_no
         self.new_line()
 
+    def __repr__(self):
+        return self.__str__()
+
     def new_line(self):
         assert self not in Line.lines
         Line.lines[self.nid] = self
