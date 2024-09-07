@@ -301,19 +301,22 @@ class State(Variable):
     def get_step_name(self, step):
         return f"{self.name}-{step}"
 
+    def get_z3_state(self, step):
+        return z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+
     def get_z3_step(self, step):
         assert self.step_z3 <= step <= self.step_z3 + 2
         if step == self.step_z3:
             if self.current_z3 is None:
-                self.current_z3 = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+                self.current_z3 = self.get_z3_state(step)
             return self.current_z3
         elif step == self.step_z3 + 1:
             if self.next_z3 is None:
-                self.next_z3 = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+                self.next_z3 = self.get_z3_state(step)
             return self.next_z3
         elif step == self.step_z3 + 2:
             self.current_z3 = self.next_z3
-            self.next_z3 = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+            self.next_z3 = self.get_z3_state(step)
             self.step_z3 += 1
             return self.next_z3
 
