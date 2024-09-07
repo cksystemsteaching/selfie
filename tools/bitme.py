@@ -341,9 +341,12 @@ class State(Variable):
             self.bitwuzla = tm.mk_var(self.sid_line.get_bitwuzla(tm), self.name)
         return self.bitwuzla
 
-    def get_bitwuzla_lambda(term, tm):
-        return tm.mk_term(bitwuzla.Kind.LAMBDA,
-            [*[state.get_bitwuzla(tm) for state in State.states.values()], term])
+    def get_bitwuzla_lambda(term, domain, tm):
+        if domain:
+            return tm.mk_term(bitwuzla.Kind.LAMBDA,
+                [*[state.get_bitwuzla(tm) for state in domain.values()], term])
+        else:
+            return term
 
     def get_bitwuzla_state(self, step, tm):
         return tm.mk_const(self.sid_line.get_bitwuzla(tm), self.get_step_name(step))
@@ -364,9 +367,12 @@ class State(Variable):
             self.step_bitwuzla += 1
             return self.next_bitwuzla
 
-    def get_bitwuzla_select(term, step, tm):
-        return tm.mk_term(bitwuzla.Kind.APPLY,
-            [term, *[state.get_bitwuzla_step(step, tm) for state in State.states.values()]])
+    def get_bitwuzla_select(term, domain, step, tm):
+        if domain:
+            return tm.mk_term(bitwuzla.Kind.APPLY,
+                [term, *[state.get_bitwuzla_step(step, tm) for state in domain.values()]])
+        else:
+            return term
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
@@ -879,7 +885,11 @@ class Init(Line):
                         self.exp_line.get_bitwuzla(tm))])
             else:
                 self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL,
-                    [self.state_line.get_bitwuzla_step(0, tm), State.get_bitwuzla_select(State.get_bitwuzla_lambda(self.exp_line.get_bitwuzla(tm), tm), 0, tm)])
+                    [self.state_line.get_bitwuzla_step(0, tm),
+                    State.get_bitwuzla_select(
+                        State.get_bitwuzla_lambda(
+                            self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm),
+                        self.exp_line.domain, 0, tm)])
 
 class Next(Line):
     keyword = 'next'
@@ -918,16 +928,18 @@ class Next(Line):
 
     def set_z3(self, step):
         if self.z3_lambda_line is None:
-            self.z3_lambda_line = State.get_z3_lambda(self.exp_line.get_z3(), self.exp_line.domain)
+            self.z3_lambda_line = State.get_z3_lambda(
+                self.exp_line.get_z3(), self.exp_line.domain)
         self.z3 = self.state_line.get_z3_step(step + 1) == State.get_z3_select(
             self.z3_lambda_line, self.exp_line.domain, step)
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla_lambda_line is None:
-            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(self.exp_line.get_bitwuzla(tm), tm)
+            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(
+                self.exp_line.get_bitwuzla(tm), self.exp_line.domain, tm)
         self.bitwuzla = tm.mk_term(bitwuzla.Kind.EQUAL,
             [self.state_line.get_bitwuzla_step(step + 1, tm),
-                State.get_bitwuzla_select(self.bitwuzla_lambda_line, step, tm)])
+            State.get_bitwuzla_select(self.bitwuzla_lambda_line, self.exp_line.domain, step, tm)])
 
 class Property(Line):
     keywords = {'constraint', 'bad'}
@@ -945,13 +957,16 @@ class Property(Line):
 
     def set_z3(self, step):
         if self.z3_lambda_line is None:
-            self.z3_lambda_line = State.get_z3_lambda(self.property_line.get_z3(), self.property_line.domain)
+            self.z3_lambda_line = State.get_z3_lambda(
+                self.property_line.get_z3(), self.property_line.domain)
         self.z3 = State.get_z3_select(self.z3_lambda_line, self.property_line.domain, step)
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla_lambda_line is None:
-            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(self.property_line.get_bitwuzla(tm), tm)
-        self.bitwuzla = State.get_bitwuzla_select(self.bitwuzla_lambda_line, step, tm)
+            self.bitwuzla_lambda_line = State.get_bitwuzla_lambda(
+                self.property_line.get_bitwuzla(tm), self.property_line.domain, tm)
+        self.bitwuzla = State.get_bitwuzla_select(
+            self.bitwuzla_lambda_line, self.property_line.domain, step, tm)
 
 class Constraint(Property):
     keyword = 'constraint'
