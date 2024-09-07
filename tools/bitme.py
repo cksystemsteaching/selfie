@@ -156,15 +156,16 @@ class Array(Sort):
         return self.bitwuzla
 
 class Expression(Line):
-    def __init__(self, nid, sid_line, comment, line_no):
+    def __init__(self, nid, sid_line, domain, comment, line_no):
         super().__init__(nid, comment, line_no)
         self.sid_line = sid_line
+        self.domain = domain
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
 
 class Constant(Expression):
     def __init__(self, nid, sid_line, value, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+        super().__init__(nid, sid_line, dict(), comment, line_no)
         self.value = value
         if value >= 2**sid_line.size:
             raise model_error(f"{value} in range of {sid_line.size}-bit bitvector", line_no)
@@ -237,8 +238,8 @@ class Variable(Expression):
 
     inputs = dict()
 
-    def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+    def __init__(self, nid, sid_line, domain, symbol, comment, line_no):
+        super().__init__(nid, sid_line, domain, comment, line_no)
         self.symbol = symbol
 
     def new_input(self):
@@ -249,7 +250,7 @@ class Input(Variable):
     keyword = 'input'
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, symbol, comment, line_no)
+        super().__init__(nid, sid_line, dict(), symbol, comment, line_no)
         self.name = f"input{self.nid}"
         self.new_input()
 
@@ -274,7 +275,7 @@ class State(Variable):
     pc = None
 
     def __init__(self, nid, sid_line, symbol, comment, line_no):
-        super().__init__(nid, sid_line, symbol, comment, line_no)
+        super().__init__(nid, sid_line, {nid:self}, symbol, comment, line_no)
         self.name = f"state{nid}"
         self.init_line = self
         self.next_line = self
@@ -363,7 +364,7 @@ class State(Variable):
 
 class Indexed(Expression):
     def __init__(self, nid, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
         self.arg1_line = arg1_line
         if not isinstance(arg1_line, Expression):
             raise model_error("expression operand", line_no)
@@ -435,7 +436,7 @@ class Unary(Expression):
     keywords = {'not', 'inc', 'dec', 'neg'}
 
     def __init__(self, nid, op, sid_line, arg1_line, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
         if not isinstance(arg1_line, Expression):
@@ -485,7 +486,7 @@ class Binary(Expression):
     keywords = {'implies', 'eq', 'neq', 'sgt', 'ugt', 'sgte', 'ugte', 'slt', 'ult', 'slte', 'ulte', 'and', 'or', 'xor', 'sll', 'srl', 'sra', 'add', 'sub', 'mul', 'sdiv', 'udiv', 'srem', 'urem', 'concat', 'read'}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
         self.arg2_line = arg2_line
@@ -746,7 +747,7 @@ class Ternary(Expression):
     keywords = {'ite', 'write'}
 
     def __init__(self, nid, op, sid_line, arg1_line, arg2_line, arg3_line, comment, line_no):
-        super().__init__(nid, sid_line, comment, line_no)
+        super().__init__(nid, sid_line, arg1_line.domain | arg2_line.domain | arg3_line.domain, comment, line_no)
         self.op = op
         self.arg1_line = arg1_line
         self.arg2_line = arg2_line
