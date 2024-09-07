@@ -302,8 +302,11 @@ class State(Variable):
             self.z3 = z3.Const(self.name, self.sid_line.get_z3())
         return self.z3
 
-    def get_z3_lambda(term):
-        return z3.Lambda([state.get_z3() for state in State.states.values()], term)
+    def get_z3_lambda(term, domain):
+        if domain:
+            return z3.Lambda([state.get_z3() for state in domain.values()], term)
+        else:
+            return term
 
     def get_step_name(self, step):
         return f"{self.name}-{step}"
@@ -327,8 +330,11 @@ class State(Variable):
             self.step_z3 += 1
             return self.next_z3
 
-    def get_z3_select(term, step):
-        return z3.Select(term, *[state.get_z3_step(step) for state in State.states.values()])
+    def get_z3_select(term, domain, step):
+        if domain:
+            return z3.Select(term, *[state.get_z3_step(step) for state in domain.values()])
+        else:
+            return term
 
     def get_bitwuzla(self, tm):
         if self.bitwuzla is None:
@@ -855,10 +861,13 @@ class Init(Line):
         if self.z3 is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
-                self.z3 = self.state_line.get_z3_step(0) == z3.K(self.sid_line.array_size_line.get_z3(),
+                self.z3 = self.state_line.get_z3_step(0) == z3.K(
+                    self.sid_line.array_size_line.get_z3(),
                     self.exp_line.get_z3())
             else:
-                self.z3 = self.state_line.get_z3_step(0) == State.get_z3_select(State.get_z3_lambda(self.exp_line.get_z3()), 0)
+                self.z3 = self.state_line.get_z3_step(0) == State.get_z3_select(
+                    State.get_z3_lambda(self.exp_line.get_z3(), self.exp_line.domain),
+                    self.exp_line.domain, 0)
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
@@ -909,8 +918,9 @@ class Next(Line):
 
     def set_z3(self, step):
         if self.z3_lambda_line is None:
-            self.z3_lambda_line = State.get_z3_lambda(self.exp_line.get_z3())
-        self.z3 = self.state_line.get_z3_step(step + 1) == State.get_z3_select(self.z3_lambda_line, step)
+            self.z3_lambda_line = State.get_z3_lambda(self.exp_line.get_z3(), self.exp_line.domain)
+        self.z3 = self.state_line.get_z3_step(step + 1) == State.get_z3_select(
+            self.z3_lambda_line, self.exp_line.domain, step)
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla_lambda_line is None:
@@ -935,8 +945,8 @@ class Property(Line):
 
     def set_z3(self, step):
         if self.z3_lambda_line is None:
-            self.z3_lambda_line = State.get_z3_lambda(self.property_line.get_z3())
-        self.z3 = State.get_z3_select(self.z3_lambda_line, step)
+            self.z3_lambda_line = State.get_z3_lambda(self.property_line.get_z3(), self.property_line.domain)
+        self.z3 = State.get_z3_select(self.z3_lambda_line, self.property_line.domain, step)
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla_lambda_line is None:
