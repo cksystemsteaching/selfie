@@ -280,6 +280,8 @@ class State(Variable):
         self.name = f"state{nid}"
         self.init_line = self
         self.next_line = self
+        self.current_state = None
+        self.next_state = None
         self.new_state()
         # rotor-dependent program counter declaration
         if comment == "; program counter":
@@ -296,12 +298,28 @@ class State(Variable):
         return f"{self.name}-{step}"
 
     def get_z3_step(self, step):
-        return z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+        assert self.step <= step <= self.step + 2
+        if step == self.step:
+            if self.current_state is None:
+                self.current_state = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+            return self.current_state
+        elif step == self.step + 1:
+            if self.next_state is None:
+                self.next_state = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+            return self.next_state
+        elif step == self.step + 2:
+            self.current_state = self.next_state
+            self.next_state = z3.Const(self.get_step_name(step), self.sid_line.get_z3())
+            self.step += 1
+            return self.next_state
 
     def get_z3(self):
         if self.z3 is None:
-            self.z3 = self.get_z3_step(0)
+            self.z3 = z3.Const(self.name, self.sid_line.get_z3())
         return self.z3
+
+    def get_z3_lambda(term):
+        return z3.Lambda([state.get_z3() for state in State.states.values()], term)
 
     def get_bitwuzla_step(self, step, tm):
         return tm.mk_const(self.sid_line.get_bitwuzla(step, tm), self.get_step_name(step))
@@ -826,10 +844,11 @@ class Init(Line):
         if self.z3 is None:
             if isinstance(self.sid_line, Array) and isinstance(self.exp_line.sid_line, Bitvec):
                 # initialize with constant array
-                self.z3 = self.state_line.get_z3() == z3.K(self.sid_line.array_size_line.get_z3(),
+                self.z3 = self.state_line.get_z3_step(0) == z3.K(self.sid_line.array_size_line.get_z3(),
                     self.exp_line.get_z3())
             else:
-                self.z3 = self.state_line.get_z3() == self.exp_line.get_z3()
+                self.z3 = self.state_line.get_z3_step(0) == z3.Select(State.get_z3_lambda(self.exp_line.get_z3()),
+                    *[state.get_z3_step(0) for state in State.states.values()])
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
@@ -853,6 +872,7 @@ class Next(Line):
         self.sid_line = sid_line
         self.state_line = state_line
         self.exp_line = exp_line
+        self.lambda_line = None
         if not isinstance(sid_line, Sort):
             raise model_error("sort", line_no)
         if not isinstance(state_line, State):
@@ -879,12 +899,10 @@ class Next(Line):
         Next.nexts[self.nid] = self
 
     def set_z3(self, step):
-        if self.z3 is None:
-            self.current_step = self.state_line.get_z3()
-        else:
-            self.current_step = self.next_step
-        self.next_step = self.state_line.get_z3_step(step + 1)
-        self.z3 = self.next_step == self.exp_line.get_z3()
+        if self.lambda_line is None:
+            self.lambda_line = State.get_z3_lambda(self.exp_line.get_z3())
+        self.z3 = self.state_line.get_z3_step(step + 1) == z3.Select(self.lambda_line,
+            *[state.get_z3_step(step) for state in State.states.values()])
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
@@ -902,14 +920,17 @@ class Property(Line):
         super().__init__(nid, comment, line_no)
         self.property_line = property_line
         self.symbol = symbol
+        self.lambda_line = None
         if not isinstance(property_line, Expression):
             raise model_error("expression operand", line_no)
         if not isinstance(property_line.sid_line, Bool):
             raise model_error("Boolean operand", line_no)
 
     def set_z3(self, step):
-        if self.z3 is None:
-            self.z3 = self.property_line.get_z3()
+        if self.lambda_line is None:
+            self.lambda_line = State.get_z3_lambda(self.property_line.get_z3())
+        self.z3 = z3.Select(self.lambda_line,
+            *[state.get_z3_step(step) for state in State.states.values()])
 
     def set_bitwuzla(self, step, tm):
         if self.bitwuzla is None:
@@ -1267,12 +1288,13 @@ def bmc_z3(kmin, kmax, print_pc):
                     print("v" * 80)
                     print(f"sat: {bad}")
                     m = s.model()
-                    for d in m.decls():
-                        for input_variable in Variable.inputs.values():
-                            if str(input_variable.z3) in str(d.name()):
-                                # only print value of uninitialized states
-                                print(input_variable)
-                                print("%s = %s" % (d.name(), m[d]))
+                    for input_variable in Variable.inputs.values():
+                        # only print value of uninitialized states
+                        print(input_variable)
+                        i = sorted([(d.name(), m[d])
+                            for d in m.decls() if str(input_variable.z3) in str(d.name())])
+                        if i is not None:
+                            print("%s = %s" % (i[0][0], i[0][1]))
                     print("^" * 80)
                 s.pop()
                 if result == z3.unsat:
@@ -1284,18 +1306,10 @@ def bmc_z3(kmin, kmax, print_pc):
         for next_line in Next.nexts.values():
             s.add(next_line.z3)
 
-        current_states = [next_line.current_step for next_line in Next.nexts.values()]
-        next_states = [next_line.next_step for next_line in Next.nexts.values()]
-        renaming = [current_next for current_next in zip(current_states, next_states)]
-
         for constraint in Constraint.constraints.values():
-            constraint.z3 = z3.substitute(constraint.z3, renaming)
+            constraint.set_z3(step + 1)
         for bad in Bad.bads.values():
-            bad.z3 = z3.substitute(bad.z3, renaming)
-
-        for next_line in Next.nexts.values():
-            next_line.exp_line.z3 = z3.substitute(next_line.exp_line.z3, renaming)
-
+            bad.set_z3(step + 1)
         for next_line in Next.nexts.values():
             next_line.set_z3(step + 1)
 
