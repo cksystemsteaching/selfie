@@ -1272,27 +1272,50 @@ def parse_btor2(modelfile):
             # state has no init
             state.new_input()
 
-def new_problem(set_solver):
+class Solver():
+    def __init__(self, solver):
+        self.solver = solver
+        for init in Init.inits.values():
+            self.set_solver(init)
+        for constraint in Constraint.constraints.values():
+            self.set_solver(constraint)
+        for bad in Bad.bads.values():
+            self.set_solver(bad)
+        for next_line in Next.nexts.values():
+            self.set_solver(next_line)
+
+class Z3_Solver(Solver):
+    def __init__(self):
+        super().__init__(z3.Solver())
+
+    def set_solver(self, line):
+        line.set_z3(0)
+
+    def show(self, assertion):
+        self.solver.add(assertion.z3)
+
+    def refute(self, assertion):
+        self.solver.add(assertion.z3 == False)
+
+class Bitwuzla_Solver(Solver):
+    def __init__(self):
+        self.tm = bitwuzla.TermManager()
+        self.options = bitwuzla.Options()
+        self.options.set(bitwuzla.Option.PRODUCE_MODELS, True)
+        super().__init__(bitwuzla.Bitwuzla(self.tm, self.options))
+
+    def set_solver(self, line):
+        line.set_bitwuzla(0, self.tm)
+
+    def show(self, assertion):
+        self.solver.assert_formula(assertion.bitwuzla)
+
+    def refute(self, assertion):
+        self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT, [assertion.bitwuzla]))
+
+def bmc_z3(solver, kmin, kmax, print_pc):
     for init in Init.inits.values():
-        set_solver(init)
-    for constraint in Constraint.constraints.values():
-        set_solver(constraint)
-    for bad in Bad.bads.values():
-        set_solver(bad)
-    for next_line in Next.nexts.values():
-        set_solver(next_line)
-
-def new_z3():
-    new_problem(lambda line: line.set_z3(0))
-
-def new_bitwuzla(tm):
-    new_problem(lambda line: line.set_bitwuzla(0, tm))
-
-def bmc_z3(kmin, kmax, print_pc):
-    s = z3.Solver()
-
-    for init in Init.inits.values():
-        s.add(init.z3)
+        solver.show(init)
 
     step = 0
 
@@ -1300,8 +1323,8 @@ def bmc_z3(kmin, kmax, print_pc):
         print(step)
 
         if print_pc and State.pc:
-            s.check()
-            m = s.model()
+            solver.solver.check()
+            m = solver.solver.model()
             for d in m.decls():
                 if str(State.pc.next_line.current_step) in str(d.name()):
                     pc = int(m[d].as_long())
@@ -1309,17 +1332,17 @@ def bmc_z3(kmin, kmax, print_pc):
                     print("%s = 0x%X" % (d.name(), pc))
 
         for constraint in Constraint.constraints.values():
-            s.add(constraint.z3)
+            solver.show(constraint)
 
         if step >= kmin:
             for bad in Bad.bads.values():
-                s.push()
-                s.add(bad.z3)
-                result = s.check()
+                solver.solver.push()
+                solver.show(bad)
+                result = solver.solver.check()
                 if result == z3.sat:
                     print("v" * 80)
                     print(f"sat: {bad}")
-                    m = s.model()
+                    m = solver.solver.model()
                     for input_variable in Variable.inputs.values():
                         # only print value of uninitialized states
                         print(input_variable)
@@ -1328,15 +1351,15 @@ def bmc_z3(kmin, kmax, print_pc):
                         if i is not None:
                             print("%s = %s" % (i[0][0], i[0][1]))
                     print("^" * 80)
-                s.pop()
+                solver.solver.pop()
                 if result == z3.unsat:
-                    s.add(bad.z3 == False)
+                    solver.refute(bad)
         else:
             for bad in Bad.bads.values():
-                s.add(bad.z3 == False)
+                solver.refute(bad)
 
         for next_line in Next.nexts.values():
-            s.add(next_line.z3)
+            solver.show(next_line)
 
         for constraint in Constraint.constraints.values():
             constraint.set_z3(step + 1)
@@ -1347,11 +1370,9 @@ def bmc_z3(kmin, kmax, print_pc):
 
         step += 1
 
-def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
-    s = bitwuzla.Bitwuzla(tm, options)
-
+def bmc_bitwuzla(solver, kmin, kmax, print_pc):
     for init in Init.inits.values():
-        s.assert_formula(init.bitwuzla)
+        solver.show(init)
 
     step = 0
 
@@ -1359,41 +1380,41 @@ def bmc_bitwuzla(tm, options, kmin, kmax, print_pc):
         print(step)
 
         if print_pc and State.pc:
-            s.check_sat()
-            pc = int(s.get_value(State.pc.next_line.current_step).value(16), 16)
+            solver.solver.check_sat()
+            pc = int(solver.solver.get_value(State.pc.next_line.current_step).value(16), 16)
             print(State.pc.next_line.state_line)
             print("%s = 0x%X" % (State.pc.next_line.current_step, pc))
 
         for constraint in Constraint.constraints.values():
-            s.assert_formula(constraint.bitwuzla)
+            solver.show(constraint)
 
         if step >= kmin:
             for bad in Bad.bads.values():
-                result = s.check_sat(bad.bitwuzla)
+                result = solver.solver.check_sat(bad.bitwuzla)
                 if result is bitwuzla.Result.SAT:
                     print("v" * 80)
                     print(f"sat: {bad}")
                     for input_variable in Variable.inputs.values():
                         # only print value of uninitialized states
                         print(input_variable)
-                        print("%s = %s" % (input_variable.get_bitwuzla_step(step, tm),
-                            s.get_value(input_variable.get_bitwuzla_step(step, tm))))
+                        print("%s = %s" % (input_variable.get_bitwuzla_step(step, solver.tm),
+                            solver.solver.get_value(input_variable.get_bitwuzla_step(step, solver.tm))))
                     print("^" * 80)
                 elif result is bitwuzla.Result.UNSAT:
-                    s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
+                    solver.refute(bad)
         else:
             for bad in Bad.bads.values():
-                s.assert_formula(tm.mk_term(bitwuzla.Kind.NOT, [bad.bitwuzla]))
+                solver.refute(bad)
 
         for next_line in Next.nexts.values():
-            s.assert_formula(next_line.bitwuzla)
+            solver.show(next_line)
 
         for constraint in Constraint.constraints.values():
-            constraint.set_bitwuzla(step + 1, tm)
+            constraint.set_bitwuzla(step + 1, solver.tm)
         for bad in Bad.bads.values():
-            bad.set_bitwuzla(step + 1, tm)
+            bad.set_bitwuzla(step + 1, solver.tm)
         for next_line in Next.nexts.values():
-            next_line.set_bitwuzla(step + 1, tm)
+            next_line.set_bitwuzla(step + 1, solver.tm)
 
         step += 1
 
@@ -1425,16 +1446,12 @@ def main():
         use_Z3 = True
 
         if is_Z3_present and use_Z3:
-            new_z3()
-            bmc_z3(kmin, kmax, args.print_pc)
+            solver = Z3_Solver()
+            bmc_z3(solver, kmin, kmax, args.print_pc)
 
         if is_bitwuzla_present:
-            tm = bitwuzla.TermManager()
-            options = bitwuzla.Options()
-            options.set(bitwuzla.Option.PRODUCE_MODELS, True)
-
-            new_bitwuzla(tm)
-            bmc_bitwuzla(tm, options, kmin, kmax, args.print_pc)
+            solver = Bitwuzla_Solver()
+            bmc_bitwuzla(solver, kmin, kmax, args.print_pc)
 
 if __name__ == '__main__':
     main()
