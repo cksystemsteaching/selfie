@@ -1433,7 +1433,7 @@ def bmc(solver, kmin, kmax, args):
         for next_line in Next.nexts.values():
             solver.show(next_line, step)
 
-        if args.check_termination:
+        if args.check_termination and step >= kmin:
             state_change = False
             for next_line in Next.nexts.values():
                 solver.push()
