@@ -9,7 +9,7 @@ base_dirs:
   gcc: "gcc"
 
 output_dir: "models"
-default_output: &default_output "models"
+default_output: &default_output ""
 
 
 

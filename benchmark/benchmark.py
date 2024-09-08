@@ -37,13 +37,34 @@
 from lib.checks import check_needed_tools
 from lib.exceptions import ToolNotAvailableError, DirectoryNotFoundError, InternalToolNotAvailableError, TimeoutException
 import lib.config as cfg
-from lib.generate import generate_all_examples
+from lib.generate import generate_all_examples, clean_examples, ModelType
 from lib.print import custom_exit
+import lib.argument_parser as arg_parser
 
 if __name__ == "__main__":
     try:
+        args = arg_parser.parse_arguments()
+
         check_needed_tools()
-        generate_all_examples()
+
+        if args.clean:
+            clean_examples()
+            # exit
+
+        if args.generate_examples:
+            generate_all_examples()
+            # exit
+
+        if args.model_type and args.source_file:
+            ModelType(args.source_file, args.model_type).generate()
+            exit(0)
+
+        if not args.model_type:
+            custom_exit(f"{cfg.RED}ERROR: --model-type is required")
+        
+        if not args.source_file:
+            custom_exit(f"{cfg.RED}ERROR: --source-file is required")
+
     except ToolNotAvailableError as e:
         custom_exit(str(e), cfg.EXIT_TOOL_NOT_FOUND)
     except DirectoryNotFoundError as e:

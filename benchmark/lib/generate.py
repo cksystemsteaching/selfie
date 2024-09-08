@@ -7,20 +7,9 @@ from pathlib import Path
 import shutil
 from queue import Queue
 
-CSTAR_64_BIT_RISCU_BTOR = 1
-CSTAR_64_BIT_RISCU_SMT = 2
-CSTAR_64_BIT_RISCV_BTOR = 3
-CSTAR_64_BIT_RISCV_SMT = 4
-
-CSTAR_32_BIT_RISCU_BTOR = 5
-CSTAR_32_BIT_RISCU_SMT = 6
-CSTAR_32_BIT_RISCV_BTOR = 7
-CSTAR_32_BIT_RISCV_SMT = 8
-
-
 class ModelType:
-    def __init__(self, source_file: Path, model_type: str, is_example: bool = False):
-        self.source_file = source_file
+    def __init__(self, source_file: str, model_type: str, is_example: bool = False):
+        self.source_file = Path(source_file)
         self.is_example = is_example
         self.parse_model_type(model_type)
 
@@ -60,7 +49,7 @@ class ModelType:
             pass
         # Selfie generates binary file as well, but that is not needed
         returncode, output = execute(self.command)
-        # self.output.unlink()
+        self.output.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
 
@@ -131,4 +120,3 @@ def generate_all_examples() -> None:
     #     ModelType(file, "starc-32bit-riscu-smt", True).generate()
     #     # 8) 32-bit architecture risc-u BTOR2
     #     ModelType(file, "starc-32bit-riscu-btor2", True).generate()
-
