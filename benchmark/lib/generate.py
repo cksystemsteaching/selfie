@@ -5,6 +5,7 @@ import lib.config as cfg
 
 from pathlib import Path
 import shutil
+from queue import Queue
 
 CSTAR_64_BIT_RISCU_BTOR = 1
 CSTAR_64_BIT_RISCU_SMT = 2
@@ -59,7 +60,7 @@ class ModelType:
             pass
         # Selfie generates binary file as well, but that is not needed
         returncode, output = execute(self.command)
-        self.output.unlink()
+        # self.output.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
 
@@ -88,25 +89,46 @@ def generate_all_examples() -> None:
     # take each individual file and try to create model from it into all possible options
     # check if models directory exists, if it does remove all files inside and 
     clean_examples()
-    # prepare directories
-        # const.models_dir.mkdir()
-        # const.cstar_64_riscv_btor2_path.mkdir(parents=True)
-        # const.cstar_64_riscu_btor2_path.mkdir(parents=True)
-        # const.cstar_64_riscu_smt_path.mkdir(parents=True)
+ 
+    q = Queue(maxsize=0)
+    q.put((cfg.config["models"], []))
 
-    files = [file for file in cfg.examples_dir.iterdir()]
-    for file in files:
-        if file.suffix != ".c":
-            continue
-        # STARC
-        # -----
-        # 1) 64-bit architecture risc-u BTOR2
-        m = ModelType(file, "starc-64bit-riscv-btor2", True)
-        m.generate()
-        # generate_model(file, model_generators[CSTAR_64_BIT_RISCU_BTOR])
-        # # 2) 64-bit architecture risc-v BTOR2
-        # generate_model(file, model_generators[CSTAR_64_BIT_RISCV_BTOR])
-        # # 3) 64-bit architecture risc-u SMT2Lib
-        # generate_model(file, model_generators[CSTAR_64_BIT_RISCU_SMT])
+    while not q.empty():
+        curr_val = q.get()
+        for key, value in curr_val[0].items():
+            if isinstance(value, dict):
+                q.put((value, curr_val[1] + [key]))
+            else:
+                if key == 'command':
+                    model_type = "-".join(curr_val[1])
+                    print(f"Generating model: {model_type}")
 
-        print("Generating example models done!")
+                    files = [file for file in cfg.examples_dir.iterdir()]
+                    for file in files:
+                        if file.suffix != ".c":
+                            continue
+                        ModelType(file, model_type, True).generate()
+    # files = [file for file in cfg.examples_dir.iterdir()]
+    # for file in files:
+    #     if file.suffix != ".c":
+    #         continue
+    #
+    #     # STARC
+    #     # -----
+    #     # 1) 64-bit architecture risc-u BTOR2
+    #     ModelType(file, "starc-64bit-riscu-btor2", True).generate()
+    #     # 2) 64-bit architecture risc-v BTOR2
+    #     ModelType(file, "starc-64bit-riscv-btor2", True).generate()
+    #     # 3) 64-bit architecture risc-u SMT
+    #     ModelType(file, "starc-64bit-riscu-smt", True).generate()
+    #     # 4) 64-bit architecture risc-v SMT
+    #     ModelType(file, "starc-64bit-riscv-smt", True).generate()
+    #     # 5) 32-bit achitecture risc-v SMT
+    #     ModelType(file, "starc-32bit-riscv-smt", True).generate()
+    #     # 6) 32-bit architecture risc-v BTOR2
+    #     ModelType(file, "starc-32bit-riscv-btor2", True).generate()
+    #     # 7) 32-bit achitecture risc-u SMT
+    #     ModelType(file, "starc-32bit-riscu-smt", True).generate()
+    #     # 8) 32-bit architecture risc-u BTOR2
+    #     ModelType(file, "starc-32bit-riscu-btor2", True).generate()
+

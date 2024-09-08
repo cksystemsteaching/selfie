@@ -26,4 +26,4 @@ class TimeoutException(Exception):
 
 class ParsingError(Exception):
     def __init__(self, parsed_string, error_part):
-        Exception.__init__(self, f"{RED}Error: {RESET} Parsin error has occured in {parsed_string}, specifically in {error_part}.")
+        Exception.__init__(self, f"{RED}Error: {RESET} Parsing error has occured in {parsed_string}, specifically in {error_part}.")
