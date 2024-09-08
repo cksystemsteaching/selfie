@@ -1426,11 +1426,9 @@ def bmc(solver, kmin, kmax, args):
                     solver.print_inputs(Variable.inputs, step)
                     print("^" * 80)
                 solver.pop()
-                if solver.is_UNSAT(result):
-                    solver.refute(bad, step)
-        else:
-            for bad in Bad.bads.values():
-                solver.refute(bad, step)
+
+        for bad in Bad.bads.values():
+            solver.refute(bad, step)
 
         for next_line in Next.nexts.values():
             solver.show(next_line, step)
