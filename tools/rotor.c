@@ -3338,6 +3338,7 @@ void print_model();
 int    rotor_argc = 0;
 char** rotor_argv = (char**) 0; // original rotor console invocation
 
+char* custom_model_name_option = (char*) 0;
 char* evaluate_model_option    = (char*) 0;
 char* debug_model_option       = (char*) 0;
 char* disassemble_model_option = (char*) 0;
@@ -3380,6 +3381,7 @@ uint64_t target_exit_code = 0; // model for given exit code
 
 uint64_t number_of_binaries = 0; // number of loaded binaries
 
+uint64_t custom_model_name = 0;
 uint64_t evaluate_model    = 0;
 uint64_t output_assembly   = 0;
 uint64_t disassemble_model = 0;
@@ -3463,6 +3465,7 @@ void init_rotor(int argc, char** argv) {
     argv = argv + 1;
   }
 
+  custom_model_name_option = "-o";
   evaluate_model_option    = "-m";
   debug_model_option       = "-d";
   disassemble_model_option = "-s";
@@ -11871,12 +11874,14 @@ void load_binary(uint64_t binary) {
 void model_rotor() {
   uint64_t core;
 
-  if (number_of_binaries > 0)
-    model_name = (char*) get_for(0, binary_names);
-  else if (IS64BITTARGET)
-    model_name = "64-bit-riscv-machine.m";
-  else
-    model_name = "32-bit-riscv-machine.m";
+  if (custom_model_name == 0) {
+    if (number_of_binaries > 0)
+      model_name = (char*) get_for(0, binary_names);
+    else if (IS64BITTARGET)
+      model_name = "64-bit-riscv-machine.m";
+    else
+      model_name = "32-bit-riscv-machine.m";
+  }
 
   number_of_lines = 0;
 
@@ -11983,25 +11988,27 @@ void open_model_file() {
 
   uint64_t i;
 
-  if (number_of_binaries == number_of_cores)
-    suffix = "-rotorized";
-  else
-    suffix = "-synthesize";
+  if (custom_model_name == 0) {
+    if (number_of_binaries == number_of_cores)
+      suffix = "-rotorized";
+    else
+      suffix = "-synthesize";
 
-  if (printing_unrolled_model) {
-    sprintf(string_buffer, "-kmin-%lu-kmax-%lu%s",
-      min_steps_to_bad_state - 1,
-      max_steps_to_bad_state - 1,
-      suffix);
-    suffix = string_copy(string_buffer);
+    if (printing_unrolled_model) {
+      sprintf(string_buffer, "-kmin-%lu-kmax-%lu%s",
+        min_steps_to_bad_state - 1,
+        max_steps_to_bad_state - 1,
+        suffix);
+      suffix = string_copy(string_buffer);
+    }
+
+    if (printing_smt)
+      extension = "smt";
+    else
+      extension = "btor2";
+
+    model_name = replace_extension(model_name, suffix, extension);
   }
-
-  if (printing_smt)
-    extension = "smt";
-  else
-    extension = "btor2";
-
-  model_name = replace_extension(model_name, suffix, extension);
 
   // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
 
@@ -13303,7 +13310,18 @@ void print_unrolled_model() {
 // -----------------------------------------------------------------
 
 uint64_t parse_engine_arguments() {
-  if (string_compare(peek_argument(1), evaluate_model_option)) {
+  if (string_compare(peek_argument(1), custom_model_name_option)) {
+    custom_model_name = 1;
+
+    get_argument();
+
+    if (number_of_remaining_arguments() > 1) {
+      model_name = peek_argument(1);
+
+      get_argument();
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else if (string_compare(peek_argument(1), evaluate_model_option)) {
     evaluate_model = 1;
 
     get_argument();
