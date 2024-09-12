@@ -1259,10 +1259,9 @@ def parse_property_line(tokens, nid, op, line_no):
     symbol, comment = parse_symbol_comment(tokens, line_no)
     return get_class(op)(nid, property_line, symbol, comment, line_no)
 
-current_nid = 0
-
 def parse_btor2_line(line, line_no):
-    global current_nid
+    current_nid = 0
+
     if line.strip():
         tokens = tokenize_btor2(line)
         token = get_token(tokens, None, None)
