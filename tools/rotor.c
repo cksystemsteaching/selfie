@@ -11,6 +11,7 @@ selfie.cs.uni-salzburg.at
 
 Rotor is a tool for bit-precise reasoning about RISC-V machines
 and RISC-V code using BTOR2 and SMT-LIB as modeling format.
+Rotor utilizes the compiler and bootloader of the selfie system.
 
 Rotor generates models of 64-bit and 32-bit RISC-V machines
 supporting 64-bit and 32-bit integer arithmetic (RV64I, RV32I)
