@@ -1312,13 +1312,13 @@ class Z3_Solver(Solver):
     def __init__(self):
         super().__init__(z3.Solver())
 
-    def show(self, assertion, step):
+    def assert_this(self, assertion, step):
         self.solver.add(assertion.get_z3_step(step))
 
-    def refute(self, assertion, step):
+    def assert_not_this(self, assertion, step):
         self.solver.add(assertion.get_z3_step(step) == False)
 
-    def check(self):
+    def prove(self):
         return self.solver.check()
 
     def is_SAT(self, result):
@@ -1327,14 +1327,14 @@ class Z3_Solver(Solver):
     def is_UNSAT(self, result):
         return result == z3.unsat
 
-    def show_change(self, next_line, step):
+    def assert_change(self, next_line, step):
         return self.solver.add(next_line.get_z3_change(step))
 
-    def take_step(self, state):
+    def take_next_step(self, state):
         state.take_z3_step()
 
     def print_pc(self, pc, step):
-        self.check()
+        self.prove()
         model = self.solver.model()
         for decl in model.decls():
             if str(pc.get_z3_step(step)) in str(decl.name()):
@@ -1358,13 +1358,13 @@ class Bitwuzla_Solver(Solver):
         self.options.set(bitwuzla.Option.PRODUCE_MODELS, True)
         super().__init__(bitwuzla.Bitwuzla(self.tm, self.options))
 
-    def show(self, assertion, step):
+    def assert_this(self, assertion, step):
         self.solver.assert_formula(assertion.get_bitwuzla_step(step, self.tm))
 
-    def refute(self, assertion, step):
+    def assert_not_this(self, assertion, step):
         self.solver.assert_formula(self.tm.mk_term(bitwuzla.Kind.NOT, [assertion.get_bitwuzla_step(step, self.tm)]))
 
-    def check(self):
+    def prove(self):
         return self.solver.check_sat()
 
     def is_SAT(self, result):
@@ -1373,14 +1373,14 @@ class Bitwuzla_Solver(Solver):
     def is_UNSAT(self, result):
         return result is bitwuzla.Result.UNSAT
 
-    def show_change(self, next_line, step):
+    def assert_change(self, next_line, step):
         return self.solver.assert_formula(next_line.get_bitwuzla_change(step, self.tm))
 
-    def take_step(self, state):
+    def take_next_step(self, state):
         state.take_bitwuzla_step(self.tm)
 
     def print_pc(self, pc, step):
-        self.check()
+        self.prove()
         pc_value = int(self.solver.get_value(pc.get_bitwuzla_step(step, self.tm)).value(16), 16)
         print(pc)
         print("%s = 0x%X" % (pc.get_bitwuzla_step(step, self.tm), pc_value))
@@ -1396,24 +1396,30 @@ class Bitwuzla_Solver(Solver):
 
 def bmc(solver, kmin, kmax, args):
     for init in Init.inits.values():
-        solver.show(init, 0)
+        # initialize all states
+        solver.assert_this(init, 0)
 
     step = 0
 
     while step <= kmax:
+        # check model up to kmax steps
         print(step)
 
         if args.print_pc and State.pc:
+            # print current program counter value of single-core rotor model
             solver.print_pc(State.pc, step)
 
         for constraint in Constraint.constraints.values():
-            solver.show(constraint, step)
+            # assert all constraints
+            solver.assert_this(constraint, step)
 
         if step >= kmin:
+            # check bad properties from kmin on
             for bad in Bad.bads.values():
+                # check all bad properties
                 solver.push()
-                solver.show(bad, step)
-                result = solver.check()
+                solver.assert_this(bad, step)
+                result = solver.prove()
                 if solver.is_SAT(result):
                     print("v" * 80)
                     print(f"sat: {bad}")
@@ -1422,17 +1428,20 @@ def bmc(solver, kmin, kmax, args):
                 solver.pop()
 
         for bad in Bad.bads.values():
-            solver.refute(bad, step)
+            # assert all bad properties as negated constraints
+            solver.assert_not_this(bad, step)
 
         for next_line in Next.nexts.values():
-            solver.show(next_line, step)
+            # compute next step
+            solver.assert_this(next_line, step)
 
         if args.check_termination and step >= kmin:
             state_change = False
             for next_line in Next.nexts.values():
+                # check if any of the states changes
                 solver.push()
-                solver.show_change(next_line, step)
-                result = solver.check()
+                solver.assert_change(next_line, step)
+                result = solver.prove()
                 solver.pop()
                 if solver.is_SAT(result):
                     state_change = True
@@ -1443,7 +1452,8 @@ def bmc(solver, kmin, kmax, args):
                     return
 
         for state in State.states.values():
-            solver.take_step(state)
+            # take next step
+            solver.take_next_step(state)
 
         step += 1
 
