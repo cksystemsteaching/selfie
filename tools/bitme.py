@@ -21,6 +21,15 @@
 
 # for debugging segfaults: import faulthandler; faulthandler.enable()
 
+import ctypes
+
+try:
+    rotor = ctypes.cdll.LoadLibrary("rotor")
+    is_rotor_present = True
+except OSError:
+    print("rotor is not available")
+    is_rotor_present = False
+
 # requires Z3 and the Z3 Python API:
 # pip install z3-solver
 
@@ -1475,9 +1484,23 @@ def bmc(solver, kmin, kmax, args):
 
         step += 1
 
+# rotor model generator
+
+import sys
+
+def try_rotor():
+    if is_rotor_present and len(sys.argv) > 1 and sys.argv[1] == '--rotor':
+        # just run rotor
+        argv = [sys.argv[0]] + sys.argv[2:] # remove --rotor but keep all other arguments
+        rotor.main.argtypes = ctypes.c_int, ctypes.POINTER(ctypes.c_char_p)
+        rotor.main(len(argv), (ctypes.c_char_p * len(argv))(*[arg.encode('utf-8') for arg in argv]))
+        exit(0)
+
 import argparse
 
 def main():
+    try_rotor()
+
     parser = argparse.ArgumentParser(prog='bitme',
         description="What the program does",
         epilog="Text at the bottom of help")
