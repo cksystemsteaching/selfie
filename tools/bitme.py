@@ -1050,6 +1050,64 @@ class Bad(Property):
         assert self not in Bad.bads
         Bad.bads[self.nid] = self
 
+# RISC-V model generator
+
+current_nid = 0
+
+def next_nid():
+    global current_nid
+    current_nid += 1
+    return current_nid - 1
+
+class PC():
+    def __init__(self, core, bits):
+        self.pc_sort = Bitvec(next_nid(), bits, f"{bits}-bit program counter bitvector", None)
+        self.initial = Const(next_nid(), self.pc_sort, 0, f"initial core-{core} program counter value", None)
+        self.state = State(next_nid(), self.pc_sort, f"core-{core}-pc", f"{bits}-bit program counter", None)
+        self.init = Init(next_nid(), self.pc_sort, self.state, self.initial, "initializing program counter", None)
+
+class Registers():
+    def __init__(self, core, bits):
+        self.reg_sort = Bitvec(next_nid(), bits, f"{bits}-bit register bitvector", None)
+        self.reg_addr_sort = Bitvec(next_nid(), 5, "register address bitvector", None)
+        self.reg_file_sort = Array(next_nid(), self.reg_addr_sort, self.reg_sort, f"{bits}-bit register file array", None)
+        self.initial = Const(next_nid(), self.reg_sort, 0, f"initial core-{core} register value", None)
+        self.state = State(next_nid(), self.reg_file_sort, f"core-{core}-register-file", f"{bits}-bit register file", None)
+        self.init = Init(next_nid(), self.reg_file_sort, self.state, self.initial, "initializing register file", None)
+
+class Segment():
+    def __init__(self, core, name, addr, bits):
+        self.seg_sort = Bitvec(next_nid(), bits, f"{bits}-bit {name} segment bitvector", None)
+        self.seg_addr_sort = Bitvec(next_nid(), addr, f"{addr}-bit {name} segment address bitvector", None)
+        self.seg_word_sort = Array(next_nid(), self.seg_addr_sort, self.seg_sort, f"{addr}-bit {name} segment array", None)
+        self.initial = Const(next_nid(), self.seg_sort, 0, f"initial core-{core} {name} segment value", None)
+        self.state = State(next_nid(), self.seg_word_sort, f"core-{core}-{name}-segment", f"{bits}-bit {name} segment", None)
+        self.init = Init(next_nid(), self.seg_word_sort, self.state, self.initial, f"initializing {name} segment", None)
+
+class Core():
+    cores = dict()
+
+    def __init__(self, bits):
+        self.core = len(Core.cores)
+        self.pc = PC(self.core, bits)
+        self.regs = Registers(self.core, bits)
+        self.code = Segment(self.core, "code", 10, bits)
+        self.data = Segment(self.core, "data", 10, bits)
+        self.heap = Segment(self.core, "heap", 10, bits)
+        self.stack = Segment(self.core, "stack", 10, bits)
+        self.new_core()
+
+    def new_core(self):
+        assert self not in Core.cores
+        Core.cores[self.core] = self
+
+class Kernel():
+    pass
+
+class System():
+    def __init__(self, bits):
+        self.core = Core(bits)
+
 # BTOR2 parser
 
 def get_class(keyword):
