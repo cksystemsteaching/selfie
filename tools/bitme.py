@@ -1059,19 +1059,219 @@ def next_nid():
     current_nid += 1
     return current_nid
 
-SID_BOOLEAN = Bool(next_nid(), "Boolean", None)
-NID_FALSE = Zero(next_nid(), SID_BOOLEAN, "False", None)
-NID_TRUE = One(next_nid(), SID_BOOLEAN, "True", None)
+def new_boolean():
+    return Bool(next_nid(), "Boolean", None)
+
+def new_bitvec(size_in_bits, comment):
+    return Bitvec(next_nid(), size_in_bits, comment, None)
+
+def new_zero(sid, comment):
+    return Zero(next_nid(), sid, comment, None)
+
+def new_one(sid, comment):
+    return One(next_nid(), sid, comment, None)
+
+def new_constd(sid, value, comment):
+    return Constd(next_nid(), sid, value, comment, None)
+
+def new_const(sid, value, comment):
+    return Const(next_nid(), sid, value, comment, None)
+
+def new_consth(sid, value, comment):
+    return Consth(next_nid(), sid, value, comment, None)
+
+# ------------------------ GLOBAL CONSTANTS -----------------------
+
+IS64BITTARGET = True # TODO: configure
+
+WORDSIZEINBITS = 64 # TODO: define accordingly
+
+SID_BOOLEAN = None
+
+NID_FALSE = 0
+NID_TRUE  = 1
+
+SID_BYTE = None
+
+NID_BYTE_0 = 0
+NID_BYTE_3 = 0
+
+HALFWORDSIZEINBITS = 16
+
+SID_HALF_WORD = None
+
+NID_HALF_WORD_0 = 0
+NID_HALF_WORD_1 = 0
+
+SINGLEWORDSIZEINBITS = 32
+
+SID_SINGLE_WORD = None
+
+NID_SINGLE_WORD_0 = 0
+NID_SINGLE_WORD_1 = 0
+NID_SINGLE_WORD_2 = 0
+NID_SINGLE_WORD_3 = 0
+NID_SINGLE_WORD_4 = 0
+NID_SINGLE_WORD_5 = 0
+NID_SINGLE_WORD_6 = 0
+NID_SINGLE_WORD_7 = 0
+NID_SINGLE_WORD_8 = 0
+
+NID_SINGLE_WORD_MINUS_1 = 0
+NID_SINGLE_WORD_INT_MIN = 0
+
+DOUBLEWORDSIZE = 8
+DOUBLEWORDSIZEINBITS = 64
+
+SID_DOUBLE_WORD = None
+
+NID_DOUBLE_WORD_0 = 0
+NID_DOUBLE_WORD_1 = 0
+NID_DOUBLE_WORD_2 = 0
+NID_DOUBLE_WORD_3 = 0
+NID_DOUBLE_WORD_4 = 0
+NID_DOUBLE_WORD_5 = 0
+NID_DOUBLE_WORD_6 = 0
+NID_DOUBLE_WORD_7 = 0
+NID_DOUBLE_WORD_8 = 0
+
+NID_DOUBLE_WORD_MINUS_1 = 0
+NID_DOUBLE_WORD_INT_MIN = 0
+
+SID_MACHINE_WORD = None
+
+NID_MACHINE_WORD_0 = 0
+NID_MACHINE_WORD_1 = 0
+NID_MACHINE_WORD_2 = 0
+NID_MACHINE_WORD_3 = 0
+NID_MACHINE_WORD_4 = 0
+NID_MACHINE_WORD_5 = 0
+NID_MACHINE_WORD_6 = 0
+NID_MACHINE_WORD_7 = 0
+NID_MACHINE_WORD_8 = 0
+
+NID_MACHINE_WORD_MINUS_1 = 0
+NID_MACHINE_WORD_INT_MIN = 0
+
+NID_LSB_MASK = 0
+
+SID_DOUBLE_MACHINE_WORD = None
+
+# ------------------------- INITIALIZATION ------------------------
+
+def init_interface_sorts():
+    global SID_BOOLEAN, NID_FALSE, NID_TRUE
+
+    global SID_BYTE, NID_BYTE_0, NID_BYTE_3
+
+    global SID_HALF_WORD, NID_HALF_WORD_0, NID_HALF_WORD_1
+
+    global SID_SINGLE_WORD, NID_SINGLE_WORD_0, NID_SINGLE_WORD_1, NID_SINGLE_WORD_2
+    global NID_SINGLE_WORD_3, NID_SINGLE_WORD_4, NID_SINGLE_WORD_5, NID_SINGLE_WORD_6
+    global NID_SINGLE_WORD_7, NID_SINGLE_WORD_8, NID_SINGLE_WORD_MINUS_1, NID_SINGLE_WORD_INT_MIN
+
+    global SID_DOUBLE_WORD, DOUBLEWORDSIZEINBITS, NID_DOUBLE_WORD_0, NID_DOUBLE_WORD_1
+    global NID_DOUBLE_WORD_2, NID_DOUBLE_WORD_3, NID_DOUBLE_WORD_4, NID_DOUBLE_WORD_5
+    global NID_DOUBLE_WORD_6, NID_DOUBLE_WORD_7, NID_DOUBLE_WORD_8, NID_DOUBLE_WORD_MINUS_1
+    global NID_DOUBLE_WORD_INT_MIN
+
+    global SID_MACHINE_WORD, NID_MACHINE_WORD_0, NID_MACHINE_WORD_1, NID_MACHINE_WORD_2
+    global NID_MACHINE_WORD_3, NID_MACHINE_WORD_4, NID_MACHINE_WORD_5, NID_MACHINE_WORD_6
+    global NID_MACHINE_WORD_7, NID_MACHINE_WORD_8, NID_MACHINE_WORD_MINUS_1, NID_MACHINE_WORD_INT_MIN
+
+    global NID_LSB_MASK, SID_DOUBLE_MACHINE_WORD
+
+    SID_BOOLEAN = new_boolean()
+
+    NID_FALSE = new_zero(SID_BOOLEAN, "false")
+    NID_TRUE = new_one(SID_BOOLEAN, "true")
+
+    SID_BYTE = new_bitvec(8, "8-bit byte")
+
+    NID_BYTE_0 = new_constd(SID_BYTE, 0, "byte 0")
+    NID_BYTE_3 = new_constd(SID_BYTE, 3, "byte 3")
+
+    SID_HALF_WORD = new_bitvec(HALFWORDSIZEINBITS, "16-bit half word")
+
+    NID_HALF_WORD_0 = new_constd(SID_HALF_WORD, 0, "half word 0")
+    NID_HALF_WORD_1 = new_constd(SID_HALF_WORD, 1, "half word 1")
+
+    SID_SINGLE_WORD = new_bitvec(SINGLEWORDSIZEINBITS, "32-bit single word")
+
+    NID_SINGLE_WORD_0 = new_constd(SID_SINGLE_WORD, 0, "single-word 0")
+    NID_SINGLE_WORD_1 = new_constd(SID_SINGLE_WORD, 1, "single-word 1")
+    NID_SINGLE_WORD_2 = new_constd(SID_SINGLE_WORD, 2, "single-word 2")
+    NID_SINGLE_WORD_3 = new_constd(SID_SINGLE_WORD, 3, "single-word 3")
+    NID_SINGLE_WORD_4 = new_constd(SID_SINGLE_WORD, 4, "single-word 4")
+    NID_SINGLE_WORD_5 = new_constd(SID_SINGLE_WORD, 5, "single-word 5")
+    NID_SINGLE_WORD_6 = new_constd(SID_SINGLE_WORD, 6, "single-word 6")
+    NID_SINGLE_WORD_7 = new_constd(SID_SINGLE_WORD, 7, "single-word 7")
+    NID_SINGLE_WORD_8 = new_constd(SID_SINGLE_WORD, 8, "single-word 8")
+
+    NID_SINGLE_WORD_MINUS_1 = new_constd(SID_SINGLE_WORD, -1, "single-word -1")
+    NID_SINGLE_WORD_INT_MIN = new_consth(SID_SINGLE_WORD, 2**(SINGLEWORDSIZEINBITS - 1), "single-word INT_MIN")
+
+    SID_DOUBLE_WORD = new_bitvec(DOUBLEWORDSIZEINBITS, "64-bit double word")
+
+    NID_DOUBLE_WORD_0 = new_constd(SID_DOUBLE_WORD, 0, "double-word 0")
+    NID_DOUBLE_WORD_1 = new_constd(SID_DOUBLE_WORD, 1, "double-word 1")
+    NID_DOUBLE_WORD_2 = new_constd(SID_DOUBLE_WORD, 2, "double-word 2")
+    NID_DOUBLE_WORD_3 = new_constd(SID_DOUBLE_WORD, 3, "double-word 3")
+    NID_DOUBLE_WORD_4 = new_constd(SID_DOUBLE_WORD, 4, "double-word 4")
+    NID_DOUBLE_WORD_5 = new_constd(SID_DOUBLE_WORD, 5, "double-word 5")
+    NID_DOUBLE_WORD_6 = new_constd(SID_DOUBLE_WORD, 6, "double-word 6")
+    NID_DOUBLE_WORD_7 = new_constd(SID_DOUBLE_WORD, 7, "double-word 7")
+    NID_DOUBLE_WORD_8 = new_constd(SID_DOUBLE_WORD, 8, "double-word 8")
+
+    NID_DOUBLE_WORD_MINUS_1 = new_constd(SID_DOUBLE_WORD, -1, "double-word -1")
+
+    if IS64BITTARGET:
+        NID_DOUBLE_WORD_INT_MIN = new_consth(SID_DOUBLE_WORD, 2**(DOUBLEWORDSIZEINBITS - 1), "double-word INT_MIN")
+
+        SID_MACHINE_WORD = SID_DOUBLE_WORD
+
+        NID_MACHINE_WORD_0 = NID_DOUBLE_WORD_0
+        NID_MACHINE_WORD_1 = NID_DOUBLE_WORD_1
+        NID_MACHINE_WORD_2 = NID_DOUBLE_WORD_2
+        NID_MACHINE_WORD_3 = NID_DOUBLE_WORD_3
+        NID_MACHINE_WORD_4 = NID_DOUBLE_WORD_4
+        NID_MACHINE_WORD_5 = NID_DOUBLE_WORD_5
+        NID_MACHINE_WORD_6 = NID_DOUBLE_WORD_6
+        NID_MACHINE_WORD_7 = NID_DOUBLE_WORD_7
+        NID_MACHINE_WORD_8 = NID_DOUBLE_WORD_8
+
+        NID_MACHINE_WORD_MINUS_1 = NID_DOUBLE_WORD_MINUS_1
+        NID_MACHINE_WORD_INT_MIN = NID_DOUBLE_WORD_INT_MIN
+    else:
+        # 32-bit system
+        SID_MACHINE_WORD = SID_SINGLE_WORD
+
+        NID_MACHINE_WORD_0 = NID_SINGLE_WORD_0
+        NID_MACHINE_WORD_1 = NID_SINGLE_WORD_1
+        NID_MACHINE_WORD_2 = NID_SINGLE_WORD_2
+        NID_MACHINE_WORD_3 = NID_SINGLE_WORD_3
+        NID_MACHINE_WORD_4 = NID_SINGLE_WORD_4
+        NID_MACHINE_WORD_5 = NID_SINGLE_WORD_5
+        NID_MACHINE_WORD_6 = NID_SINGLE_WORD_6
+        NID_MACHINE_WORD_7 = NID_SINGLE_WORD_7
+        NID_MACHINE_WORD_8 = NID_SINGLE_WORD_8
+
+        NID_MACHINE_WORD_MINUS_1 = NID_SINGLE_WORD_MINUS_1
+        NID_MACHINE_WORD_INT_MIN = NID_SINGLE_WORD_INT_MIN
+
+    NID_LSB_MASK = new_constd(SID_MACHINE_WORD, -2, "all bits but LSB set")
+
+    SID_DOUBLE_MACHINE_WORD = new_bitvec(2 * WORDSIZEINBITS, "double machine word")
 
 class Bitvector_State():
     def __init__(self, core, sid, name, initials):
         assert isinstance(sid, Bitvector)
         self.sid = sid
         if core >= 0:
-            self.initial = Const(next_nid(), self.sid, 0, f"initial core-{core} {name} value", None)
+            self.initial = new_constd(self.sid, 0, f"initial core-{core} {name} value")
             self.state = State(next_nid(), self.sid, f"core-{core}-{initials}", f"{sid.size}-bit {name}", None)
         else:
-            self.initial = Const(next_nid(), self.sid, 0, f"initial {name} value", None)
+            self.initial = new_constd(self.sid, 0, f"initial {name} value")
             self.state = State(next_nid(), self.sid, f"{initials}", f"{sid.size}-bit {name}", None)
         self.init = Init(next_nid(), self.sid, self.state, self.initial, f"initializing {name}", None)
 
@@ -1084,7 +1284,7 @@ class Array_State():
         self.address_sid = address_sid
         self.element_sid = element_sid
         self.array_sid = Array(next_nid(), address_sid, element_sid, f"{address_sid.size}-bit {name} array", None)
-        self.initial = Const(next_nid(), element_sid, 0, f"initial core-{core} {name} value", None)
+        self.initial = new_constd(element_sid, 0, f"initial core-{core} {name} value")
         self.state = State(next_nid(), self.array_sid, f"core-{core}-{initials}", f"{element_sid.size}-bit {name}", None)
         self.init = Init(next_nid(), self.array_sid, self.state, self.initial, f"initializing {name}", None)
 
@@ -1105,9 +1305,15 @@ class PC(Bitvector_State):
 
 class Registers(Array_State):
     def __init__(self, core, word_sid):
-        self.SID_REGISTER_ADDRESS = Bitvec(next_nid(), 5, "register address", None)
+        self.SID_REGISTER_ADDRESS = new_bitvec(5, "register address")
         super().__init__(core, self.SID_REGISTER_ADDRESS, word_sid, "register file", 'register-file')
         self.SID_REGISTER_STATE = self.array_sid
+
+    def load_register_value(reg_nid, comment, register_file_nid):
+        return self.load(register_file_nid, reg_nid, comment)
+
+    def store_register_value(reg_nid, value_nid, comment, register_file_nid):
+        return self.store(register_file_nid, reg_nid, value_nid, comment)
 
 class Segment(Array_State):
     def __init__(self, core, address_sid, word_sid, name, initials):
@@ -1115,7 +1321,7 @@ class Segment(Array_State):
 
 class Memory():
     def __init__(self, core, memory_bits, word_sid):
-        self.SID_VIRTUAL_ADDRESS = Bitvec(next_nid(), memory_bits, "virtual address", None)
+        self.SID_VIRTUAL_ADDRESS = new_bitvec(memory_bits, "virtual address")
         self.code = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "code segment", 'code-segment')
         self.data = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "data segment", 'data-segment')
         self.heap = Segment(core, self.SID_VIRTUAL_ADDRESS, word_sid, "heap segment", 'heap-segment')
@@ -1139,12 +1345,11 @@ class Core():
     cores = dict()
 
     def __init__(self, machine_bits, memory_bits):
-        self.SID_MACHINE_WORD = Bitvec(next_nid(), machine_bits, "machine word", None)
         self.core = len(Core.cores)
-        self.memory = Memory(self.core, memory_bits, self.SID_MACHINE_WORD)
-        self.kernel = Kernel(self.core, self.SID_MACHINE_WORD, self.memory)
-        self.pc = PC(self.core, self.SID_MACHINE_WORD)
-        self.regs = Registers(self.core, self.SID_MACHINE_WORD)
+        self.memory = Memory(self.core, memory_bits, SID_MACHINE_WORD)
+        self.kernel = Kernel(self.core, SID_MACHINE_WORD, self.memory)
+        self.pc = PC(self.core, SID_MACHINE_WORD)
+        self.regs = Registers(self.core, SID_MACHINE_WORD)
         self.new_core()
 
     def __str__(self):
@@ -1159,7 +1364,7 @@ class System():
         self.core = Core(machine_bits, memory_bits) # single core for now
 
     def __str__(self):
-        return f"{self.core.SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
+        return f"{SID_MACHINE_WORD.size}-bit single-core system:\n{self.core}"
 
 # BTOR2 parser
 
