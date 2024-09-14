@@ -1,58 +1,75 @@
 from .checks import execute
 from .print import custom_exit
-from .exceptions import ParsingError
+from .model_config_parser import ModelConfig, ModelConfigParser
 import lib.config as cfg
 
-from pathlib import Path
 import shutil
 from queue import Queue
 
 
-class ModelType:
-    def __init__(self, source_file: str, model_type: str, is_example: bool = False):
-        self.source_file = Path(source_file)
-        self.is_example = is_example
-        self.parse_model_type(model_type)
+def create_model(source_file: str, model_type: str, is_example: bool = False):
+    model_config = ModelConfigParser(source_file, model_type, is_example).get_config()
 
-    def parse_model_type(self, model_type: str):
-        self.compilable = False
-        parsed_models = model_type.split("-")
-        current_model = cfg.config["models"]
-        for level in parsed_models:
-            if level in current_model:
-                current_model = current_model[level]
-                if 'compilation' in current_model:
-                    self.compilable = True
-                    self.compilation_command = current_model["compilation"]
-            else:
-                raise ParsingError(model_type, level)
-        self.output = self.get_output_directory(current_model)
-        self.command = current_model["command"].format(
-            rotor=cfg.rotor_path,
-            source_file=self.source_file,
-            output=self.output
-        )
-        if not self.command or not self.output:
-            raise ParsingError(model_type, level)
+    if not model_config.compilation_command:
+        return CStarSourceProcessor(model_config).generate_model()
+    else:
+        return GenericSourceProcessor(model_config).generate_model()
 
-    def get_output_directory(self, model):
-        if self.is_example:
-            outdir = Path(cfg.models_dir / model.get("example_output", None))
-        else:
-            outdir = Path(cfg.models_dir / model.get("output", None))
-        if not outdir.exists():
-            outdir.mkdir(parents=True, exist_ok=True)
-        outdir = outdir / self.source_file.name
-        return outdir
 
-    def generate(self):
-        if self.compilable:
-            pass
+class BaseSourceProcessor:
+    def __init__(self, model_config: ModelConfig):
+        self.model_config = model_config
+
+    def generate_model(self):
+        raise NotImplementedError("Abstract class")
+
+
+class CStarSourceProcessor(BaseSourceProcessor):
+    def __init__(self, model_config: ModelConfig):
+        super().__init__(model_config)
+
+    def generate_model(self):
         # Selfie generates binary file as well, but that is not needed
-        returncode, output = execute(self.command)
-        self.output.unlink()
+        returncode, output = execute(
+            self.model_config.model_generation_command.format(
+                rotor=cfg.rotor_path,
+                source_file=self.model_config.source_file,
+                output=self.model_config.output
+            )
+        )
+        self.model_config.output.unlink()
         if returncode != 0:
             custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
+
+
+class GenericSourceProcessor(BaseSourceProcessor):
+    def __init__(self, model_config: ModelConfig):
+        super().__init__(model_config)
+
+    def compile_source(self):
+        self.output_file = self.model_config.source_file.with_suffix(".out")
+
+        returncode, output = execute(
+            self.model_config.compilation_command.format(
+                source_file=self.model_config.source_file,
+                output_machine_code=self.output_file
+            )
+        )
+
+    def generate_model(self):
+        self.compile_source()
+        returncode, output = execute(
+            self.model_config.model_generation_command.format(
+                rotor=cfg.rotor_path,
+                source_file=self.output_file,
+                output=self.model_config.output
+            )
+        )
+        self.output_file.unlink()
+        self.model_config.output.unlink()
+        if returncode != 0:
+            custom_exit(output, cfg.EXIT_MODEL_GENERATION_ERROR)
+
 
 
 def clean_examples() -> None:
@@ -80,4 +97,4 @@ def generate_all_examples() -> None:
                     for file in files:
                         if file.suffix != ".c":
                             continue
-                        ModelType(file, model_type, True).generate()
+                        create_model(file, model_type, type)

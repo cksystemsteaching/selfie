@@ -14,79 +14,79 @@ default_output: &default_output ""
 
 
 models:
-  starc:
-    64bit:
-      riscv: 
-        btor2:
-          command: "{rotor} -c {source_file} -o {output} - 1"
-          example_output: "starc/64-bit/riscv/btor2"
-          output: *default_output
-
-        smt: 
-          command: "{rotor} -c {source_file} -o {output} - 1 -k -smt -nocomments"
-          example_output: "starc/64-bit/riscv/smt"
-          output: *default_output
-      
-      riscu:
-        btor2:
-          command: "{rotor} -c {source_file} -o {output} - 1 -riscuonly"
-          output: *default_output
-          example_output: "starc/64-bit/riscu/btor2"
-
-        smt: 
-          command: "{rotor} -c {source_file} -o {output} - 1 -riscuonly -k -smt -nocomments"
-          output: *default_output
-          example_output: "starc/64-bit/riscu/smt"
-
-    32bit:
-      riscv:
-        btor2: 
-          command: "{rotor} -m32 -c {source_file} -o {output} - 1"
-          output: *default_output
-          example_output: "starc/32-bit/riscv/btor2"
-
-        smt: 
-          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
-          output: *default_output
-          example_output: "starc/32-bit/riscv/smt"
-      
-      riscu:
-        btor2: 
-          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -riscuonly"
-          output: *default_output
-          example_output: "starc/32-bit/riscv/btor2"
-
-        smt: 
-          command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
-          output: *default_output
-          example_output: "starc/32-bit/riscu/smt"
-  # gcc:
+  # starc:
+  #   64bit:
+  #     riscv: 
+  #       btor2:
+  #         command: "{rotor} -c {source_file} -o {output} - 1"
+  #         example_output: "starc/64-bit/riscv/btor2"
+  #         output: *default_output
   #
-  #   rv64imac:
-  #     compilation: "riscv64-unknown-elf-gcc -mabi=lp64 -march=rv64imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
+  #       smt: 
+  #         command: "{rotor} -c {source_file} -o {output} - 1 -k -smt -nocomments"
+  #         example_output: "starc/64-bit/riscv/smt"
+  #         output: *default_output
   #     
-  #     btor2: 
-  #       command: "{rotor} -l {source_file} -o {output} - 1"
-  #       output: *default_output
-  #       example_output: "gcc/rv64imac/btor2"
+  #     riscu:
+  #       btor2:
+  #         command: "{rotor} -c {source_file} -o {output} - 1 -riscuonly"
+  #         output: *default_output
+  #         example_output: "starc/64-bit/riscu/btor2"
   #
-  #     smt: 
-  #       command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
-  #       output: *default_output
-  #       example_output: "gcc/rv64imac/smt"
+  #       smt: 
+  #         command: "{rotor} -c {source_file} -o {output} - 1 -riscuonly -k -smt -nocomments"
+  #         output: *default_output
+  #         example_output: "starc/64-bit/riscu/smt"
   #
-  #   rv32imac:
-  #     compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}" 
+  #   32bit:
+  #     riscv:
+  #       btor2: 
+  #         command: "{rotor} -m32 -c {source_file} -o {output} - 1"
+  #         output: *default_output
+  #         example_output: "starc/32-bit/riscv/btor2"
   #
-  #     btor2: 
-  #       command: "{rotor} -l {source_file} -o {output} - 1"
-  #       output: *default_output
-  #       example_output: "gcc/rv32imac/btor2"
+  #       smt: 
+  #         command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
+  #         output: *default_output
+  #         example_output: "starc/32-bit/riscv/smt"
+  #     
+  #     riscu:
+  #       btor2: 
+  #         command: "{rotor} -m32 -c {source_file} -o {output} - 1 -riscuonly"
+  #         output: *default_output
+  #         example_output: "starc/32-bit/riscu/btor2"
   #
-  #     smt: 
-  #       command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
-  #       output: *default_output
-  #       example_output: "gcc/rv32imac/smt"
+  #       smt: 
+  #         command: "{rotor} -m32 -c {source_file} -o {output} - 1 -k -smt -nocomments"
+  #         output: *default_output
+  #         example_output: "starc/32-bit/riscu/smt"
+  gcc:
+
+    rv64imac:
+      compilation: "riscv64-unknown-elf-gcc -mabi=lp64 -march=rv64imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
+      
+      btor2: 
+        command: "{rotor} -l {source_file} -o {output} - 1"
+        output: *default_output
+        example_output: "gcc/rv64imac/btor2"
+
+      smt: 
+        command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
+        output: *default_output
+        example_output: "gcc/rv64imac/smt"
+
+    rv32imac:
+      compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32imac -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}" 
+
+      btor2: 
+        command: "{rotor} -l {source_file} -o {output} - 1"
+        output: *default_output
+        example_output: "gcc/rv32imac/btor2"
+
+      smt: 
+        command: "{rotor} -l {source_file} -o {output} - 1 -k -smt -nocomments"
+        output: *default_output
+        example_output: "gcc/rv32imac/smt"
   #
   #   rv32im:
   #     compilation: "riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32im -Wall -Wextra -D'uint64_t=unsigned long' {source_file} -o {output_machine_code}"
