@@ -74,7 +74,7 @@ class Line(Z3, Bitwuzla):
         Z3.__init__(self)
         Bitwuzla.__init__(self)
         self.nid = nid
-        self.comment = comment
+        self.comment = "; " + comment if comment != "" and comment[0] != ';' else comment
         self.line_no = line_no
         self.new_line()
 
@@ -1057,56 +1057,94 @@ current_nid = 0
 def next_nid():
     global current_nid
     current_nid += 1
-    return current_nid - 1
+    return current_nid
 
-class PC():
+SID_BOOLEAN = Bool(next_nid(), "Boolean", None)
+NID_FALSE = Zero(next_nid(), SID_BOOLEAN, "False", None)
+NID_TRUE = One(next_nid(), SID_BOOLEAN, "True", None)
+
+class Bitvector_State():
+    def __init__(self, core, bits, name, initials):
+        self.sort = Bitvec(next_nid(), bits, f"{bits}-bit {name} bitvector", None)
+        if core >= 0:
+            self.initial = Const(next_nid(), self.sort, 0, f"initial core-{core} {name} value", None)
+            self.state = State(next_nid(), self.sort, f"core-{core}-{initials}", f"{bits}-bit {name}", None)
+        else:
+            self.initial = Const(next_nid(), self.sort, 0, f"initial {name} value", None)
+            self.state = State(next_nid(), self.sort, f"{initials}", f"{bits}-bit {name}", None)
+        self.init = Init(next_nid(), self.sort, self.state, self.initial, f"initializing {name}", None)
+
+    def __str__(self):
+        return f"{self.state}"
+
+class Array_State():
+    def __init__(self, core, addr, bits, name, initials):
+        self.word_sort = Bitvec(next_nid(), bits, f"{bits}-bit {name} bitvector", None)
+        self.addr_sort = Bitvec(next_nid(), addr, f"{addr}-bit {name} address bitvector", None)
+        self.array_sort = Array(next_nid(), self.addr_sort, self.word_sort, f"{addr}-bit {name} array", None)
+        self.initial = Const(next_nid(), self.word_sort, 0, f"initial core-{core} {name} value", None)
+        self.state = State(next_nid(), self.array_sort, f"core-{core}-{initials}", f"{bits}-bit {name}", None)
+        self.init = Init(next_nid(), self.array_sort, self.state, self.initial, f"initializing {name}", None)
+
+    def __str__(self):
+        return f"{self.state}"
+
+class PC(Bitvector_State):
     def __init__(self, core, bits):
-        self.pc_sort = Bitvec(next_nid(), bits, f"{bits}-bit program counter bitvector", None)
-        self.initial = Const(next_nid(), self.pc_sort, 0, f"initial core-{core} program counter value", None)
-        self.state = State(next_nid(), self.pc_sort, f"core-{core}-pc", f"{bits}-bit program counter", None)
-        self.init = Init(next_nid(), self.pc_sort, self.state, self.initial, "initializing program counter", None)
+        super().__init__(core, bits, "program counter", 'pc')
 
-class Registers():
+class Registers(Array_State):
     def __init__(self, core, bits):
-        self.reg_sort = Bitvec(next_nid(), bits, f"{bits}-bit register bitvector", None)
-        self.reg_addr_sort = Bitvec(next_nid(), 5, "register address bitvector", None)
-        self.reg_file_sort = Array(next_nid(), self.reg_addr_sort, self.reg_sort, f"{bits}-bit register file array", None)
-        self.initial = Const(next_nid(), self.reg_sort, 0, f"initial core-{core} register value", None)
-        self.state = State(next_nid(), self.reg_file_sort, f"core-{core}-register-file", f"{bits}-bit register file", None)
-        self.init = Init(next_nid(), self.reg_file_sort, self.state, self.initial, "initializing register file", None)
+        super().__init__(core, 5, bits, "register file", 'register-file')
 
-class Segment():
-    def __init__(self, core, name, addr, bits):
-        self.seg_sort = Bitvec(next_nid(), bits, f"{bits}-bit {name} segment bitvector", None)
-        self.seg_addr_sort = Bitvec(next_nid(), addr, f"{addr}-bit {name} segment address bitvector", None)
-        self.seg_word_sort = Array(next_nid(), self.seg_addr_sort, self.seg_sort, f"{addr}-bit {name} segment array", None)
-        self.initial = Const(next_nid(), self.seg_sort, 0, f"initial core-{core} {name} segment value", None)
-        self.state = State(next_nid(), self.seg_word_sort, f"core-{core}-{name}-segment", f"{bits}-bit {name} segment", None)
-        self.init = Init(next_nid(), self.seg_word_sort, self.state, self.initial, f"initializing {name} segment", None)
+class Segment(Array_State):
+    def __init__(self, core, addr, bits, name, initials):
+        super().__init__(core, addr, bits, name, initials)
+
+class Virtual_Memory():
+    pass
+
+class Kernel():
+    file_descriptor = None
+    program_break = None
+
+    def __init__(self, bits):
+        if Kernel.file_descriptor == None:
+            Kernel.file_descriptor = Bitvector_State(-1, bits, "file descriptor", 'file-descriptor')
+        if Kernel.program_break == None:
+            Kernel.program_break = Bitvector_State(-1, bits, "program break", 'program-break')
+
+    def __str__(self):
+        return f"kernel:"
 
 class Core():
     cores = dict()
 
     def __init__(self, bits):
+        self.kernel = Kernel(bits)
         self.core = len(Core.cores)
         self.pc = PC(self.core, bits)
         self.regs = Registers(self.core, bits)
-        self.code = Segment(self.core, "code", 10, bits)
-        self.data = Segment(self.core, "data", 10, bits)
-        self.heap = Segment(self.core, "heap", 10, bits)
-        self.stack = Segment(self.core, "stack", 10, bits)
+        self.code = Segment(self.core, 10, bits, "code segment", 'code-segment')
+        self.data = Segment(self.core, 10, bits, "data segment", 'data-segment')
+        self.heap = Segment(self.core, 10, bits, "heap segment", 'heap-segment')
+        self.stack = Segment(self.core, 10, bits, "stack segment", 'stack-segment')
         self.new_core()
+
+    def __str__(self):
+        return f"core-{self.core}:\n{self.kernel}\n{self.pc}\n{self.regs}\n{self.code}\n{self.data}\n{self.heap}\n{self.stack}"
 
     def new_core(self):
         assert self not in Core.cores
         Core.cores[self.core] = self
 
-class Kernel():
-    pass
-
 class System():
-    def __init__(self, bits):
-        self.core = Core(bits)
+    def __init__(self, machine_bits, virtual_memory_bits):
+        self.SID_MACHINE_WORD = Bitvec(next_nid(), machine_bits, "machine word", None)
+        self.core = Core(machine_bits)
+
+    def __str__(self):
+        return f"{self.SID_MACHINE_WORD.size}-bit system:\nkernel:\n{Kernel.file_descriptor}\n{Kernel.program_break}\n{self.core}"
 
 # BTOR2 parser
 
